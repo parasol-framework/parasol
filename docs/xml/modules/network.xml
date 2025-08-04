@@ -109,7 +109,7 @@
       <param type="struct IPAddress *" name="Address">Must point to an <st>IPAddress</st> structure that will be filled in.</param>
     </input>
     <description>
-<p>Converts an IPv4 or an IPv6 address in dotted string format to an <st>IPAddress</st> structure.  The <code>String</code> must be of form <code>1.2.3.4</code> (IPv4).</p>
+<p>Converts an IPv4 or an IPv6 address in string format to an <st>IPAddress</st> structure.  The <code>String</code> must be of form <code>1.2.3.4</code> (IPv4) or <code>2001:db8::1</code> (IPv6).  IPv6 addresses are automatically detected by the presence of colons.</p>
 <pre>struct IPAddress addr;
 if (!StrToAddress("127.0.0.1", &amp;addr)) {
    ...

@@ -41,7 +41,7 @@
 <div class="docs-content" style="display:none;" id="StrToAddress"><h2>StrToAddress()</h2><p class="lead">Converts an IP Address in string form to an IPAddress structure.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR net::StrToAddress(CSTRING String, struct IPAddress * Address)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>String</td><td>A null-terminated string containing the IP Address in dotted format.</td></tr>
 <tr><td>Address</td><td>Must point to an <a data-toggle="tooltip" title="" href="?page=struct-IPAddress">IPAddress</a> structure that will be filled in.</td></tr>
 </tbody></table></div></div>
-<p>Converts an IPv4 or an IPv6 address in dotted string format to an <a data-toggle="tooltip" title="" href="?page=struct-IPAddress">IPAddress</a> structure.  The <code>String</code> must be of form <code>1.2.3.4</code> (IPv4).</p>
+<p>Converts an IPv4 or an IPv6 address in string format to an <a data-toggle="tooltip" title="" href="?page=struct-IPAddress">IPAddress</a> structure.  The <code>String</code> must be of form <code>1.2.3.4</code> (IPv4) or <code>2001:db8::1</code> (IPv6).  IPv6 addresses are automatically detected by the presence of colons.</p>
 <pre>struct IPAddress addr;
 if (!StrToAddress("127.0.0.1", &amp;addr)) {
    ...
@@ -111,9 +111,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 <tr><th>Next</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Next client in the chain</td></tr>
 <tr><th>Prev</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Previous client in the chain</td></tr>
 <tr><th>NetSocket</th><td><span class="text-nowrap">objNetSocket *</span></td><td>Reference to the parent socket</td></tr>
-<tr><th>Sockets</th><td><span class="text-nowrap">objClientSocket *</span></td><td>Pointer to a list of sockets opened with this client.</td></tr>
+<tr><th>Connections</th><td><span class="text-nowrap">objClientSocket *</span></td><td>Pointer to a list of connections opened by this client.</td></tr>
 <tr><th>ClientData</th><td><span class="text-nowrap">APTR</span></td><td>Free for user data storage.</td></tr>
-<tr><th>TotalSockets</th><td><span class="text-nowrap">INT</span></td><td>Count of all created sockets</td></tr>
+<tr><th>TotalConnections</th><td><span class="text-nowrap">INT</span></td><td>Count of all socket-based connections</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">
 var glCurrentMethod;

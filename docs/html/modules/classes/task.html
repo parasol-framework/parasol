@@ -36,6 +36,14 @@
 </pre>
       
 </div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-AffinityMask" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-AffinityMask"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
+                           
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">AffinityMask</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>Controls which CPU cores the process can run on.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-AffinityMask" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+<p>The AffinityMask field sets the CPU affinity for the current process, determining which CPU cores the process is allowed to run on. This is expressed as a bitmask where each bit represents a CPU core (bit 0 = core 0, bit 1 = core 1, etc.).</p>
+<p>Setting CPU affinity is particularly useful for benchmarking applications where consistent performance timing is required, as it prevents the OS from moving the process between different CPU cores during execution.</p>
+<p>Note: This field affects the current process only and requires appropriate system privileges on some platforms.</p>
+      
+</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Args" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Args"><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Args</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>Command line arguments (string format).</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Args" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
@@ -128,10 +136,11 @@
 <p>The working folder can be changed at any time by updating the Path with a new folder location.  If changing to the new folder fails for any reason, the working folder will remain unchanged and the path value will not be updated.</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-Priority" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Priority"><i class="bi bi-dash-circle text-secondary" data-bs-toggle="tooltip" title="Not readable"></i>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-Priority" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Priority"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Priority</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>The task priority in relation to other tasks is be defined here.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Priority" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Set the Priority field to change the priority of the process associated with the task.  The default value for all processes is zero.  High positive values will give the process more CPU time while negative values will yield CPU time to other active processes.</p>
+<p>Behaviour varies between platforms, but for consistency the client can assume that the behaviour is equivalent to the niceness value on Unix-like systems, and the available range is -20 to 20.</p>
 <p>Note that depending on the platform, there may be limits as to whether one process can change the priority level of a foreign process.  Other factors such as the scheduler used by the host system should be considered in the effect of prioritisation.</p>
       
 </div></div></td></tr>

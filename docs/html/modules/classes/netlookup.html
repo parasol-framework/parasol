@@ -30,7 +30,7 @@
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Callback" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Callback"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Callback</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>This function will be called on the completion of any name or address resolution.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Callback" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The function referenced here will receive the results of the most recently resolved name or address.  The C/C++ prototype is <code>Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)</code>.</p>
+<p>The function referenced here will receive the results of the most recently resolved name or address.  The C++ prototype is <code>Function(*NetLookup, ERR Error, const std::string &amp;HostName, const std::vector&lt;IPAddress&gt; &amp;Addresses)</code>.</p>
 <p>The Fluid prototype is as follows, with results readable from the <a data-bs-toggle="tooltip" title="Name of the most recently resolved host." href="#tf-HostName">HostName</a> and <a data-bs-toggle="tooltip" title="List of resolved IP addresses." href="#tf-Addresses">Addresses</a> fields: <code>function(NetLookup, Error)</code>.</p>
       
 </div></div></td></tr>

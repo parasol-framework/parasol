@@ -26,16 +26,13 @@
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Client</th><td class="col-md-1"><span class="text-nowrap">struct NetClient *</span></td><td>Parent client structure</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-ClientData" style="scroll-margin:3em;"><td class="col-md-1" id="tf-ClientData"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ClientData</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Free for user data storage.</td></tr>
+                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ClientData</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Available for client data storage.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-ConnectTime" style="scroll-margin:3em;"><td class="col-md-1" id="tf-ConnectTime"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">ConnectTime</th><td class="col-md-1"><span class="text-nowrap">INT64</span></td><td>System time for the creation of this socket</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Incoming" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Incoming"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Incoming</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>Callback for data being received from the socket</td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-MsgLen" style="scroll-margin:3em;"><td class="col-md-1" id="tf-MsgLen"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">MsgLen</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Length of the current incoming message</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Next" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Next"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Next</th><td class="col-md-1"><span class="text-nowrap"><a href="clientsocket.html">*ClientSocket</a></span></td><td>Next socket in the chain</td></tr>
@@ -66,38 +63,13 @@
 <p>Write raw data to a client socket with this action.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <a href="netsocket.html#tf-MsgLimit">NetSocket⇒MsgLimit</a> value.</p>
       
 </div></div></td></tr>
-</tbody></table><h3>Methods</h3><p>The following methods are currently supported:</p><table class="table"><tbody><tr data-bs-toggle="collapse" data-bs-target="#tmx-ReadClientMsg" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ReadClientMsg</th><td id="tm-ReadClientMsg">Read a message from the socket.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ReadClientMsg" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cs::ReadClientMsg(OBJECTPTR Object, APTR * Message, INT * Length, INT * Progress, INT * CRC)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Message</td><td>A pointer to the message buffer will be placed here if a message has been received.</td></tr>
-<tr><td>Length</td><td>The length of the message is returned here.</td></tr>
-<tr><td>Progress</td><td>The number of bytes that have been read for the incoming message.</td></tr>
-<tr><td>CRC</td><td>Indicates the CRC value that the message is expected to match.</td></tr>
-</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <a data-bs-toggle="tooltip" title="Writes a message to the socket." href="#tm-WriteClientMsg">WriteClientMsg()</a> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
-<p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
-      
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>A complete message has been read and indicated in the result parameters.</td></tr>
-<tr><th class="col-md-1">BadData</th><td>The message header or tail was invalid, or the message length exceeded internally imposed limits.</td></tr>
-<tr><th class="col-md-1">LimitedSuccess</th><td>Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the Length parameter.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">NoData</th><td>No new data was found for the socket.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A message buffer could not be allocated.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-WriteClientMsg" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">WriteClientMsg</th><td id="tm-WriteClientMsg">Writes a message to the socket.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-WriteClientMsg" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR cs::WriteClientMsg(OBJECTPTR Object, APTR Message, INT Length)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Message</td><td>Pointer to the message to send.</td></tr>
-<tr><td>Length</td><td>The length of the <code>Message</code>.</td></tr>
-</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>Messages can be written to sockets with the WriteClientMsg method and read back by the receiver with <a data-bs-toggle="tooltip" title="Read a message from the socket." href="#tm-ReadClientMsg">ReadClientMsg()</a>. The message data is sent through the <a data-bs-toggle="tooltip" title="Writes data to the socket." href="#ta-Write">Write()</a> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
-      
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">OutOfRange</th><td>A specified number is outside of the valid range.</td></tr>
-</tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">ClientSocket class documentation © Paul Manias © 2005-2025</div></div><div class="docs-content" style="display:none;" id="struct-NetClient"><h1>NetClient Structure</h1><p class="lead">Simple data storage class utilised by NetSocket to represent a client machine/IP.</p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>IP</th><td><span class="text-nowrap">INT8</span></td><td>IP address in 4/8-byte format</td></tr>
 <tr><th>Next</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Next client in the chain</td></tr>
 <tr><th>Prev</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Previous client in the chain</td></tr>
 <tr><th>NetSocket</th><td><span class="text-nowrap">objNetSocket *</span></td><td>Reference to the parent socket</td></tr>
-<tr><th>Sockets</th><td><span class="text-nowrap">objClientSocket *</span></td><td>Pointer to a list of sockets opened with this client.</td></tr>
+<tr><th>Connections</th><td><span class="text-nowrap">objClientSocket *</span></td><td>Pointer to a list of connections opened by this client.</td></tr>
 <tr><th>ClientData</th><td><span class="text-nowrap">APTR</span></td><td>Free for user data storage.</td></tr>
-<tr><th>TotalSockets</th><td><span class="text-nowrap">INT</span></td><td>Count of all created sockets</td></tr>
+<tr><th>TotalConnections</th><td><span class="text-nowrap">INT</span></td><td>Count of all socket-based connections</td></tr>
 </tbody></table><div class="footer copyright text-right">ClientSocket class documentation © Paul Manias © 2005-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

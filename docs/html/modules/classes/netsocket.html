@@ -25,13 +25,13 @@
 <h4>Client-Server Connections</h4>
 <p>After a connection has been established, data may be written using any of the following methods:</p>
 <ul>
-<li>Write directly to the socket with either the <a data-bs-toggle="tooltip" title="Writes data to the socket." href="#ta-Write">Write()</a> action or <a data-bs-toggle="tooltip" title="Writes a message to the socket." href="#tm-WriteMsg">WriteMsg()</a> method.</li>
+<li>Write directly to the socket with the <a data-bs-toggle="tooltip" title="Writes data to the socket." href="#ta-Write">Write()</a> action.</li>
 <li>Subscribe to the socket by referring to a routine in the <a data-bs-toggle="tooltip" title="Callback that is triggered when a socket is ready to send data." href="#tf-Outgoing">Outgoing</a> field.  The routine will be called to
 initially fill the internal write buffer, thereafter it will be called whenever the buffer is empty.</li>
 </ul>
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <h4>Server-Client Connections</h4>
-<p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <a data-bs-toggle="tooltip" title="The port number to use for initiating a connection." href="#tf-Port">Port</a> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTICONNECT</code> flag.</p>
+<p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <a data-bs-toggle="tooltip" title="The port number to use for initiating a connection." href="#tf-Port">Port</a> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTI_CONNECT</code> flag.</p>
 <p>When a new connection is detected, the <a data-bs-toggle="tooltip" title="A callback trigger for when the state of the NetSocket is changed." href="#tf-Feedback">Feedback</a> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
 <p>The NetSocket parameter refers to the original NetSocket object, <a href="clientsocket.html">ClientSocket</a> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <a data-bs-toggle="tooltip" title="A callback trigger for when the state of the NetSocket is changed." href="#tf-Feedback">Feedback</a> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
 <p>Information on all active connections can be read from the <a data-bs-toggle="tooltip" title="For server sockets, lists all clients connected to the server." href="#tf-Clients">Clients</a> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
@@ -80,9 +80,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Feedback" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Feedback"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Feedback</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>A callback trigger for when the state of the NetSocket is changed.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Feedback" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Refer to a custom function in this field and it will be called whenever the <a data-bs-toggle="tooltip" title="The current connection state of the netsocket object." href="#tf-State">State</a> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, int State)</code></p>
-<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <a data-bs-toggle="tooltip" title="The current connection state of the netsocket object." href="#tf-State">State</a> field.</p>
+<p>Refer to a custom function in this field and it will be called whenever the <a data-bs-toggle="tooltip" title="The current connection state of the NetSocket object." href="#tf-State">State</a> of the socket (such as connection or disconnection) changes.</p>
+<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
+<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <a data-bs-toggle="tooltip" title="The current connection state of the NetSocket object." href="#tf-State">State</a> field.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Flags" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Flags"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
@@ -99,14 +99,14 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Incoming" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Incoming"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Incoming</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>Callback that is triggered when the socket receives data.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Incoming" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
-<p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype is <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  The <code>Context</code> refers to the object that set the <code>Incoming</code> field.</p>
 <p>Retrieve data from the socket with the <a data-bs-toggle="tooltip" title="Read information from the socket." href="#ta-Read">Read()</a> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-MsgLimit" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-MsgLimit"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"></i></td><th class="col-md-1">MsgLimit</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Limits the size of incoming and outgoing messages.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-MsgLimit" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"></i></td><th class="col-md-1">MsgLimit</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Limits the size of incoming and outgoing data packets.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-MsgLimit" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow the queue results in the connection being terminated with an error.</p>
 <p>The default setting is 1 megabyte.</p>
       
@@ -131,7 +131,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">SocketHandle</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Platform specific reference to the network socket handle.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-State" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-State"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">State</th><td class="col-md-1"><span class="text-nowrap">NTC</span></td><td>The current connection state of the netsocket object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-State" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">State</th><td class="col-md-1"><span class="text-nowrap">NTC</span></td><td>The current connection state of the NetSocket object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-State" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">NTC::CONNECTED</th><td>There is an active connection at present.</td></tr>
 <tr><th class="col-md-1">NTC::CONNECTING</th><td>A connection is being established.</td></tr>
 <tr><th class="col-md-1">NTC::CONNECTING_SSL</th><td>An SSL connection is being established.</td></tr>
@@ -142,7 +142,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr data-bs-toggle="collapse" data-bs-target="#fl-TotalClients" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-TotalClients"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">TotalClients</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Indicates the total number of clients currently connected to the socket (if in server mode).</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-TotalClients" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>In server mode, the netsocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
+<p>In server mode, the NetSocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
 <p>In client mode, this field is always set to zero.</p>
       
 </div></div></td></tr>
@@ -174,7 +174,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><td>Length</td><td>The total number of bytes to write to the object.</td></tr>
 <tr><td>Result</td><td>This parameter with be updated with the total number of bytes written from the Buffer.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <a data-bs-toggle="tooltip" title="Limits the size of incoming and outgoing messages." href="#tf-MsgLimit">MsgLimit</a> field setting.</p>
+<p>Writing data to a socket will send raw data to the remote client or server.  Write connections are buffered, so any data overflow generated in a call to this action will be buffered into a software queue.  Resource limits placed on the software queue are governed by the <a data-bs-toggle="tooltip" title="Limits the size of incoming and outgoing data packets." href="#tf-MsgLimit">MsgLimit</a> field setting.</p>
 <p>Do not use this action if in server mode.  Instead, write to the <a href="clientsocket.html">ClientSocket</a> object that will receive the data.</p>
 <p>It is possible to write to a socket in advance of any connection being made. The netsocket will queue the data and automatically send it once the first connection has been made.</p>
       
@@ -183,7 +183,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><td>Port</td><td>Remote port to connect to.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
-<p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <a data-bs-toggle="tooltip" title="The current connection state of the netsocket object." href="#tf-State">State</a> field to respond to changes to the connection state.</p>
+<p>This method is non-blocking.  It will return immediately and the connection will be resolved once the server responds to the connection request or an error occurs.  Client code should subscribe to the <a data-bs-toggle="tooltip" title="The current connection state of the NetSocket object." href="#tf-State">State</a> field to respond to changes to the connection state.</p>
 <p>Pre-Condition: Must be in a connection state of <code>NTC::DISCONNECTED</code></p>
 <p>Post-Condition: If this method returns <code>ERR::Okay</code>, will be in state <code>NTC::CONNECTING</code>.</p>
       
@@ -216,31 +216,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-ReadMsg" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ReadMsg</th><td id="tm-ReadMsg">Read a message from the socket.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ReadMsg" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR ns::ReadMsg(OBJECTPTR Object, APTR * Message, INT * Length, INT * Progress, INT * CRC)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Message</td><td>A pointer to the message buffer will be placed here if a message has been received.</td></tr>
-<tr><td>Length</td><td>The length of the message is returned here.</td></tr>
-<tr><td>Progress</td><td>The number of bytes that have been read for the incoming message.</td></tr>
-<tr><td>CRC</td><td>Indicates the CRC value that the message is expected to match.</td></tr>
-</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method reads messages that have been sent to the socket using Parasol Message Protocols.  Any message sent with the <a data-bs-toggle="tooltip" title="Writes a message to the socket." href="#tm-WriteMsg">WriteMsg()</a> method will conform to this protocol, thus simplifying message transfers between programs based on the core platform at either point of the network link.</p>
-<p>This method never returns a successful error code unless an entire message has been received from the sender.</p>
-      
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>A complete message has been read and indicated in the result parameters.</td></tr>
-<tr><th class="col-md-1">BadData</th><td>The message header or tail was invalid, or the message length exceeded internally imposed limits.</td></tr>
-<tr><th class="col-md-1">LimitedSuccess</th><td>Some data has arrived, but the entire message is incomplete.  The length of the incoming message may be indicated in the <code>Length</code> parameter.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">NoData</th><td>No new data was found for the socket.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A message buffer could not be allocated.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
-</tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-WriteMsg" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">WriteMsg</th><td id="tm-WriteMsg">Writes a message to the socket.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-WriteMsg" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR ns::WriteMsg(OBJECTPTR Object, APTR Message, INT Length)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Message</td><td>Pointer to the message to send.</td></tr>
-<tr><td>Length</td><td>The length of the message.</td></tr>
-</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>Messages can be written to sockets with the WriteMsg method and read back by the receiver with <a data-bs-toggle="tooltip" title="Read a message from the socket." href="#tm-ReadMsg">ReadMsg()</a>.  The message data is sent through the <a data-bs-toggle="tooltip" title="Writes data to the socket." href="#ta-Write">Write()</a> action, so the standard process will apply (the message will be queued and does not block if buffers are full).</p>
-      
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">OutOfRange</th><td>A specified number is outside of the valid range.</td></tr>
-</tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">NetSocket class documentation © Paul Manias © 2005-2025</div></div><div class="docs-content" style="display:none;" id="NSF"><h1>NSF Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NSF::LOG_ALL</th><td>Print extra log messages.</td></tr>
 <tr><th>NSF::MULTI_CONNECT</th><td>Allow multiple connections from the same IP when in server mode.</td></tr>
 <tr><th>NSF::SERVER</th><td>Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</td></tr>
@@ -260,9 +235,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><th>Next</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Next client in the chain</td></tr>
 <tr><th>Prev</th><td><span class="text-nowrap">struct NetClient *</span></td><td>Previous client in the chain</td></tr>
 <tr><th>NetSocket</th><td><span class="text-nowrap">objNetSocket *</span></td><td>Reference to the parent socket</td></tr>
-<tr><th>Sockets</th><td><span class="text-nowrap">objClientSocket *</span></td><td>Pointer to a list of sockets opened with this client.</td></tr>
+<tr><th>Connections</th><td><span class="text-nowrap">objClientSocket *</span></td><td>Pointer to a list of connections opened by this client.</td></tr>
 <tr><th>ClientData</th><td><span class="text-nowrap">APTR</span></td><td>Free for user data storage.</td></tr>
-<tr><th>TotalSockets</th><td><span class="text-nowrap">INT</span></td><td>Count of all created sockets</td></tr>
+<tr><th>TotalConnections</th><td><span class="text-nowrap">INT</span></td><td>Count of all socket-based connections</td></tr>
 </tbody></table><div class="footer copyright text-right">NetSocket class documentation © Paul Manias © 2005-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);

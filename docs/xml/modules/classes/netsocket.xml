@@ -257,8 +257,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
-<p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype is <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  The <code>Context</code> refers to the object that set the <code>Incoming</code> field.</p>
 <p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
@@ -324,7 +324,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>In server mode, the netsocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
+<p>In server mode, the NetSocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
 <p>In client mode, this field is always set to zero.</p>
       </description>
     </field>
