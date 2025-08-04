@@ -187,7 +187,18 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 #ifdef __linux__
       DeregisterFD(Self->Handle);
 #endif
-      CLOSESOCKET(Self->Handle);
+
+      // Performing the socket close in a separate thread means there'll be plenty of time for a
+      // graceful socket closure without affecting the current thread.
+
+      std::lock_guard<std::mutex> lock(glmThreads);
+      auto thread_ptr = std::make_shared<std::jthread>();     
+      *thread_ptr = std::jthread([] (int Handle) {  
+         CLOSESOCKET(Handle);
+      }, Self->Handle);
+      glThreads.insert(thread_ptr);
+      thread_ptr->detach();
+
       Self->Handle = -1;
    }
 

@@ -28,7 +28,6 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
-#include <thread>
 
 #ifdef ENABLE_SSL
   #ifdef _WIN32
@@ -50,6 +49,10 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <mutex>
 #include <span>
 #include <cstring>
+#include <thread>
+
+std::mutex glmThreads;
+std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
 
 struct DNSEntry {
    std::string HostName;
@@ -411,6 +414,32 @@ static ERR MODExpunge(void)
     }
   #endif
 #endif
+
+   {
+      std::lock_guard<std::mutex> lock(glmThreads);
+ 
+      for (auto &thread_ptr : glThreads) {
+         if (thread_ptr and thread_ptr->joinable()) {
+            thread_ptr->request_stop();
+         }
+      }
+   
+      // Give threads time to respond to stop request
+      constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+      auto start_time = std::chrono::steady_clock::now();
+   
+      while (!glThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
+         // Remove completed threads
+         std::erase_if(glThreads, [](const auto& thread_ptr) {
+            return !thread_ptr || !thread_ptr->joinable();
+         });
+
+         if (!glThreads.empty()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+         }
+      }
+      glThreads.clear();
+   }
 
    return ERR::Okay;
 }
