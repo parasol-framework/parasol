@@ -4,7 +4,7 @@ set (MOD jpeg)
 set (INC_MOD_JPEG TRUE PARENT_SCOPE)
 
 add_library (${MOD})
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Jpeg")
 
 set_source_files_properties(
    "jpeg.cpp"

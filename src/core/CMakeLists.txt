@@ -107,7 +107,7 @@ endif ()
 
 add_library (core)
 
-set_module_defaults (core)
+set_module_defaults (core "Sys")
 
 target_sources (core PRIVATE
    "core.cpp"

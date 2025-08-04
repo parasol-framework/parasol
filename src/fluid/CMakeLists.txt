@@ -65,7 +65,7 @@ endif ()
 
 add_library (${MOD})
 
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Fl")
 
 add_dependencies (${MOD} libffi-3.3 luajit)
 

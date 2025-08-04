@@ -1508,9 +1508,9 @@ __export struct ModHeader ModHeader;
 
 #ifdef MOD_NAME
 #ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #else
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1801,6 +1801,7 @@ struct ModHeader {
    ERR (*Open)(OBJECTPTR);                        // A function that will be called each time the module is opened.
    ERR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
    CSTRING Name;                                  // Name of the module
+   CSTRING Namespace;                             // A reserved system-wide namespace for function names.
    STRUCTS *StructDefs;
    class RootModule *Root;
    ModHeader(ERR (*pInit)(OBJECTPTR, struct CoreBase *),
@@ -1809,7 +1810,8 @@ struct ModHeader {
       ERR (*pExpunge)(void),
       CSTRING pDef,
       STRUCTS *pStructs,
-      CSTRING pName) {
+      CSTRING pName,
+      CSTRING pNamespace) {
       Flags         = MHF::DEFAULT;
       Definitions   = pDef;
       StructDefs    = pStructs;
@@ -1818,6 +1820,7 @@ struct ModHeader {
       Open          = pOpen;
       Expunge       = pExpunge;
       Name          = pName;
+      Namespace     = pNamespace;
       Root          = NULL;
    }
 };

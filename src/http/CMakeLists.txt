@@ -22,7 +22,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC base64)
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Http")
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "auth.c")
 
 flute_test (http "test_http.fluid")
