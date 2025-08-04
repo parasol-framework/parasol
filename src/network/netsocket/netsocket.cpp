@@ -156,9 +156,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       if (!Self->NetLookup) {
-         if (!(Self->NetLookup = extNetLookup::create::local())) {
-            return ERR::CreateObject;
-         }
+         if (!(Self->NetLookup = extNetLookup::create::local())) return ERR::CreateObject;
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
@@ -213,10 +211,15 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    } 
    else { // For IPv6 sockets, use the first address (could be IPv4 or IPv6)
       addr = &IPs[0];
+      if ((!addr->Data[0]) and (!addr->Data[1]) and (!addr->Data[2]) and (!addr->Data[3])) {
+         log.traceWarning("Failed sanity check, incoming IP address is empty.");
+         Socket->Error = log.warning(ERR::InvalidData);
+         return;
+      }
    }
    
    if (!addr) {
-      log.warning("No compatible IP address found for socket type (IPv6: %s)", Socket->IPV6 ? "true" : "false");
+      log.warning("Of %d addresses, no compatible IP address found for socket type (IPv6: %s)", int(IPs.size()), Socket->IPV6 ? "true" : "false");
       Socket->Error = ERR::HostNotFound;
       Socket->setState(NTC::DISCONNECTED);
       return;
@@ -229,7 +232,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
-         pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
+         pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
          
          if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
             if (Socket->Error IS ERR::BufferOverflow) {
@@ -321,6 +324,28 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             log.trace("IPv4-mapped IPv6 connect() successful.");
             Socket->setState(NTC::CONNECTED);
             RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+         }
+         return;
+      #elif _WIN32
+         // Windows IPv6 dual-stack socket connecting to IPv4 address
+         struct sockaddr_in6 server_address6;
+         pf::clearmem(&server_address6, sizeof(server_address6));
+         server_address6.sin6_family = AF_INET6;
+         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         
+         // Create IPv4-mapped IPv6 address (::ffff:x.x.x.x)
+         server_address6.sin6_addr.s6_addr[10] = 0xff;
+         server_address6.sin6_addr.s6_addr[11] = 0xff;
+         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
+         
+         if (win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
+            log.trace("IPv4-mapped IPv6 connection initiated successfully");
+            Socket->setState(NTC::CONNECTING);
+         }
+         else {
+            log.trace("IPv4-mapped IPv6 connect() failed");
+            Socket->Error = ERR::Failed;
+            Socket->setState(NTC::DISCONNECTED);
          }
          return;
       #endif
@@ -572,7 +597,6 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 }
 
 //********************************************************************************************************************
-// Action: Init()
 
 static ERR NETSOCKET_Init(extNetSocket *Self)
 {
@@ -635,12 +659,12 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 #elif _WIN32
 
-   // Try IPv4 socket for maximum compatibility
-   Self->SocketHandle = win_socket(Self, true, false);
-   if (Self->SocketHandle IS NOHANDLE) return ERR::Failed;
-   
-   // Windows implementation uses IPv4 for maximum compatibility
-   Self->IPV6 = false;
+   // Try IPv6 dual-stack socket first, then fall back to IPv4
+   bool is_ipv6;
+   Self->SocketHandle = win_socket_ipv6(Self, true, false, is_ipv6);
+   if (Self->SocketHandle IS NOHANDLE) return ERR::SystemCall;
+   Self->IPV6 = is_ipv6;
+   log.msg("Created socket on Windows (handle: %d) IPV6: %d", Self->SocketHandle, int(is_ipv6));
 
 #endif
 

@@ -83,6 +83,7 @@ static const struct {
    { WSAEPFNOSUPPORT,       ERR::NoSupport },
    { WSAEAFNOSUPPORT,       ERR::NoSupport },
    { WSAEADDRINUSE,         ERR::InUse },
+   { WSAEADDRNOTAVAIL,      ERR::HostUnreachable },
    { WSAENETDOWN,           ERR::NetworkUnreachable },
    { WSAENETUNREACH,        ERR::NetworkUnreachable },
    { WSAENETRESET,          ERR::Disconnected },
@@ -489,34 +490,13 @@ int ShutdownWinsock()
 }
 
 //********************************************************************************************************************
-// Create a socket, make it non-blocking and configure it to wake our task when activity occurs on the socket.
-
-WSW_SOCKET win_socket(void *NetSocket, char Read, char Write)
-{
-   if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
-      u_long non_blocking = 1;
-      ioctlsocket(handle, FIONBIO, &non_blocking);
-      int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
-      if (Read) flags |= FD_READ;
-      if (Write) flags |= FD_WRITE;
-      if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
-
-      auto sock = WSW_SOCKET(handle);
-      glNetLookup[sock].Reference = NetSocket;
-      glNetLookup[sock].SocketHandle = sock;
-      glNetLookup[sock].Flags = flags;
-      return sock;
-   }
-   else return (WSW_SOCKET)INVALID_SOCKET;
-}
-
-//********************************************************************************************************************
 // IPv6 wrapper functions for Windows with fall-back to IPv4 if IPv6 is not supported or fails.
 
-WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write)
+WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
 {
+   IPV6 = false;
    // Try to create IPv6 dual-stack socket first
-   SOCKET handle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+   auto handle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
    if (handle != INVALID_SOCKET) {
       // Set dual-stack mode (disable IPv6-only mode to accept IPv4 connections)
       DWORD v6only = 0;
@@ -536,10 +516,25 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write)
       glNetLookup[sock].Reference = NetSocket;
       glNetLookup[sock].SocketHandle = sock;
       glNetLookup[sock].Flags = flags;
+      IPV6 = true;
       return sock;
    }
    else { // Fall back to IPv4-only socket
-      return win_socket(NetSocket, Read, Write);
+      if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
+         u_long non_blocking = 1;
+         ioctlsocket(handle, FIONBIO, &non_blocking);
+         int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+         if (Read) flags |= FD_READ;
+         if (Write) flags |= FD_WRITE;
+         if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
+
+         auto sock = WSW_SOCKET(handle);
+         glNetLookup[sock].Reference = NetSocket;
+         glNetLookup[sock].SocketHandle = sock;
+         glNetLookup[sock].Flags = flags;
+         return sock;
+      }
+      else return (WSW_SOCKET)INVALID_SOCKET;
    }
 }
 

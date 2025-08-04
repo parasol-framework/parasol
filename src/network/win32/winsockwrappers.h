@@ -21,8 +21,7 @@ ERR win_listen(WSW_SOCKET, int);
 void win_socketstate(WSW_SOCKET, char, char);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
-WSW_SOCKET win_socket(void *, char, char);/*uses PF_INET, SOCK_STREAM, 0 for params to socket() */
-WSW_SOCKET win_socket_ipv6(void *, char, char);/*creates IPv6 dual-stack socket */
+WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */
 ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, int, int *);
 void winCloseResolveHandle(void *);
 void win_socket_reference(WSW_SOCKET, void *);
