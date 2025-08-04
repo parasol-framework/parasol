@@ -418,7 +418,7 @@ static ERR MODExpunge(void)
    {
       std::lock_guard<std::mutex> lock(glmThreads);
  
-      for (auto& thread_ptr : glThreads) {
+      for (auto &thread_ptr : glThreads) {
          if (thread_ptr and thread_ptr->joinable()) {
             thread_ptr->request_stop();
          }
@@ -430,11 +430,10 @@ static ERR MODExpunge(void)
    
       while (!glThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
          // Remove completed threads
-         for (auto it = glThreads.begin(); it != glThreads.end();) {
-            if (!(*it) or !(*it)->joinable()) it = glThreads.erase(it);
-            else ++it;
-         }
-      
+         std::erase_if(glThreads, [](const auto& thread_ptr) {
+            return !thread_ptr || !thread_ptr->joinable();
+         });
+
          if (!glThreads.empty()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
          }

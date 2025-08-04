@@ -193,10 +193,9 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
       std::lock_guard<std::mutex> lock(glmThreads);
       auto thread_ptr = std::make_shared<std::jthread>();     
-      *thread_ptr = std::jthread( [&] (int Handle) {  
+      *thread_ptr = std::jthread([] (int Handle) {  
          CLOSESOCKET(Handle);
       }, Self->Handle);
-
       glThreads.insert(thread_ptr);
       thread_ptr->detach();
 
