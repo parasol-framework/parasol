@@ -546,6 +546,7 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
 [[nodiscard]] constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
 [[nodiscard]] constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
+[[nodiscard]] constexpr FieldValue Client(class NetClient *Value) { return FieldValue(FID_Client, Value); }
 [[nodiscard]] constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 [[nodiscard]] constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
 [[nodiscard]] constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
@@ -554,6 +555,8 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 [[nodiscard]] constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
 [[nodiscard]] constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
+[[nodiscard]] constexpr FieldValue Handle(int Value) { return FieldValue(FID_Handle, Value); }
+[[nodiscard]] constexpr FieldValue Handle(APTR Value) { return FieldValue(FID_Handle, Value); }
 [[nodiscard]] constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
 [[nodiscard]] constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 [[nodiscard]] constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }

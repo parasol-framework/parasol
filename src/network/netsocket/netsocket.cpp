@@ -949,13 +949,13 @@ can be used to determine how a TCP connection was closed.
 -FIELD-
 Feedback: A callback trigger for when the state of the NetSocket is changed.
 
-Refer to a custom function in this field and it will be called whenever the #State of the socket (such as
-connection or disconnection) changes.
+The client can define a function in this field to receive notifications whenever the state of the socket changes -
+typically a new connection or a disconnect.  This includes activity both from the server and the client side if the 
+`ClientSocket` value is set on receipt.
 
 The function must be in the format `Function(*NetSocket, *ClientSocket, NTC State)`
 
-The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects
-the new value in the #State field.
+The `NetSocket` parameter refers to the NetSocket object to which the function is subscribed.
 
 *********************************************************************************************************************/
 
