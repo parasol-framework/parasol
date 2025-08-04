@@ -20,13 +20,14 @@ cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=loc
 
 **Build and install:**
 - Build: `cmake --build build/claude --config Release -j 8`
-- Install: `cmake --install build/claude`
-- To build an individual module, append `--target [module]` to the build command, e.g. `--target network`
+- Install: `cmake --build build/claude --config Release -j 8 && cmake --install build/claude`
+- To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.
 
 **Testing:**
+- **ALWAYS** install your latest build before running `ctest`.
 - Run all integration tests: `ctest -C Release test`
 - Run single integration test: `ctest -C Release test -L TEST_LABEL`
-- Individual Flute tests (see Flute Testing section below)
+- **ALWAYS** write tests using Flute unless instructed otherwise (see Flute Testing section below)
 
 ### CMake Configuration Options
 
@@ -100,7 +101,7 @@ scripts/*.fluid           # APIs
 ### Flute Testing
 
 Tests are written in Fluid and executed with the Flute test runner:
-- Test files are typically named `test-*.fluid` in module directories
+- Test files are typically named `test-*.fluid` in module directories and can be used for learning.
 - Use `flute_test()` CMake function to register tests
 - Tests run post-install against the installed framework
 - Always use `--gfx-driver=headless` for CI/automated testing
