@@ -231,7 +231,7 @@ WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr 
    auto client_handle = WSW_SOCKET(accept(SocketHandle, Addr, AddrLen));
    //printf("win_accept() FD %d, NetSocket %p\n", client_handle, NetSocket);
 
-   ULONG non_blocking = 1;
+   u_long non_blocking = 1;
    ioctlsocket(client_handle, FIONBIO, &non_blocking);
 
    int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT|FD_READ;
@@ -262,11 +262,34 @@ ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 //********************************************************************************************************************
 // Wrapped by CLOSESOCKET()
 
-int win_closesocket(WSW_SOCKET SocketHandle)
+void win_closesocket(WSW_SOCKET SocketHandle)
 {
-   const lock_guard<recursive_mutex> lock(csNetLookup);
-   glNetLookup.erase(SocketHandle);
-   return closesocket(SocketHandle);
+   if (SocketHandle IS INVALID_SOCKET) return;
+
+   {
+      const lock_guard<recursive_mutex> lock(csNetLookup);
+      glNetLookup.erase(SocketHandle);
+   }
+   
+   // Perform graceful disconnect before closing
+
+   shutdown(SocketHandle, SD_BOTH);
+   
+   // Set a short timeout to allow pending data to be transmitted
+   struct timeval timeout;
+   timeout.tv_sec = 0;
+   timeout.tv_usec = 100000; // 100ms timeout
+   setsockopt(SocketHandle, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+   setsockopt(SocketHandle, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
+   
+   // Drain any remaining data in the receive buffer
+   char buffer[1024];
+   int bytes_received;
+   do {
+      bytes_received = recv(SocketHandle, buffer, sizeof(buffer), 0);
+   } while (bytes_received > 0);
+   
+   closesocket(SocketHandle);
 }
 
 //********************************************************************************************************************
