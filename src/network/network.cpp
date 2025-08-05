@@ -171,6 +171,7 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #include <sys/ioctl.h>
    #include <errno.h>
    #include <string.h>
+   #include <netinet/tcp.h>
 
    #define NOHANDLE -1
    #define CLOSESOCKET(a) close(a)
