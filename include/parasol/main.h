@@ -453,7 +453,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
 // These field name and type declarations help to ensure that fields are paired with the correct type during create().
 
 class objBitmap;
-struct NetClient;
+class objNetClient;
 
 namespace fl {
    using namespace pf;

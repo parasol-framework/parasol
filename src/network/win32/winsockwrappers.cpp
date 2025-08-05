@@ -40,7 +40,7 @@ enum {
 
 #define IS ==
 
-#define MAX_SOCKETS 40
+constexpr int MAX_SOCKETS = 40;
 
 class socket_info { // Only the SocketHandle FD is unique.  NetSocket may be referenced multiple times for as many clients exist.
 public:
@@ -53,10 +53,10 @@ public:
 
 static std::recursive_mutex csNetLookup;
 static std::unordered_map<WSW_SOCKET, socket_info> glNetLookup;
-static char glSocketsDisabled = FALSE;
+static char glSocketsDisabled = false;
 static HWND glNetWindow = 0;
-static char glNetClassInit = FALSE;
-static char glWinsockInitialised = FALSE;
+static char glNetClassInit = false;
+static char glWinsockInitialised = false;
 
 //********************************************************************************************************************
 
@@ -112,7 +112,7 @@ static ERR convert_error(int error)
    for (i=0; glErrors[i].WinError; i++) {
       if (glErrors[i].WinError IS error) return glErrors[i].PanError;
    }
-   return ERR::Failed;
+   return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -142,10 +142,10 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
       const lock_guard<recursive_mutex> lock(csNetLookup);
       if (glNetLookup.contains((WSW_SOCKET)wParam)) {
          int state;
-         int resub = FALSE;
+         int resub_write = false;
          switch (event) {
             case FD_READ:    state = NTE_READ; break;
-            case FD_WRITE:   state = NTE_WRITE; resub = TRUE; break; // Keep the socket subscribed while writing
+            case FD_WRITE:   state = NTE_WRITE; resub_write = true; break; // Keep the socket subscribed while writing
             case FD_ACCEPT:  state = NTE_ACCEPT; break;
             case FD_CLOSE:   state = NTE_CLOSE; break;
             case FD_CONNECT: state = NTE_CONNECT; break;
@@ -157,16 +157,24 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          else if (winerror) error = convert_error(winerror);
          else error = ERR::Okay;
 
-         socket_info *info = &glNetLookup[(WSW_SOCKET)wParam];
-         if ((info->Flags & FD_READ) and (!glSocketsDisabled)) {
-            WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags & (~FD_READ));
+         socket_info &info = glNetLookup[(WSW_SOCKET)wParam];
+         if ((info.Flags & FD_READ) and (!glSocketsDisabled)) {
+            WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
          }
 
-         if (info->Reference) win32_netresponse((struct Object *)info->Reference, info->SocketHandle, state, error);
-         else printf("win_messages() Missing reference for FD %d, state %d\n", info->SocketHandle, state);
+         if (info.Reference) {
+            if ((state IS NTE_WRITE) and (!(info.Flags & FD_WRITE))) {
+               // Do nothing when receiving queued write messages for a socket that has turned them off.
+               return 0;
+            }
+            else win32_netresponse((struct Object *)info.Reference, info.SocketHandle, state, error);
+         }
+         else printf("win_messages() Missing reference for FD %d, state %d\n", info.SocketHandle, state);
 
-         if ((resub) and (!glSocketsDisabled)) {
-            WSAAsyncSelect(info->SocketHandle, glNetWindow, WM_NETWORK, info->Flags);
+         if ((resub_write) and (!glSocketsDisabled)) {
+            if (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_WRITE) { // Sanity check in case write was switched off in win32_netresponse()
+               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, info.Flags);
+            }
          }
          return 0;
       }
@@ -207,19 +215,25 @@ void win_net_processing(int Status, void *Args)
 
 //********************************************************************************************************************
 // Sets the read/write state for a socket.
+// Set Read/Write value to -1 if state should be unchanged
 
-void win_socketstate(WSW_SOCKET Socket, char Read, char Write)
+ERR win_socketstate(WSW_SOCKET Socket, char Read, char Write)
 {
    const lock_guard<recursive_mutex> lock(csNetLookup);
-   socket_info *sock = &glNetLookup[Socket];
+   socket_info &sock = glNetLookup[Socket];
 
-   if (Read IS 0) sock->Flags &= ~FD_READ;
-   else if (Read IS 1) sock->Flags |= FD_READ;
+   if (Read IS 0) sock.Flags &= ~FD_READ;
+   else if (Read IS 1) sock.Flags |= FD_READ;
 
-   if (Write IS 0) sock->Flags &= ~FD_WRITE;
-   else if (Write IS 1) sock->Flags |= FD_WRITE;
+   if (Write IS 0) sock.Flags &= ~FD_WRITE;
+   else if (Write IS 1) sock.Flags |= FD_WRITE;
 
-   if (!glSocketsDisabled) WSAAsyncSelect(Socket, glNetWindow, WM_NETWORK, sock->Flags);
+   if (!glSocketsDisabled) {
+      auto winerror = WSAAsyncSelect(Socket, glNetWindow, WM_NETWORK, sock.Flags);
+      if (winerror) return convert_error(winerror);
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -241,9 +255,8 @@ WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr 
    int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT|FD_READ;
    if (!glSocketsDisabled) WSAAsyncSelect(client_handle, glNetWindow, WM_NETWORK, flags);
 
-   glNetLookup[client_handle].Reference = NetSocket;
-   glNetLookup[client_handle].SocketHandle = client_handle;
-   glNetLookup[client_handle].Flags = flags;
+   const lock_guard<recursive_mutex> lock(csNetLookup);
+   glNetLookup[client_handle] = { .Reference = NetSocket, .SocketHandle = client_handle, .Flags = flags };
    return client_handle;
 }
 
@@ -252,6 +265,7 @@ WSW_SOCKET win_accept(void *NetSocket, WSW_SOCKET SocketHandle, struct sockaddr 
 
 void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
 {
+   const lock_guard<recursive_mutex> lock(csNetLookup);
    glNetLookup[SocketHandle].Reference = Reference;
 }
 
@@ -510,9 +524,9 @@ const char * StartupWinsock() // Return zero if succesful
 
 int ShutdownWinsock()
 {
-   if (glNetWindow) { DestroyWindow(glNetWindow); glNetWindow = FALSE; }
-   if (glNetClassInit) { UnregisterClass("NetClass", GetModuleHandle(nullptr)); glNetClassInit = FALSE; }
-   if (glWinsockInitialised) { WSACleanup(); glWinsockInitialised = FALSE; }
+   if (glNetWindow) { DestroyWindow(glNetWindow); glNetWindow = 0; }
+   if (glNetClassInit) { UnregisterClass("NetClass", GetModuleHandle(nullptr)); glNetClassInit = false; }
+   if (glWinsockInitialised) { WSACleanup(); glWinsockInitialised = false; }
    return 0;
 }
 
@@ -544,9 +558,8 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
       if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
 
       auto sock = WSW_SOCKET(handle);
-      glNetLookup[sock].Reference = NetSocket;
-      glNetLookup[sock].SocketHandle = sock;
-      glNetLookup[sock].Flags = flags;
+      const lock_guard<recursive_mutex> lock(csNetLookup);
+      glNetLookup[sock] = { .Reference = NetSocket, .SocketHandle = sock, .Flags = flags };
       IPV6 = true;
       return sock;
    }
@@ -564,9 +577,8 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
          if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
 
          auto sock = WSW_SOCKET(handle);
-         glNetLookup[sock].Reference = NetSocket;
-         glNetLookup[sock].SocketHandle = sock;
-         glNetLookup[sock].Flags = flags;
+         const lock_guard<recursive_mutex> lock(csNetLookup);
+         glNetLookup[sock] = { .Reference = NetSocket, .SocketHandle = sock, .Flags = flags };
          return sock;
       }
       else return (WSW_SOCKET)INVALID_SOCKET;
@@ -707,9 +719,9 @@ WSW_SOCKET win_accept_ipv6(void *NetSocket, WSW_SOCKET ServerSocket, struct sock
    if (!glSocketsDisabled) WSAAsyncSelect(client_fd, glNetWindow, WM_NETWORK, flags);
 
    auto sock = WSW_SOCKET(client_fd);
-   glNetLookup[sock].Reference = NetSocket;
-   glNetLookup[sock].SocketHandle = sock;
-   glNetLookup[sock].Flags = flags;
+
+   const lock_guard<recursive_mutex> lock(csNetLookup);
+   glNetLookup[sock] = { .Reference = NetSocket, .SocketHandle = sock, .Flags = flags };
 
    return sock;
 }

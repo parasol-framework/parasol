@@ -20,6 +20,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #define PRV_NETWORK_MODULE
 #define PRV_NETSOCKET
 #define PRV_CLIENTSOCKET
+#define PRV_NETCLIENT
 #define NO_NETRECURSION
 
 #include <stdio.h>
@@ -213,7 +214,7 @@ class extNetSocket : public objNetSocket {
    FUNCTION Incoming;
    FUNCTION Feedback;
    objNetLookup *NetLookup;
-   struct NetClient *LastClient;
+   objNetClient *LastClient;
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
    uint8_t ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
@@ -230,14 +231,9 @@ class extNetSocket : public objNetSocket {
       #ifdef NO_NETRECURSION
          WORD WinRecursion; // For win32_netresponse()
       #endif
-      union {
-         void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
-         void (*ReadClientSocket)(SOCKET_HANDLE, extClientSocket *);
-      };
-      union {
-         void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
-         void (*WriteClientSocket)(SOCKET_HANDLE, extClientSocket *);
-      };
+      void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
+      // WriteSocket is to be used only when data is already queued to be written, or the Outgoing callback is defined.
+      void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
    #endif
    #ifdef ENABLE_SSL
       #ifdef _WIN32
@@ -310,6 +306,7 @@ static OBJECTPTR clNetLookup = nullptr;
 static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
 static OBJECTPTR clClientSocket = nullptr;
+static OBJECTPTR clNetClient = nullptr;
 static HOSTMAP glHosts;
 static HOSTMAP glAddresses;
 static MSGID glResolveNameMsgID = MSGID::NIL;
@@ -320,6 +317,7 @@ static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
+static ERR init_netclient(void);
 static ERR init_netsocket(void);
 static ERR init_clientsocket(void);
 static ERR init_proxy(void);
@@ -336,6 +334,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
+   if (init_netclient() != ERR::Okay) return ERR::AddClass;
    if (init_netsocket() != ERR::Okay) return ERR::AddClass;
    if (init_clientsocket() != ERR::Okay) return ERR::AddClass;
    if (init_proxy() != ERR::Okay) return ERR::AddClass;
@@ -399,6 +398,7 @@ static ERR MODExpunge(void)
    if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
+   if (clNetClient)    { FreeResource(clNetClient); clNetClient = nullptr; }
    if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = nullptr; }
    if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = nullptr; }
    if (clProxy)        { FreeResource(clProxy); clProxy = nullptr; }
@@ -1014,13 +1014,13 @@ static int8_t check_machine_name(CSTRING HostName)
 #include "clientsocket/clientsocket.cpp"
 #include "class_proxy.cpp"
 #include "class_netlookup.cpp"
+#include "netclient/netclient.cpp"
 
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
    { "DNSEntry",  sizeof(DNSEntry) },
    { "IPAddress", sizeof(IPAddress) },
-   { "NetClient", sizeof(NetClient) },
    { "NetQueue",  sizeof(NetQueue) }
 };
 

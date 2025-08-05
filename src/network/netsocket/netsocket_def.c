@@ -19,7 +19,7 @@ static const struct FieldDef clNetSocketFlags[] = {
 
 FDEF maConnect[] = { { "Address", FD_STR }, { "Port", FD_INT }, { 0, 0 } };
 FDEF maGetLocalIPAddress[] = { { "IPAddress:Address", FD_PTR|FD_STRUCT }, { 0, 0 } };
-FDEF maDisconnectClient[] = { { "NetClient:Client", FD_PTR|FD_STRUCT }, { 0, 0 } };
+FDEF maDisconnectClient[] = { { "Client", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maDisconnectSocket[] = { { "Socket", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clNetSocketMethods[] = {

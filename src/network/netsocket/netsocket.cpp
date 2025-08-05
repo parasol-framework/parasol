@@ -67,7 +67,7 @@ static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
 static void clientsocket_incoming(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
-static void free_client(extNetSocket *, NetClient *);
+static void free_client(extNetSocket *, objNetClient *);
 static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
@@ -454,7 +454,7 @@ be issued for each socket connection.
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
 
 -INPUT-
-struct(*NetClient) Client: The client to be disconnected.
+obj(NetClient) Client: The client to be disconnected.
 
 -ERRORS-
 Okay
@@ -490,7 +490,9 @@ NullArgs
 
 static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectSocket *Args)
 {
-   if ((!Args) or (!Args->Socket)) return ERR::NullArgs;
+   pf::Log log;
+   if ((!Args) or (!Args->Socket)) return log.warning(ERR::NullArgs);
+   if (Args->Socket->classID() != CLASSID::CLIENTSOCKET) return log.warning(ERR::WrongClass);
    free_client_socket(Self, (extClientSocket *)(Args->Socket), true);
    return ERR::Okay;
 }
@@ -1141,6 +1143,10 @@ static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
 -FIELD-
 State: The current connection state of the NetSocket object.
 
+The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
+be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the 
+Feedback function is called.
+
 *********************************************************************************************************************/
 
 static ERR SET_State(extNetSocket *Self, NTC Value)
@@ -1511,7 +1517,7 @@ static const FieldDef clValidCert[] = {
 #include "netsocket_def.c"
 
 static const FieldArray clSocketFields[] = {
-   { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
+   { "Clients",          FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",       FDF_POINTER|FDF_RW },
    { "Address",          FDF_STRING|FDF_RI, nullptr, SET_Address },
    { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_State, &clNetSocketState },

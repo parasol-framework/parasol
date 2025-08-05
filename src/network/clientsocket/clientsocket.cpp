@@ -24,7 +24,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
    auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
 
    Socket->InUse++;
-   ClientSocket->ReadCalled = FALSE;
+   ClientSocket->ReadCalled = false;
 
    log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
 
@@ -50,19 +50,19 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
       if (error IS ERR::Terminate) {
          log.trace("Termination request received.");
-         free_client_socket(Socket, ClientSocket, TRUE);
+         free_client_socket(Socket, ClientSocket, true);
          Socket->InUse--;
          return;
       }
    }
    else log.warning("No Incoming callback configured.");
 
-   if (ClientSocket->ReadCalled IS FALSE) {
-      uint8_t buffer[80];
+   if (ClientSocket->ReadCalled IS false) {
+      std::array<uint8_t,80> buffer;
       log.warning("Subscriber did not call Read(), cleaning buffer.");
       int result;
-      do { error = RECEIVE(Socket, ClientSocket->Handle, &buffer, sizeof(buffer), 0, &result); } while (result > 0);
-      if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, TRUE);
+      do { error = RECEIVE(Socket, ClientSocket->Handle, buffer.data(), buffer.size(), 0, &result); } while (result > 0);
+      if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, true);
    }
 
    Socket->InUse--;
@@ -248,7 +248,8 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
-   if (!Self->Client) return ERR::FieldNotSet;
+   pf::Log log;
+   if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
 #ifdef __linux__
    int non_blocking = 1;
@@ -305,7 +306,7 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
    pf::Log log;
    if ((!Args) or (!Args->Buffer)) return log.error(ERR::NullArgs);
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
-   Self->ReadCalled = TRUE;
+   Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
    return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
 }
@@ -328,6 +329,7 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    if (!Args) return ERR::NullArgs;
    Args->Result = 0;
    if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
+   if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
    size_t len = Args->Length;
    ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
@@ -340,7 +342,7 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, TRUE);
+            win_socketstate(Self->SocketHandle, -1, true);
          #endif
       }
    }
@@ -358,7 +360,7 @@ static const FieldArray clClientSocketFields[] = {
    { "ConnectTime", FDF_INT64|FDF_R },
    { "Prev",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
    { "Next",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
-   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
+   { "Client",      FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },

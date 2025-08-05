@@ -11,6 +11,7 @@
     <copyright>Paul Manias © 2005-2025</copyright>
     <classes>
       <class>ClientSocket</class>
+      <class>NetClient</class>
       <class>NetLookup</class>
       <class>NetSocket</class>
       <class>Proxy</class>
@@ -194,16 +195,6 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
-    </struct>
-
-    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="INT8" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct NetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
-      <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>
