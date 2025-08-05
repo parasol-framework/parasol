@@ -75,21 +75,24 @@ function testConnectionFailures()
    
    assert(server1, 'Failed to create first server')
    
-   local server2 = obj.new('netsocket', {
-      name = 'ConflictServer',
-      port = glPort, -- Same port
-      flags = 'SERVER'
-   })
-   
+   local server2
+   catch(function()
+       server2 = obj.new('netsocket', {
+          name = 'ConflictServer',
+          port = glPort, -- Same port
+          flags = 'SERVER'
+       })
+   end)
+
    if (server2 and server2.error != ERR_Okay) then
       print('[Test3] Port conflict correctly detected: ' .. mSys.GetErrorMsg(server2.error))
       table.insert(glTestResults, 'port_conflict_detected')
-   elseif (!server2) then
+   elseif (not server2) then
       print('[Test3] Second server creation failed as expected')
       table.insert(glTestResults, 'port_conflict_prevented')
    end
    
-   mSys.Sleep(2.0) -- Allow time for async operations
+   processing.sleep(2.0) -- Allow time for async operations
    
    -- Verify error handling results
    local expected_results = { 'invalid_ip_rejected', 'closed_port_rejected', 'port_conflict_detected' }
@@ -101,7 +104,7 @@ function testConnectionFailures()
             break
          end
       end
-      if (!found) then
+      if not found then
          print('Warning: Expected result "' .. expected .. '" not found')
       end
    end
@@ -162,7 +165,7 @@ function testBufferOverflowHandling()
       end,
       incoming = function(Socket, Script)
          -- Simulate slow reading to cause server buffer buildup
-         mSys.Sleep(0.5)
+         processing.sleep(0.5)
          local buffer = string.rep(' ', 1024)
          local err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) then
@@ -320,7 +323,7 @@ function testInvalidParameters()
    
    if (invalid_socket and invalid_socket.error != ERR_Okay) then
       print('[Test] Invalid socket parameters correctly rejected: ' .. mSys.GetErrorMsg(invalid_socket.error))
-   elseif (!invalid_socket) then
+   elseif (not invalid_socket) then
       print('[Test] Invalid socket creation correctly failed')
    end
    
@@ -362,7 +365,7 @@ function testResourceCleanup()
       
       if (server and client) then
          client.mtConnect('127.0.0.1', glPort + 10 + i)
-         mSys.Sleep(0.1)
+         processing.sleep(0.1)
          
          -- Force cleanup by setting to nil
          server = nil
@@ -370,8 +373,7 @@ function testResourceCleanup()
       end
    end
    
-   -- Force garbage collection
-   mSys.Sleep(1.0)
+   collectgarbage()
    
    print('Resource cleanup test completed')
 end

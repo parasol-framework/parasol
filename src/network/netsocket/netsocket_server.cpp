@@ -26,6 +26,9 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
          clientfd = accept(FD, (struct sockaddr *)&addr_storage, &len);
          if (clientfd IS NOHANDLE) return;
 
+         int nodelay = 1;
+         setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+
          if (addr_storage.ss_family IS AF_INET6) { // IPv6 connection
             struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
             ip[0] = addr6->sin6_addr.s6_addr[0];
@@ -70,7 +73,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
             ip[4] = addr6->sin6_addr.s6_addr[4];
             ip[5] = addr6->sin6_addr.s6_addr[5];
             ip[6] = addr6->sin6_addr.s6_addr[6];
-            ip[7] = addr6->sin6_addr.s6_addr[7]; 
+            ip[7] = addr6->sin6_addr.s6_addr[7];
             log.trace("Accepted IPv6 client connection on Windows");
          }
          else if (family IS AF_INET) { // IPv4 connection on dual-stack socket
@@ -99,6 +102,11 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       #ifdef __linux__
          socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
+
+         if (clientfd != NOHANDLE) {
+            int nodelay = 1;
+            setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+         }
       #elif _WIN32
          int len = sizeof(addr);
          clientfd = win_accept(Self, FD, (struct sockaddr *)&addr, &len);
