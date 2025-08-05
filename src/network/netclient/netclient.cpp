@@ -6,10 +6,12 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-NetClient: Represents a single socket connection to a client IP address.
+NetClient: Represents a single client IP address.
 
-If a @Netsocket is running in server mode then it will create a new NetClient object every time that a new connection
-is opened by a client.  This is a very simple class that assists in the management of I/O between the client and server.
+When a connection is opened between a client IP and a @NetSocket object, a new NetClient object will be created for 
+the client's IP address if one does not already exist.  All @ClientSocket connections to that IP address are then 
+tracked under the single NetClient object.
+
 -END-
 
 *********************************************************************************************************************/
