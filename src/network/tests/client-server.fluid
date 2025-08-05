@@ -105,7 +105,10 @@ function testBasicCommunication()
       incoming = function(Socket, Client)
          local buffer = string.alloc(2048)
          local err, read_len = Client.acRead(buffer)
-         assert(err == ERR_Okay, '[Server] Failed to read data from client: ' .. mSys.GetErrorMsg(err))
+         if (err != ERR_Okay) then
+            proc.signal()
+            error('[Server] Failed to read data from client: ' .. mSys.GetErrorMsg(err))
+         end
 
          local msg = buffer:sub(1, read_len)
          print('[Server] Received: ' .. msg)
