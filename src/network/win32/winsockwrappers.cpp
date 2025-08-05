@@ -352,10 +352,10 @@ unsigned long win_inet_addr(const char *Str)
 }
 
 //********************************************************************************************************************
+// IPv4
 
-char * win_inet_ntoa(unsigned long Addr) //struct in_addr);
+char * win_inet_ntoa(unsigned long Addr)
 {
-   // TODO: Check this cast is alright
    struct in_addr addr;
    addr.s_addr = Addr;
    return inet_ntoa(addr);

@@ -478,6 +478,9 @@ DisconnectSocket: Disconnects a single socket that is connected to a client IP a
 This method will disconnect a socket connection for a given client.  If #Feedback is defined, a `DISCONNECTED`
 state message will also be issued.
 
+NOTE: To terminate the connection of a socket acting as the client, either free the object or return/raise
+`ERR::Terminate` during #Incoming feedback.
+
 -INPUT-
 obj(ClientSocket) Socket: The client socket to be disconnected.
 
@@ -1006,8 +1009,8 @@ The `NetSocket` parameter refers to the NetSocket object.  The `Context` refers 
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
-If the callback function returns `ERR::Terminate` then the Incoming field will be cleared and the function will no
-longer be called.  All other error codes are ignored.
+If the callback function returns/raises `ERR::Terminate` then the Incoming field will be cleared and the function 
+will no longer be called.  All other error codes are ignored.
 
 *********************************************************************************************************************/
 
