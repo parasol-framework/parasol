@@ -136,7 +136,6 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    }
 
    if (!client_ip) {
-      objNetClient *client_ip;
       if (NewObject(CLASSID::NETCLIENT, &client_ip) IS ERR::Okay) {
          if (InitObject(client_ip) != ERR::Okay) {
             FreeResource(client_ip);

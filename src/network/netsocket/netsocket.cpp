@@ -490,7 +490,9 @@ NullArgs
 
 static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectSocket *Args)
 {
-   if ((!Args) or (!Args->Socket)) return ERR::NullArgs;
+   pf::Log log;
+   if ((!Args) or (!Args->Socket)) return log.warning(ERR::NullArgs);
+   if (Args->Socket->classID() != CLASSID::CLIENTSOCKET) return log.warning(ERR::WrongClass);
    free_client_socket(Self, (extClientSocket *)(Args->Socket), true);
    return ERR::Okay;
 }
@@ -1140,6 +1142,10 @@ static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
 
 -FIELD-
 State: The current connection state of the NetSocket object.
+
+The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
+be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the 
+Feedback function is called.
 
 *********************************************************************************************************************/
 

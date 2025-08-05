@@ -18,7 +18,7 @@ int win_getsockname(WSW_SOCKET, struct sockaddr *, int *);
 unsigned long win_inet_addr(const char *);
 char *win_inet_ntoa(unsigned long);//struct in_addr);
 ERR win_listen(WSW_SOCKET, int);
-void win_socketstate(WSW_SOCKET, char, char);
+ERR win_socketstate(WSW_SOCKET, char, char);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */

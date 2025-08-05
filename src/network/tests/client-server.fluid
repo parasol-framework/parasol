@@ -34,7 +34,6 @@ function testClientServer()
       end,
       incoming = function(Socket, Client)
          assert(Socket, 'Socket parameter not defined.')
-         assert(Client, 'Client parameter not defined.')
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          assert(err == ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
@@ -55,7 +54,6 @@ function testClientServer()
       name = 'Client',
       feedback = function(Socket, Client, State)
          assert(Socket, 'Socket parameter not defined.')
-         assert(Client, 'Client parameter not defined.')
          if (State == NTC_CONNECTED) then
             print('[Client] Writing hello message to the server...')
             local err, len = Socket.acWrite('Hello from the client.')

@@ -230,14 +230,9 @@ class extNetSocket : public objNetSocket {
       #ifdef NO_NETRECURSION
          WORD WinRecursion; // For win32_netresponse()
       #endif
-      union {
-         void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
-         void (*ReadClientSocket)(SOCKET_HANDLE, extClientSocket *);
-      };
-      union {
-         void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
-         void (*WriteClientSocket)(SOCKET_HANDLE, extClientSocket *);
-      };
+      void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
+      // WriteSocket is to be used only when data is already queued to be written, or the Outgoing callback is defined.
+      void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
    #endif
    #ifdef ENABLE_SSL
       #ifdef _WIN32

@@ -248,7 +248,8 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
-   if (!Self->Client) return ERR::FieldNotSet;
+   pf::Log log;
+   if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
 #ifdef __linux__
    int non_blocking = 1;
