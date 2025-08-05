@@ -130,13 +130,21 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    // Check if this IP address already has a client structure from an earlier socket connection.
    // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
 
-   struct NetClient *client_ip;
+   objNetClient *client_ip;
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
       if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
    }
 
    if (!client_ip) {
-      if (AllocMemory(sizeof(struct NetClient), MEM::DATA, &client_ip) != ERR::Okay) {
+      objNetClient *client_ip;
+      if (NewObject(CLASSID::NETCLIENT, &client_ip) IS ERR::Okay) {
+         if (InitObject(client_ip) != ERR::Okay) {
+            FreeResource(client_ip);
+            CLOSESOCKET(clientfd);
+            return;
+         }
+      }
+      else {
          CLOSESOCKET(clientfd);
          return;
       }
@@ -187,7 +195,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       sc::Call(Self->Feedback, std::to_array<ScriptArg>({
          { "NetSocket",    Self, FD_OBJECTPTR },
          { "ClientSocket", client_socket, FD_OBJECTPTR },
-         { "State",        LONG(NTC::CONNECTED) }
+         { "State",        int(NTC::CONNECTED) }
       }));
    }
 
@@ -198,7 +206,7 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 ** Terminates all connections to the client and removes associated resources.
 */
 
-static void free_client(extNetSocket *Self, struct NetClient *Client)
+static void free_client(extNetSocket *Self, objNetClient *Client)
 {
    pf::Log log(__FUNCTION__);
    static THREADVAR BYTE recursive = 0;
@@ -258,7 +266,7 @@ static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSock
          sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
             { "NetSocket",    Socket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR },
-            { "State",        LONG(NTC::DISCONNECTED) }
+            { "State",        int(NTC::DISCONNECTED) }
          }));
       }
    }

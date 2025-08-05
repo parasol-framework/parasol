@@ -358,7 +358,7 @@ static const FieldArray clClientSocketFields[] = {
    { "ConnectTime", FDF_INT64|FDF_R },
    { "Prev",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
    { "Next",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
-   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
+   { "Client",      FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },

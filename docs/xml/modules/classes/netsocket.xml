@@ -114,9 +114,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
+      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, objNetClient * Client)</prototype>
       <input>
-        <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
+        <param type="objNetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
 <p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued for each socket connection.</p>
@@ -206,7 +206,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <name>Clients</name>
       <comment>For server sockets, lists all clients connected to the server.</comment>
       <access read="R">Read</access>
-      <type>struct NetClient *</type>
+      <type class="NetClient">*NetClient</type>
     </field>
 
     <field>
@@ -235,9 +235,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
+<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically a new connection or a disconnect.  This includes activity both from the server and the client side if the <code>ClientSocket</code> value is set on receipt.</p>
 <p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
-<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.</p>
       </description>
     </field>
 
@@ -363,16 +363,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
-    </struct>
-
-    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="INT8" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct NetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
-      <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>
