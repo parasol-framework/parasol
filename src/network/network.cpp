@@ -177,6 +177,8 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #define NOHANDLE -1
 
    static void CLOSESOCKET(SOCKET_HANDLE Handle) {
+      pf::Log log(__FUNCTION__);
+      log.traceBranch("Handle: %d", Handle);
       if (Handle IS NOHANDLE) return;
 
       // Perform graceful disconnect before closing
