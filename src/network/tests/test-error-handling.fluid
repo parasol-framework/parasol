@@ -352,10 +352,12 @@ function testResourceCleanup()
    print('Testing resource cleanup under error conditions...')
    
    -- Create and destroy multiple sockets rapidly to test cleanup
-   for i = 1, 10 do
+   -- (puts pressure on threaded socket closures)
+
+   for i = 1, 100 do
       local server = obj.new('netsocket', {
          name = 'CleanupTestServer' .. i,
-         port = glPort + 10 + i,
+         port = glPort + 100 + i,
          flags = 'SERVER'
       })
       
@@ -364,12 +366,7 @@ function testResourceCleanup()
       })
       
       if (server and client) then
-         client.mtConnect('127.0.0.1', glPort + 10 + i)
-         processing.sleep(0.1)
-         
-         -- Force cleanup by setting to nil
-         server = nil
-         client = nil
+         client.mtConnect('127.0.0.1', glPort + 100 + i)
       end
    end
    

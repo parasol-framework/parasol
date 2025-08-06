@@ -223,10 +223,7 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
 
 class extClientSocket : public objClientSocket {
    public:
-   union {
-      SOCKET_HANDLE SocketHandle;
-      SOCKET_HANDLE Handle;
-   };
+   SOCKET_HANDLE Handle;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
    uint8_t OutgoingRecursion;
@@ -325,6 +322,25 @@ struct CaseInsensitiveMap {
 };
 
 typedef std::map<std::string, DNSEntry, CaseInsensitiveMap> HOSTMAP;
+
+//********************************************************************************************************************
+// Performing the socket close in a separate thread means there'll be plenty of time for a
+// graceful socket closure without affecting the current thread.
+
+static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
+{
+#ifdef _WIN32
+   win_deregister_socket(Handle);
+#endif
+
+   std::lock_guard<std::mutex> lock(glmThreads);
+      auto thread_ptr = std::make_shared<std::jthread>();     
+      *thread_ptr = std::jthread([] (int Handle) {  
+         CLOSESOCKET(Handle);
+      }, Handle);
+      glThreads.insert(thread_ptr);
+      thread_ptr->detach();
+}
 
 //********************************************************************************************************************
 

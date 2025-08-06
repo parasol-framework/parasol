@@ -16,14 +16,14 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 // Data is being received from a client.
 
-static void server_incoming_from_client(HOSTHANDLE SocketHandle, APTR Data)
+static void server_incoming_from_client(HOSTHANDLE Handle, APTR Data)
 {
    pf::Log log(__FUNCTION__);
    auto ClientSocket = (extClientSocket *)Data;
    if (!ClientSocket->Client) return;
    auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
 
-   if (ClientSocket->SocketHandle IS NOHANDLE) {
+   if (ClientSocket->Handle IS NOHANDLE) {
       log.warning("Invalid state - socket closed but receiving data.");
       return;
    }
@@ -31,7 +31,7 @@ static void server_incoming_from_client(HOSTHANDLE SocketHandle, APTR Data)
    Socket->InUse++;
    ClientSocket->ReadCalled = false;
 
-   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
+   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Socket->UID, ClientSocket->UID);
 
    ERR error = ERR::Okay;
    if (Socket->Incoming.defined()) {
@@ -121,7 +121,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       #endif
 
       if (len > 0) {
-         error = SEND(Socket, ClientSocket->SocketHandle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
+         error = SEND(Socket, ClientSocket->Handle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
          if ((error != ERR::Okay) or (!len)) break;
          ClientSocket->WriteQueue.Index += len;
       }
@@ -157,11 +157,11 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       // we don't tax the system resources.
 
       if ((!ClientSocket->Outgoing.defined()) and (ClientSocket->WriteQueue.Buffer.empty())) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->Handle);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
+            RegisterFD((HOSTHANDLE)ClientSocket->Handle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
-            win_socketstate(ClientSocket->SocketHandle, -1, 0);
+            win_socketstate(ClientSocket->Handle, -1, 0);
          #endif
       }
    }
@@ -176,22 +176,12 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
    pf::Log log;
 
-   if (Self->SocketHandle) {
+   if (Self->Handle) {
 #ifdef __linux__
       DeregisterFD(Self->Handle);
 #endif
 
-      // Performing the socket close in a separate thread means there'll be plenty of time for a
-      // graceful socket closure without affecting the current thread.
-
-      std::lock_guard<std::mutex> lock(glmThreads);
-      auto thread_ptr = std::make_shared<std::jthread>();     
-      *thread_ptr = std::jthread([] (int Handle) {  
-         CLOSESOCKET(Handle);
-      }, Self->Handle);
-      glThreads.insert(thread_ptr);
-      thread_ptr->detach();
-
+      CLOSESOCKET_THREADED(Self->Handle);
       Self->Handle = -1;
    }
 
@@ -298,10 +288,10 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
    pf::Log log;
    if ((!Args) or (!Args->Buffer)) return log.error(ERR::NullArgs);
-   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
+   if (Self->Handle IS NOHANDLE) return log.error(ERR::Disconnected);
    Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
-   return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
+   return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
 }
 
 /*********************************************************************************************************************
@@ -321,11 +311,11 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 
    if (!Args) return ERR::NullArgs;
    Args->Result = 0;
-   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
+   if (Self->Handle IS NOHANDLE) return log.error(ERR::Disconnected);
    if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
    size_t len = Args->Length;
-   ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
+   ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->Handle, Args->Buffer, &len, 0);
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
       if (error != ERR::Okay) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
@@ -333,9 +323,9 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
          ((extNetSocket *)(Self->Client->NetSocket))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, true);
+            win_socketstate(Self->Handle, -1, true);
          #endif
       }
    }

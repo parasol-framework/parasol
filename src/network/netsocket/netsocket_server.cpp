@@ -253,7 +253,7 @@ static void free_client_socket(extNetSocket *ServerSocket, extClientSocket *Clie
 
    if (!ClientSocket) return;
 
-   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, ServerSocket->UID, ClientSocket->UID);
+   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->Handle, ServerSocket->UID, ClientSocket->UID);
 
    if (Signal) {
       if (ServerSocket->Feedback.isC()) {

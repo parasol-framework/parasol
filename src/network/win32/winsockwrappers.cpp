@@ -278,16 +278,23 @@ ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 }
 
 //********************************************************************************************************************
+// If win_closesocket() is going to be called from a thread, deregister the socket ahead of time because you're 
+// otherwise likely to get calls to that socket going through the Win32 message queue and causing a segfault.
+
+void win_deregister_socket(WSW_SOCKET SocketHandle)
+{
+   const lock_guard<recursive_mutex> lock(csNetLookup);
+   glNetLookup.erase(SocketHandle);
+}
+
+//********************************************************************************************************************
 // Wrapped by CLOSESOCKET()
 
 void win_closesocket(WSW_SOCKET SocketHandle)
 {
    if (SocketHandle IS INVALID_SOCKET) return;
 
-   {
-      const lock_guard<recursive_mutex> lock(csNetLookup);
-      glNetLookup.erase(SocketHandle);
-   }
+   win_deregister_socket(SocketHandle);
 
    // Perform graceful disconnect before closing
 

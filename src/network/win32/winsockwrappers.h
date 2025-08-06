@@ -10,6 +10,7 @@ void win_net_processing(int, void *);
 WSW_SOCKET win_accept(void *, WSW_SOCKET, struct sockaddr *, int *);
 ERR win_bind(WSW_SOCKET, const struct sockaddr *, int);
 void win_closesocket(WSW_SOCKET);
+void win_deregister_socket(WSW_SOCKET);
 ERR win_connect(WSW_SOCKET, const struct sockaddr *, int);
 struct hostent * win_gethostbyaddr(const struct IPAddress *);
 struct hostent * win_gethostbyname(const char *);

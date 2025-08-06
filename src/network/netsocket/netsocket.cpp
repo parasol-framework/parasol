@@ -1275,6 +1275,8 @@ static void free_socket(extNetSocket *Self)
    pf::Log log(__FUNCTION__);
 
    log.branch("Handle: %d", Self->SocketHandle);
+   
+   win_deregister_socket(Self->SocketHandle);
 
    if (Self->SocketHandle != NOHANDLE) {
       log.trace("Deregistering socket.");
@@ -1282,7 +1284,7 @@ static void free_socket(extNetSocket *Self)
       DeregisterFD((HOSTHANDLE)Self->SocketHandle);
 #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
 
-      if (!Self->ExternalSocket) { CLOSESOCKET(Self->SocketHandle); Self->SocketHandle = NOHANDLE; }
+      if (!Self->ExternalSocket) { CLOSESOCKET_THREADED(Self->SocketHandle); Self->SocketHandle = NOHANDLE; }
    }
 
    #ifdef _WIN32
@@ -1355,6 +1357,11 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
 
    extNetSocket *Socket;
    objClientSocket *ClientSocket;
+
+   if (SocketObject->terminating()) { // Sanity check
+      log.warning(ERR::MarkedForDeletion);
+      return;
+   }
 
    if (SocketObject->classID() IS CLASSID::CLIENTSOCKET) {
       ClientSocket = (objClientSocket *)SocketObject;
