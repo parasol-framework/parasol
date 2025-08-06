@@ -52,22 +52,14 @@ static void server_incoming_from_client(HOSTHANDLE SocketHandle, APTR Data)
          log.msg("Received error %d, incoming callback will be terminated.", LONG(error));
          Socket->Incoming.clear();
       }
-
-      if (error IS ERR::Terminate) {
-         log.trace("Termination request received.");
-         free_client_socket(Socket, ClientSocket, true);
-         Socket->InUse--;
-         return;
-      }
    }
    else log.warning("No Incoming callback configured.");
 
-   if (ClientSocket->ReadCalled IS false) {
-      std::array<uint8_t,80> buffer;
-      log.warning("Subscriber did not call Read() successfully, cleaning buffer.");
-      int result;
-      do { error = RECEIVE(Socket, ClientSocket->Handle, buffer.data(), buffer.size(), 0, &result); } while (result > 0);
-      if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, true);
+   if (ClientSocket->ReadCalled IS false) error = ERR::Terminate;
+   
+   if (error IS ERR::Terminate) {
+      log.trace("Terminating socket, failed to read incoming data.");
+      free_client_socket(Socket, ClientSocket, true);
    }
 
    Socket->InUse--;
