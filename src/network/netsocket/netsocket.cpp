@@ -510,6 +510,10 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 
    if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
+   
+   if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
+   if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
+   if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    free_socket(Self);
 
