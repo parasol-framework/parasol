@@ -180,8 +180,8 @@ function testWaveSave()
       local remaining = original_size - bytes_compared
       local read_size = math.min(chunk_size, remaining)
 
-      local original_data = string.rep(' ', read_size)
-      local saved_data = string.rep(' ', read_size)
+      local original_data = string.alloc(read_size)
+      local saved_data = string.alloc(read_size)
       local err, size_a = original_file.acRead(original_data, read_size)
       local err, size_b = saved_file.acRead(saved_data, read_size)
 

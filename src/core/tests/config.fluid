@@ -170,7 +170,7 @@ function testSave()
    collectgarbage()
 
    local file = obj.new('file', { path='temp:test-write.cfg', flags='READ' })
-   local buf = string.rep(' ', file.size)
+   local buf = string.alloc(file.size)
    local err, result = file.acRead(buf, file.size)
    if (err == ERR_Okay) then
 
