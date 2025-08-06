@@ -1279,8 +1279,6 @@ static void free_socket(extNetSocket *Self)
    pf::Log log(__FUNCTION__);
 
    log.branch("Handle: %d", Self->SocketHandle);
-   
-   win_deregister_socket(Self->SocketHandle);
 
    if (Self->SocketHandle != NOHANDLE) {
       log.trace("Deregistering socket.");
