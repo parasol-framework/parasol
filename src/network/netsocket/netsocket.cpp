@@ -65,7 +65,7 @@ static void client_connect(HOSTHANDLE, APTR);
 
 static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
-static void clientsocket_incoming(HOSTHANDLE, APTR);
+static void server_incoming_from_client(HOSTHANDLE, APTR);
 static void clientsocket_outgoing(HOSTHANDLE, APTR);
 static void free_client(extNetSocket *, objNetClient *);
 static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
@@ -1390,7 +1390,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
          else {
             Socket->WinRecursion++;
             #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-            if (ClientSocket) clientsocket_incoming((HOSTHANDLE)SocketHandle, ClientSocket);
+            if (ClientSocket) server_incoming_from_client((HOSTHANDLE)SocketHandle, ClientSocket);
             else if (Socket->ReadSocket) Socket->ReadSocket(0, Socket);
             else client_server_incoming(0, Socket);
             #pragma GCC diagnostic warning "-Wint-to-pointer-cast"

@@ -172,11 +172,12 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #include <errno.h>
    #include <string.h>
    #include <netinet/tcp.h>
+   #include <sys/socket.h>
 
    #define NOHANDLE -1
 
    static void CLOSESOCKET(SOCKET_HANDLE Handle) {
-      if (Handle IS -1) return;
+      if (Handle IS NOHANDLE) return;
 
       // Perform graceful disconnect before closing
 

@@ -16,12 +16,17 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 // Data is being received from a client.
 
-static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
+static void server_incoming_from_client(HOSTHANDLE SocketHandle, APTR Data)
 {
    pf::Log log(__FUNCTION__);
    auto ClientSocket = (extClientSocket *)Data;
    if (!ClientSocket->Client) return;
    auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
+
+   if (ClientSocket->SocketHandle IS NOHANDLE) {
+      log.warning("Invalid state - socket closed but receiving data.");
+      return;
+   }
 
    Socket->InUse++;
    ClientSocket->ReadCalled = false;
@@ -59,7 +64,7 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 
    if (ClientSocket->ReadCalled IS false) {
       std::array<uint8_t,80> buffer;
-      log.warning("Subscriber did not call Read(), cleaning buffer.");
+      log.warning("Subscriber did not call Read() successfully, cleaning buffer.");
       int result;
       do { error = RECEIVE(Socket, ClientSocket->Handle, buffer.data(), buffer.size(), 0, &result); } while (result > 0);
       if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, true);
@@ -268,7 +273,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
    Self->Client->TotalConnections++;
 
 #ifdef __linux__
-   RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_incoming), Self);
+   RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_incoming_from_client), Self);
 #elif _WIN32
    win_socket_reference(Self->Handle, Self);
 #endif

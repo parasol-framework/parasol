@@ -247,23 +247,23 @@ static void free_client(extNetSocket *Self, objNetClient *Client)
 //********************************************************************************************************************
 // Terminates the connection to the client and removes associated resources.
 
-static void free_client_socket(extNetSocket *Socket, extClientSocket *ClientSocket, BYTE Signal)
+static void free_client_socket(extNetSocket *ServerSocket, extClientSocket *ClientSocket, BYTE Signal)
 {
    pf::Log log(__FUNCTION__);
 
    if (!ClientSocket) return;
 
-   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, Socket->UID, ClientSocket->UID);
+   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->SocketHandle, ServerSocket->UID, ClientSocket->UID);
 
    if (Signal) {
-      if (Socket->Feedback.isC()) {
-         pf::SwitchContext context(Socket->Feedback.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
-         if (routine) routine(Socket, ClientSocket, NTC::DISCONNECTED, Socket->Feedback.Meta);
+      if (ServerSocket->Feedback.isC()) {
+         pf::SwitchContext context(ServerSocket->Feedback.Context);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))ServerSocket->Feedback.Routine;
+         if (routine) routine(ServerSocket, ClientSocket, NTC::DISCONNECTED, ServerSocket->Feedback.Meta);
       }
-      else if (Socket->Feedback.isScript()) {
-         sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
-            { "NetSocket",    Socket, FD_OBJECTPTR },
+      else if (ServerSocket->Feedback.isScript()) {
+         sc::Call(ServerSocket->Feedback, std::to_array<ScriptArg>({
+            { "NetSocket",    ServerSocket, FD_OBJECTPTR },
             { "ClientSocket", ClientSocket, FD_OBJECTPTR },
             { "State",        int(NTC::DISCONNECTED) }
          }));
