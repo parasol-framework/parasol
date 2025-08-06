@@ -45,15 +45,11 @@ static void server_incoming_from_client(HOSTHANDLE SocketHandle, APTR Data)
                { "NetSocket",    Socket, FD_OBJECTPTR },
                { "ClientSocket", ClientSocket, FD_OBJECTPTR }
             }), error) != ERR::Okay) error = ERR::Terminate;
+         if (error IS ERR::Exception) error = ERR::Terminate;
       }
       else error = ERR::InvalidValue;
-
-      if (error != ERR::Okay) {
-         log.msg("Received error %d, incoming callback will be terminated.", LONG(error));
-         Socket->Incoming.clear();
-      }
    }
-   else log.warning("No Incoming callback configured.");
+   else log.traceWarning("No Incoming callback configured.");
 
    if (ClientSocket->ReadCalled IS false) error = ERR::Terminate;
    

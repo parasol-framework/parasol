@@ -57,7 +57,7 @@ file.search = function(Path, Options)
 
          local bytes = fl.size
          if bytes > 4096 then bytes = 4096 end
-         local buf = string.rep(' ', bytes)
+         local buf = string.alloc(bytes)
          local err, totalRead = fl.acRead(buf)
 
          while (err == ERR_Okay) and (totalRead >= lOptions.contentFilter:len()) do
