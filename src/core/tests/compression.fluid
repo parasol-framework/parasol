@@ -112,7 +112,7 @@ function testStreamedCompression()
    glOutFile = obj.new('file', { src='temp:fonts.gz', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
       if (cmp.mtCompressStreamStart() == ERR_Okay) then
-         local input = string.rep(' ', 16384)
+         local input = string.alloc(16384)
          local err = ERR_Okay
          while (err == ERR_Okay) do
             local len
@@ -184,7 +184,7 @@ function testStreamedDecompression()
    glOutFile = obj.new('file', { src='temp:Courier Prime.ttf', flags='!WRITE|NEW' } )
    if nz(glOutFile) then
       if (cmp.mtDecompressStreamStart() == ERR_Okay) then
-         local input = string.rep(' ', 16384)
+         local input = string.alloc(16384)
          local err = ERR_Okay
          while (err == ERR_Okay) do
             local len
