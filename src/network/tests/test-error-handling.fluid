@@ -166,7 +166,7 @@ function testBufferOverflowHandling()
       incoming = function(Socket, Script)
          -- Simulate slow reading to cause server buffer buildup
          processing.sleep(0.5)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) then
             print('[Client] Read error: ' .. mSys.GetErrorMsg(err))
@@ -264,7 +264,7 @@ function testNTECloseHandling()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          if (err == ERR_Okay) then
             print('[Server] Received: ' .. buffer:sub(1, read_len))
@@ -287,7 +287,7 @@ function testNTECloseHandling()
          end
       end,
       incoming = function(Socket, Script)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err == ERR_Okay) then
             print('[Client] Received: ' .. buffer:sub(1, read_len))

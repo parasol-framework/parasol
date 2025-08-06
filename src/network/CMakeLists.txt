@@ -47,3 +47,4 @@ flute_test (network_server_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/server-io.fluid
 flute_test (network_client_server "${CMAKE_CURRENT_SOURCE_DIR}/tests/client-server.fluid")
 flute_test (network_error_handling "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-error-handling.fluid")
 flute_test (network_concurrent_connections "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-ipv6.fluid")
+flute_test (network_concurrent_connections "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-concurrent-connections.fluid")

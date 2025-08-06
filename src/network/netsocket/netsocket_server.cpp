@@ -160,12 +160,17 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       }
       Self->LastClient = client_ip;
    }
+   else if (client_ip->TotalConnections >= Self->SocketLimit) {
+      log.warning("Socket limit of %d reached for IP %d.%d.%d.%d", Self->SocketLimit, client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+      CLOSESOCKET(clientfd);
+      return;
+   }
 
    if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
       if (client_ip->Connections) {
          // Check if the client is alive by writing to it.  If the client is dead, remove it and continue with the new connection.
 
-         log.msg("Preventing second connection attempt from IP %d.%d.%d.%d\n", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+         log.msg("Preventing second connection attempt from IP %d.%d.%d.%d", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
          CLOSESOCKET(clientfd);
          return;
       }

@@ -151,6 +151,11 @@ class objNetClient : public Object {
 
    // Customised field setting
 
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
+      return ERR::Okay;
+   }
+
 };
 
 // ClientSocket class definition
@@ -432,7 +437,8 @@ class objNetSocket : public Object {
    NSF    Flags;              // Optional flags.
    int    TotalClients;       // Indicates the total number of clients currently connected to the socket (if in server mode).
    int    Backlog;            // The maximum number of connections that can be queued against the socket.
-   int    ClientLimit;        // The maximum number of clients that can be connected to a server socket.
+   int    ClientLimit;        // The maximum number of clients (unique IP addresses) that can be connected to a server socket.
+   int    SocketLimit;        // Limits the number of connected sockets per client IP address.
    int    MsgLimit;           // Limits the size of incoming and outgoing data packets.
 
    // Action stubs

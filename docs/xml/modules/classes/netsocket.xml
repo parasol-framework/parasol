@@ -137,6 +137,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </input>
       <description>
 <p>This method will disconnect a socket connection for a given client.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued.</p>
+<p>NOTE: To terminate the connection of a socket acting as the client, either free the object or return/raise <code>ERR::Terminate</code> during <fl>Incoming</fl> feedback.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -197,9 +198,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>ClientLimit</name>
-      <comment>The maximum number of clients that can be connected to a server socket.</comment>
+      <comment>The maximum number of clients (unique IP addresses) that can be connected to a server socket.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
+      <description>
+<p>The ClientLimit value limits the maximum number of IP addresses that can be connected to the socket at any one time. For socket limits per client, see the <fl>SocketLimit</fl> field.</p>
+      </description>
     </field>
 
     <field>
@@ -259,7 +263,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype is <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code>.</p>
 <p>The <code>NetSocket</code> parameter refers to the NetSocket object.  The <code>Context</code> refers to the object that set the <code>Incoming</code> field.</p>
-<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns/raises <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
 
@@ -309,11 +313,19 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>SocketLimit</name>
+      <comment>Limits the number of connected sockets per client IP address.</comment>
+      <access>-/-</access>
+      <type>INT</type>
+    </field>
+
+    <field>
       <name>State</name>
       <comment>The current connection state of the NetSocket object.</comment>
       <access read="R" write="S">Read/Set</access>
       <type lookup="NTC">NTC</type>
       <description>
+<p>The State reflects the connection state of the NetSocket.  If the <fl>Feedback</fl> field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>
 <types lookup="NTC"/>
       </description>
     </field>

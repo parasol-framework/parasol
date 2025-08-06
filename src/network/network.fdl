@@ -134,8 +134,9 @@ typedef int SOCKET_HANDLE;
     int(NSF) Flags    # Optional flags
     int TotalClients  # Total number of clients registered (if socket is a server)
     int Backlog       # Server connection backlog if in server mode
-    int ClientLimit   # Limit the number of connected clients to this value
-    int MsgLimit      # Limit the size of messages to this value
+    int ClientLimit   # Limits the number of connected client IP addresses
+    int SocketLimit   # Limits the number of connected sockets per client IP address.
+    int MsgLimit      # Limits the size of messages, in bytes.
   ]])
 
   const("SCV", { comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)" }, {

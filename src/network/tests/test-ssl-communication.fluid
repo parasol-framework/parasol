@@ -91,7 +91,7 @@ function testBasicSSLCommunication()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          
          if (err == ERR_Okay) then
@@ -132,7 +132,7 @@ function testBasicSSLCommunication()
          end
       end,
       incoming = function(Socket, Script)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          
          if (err == ERR_Okay) then
@@ -259,7 +259,7 @@ function testSSLStateTransitions()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          if (err == ERR_Okay) then
             local msg = buffer:sub(1, read_len)
@@ -279,7 +279,7 @@ function testSSLStateTransitions()
          print('[SSL Client] State transition: ' .. State)
       end,
       incoming = function(Socket, Script)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err == ERR_Okay) then
             local msg = buffer:sub(1, read_len)
@@ -354,7 +354,7 @@ function testSSLDataIntegrity()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 10240) -- Large buffer for big messages
+         local buffer = string.alloc(10240) -- Large buffer for big messages
          local err, read_len = Client.acRead(buffer)
          
          if (err == ERR_Okay) then
@@ -389,7 +389,7 @@ function testSSLDataIntegrity()
    local ssl_client = obj.new('netsocket', {
       name = 'SSLIntegrityClient',
       incoming = function(Socket, Script)
-         local buffer = string.rep(' ', 10240)
+         local buffer = string.alloc(10240)
          local err, read_len = Socket.acRead(buffer)
          
          if (err == ERR_Okay) then

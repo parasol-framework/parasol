@@ -780,6 +780,7 @@ static ERR NETSOCKET_NewObject(extNetSocket *Self)
    Self->State        = NTC::DISCONNECTED;
    Self->MsgLimit     = 1024768;
    Self->ClientLimit  = 1024;
+   Self->SocketLimit  = 256;
    #ifdef _WIN32
       Self->WriteSocket = nullptr;
       Self->ReadSocket = nullptr;
@@ -939,7 +940,10 @@ connections.
 If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.
 
 -FIELD-
-ClientLimit: The maximum number of clients that can be connected to a server socket.
+ClientLimit: The maximum number of clients (unique IP addresses) that can be connected to a server socket.
+
+The ClientLimit value limits the maximum number of IP addresses that can be connected to the socket at any one time.
+For socket limits per client, see the #SocketLimit field.
 
 -FIELD-
 Clients: For server sockets, lists all clients connected to the server.
@@ -1541,6 +1545,7 @@ static const FieldArray clSocketFields[] = {
    { "TotalClients",     FDF_INT|FDF_R },
    { "Backlog",          FDF_INT|FDF_RI },
    { "ClientLimit",      FDF_INT|FDF_RW },
+   { "SocketLimit",      FDF_INT|FDF_RW },
    { "MsgLimit",         FDF_INT|FDF_RI },
    // Virtual fields
    { "SocketHandle",     FDF_POINTER|FDF_RI,     GET_SocketHandle, SET_SocketHandle },

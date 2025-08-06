@@ -19,7 +19,7 @@ unique messages to verify proper isolation and delivery.
 
    glPort = 8303
    glActiveClients = 0
-   glMaxClients = 5
+   glMaxSockets = 5
    glMessagesPerClient = 3
    glClientResponses = {}
    glServerReceived = {}
@@ -30,7 +30,7 @@ function testMultipleConnections()
    local proc = processing.new({ timeout = 3.0 })
    
    print('Testing multiple concurrent connections with NSF::MULTI_CONNECT...')
-   print('Creating server that accepts up to ' .. glMaxClients .. ' clients')
+   print('Creating server that accepts up to ' .. glMaxSockets .. ' clients')
    
    local server = obj.new('netsocket', {
       name = 'ConcurrentServer',
@@ -72,7 +72,7 @@ function testMultipleConnections()
       end,
       port = glPort,
       flags = 'SERVER|MULTICONNECT',
-      clientLimit = glMaxClients
+      socketLimit = glMaxSockets
    })
    
    assert(server, 'Failed to create server socket')
@@ -80,7 +80,7 @@ function testMultipleConnections()
    -- Create multiple clients
    local clients = {}
    local client_data = { }
-   for i = 1, glMaxClients do
+   for i = 1, glMaxSockets do
       print('[Test] Creating client ' .. i)
             
       clients[i] = obj.new('netsocket', {
@@ -137,8 +137,8 @@ function testMultipleConnections()
    end
    
    -- Connect all clients simultaneously
-   print('[Test] Connecting all ' .. glMaxClients .. ' clients...')
-   for i = 1, glMaxClients do
+   print('[Test] Connecting all ' .. glMaxSockets .. ' clients...')
+   for i = 1, glMaxSockets do
       local err = clients[i].mtConnect('127.0.0.1', glPort)
       assert(err == ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
       
@@ -155,11 +155,11 @@ function testMultipleConnections()
    print('  Total server messages received: ' .. #glServerReceived)
    print('  Total client responses received: ' .. #glClientResponses)
    
-   local expected_server_messages = glMaxClients * glMessagesPerClient
+   local expected_server_messages = glMaxSockets * glMessagesPerClient
    assert(#glServerReceived == expected_server_messages,
       'Server message count mismatch. Expected: ' .. expected_server_messages .. ', Got: ' .. #glServerReceived)
    
-   local expected_client_responses = glMaxClients * (glMessagesPerClient + 1) -- +1 for welcome
+   local expected_client_responses = glMaxSockets * (glMessagesPerClient + 1) -- +1 for welcome
    assert(#glClientResponses >= expected_client_responses,
       'Client response count too low. Expected: >= ' .. expected_client_responses .. ', Got: ' .. #glClientResponses)
    
@@ -187,7 +187,7 @@ function testClientLimitEnforcement()
       end,
       port = glPort + 1,
       flags = 'SERVER|MULTICONNECT',
-      clientLimit = limit
+      socketLimit = limit
    })
    
    -- Create more clients than the limit allows
@@ -216,7 +216,7 @@ function testClientLimitEnforcement()
    end
    
    -- Allow time for connections to be processed
-   processing.sleep(2.0)
+   processing.sleep(0.5)
    
    print('Connection Results:')
    print('  Successful connections: ' .. successfulConnections)
@@ -236,7 +236,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testConnectionIsolation()
-   local proc = processing.new({ timeout = 10.0 })
+   local proc = processing.new({ timeout = 2.0 })
    local clientCount = 3
    local clientMessages = {}
    local messagesPerClient = 2
@@ -328,10 +328,10 @@ function testConnectionIsolation()
    -- Connect all clients
    for i = 1, clientCount do
       clients[i].socket.mtConnect('127.0.0.1', glPort + 2)
-      processing.sleep(0.1)
    end
    
    local err = proc.sleep()
+   print('Completed Clients: ' .. completedClients .. ', Client Count: ' .. clientCount)
    assert(err == ERR_Okay, 'Connection isolation test failed: ' .. mSys.GetErrorMsg(err))
    
    assert(completedClients == clientCount,
