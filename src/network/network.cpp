@@ -174,7 +174,30 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #include <netinet/tcp.h>
 
    #define NOHANDLE -1
-   #define CLOSESOCKET(a) close(a)
+
+   static void CLOSESOCKET(SOCKET_HANDLE Handle) {
+      if (Handle IS -1) return;
+
+      // Perform graceful disconnect before closing
+
+      shutdown(Handle, SHUT_RDWR);
+
+      // Set a short timeout to allow pending data to be transmitted
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 100000; // 100ms timeout
+      setsockopt(Handle, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+      setsockopt(Handle, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
+
+      // Drain any remaining data in the receive buffer
+      char buffer[1024];
+      int bytes_received;
+      do {
+         bytes_received = recv(Handle, buffer, sizeof(buffer), 0);
+      } while (bytes_received > 0);
+
+      close(Handle);
+   }
 
 #elif _WIN32
 

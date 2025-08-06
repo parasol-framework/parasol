@@ -9,7 +9,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "Skip this operation.",
  "Retry the operation (could not succeed at this time).",
  "The folder is empty.",
- "Please terminate future calls.",
+ "Termination requested.",
  "Not enough memory available.",
  "Required pointer not present.",
  "Resource is in use.",

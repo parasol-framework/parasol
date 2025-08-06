@@ -75,7 +75,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 
    pf::SwitchContext context(Self);
 
-   if (Self->Terminating) {
+   if (Self->Terminating) { // Set by FreeWarning()
       log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
       return;
