@@ -33,8 +33,8 @@ rendered image size.
 
 #define PNG_INTERNAL
 #define PRV_PNG
-#include "lib/png.h"
-#include "lib/pngpriv.h"
+
+#include "libpng-1.6.50/png.h"
 
 #include <parasol/main.h>
 #include <parasol/modules/picture.h>
@@ -62,8 +62,6 @@ void parasol_read_callback(png_structp png, png_bytep data, png_size_t length);
 void parasol_write_callback(png_structp png, png_bytep data, png_size_t length);
 void png_read_data(png_structp png, png_bytep data, png_size_t length);
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length);
-void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn);
-void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn);
 static ERR create_picture_class(void);
 
 //********************************************************************************************************************
@@ -178,11 +176,13 @@ static ERR PICTURE_Activate(extPicture *Self)
 
    // If the image contains a palette, load the palette into our Bitmap
 
-   if (info_ptr->valid & PNG_INFO_PLTE) {
-      for (LONG i=0; (i < info_ptr->num_palette) and (i < 256); i++) {
-         bmp->Palette->Col[i].Red   = info_ptr->palette[i].red;
-         bmp->Palette->Col[i].Green = info_ptr->palette[i].green;
-         bmp->Palette->Col[i].Blue  = info_ptr->palette[i].blue;
+   png_colorp palette;
+   int num_palette;
+   if (png_get_PLTE(read_ptr, info_ptr, &palette, &num_palette)) {
+      for (LONG i=0; (i < num_palette) and (i < 256); i++) {
+         bmp->Palette->Col[i].Red   = palette[i].red;
+         bmp->Palette->Col[i].Green = palette[i].green;
+         bmp->Palette->Col[i].Blue  = palette[i].blue;
          bmp->Palette->Col[i].Alpha = 255;
       }
    }
@@ -215,46 +215,48 @@ static ERR PICTURE_Activate(extPicture *Self)
    // If a background colour has been specified for the image (instead of an alpha channel), read it and create the
    // mask based on the data that we have read.
 
-   if (info_ptr->valid & PNG_INFO_tRNS) {
+   png_bytep trans_alpha;
+   int num_trans;
+   png_color_16p trans_color;
+   if (png_get_tRNS(read_ptr, info_ptr, &trans_alpha, &num_trans, &trans_color)) {
       // The first colour index in the list is taken as the background, any others are ignored
 
       RGB8 rgb;
-      if ((info_ptr->color_type IS PNG_COLOR_TYPE_PALETTE) or
-          (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY) or
-          (info_ptr->color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
-         bmp->TransIndex = info_ptr->trans_alpha[0];
+      if ((color_type IS PNG_COLOR_TYPE_PALETTE) or
+          (color_type IS PNG_COLOR_TYPE_GRAY) or
+          (color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
+         bmp->TransIndex = trans_alpha[0];
          rgb = bmp->Palette->Col[bmp->TransIndex];
          rgb.Alpha = 255;
          bmp->set(FID_Transparence, &rgb);
       }
       else {
-         rgb.Red   = info_ptr->trans_color.red;
-         rgb.Green = info_ptr->trans_color.green;
-         rgb.Blue  = info_ptr->trans_color.blue;
+         rgb.Red   = trans_color->red;
+         rgb.Green = trans_color->green;
+         rgb.Blue  = trans_color->blue;
          rgb.Alpha = 255;
          bmp->set(FID_Transparence, &rgb);
       }
    }
 
-   if (info_ptr->valid & PNG_INFO_bKGD) {
-      png_color_16p prgb;
-      prgb = &(info_ptr->background);
+   png_color_16p background;
+   if (png_get_bKGD(read_ptr, info_ptr, &background)) {
       if (color_type IS PNG_COLOR_TYPE_PALETTE) {
-         bmp->Bkgd.Red   = bmp->Palette->Col[info_ptr->trans_alpha[0]].Red;
-         bmp->Bkgd.Green = bmp->Palette->Col[info_ptr->trans_alpha[0]].Green;
-         bmp->Bkgd.Blue  = bmp->Palette->Col[info_ptr->trans_alpha[0]].Blue;
+         bmp->Bkgd.Red   = bmp->Palette->Col[background->index].Red;
+         bmp->Bkgd.Green = bmp->Palette->Col[background->index].Green;
+         bmp->Bkgd.Blue  = bmp->Palette->Col[background->index].Blue;
          bmp->Bkgd.Alpha = 255;
       }
       else if ((color_type IS PNG_COLOR_TYPE_GRAY) or (color_type IS PNG_COLOR_TYPE_GRAY_ALPHA)) {
-         bmp->Bkgd.Red   = prgb->gray;
-         bmp->Bkgd.Green = prgb->gray;
-         bmp->Bkgd.Blue  = prgb->gray;
+         bmp->Bkgd.Red   = background->gray;
+         bmp->Bkgd.Green = background->gray;
+         bmp->Bkgd.Blue  = background->gray;
          bmp->Bkgd.Alpha = 255;
       }
       else {
-         bmp->Bkgd.Red   = prgb->red;
-         bmp->Bkgd.Green = prgb->green;
-         bmp->Bkgd.Blue  = prgb->blue;
+         bmp->Bkgd.Red   = background->red;
+         bmp->Bkgd.Green = background->green;
+         bmp->Bkgd.Blue  = background->blue;
          bmp->Bkgd.Alpha = 255;
       }
       log.trace("Background Colour: %d,%d,%d", bmp->Bkgd.Red, bmp->Bkgd.Green, bmp->Bkgd.Blue);
@@ -1161,21 +1163,6 @@ void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
    }
 }
 
-void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn)
-{
-   if (png_ptr IS NULL) return;
-   png_ptr->io_ptr = io_ptr;
-   png_ptr->read_data_fn = read_data_fn;
-   png_ptr->output_flush_fn = NULL;
-}
-
-void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn)
-{
-   if (png_ptr IS NULL) return;
-   png_ptr->io_ptr = io_ptr;
-   png_ptr->write_data_fn = write_data_fn;
-   png_ptr->output_flush_fn = output_flush_fn;
-}
 
 
 
@@ -1195,10 +1182,6 @@ static void png_warning_hook(png_structp png_ptr, png_const_charp message)
    log.msg("libpng: %s", message); // PNG warnings aren't serious enough to warrant logging beyond the info level
 }
 
-ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len))
-{
-   return GenCRC32(crc, (APTR)buf, len);
-}
 
 //********************************************************************************************************************
 
