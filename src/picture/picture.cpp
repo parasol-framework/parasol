@@ -58,6 +58,12 @@ static void read_row_callback(png_structp, png_uint_32, int);
 static void write_row_callback(png_structp, png_uint_32, int);
 static void png_error_hook(png_structp png_ptr, png_const_charp message);
 static void png_warning_hook(png_structp png_ptr, png_const_charp message);
+void parasol_read_callback(png_structp png, png_bytep data, png_size_t length);
+void parasol_write_callback(png_structp png, png_bytep data, png_size_t length);
+void png_read_data(png_structp png, png_bytep data, png_size_t length);
+void png_write_data(png_structp png, png_const_bytep data, png_size_t length);
+void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn);
+void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn);
 static ERR create_picture_class(void);
 
 //********************************************************************************************************************
@@ -153,9 +159,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
    // Setup the PNG file
 
-   read_ptr->io_ptr = Self->prvFile;
-   read_ptr->read_data_fn = png_read_data;
-   read_ptr->output_flush_fn = NULL;
+   png_set_read_fn(read_ptr, Self->prvFile, parasol_read_callback);
 
    png_set_read_status_fn(read_ptr, read_row_callback); if (tlError) goto exit;
    png_read_info(read_ptr, info_ptr); if (tlError) goto exit;
@@ -475,9 +479,7 @@ static ERR PICTURE_Query(extPicture *Self)
 
    // Read the PNG description
 
-   read_ptr->io_ptr = Self->prvFile;
-   read_ptr->read_data_fn = png_read_data;
-   read_ptr->output_flush_fn = NULL;
+   png_set_read_fn(read_ptr, Self->prvFile, parasol_read_callback);
 
    png_set_read_status_fn(read_ptr, read_row_callback); if (tlError) goto exit;
    png_read_info(read_ptr, info_ptr); if (tlError) goto exit;
@@ -581,9 +583,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    // Setup the PNG file
 
-   write_ptr->io_ptr = file;
-   write_ptr->write_data_fn = (png_rw_ptr)png_write_data;
-   write_ptr->output_flush_fn = NULL;
+   png_set_write_fn(write_ptr, file, parasol_write_callback, NULL);
 
    png_set_write_status_fn(write_ptr, write_row_callback);
    if (tlError) {
@@ -1120,28 +1120,21 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 //********************************************************************************************************************
 // Read functions
 
-void png_read_data(png_structp png, png_bytep data, png_size_t length)
+void parasol_read_callback(png_structp png, png_bytep data, png_size_t length)
 {
    struct acRead read = { data, (LONG)length };
-   if ((Action(AC::Read, (OBJECTPTR)png->io_ptr, &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
+   if ((Action(AC::Read, (OBJECTPTR)png_get_io_ptr(png), &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
-}
-
-void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn)
-{
-   png_ptr->io_ptr = io_ptr;
-   png_ptr->read_data_fn = png_read_data;
-   png_ptr->output_flush_fn = NULL;
 }
 
 //********************************************************************************************************************
 // Write functions.
 
-void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
+void parasol_write_callback(png_structp png, png_bytep data, png_size_t length)
 {
    struct acWrite write = { data, (LONG)length };
-   if ((Action(AC::Write, (OBJECTPTR)png->io_ptr, &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
+   if ((Action(AC::Write, (OBJECTPTR)png_get_io_ptr(png), &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
 }
@@ -1151,14 +1144,40 @@ void png_flush(png_structp png_ptr)
 
 }
 
-// Required by pngwrite.c
+// These functions are expected by the embedded libpng library
+void png_read_data(png_structp png, png_bytep data, png_size_t length)
+{
+   struct acRead read = { data, (LONG)length };
+   if ((Action(AC::Read, (OBJECTPTR)png_get_io_ptr(png), &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
+      png_error(png, "File read error");
+   }
+}
+
+void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
+{
+   struct acWrite write = { data, (LONG)length };
+   if ((Action(AC::Write, (OBJECTPTR)png_get_io_ptr(png), &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
+      png_error(png, "File write error");
+   }
+}
+
+void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn)
+{
+   if (png_ptr IS NULL) return;
+   png_ptr->io_ptr = io_ptr;
+   png_ptr->read_data_fn = read_data_fn;
+   png_ptr->output_flush_fn = NULL;
+}
 
 void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn)
 {
+   if (png_ptr IS NULL) return;
    png_ptr->io_ptr = io_ptr;
-   png_ptr->write_data_fn = (png_rw_ptr)png_write_data;
-   png_ptr->output_flush_fn = NULL;
+   png_ptr->write_data_fn = write_data_fn;
+   png_ptr->output_flush_fn = output_flush_fn;
 }
+
+
 
 //********************************************************************************************************************
 // PNG Error Handling Functions
