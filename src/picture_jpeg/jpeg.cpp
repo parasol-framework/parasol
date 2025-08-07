@@ -18,9 +18,8 @@ related to this Package.  The original libjpeg source code can be obtained from 
 #include "../picture/picture.h"
 
 extern "C" {
-#include "lib/jpeglib.h"
-#include "lib/jerror.h"
-#include "lib/jpegint.h"
+#include "jpeglib.h"
+#include "jerror.h"
 }
 
 JUMPTABLE_CORE
@@ -35,6 +34,152 @@ static ERR JPEG_Query(extPicture *);
 static ERR JPEG_SaveImage(extPicture *, struct acSaveImage *);
 
 static void decompress_jpeg(extPicture *, objBitmap *, struct jpeg_decompress_struct *);
+
+// Custom data source manager for Parasol objFile
+typedef struct {
+   struct jpeg_source_mgr pub;
+   objFile *infile;
+   JOCTET *buffer;
+   boolean start_of_file;
+} parasol_source_mgr;
+
+typedef parasol_source_mgr *parasol_src_ptr;
+
+#define INPUT_BUF_SIZE 4096
+
+// Initialize source
+METHODDEF(void) init_parasol_source(j_decompress_ptr cinfo) {
+   parasol_src_ptr src = (parasol_src_ptr)cinfo->src;
+   src->start_of_file = TRUE;
+}
+
+// Fill input buffer
+METHODDEF(boolean) fill_parasol_input_buffer(j_decompress_ptr cinfo) {
+   parasol_src_ptr src = (parasol_src_ptr)cinfo->src;
+   int nbytes;
+   
+   if (src->infile->read(src->buffer, INPUT_BUF_SIZE, &nbytes) != ERR::Okay) {
+      if (src->start_of_file) ERREXIT(cinfo, JERR_INPUT_EMPTY);
+      WARNMS(cinfo, JWRN_JPEG_EOF);
+      src->buffer[0] = 0xFF;
+      src->buffer[1] = JPEG_EOI;
+      nbytes = 2;
+   }
+   
+   src->pub.next_input_byte = src->buffer;
+   src->pub.bytes_in_buffer = nbytes;
+   src->start_of_file = FALSE;
+   
+   return TRUE;
+}
+
+// Skip input data
+METHODDEF(void) skip_parasol_input_data(j_decompress_ptr cinfo, long num_bytes) {
+   parasol_src_ptr src = (parasol_src_ptr)cinfo->src;
+   
+   if (num_bytes > 0) {
+      while (num_bytes > (long)src->pub.bytes_in_buffer) {
+         num_bytes -= (long)src->pub.bytes_in_buffer;
+         (void)fill_parasol_input_buffer(cinfo);
+      }
+      src->pub.next_input_byte += (size_t)num_bytes;
+      src->pub.bytes_in_buffer -= (size_t)num_bytes;
+   }
+}
+
+// Terminate source
+METHODDEF(void) term_parasol_source(j_decompress_ptr cinfo) {
+   // No work necessary here
+}
+
+// Set up data source for reading from Parasol objFile
+static void jpeg_parasol_src(j_decompress_ptr cinfo, objFile *infile) {
+   parasol_src_ptr src;
+   
+   if (cinfo->src IS NULL) {
+      cinfo->src = (struct jpeg_source_mgr *)
+         (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                   sizeof(parasol_source_mgr));
+      src = (parasol_src_ptr)cinfo->src;
+      src->buffer = (JOCTET *)
+         (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                   INPUT_BUF_SIZE * sizeof(JOCTET));
+   }
+   
+   src = (parasol_src_ptr)cinfo->src;
+   src->pub.init_source = init_parasol_source;
+   src->pub.fill_input_buffer = fill_parasol_input_buffer;
+   src->pub.skip_input_data = skip_parasol_input_data;
+   src->pub.resync_to_restart = jpeg_resync_to_restart;
+   src->pub.term_source = term_parasol_source;
+   src->infile = infile;
+   src->pub.bytes_in_buffer = 0;
+   src->pub.next_input_byte = NULL;
+}
+
+// Custom destination manager for saving
+typedef struct {
+   struct jpeg_destination_mgr pub;
+   objFile *outfile;
+   JOCTET *buffer;
+} parasol_destination_mgr;
+
+typedef parasol_destination_mgr *parasol_dest_ptr;
+
+#define OUTPUT_BUF_SIZE 4096
+
+// Initialize destination
+METHODDEF(void) init_parasol_destination(j_compress_ptr cinfo) {
+   parasol_dest_ptr dest = (parasol_dest_ptr)cinfo->dest;
+   dest->buffer = (JOCTET *)
+      (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_IMAGE,
+                                OUTPUT_BUF_SIZE * sizeof(JOCTET));
+   dest->pub.next_output_byte = dest->buffer;
+   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+}
+
+// Empty output buffer
+METHODDEF(boolean) empty_parasol_output_buffer(j_compress_ptr cinfo) {
+   parasol_dest_ptr dest = (parasol_dest_ptr)cinfo->dest;
+   
+   if (dest->outfile->write(dest->buffer, OUTPUT_BUF_SIZE) != ERR::Okay) {
+      ERREXIT(cinfo, JERR_FILE_WRITE);
+   }
+   
+   dest->pub.next_output_byte = dest->buffer;
+   dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
+   
+   return TRUE;
+}
+
+// Terminate destination
+METHODDEF(void) term_parasol_destination(j_compress_ptr cinfo) {
+   parasol_dest_ptr dest = (parasol_dest_ptr)cinfo->dest;
+   int datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
+   
+   if (datacount > 0) {
+      if (dest->outfile->write(dest->buffer, datacount) != ERR::Okay) {
+         ERREXIT(cinfo, JERR_FILE_WRITE);
+      }
+   }
+}
+
+// Set up destination for writing to Parasol objFile  
+static void jpeg_parasol_dest(j_compress_ptr cinfo, objFile *outfile) {
+   parasol_dest_ptr dest;
+   
+   if (cinfo->dest IS NULL) {
+      cinfo->dest = (struct jpeg_destination_mgr *)
+         (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
+                                   sizeof(parasol_destination_mgr));
+   }
+   
+   dest = (parasol_dest_ptr)cinfo->dest;
+   dest->pub.init_destination = init_parasol_destination;
+   dest->pub.empty_output_buffer = empty_parasol_output_buffer;
+   dest->pub.term_destination = term_parasol_destination;
+   dest->outfile = outfile;
+}
 
 //********************************************************************************************************************
 
@@ -65,7 +210,7 @@ static ERR JPEG_Activate(extPicture *Self)
    auto bmp = Self->Bitmap;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_decompress(&cinfo);
-   jpeg_stdio_src(&cinfo, Self->prvFile);
+   jpeg_parasol_src(&cinfo, Self->prvFile);
    jpeg_read_header(&cinfo, TRUE);
 
    bmp->Width  = cinfo.image_width;
@@ -220,7 +365,7 @@ static ERR JPEG_Query(extPicture *Self)
       auto bmp = Self->Bitmap;
       cinfo->err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
       jpeg_create_decompress(cinfo);
-      jpeg_stdio_src(cinfo, Self->prvFile);
+      jpeg_parasol_src(cinfo, Self->prvFile);
       jpeg_read_header(cinfo, FALSE);
 
       if (!bmp->Width)           bmp->Width          = cinfo->image_width;
@@ -266,7 +411,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    struct jpeg_error_mgr jerr;
    cinfo.err = jpeg_std_error((struct jpeg_error_mgr *)&jerr);
    jpeg_create_compress(&cinfo);
-   jpeg_stdio_dest(&cinfo, (objFile *)file);
+   jpeg_parasol_dest(&cinfo, (objFile *)file);
 
    cinfo.image_width      = Self->Bitmap->Width; 	// image width and height, in pixels
    cinfo.image_height     = Self->Bitmap->Height;
