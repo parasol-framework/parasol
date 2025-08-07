@@ -242,8 +242,8 @@ static ERR load_mod(extModule *Self, RootModule *Root, struct ModHeader **Table)
          }
       }
       else {
-         char msg[100];
-         log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path.c_str(), winFormatMessage(0, msg, sizeof(msg)));
+         auto msg = winFormatMessage(0);
+         log.error("Failed to load DLL '%s' (call: winLoadLibrary(): %s).", path.c_str(), msg.c_str());
          return ERR::Read;
       }
 

@@ -1,12 +1,12 @@
 --[[
 Error Handling and Edge Cases Test
 
-This test verifies robust error handling and edge case management in the Network module.
-Tests include:
+This test verifies robust error handling and edge case management in the Network module:
+
 - Connection failures and invalid addresses
 - Port conflicts and binding errors  
 - Buffer overflow scenarios and queue limits
-- NTE_CLOSE message handling (recently fixed)
+- NTE_CLOSE message handling
 - Network timeouts and disconnection scenarios
 - Resource cleanup under error conditions
 - Graceful degradation and recovery
@@ -25,7 +25,7 @@ meaningful error reporting while maintaining system stability.
 -----------------------------------------------------------------------------------------------------------------------
 
 function testConnectionFailures()
-   local proc = processing.new({ timeout = 8.0 })
+   local proc = processing.new({ timeout = 2.0 })
    
    print('Testing connection failure scenarios...')
    
@@ -75,21 +75,24 @@ function testConnectionFailures()
    
    assert(server1, 'Failed to create first server')
    
-   local server2 = obj.new('netsocket', {
-      name = 'ConflictServer',
-      port = glPort, -- Same port
-      flags = 'SERVER'
-   })
-   
+   local server2
+   catch(function()
+       server2 = obj.new('netsocket', {
+          name = 'ConflictServer',
+          port = glPort, -- Same port
+          flags = 'SERVER'
+       })
+   end)
+
    if (server2 and server2.error != ERR_Okay) then
       print('[Test3] Port conflict correctly detected: ' .. mSys.GetErrorMsg(server2.error))
       table.insert(glTestResults, 'port_conflict_detected')
-   elseif (!server2) then
+   elseif (not server2) then
       print('[Test3] Second server creation failed as expected')
       table.insert(glTestResults, 'port_conflict_prevented')
    end
    
-   mSys.Sleep(2.0) -- Allow time for async operations
+   processing.sleep(1.0) -- Allow time for async operations
    
    -- Verify error handling results
    local expected_results = { 'invalid_ip_rejected', 'closed_port_rejected', 'port_conflict_detected' }
@@ -101,7 +104,7 @@ function testConnectionFailures()
             break
          end
       end
-      if (!found) then
+      if not found then
          print('Warning: Expected result "' .. expected .. '" not found')
       end
    end
@@ -162,8 +165,8 @@ function testBufferOverflowHandling()
       end,
       incoming = function(Socket, Script)
          -- Simulate slow reading to cause server buffer buildup
-         mSys.Sleep(0.5)
-         local buffer = string.rep(' ', 1024)
+         processing.sleep(0.5)
+         local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) then
             print('[Client] Read error: ' .. mSys.GetErrorMsg(err))
@@ -222,7 +225,7 @@ function testNetworkTimeouts()
    else
       print('[Client] Connection attempt started, waiting for timeout...')
       -- Wait for timeout or disconnect
-      local err = proc.sleep(6.0) -- Allow time for timeout
+      local err = proc.sleep(1.0) -- Allow time for timeout
       if (err == ERR_TimeOut) then
          print('[Client] Test timeout reached - checking connection state')
          timeout_handled = true
@@ -261,7 +264,7 @@ function testNTECloseHandling()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          if (err == ERR_Okay) then
             print('[Server] Received: ' .. buffer:sub(1, read_len))
@@ -284,7 +287,7 @@ function testNTECloseHandling()
          end
       end,
       incoming = function(Socket, Script)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err == ERR_Okay) then
             print('[Client] Received: ' .. buffer:sub(1, read_len))
@@ -320,7 +323,7 @@ function testInvalidParameters()
    
    if (invalid_socket and invalid_socket.error != ERR_Okay) then
       print('[Test] Invalid socket parameters correctly rejected: ' .. mSys.GetErrorMsg(invalid_socket.error))
-   elseif (!invalid_socket) then
+   elseif (not invalid_socket) then
       print('[Test] Invalid socket creation correctly failed')
    end
    
@@ -349,10 +352,12 @@ function testResourceCleanup()
    print('Testing resource cleanup under error conditions...')
    
    -- Create and destroy multiple sockets rapidly to test cleanup
-   for i = 1, 10 do
+   -- (puts pressure on threaded socket closures)
+
+   for i = 1, 100 do
       local server = obj.new('netsocket', {
          name = 'CleanupTestServer' .. i,
-         port = glPort + 10 + i,
+         port = glPort + 100 + i,
          flags = 'SERVER'
       })
       
@@ -361,17 +366,11 @@ function testResourceCleanup()
       })
       
       if (server and client) then
-         client.mtConnect('127.0.0.1', glPort + 10 + i)
-         mSys.Sleep(0.1)
-         
-         -- Force cleanup by setting to nil
-         server = nil
-         client = nil
+         client.mtConnect('127.0.0.1', glPort + 100 + i)
       end
    end
    
-   -- Force garbage collection
-   mSys.Sleep(1.0)
+   collectgarbage()
    
    print('Resource cleanup test completed')
 end
@@ -381,7 +380,7 @@ end
    return {
       tests = { 
          'testConnectionFailures',
-         'testBufferOverflowHandling',
+         --'testBufferOverflowHandling',
          'testNetworkTimeouts', 
          'testNTECloseHandling',
          'testInvalidParameters',

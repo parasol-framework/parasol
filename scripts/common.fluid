@@ -1,7 +1,7 @@
 -- Common utility functions are kept in this module.
 
 ------------------------------------------------------------------------------
--- Parse the key-values of a table into an XML string.
+-- Serialise the key-values of a table into an XML string.
 
 table.toXML = function(t)
    local out = ''
@@ -81,7 +81,7 @@ file.readAll = function(Path)
       error('Failed to open file "' .. nz(Path,'NIL') .. '": ' .. Exception.message)
    end)
 
-   local fileBuffer = string.rep(' ', fl.size)
+   local fileBuffer = string.alloc(fl.size)
    local err, bytesRead = fl.acRead(fileBuffer)
    if err == ERR_Okay then
       return fileBuffer

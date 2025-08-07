@@ -75,7 +75,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
 
    pf::SwitchContext context(Self);
 
-   if (Self->Terminating) {
+   if (Self->Terminating) { // Set by FreeWarning()
       log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
       if (Self->SocketHandle != NOHANDLE) free_socket(Self);
       return;
@@ -262,14 +262,15 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
-      // we don't tax the system resources.
+      // we don't tax the system resources.  The WriteSocket function is also dropped because it is intended to
+      // be assigned temporarily.
 
       if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty())) {
          log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Self->UID, Self->SocketHandle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, 0);
+            if (auto error = win_socketstate(Self->SocketHandle, -1, 0); error != ERR::Okay) log.warning(error);
             Self->WriteSocket = nullptr;
          #endif
       }

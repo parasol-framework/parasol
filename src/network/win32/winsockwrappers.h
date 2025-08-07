@@ -9,7 +9,8 @@ void win32_netresponse(struct Object *, WSW_SOCKET, int, ERR);
 void win_net_processing(int, void *);
 WSW_SOCKET win_accept(void *, WSW_SOCKET, struct sockaddr *, int *);
 ERR win_bind(WSW_SOCKET, const struct sockaddr *, int);
-int win_closesocket(WSW_SOCKET);
+void win_closesocket(WSW_SOCKET);
+void win_deregister_socket(WSW_SOCKET);
 ERR win_connect(WSW_SOCKET, const struct sockaddr *, int);
 struct hostent * win_gethostbyaddr(const struct IPAddress *);
 struct hostent * win_gethostbyname(const char *);
@@ -18,11 +19,10 @@ int win_getsockname(WSW_SOCKET, struct sockaddr *, int *);
 unsigned long win_inet_addr(const char *);
 char *win_inet_ntoa(unsigned long);//struct in_addr);
 ERR win_listen(WSW_SOCKET, int);
-void win_socketstate(WSW_SOCKET, char, char);
+ERR win_socketstate(WSW_SOCKET, char, char);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
-WSW_SOCKET win_socket(void *, char, char);/*uses PF_INET, SOCK_STREAM, 0 for params to socket() */
-WSW_SOCKET win_socket_ipv6(void *, char, char);/*creates IPv6 dual-stack socket */
+WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */
 ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, int, int *);
 void winCloseResolveHandle(void *);
 void win_socket_reference(WSW_SOCKET, void *);

@@ -19,7 +19,7 @@ unique messages to verify proper isolation and delivery.
 
    glPort = 8303
    glActiveClients = 0
-   glMaxClients = 5
+   glMaxSockets = 5
    glMessagesPerClient = 3
    glClientResponses = {}
    glServerReceived = {}
@@ -27,10 +27,10 @@ unique messages to verify proper isolation and delivery.
 -----------------------------------------------------------------------------------------------------------------------
 
 function testMultipleConnections()
-   local proc = processing.new({ timeout = 15.0 })
+   local proc = processing.new({ timeout = 3.0 })
    
    print('Testing multiple concurrent connections with NSF::MULTI_CONNECT...')
-   print('Creating server that accepts up to ' .. glMaxClients .. ' clients')
+   print('Creating server that accepts up to ' .. glMaxSockets .. ' clients')
    
    local server = obj.new('netsocket', {
       name = 'ConcurrentServer',
@@ -55,8 +55,9 @@ function testMultipleConnections()
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
+         if (err == ERR_Disconnected) then return end
          assert(err == ERR_Okay, '[Server] Failed to read from client: ' .. mSys.GetErrorMsg(err))
          
          local msg = buffer:sub(1, read_len)
@@ -72,36 +73,29 @@ function testMultipleConnections()
       end,
       port = glPort,
       flags = 'SERVER|MULTICONNECT',
-      clientLimit = glMaxClients
+      socketLimit = glMaxSockets
    })
    
    assert(server, 'Failed to create server socket')
    
    -- Create multiple clients
    local clients = {}
-   for i = 1, glMaxClients do
+   local client_data = { }
+   for i = 1, glMaxSockets do
       print('[Test] Creating client ' .. i)
-      
-      local clientData = {
-         id = i,
-         messagesSent = 0,
-         messagesReceived = 0
-      }
-      
+            
       clients[i] = obj.new('netsocket', {
          name = 'ConcurrentClient' .. i,
-         clientData = clientData,
          feedback = function(Socket, Client, State)
-            local data = Socket.clientData
             if (State == NTC_CONNECTED) then
-               print('[Client ' .. data.id .. '] Connected to server')
+               print('[Client ' .. nz(client_data[Socket.id].id, i) .. '] Connected to server')
             elseif (State == NTC_DISCONNECTED) then
-               print('[Client ' .. data.id .. '] Disconnected from server')
+               print('[Client ' .. nz(client_data[Socket.id].id, i) .. '] Disconnected from server')
             end
          end,
          incoming = function(Socket, Script)
-            local data = Socket.clientData
-            local buffer = string.rep(' ', 1024)
+            local data = client_data[Socket.id]
+            local buffer = string.alloc(1024)
             local err, read_len = Socket.acRead(buffer)
             assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to read: ' .. mSys.GetErrorMsg(err))
             
@@ -130,23 +124,27 @@ function testMultipleConnections()
                   assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                else
                   print('[Client ' .. data.id .. '] All messages sent, disconnecting...')
-                  Socket.mtDisconnectSocket()
+                  proc.signal()
+                  raise(ERR_Terminate)
                end
             end
+
+            client_data[Socket.id] = data
          end
       })
       
+      client_data[clients[i].id] = { id = i, messagesSent = 0, messagesReceived = 0 }
       assert(clients[i], 'Failed to create client ' .. i)
    end
    
    -- Connect all clients simultaneously
-   print('[Test] Connecting all ' .. glMaxClients .. ' clients...')
-   for i = 1, glMaxClients do
+   print('[Test] Connecting all ' .. glMaxSockets .. ' clients...')
+   for i = 1, glMaxSockets do
       local err = clients[i].mtConnect('127.0.0.1', glPort)
       assert(err == ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
       
       -- Small delay between connections to avoid overwhelming
-      mSys.Sleep(0.1)
+      processing.sleep(0.1)
    end
    
    -- Wait for test completion
@@ -158,11 +156,11 @@ function testMultipleConnections()
    print('  Total server messages received: ' .. #glServerReceived)
    print('  Total client responses received: ' .. #glClientResponses)
    
-   local expected_server_messages = glMaxClients * glMessagesPerClient
+   local expected_server_messages = glMaxSockets * glMessagesPerClient
    assert(#glServerReceived == expected_server_messages,
       'Server message count mismatch. Expected: ' .. expected_server_messages .. ', Got: ' .. #glServerReceived)
    
-   local expected_client_responses = glMaxClients * (glMessagesPerClient + 1) -- +1 for welcome
+   local expected_client_responses = glMaxSockets * (glMessagesPerClient + 1) -- +1 for welcome
    assert(#glClientResponses >= expected_client_responses,
       'Client response count too low. Expected: >= ' .. expected_client_responses .. ', Got: ' .. #glClientResponses)
    
@@ -172,7 +170,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testClientLimitEnforcement()
-   local proc = processing.new({ timeout = 8.0 })
+   local proc = processing.new({ timeout = 3.0 })
    local limit = 2
    local connectAttempts = 4
    local successfulConnections = 0
@@ -190,7 +188,7 @@ function testClientLimitEnforcement()
       end,
       port = glPort + 1,
       flags = 'SERVER|MULTICONNECT',
-      clientLimit = limit
+      socketLimit = limit
    })
    
    -- Create more clients than the limit allows
@@ -215,11 +213,11 @@ function testClientLimitEnforcement()
          rejectedConnections = rejectedConnections + 1
          print('[Client ' .. i .. '] Connection rejected: ' .. mSys.GetErrorMsg(err))
       end
-      mSys.Sleep(0.05) -- Small delay
+      processing.sleep(0.05) -- Small delay
    end
    
    -- Allow time for connections to be processed
-   mSys.Sleep(2.0)
+   processing.sleep(0.5)
    
    print('Connection Results:')
    print('  Successful connections: ' .. successfulConnections)
@@ -239,7 +237,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function testConnectionIsolation()
-   local proc = processing.new({ timeout = 10.0 })
+   local proc = processing.new({ timeout = 2.0 })
    local clientCount = 3
    local clientMessages = {}
    local messagesPerClient = 2
@@ -260,12 +258,12 @@ function testConnectionIsolation()
          if (State == NTC_CONNECTED) then
             print('[Server] Client connected')
             -- Send unique start signal to each client
-            local start_msg = 'START:' .. mSys.CurrentTime()
+            local start_msg = 'START:' .. mSys.PreciseTime()
             Client.acWrite(start_msg)
          end
       end,
       incoming = function(Socket, Client)
-         local buffer = string.rep(' ', 1024)
+         local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          local msg = buffer:sub(1, read_len)
          
@@ -287,21 +285,20 @@ function testConnectionIsolation()
    local completedClients = 0
    
    for i = 1, clientCount do
-      clients[i] = obj.new('netsocket', {
+      clients[i] = { }
+      clients[i].socket = obj.new('netsocket', {
          name = 'IsolationClient' .. i,
-         clientId = i,
-         messageIndex = 1,
          incoming = function(Socket, Script)
-            local buffer = string.rep(' ', 1024)
+            local buffer = string.alloc(1024)
             local err, read_len = Socket.acRead(buffer)
             local msg = buffer:sub(1, read_len)
-            local clientId = Socket.clientId
+            local clientId = i
             
             print('[Client ' .. clientId .. '] Received: ' .. msg)
             
             if (string.match(msg, 'START:')) then
                -- Send first message
-               local test_msg = clientMessages[clientId][Socket.messageIndex]
+               local test_msg = clientMessages[clientId][clients[i].messageIndex]
                print('[Client ' .. clientId .. '] Sending: ' .. test_msg)
                Socket.acWrite(test_msg)
                
@@ -310,9 +307,9 @@ function testConnectionIsolation()
                assert(string.match(msg, 'CLIENT_' .. clientId), 
                   'Client ' .. clientId .. ' received message for wrong client: ' .. msg)
                
-               Socket.messageIndex = Socket.messageIndex + 1
-               if (Socket.messageIndex <= messagesPerClient) then
-                  local test_msg = clientMessages[clientId][Socket.messageIndex]
+               clients[i].messageIndex = clients[i].messageIndex + 1
+               if (clients[i].messageIndex <= messagesPerClient) then
+                  local test_msg = clientMessages[clientId][clients[i].messageIndex]
                   print('[Client ' .. clientId .. '] Sending: ' .. test_msg)
                   Socket.acWrite(test_msg)  
                else
@@ -325,15 +322,17 @@ function testConnectionIsolation()
             end
          end
       })
+
+      clients[i].messageIndex = 1
    end
    
    -- Connect all clients
    for i = 1, clientCount do
-      clients[i].mtConnect('127.0.0.1', glPort + 2)
-      mSys.Sleep(0.1)
+      clients[i].socket.mtConnect('127.0.0.1', glPort + 2)
    end
    
    local err = proc.sleep()
+   print('Completed Clients: ' .. completedClients .. ', Client Count: ' .. clientCount)
    assert(err == ERR_Okay, 'Connection isolation test failed: ' .. mSys.GetErrorMsg(err))
    
    assert(completedClients == clientCount,

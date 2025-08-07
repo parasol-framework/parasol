@@ -20,6 +20,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #define PRV_NETWORK_MODULE
 #define PRV_NETSOCKET
 #define PRV_CLIENTSOCKET
+#define PRV_NETCLIENT
 #define NO_NETRECURSION
 
 #include <stdio.h>
@@ -28,7 +29,6 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
-#include <thread>
 
 #ifdef ENABLE_SSL
   #ifdef _WIN32
@@ -50,6 +50,10 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <mutex>
 #include <span>
 #include <cstring>
+#include <thread>
+
+std::mutex glmThreads;
+std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
 
 struct DNSEntry {
    std::string HostName;
@@ -167,9 +171,36 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #include <sys/ioctl.h>
    #include <errno.h>
    #include <string.h>
+   #include <netinet/tcp.h>
+   #include <sys/socket.h>
 
    #define NOHANDLE -1
-   #define CLOSESOCKET(a) close(a)
+
+   static void CLOSESOCKET(SOCKET_HANDLE Handle) {
+      pf::Log log(__FUNCTION__);
+      log.traceBranch("Handle: %d", Handle);
+      if (Handle IS NOHANDLE) return;
+
+      // Perform graceful disconnect before closing
+
+      shutdown(Handle, SHUT_RDWR);
+
+      // Set a short timeout to allow pending data to be transmitted
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 100000; // 100ms timeout
+      setsockopt(Handle, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+      setsockopt(Handle, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
+
+      // Drain any remaining data in the receive buffer
+      char buffer[1024];
+      int bytes_received;
+      do {
+         bytes_received = recv(Handle, buffer, sizeof(buffer), 0);
+      } while (bytes_received > 0);
+
+      close(Handle);
+   }
 
 #elif _WIN32
 
@@ -192,14 +223,12 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
 
 class extClientSocket : public objClientSocket {
    public:
-   union {
-      SOCKET_HANDLE SocketHandle;
-      SOCKET_HANDLE Handle;
-   };
+   SOCKET_HANDLE Handle;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
-   uint8_t OutgoingRecursion;
-   uint8_t InUse;
+   uint8_t OutgoingRecursion;  // Recursion manager
+   uint8_t InUse;       // Recursion manager
+   bool ReadCalled;     // TRUE if the Read action has been called
 };
 
 class extNetSocket : public objNetSocket {
@@ -209,7 +238,7 @@ class extNetSocket : public objNetSocket {
    FUNCTION Incoming;
    FUNCTION Feedback;
    objNetLookup *NetLookup;
-   struct NetClient *LastClient;
+   objNetClient *LastClient;
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
    uint8_t ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
@@ -226,14 +255,9 @@ class extNetSocket : public objNetSocket {
       #ifdef NO_NETRECURSION
          WORD WinRecursion; // For win32_netresponse()
       #endif
-      union {
-         void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
-         void (*ReadClientSocket)(SOCKET_HANDLE, extClientSocket *);
-      };
-      union {
-         void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
-         void (*WriteClientSocket)(SOCKET_HANDLE, extClientSocket *);
-      };
+      void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
+      // WriteSocket is to be used only when data is already queued to be written, or the Outgoing callback is defined.
+      void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
    #endif
    #ifdef ENABLE_SSL
       #ifdef _WIN32
@@ -301,11 +325,31 @@ struct CaseInsensitiveMap {
 typedef std::map<std::string, DNSEntry, CaseInsensitiveMap> HOSTMAP;
 
 //********************************************************************************************************************
+// Performing the socket close in a separate thread means there'll be plenty of time for a
+// graceful socket closure without affecting the current thread.
+
+static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
+{
+#ifdef _WIN32
+   win_deregister_socket(Handle);
+#endif
+
+   std::lock_guard<std::mutex> lock(glmThreads);
+      auto thread_ptr = std::make_shared<std::jthread>();     
+      *thread_ptr = std::jthread([] (int Handle) {  
+         CLOSESOCKET(Handle);
+      }, Handle);
+      glThreads.insert(thread_ptr);
+      thread_ptr->detach();
+}
+
+//********************************************************************************************************************
 
 static OBJECTPTR clNetLookup = nullptr;
 static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
 static OBJECTPTR clClientSocket = nullptr;
+static OBJECTPTR clNetClient = nullptr;
 static HOSTMAP glHosts;
 static HOSTMAP glAddresses;
 static MSGID glResolveNameMsgID = MSGID::NIL;
@@ -316,6 +360,7 @@ static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
+static ERR init_netclient(void);
 static ERR init_netsocket(void);
 static ERR init_clientsocket(void);
 static ERR init_proxy(void);
@@ -332,6 +377,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    CoreBase = argCoreBase;
 
+   if (init_netclient() != ERR::Okay) return ERR::AddClass;
    if (init_netsocket() != ERR::Okay) return ERR::AddClass;
    if (init_clientsocket() != ERR::Okay) return ERR::AddClass;
    if (init_proxy() != ERR::Okay) return ERR::AddClass;
@@ -395,6 +441,7 @@ static ERR MODExpunge(void)
    if (ShutdownWinsock() != 0) log.warning("Warning: Winsock DLL Cleanup failed.");
 #endif
 
+   if (clNetClient)    { FreeResource(clNetClient); clNetClient = nullptr; }
    if (clNetSocket)    { FreeResource(clNetSocket); clNetSocket = nullptr; }
    if (clClientSocket) { FreeResource(clClientSocket); clClientSocket = nullptr; }
    if (clProxy)        { FreeResource(clProxy); clProxy = nullptr; }
@@ -411,6 +458,32 @@ static ERR MODExpunge(void)
     }
   #endif
 #endif
+
+   {
+      std::lock_guard<std::mutex> lock(glmThreads);
+ 
+      for (auto &thread_ptr : glThreads) {
+         if (thread_ptr and thread_ptr->joinable()) {
+            thread_ptr->request_stop();
+         }
+      }
+   
+      // Give threads time to respond to stop request
+      constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+      auto start_time = std::chrono::steady_clock::now();
+   
+      while (!glThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
+         // Remove completed threads
+         std::erase_if(glThreads, [](const auto& thread_ptr) {
+            return !thread_ptr || !thread_ptr->joinable();
+         });
+
+         if (!glThreads.empty()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+         }
+      }
+      glThreads.clear();
+   }
 
    return ERR::Okay;
 }
@@ -843,7 +916,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
       }
       else {
          log.warning("recv() failed: %s", strerror(errno));
-         return ERR::Failed;
+         return ERR::SystemCall;
       }
    }
 #elif _WIN32
@@ -984,13 +1057,13 @@ static int8_t check_machine_name(CSTRING HostName)
 #include "clientsocket/clientsocket.cpp"
 #include "class_proxy.cpp"
 #include "class_netlookup.cpp"
+#include "netclient/netclient.cpp"
 
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
    { "DNSEntry",  sizeof(DNSEntry) },
    { "IPAddress", sizeof(IPAddress) },
-   { "NetClient", sizeof(NetClient) },
    { "NetQueue",  sizeof(NetQueue) }
 };
 

@@ -144,6 +144,7 @@ void process_error(objScript *Self, CSTRING Procedure)
       Self->Error = prv->CaughtError;
       if (Self->Error <= ERR::Terminate) flags = VLF::DETAIL; // Non-critical errors are muted to prevent log noise.
    }
+   else Self->Error = ERR::Exception; // Unspecified exception, e.g. an error() or assert().  The result string will indicate detail.
 
    pf::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
@@ -460,7 +461,6 @@ static ERR FLUID_Activate(objScript *Self)
          log.traceBranch("Collecting functions prior to procedure call...");
 
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
-            Self->Error = ERR::Failed;
             process_error(Self, "Activation");
          }
       }

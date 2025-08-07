@@ -59,9 +59,9 @@
   <fields>
     <field>
       <name>Client</name>
-      <comment>Parent client structure</comment>
+      <comment>Parent client object</comment>
       <access read="R">Read</access>
-      <type>struct NetClient *</type>
+      <type class="NetClient">*NetClient</type>
     </field>
 
     <field>
@@ -106,24 +106,7 @@
       <type class="ClientSocket">*ClientSocket</type>
     </field>
 
-    <field>
-      <name>ReadCalled</name>
-      <comment>TRUE if the Read action has been called</comment>
-      <access>-/-</access>
-      <type>INT</type>
-    </field>
-
   </fields>
   <structs>
-    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="INT8" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct NetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
-      <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
-    </struct>
-
   </structs>
 </book>

@@ -65,10 +65,10 @@ static void client_connect(HOSTHANDLE, APTR);
 
 static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
-static void clientsocket_incoming(HOSTHANDLE, APTR);
-static void clientsocket_outgoing(HOSTHANDLE, APTR);
-static void free_client(extNetSocket *, NetClient *);
-static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
+static void server_incoming_from_client(HOSTHANDLE, extClientSocket *);
+static void clientsocket_outgoing(HOSTHANDLE, extClientSocket *);
+static void free_client(extNetSocket *, objNetClient *);
+static void free_client_socket(extNetSocket *, extClientSocket *, bool);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
 
@@ -156,9 +156,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       log.msg("Attempting to resolve domain name '%s'...", Self->Address);
 
       if (!Self->NetLookup) {
-         if (!(Self->NetLookup = extNetLookup::create::local())) {
-            return ERR::CreateObject;
-         }
+         if (!(Self->NetLookup = extNetLookup::create::local())) return ERR::CreateObject;
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
@@ -201,7 +199,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
    // Find an appropriate address for our socket type
    const IPAddress *addr = nullptr;
-   
+
    // If we have an IPv4 socket, prefer IPv4 addresses
    if (!Socket->IPV6) {
       for (const auto &ip : IPs) {
@@ -210,27 +208,31 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             break;
          }
       }
-   } 
+   }
    else { // For IPv6 sockets, use the first address (could be IPv4 or IPv6)
       addr = &IPs[0];
+      if ((!addr->Data[0]) and (!addr->Data[1]) and (!addr->Data[2]) and (!addr->Data[3])) {
+         log.traceWarning("Failed sanity check, incoming IP address is empty.");
+         Socket->Error = log.warning(ERR::InvalidData);
+         return;
+      }
    }
-   
+
    if (!addr) {
-      log.warning("No compatible IP address found for socket type (IPv6: %s)", Socket->IPV6 ? "true" : "false");
+      log.warning("Of %d addresses, no compatible IP address found for socket type (IPv6: %s)", int(IPs.size()), Socket->IPV6 ? "true" : "false");
       Socket->Error = ERR::HostNotFound;
       Socket->setState(NTC::DISCONNECTED);
       return;
    }
-   
-   if (addr->Type IS IPADDR::V6) {
+
+   if (addr->Type IS IPADDR::V6) { // Pure IPv6 connection
       #ifdef _WIN32
-         // IPv6 connectivity for Windows
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
-         pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
-         
+         pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
+
          if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
             if (Socket->Error IS ERR::BufferOverflow) {
                log.trace("IPv6 connection in progress...");
@@ -253,9 +255,9 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
          pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
-         
+
          int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
-         
+
          if (result IS -1) {
             if (errno IS EINPROGRESS) {
                log.trace("IPv6 connection in progress...");
@@ -282,23 +284,23 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       #endif
       return;
    }
-   
-   // IPv4 connection - check if we need IPv4-mapped IPv6 address for dual-stack socket
-   if (Socket->IPV6) {
+
+   // IPv4 connection to dual-stack socket - use IPv4-mapped IPv6 address
+   if ((Socket->IPV6) and (addr->Type IS IPADDR::V4)) {
       // Use IPv4-mapped IPv6 address for dual-stack socket
       #ifdef __linux__
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
          server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
-         
+
          // Create IPv4-mapped IPv6 address (::ffff:x.x.x.x)
          server_address6.sin6_addr.s6_addr[10] = 0xff;
          server_address6.sin6_addr.s6_addr[11] = 0xff;
          *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
-         
+
          int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
-         
+
          if (result IS -1) {
             if (errno IS EINPROGRESS) {
                log.trace("IPv4-mapped IPv6 connection in progress...");
@@ -323,9 +325,31 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
          }
          return;
+      #elif _WIN32
+         // Windows IPv6 dual-stack socket connecting to IPv4 address
+         struct sockaddr_in6 server_address6;
+         pf::clearmem(&server_address6, sizeof(server_address6));
+         server_address6.sin6_family = AF_INET6;
+         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+
+         // Create IPv4-mapped IPv6 address (::ffff:x.x.x.x)
+         server_address6.sin6_addr.s6_addr[10] = 0xff;
+         server_address6.sin6_addr.s6_addr[11] = 0xff;
+         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
+
+         if (win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
+            log.trace("IPv4-mapped IPv6 connection initiated successfully");
+            Socket->setState(NTC::CONNECTING);
+         }
+         else {
+            log.trace("IPv4-mapped IPv6 connect() failed");
+            Socket->Error = ERR::Failed;
+            Socket->setState(NTC::DISCONNECTED);
+         }
+         return;
       #endif
    }
-   
+
    // Pure IPv4 connection
    pf::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
@@ -430,7 +454,7 @@ be issued for each socket connection.
 If only one socket connection needs to be disconnected, please use #DisconnectSocket().
 
 -INPUT-
-struct(*NetClient) Client: The client to be disconnected.
+obj(NetClient) Client: The client to be disconnected.
 
 -ERRORS-
 Okay
@@ -454,6 +478,9 @@ DisconnectSocket: Disconnects a single socket that is connected to a client IP a
 This method will disconnect a socket connection for a given client.  If #Feedback is defined, a `DISCONNECTED`
 state message will also be issued.
 
+NOTE: To terminate the connection of a socket acting as the client, either free the object or return/raise
+`ERR::Terminate` during #Incoming feedback.
+
 -INPUT-
 obj(ClientSocket) Socket: The client socket to be disconnected.
 
@@ -466,7 +493,9 @@ NullArgs
 
 static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectSocket *Args)
 {
-   if ((!Args) or (!Args->Socket)) return ERR::NullArgs;
+   pf::Log log;
+   if ((!Args) or (!Args->Socket)) return log.warning(ERR::NullArgs);
+   if (Args->Socket->classID() != CLASSID::CLIENTSOCKET) return log.warning(ERR::WrongClass);
    free_client_socket(Self, (extClientSocket *)(Args->Socket), true);
    return ERR::Okay;
 }
@@ -481,6 +510,10 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 
    if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
+   
+   if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
+   if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
+   if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    free_socket(Self);
 
@@ -572,7 +605,6 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 }
 
 //********************************************************************************************************************
-// Action: Init()
 
 static ERR NETSOCKET_Init(extNetSocket *Self)
 {
@@ -597,17 +629,24 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    // Create socket - IPv6 dual-stack if available, otherwise IPv4
    if ((Self->SocketHandle = socket(PF_INET6, SOCK_STREAM, 0)) != NOHANDLE) {
       Self->IPV6 = true;
-      
+
       // Enable dual-stack mode (accept both IPv4 and IPv6)
       int v6only = 0;
       if (setsockopt(Self->SocketHandle, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) != 0) {
          log.warning("Failed to set dual-stack mode: %s", strerror(errno));
       }
-      
+
+      int nodelay = 1;
+      setsockopt(Self->SocketHandle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+
       log.trace("Created IPv6 dual-stack socket");
    }
    else if ((Self->SocketHandle = socket(PF_INET, SOCK_STREAM, 0)) != NOHANDLE) {
       Self->IPV6 = false;
+
+      int nodelay = 1;
+      setsockopt(Self->SocketHandle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+
       log.trace("Created IPv4 socket");
    }
    else {
@@ -635,12 +674,12 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 #elif _WIN32
 
-   // Try IPv4 socket for maximum compatibility
-   Self->SocketHandle = win_socket(Self, true, false);
-   if (Self->SocketHandle IS NOHANDLE) return ERR::Failed;
-   
-   // Windows implementation uses IPv4 for maximum compatibility
-   Self->IPV6 = false;
+   // Try IPv6 dual-stack socket first, then fall back to IPv4
+   bool is_ipv6;
+   Self->SocketHandle = win_socket_ipv6(Self, true, false, is_ipv6);
+   if (Self->SocketHandle IS NOHANDLE) return ERR::SystemCall;
+   Self->IPV6 = is_ipv6;
+   log.msg("Created socket on Windows (handle: %d) IPV6: %d", Self->SocketHandle, int(is_ipv6));
 
 #endif
 
@@ -676,7 +715,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             addr.sin6_family = AF_INET6;
             addr.sin6_port   = net::HostToShort(Self->Port);
             addr.sin6_addr   = in6addr_any;
-            
+
             if ((error = win_bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
                if ((error = win_listen(Self->SocketHandle, Self->Backlog)) IS ERR::Okay) {
                   return ERR::Okay;
@@ -741,6 +780,7 @@ static ERR NETSOCKET_NewObject(extNetSocket *Self)
    Self->State        = NTC::DISCONNECTED;
    Self->MsgLimit     = 1024768;
    Self->ClientLimit  = 1024;
+   Self->SocketLimit  = 256;
    #ifdef _WIN32
       Self->WriteSocket = nullptr;
       Self->ReadSocket = nullptr;
@@ -900,7 +940,10 @@ connections.
 If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.
 
 -FIELD-
-ClientLimit: The maximum number of clients that can be connected to a server socket.
+ClientLimit: The maximum number of clients (unique IP addresses) that can be connected to a server socket.
+
+The ClientLimit value limits the maximum number of IP addresses that can be connected to the socket at any one time.
+For socket limits per client, see the #SocketLimit field.
 
 -FIELD-
 Clients: For server sockets, lists all clients connected to the server.
@@ -926,13 +969,13 @@ can be used to determine how a TCP connection was closed.
 -FIELD-
 Feedback: A callback trigger for when the state of the NetSocket is changed.
 
-Refer to a custom function in this field and it will be called whenever the #State of the socket (such as
-connection or disconnection) changes.
+The client can define a function in this field to receive notifications whenever the state of the socket changes -
+typically a new connection or a disconnect.  This includes activity both from the server and the client side if the
+`ClientSocket` value is set on receipt.
 
 The function must be in the format `Function(*NetSocket, *ClientSocket, NTC State)`
 
-The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects
-the new value in the #State field.
+The `NetSocket` parameter refers to the NetSocket object to which the function is subscribed.
 
 *********************************************************************************************************************/
 
@@ -974,8 +1017,8 @@ The `NetSocket` parameter refers to the NetSocket object.  The `Context` refers 
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
-If the callback function returns `ERR::Terminate` then the Incoming field will be cleared and the function will no
-longer be called.  All other error codes are ignored.
+If the callback function returns/raises `ERR::Terminate` then the Incoming field will be cleared and the function 
+will no longer be called.  All other error codes are ignored.
 
 *********************************************************************************************************************/
 
@@ -1111,6 +1154,10 @@ static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
 -FIELD-
 State: The current connection state of the NetSocket object.
 
+The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
+be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the 
+Feedback function is called.
+
 *********************************************************************************************************************/
 
 static ERR SET_State(extNetSocket *Self, NTC Value)
@@ -1239,7 +1286,7 @@ static void free_socket(extNetSocket *Self)
       DeregisterFD((HOSTHANDLE)Self->SocketHandle);
 #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
 
-      if (!Self->ExternalSocket) { CLOSESOCKET(Self->SocketHandle); Self->SocketHandle = NOHANDLE; }
+      if (!Self->ExternalSocket) { CLOSESOCKET_THREADED(Self->SocketHandle); Self->SocketHandle = NOHANDLE; }
    }
 
    #ifdef _WIN32
@@ -1311,11 +1358,16 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    pf::Log log(__FUNCTION__);
 
    extNetSocket *Socket;
-   objClientSocket *ClientSocket;
+   extClientSocket *ClientSocket;
+
+   if (SocketObject->terminating()) { // Sanity check
+      log.warning(ERR::MarkedForDeletion);
+      return;
+   }
 
    if (SocketObject->classID() IS CLASSID::CLIENTSOCKET) {
-      ClientSocket = (objClientSocket *)SocketObject;
-      Socket = (extNetSocket *)ClientSocket->Client->NetSocket;
+      ClientSocket = (extClientSocket *)SocketObject;
+      Socket = (extNetSocket *)ClientSocket->Client->Owner;
    }
    else {
       Socket = (extNetSocket *)SocketObject;
@@ -1351,7 +1403,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
          else {
             Socket->WinRecursion++;
             #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-            if (ClientSocket) clientsocket_incoming((HOSTHANDLE)SocketHandle, ClientSocket);
+            if (ClientSocket) server_incoming_from_client((HOSTHANDLE)SocketHandle, ClientSocket);
             else if (Socket->ReadSocket) Socket->ReadSocket(0, Socket);
             else client_server_incoming(0, Socket);
             #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
@@ -1389,6 +1441,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       if (ClientSocket) {
          if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by client.");
          FreeResource(ClientSocket);
+         // Note: Disconnection feedback is sent to the NetSocket by the ClientSocket destructor.
       }
       else {
          if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by server, error %d.", int(Error));
@@ -1480,7 +1533,7 @@ static const FieldDef clValidCert[] = {
 #include "netsocket_def.c"
 
 static const FieldArray clSocketFields[] = {
-   { "Clients",          FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
+   { "Clients",          FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",       FDF_POINTER|FDF_RW },
    { "Address",          FDF_STRING|FDF_RI, nullptr, SET_Address },
    { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_State, &clNetSocketState },
@@ -1490,6 +1543,7 @@ static const FieldArray clSocketFields[] = {
    { "TotalClients",     FDF_INT|FDF_R },
    { "Backlog",          FDF_INT|FDF_RI },
    { "ClientLimit",      FDF_INT|FDF_RW },
+   { "SocketLimit",      FDF_INT|FDF_RW },
    { "MsgLimit",         FDF_INT|FDF_RI },
    // Virtual fields
    { "SocketHandle",     FDF_POINTER|FDF_RI,     GET_SocketHandle, SET_SocketHandle },

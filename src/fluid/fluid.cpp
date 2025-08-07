@@ -729,6 +729,8 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
       std::string value(Line, n);
       Line += n;
+      
+      //log.warning("%s = %s", prefix.c_str(), value.c_str());
 
       if (n > 0) {
          auto dt = datatype(value);

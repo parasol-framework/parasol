@@ -16,53 +16,45 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 // Data is being received from a client.
 
-static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
+static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *client)
 {
    pf::Log log(__FUNCTION__);
-   auto ClientSocket = (extClientSocket *)Data;
-   if (!ClientSocket->Client) return;
-   auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
+   if (!client->Client) return;
+   auto Socket = (extNetSocket *)(client->Client->Owner);
+
+   if (client->Handle IS NOHANDLE) {
+      log.warning("Invalid state - socket closed but receiving data.");
+      return;
+   }
 
    Socket->InUse++;
-   ClientSocket->ReadCalled = FALSE;
+   client->ReadCalled = false;
 
-   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)SocketHandle, Socket->UID, ClientSocket->UID);
+   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Socket->UID, client->UID);
 
    ERR error = ERR::Okay;
    if (Socket->Incoming.defined()) {
       if (Socket->Incoming.isC()) {
          pf::SwitchContext context(Socket->Incoming.Context);
          auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.Routine;
-         error = routine(Socket, ClientSocket, Socket->Incoming.Meta);
+         error = routine(Socket, client, Socket->Incoming.Meta);
       }
       else if (Socket->Incoming.isScript()) {
          if (sc::Call(Socket->Incoming, std::to_array<ScriptArg>({
                { "NetSocket",    Socket, FD_OBJECTPTR },
-               { "ClientSocket", ClientSocket, FD_OBJECTPTR }
+               { "ClientSocket", client, FD_OBJECTPTR }
             }), error) != ERR::Okay) error = ERR::Terminate;
+         if (error IS ERR::Exception) error = ERR::Terminate; // assert() and error() are taken seriously
       }
       else error = ERR::InvalidValue;
-
-      if (error != ERR::Okay) {
-         log.msg("Received error %d, incoming callback will be terminated.", LONG(error));
-         Socket->Incoming.clear();
-      }
-
-      if (error IS ERR::Terminate) {
-         log.trace("Termination request received.");
-         free_client_socket(Socket, ClientSocket, TRUE);
-         Socket->InUse--;
-         return;
-      }
    }
-   else log.warning("No Incoming callback configured.");
+   else log.traceWarning("No Incoming callback configured.");
 
-   if (ClientSocket->ReadCalled IS FALSE) {
-      uint8_t buffer[80];
-      log.warning("Subscriber did not call Read(), cleaning buffer.");
-      int result;
-      do { error = RECEIVE(Socket, ClientSocket->Handle, &buffer, sizeof(buffer), 0, &result); } while (result > 0);
-      if (error != ERR::Okay) free_client_socket(Socket, ClientSocket, TRUE);
+   if (client->ReadCalled IS false) error = ERR::Terminate;
+   
+   if (error IS ERR::Terminate) {
+      log.trace("Terminating socket, failed to read incoming data.");
+      free_client_socket(Socket, client, true);
    }
 
    Socket->InUse--;
@@ -73,11 +65,10 @@ static void clientsocket_incoming(HOSTHANDLE SocketHandle, APTR Data)
 // no data is being written to the queue, the program will not be able to sleep until the client stops listening
 // to the write queue.
 
-static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
+static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket)
 {
    pf::Log log(__FUNCTION__);
-   auto ClientSocket = (extClientSocket *)Data;
-   auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
+   auto Socket = (extNetSocket *)(ClientSocket->Client->Owner);
 
    if (Socket->Terminating) return;
 
@@ -128,7 +119,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       #endif
 
       if (len > 0) {
-         error = SEND(Socket, ClientSocket->SocketHandle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
+         error = SEND(Socket, ClientSocket->Handle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
          if ((error != ERR::Okay) or (!len)) break;
          ClientSocket->WriteQueue.Index += len;
       }
@@ -164,11 +155,11 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
       // we don't tax the system resources.
 
       if ((!ClientSocket->Outgoing.defined()) and (ClientSocket->WriteQueue.Buffer.empty())) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->SocketHandle);
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->Handle);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)ClientSocket->SocketHandle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
+            RegisterFD((HOSTHANDLE)ClientSocket->Handle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
-            win_socketstate(ClientSocket->SocketHandle, -1, 0);
+            win_socketstate(ClientSocket->Handle, -1, 0);
          #endif
       }
    }
@@ -178,33 +169,70 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 }
 
 //********************************************************************************************************************
+// Disconnect a client socket and report it through the NetSocket server.
+
+static void disconnect(extClientSocket *Self)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Self->Handle) {
+      log.branch("Disconnecting socket handle %d", Self->Handle);
+
+#ifdef __linux__
+      DeregisterFD(Self->Handle);
+#endif
+      CLOSESOCKET_THREADED(Self->Handle);
+      Self->Handle = -1;
+   }
+
+   auto owner = (extNetSocket *)Self->Owner;
+   if ((owner) and (owner->classID() IS CLASSID::NETSOCKET)) {
+      if (owner->Feedback.defined()) {
+         log.traceBranch("Reporting client disconnection to NetSocket %p.", owner);
+
+         if (owner->Feedback.isC()) {
+            pf::SwitchContext context(owner->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))owner->Feedback.Routine;
+            if (routine) routine(owner, Self, NTC::DISCONNECTED, owner->Feedback.Meta);
+         }
+         else if (owner->Feedback.isScript()) {
+            sc::Call(owner->Feedback, std::to_array<ScriptArg>({
+               { "NetSocket",    owner, FD_OBJECTPTR },
+               { "ClientSocket", APTR(Self), FD_OBJECTPTR },
+               { "State",        int(NTC::DISCONNECTED) }
+            }));
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
    pf::Log log;
 
-   if (Self->SocketHandle) {
-#ifdef __linux__
-      DeregisterFD(Self->Handle);
-#endif
-      CLOSESOCKET(Self->Handle);
-      Self->Handle = -1;
-   }
+   disconnect(Self);
 
-   if (Self->Prev) {
-      Self->Prev->Next = Self->Next;
-      if (Self->Next) Self->Next->Prev = Self->Prev;
-   }
-   else {
-      Self->Client->Connections = Self->Next;
-      if (Self->Next) Self->Next->Prev = nullptr;
-   }
+   if (Self->Client) { // If undefined, ClientSocket was never initialised
+      pf::ScopedObjectLock lock(Self->Client);
+      if (lock.granted()) {
+         if (Self->Prev) {
+            Self->Prev->Next = Self->Next;
+            if (Self->Next) Self->Next->Prev = Self->Prev;
+         }
+         else {
+            Self->Client->Connections = Self->Next;
+            if (Self->Next) Self->Next->Prev = nullptr;
+         }
 
-   Self->Client->TotalConnections--;
+         Self->Client->TotalConnections--;
 
-   if (!Self->Client->Connections) {
-      log.msg("No more connections for this IP, removing client.");
-      free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
+         if (!Self->Client->Connections) {
+            log.msg("No more connections for this IP, removing client.");
+            free_client((extNetSocket *)Self->Client->Owner, Self->Client);
+         }
+      }
    }
 
    Self->~extClientSocket();
@@ -215,6 +243,12 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
+   pf::Log log;
+   if (!Self->Client) return log.warning(ERR::FieldNotSet);
+
+   pf::ScopedObjectLock lock(Self->Client);
+   if (!lock.granted()) return ERR::Lock;
+
 #ifdef __linux__
    int non_blocking = 1;
    ioctl(Self->Handle, FIONBIO, &non_blocking);
@@ -232,7 +266,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
    Self->Client->TotalConnections++;
 
 #ifdef __linux__
-   RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_incoming), Self);
+   RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_incoming_from_client), Self);
 #elif _WIN32
    win_socket_reference(Self->Handle, Self);
 #endif
@@ -269,10 +303,21 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
    pf::Log log;
    if ((!Args) or (!Args->Buffer)) return log.error(ERR::NullArgs);
-   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
-   Self->ReadCalled = TRUE;
+   if (Self->Handle IS NOHANDLE) {
+      // Lack of a handle means that disconnection has already been processed, so the client code
+      // shouldn't be calling us (client probably needs to be plugged into the feedback mechanisms)
+      return log.warning(ERR::Disconnected);
+   }
+   Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
-   return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
+   auto error = RECEIVE((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+
+   if (error IS ERR::Disconnected) {
+      // Detecting a disconnection on read is normal, now handle disconnection gracefully.
+      log.msg("Client disconnection detected.");
+      disconnect(Self);
+   }
+   return error;
 }
 
 /*********************************************************************************************************************
@@ -292,20 +337,21 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
 
    if (!Args) return ERR::NullArgs;
    Args->Result = 0;
-   if (Self->SocketHandle IS NOHANDLE) return log.error(ERR::Disconnected);
+   if (Self->Handle IS NOHANDLE) return log.error(ERR::Disconnected);
+   if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
    size_t len = Args->Length;
-   ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->SocketHandle, Args->Buffer, &len, 0);
+   ERR error = SEND((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, &len, 0);
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
       if (error != ERR::Okay) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
-         ((extNetSocket *)(Self->Client->NetSocket))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         ((extNetSocket *)(Self->Client->Owner))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, TRUE);
+            win_socketstate(Self->Handle, -1, true);
          #endif
       }
    }
@@ -323,7 +369,7 @@ static const FieldArray clClientSocketFields[] = {
    { "ConnectTime", FDF_INT64|FDF_R },
    { "Prev",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
    { "Next",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
-   { "Client",      FDF_POINTER|FDF_STRUCT|FDF_R, nullptr, nullptr, "NetClient" },
+   { "Client",      FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",  FDF_POINTER|FDF_R },
    { "Outgoing",    FDF_FUNCTION|FDF_R },
    { "Incoming",    FDF_FUNCTION|FDF_R },

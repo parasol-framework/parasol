@@ -14,6 +14,7 @@
 #include <mutex>
 #endif
 
+class objNetClient;
 class objClientSocket;
 class objProxy;
 class objNetLookup;
@@ -125,14 +126,35 @@ struct NetQueue {
   std::vector<uint8_t> Buffer; // The buffer hosting the data
 };
 
-struct NetClient {
-   char IP[8];                       // IP address in 4/8-byte format
-   struct NetClient * Next;          // Next client in the chain
-   struct NetClient * Prev;          // Previous client in the chain
-   objNetSocket * NetSocket;         // Reference to the parent socket
-   objClientSocket * Connections;    // Pointer to a list of connections opened by this client.
-   APTR ClientData;                  // Free for user data storage.
-   int  TotalConnections;            // Count of all socket-based connections
+// NetClient class definition
+
+#define VER_NETCLIENT (1.000000)
+
+class objNetClient : public Object {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::NETCLIENT;
+   static constexpr CSTRING CLASS_NAME = "NetClient";
+
+   using create = pf::Create<objNetClient>;
+
+   char IP[8];                       // The IP address of the client.
+   objNetClient * Next;              // The next client IP with connections to the server socket.
+   objNetClient * Prev;              // The previous client IP with connections to the server socket.
+   objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
+   APTR ClientData;                  // A custom pointer available for development use.
+   int  TotalConnections;            // The total number of current socket connections for the IP address.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
+      return ERR::Okay;
+   }
+
 };
 
 // ClientSocket class definition
@@ -146,14 +168,13 @@ class objClientSocket : public Object {
 
    using create = pf::Create<objClientSocket>;
 
-   int64_t  ConnectTime;         // System time for the creation of this socket
-   objClientSocket * Prev;       // Previous socket in the chain
-   objClientSocket * Next;       // Next socket in the chain
-   struct NetClient * Client;    // Parent client structure
-   APTR     ClientData;          // Available for client data storage.
-   FUNCTION Outgoing;            // Callback for data being sent over the socket
-   FUNCTION Incoming;            // Callback for data being received from the socket
-   int      ReadCalled:1;        // TRUE if the Read action has been called
+   int64_t  ConnectTime;      // System time for the creation of this socket
+   objClientSocket * Prev;    // Previous socket in the chain
+   objClientSocket * Next;    // Next socket in the chain
+   objNetClient * Client;     // Parent client object
+   APTR     ClientData;       // Available for client data storage.
+   FUNCTION Outgoing;         // Callback for data being sent over the socket
+   FUNCTION Incoming;         // Callback for data being received from the socket
 
    // Action stubs
 
@@ -393,7 +414,7 @@ class objNetLookup : public Object {
 namespace ns {
 struct Connect { CSTRING Address; int Port; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DisconnectClient { struct NetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectClient { objNetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
@@ -405,17 +426,18 @@ class objNetSocket : public Object {
 
    using create = pf::Create<objNetSocket>;
 
-   struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
-   APTR   ClientData;             // A client-defined value that can be useful in action notify events.
-   STRING Address;                // An IP address or domain name to connect to.
-   NTC    State;                  // The current connection state of the NetSocket object.
-   ERR    Error;                  // Information about the last error that occurred during a NetSocket operation
-   int    Port;                   // The port number to use for initiating a connection.
-   NSF    Flags;                  // Optional flags.
-   int    TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
-   int    Backlog;                // The maximum number of connections that can be queued against the socket.
-   int    ClientLimit;            // The maximum number of clients that can be connected to a server socket.
-   int    MsgLimit;               // Limits the size of incoming and outgoing data packets.
+   objNetClient * Clients;    // For server sockets, lists all clients connected to the server.
+   APTR   ClientData;         // A client-defined value that can be useful in action notify events.
+   STRING Address;            // An IP address or domain name to connect to.
+   NTC    State;              // The current connection state of the NetSocket object.
+   ERR    Error;              // Information about the last error that occurred during a NetSocket operation
+   int    Port;               // The port number to use for initiating a connection.
+   NSF    Flags;              // Optional flags.
+   int    TotalClients;       // Indicates the total number of clients currently connected to the socket (if in server mode).
+   int    Backlog;            // The maximum number of connections that can be queued against the socket.
+   int    ClientLimit;        // The maximum number of clients (unique IP addresses) that can be connected to a server socket.
+   int    SocketLimit;        // Limits the number of connected sockets per client IP address.
+   int    MsgLimit;           // Limits the size of incoming and outgoing data packets.
 
    // Action stubs
 
@@ -477,7 +499,7 @@ class objNetSocket : public Object {
       struct ns::GetLocalIPAddress args = { Address };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR disconnectClient(struct NetClient * Client) noexcept {
+   inline ERR disconnectClient(objNetClient * Client) noexcept {
       struct ns::DisconnectClient args = { Client };
       return(Action(AC(-3), this, &args));
    }
@@ -527,6 +549,11 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setSocketLimit(const int Value) noexcept {
+      this->SocketLimit = Value;
+      return ERR::Okay;
+   }
+
    inline ERR setMsgLimit(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->MsgLimit = Value;
@@ -541,7 +568,7 @@ class objNetSocket : public Object {
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

@@ -114,9 +114,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
+      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, objNetClient * Client)</prototype>
       <input>
-        <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
+        <param type="objNetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
 <p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued for each socket connection.</p>
@@ -137,6 +137,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </input>
       <description>
 <p>This method will disconnect a socket connection for a given client.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued.</p>
+<p>NOTE: To terminate the connection of a socket acting as the client, either free the object or return/raise <code>ERR::Terminate</code> during <fl>Incoming</fl> feedback.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -197,16 +198,19 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>ClientLimit</name>
-      <comment>The maximum number of clients that can be connected to a server socket.</comment>
+      <comment>The maximum number of clients (unique IP addresses) that can be connected to a server socket.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
+      <description>
+<p>The ClientLimit value limits the maximum number of IP addresses that can be connected to the socket at any one time. For socket limits per client, see the <fl>SocketLimit</fl> field.</p>
+      </description>
     </field>
 
     <field>
       <name>Clients</name>
       <comment>For server sockets, lists all clients connected to the server.</comment>
       <access read="R">Read</access>
-      <type>struct NetClient *</type>
+      <type class="NetClient">*NetClient</type>
     </field>
 
     <field>
@@ -235,9 +239,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
+<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically a new connection or a disconnect.  This includes activity both from the server and the client side if the <code>ClientSocket</code> value is set on receipt.</p>
 <p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
-<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.</p>
       </description>
     </field>
 
@@ -259,7 +263,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype is <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code>.</p>
 <p>The <code>NetSocket</code> parameter refers to the NetSocket object.  The <code>Context</code> refers to the object that set the <code>Incoming</code> field.</p>
-<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns/raises <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
 
@@ -309,11 +313,19 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>SocketLimit</name>
+      <comment>Limits the number of connected sockets per client IP address.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
+    </field>
+
+    <field>
       <name>State</name>
       <comment>The current connection state of the NetSocket object.</comment>
       <access read="R" write="S">Read/Set</access>
       <type lookup="NTC">NTC</type>
       <description>
+<p>The State reflects the connection state of the NetSocket.  If the <fl>Feedback</fl> field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>
 <types lookup="NTC"/>
       </description>
     </field>
@@ -363,16 +375,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
-    </struct>
-
-    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="INT8" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct NetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
-      <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>
