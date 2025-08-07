@@ -618,7 +618,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
          // Send a callback notification via messaging if required.  The MSGID::THREAD_ACTION receiver is msg_threadaction()
 
          if (Callback.defined() and !stop_token.stop_requested()) {
-            ThreadActionMessage msg = {
+            ThreadActionMessage msg {
                .Object   = obj,
                .ActionID = ActionID,
                .Error    = error,
@@ -626,7 +626,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
             };
             SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
          }
-         
+
          cleanup();
       });
 
@@ -1675,7 +1675,7 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    ScopedObjectAccess objlock(Object);
 
    if (CheckAction(Owner, AC::NewChild) IS ERR::Okay) {
-      struct acNewChild newchild = { .Object = Object };
+      struct acNewChild newchild { .Object = Object };
       if (auto error = Action(AC::NewChild, Owner, &newchild); error != ERR::NoSupport) {
          if (error != ERR::Okay) { // If the owner has passed the object through to another owner, return ERR::Okay, otherwise error.
             if (error IS ERR::OwnerPassThrough) return ERR::Okay;
@@ -1684,7 +1684,7 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
       }
    }
 
-   struct acNewOwner newowner = { .NewOwner = Owner };
+   struct acNewOwner newowner { .NewOwner = Owner };
    Action(AC::NewOwner, Object, &newowner);
 
    //if (Object->Owner) log.trace("SetOwner:","Changing the owner for object %d from %d to %d.", Object->UID, Object->ownerID(), Owner->UID);
@@ -1810,20 +1810,30 @@ LockFailed:
 
 *********************************************************************************************************************/
 
-static const char sn_lookup[256] = {
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '_', '_', '_', '_', '_', '_', '_', '_', 'a',
-   'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w',
-   'x', 'y', '_', '_', '_', '_', '_', '_', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_',
-   '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_', '_'
-};
+static consteval auto make_name_lookup() noexcept {
+   std::array<char, 256> lookup{};
+   // Initialize with underscores
+   std::fill(lookup.begin(), lookup.end(), '_');
+
+   // Set digits
+   for (int i = '0'; i <= '9'; ++i) {
+      lookup[i] = char(i);
+   }
+
+   // Set lowercase letters
+   for (int i = 'a'; i <= 'z'; ++i) {
+      lookup[i] = char(i);
+   }
+
+   // Set uppercase letters (convert to lowercase)
+   for (int i = 'A'; i <= 'Z'; ++i) {
+      lookup[i] = char(i - 'A' + 'a');
+   }
+
+   return lookup;
+}
+
+static constexpr auto sn_lookup = make_name_lookup();
 
 ERR SetName(OBJECTPTR Object, CSTRING NewName)
 {
