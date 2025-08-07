@@ -29,6 +29,15 @@ project(libpng
         VERSION ${PNGLIB_VERSION}
         LANGUAGES C ASM)
 
+# Disable install functionality for Parasol integration
+# Parasol uses libpng as a private dependency, no need for exports
+set(SKIP_INSTALL_ALL ON)
+
+# Disable building tests and tools for Parasol integration
+# Only the core libpng library is needed
+set(PNG_TESTS OFF)
+set(PNG_TOOLS OFF)
+
 include(CheckCSourceCompiles)
 include(CheckLibraryExists)
 include(GNUInstallDirs)
@@ -137,9 +146,22 @@ if(PNG_BUILD_ZLIB)
   endif()
 endif()
 
-# Find the zlib library.
-find_package(ZLIB REQUIRED)
-set(PNG_LINK_LIBRARIES ZLIB::ZLIB)
+# Use Parasol's built-in zlib instead of find_package
+# The zlib target is provided by Parasol's 3rdparty/zlib-1.2.11
+set(PNG_LINK_LIBRARIES zlib)
+
+# Add zlib include directories for libpng to find zlib.h and zconf.h
+# These paths match ZLIB_HEADERS set in 3rdparty/zlib-1.2.11/CMakeLists.txt
+get_target_property(ZLIB_BINARY_DIR zlib BINARY_DIR)
+get_target_property(ZLIB_SOURCE_DIR zlib SOURCE_DIR)
+if(NOT ZLIB_BINARY_DIR)
+  # Fallback to computed paths if target properties aren't available
+  set(ZLIB_BINARY_DIR "${PROJECT_BINARY_DIR}/../../../3rdparty/zlib-1.2.11")
+  set(ZLIB_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../../../3rdparty/zlib-1.2.11")
+endif()
+
+# Set ZLIB_INCLUDE_DIRS for libpng's genout.cmake template
+set(ZLIB_INCLUDE_DIRS "${ZLIB_BINARY_DIR};${ZLIB_SOURCE_DIR}")
 
 # Find the math library (unless we already know it's not available or
 # not needed).
@@ -758,6 +780,12 @@ if(NOT PNG_LIBRARY_TARGETS)
                      "Please enable at least one of the following options: "
                      "PNG_SHARED, PNG_STATIC, PNG_FRAMEWORK")
 endif()
+
+# Add zlib include directories to all PNG library targets
+# This allows libpng to find zlib.h and zconf.h from Parasol's zlib
+foreach(target ${PNG_LIBRARY_TARGETS})
+  target_include_directories(${target} PRIVATE ${ZLIB_BINARY_DIR} ${ZLIB_SOURCE_DIR})
+endforeach()
 
 if(PNG_TESTS AND PNG_SHARED)
   enable_testing()
