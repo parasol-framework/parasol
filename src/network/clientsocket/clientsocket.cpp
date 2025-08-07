@@ -16,46 +16,45 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 // Data is being received from a client.
 
-static void server_incoming_from_client(HOSTHANDLE Handle, APTR Data)
+static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *client)
 {
    pf::Log log(__FUNCTION__);
-   auto ClientSocket = (extClientSocket *)Data;
-   if (!ClientSocket->Client) return;
-   auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
+   if (!client->Client) return;
+   auto Socket = (extNetSocket *)(client->Client->NetSocket);
 
-   if (ClientSocket->Handle IS NOHANDLE) {
+   if (client->Handle IS NOHANDLE) {
       log.warning("Invalid state - socket closed but receiving data.");
       return;
    }
 
    Socket->InUse++;
-   ClientSocket->ReadCalled = false;
+   client->ReadCalled = false;
 
-   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Socket->UID, ClientSocket->UID);
+   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Socket->UID, client->UID);
 
    ERR error = ERR::Okay;
    if (Socket->Incoming.defined()) {
       if (Socket->Incoming.isC()) {
          pf::SwitchContext context(Socket->Incoming.Context);
          auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.Routine;
-         error = routine(Socket, ClientSocket, Socket->Incoming.Meta);
+         error = routine(Socket, client, Socket->Incoming.Meta);
       }
       else if (Socket->Incoming.isScript()) {
          if (sc::Call(Socket->Incoming, std::to_array<ScriptArg>({
                { "NetSocket",    Socket, FD_OBJECTPTR },
-               { "ClientSocket", ClientSocket, FD_OBJECTPTR }
+               { "ClientSocket", client, FD_OBJECTPTR }
             }), error) != ERR::Okay) error = ERR::Terminate;
-         if (error IS ERR::Exception) error = ERR::Terminate;
+         if (error IS ERR::Exception) error = ERR::Terminate; // assert() and error() are taken seriously
       }
       else error = ERR::InvalidValue;
    }
    else log.traceWarning("No Incoming callback configured.");
 
-   if (ClientSocket->ReadCalled IS false) error = ERR::Terminate;
+   if (client->ReadCalled IS false) error = ERR::Terminate;
    
    if (error IS ERR::Terminate) {
       log.trace("Terminating socket, failed to read incoming data.");
-      free_client_socket(Socket, ClientSocket, true);
+      free_client_socket(Socket, client, true);
    }
 
    Socket->InUse--;
@@ -66,10 +65,9 @@ static void server_incoming_from_client(HOSTHANDLE Handle, APTR Data)
 // no data is being written to the queue, the program will not be able to sleep until the client stops listening
 // to the write queue.
 
-static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
+static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket)
 {
    pf::Log log(__FUNCTION__);
-   auto ClientSocket = (extClientSocket *)Data;
    auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
 
    if (Socket->Terminating) return;

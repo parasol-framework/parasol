@@ -82,7 +82,6 @@ typedef int SOCKET_HANDLE;
     ptr  ClientData                  # Available for client data storage.
     func Outgoing                    # Callback for data being sent over the socket
     func Incoming                    # Callback for data being received from the socket
-    bit(int) ReadCalled              # TRUE if the Read action has been called
   ]])
 
   methods("proxy", "prx", {

@@ -226,8 +226,9 @@ class extClientSocket : public objClientSocket {
    SOCKET_HANDLE Handle;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
-   uint8_t OutgoingRecursion;
-   uint8_t InUse;
+   uint8_t OutgoingRecursion;  // Recursion manager
+   uint8_t InUse;       // Recursion manager
+   bool ReadCalled;     // TRUE if the Read action has been called
 };
 
 class extNetSocket : public objNetSocket {

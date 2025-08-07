@@ -65,10 +65,10 @@ static void client_connect(HOSTHANDLE, APTR);
 
 static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
 static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
-static void server_incoming_from_client(HOSTHANDLE, APTR);
-static void clientsocket_outgoing(HOSTHANDLE, APTR);
+static void server_incoming_from_client(HOSTHANDLE, extClientSocket *);
+static void clientsocket_outgoing(HOSTHANDLE, extClientSocket *);
 static void free_client(extNetSocket *, objNetClient *);
-static void free_client_socket(extNetSocket *, extClientSocket *, BYTE);
+static void free_client_socket(extNetSocket *, extClientSocket *, bool);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
 
@@ -1358,7 +1358,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    pf::Log log(__FUNCTION__);
 
    extNetSocket *Socket;
-   objClientSocket *ClientSocket;
+   extClientSocket *ClientSocket;
 
    if (SocketObject->terminating()) { // Sanity check
       log.warning(ERR::MarkedForDeletion);
@@ -1366,7 +1366,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    }
 
    if (SocketObject->classID() IS CLASSID::CLIENTSOCKET) {
-      ClientSocket = (objClientSocket *)SocketObject;
+      ClientSocket = (extClientSocket *)SocketObject;
       Socket = (extNetSocket *)ClientSocket->Client->NetSocket;
    }
    else {

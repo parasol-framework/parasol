@@ -176,7 +176,6 @@ class objClientSocket : public Object {
    APTR     ClientData;       // Available for client data storage.
    FUNCTION Outgoing;         // Callback for data being sent over the socket
    FUNCTION Incoming;         // Callback for data being received from the socket
-   int      ReadCalled:1;     // TRUE if the Read action has been called
 
    // Action stubs
 

@@ -5,7 +5,7 @@
 static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   UBYTE ip[8];
+   uint8_t ip[8];
    SOCKET_HANDLE clientfd;
 
    log.traceBranch("FD: %d", FD);
@@ -206,14 +206,13 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
    log.trace("Total clients: %d", Self->TotalClients);
 }
 
-/*********************************************************************************************************************
-** Terminates all connections to the client and removes associated resources.
-*/
+//********************************************************************************************************************
+// Terminates all connections to the client and removes associated resources.
 
 static void free_client(extNetSocket *Self, objNetClient *Client)
 {
    pf::Log log(__FUNCTION__);
-   static THREADVAR BYTE recursive = 0;
+   static THREADVAR int8_t recursive = 0;
 
    if (!Client) return;
    if (recursive) return;
@@ -226,7 +225,7 @@ static void free_client(extNetSocket *Self, objNetClient *Client)
 
    while (Client->Connections) {
       objClientSocket *current_socket = Client->Connections;
-      free_client_socket(Self, (extClientSocket *)Client->Connections, TRUE);
+      free_client_socket(Self, (extClientSocket *)Client->Connections, true);
       if (Client->Connections IS current_socket) {
          log.warning("Resource management error detected in Client->Sockets");
          break;
@@ -252,7 +251,7 @@ static void free_client(extNetSocket *Self, objNetClient *Client)
 //********************************************************************************************************************
 // Terminates the connection to the client and removes associated resources.
 
-static void free_client_socket(extNetSocket *ServerSocket, extClientSocket *ClientSocket, BYTE Signal)
+static void free_client_socket(extNetSocket *ServerSocket, extClientSocket *ClientSocket, bool Signal)
 {
    pf::Log log(__FUNCTION__);
 
