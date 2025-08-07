@@ -1367,7 +1367,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
 
    if (SocketObject->classID() IS CLASSID::CLIENTSOCKET) {
       ClientSocket = (extClientSocket *)SocketObject;
-      Socket = (extNetSocket *)ClientSocket->Client->NetSocket;
+      Socket = (extNetSocket *)ClientSocket->Client->Owner;
    }
    else {
       Socket = (extNetSocket *)SocketObject;

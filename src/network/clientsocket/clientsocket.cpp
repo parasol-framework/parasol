@@ -20,7 +20,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
 {
    pf::Log log(__FUNCTION__);
    if (!client->Client) return;
-   auto Socket = (extNetSocket *)(client->Client->NetSocket);
+   auto Socket = (extNetSocket *)(client->Client->Owner);
 
    if (client->Handle IS NOHANDLE) {
       log.warning("Invalid state - socket closed but receiving data.");
@@ -68,7 +68,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
 static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket)
 {
    pf::Log log(__FUNCTION__);
-   auto Socket = (extNetSocket *)(ClientSocket->Client->NetSocket);
+   auto Socket = (extNetSocket *)(ClientSocket->Client->Owner);
 
    if (Socket->Terminating) return;
 
@@ -230,7 +230,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 
          if (!Self->Client->Connections) {
             log.msg("No more connections for this IP, removing client.");
-            free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
+            free_client((extNetSocket *)Self->Client->Owner, Self->Client);
          }
       }
    }
@@ -310,7 +310,7 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
    }
    Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
-   auto error = RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+   auto error = RECEIVE((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
 
    if (error IS ERR::Disconnected) {
       // Detecting a disconnection on read is normal, now handle disconnection gracefully.
@@ -341,13 +341,13 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
    size_t len = Args->Length;
-   ERR error = SEND((extNetSocket *)(Self->Client->NetSocket), Self->Handle, Args->Buffer, &len, 0);
+   ERR error = SEND((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, &len, 0);
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
       if (error != ERR::Okay) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
-         ((extNetSocket *)(Self->Client->NetSocket))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         ((extNetSocket *)(Self->Client->Owner))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32

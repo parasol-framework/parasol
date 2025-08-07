@@ -315,7 +315,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <field>
       <name>SocketLimit</name>
       <comment>Limits the number of connected sockets per client IP address.</comment>
-      <access>-/-</access>
+      <access read="R" write="W">Read/Write</access>
       <type>INT</type>
     </field>
 

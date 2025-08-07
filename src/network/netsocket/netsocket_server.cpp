@@ -148,7 +148,6 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
          return;
       }
 
-      client_ip->NetSocket = Self;
       ((LARGE *)&client_ip->IP)[0] = ((LARGE *)&ip)[0];
       client_ip->TotalConnections = 0;
       Self->TotalClients++;

@@ -106,13 +106,6 @@
       <type class="ClientSocket">*ClientSocket</type>
     </field>
 
-    <field>
-      <name>ReadCalled</name>
-      <comment>TRUE if the Read action has been called</comment>
-      <access>-/-</access>
-      <type>INT</type>
-    </field>
-
   </fields>
   <structs>
   </structs>

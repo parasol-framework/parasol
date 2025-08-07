@@ -137,13 +137,12 @@ class objNetClient : public Object {
 
    using create = pf::Create<objNetClient>;
 
-   char IP[8];                       // IP address in 4/8-byte format
-   objNetClient * Next;              // Next client in the chain
-   objNetClient * Prev;              // Previous client in the chain
-   objNetSocket * NetSocket;         // Reference to the parent socket
-   objClientSocket * Connections;    // Pointer to a list of connections opened by this client.
-   APTR ClientData;                  // Free for user data storage.
-   int  TotalConnections;            // Count of all socket-based connections
+   char IP[8];                       // The IP address of the client.
+   objNetClient * Next;              // The next client IP with connections to the server socket.
+   objNetClient * Prev;              // The previous client IP with connections to the server socket.
+   objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
+   APTR ClientData;                  // A custom pointer available for development use.
+   int  TotalConnections;            // The total number of current socket connections for the IP address.
 
    // Action stubs
 
@@ -550,6 +549,11 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setSocketLimit(const int Value) noexcept {
+      this->SocketLimit = Value;
+      return ERR::Okay;
+   }
+
    inline ERR setMsgLimit(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->MsgLimit = Value;
@@ -564,7 +568,7 @@ class objNetSocket : public Object {
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

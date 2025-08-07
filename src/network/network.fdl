@@ -63,7 +63,6 @@ typedef int SOCKET_HANDLE;
     char(8) IP                     # IP address in 4/8-byte format
     obj(NetClient) Next            # Next client in the chain
     obj(NetClient) Prev            # Previous client in the chain
-    obj(NetSocket) NetSocket       # Reference to the parent socket
     obj(ClientSocket) Connections  # Pointer to a list of connections opened by this client.
     ptr ClientData                 # Free for user data storage.
     int TotalConnections           # Count of all socket-based connections
