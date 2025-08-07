@@ -464,7 +464,44 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
 include(ExternalProject)
 
-add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
+# --------------------------------------------------------------------------------------------------------------------
+# Build zlib as an external project
+
+if (MSVC)
+   set(ZLIB_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/zlibstatic.lib")
+else ()
+   set(ZLIB_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/zlib/lib/libzlibstatic.a")
+endif ()
+
+ExternalProject_Add(zlib-project
+   URL https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
+   URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
+   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+   PREFIX "${CMAKE_CURRENT_BINARY_DIR}/zlib"
+   INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/zlib"
+   BUILD_BYPRODUCTS ${ZLIB_LIB_PATH}
+   CMAKE_ARGS
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+      -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      -DBUILD_SHARED_LIBS=OFF
+   BUILD_ALWAYS FALSE
+)
+
+ExternalProject_Get_Property(zlib-project install_dir)
+set(ZLIB_HEADERS "${install_dir}/include")
+
+# Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
+file(MAKE_DIRECTORY ${ZLIB_HEADERS})
+
+add_library(zlib STATIC IMPORTED)
+
+set_target_properties(zlib PROPERTIES
+   IMPORTED_LOCATION ${ZLIB_LIB_PATH}
+   INTERFACE_INCLUDE_DIRECTORIES ${ZLIB_HEADERS})
+
+add_dependencies(zlib zlib-project)
 
 add_subdirectory (3rdparty/freetype-2.13.2)
 

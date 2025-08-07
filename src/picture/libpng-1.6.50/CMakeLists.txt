@@ -146,22 +146,17 @@ if(PNG_BUILD_ZLIB)
   endif()
 endif()
 
-# Use Parasol's built-in zlib instead of find_package
-# The zlib target is provided by Parasol's 3rdparty/zlib-1.2.11
+# Use Parasol's external zlib project
+# The zlib target is provided by Parasol's ExternalProject_Add
 set(PNG_LINK_LIBRARIES zlib)
 
-# Add zlib include directories for libpng to find zlib.h and zconf.h
-# These paths match ZLIB_HEADERS set in 3rdparty/zlib-1.2.11/CMakeLists.txt
-get_target_property(ZLIB_BINARY_DIR zlib BINARY_DIR)
-get_target_property(ZLIB_SOURCE_DIR zlib SOURCE_DIR)
-if(NOT ZLIB_BINARY_DIR)
-  # Fallback to computed paths if target properties aren't available
-  set(ZLIB_BINARY_DIR "${PROJECT_BINARY_DIR}/../../../3rdparty/zlib-1.2.11")
-  set(ZLIB_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../../../3rdparty/zlib-1.2.11")
+# Get zlib include directories from the external project
+# ZLIB_HEADERS is set in the main CMakeLists.txt
+get_target_property(ZLIB_INCLUDE_DIRS zlib INTERFACE_INCLUDE_DIRECTORIES)
+if(NOT ZLIB_INCLUDE_DIRS)
+  # Fallback to ZLIB_HEADERS variable
+  set(ZLIB_INCLUDE_DIRS "${ZLIB_HEADERS}")
 endif()
-
-# Set ZLIB_INCLUDE_DIRS for libpng's genout.cmake template
-set(ZLIB_INCLUDE_DIRS "${ZLIB_BINARY_DIR};${ZLIB_SOURCE_DIR}")
 
 # Find the math library (unless we already know it's not available or
 # not needed).
@@ -477,6 +472,8 @@ if(NOT PNG_LIBCONF_HEADER STREQUAL "")
                  "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.h"
                  @ONLY)
   add_custom_target(png_genfiles)
+  # Make sure PNG genfiles depends on zlib being available
+#  add_dependencies(png_genfiles zlib-project)
 elseif(NOT AWK)
   # No AWK program available to generate pnglibconf.h.
   # Configure libpng with pnglibconf.h.prebuilt.
@@ -485,6 +482,8 @@ elseif(NOT AWK)
                  "${CMAKE_CURRENT_BINARY_DIR}/pnglibconf.h"
                  @ONLY)
   add_custom_target(png_genfiles)
+  # Make sure PNG genfiles depends on zlib being available
+#  add_dependencies(png_genfiles zlib-project)
 else()
   png_check_libconf(DFA_XTRA "${DFA_XTRA}")
 
@@ -598,6 +597,8 @@ else()
                             "${CMAKE_CURRENT_BINARY_DIR}/scripts/symbols.chk"
                             "${CMAKE_CURRENT_BINARY_DIR}/scripts/symbols.out"
                             "${CMAKE_CURRENT_BINARY_DIR}/scripts/vers.out")
+  # Make sure PNG genfiles depends on zlib being available
+#  add_dependencies(png_genfiles zlib-project)
 endif()
 
 # List the source code files.
@@ -782,9 +783,11 @@ if(NOT PNG_LIBRARY_TARGETS)
 endif()
 
 # Add zlib include directories to all PNG library targets
-# This allows libpng to find zlib.h and zconf.h from Parasol's zlib
+# This allows libpng to find zlib.h and zconf.h from Parasol's external zlib
 foreach(target ${PNG_LIBRARY_TARGETS})
-  target_include_directories(${target} PRIVATE ${ZLIB_BINARY_DIR} ${ZLIB_SOURCE_DIR})
+  target_include_directories(${target} PRIVATE ${ZLIB_INCLUDE_DIRS})
+  # Make sure PNG libraries are built after zlib external project
+#  add_dependencies(${target} zlib-project)
 endforeach()
 
 if(PNG_TESTS AND PNG_SHARED)
