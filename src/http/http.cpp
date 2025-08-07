@@ -378,14 +378,14 @@ static ERR HTTP_Activate(extHTTP *Self)
    Self->CurrentState  = HGS::NIL;
    Self->Status        = HTS::NIL;
    Self->TotalSent     = 0;
-   Self->Tunneling     = FALSE;
+   Self->Tunneling     = false;
    Self->Flags        &= ~(HTF::MOVED|HTF::REDIRECTED);
 
    if ((Self->Socket) and (Self->Socket->State IS NTC::DISCONNECTED)) {
       Self->Socket->set(FID_Feedback, (APTR)nullptr);
       FreeResource(Self->Socket);
       Self->Socket = nullptr;
-      Self->SecurePath = TRUE;
+      Self->SecurePath = true;
    }
 
    Self->Response.clear();
@@ -408,7 +408,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       cmd << "Proxy-Connection: keep-alive" << CRLF;
       cmd << "Connection: keep-alive" << CRLF;
 
-      Self->Tunneling = TRUE;
+      Self->Tunneling = true;
 
       //set auth "Proxy-Authorization: Basic [base64::encode $opts(proxyUser):$opts(proxyPass)]"
    }
@@ -469,7 +469,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       else if ((Self->Method IS HTM::POST) or (Self->Method IS HTM::PUT)) {
          log.trace("POST/PUT request being processed.");
 
-         Self->Chunked = FALSE;
+         Self->Chunked = false;
 
          if (((Self->Flags & HTF::NO_HEAD) IS HTF::NIL) and ((Self->SecurePath) or (Self->CurrentState IS HGS::AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
@@ -542,7 +542,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
                if ((Self->Flags & HTF::RAW) IS HTF::NIL) {
                   cmd << "Transfer-Encoding: chunked" << CRLF;
-                  Self->Chunked = TRUE;
+                  Self->Chunked = true;
                }
             }
 
@@ -727,7 +727,7 @@ static ERR HTTP_Deactivate(extHTTP *Self)
          Self->Socket->set(FID_Feedback, (APTR)nullptr);
          FreeResource(Self->Socket);
          Self->Socket = nullptr;
-         Self->SecurePath = TRUE;
+         Self->SecurePath = true;
       }
    }
 
@@ -1130,7 +1130,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 
    if (Self->InputFile) { FreeResource(Self->InputFile);  Self->InputFile = nullptr; }
 
-   Self->MultipleInput = FALSE;
+   Self->MultipleInput = false;
    Self->InputPos = 0;
    if ((Value) and (*Value)) {
       Self->InputFile = pf::strclone(Value);
@@ -1144,7 +1144,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
             if (!Self->InputFile[i]) break;
          }
          else if (Self->InputFile[i] IS '|') {
-            Self->MultipleInput = TRUE;
+            Self->MultipleInput = true;
             break;
          }
       }
@@ -1368,7 +1368,7 @@ A `401` status code is returned in the event of an authorisation failure.
 static ERR SET_Password(extHTTP *Self, CSTRING Value)
 {
    Self->Password.assign(Value);
-   Self->AuthPreset = TRUE;
+   Self->AuthPreset = true;
    return ERR::Okay;
 }
 
@@ -1462,7 +1462,7 @@ static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
    if ((Value) and (Value[0])) Self->ProxyServer = pf::strclone(Value);
-   Self->ProxyDefined = TRUE;
+   Self->ProxyDefined = true;
    return ERR::Okay;
 }
 

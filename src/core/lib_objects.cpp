@@ -19,6 +19,7 @@ Name: Objects
 #include <stdlib.h>
 #include <chrono>
 #include <thread>
+#include <ranges>
 
 #include "defs.h"
 
@@ -26,40 +27,37 @@ using namespace pf;
 
 //********************************************************************************************************************
 
-void stop_async_actions(void) 
+void stop_async_actions(void)
 {
-   std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);  
+   std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
    if (glAsyncThreads.empty()) return;
-   
+
    pf::Log log(__FUNCTION__);
    log.msg("Stopping %d async action threads...", int(glAsyncThreads.size()));
-   
-   for (auto& thread_ptr : glAsyncThreads) {
+
+   for (auto &thread_ptr : glAsyncThreads) {
       if (thread_ptr and thread_ptr->joinable()) {
          thread_ptr->request_stop();
       }
    }
-   
+
    // Give threads time to respond to stop request
    constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
    auto start_time = std::chrono::steady_clock::now();
-   
+
    while (!glAsyncThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
       // Remove completed threads
-      for (auto it = glAsyncThreads.begin(); it != glAsyncThreads.end();) {
-         if (!(*it) or !(*it)->joinable()) it = glAsyncThreads.erase(it);
-         else ++it;
-      }
-      
+      std::erase_if(glAsyncThreads, [](const auto &ptr) { return !ptr or !ptr->joinable(); });
+
       if (!glAsyncThreads.empty()) {
          std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
    }
-   
+
    if (!glAsyncThreads.empty()) {
       log.warning("%d action threads failed to stop in time.", int(glAsyncThreads.size()));
    }
-   
+
    glAsyncThreads.clear();
 }
 
@@ -256,7 +254,7 @@ static ResourceManager glResourceObject = {
 
 //********************************************************************************************************************
 
-CSTRING action_name(OBJECTPTR Object, ACTIONID ActionID)
+constexpr CSTRING action_name(OBJECTPTR Object, ACTIONID ActionID)
 {
    if (ActionID > AC::NIL) {
       if (ActionID < AC::END) return ActionTable[int(ActionID)].Name;
@@ -581,27 +579,27 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
       std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
 
       auto thread_ptr = std::make_shared<std::jthread>();
-      
+
       *thread_ptr = std::jthread([Object, ActionID, argssize, Parameters = std::move(param_buffer), Callback = *Callback, args, thread_ptr](std::stop_token stop_token) {
          OBJECTPTR obj = Object;
          ERR error;
-         
+
          // Cleanup function to remove thread from tracking
          auto cleanup = [thread_ptr]() {
             std::lock_guard<std::recursive_mutex> lock(glmAsyncActions);
             glAsyncThreads.erase(thread_ptr);
          };
-         
+
          // Check for stop request before proceeding
          if (stop_token.stop_requested()) {
             --obj->ThreadPending;
             cleanup();
             return;
          }
-         
+
          if (error = LockObject(obj, 5000); error IS ERR::Okay) { // Access the object and process the action.
             --obj->ThreadPending;
-            
+
             // Check for stop request before executing action
             if (!stop_token.stop_requested()) {
                error = Action(ActionID, obj, argssize ? (APTR)Parameters.data() : nullptr);
@@ -626,7 +624,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
             };
             SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
          }
-         
+
          cleanup();
       });
 
