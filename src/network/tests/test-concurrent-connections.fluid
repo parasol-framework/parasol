@@ -57,6 +57,7 @@ function testMultipleConnections()
       incoming = function(Socket, Client)
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
+         if (err == ERR_Disconnected) then return end
          assert(err == ERR_Okay, '[Server] Failed to read from client: ' .. mSys.GetErrorMsg(err))
          
          local msg = buffer:sub(1, read_len)

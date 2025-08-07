@@ -171,54 +171,68 @@ static void clientsocket_outgoing(HOSTHANDLE Void, APTR Data)
 }
 
 //********************************************************************************************************************
+// Disconnect a client socket and report it through the NetSocket server.
+
+static void disconnect(extClientSocket *Self)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (Self->Handle) {
+      log.branch("Disconnecting socket handle %d", Self->Handle);
+
+#ifdef __linux__
+      DeregisterFD(Self->Handle);
+#endif
+      CLOSESOCKET_THREADED(Self->Handle);
+      Self->Handle = -1;
+   }
+
+   auto owner = (extNetSocket *)Self->Owner;
+   if ((owner) and (owner->classID() IS CLASSID::NETSOCKET)) {
+      if (owner->Feedback.defined()) {
+         log.traceBranch("Reporting client disconnection to NetSocket %p.", owner);
+
+         if (owner->Feedback.isC()) {
+            pf::SwitchContext context(owner->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))owner->Feedback.Routine;
+            if (routine) routine(owner, Self, NTC::DISCONNECTED, owner->Feedback.Meta);
+         }
+         else if (owner->Feedback.isScript()) {
+            sc::Call(owner->Feedback, std::to_array<ScriptArg>({
+               { "NetSocket",    owner, FD_OBJECTPTR },
+               { "ClientSocket", APTR(Self), FD_OBJECTPTR },
+               { "State",        int(NTC::DISCONNECTED) }
+            }));
+         }
+      }
+   }
+}
+
+//********************************************************************************************************************
 
 static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
    pf::Log log;
 
-   if (Self->Handle) {
-#ifdef __linux__
-      DeregisterFD(Self->Handle);
-#endif
+   disconnect(Self);
 
-      CLOSESOCKET_THREADED(Self->Handle);
-      Self->Handle = -1;
-   }
+   if (Self->Client) { // If undefined, ClientSocket was never initialised
+      pf::ScopedObjectLock lock(Self->Client);
+      if (lock.granted()) {
+         if (Self->Prev) {
+            Self->Prev->Next = Self->Next;
+            if (Self->Next) Self->Next->Prev = Self->Prev;
+         }
+         else {
+            Self->Client->Connections = Self->Next;
+            if (Self->Next) Self->Next->Prev = nullptr;
+         }
 
-   if (Self->Client) { // If undefined, ClientSocket was never initialised correctly
-      if (Self->Prev) {
-         Self->Prev->Next = Self->Next;
-         if (Self->Next) Self->Next->Prev = Self->Prev;
-      }
-      else {
-         Self->Client->Connections = Self->Next;
-         if (Self->Next) Self->Next->Prev = nullptr;
-      }
+         Self->Client->TotalConnections--;
 
-      Self->Client->TotalConnections--;
-
-      if (!Self->Client->Connections) {
-         log.msg("No more connections for this IP, removing client.");
-         free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
-      }
-   
-      auto owner = (extNetSocket *)Self->Owner;
-      if ((owner) and (owner->classID() IS CLASSID::NETSOCKET)) {
-         if (owner->Feedback.defined()) {
-            log.traceBranch("Reporting client disconnection to NetSocket %p.", owner);
-
-            if (owner->Feedback.isC()) {
-               pf::SwitchContext context(owner->Feedback.Context);
-               auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))owner->Feedback.Routine;
-               if (routine) routine(owner, Self, NTC::DISCONNECTED, owner->Feedback.Meta);
-            }
-            else if (owner->Feedback.isScript()) {
-               sc::Call(owner->Feedback, std::to_array<ScriptArg>({
-                  { "NetSocket",    owner, FD_OBJECTPTR },
-                  { "ClientSocket", APTR(Self), FD_OBJECTPTR },
-                  { "State",        int(NTC::DISCONNECTED) }
-               }));
-            }
+         if (!Self->Client->Connections) {
+            log.msg("No more connections for this IP, removing client.");
+            free_client((extNetSocket *)Self->Client->NetSocket, Self->Client);
          }
       }
    }
@@ -233,6 +247,9 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
    pf::Log log;
    if (!Self->Client) return log.warning(ERR::FieldNotSet);
+
+   pf::ScopedObjectLock lock(Self->Client);
+   if (!lock.granted()) return ERR::Lock;
 
 #ifdef __linux__
    int non_blocking = 1;
@@ -288,10 +305,21 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 {
    pf::Log log;
    if ((!Args) or (!Args->Buffer)) return log.error(ERR::NullArgs);
-   if (Self->Handle IS NOHANDLE) return log.error(ERR::Disconnected);
+   if (Self->Handle IS NOHANDLE) {
+      // Lack of a handle means that disconnection has already been processed, so the client code
+      // shouldn't be calling us (client probably needs to be plugged into the feedback mechanisms)
+      return log.warning(ERR::Disconnected);
+   }
    Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
-   return RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+   auto error = RECEIVE((extNetSocket *)(Self->Client->NetSocket), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+
+   if (error IS ERR::Disconnected) {
+      // Detecting a disconnection on read is normal, now handle disconnection gracefully.
+      log.msg("Client disconnection detected.");
+      disconnect(Self);
+   }
+   return error;
 }
 
 /*********************************************************************************************************************

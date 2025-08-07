@@ -915,7 +915,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
       }
       else {
          log.warning("recv() failed: %s", strerror(errno));
-         return ERR::Failed;
+         return ERR::SystemCall;
       }
    }
 #elif _WIN32
