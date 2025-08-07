@@ -462,9 +462,54 @@ add_library(base64 OBJECT src/link/base64.cpp)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
+include(ExternalProject)
+
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
 add_subdirectory (3rdparty/freetype-2.13.2)
+
+# --------------------------------------------------------------------------------------------------------------------
+# Build libjpeg-turbo as an external project
+
+if (MSVC)
+   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/jpeg-static.lib")
+else ()
+   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
+endif ()
+
+ExternalProject_Add(libjpeg-turbo-project
+   URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
+   URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
+   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+   PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+   INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+   BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
+   CMAKE_ARGS
+      -DENABLE_SHARED=OFF
+      -DENABLE_STATIC=ON
+      -DWITH_TURBOJPEG=ON
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+      -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+   BUILD_ALWAYS FALSE
+)
+
+ExternalProject_Get_Property(libjpeg-turbo-project install_dir)
+set(LIBJPEG_TURBO_INCLUDE_DIRS "${install_dir}/include")
+
+# Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
+file(MAKE_DIRECTORY ${LIBJPEG_TURBO_INCLUDE_DIRS})
+
+add_library(libjpeg-turbo STATIC IMPORTED)
+
+set_target_properties(libjpeg-turbo PROPERTIES
+   IMPORTED_LOCATION ${LIBJPEG_TURBO_LIB_PATH}
+   INTERFACE_INCLUDE_DIRECTORIES ${LIBJPEG_TURBO_INCLUDE_DIRS})
+
+add_dependencies(libjpeg-turbo libjpeg-turbo-project)
+
+# --------------------------------------------------------------------------------------------------------------------
 
 if (NOT DISABLE_AUDIO)
    add_subdirectory (src/audio)
