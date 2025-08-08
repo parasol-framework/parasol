@@ -2664,6 +2664,23 @@ struct Object { // Must be 64-bit aligned
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
 
+   // NB: This constructor is called by NewObject(), no need to call it manually from client code.
+
+   Object() : NotifyFlags(0), ThreadPending(0), Queue(0), SleepQueue(0), ThreadID(0) {
+      Class = nullptr;
+      ChildPrivate = nullptr;
+      CreatorMeta = nullptr;
+      Owner = nullptr;
+      NotifyFlags = 0;
+      ThreadPending = 0;
+      Queue = 0;
+      SleepQueue = 0;
+      ActionDepth = 0;
+      UID = 0;
+      Flags = NF::NIL;
+      Name[0] = '\0';
+   }
+
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass();

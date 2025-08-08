@@ -1084,10 +1084,9 @@ static ERR OBJECT_SetOwner(OBJECTPTR Self, OBJECTID OwnerID)
    pf::Log log;
 
    if (OwnerID) {
-      OBJECTPTR newowner;
-      if (AccessObject(OwnerID, 2000, &newowner) IS ERR::Okay) {
-         SetOwner(Self, newowner);
-         ReleaseObject(newowner);
+      ScopedObjectLock new_owner(OwnerID);
+      if (new_owner.granted()) {
+         SetOwner(Self, *new_owner);
          return ERR::Okay;
       }
       else return log.warning(ERR::ExclusiveDenied);

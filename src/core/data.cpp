@@ -197,12 +197,8 @@ THREADVAR int16_t tlPreventSleep = 0;
 THREADVAR int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
 THREADVAR int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 
-struct Object glDummyObject = {
-   .Class = nullptr, .ChildPrivate = nullptr, .CreatorMeta = nullptr, .Owner = nullptr, .NotifyFlags = 0,
-   .ThreadPending = 0, .Queue = 0, .SleepQueue = 0, .ActionDepth = 0,
-   .UID = 0, .Flags = NF::NIL, .ThreadID = 0, .Name = ""
-};
-class extObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
+Object glDummyObject;
+extObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
 THREADVAR extObjectContext *tlContext = &glTopContext;
 
 objTime *glTime = nullptr;
