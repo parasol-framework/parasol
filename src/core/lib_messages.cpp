@@ -846,7 +846,9 @@ ERR sleep_task(int Timeout)
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
       size_t pos = 0;
-      for (const auto & [ id, mem ] : glPrivateMemory) {
+      for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+         auto& mem = glMemoryTracker.entries[i];
+         if (!mem.in_use) continue;
          if (mem.AccessCount > 0) {
             pos += snprintf(buffer+pos, sizeof(buffer)-pos, "%d.%d ", mem.MemoryID, mem.AccessCount);
             if (pos >= sizeof(buffer)-1) break;
@@ -1015,7 +1017,9 @@ ERR sleep_task(int Timeout, BYTE SystemOnly)
    else if (tlPrivateLockCount != 0) {
       char buffer[120];
       size_t pos = 0;
-      for (const auto & [ id, mem ] : glPrivateMemory) {
+      for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+         auto& mem = glMemoryTracker.entries[i];
+         if (!mem.in_use) continue;
          if (mem.AccessCount > 0) {
             pos += snprintf(buffer+pos, sizeof(buffer)-pos, "#%d +%d ", mem.MemoryID, mem.AccessCount);
             if (pos >= sizeof(buffer)-1) break;

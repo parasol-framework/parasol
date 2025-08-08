@@ -59,9 +59,11 @@ static void remove_object_locks(void)
    pf::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      for (const auto & [ id, mem ] : glPrivateMemory) {
+      for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+         auto& mem = glMemoryTracker.entries[i];
+         if (!mem.in_use) continue;
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.AccessCount > 0)) {
-            if (auto obj = mem.Object) {
+            if (auto obj = reinterpret_cast<OBJECTPTR>(mem.Address)) {
                log.warning("Removing locks on object #%d, Owner: %d, Locks: %d", obj->UID, obj->Owner ? obj->Owner->UID : 0, mem.AccessCount);
                for (auto count=mem.AccessCount; count > 0; count--) ReleaseObject(obj);
             }
@@ -239,7 +241,9 @@ void CloseCore(void)
       log.msg("Removing all resource locks.");
 
       if (auto lock = std::unique_lock{glmMemory}) {
-         for (auto & [ id, mem ] : glPrivateMemory) {
+         for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+            auto& mem = glMemoryTracker.entries[i];
+            if (!mem.in_use) continue;
             if ((mem.Address) and (mem.AccessCount > 0)) {
                if (!glCrashStatus) log.msg("Removing %d locks on private memory block #%d, size %d.", mem.AccessCount, mem.MemoryID, mem.Size);
                mem.AccessCount = 0;
@@ -322,10 +326,10 @@ __export void Expunge(int16_t Force)
 
             bool class_in_use = false;
             for (const auto & id : glObjectChildren[mod_master->UID]) {
-               auto mem = glPrivateMemory.find(id);
-               if (mem IS glPrivateMemory.end()) continue;
+               uint32_t idx = glMemoryTracker.find_by_id(id);
+               if (idx IS UINT32_MAX) continue;
 
-               auto mc = (extMetaClass *)mem->second.Address;
+               auto mc = (extMetaClass *)glMemoryTracker.entries[idx].Address;
                if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                   log.msg("Module %s manages a class that is in use - Class: %s, Count: %d.", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
                   class_in_use = true;
@@ -383,10 +387,10 @@ __export void Expunge(int16_t Force)
                // out if the module code is in use.
 
                for (const auto & id : glObjectChildren[mod_master->UID]) {
-                  auto mem = glPrivateMemory.find(id);
-                  if (mem IS glPrivateMemory.end()) continue;
+                  uint32_t idx = glMemoryTracker.find_by_id(id);
+                  if (idx IS UINT32_MAX) continue;
 
-                  auto mc = (extMetaClass *)mem->second.Address;
+                  auto mc = (extMetaClass *)glMemoryTracker.entries[idx].Address;
                   if ((mc) and (mc->classID() IS CLASSID::METACLASS) and (mc->OpenCount > 0)) {
                      log.warning("Warning: The %s module holds a class with existing objects (Class: %s, Objects: %d)", mod_master->Name.c_str(), mc->ClassName, mc->OpenCount);
                   }
@@ -430,30 +434,31 @@ static void free_private_memory(void)
 
    if (auto lock = std::unique_lock{glmMemory}) {
       // Free strings first
-
-      for (auto & [ id, mem ] : glPrivateMemory) {
+      for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+         auto& mem = glMemoryTracker.entries[i];
+         if (!mem.in_use) continue;
          if ((mem.Address) and ((mem.Flags & MEM::STRING) != MEM::NIL)) {
             if (!glCrashStatus) log.warning("Unfreed string \"%.80s\" (%p, #%d)", (CSTRING)mem.Address, mem.Address, mem.MemoryID);
             mem.AccessCount = 0;
-            FreeResource(mem.Address);
-            mem.Address = nullptr;
+            FreeResource(mem.MemoryID);
             count++;
          }
       }
 
       // Free all other memory blocks
-
-      for (auto & [ id, mem ] : glPrivateMemory) {
+      for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+         auto& mem = glMemoryTracker.entries[i];
+         if (!mem.in_use) continue;
          if (mem.Address) {
             if (!glCrashStatus) {
                if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-                  log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, uint32_t(mem.Object->classID()), mem.OwnerID);
+                  auto obj = reinterpret_cast<OBJECTPTR>(mem.Address);
+                  log.warning("Unfreed object #%d, Size %d, Class: $%.8x, Container: #%d.", mem.MemoryID, mem.Size, uint32_t(obj->classID()), mem.OwnerID);
                }
                else log.warning("Unfreed memory #%d/%p, Size %d, Container: #%d, Locks: %d, ThreadLock: %d.", mem.MemoryID, mem.Address, mem.Size, mem.OwnerID, mem.AccessCount, int(mem.ThreadLockID));
             }
             mem.AccessCount = 0;
-            FreeResource(mem.Address);
-            mem.Address = nullptr;
+            FreeResource(mem.MemoryID);
             count++;
          }
       }

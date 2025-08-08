@@ -63,8 +63,8 @@ bool glDebugMemory   = false;
 bool glEnableCrashHandler = true;
 struct CoreBase *LocalCoreBase = nullptr;
 
-// NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
-std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
+// Optimized memory tracking system - replaces the old hash map approach
+MemoryTracker glMemoryTracker;
 
 std::unordered_set<std::shared_ptr<std::jthread>> glAsyncThreads;
 

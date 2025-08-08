@@ -736,7 +736,9 @@ static ERR GET_Objects(extMetaClass *Self, OBJECTID **Array, LONG *Elements)
    std::list<OBJECTID> objlist;
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      for (const auto & [ id, mem ] : glPrivateMemory) {
+      for (uint32_t i = 0; i < glMemoryTracker.MAX_MEMORY_BLOCKS; ++i) {
+         auto& mem = glMemoryTracker.entries[i];
+         if (!mem.in_use) continue;
          OBJECTPTR object;
          if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (object = (OBJECTPTR)mem.Address)) {
             if (Self->classID() IS object->classID()) {

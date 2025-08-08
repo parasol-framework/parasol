@@ -213,30 +213,92 @@ struct CaseInsensitiveMap {
 };
 
 //********************************************************************************************************************
-// Private memory management structures.
+// Optimized memory management structures.
 
-class PrivateAddress {
-public:
-   union {
+// Simplified memory tracking using unsorted flat array - much more reliable
+struct MemoryTracker {
+   static constexpr size_t MAX_MEMORY_BLOCKS = 65536; // 64K blocks max
+   
+   // Simple memory entry structure
+   struct alignas(32) MemoryEntry {
       APTR      Address;
-      OBJECTPTR Object;
+      MEMORYID  MemoryID;
+      OBJECTID  OwnerID; 
+      uint32_t  Size;
+      MEM       Flags;
+      THREADID  ThreadLockID;
+      int16_t   AccessCount;
+      bool      in_use;      // Simple flag to track if slot is used
    };
-   MEMORYID MemoryID;   // Unique identifier
-   OBJECTID OwnerID;    // The object that allocated this block.
-   uint32_t Size;       // 4GB max
-   THREADID ThreadLockID = THREADID(0);
-   MEM      Flags;
-   int16_t  AccessCount = 0; // Total number of locks
-
-   PrivateAddress(APTR aAddress, MEMORYID aMemoryID, OBJECTID aOwnerID, uint32_t aSize, MEM aFlags) :
-      Address(aAddress), MemoryID(aMemoryID), OwnerID(aOwnerID), Size(aSize), Flags(aFlags) { };
-
-   void clear() {
-      Address  = 0;
-      MemoryID = 0;
-      OwnerID  = 0;
-      Flags    = MEM::NIL;
-      ThreadLockID = THREADID(0);
+   
+   MemoryEntry entries[MAX_MEMORY_BLOCKS];
+   uint32_t entry_count = 0;
+   uint32_t next_free_hint = 0; // Hint for finding free slots faster
+   
+   MemoryTracker() {
+      // Initialize all entries as unused
+      for (uint32_t i = 0; i < MAX_MEMORY_BLOCKS; ++i) {
+         entries[i].in_use = false;
+      }
+   }
+   
+   // Linear search for memory ID - O(n) but simple and reliable
+   uint32_t find_by_id(MEMORYID id) const {
+      for (uint32_t i = 0; i < MAX_MEMORY_BLOCKS; ++i) {
+         if (entries[i].in_use and entries[i].MemoryID IS id) {
+            return i;
+         }
+      }
+      return UINT32_MAX;
+   }
+   
+   // Linear search for address - O(n) but simple and reliable
+   uint32_t find_by_address(APTR addr) const {
+      for (uint32_t i = 0; i < MAX_MEMORY_BLOCKS; ++i) {
+         if (entries[i].in_use and entries[i].Address IS addr) {
+            return i;
+         }
+      }
+      return UINT32_MAX;
+   }
+   
+   // Add new memory entry - find first free slot
+   uint32_t add_entry(APTR addr, MEMORYID id, OBJECTID owner, uint32_t size, MEM flags) {
+      // Start searching from hint position for better performance
+      for (uint32_t i = 0; i < MAX_MEMORY_BLOCKS; ++i) {
+         uint32_t idx = (next_free_hint + i) % MAX_MEMORY_BLOCKS;
+         if (!entries[idx].in_use) {
+            // Initialize new entry
+            auto& entry = entries[idx];
+            entry.Address = addr;
+            entry.MemoryID = id;
+            entry.OwnerID = owner;
+            entry.Size = size;
+            entry.Flags = flags;
+            entry.ThreadLockID = THREADID(0);
+            entry.AccessCount = 0;
+            entry.in_use = true;
+            
+            entry_count++;
+            next_free_hint = (idx + 1) % MAX_MEMORY_BLOCKS; // Update hint
+            return idx;
+         }
+      }
+      return UINT32_MAX; // No free slots
+   }
+   
+   // Remove entry by index
+   bool remove_entry(uint32_t idx) {
+      if (idx >= MAX_MEMORY_BLOCKS or !entries[idx].in_use) return false;
+      
+      // Simply mark as unused
+      entries[idx].in_use = false;
+      entry_count--;
+      
+      // Update free hint if this slot is before current hint
+      if (idx < next_free_hint) next_free_hint = idx;
+      
+      return true;
    }
 };
 
@@ -678,7 +740,7 @@ extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
 extern std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
 extern std::unordered_map<std::string, struct ModHeader *> glStaticModules;
-extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
+extern MemoryTracker glMemoryTracker;                                   // Optimized memory tracking system
 extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
 extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
 extern std::unordered_map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.

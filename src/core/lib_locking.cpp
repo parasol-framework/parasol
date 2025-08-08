@@ -227,15 +227,18 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
 
    *Result = nullptr;
    if (auto lock = std::unique_lock{glmMemory}) {
-      auto mem = glPrivateMemory.find(MemoryID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
+      uint32_t idx = glMemoryTracker.find_by_id(MemoryID);
+      if (idx != UINT32_MAX) {
+         auto& mem = glMemoryTracker.entries[idx];
+         if (!mem.Address) return ERR::MemoryDoesNotExist;
+         
          auto our_thread = get_thread_id();
 
          // This loop condition verifies that the block is available and protects against recursion.
          // wait_for() is awoken with a global wake-up, not necessarily on the desired block, hence the need for while().
 
          LARGE end_time = 0;
-         while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
+         while ((mem.AccessCount > 0) and (mem.ThreadLockID != our_thread)) {
             auto current_time = PreciseTime();
             if (!end_time) end_time = (current_time / 1000LL) + MilliSeconds;
             auto timeout = end_time - (current_time / 1000LL);
@@ -248,11 +251,11 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
             }
          }
 
-         mem->second.ThreadLockID = our_thread;
-         mem->second.AccessCount++;
+         mem.ThreadLockID = our_thread;
+         mem.AccessCount++;
          tlPrivateLockCount++;
 
-         *Result = mem->second.Address;
+         *Result = mem.Address;
          return ERR::Okay;
       }
       else log.traceWarning("Cannot find memory ID #%d", MemoryID); // This is not uncommon, so trace only
@@ -316,13 +319,16 @@ ERR AccessObject(OBJECTID ObjectID, int MilliSeconds, OBJECTPTR *Result)
    if (MilliSeconds <= 0) log.warning(ERR::Args); // Warn but do not fail
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      auto mem = glPrivateMemory.find(ObjectID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
-         if (auto error = LockObject((OBJECTPTR)mem->second.Address, MilliSeconds); error IS ERR::Okay) {
-            *Result = (OBJECTPTR)mem->second.Address;
-            return ERR::Okay;
+      uint32_t idx = glMemoryTracker.find_by_id(ObjectID);
+      if (idx != UINT32_MAX) {
+         auto& mem = glMemoryTracker.entries[idx];
+         if (mem.Address) {
+            if (auto error = LockObject((OBJECTPTR)mem.Address, MilliSeconds); error IS ERR::Okay) {
+               *Result = (OBJECTPTR)mem.Address;
+               return ERR::Okay;
+            }
+            else return error;
          }
-         else return error;
       }
       else if (ObjectID IS glMetaClass.UID) { // Access to the MetaClass requires this special case handler.
          if (auto error = LockObject(&glMetaClass, MilliSeconds); error IS ERR::Okay) {
@@ -334,6 +340,8 @@ ERR AccessObject(OBJECTID ObjectID, int MilliSeconds, OBJECTPTR *Result)
       else return ERR::NoMatchingObject;
    }
    else return log.warning(ERR::SystemLocked);
+   
+   return ERR::Failed; // Should never reach here
 }
 
 /*********************************************************************************************************************
@@ -486,30 +494,32 @@ ERR ReleaseMemory(MEMORYID MemoryID)
    if (!MemoryID) return log.warning(ERR::NullArgs);
 
    std::lock_guard lock(glmMemory);
-   auto mem = glPrivateMemory.find(MemoryID);
+   uint32_t idx = glMemoryTracker.find_by_id(MemoryID);
 
-   if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) { // Sanity check; this should never happen
+   if (idx IS UINT32_MAX) { // Sanity check; this should never happen
       if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
       else log.warning("Unable to find a record for memory #%d.", MemoryID);
       return ERR::Search;
    }
 
+   auto& mem = glMemoryTracker.entries[idx];
+   
    int16_t access;
-   if (mem->second.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
-      access = --mem->second.AccessCount;
+   if (mem.AccessCount > 0) { // Sometimes ReleaseMemory() is called on addresses that aren't actually locked.  This is OK - we simply don't do anything in that case.
+      access = --mem.AccessCount;
       tlPrivateLockCount--;
    }
    else access = -1;
 
    if (!access) {
-      mem->second.ThreadLockID = THREADID(0);
+      mem.ThreadLockID = THREADID(0);
 
-      if ((mem->second.Flags & MEM::COLLECT) != MEM::NIL) {
+      if ((mem.Flags & MEM::COLLECT) != MEM::NIL) {
          log.trace("Collecting memory block #%d", MemoryID);
-         FreeResource(mem->second.Address);
+         FreeResource(MemoryID);
       }
-      else if ((mem->second.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
-         mem->second.Flags &= ~MEM::EXCLUSIVE;
+      else if ((mem.Flags & MEM::EXCLUSIVE) != MEM::NIL) {
+         mem.Flags &= ~MEM::EXCLUSIVE;
       }
 
       cvResources.notify_all(); // Wake up any threads sleeping on this memory block.

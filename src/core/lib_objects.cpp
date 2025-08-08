@@ -278,22 +278,24 @@ static void free_children(OBJECTPTR Object)
          const auto children = glObjectChildren[Object->UID]; // Take an immutable copy of the resource list
 
          for (const auto id : children) {
-            auto it = glPrivateMemory.find(id);
-            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
-            auto &mem = it->second;
+            uint32_t idx = glMemoryTracker.find_by_id(id);
+            if (idx IS UINT32_MAX) continue;
+            auto &mem = glMemoryTracker.entries[idx];
+            if (!mem.Address) continue;
 
-            if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Object)) continue;
+            auto obj = reinterpret_cast<OBJECTPTR>(mem.Address);
+            if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!obj)) continue;
 
-            if ((mem.Object->Owner) and (mem.Object->Owner != Object)) {
-               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", mem.Object->UID, mem.Object->ownerID(), Object->UID);
+            if ((obj->Owner) and (obj->Owner != Object)) {
+               log.warning("Failed sanity test: Child object #%d has owner ID of #%d that does not match #%d.", obj->UID, obj->ownerID(), Object->UID);
                continue;
             }
 
-            if (!mem.Object->defined(NF::FREE_ON_UNLOCK)) {
-               if (mem.Object->defined(NF::LOCAL)) {
-                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", mem.Object->UID, ResolveClassID(mem.Object->classID()), Object->className(), Object->UID);
+            if (!obj->defined(NF::FREE_ON_UNLOCK)) {
+               if (obj->defined(NF::LOCAL)) {
+                  log.warning("Found unfreed child object #%d (class %s) belonging to %s object #%d.", obj->UID, ResolveClassID(obj->classID()), Object->className(), Object->UID);
                }
-               FreeResource(mem.Object);
+               FreeResource(obj);
             }
          }
       }
@@ -302,9 +304,10 @@ static void free_children(OBJECTPTR Object)
          const auto list = glObjectMemory[Object->UID]; // Take an immutable copy of the resource list
 
          for (const auto id : list) {
-            auto it = glPrivateMemory.find(id);
-            if ((it IS glPrivateMemory.end()) or (!it->second.Address)) continue;
-            auto &mem = it->second;
+            uint32_t idx = glMemoryTracker.find_by_id(id);
+            if (idx IS UINT32_MAX) continue;
+            auto &mem = glMemoryTracker.entries[idx];
+            if (!mem.Address) continue;
 
             if (((mem.Flags & MEM::COLLECT) != MEM::NIL) or (!mem.Address)) continue;
 
@@ -732,8 +735,10 @@ ERR CheckObjectExists(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
       ERR result = ERR::False;
-      if (auto mem = glPrivateMemory.find(ObjectID); (mem != glPrivateMemory.end()) and (mem->second.Object)) {
-         if (mem->second.Object->defined(NF::FREE_ON_UNLOCK));
+      uint32_t idx = glMemoryTracker.find_by_id(ObjectID);
+      if (idx != UINT32_MAX) {
+         auto obj = reinterpret_cast<OBJECTPTR>(glMemoryTracker.entries[idx].Address);
+         if (obj and obj->defined(NF::FREE_ON_UNLOCK));
          else result = ERR::True;
       }
       return result;
@@ -1012,10 +1017,13 @@ obj: The address of the object is returned, or `NULL` if the ID does not relate 
 OBJECTPTR GetObjectPtr(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
-      if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
-         if (((mem->second.Flags & MEM::OBJECT) != MEM::NIL) and (mem->second.Object)) {
-            if (mem->second.Object->UID IS ObjectID) {
-               return mem->second.Object;
+      uint32_t idx = glMemoryTracker.find_by_id(ObjectID);
+      if (idx != UINT32_MAX) {
+         auto &mem = glMemoryTracker.entries[idx];
+         if (((mem.Flags & MEM::OBJECT) != MEM::NIL) and (mem.Address)) {
+            auto obj = reinterpret_cast<OBJECTPTR>(mem.Address);
+            if (obj and obj->UID IS ObjectID) {
+               return obj;
             }
          }
       }
@@ -1045,8 +1053,10 @@ oid: Returns the ID of the object's owner.  If the object does not have a owner 
 OBJECTID GetOwnerID(OBJECTID ObjectID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
-      if (auto mem = glPrivateMemory.find(ObjectID); mem != glPrivateMemory.end()) {
-         if (mem->second.Object) return mem->second.Object->ownerID();
+      uint32_t idx = glMemoryTracker.find_by_id(ObjectID);
+      if (idx != UINT32_MAX) {
+         auto obj = reinterpret_cast<OBJECTPTR>(glMemoryTracker.entries[idx].Address);
+         if (obj) return obj->ownerID();
       }
    }
    return 0;
@@ -1241,10 +1251,10 @@ ERR ListChildren(OBJECTID ObjectID, pf::vector<ChildEntry> *List)
 
    if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto id : glObjectChildren[ObjectID]) {
-         auto mem = glPrivateMemory.find(id);
-         if (mem IS glPrivateMemory.end()) continue;
+         uint32_t idx = glMemoryTracker.find_by_id(id);
+         if (idx IS UINT32_MAX) continue;
 
-         if (auto child = mem->second.Object) {
+         if (auto child = reinterpret_cast<OBJECTPTR>(glMemoryTracker.entries[idx].Address)) {
             if (!child->defined(NF::LOCAL)) {
                List->emplace_back(child->UID, child->classID());
             }
@@ -1693,9 +1703,9 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
    // Track the object's memory header to the new owner
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      auto mem = glPrivateMemory.find(Object->UID);
-      if (mem IS glPrivateMemory.end()) return log.warning(ERR::SystemCorrupt);
-      mem->second.OwnerID = Owner->UID;
+      uint32_t idx = glMemoryTracker.find_by_id(Object->UID);
+      if (idx IS UINT32_MAX) return log.warning(ERR::SystemCorrupt);
+      glMemoryTracker.entries[idx].OwnerID = Owner->UID;
 
       // Remove reference from the now previous owner
       if (Object->Owner) glObjectChildren[Object->Owner->UID].erase(Object->UID);

@@ -153,7 +153,18 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
       // with resource tracking, identifying the memory block and freeing it later on.  Hidden blocks are never recorded.
 
       if ((Flags & MEM::HIDDEN) IS MEM::NIL) {
-         glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (uint32_t)Size, Flags)));
+         // Use optimized tracker exclusively
+         if (glMemoryTracker.add_entry(data_start, unique_id, object_id, (uint32_t)Size, Flags) IS UINT32_MAX) {
+            log.warning("Memory tracker full - cannot allocate more memory blocks");
+            #ifdef _WIN32
+               _aligned_free(start_mem);
+            #else
+               free(start_mem);
+            #endif
+            return ERR::ArrayFull;
+         }
+         
+         // Keep legacy object tracking for now
          if ((Flags & MEM::OBJECT) != MEM::NIL) {
             if (object_id) glObjectChildren[object_id].insert(unique_id);
          }
@@ -210,7 +221,8 @@ False: The memory block does not exist or has been freed.
 ERR CheckMemoryExists(MEMORYID MemoryID)
 {
    if (auto lock = std::unique_lock{glmMemory}) {
-      if (glPrivateMemory.contains(MemoryID)) return ERR::True;
+      // Use optimized tracker exclusively
+      if (glMemoryTracker.find_by_id(MemoryID) != UINT32_MAX) return ERR::True;
    }
    return ERR::False;
 }
@@ -253,65 +265,68 @@ ERR FreeResource(MEMORYID MemoryID)
    pf::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      auto it = glPrivateMemory.find(MemoryID);
-      if ((it != glPrivateMemory.end()) and (it->second.Address)) {
-         auto &mem = it->second;
-
-         if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, int(mem.Flags), mem.OwnerID);
+      // First try optimized tracker
+      uint32_t idx = glMemoryTracker.find_by_id(MemoryID);
+      if (idx != UINT32_MAX) {
+         auto &mem_entry = glMemoryTracker.entries[idx];
+         
+         if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", 
+                                      MemoryID, mem_entry.Address, mem_entry.Size, int(mem_entry.Flags), mem_entry.OwnerID);
+         
          ERR error = ERR::Okay;
-         if (mem.AccessCount > 0) {
-            log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem.AccessCount);
-            mem.Flags |= MEM::COLLECT;
+         if (mem_entry.AccessCount > 0) {
+            log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem_entry.AccessCount);
+            mem_entry.Flags |= MEM::COLLECT;
          }
          else {
-            // If the block has a resource manager then call its Free() implementation.
-
-            auto start_mem = (char *)mem.Address - sizeof(int) - sizeof(int);
-            if ((mem.Flags & MEM::MANAGED) != MEM::NIL) {
+            // Handle resource manager
+            auto start_mem = (char *)mem_entry.Address - sizeof(int) - sizeof(int);
+            if ((mem_entry.Flags & MEM::MANAGED) != MEM::NIL) {
                start_mem -= sizeof(ResourceManager *);
-               if (!glCrashStatus) { // Resource managers are not considered safe in an uncontrolled shutdown
+               if (!glCrashStatus) {
                   auto rm = ((ResourceManager **)start_mem)[0];
-                  if (rm->Free((APTR)mem.Address) IS ERR::InUse) {
-                     // Memory block is in use - the manager will be entrusted to handle this situation appropriately.
+                  if (rm->Free((APTR)mem_entry.Address) IS ERR::InUse) {
                      return ERR::Okay;
                   }
                }
             }
-
-            auto mem_end = ((BYTE *)mem.Address) + mem.Size;
-
-            if (((int *)mem.Address)[-1] != CODE_MEMH) {
-               log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
+            
+            // Validate memory boundaries
+            auto mem_end = ((BYTE *)mem_entry.Address) + mem_entry.Size;
+            if (((int *)mem_entry.Address)[-1] != CODE_MEMH) {
+               log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem_entry.Address, mem_entry.Size);
                error = ERR::InvalidData;
             }
-
             if (((int *)mem_end)[0] != CODE_MEMT) {
-               log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
+               log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem_entry.Address, mem_entry.Size);
                error = ERR::InvalidData;
                DEBUG_BREAK
             }
-
+            
+            // Free the memory
             #ifdef _WIN32
                _aligned_free(start_mem);
             #else
                free(start_mem);
             #endif
-
-            if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
-               if (auto it = glObjectChildren.find(mem.OwnerID); it != glObjectChildren.end()) {
+            
+            // Clean up object tracking
+            if ((mem_entry.Flags & MEM::OBJECT) != MEM::NIL) {
+               if (auto it = glObjectChildren.find(mem_entry.OwnerID); it != glObjectChildren.end()) {
                   it->second.erase(MemoryID);
                }
             }
-            else if (auto it = glObjectMemory.find(mem.OwnerID); it != glObjectMemory.end()) {
+            else if (auto it = glObjectMemory.find(mem_entry.OwnerID); it != glObjectMemory.end()) {
                it->second.erase(MemoryID);
             }
-
-            mem.clear();
-            if (glProgramStage != STAGE_SHUTDOWN) glPrivateMemory.erase(MemoryID);
+            
+            // Remove from tracker
+            glMemoryTracker.remove_entry(idx);
          }
-
+         
          return error;
       }
+      
       log.traceWarning("Memory ID #%d does not exist.", MemoryID);
       return ERR::MemoryDoesNotExist;
    }
@@ -360,17 +375,20 @@ ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, int Size)
    clearmem(MemInfo, Size);
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      auto mem = glPrivateMemory.find(MemoryID);
-      if ((mem != glPrivateMemory.end()) and (mem->second.Address)) {
-         MemInfo->Start       = mem->second.Address;
-         MemInfo->ObjectID    = mem->second.OwnerID;
-         MemInfo->Size        = mem->second.Size;
-         MemInfo->AccessCount = mem->second.AccessCount;
-         MemInfo->Flags       = mem->second.Flags;
-         MemInfo->MemoryID    = mem->second.MemoryID;
+      // First try optimized tracker
+      uint32_t idx = glMemoryTracker.find_by_id(MemoryID);
+      if (idx != UINT32_MAX) {
+         auto &entry = glMemoryTracker.entries[idx];
+         MemInfo->Start       = entry.Address;
+         MemInfo->ObjectID    = entry.OwnerID;
+         MemInfo->Size        = entry.Size;
+         MemInfo->AccessCount = entry.AccessCount;
+         MemInfo->Flags       = entry.Flags;
+         MemInfo->MemoryID    = entry.MemoryID;
          return ERR::Okay;
       }
-      else return ERR::MemoryDoesNotExist;
+      
+      return ERR::MemoryDoesNotExist;
    }
    else return log.warning(ERR::SystemLocked);
 }
@@ -418,22 +436,21 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
 
    clearmem(MemInfo, Size);
 
-   // Search private addresses.  This is a bit slow, but if the memory pointer is guaranteed to have
-   // come from AllocMemory() then the optimal solution for the client is to pull the ID from
-   // (int *)Memory)[-2] first and call MemoryIDInfo() instead.
-
+   // Fast O(1) address lookup using optimized hash table
    if (auto lock = std::unique_lock{glmMemory}) {
-      for (const auto & [ id, mem ] : glPrivateMemory) {
-         if (Memory IS mem.Address) {
-            MemInfo->Start       = Memory;
-            MemInfo->ObjectID    = mem.OwnerID;
-            MemInfo->Size        = mem.Size;
-            MemInfo->AccessCount = mem.AccessCount;
-            MemInfo->Flags       = mem.Flags;
-            MemInfo->MemoryID    = mem.MemoryID;
-            return ERR::Okay;
-         }
+      // First try optimized tracker with O(1) address lookup
+      uint32_t idx = glMemoryTracker.find_by_address(Memory);
+      if (idx != UINT32_MAX) {
+         auto &entry = glMemoryTracker.entries[idx];
+         MemInfo->Start       = Memory;
+         MemInfo->ObjectID    = entry.OwnerID;
+         MemInfo->Size        = entry.Size;
+         MemInfo->AccessCount = entry.AccessCount;
+         MemInfo->Flags       = entry.Flags;
+         MemInfo->MemoryID    = entry.MemoryID;
+         return ERR::Okay;
       }
+      
       log.warning("Private memory address %p is not valid.", Memory);
       return ERR::MemoryDoesNotExist;
    }
