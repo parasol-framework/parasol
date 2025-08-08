@@ -106,7 +106,7 @@ LJLIB_CF(math_round)
    }
 
    double result = floor(num * mult + 0.5) / mult;
-   setnumV(L->base-1-LJ_FR2, result); // setnumV(L->top-1, result); ??
+   setnumV(L->top-1, result);
    return 1;
 }
 
