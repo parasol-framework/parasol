@@ -12,6 +12,10 @@ Name: Memory
 
 #include <stdlib.h> // Contains free(), malloc() etc
 
+#ifdef _WIN32
+#include <malloc.h> // For _aligned_malloc, _aligned_free
+#endif
+
 #ifdef __unix__
 #include <errno.h>
 #endif
@@ -26,6 +30,9 @@ Name: Memory
 #define freemem(a)  free(a)
 
 using namespace pf;
+
+// Align to 64-byte cache line boundaries for better performance on modern CPUs
+constexpr size_t CACHE_LINE_SIZE = 64;
 
 /*********************************************************************************************************************
 
@@ -77,7 +84,7 @@ SystemLocked: Memory management system is currently locked by another thread.
 
 *********************************************************************************************************************/
 
-ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
+ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
@@ -101,19 +108,26 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
    else if (glCurrentTask) object_id = glCurrentTask->UID;
 
-   LONG full_size = Size + MEMHEADER;
+   auto full_size = Size + MEMHEADER;
    if ((Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
 
-   APTR start_mem;
-   if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) start_mem = calloc(1, full_size);
-   else start_mem = malloc(full_size);
+   full_size = ((full_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
 
+   APTR start_mem;
+   #ifdef _WIN32
+      start_mem = _aligned_malloc(full_size, CACHE_LINE_SIZE);
+   #else
+      if (posix_memalign(&start_mem, CACHE_LINE_SIZE, full_size) != 0) start_mem = nullptr;
+   #endif
+      
    if (!start_mem) {
-      log.warning("Could not allocate %d bytes.", Size);
+      log.warning("Failed to allocate %d bytes.", Size);
       return ERR::AllocMemory;
    }
 
-   APTR data_start = (char *)start_mem + sizeof(LONG) + sizeof(LONG); // Skip MEMH and unique ID.
+   if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
+
+   APTR data_start = (char *)start_mem + sizeof(int) + sizeof(int); // Skip MEMH and unique ID.
    if ((Flags & MEM::MANAGED) != MEM::NIL) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
 
    if (auto lock = std::unique_lock{glmMemory}) { // To keep threads synced, it is essential that this lock is made early.
@@ -127,19 +141,19 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
          header = (char *)header + sizeof(ResourceManager *);
       }
 
-      ((LONG *)header)[0]  = unique_id;
-      header = (char *)header + sizeof(LONG);
+      ((int *)header)[0]  = unique_id;
+      header = (char *)header + sizeof(int);
 
-      ((LONG *)header)[0]  = CODE_MEMH;
-      header = (char *)header + sizeof(LONG);
+      ((int *)header)[0]  = CODE_MEMH;
+      header = (char *)header + sizeof(int);
 
-      ((LONG *)((char *)start_mem + full_size - 4))[0] = CODE_MEMT;
+      ((int *)((char *)data_start + Size))[0] = CODE_MEMT;
 
       // Remember the memory block's details such as the size, ID, flags and object that it belongs to.  This helps us
       // with resource tracking, identifying the memory block and freeing it later on.  Hidden blocks are never recorded.
 
       if ((Flags & MEM::HIDDEN) IS MEM::NIL) {
-         glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (ULONG)Size, Flags)));
+         glPrivateMemory.insert(std::pair<MEMORYID, PrivateAddress>(unique_id, PrivateAddress(data_start, unique_id, object_id, (uint32_t)Size, Flags)));
          if ((Flags & MEM::OBJECT) != MEM::NIL) {
             if (object_id) glObjectChildren[object_id].insert(unique_id);
          }
@@ -161,11 +175,15 @@ ERR AllocMemory(LONG Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
          if (MemoryID) *MemoryID = unique_id;
       }
 
-      if (glShowPrivate) log.pmsg("AllocMemory(%p/#%d, %d, $%.8x, Owner: #%d)", data_start, unique_id, Size, LONG(Flags), object_id);
+      if (glShowPrivate) log.pmsg("AllocMemory(%p/#%d, %d, $%.8x, Owner: #%d)", data_start, unique_id, Size, int(Flags), object_id);
       return ERR::Okay;
    }
    else {
-      freemem(start_mem);
+      #ifdef _WIN32
+         _aligned_free(start_mem);
+      #else
+         free(start_mem);
+      #endif
       return log.warning(ERR::SystemLocked);
    }
 }
@@ -239,7 +257,7 @@ ERR FreeResource(MEMORYID MemoryID)
       if ((it != glPrivateMemory.end()) and (it->second.Address)) {
          auto &mem = it->second;
 
-         if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, LONG(mem.Flags), mem.OwnerID);
+         if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, int(mem.Flags), mem.OwnerID);
          ERR error = ERR::Okay;
          if (mem.AccessCount > 0) {
             log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem.AccessCount);
@@ -248,7 +266,7 @@ ERR FreeResource(MEMORYID MemoryID)
          else {
             // If the block has a resource manager then call its Free() implementation.
 
-            auto start_mem = (char *)mem.Address - sizeof(LONG) - sizeof(LONG);
+            auto start_mem = (char *)mem.Address - sizeof(int) - sizeof(int);
             if ((mem.Flags & MEM::MANAGED) != MEM::NIL) {
                start_mem -= sizeof(ResourceManager *);
                if (!glCrashStatus) { // Resource managers are not considered safe in an uncontrolled shutdown
@@ -262,18 +280,22 @@ ERR FreeResource(MEMORYID MemoryID)
 
             auto mem_end = ((BYTE *)mem.Address) + mem.Size;
 
-            if (((LONG *)mem.Address)[-1] != CODE_MEMH) {
+            if (((int *)mem.Address)[-1] != CODE_MEMH) {
                log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
                error = ERR::InvalidData;
             }
 
-            if (((LONG *)mem_end)[0] != CODE_MEMT) {
+            if (((int *)mem_end)[0] != CODE_MEMT) {
                log.warning("Bad tail on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);
                error = ERR::InvalidData;
                DEBUG_BREAK
             }
 
-            freemem(start_mem);
+            #ifdef _WIN32
+               _aligned_free(start_mem);
+            #else
+               free(start_mem);
+            #endif
 
             if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
                if (auto it = glObjectChildren.find(mem.OwnerID); it != glObjectChildren.end()) {
@@ -328,7 +350,7 @@ SystemLocked
 
 *********************************************************************************************************************/
 
-ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, LONG Size)
+ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, int Size)
 {
    pf::Log log(__FUNCTION__);
 
@@ -387,7 +409,7 @@ MemoryDoesNotExist
 
 *********************************************************************************************************************/
 
-ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
+ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
 {
    pf::Log log(__FUNCTION__);
 
@@ -398,7 +420,7 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, LONG Size)
 
    // Search private addresses.  This is a bit slow, but if the memory pointer is guaranteed to have
    // come from AllocMemory() then the optimal solution for the client is to pull the ID from
-   // (LONG *)Memory)[-2] first and call MemoryIDInfo() instead.
+   // (int *)Memory)[-2] first and call MemoryIDInfo() instead.
 
    if (auto lock = std::unique_lock{glmMemory}) {
       for (const auto & [ id, mem ] : glPrivateMemory) {
@@ -447,7 +469,7 @@ Memory: The memory block to be re-allocated is invalid.
 
 *********************************************************************************************************************/
 
-ERR ReallocMemory(APTR Address, ULONG NewSize, APTR *Memory, MEMORYID *MemoryID)
+ERR ReallocMemory(APTR Address, uint32_t NewSize, APTR *Memory, MEMORYID *MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
