@@ -680,8 +680,8 @@ extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
 extern std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
 extern ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 extern ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
-extern ankerl::unordered_dense::map<OBJECTID, tsl::ordered_set<MEMORYID>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
-extern ankerl::unordered_dense::map<OBJECTID, tsl::ordered_set<OBJECTID>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
+extern ankerl::unordered_dense::map<OBJECTID, std::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
+extern ankerl::unordered_dense::map<OBJECTID, std::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
 extern ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
 extern ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 extern ankerl::unordered_dense::map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
