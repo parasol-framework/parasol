@@ -20,6 +20,8 @@
 #include <array>
 #include <charconv>
 #include <sstream>
+#include <cmath>
+#include <type_traits>
 #endif
 
 #if defined(_DEBUG)
@@ -28,8 +30,9 @@
  #endif
 #endif
 
-template <class T> concept pcPointer = std::is_pointer_v<T>;
-template <class T> concept pcObject = std::is_base_of_v<Object, T>;
+// For use in requires statements
+template <typename T> concept pcPointer = std::is_pointer_v<T>;
+template <typename T> concept pcObject = std::is_base_of_v<Object, T>;
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
@@ -41,12 +44,12 @@ template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef int64_t type; };
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
 
 #define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
-inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
-inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+constexpr ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE operator ~ (ENUMTYPE a) noexcept { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+constexpr ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) noexcept { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) noexcept { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
 #endif
 class objMetaClass;
 class objStorageDevice;
@@ -1360,8 +1363,8 @@ struct FRGB {
    float Green;  // Green component value
    float Blue;   // Blue component value
    float Alpha;  // Alpha component value
-   FRGB() { };
-   FRGB(float R, float G, float B, float A = 1.0) : Red(R), Green(G), Blue(B), Alpha(A) { };
+   constexpr FRGB() noexcept = default;
+   constexpr FRGB(float R, float G, float B, float A = 1.0) noexcept : Red(R), Green(G), Blue(B), Alpha(A) { };
 };
 
 typedef struct RGB8 {
@@ -1369,6 +1372,9 @@ typedef struct RGB8 {
    uint8_t Green;  // Green component value
    uint8_t Blue;   // Blue component value
    uint8_t Alpha;  // Alpha component value
+   constexpr RGB8() noexcept = default;
+   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept 
+      : Red(r), Green(g), Blue(b), Alpha(a) { }
 } RGB8;
 
 struct RGB16 {
@@ -1411,12 +1417,13 @@ struct ClipRectangle {
    int Top;     // Top coordinate
    int Right;   // Right-most coordinate
    int Bottom;  // Bottom coordinate
-   ClipRectangle() { }
-   ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
-   ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
-   inline int width() const { return Right - Left; }
-   inline int height() const { return Bottom - Top; }
-   inline void translate(int pX, int pY) {
+
+   constexpr ClipRectangle() noexcept = default;
+   constexpr ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
+   constexpr ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
+   [[nodiscard]] constexpr int width() const { return Right - Left; }
+   [[nodiscard]] constexpr int height() const { return Bottom - Top; }
+   constexpr void translate(int pX, int pY) {
       Left   += pX;
       Top    += pY;
       Right  += pX;
@@ -1550,7 +1557,10 @@ template <class T> T roundup(T Num, int Alignment) {
 
 #if defined(__GNUC__) && defined(__x86__)
 
-inline int F2I(double val) {
+constexpr int F2I(double val) noexcept {
+   if (std::is_constant_evaluated()) {
+      return (int)std::round(val);
+   }
    // This will round if the CPU is kept in its default rounding mode
    int ret;
    asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
@@ -1566,7 +1576,7 @@ inline int F2I(double val) {
 
 #endif
 
-inline int F2T(double val) // For numbers no larger than 16 bit, standard (int) is faster than F2T().
+constexpr int F2T(double val) noexcept // For numbers no larger than 16 bit, standard (int) is faster than F2T().
 {
    if ((val > 32767.0) or (val < -32767.0)) return((int)val);
    else {
@@ -1725,13 +1735,14 @@ struct FieldValue {
 
 class FloatRect {
    public:
-   double X;      // Left-most coordinate
-   double Y;      // Top coordinate
-   double Width;  // Right-most coordinate
-   double Height; // Bottom coordinate
-   FloatRect() { }
-   FloatRect(double Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
-   FloatRect(double pX, double pY, double pWidth, double pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
+   double X, Y, Width, Height;
+   constexpr FloatRect() noexcept = default;
+   constexpr FloatRect(double Value) noexcept : X(Value), Y(Value), Width(Value), Height(Value) { }
+   constexpr FloatRect(double pX, double pY, double pWidth, double pHeight) noexcept : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
+   constexpr double left() const noexcept { return X; }
+   constexpr double top() const noexcept { return Y; }
+   constexpr double right() const noexcept { return X + Width; }
+   constexpr double bottom() const noexcept { return Y + Height; }
 };
 
 }
@@ -1851,12 +1862,12 @@ struct SystemState {
 struct Unit {
    double   Value;  // The unit value.
    uint32_t Type;   // Additional type information
-   Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
-   Unit() : Value(0), Type(0) { }
-   Unit(std::string_view String) { read(String); }
-   operator double() const { return Value; }
-   inline void set(const double pValue) { Value = pValue; }
-   inline bool scaled() { return (Type & FD_SCALED) ? true : false; }
+   constexpr Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
+   constexpr Unit() : Value(0), Type(0) { }
+   explicit Unit(std::string_view String) { read(String); }
+   constexpr operator double() const { return Value; }
+   constexpr void set(const double pValue) { Value = pValue; }
+   bool scaled() { return (Type & FD_SCALED) ? true : false; }
    inline void read(std::string_view String) {
       const auto start = String.find_first_not_of(" \n\r\t");
       if (start != std::string::npos) String.remove_prefix(start);

@@ -1062,7 +1062,7 @@ inline static void save_bitmap(std::string Name, uint8_t *Data, int Width, int H
       auto &bmp = pic->Bitmap;
       if (BPP IS 8) {
          for (uint32_t i=0; i < bmp->Palette->AmtColours; i++) {
-            bmp->Palette->Col[i] = { .Red = uint8_t(i), .Green = uint8_t(i), .Blue = uint8_t(i), .Alpha = 255 };
+            bmp->Palette->Col[i] = { uint8_t(i), uint8_t(i), uint8_t(i), 255 };
          }
       }
 
