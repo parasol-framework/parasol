@@ -104,7 +104,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing locked mem
       void release() {
          if (error IS ERR::Okay) {
             ReleaseMemory(ptr);
-            error = ERR::NotLocked;
+            error = ERR::ResourceNotLocked;
          }
       }
 };
@@ -190,7 +190,7 @@ class ScopedObjectLock {
       inline ScopedObjectLock(T *Object, int Milliseconds = 3000) {
          if (!Object) {
             obj = nullptr;
-            error = ERR::NotLocked;
+            error = ERR::ResourceNotLocked;
             quicklock = false;
          }
          else if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
@@ -206,7 +206,7 @@ class ScopedObjectLock {
          }
       }
 
-      inline ScopedObjectLock() { obj = nullptr; error = ERR::NotLocked; }
+      inline ScopedObjectLock() { obj = nullptr; error = ERR::ResourceNotLocked; }
       [[nodiscard]] inline bool granted() { return error == ERR::Okay; }
 
       inline T * operator->() { return obj; }; // Promotes underlying methods and fields
@@ -552,6 +552,7 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
 [[nodiscard]] constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
 [[nodiscard]] constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
+[[nodiscard]] inline    FieldValue Feedback(const FUNCTION &Value) { return FieldValue(FID_Feedback, Value); }
 [[nodiscard]] constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 [[nodiscard]] constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 [[nodiscard]] constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
@@ -559,6 +560,7 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Handle(int Value) { return FieldValue(FID_Handle, Value); }
 [[nodiscard]] constexpr FieldValue Handle(APTR Value) { return FieldValue(FID_Handle, Value); }
 [[nodiscard]] constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
+[[nodiscard]] inline    FieldValue Incoming(const FUNCTION &Value) { return FieldValue(FID_Incoming, Value); }
 [[nodiscard]] constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 [[nodiscard]] constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
 [[nodiscard]] constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }

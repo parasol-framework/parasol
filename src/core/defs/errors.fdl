@@ -84,7 +84,7 @@ function declareErrors()
     "NoMatchingObject",     -- Unable to find object
     "AccessMemory",
     "MissingPath",
-    "NotLocked",           -- Attempted to release a lock that doesn't exist or doesn't belong to the caller
+    "ResourceNotLocked",    -- A lock was expected but not found.
     "NoSearchResult",
     "StatementUnsatisfied",
     "ObjectCorrupt",

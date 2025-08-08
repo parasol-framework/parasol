@@ -77,7 +77,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "No matching object was found for the given object ID.",
  "Access to a shared memory block was denied.",
  "The object is missing a setting in the Path or Location field.",
- "There is no exclusive lock on this object.",
+ "A lock was expected but not found.",
  "The search yielded no results.",
  "The tested statement was not satisfied.",
  "The object structure is corrupt or has not been initialised.",

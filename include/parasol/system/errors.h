@@ -97,7 +97,7 @@ enum class ERR : int32_t {
    NoMatchingObject = 74,
    AccessMemory = 75,
    MissingPath = 76,
-   NotLocked = 77,
+   ResourceNotLocked = 77,
    NoSearchResult = 78,
    StatementUnsatisfied = 79,
    ObjectCorrupt = 80,

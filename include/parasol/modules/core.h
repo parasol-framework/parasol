@@ -2691,6 +2691,10 @@ struct Object { // Must be 64-bit aligned
       else --Queue;
    }
 
+   inline bool locked() {
+      return Queue > 0;
+   }
+
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
       auto obj = this->Owner;
       while ((obj) and (obj->UID != ID)) obj = obj->Owner;
@@ -3332,7 +3336,7 @@ inline ScopedObjectAccess::~ScopedObjectAccess() {
 inline void ScopedObjectAccess::release() {
    if (error IS ERR::Okay) {
       obj->unlock();
-      error = ERR::NotLocked;
+      error = ERR::ResourceNotLocked;
    }
 }
 
