@@ -2,7 +2,7 @@
 
 module({ name="Core", copyright="Paul Manias 1996-2025", timestamp=20241015 }, function()
   c_include("<stdarg.h>", "<inttypes.h>")
-  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>")
+  cpp_include("<list>", "<map>", "<string>", "<vector>", "<unordered_map>", "<bit>", "<atomic>", "<array>", "<charconv>", "<sstream>", "<cmath>", "<type_traits>", "ankerl/unordered_dense.h")
 
   platform("Windows", function()
      enum("NETMSG", {}, "START", "END")
@@ -1037,7 +1037,7 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
     struct(DateTime) Modified     # Date and time last modified.
   ]],
   [[
-    std::unordered_map<std::string, std::string> *Tags;
+    ankerl::unordered_dense::map<std::string, std::string> *Tags;
   ]])
 
   struct("FileInfo", { comment="Metadata for describing a file." }, [[
@@ -1053,7 +1053,7 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
     struct(DateTime) Modified  # The date/time of the last file modification.
   ]],
   [[
-    std::unordered_map<std::string, std::string> *Tags;
+    ankerl::unordered_dense::map<std::string, std::string> *Tags;
   ]]) -- NB: Private fields can follow this structure.
 
   struct("DirInfo", { comment="Used by OpenDir() only" }, [[
@@ -1658,7 +1658,7 @@ struct Object { // Must be 64-bit aligned
       }
       else return ERR::UnsupportedField;
    }
-   
+
    inline ERR set(FIELD FieldID, const FRGB &Value) {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {

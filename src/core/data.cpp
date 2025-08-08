@@ -64,9 +64,9 @@ bool glEnableCrashHandler = true;
 struct CoreBase *LocalCoreBase = nullptr;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
-std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
+ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;
 
-std::unordered_set<std::shared_ptr<std::jthread>> glAsyncThreads;
+ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
@@ -89,13 +89,13 @@ std::timed_mutex glmGeneric;
 std::timed_mutex glmObjectLocking;
 std::timed_mutex glmVolumes;
 
-std::unordered_map<std::string, struct ModHeader *> glStaticModules;
-std::unordered_map<CLASSID, ClassRecord> glClassDB;
-std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
-std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
-std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
-std::unordered_map<uint32_t, std::string> glFields;
+ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
+ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB;
+ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
+ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
+ankerl::unordered_dense::map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
+ankerl::unordered_dense::map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren;
+ankerl::unordered_dense::map<uint32_t, std::string> glFields;
 
 std::unordered_multimap<uint32_t, CLASSID> glWildClassMap;
 
@@ -181,7 +181,7 @@ const struct virtual_drive glFSDefault = {
    fs_createlink
 };
 
-std::unordered_map<uint32_t, virtual_drive> glVirtual;
+ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 #ifdef __unix__
 struct FileMonitor *glFileMonitor = nullptr;

@@ -51,7 +51,7 @@ struct ArchiveDriver {
    std::list<ZipFile>::iterator Index;
 };
 
-static std::unordered_map<ULONG, extCompression *> glArchives;
+static ankerl::unordered_dense::map<ULONG, extCompression *> glArchives;
 
 static ERR close_folder(DirInfo *);
 static ERR open_folder(DirInfo *);

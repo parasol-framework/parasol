@@ -6,7 +6,6 @@
 #endif
 
 #include <set>
-#include <unordered_set>
 #include <functional>
 #include <mutex>
 #include <sstream>
@@ -15,6 +14,8 @@
 #include <array>
 #include <atomic>
 #include <thread>
+#include <algorithm>
+#include <ankerl/unordered_dense.h>
 
 using namespace std::chrono_literals;
 
@@ -283,7 +284,7 @@ struct virtual_drive {
 };
 
 extern const virtual_drive glFSDefault;
-extern std::unordered_map<uint32_t, virtual_drive> glVirtual;
+extern ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 
 //********************************************************************************************************************
 // Resource definitions.
@@ -677,16 +678,16 @@ extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
 extern std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
-extern std::unordered_map<std::string, struct ModHeader *> glStaticModules;
-extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Note that best performance for looking up ID's is achieved as a sorted array.
-extern std::unordered_map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
-extern std::unordered_map<OBJECTID, std::set<OBJECTID, std::greater<OBJECTID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
-extern std::unordered_map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
-extern std::unordered_map<CLASSID, extMetaClass *> glClassMap;
-extern std::unordered_map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
-extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+extern ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
+extern ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
+extern ankerl::unordered_dense::map<OBJECTID, tsl::ordered_set<MEMORYID>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
+extern ankerl::unordered_dense::map<OBJECTID, tsl::ordered_set<OBJECTID>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
+extern ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
+extern ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
+extern ankerl::unordered_dense::map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
+extern ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
-extern std::unordered_set<std::shared_ptr<std::jthread>> glAsyncThreads;
+extern ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 extern std::unordered_multimap<uint32_t, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern int glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;

@@ -22,6 +22,7 @@
 #include <sstream>
 #include <cmath>
 #include <type_traits>
+#include "ankerl/unordered_dense.h"
 #endif
 
 #if defined(_DEBUG)
@@ -1978,7 +1979,7 @@ struct CompressedItem {
    FL      Flags;                   // FL flags
    struct DateTime Created;         // Date and time of the file's creation.
    struct DateTime Modified;        // Date and time last modified.
-    std::unordered_map<std::string, std::string> *Tags;
+    ankerl::unordered_dense::map<std::string, std::string> *Tags;
 };
 
 struct FileInfo {
@@ -1992,7 +1993,7 @@ struct FileInfo {
    int     GroupID;           // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
-    std::unordered_map<std::string, std::string> *Tags;
+    ankerl::unordered_dense::map<std::string, std::string> *Tags;
 };
 
 struct DirInfo {
@@ -2778,7 +2779,7 @@ struct Object { // Must be 64-bit aligned
       }
       else return ERR::UnsupportedField;
    }
-   
+
    inline ERR set(FIELD FieldID, const FRGB &Value) {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {

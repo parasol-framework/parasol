@@ -617,7 +617,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
 
-   std::unordered_map<OBJECTID, ObjectSignal> saved_list;
+   ankerl::unordered_dense::map<OBJECTID, ObjectSignal> saved_list;
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);

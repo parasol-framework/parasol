@@ -799,7 +799,6 @@ Alpha  = CFUnpackAlpha(Format,Colour)
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NotLocked">A lock is not present, or the lock belongs to another surface.</error>
       <error code="AccessObject">Failed to access the pointer object.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>

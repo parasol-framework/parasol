@@ -625,10 +625,9 @@ template <class T> [[nodiscard]] FieldValue ColourSpace(T Value) {
    return FieldValue(FID_ColourSpace, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue Flags(T Value) {
-   static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Flags value must be numeric or enum");
-   if constexpr (std::is_enum_v<T>) return FieldValue(FID_Flags, int(Value));
-   else return FieldValue(FID_Flags, int(Value));
+template <class T> requires std::is_arithmetic_v<T> || std::is_enum_v<T> 
+[[nodiscard]] FieldValue Flags(T Value) {
+   return FieldValue(FID_Flags, int(Value));
 }
 
 template <class T> [[nodiscard]] FieldValue Units(T Value) {
