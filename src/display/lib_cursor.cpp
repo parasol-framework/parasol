@@ -777,7 +777,7 @@ ERR UnlockCursor(OBJECTID SurfaceID)
       }
       else {
          ReleaseObject(pointer);
-         return ERR::NotLocked;
+         return ERR::ResourceNotLocked;
       }
    }
    else {
