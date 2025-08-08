@@ -7,8 +7,9 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
 
    log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, int(State), CurrentContext()->UID);
 
-   auto Self = (extHTTP *)Socket->ClientData; //(extHTTP *)CurrentContext();
+   auto Self = (extHTTP *)CurrentContext();
    if (Self->classID() != CLASSID::HTTP) { log.warning(ERR::SystemCorrupt); return; }
+   if (!Self->locked()) log.warning(ERR::ResourceNotLocked);
 
    if (State IS NTC::CONNECTING) {
       log.msg("Waiting for connection...");
@@ -75,7 +76,7 @@ static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC S
             std::vector<char> buffer(BUFFER_READ_SIZE);
 
             while (true) {
-               LONG len = buffer.size();
+               int len = buffer.size();
                if (Self->ContentLength != -1) {
                   if (len > Self->ContentLength - Self->Index) len = Self->ContentLength - Self->Index;
                }
@@ -147,15 +148,15 @@ static ERR socket_outgoing(objNetSocket *Socket)
 {
    pf::Log log("http_outgoing");
 
-   static const LONG CHUNK_LENGTH_OFFSET = 16;
-   static const LONG CHUNK_TAIL = 2; // CRLF
+   static const int CHUNK_LENGTH_OFFSET = 16;
+   static const int CHUNK_TAIL = 2; // CRLF
 
    auto Self = (extHTTP *)Socket->ClientData;
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, LONG(Self->CurrentState));
 
-   LONG total_out = 0;
+   int total_out = 0;
 
    if (!Self->Buffer) {
       if (Self->BufferSize < BUFFER_WRITE_SIZE) Self->BufferSize = BUFFER_WRITE_SIZE;
@@ -179,10 +180,10 @@ redo_upload:
       Self->setCurrentState(HGS::SENDING_CONTENT);
    }
 
-   LONG len = 0;
+   int len = 0;
    if (Self->Outgoing.defined()) {
       if (Self->Outgoing.isC()) {
-         auto routine = (ERR (*)(extHTTP *, APTR, LONG, LONG *, APTR))Self->Outgoing.Routine;
+         auto routine = (ERR (*)(extHTTP *, APTR, LONG, int *, APTR))Self->Outgoing.Routine;
          error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len, Self->Outgoing.Meta);
       }
       else if (Self->Outgoing.isScript()) {
@@ -238,7 +239,7 @@ redo_upload:
    }
 
    if (((error IS ERR::Okay) or (error IS ERR::Terminate)) and (len)) {
-      LONG result, csize;
+      int result, csize;
       ERR writeerror;
 
       log.trace("Writing %d bytes (of expected %" PF64 ") to socket.  Chunked: %d", len, (long long)Self->ContentLength, Self->Chunked);
@@ -315,7 +316,7 @@ redo_upload:
       // In the case where the server does not respond to completion of the upload, the timeout would eventually take care of it.
 
       if (((Self->ContentLength > 0) and (Self->Index >= Self->ContentLength)) or (error IS ERR::Terminate)) {
-         LONG result;
+         int result;
 
          if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
 
@@ -350,7 +351,7 @@ continue_upload:
 static ERR socket_incoming(objNetSocket *Socket)
 {
    pf::Log log("http_incoming");
-   LONG len;
+   int len;
    auto Self = (extHTTP *)Socket->ClientData;
 
    log.msg("Context: %d", CurrentContext()->UID);
@@ -511,7 +512,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                         Self->AuthAlgorithm.clear();
                         Self->AuthDigest = true;
 
-                        LONG i = 6;
+                        int i = 6;
                         while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
 
                         while (authenticate[i]) {
@@ -640,7 +641,7 @@ static ERR socket_incoming(objNetSocket *Socket)
          // ChunkBuffered: Number of bytes currently buffered.
          // ChunkLen:      Expected length of the next chunk (decreases as bytes are processed).
 
-         LONG i, count;
+         int i, count;
          for (count=2; count > 0; count--) { //while (Self->ChunkIndex < Self->ChunkBuffered) {
             pf::Log log("http_incoming");
             log.traceBranch("Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkSize, Self->ChunkLen);
@@ -762,7 +763,7 @@ static ERR socket_incoming(objNetSocket *Socket)
          // Maximum number of times that this subroutine can loop (on a fast network we could otherwise download indefinitely).
          // A limit of 64K per read session is acceptable with a time limit of 1/200 frames.
 
-         LONG looplimit = (64 * 1024) / BUFFER_READ_SIZE;
+         int looplimit = (64 * 1024) / BUFFER_READ_SIZE;
          int64_t timelimit = PreciseTime() + 5000000LL;
 
          while (true) {
@@ -803,13 +804,13 @@ static ERR socket_incoming(objNetSocket *Socket)
       if (Self->Error != ERR::Okay) return ERR::Terminate;
    }
    else {
-      char buffer[512];
+      std::array<char,512> buffer;
       // Indeterminate data received from HTTP server
 
-      if ((acRead(Socket, buffer, sizeof(buffer)-1, &len) IS ERR::Okay) and (len > 0)) {
-         buffer[len] = 0;
-         log.warning("WARNING: Received data whilst in state %d.", LONG(Self->CurrentState));
-         log.warning("Content (%d bytes) Follows:\n%.80s", len, buffer);
+      if ((acRead(Socket, buffer.data(), buffer.size()-1, &len) IS ERR::Okay) and (len > 0)) {
+         buffer[len] = '\0';
+         log.warning("WARNING: Received data whilst in state %d.", int(Self->CurrentState));
+         log.warning("Content (%d bytes) Follows:\n%.80s", len, buffer.data());
       }
    }
 
@@ -844,7 +845,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    while ((b < Response.size()) and (Response[b] > 0x20)) b++;
    while ((b < Response.size()) and (Response[b] <= 0x20)) b++;
    
-   LONG code = 0;
+   int code = 0;
    auto [ ptr, error ] = std::from_chars(Response.data() + b, Response.data() + Response.size(), code);
    if (error IS std::errc()) Self->Status = HTS(code);
    else Self->Status = HTS::NIL;
@@ -898,7 +899,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 //********************************************************************************************************************
 // Sends some data specified in the arguments to the listener
 
-static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
+static ERR process_data(extHTTP *Self, APTR Buffer, int Length)
 {
    pf::Log log(__FUNCTION__);
 
@@ -983,7 +984,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, LONG Length)
 
 //********************************************************************************************************************
 
-static LONG extract_value(std::string_view String, std::string &Result)
+static int extract_value(std::string_view String, std::string &Result)
 {
    if (auto s = String.find_first_of("=,"); s IS std::string::npos) {
       Result.clear();
@@ -1084,7 +1085,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    HASH HA2;
    HASH RespHash;
    HASHHEX HA2Hex;
-   LONG i;
+   int i;
 
    // Calculate H(A2)
 
@@ -1135,7 +1136,7 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
 
 //********************************************************************************************************************
 
-static ERR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
+static ERR write_socket(extHTTP *Self, CPTR Buffer, int Length, int *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1160,12 +1161,11 @@ static ERR write_socket(extHTTP *Self, CPTR Buffer, LONG Length, LONG *Result)
    }
 }
 
-/*********************************************************************************************************************
-** The timer is used for managing time-outs on connection to and the receipt of data from the http server.  If the
-** timer is activated then we close the current socket.  It should be noted that if the content is streamed, then
-** it is not unusual for the client to remain unnotified even in the event of a complete transfer.  Because of this,
-** the client should check if the content is streamed in the event of a timeout and not necessarily assume failure.
-*/
+//********************************************************************************************************************
+// The timer is used for managing time-outs on connection to and the receipt of data from the http server.  If the
+// timer is activated then we close the current socket.  It should be noted that if the content is streamed, then
+// it is not unusual for the client to remain unnotified even in the event of a complete transfer.  Because of this,
+// the client should check if the content is streamed in the event of a timeout and not necessarily assume failure.
 
 static ERR timeout_manager(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 {
@@ -1217,10 +1217,10 @@ static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &C
 
 //********************************************************************************************************************
 
-static ERR parse_file(extHTTP *Self, STRING Buffer, LONG Size)
+static ERR parse_file(extHTTP *Self, STRING Buffer, int Size)
 {
-   LONG i;
-   LONG pos = Self->InputPos;
+   int i;
+   int pos = Self->InputPos;
    for (i=0; (i < Size-1) and (Self->InputFile[pos]);) {
       if (Self->InputFile[pos] IS '"') {
          pos++;
@@ -1248,7 +1248,7 @@ static ERR parse_file(extHTTP *Self, STRING Buffer, LONG Size)
 
 static void parse_file(extHTTP *Self, std::ostringstream &Cmd)
 {
-   LONG pos = Self->InputPos;
+   int pos = Self->InputPos;
    while (Self->InputFile[pos]) {
       if (Self->InputFile[pos] IS '"') {
          pos++;

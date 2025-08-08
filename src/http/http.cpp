@@ -126,7 +126,7 @@ static OBJECTPTR clHTTP = nullptr;
 static objProxy *glProxy = nullptr;
 
 extern "C" uint8_t glAuthScript[];
-static LONG glAuthScriptLength;
+static int glAuthScriptLength;
 
 class extHTTP : public objHTTP {
    public:
@@ -165,8 +165,8 @@ class extHTTP : public objHTTP {
    int64_t  LastReceipt;      // Last time (microseconds) at which data was received
    int64_t  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
    OBJECTID DialogWindow;
-   LONG     ResponseIndex;    // Next element to write to in 'Buffer'
-   LONG     SearchIndex;      // Current position of the CRLFCRLF search.
+   int      ResponseIndex;    // Next element to write to in 'Buffer'
+   int      SearchIndex;      // Current position of the CRLFCRLF search.
    WORD     InputPos;         // File name parsing position in InputFile
    uint8_t  RedirectCount;
    uint8_t  AuthRetries;
@@ -245,11 +245,11 @@ static ERR  parse_file(extHTTP *, STRING, LONG);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
 static ERR  process_data(extHTTP *, APTR, LONG);
-static LONG extract_value(std::string_view, std::string &);
+static int extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERR  write_socket(extHTTP *, CPTR, LONG, LONG *);
+static ERR  write_socket(extHTTP *, CPTR, LONG, int *);
 static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
@@ -363,7 +363,7 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 static ERR HTTP_Activate(extHTTP *Self)
 {
    pf::Log log;
-   LONG i;
+   int i;
 
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
@@ -631,8 +631,8 @@ static ERR HTTP_Activate(extHTTP *Self)
 
       if (!(Self->Socket = objNetSocket::create::local(
             fl::ClientData(Self),
-            fl::Incoming((CPTR)socket_incoming),
-            fl::Feedback((CPTR)socket_feedback),
+            fl::Incoming(C_FUNCTION(socket_incoming)),
+            fl::Feedback(C_FUNCTION(socket_feedback)),
             fl::Flags(flags)))) {
          SET_ERROR(log, Self, ERR::CreateObject);
          return log.warning(Self->Error);
@@ -703,7 +703,7 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 {
    pf::Log log;
 
-   log.branch("Closing connection to server & signalling children.");
+   log.branch("Closing connection to server & signaling children.");
 
    if (Self->CurrentState < HGS::COMPLETED) Self->setCurrentState(HGS::TERMINATED);
 
@@ -738,11 +738,16 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 
 static ERR HTTP_Free(extHTTP *Self)
 {
-   if (Self->Socket)     {
+   if (Self->Socket) {
       Self->Socket->set(FID_Feedback, (APTR)nullptr);
       FreeResource(Self->Socket);
       Self->Socket = nullptr;
    }
+
+   if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC::Free);
+   if (Self->Incoming.isScript())     UnsubscribeAction(Self->Incoming.Context, AC::Free);
+   if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);     
+   if (Self->Outgoing.isScript())     UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -847,7 +852,7 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
    if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
 
    if ((Self->WriteBuffer) and (Self->WriteSize > 0)) {
-      LONG len = Args->Length;
+      int len = Args->Length;
       if (Self->WriteOffset + len > Self->WriteSize) {
          len = Self->WriteSize - Self->WriteOffset;
       }
@@ -907,7 +912,7 @@ Note that the actual buffer size may not reflect the exact size that you set her
 
 *********************************************************************************************************************/
 
-static ERR SET_BufferSize(extHTTP *Self, LONG Value)
+static ERR SET_BufferSize(extHTTP *Self, int Value)
 {
    if (Value < 2 * 1024) Value = 2 * 1024;
    Self->BufferSize = Value;
@@ -1070,7 +1075,7 @@ static ERR SET_Host(extHTTP *Self, CSTRING Value)
 Incoming: A callback routine can be defined here for incoming data.
 
 Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the
-callback routine is `ERR Function(*HTTP, APTR Data, LONG Length)`.
+callback routine is `ERR Function(*HTTP, APTR Data, int Length)`.
 
 If an error code of `ERR::Terminate` is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
@@ -1228,7 +1233,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    // Parse host name
 
-   LONG len;
+   int len;
    for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Host) != ERR::Okay) {
@@ -1291,7 +1296,7 @@ object.
 Outgoing: Outgoing data can be managed using a function callback if this field is set.
 
 Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype
-for the callback routine is `ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
+for the callback routine is `ERR Function(*HTTP, APTR Buffer, int BufferSize, int *Result)`.  For Fluid use
 `function(HTTP, Buffer, BufferSize)`.
 
 Outgoing content is placed in the `Buffer` address and must not exceed the indicated `BufferSize`.  The total number of
@@ -1395,14 +1400,14 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
 
    while (*Value IS '/') Value++; // Skip '/' prefix
 
-   LONG len = 0;
+   int len = 0;
    for (LONG i=0; Value[i]; i++) { // Compute the length with consideration to escape codes
       if (Value[i] IS ' ') len += 3; // '%20'
       else len++;
    }
 
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
-      LONG len = 0;
+      int len = 0;
       for (LONG i=0; Value[i]; i++) {
          if (Value[i] IS ' ') {
             Self->Path[len++] = '%';
@@ -1503,7 +1508,7 @@ The buffer is null-terminated if you wish to use it as a string.
 
 *********************************************************************************************************************/
 
-static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, LONG *Elements)
+static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, int *Elements)
 {
    *Value = (uint8_t *)Self->RecvBuffer.data();
    *Elements = Self->RecvBuffer.size();
