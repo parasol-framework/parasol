@@ -439,12 +439,19 @@ template <class T>
 class SwitchContext { // C++ wrapper for changing the current context with a resource guard in place
    private:
       OBJECTPTR old_context;
+      T new_context;
    public:
-      SwitchContext(T NewContext) {
-         if (NewContext) old_context = SetContext((OBJECTPTR)NewContext);
+      SwitchContext(T NewContext) : new_context(NewContext) {
+         if (new_context) {
+            new_context->lock();
+            old_context = SetContext((OBJECTPTR)NewContext);
+         }
          else old_context = nullptr;
       }
-      ~SwitchContext() { if (old_context) SetContext(old_context); }
+      ~SwitchContext() {
+         if (new_context) new_context->unlock();
+         if (old_context) SetContext(old_context); 
+      }
 };
 
 } // namespace

@@ -30,8 +30,8 @@ the clipping path is sized to match the target vector.  A viewbox size of `0 0 1
 
 static ERR CLIP_Free(extVectorClip *Self)
 {
+   if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = nullptr; }
    Self->~extVectorClip();
-   if (Self->ViewportID) { FreeResource(Self->ViewportID); Self->ViewportID = 0; Self->Viewport = NULL; }
    return ERR::Okay;
 }
 
@@ -157,7 +157,7 @@ static const ActionArray clClipActions[] = {
    { AC::Free,      CLIP_Free },
    { AC::Init,      CLIP_Init },
    { AC::NewChild,  CLIP_NewChild },
-   { AC::NewObject, CLIP_NewPlacement },
+   { AC::NewPlacement, CLIP_NewPlacement },
    { AC::NIL, NULL }
 };
 
