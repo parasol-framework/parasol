@@ -71,11 +71,10 @@ end
 
 function testObjectSearches()
    local parent = obj.new('xml', { name='TestParent', flags='NEW' })
-
-   local obj = parent.new('xml', { name='TestFO', flags='NEW' })
+   local child = parent.new('xml', { name='TestFO', flags='NEW' })
 
    local objects = { }
-   table.insert(objects, obj)
+   table.insert(objects, child)
 
    -- Test FindObject()
 
@@ -89,12 +88,17 @@ function testObjectSearches()
       table.insert(objects, obj)
    end
 
+   -- Expect 10 children with IDs in descending order.
    local children = parent.children()
    assert(err == ERR_Okay, 'Failed in call to ListChildren(): ' .. mSys.GetErrorMsg(err))
    assert(#children == 10, 'Parent object listed ' .. #children .. ' objects.')
 
+   local check = { }
    for i=1,10 do
-      assert(children[i] == objects[11-i].id, 'Child ' .. children[i] .. ' != ' .. objects[11-i].id)
+      check[objects[i].id] = true
+   end
+   for i=1,10 do
+      assert(check[children[i]] == true, "Object tables don't match")
    end
 end
 

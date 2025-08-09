@@ -75,7 +75,7 @@ std::list<CoreTimer> glTimers;
 std::list<FDRecord> glFDTable;
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;
+ankerl::unordered_dense::map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
 
 std::mutex glmPrint;
 std::recursive_mutex glmMemory;
@@ -93,8 +93,8 @@ ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB;
 ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
-ankerl::unordered_dense::map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory;
-ankerl::unordered_dense::map<OBJECTID, std::set<OBJECTID, std::greater<MEMORYID>>> glObjectChildren;
+ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
+ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren;
 ankerl::unordered_dense::map<uint32_t, std::string> glFields;
 
 std::unordered_multimap<uint32_t, CLASSID> glWildClassMap;

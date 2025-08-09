@@ -213,6 +213,20 @@ struct CaseInsensitiveMap {
    }
 };
 
+struct CaseInsensitiveHash {
+   std::size_t operator()(const std::string& s) const noexcept {
+      std::string lower = s;
+      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+      return std::hash<std::string>{}(lower);
+   }
+};
+
+struct CaseInsensitiveEqual {
+   bool operator()(const std::string& lhs, const std::string& rhs) const noexcept {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
+   }
+};
+
 //********************************************************************************************************************
 // Private memory management structures.
 
@@ -677,11 +691,11 @@ extern extTask *glCurrentTask;
 extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
-extern std::map<std::string, std::vector<Object *>, CaseInsensitiveMap> glObjectLookup;  // Locked with glmObjectlookup
+extern ankerl::unordered_dense::map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup;  // Locked with glmObjectlookup
 extern ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 extern ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
-extern ankerl::unordered_dense::map<OBJECTID, std::set<MEMORYID, std::greater<MEMORYID>>> glObjectMemory; // Locked with glmMemory.  Sorted with the most recent private memory first
-extern ankerl::unordered_dense::map<OBJECTID, std::set<OBJECTID, std::greater<MEMORYID>>> glObjectChildren; // Locked with glmMemory.  Sorted with most recent object first
+extern ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.
+extern ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.
 extern ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
 extern ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 extern ankerl::unordered_dense::map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
