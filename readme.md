@@ -9,7 +9,7 @@
 
 Parasol is an open source vector graphics engine and application framework for Windows and Linux.  It features integrated support for SVG with a focus on correctness, and we test against W3C's official SVG compliance tests.
 
-The API is written in C/C++ and is accessible as a standard library, allowing most popular programming languages to interface with it.  Our integrated scripting language, Fluid, is based on Lua and helps to simplify application development without compromising on speed or modern features.  Extensive API documentation is hosted at our website.
+Parasol is written in C++ and can be built as an external or embedded set of libraries to suit your situation.  Our integrated scripting language, Fluid, is based on Lua and helps to simplify application development without compromising on speed or modern features.  Extensive API documentation is hosted at our website.
 
 ### Motivation
 
@@ -102,7 +102,7 @@ Detailed technical documentation for the Parasol APIs is available online at the
 
 ## 5. Source Code Licensing
 
-Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2024.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
+Excluding third party APIs and marked contributions, the Parasol Framework is the copyright of Paul Manias © 1996 - 2025.  The source code is released under the terms of the LGPL as referenced below, except where otherwise indicated.
 
 The Parasol Framework is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 
