@@ -27,6 +27,7 @@ Parameters:
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
    glLogFile = io.open(glPath .. 'svg_mark_results.log', 'a')
+   glGitInfo = { }
 
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -173,12 +174,69 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function getGitInfo()
+   local gitInfo = { branch = 'unknown', commit = 'unknown' }
+
+   -- Check if .git directory exists
+   local err, file_type = mSys.AnalysePath(glPath .. '../.git/')
+   if file_type != LOC_FOLDER then
+      msg('No .git folder identified at ' .. glPath .. '../.git/')
+      return gitInfo
+   end
+
+   -- Try to read current branch from .git/HEAD
+   local headFile = io.open(glPath .. '../.git/HEAD', 'r')
+   if headFile then
+      local headContent = headFile:read('*all')
+      headFile:close()
+
+      if headContent then
+         headContent = string.gsub(headContent, '\n', '')
+         headContent = string.gsub(headContent, '\r', '')
+
+         -- Check if HEAD points to a branch (ref: refs/heads/branch-name)
+         local branchRef = string.match(headContent, 'ref: refs/heads/(.+)')
+         if branchRef then
+            gitInfo.branch = branchRef
+
+            -- Try to read the commit hash from the branch file
+            local branchFile = io.open(glPath .. '../.git/refs/heads/' .. branchRef, 'r')
+            if branchFile then
+               local commitHash = branchFile:read('*all')
+               branchFile:close()
+
+               if commitHash then
+                  commitHash = string.gsub(commitHash, '\n', '')
+                  commitHash = string.gsub(commitHash, '\r', '')
+                  gitInfo.commit = commitHash
+               end
+            end
+         else
+            -- HEAD might contain a commit hash directly (detached HEAD)
+            if string.len(headContent) == 40 then
+               gitInfo.commit = headContent
+               gitInfo.branch = 'detached HEAD'
+            end
+         end
+      else
+         msg('.git HEAD file is empty.')
+      end
+   else
+      msg('Failed to open .git HEAD file.')
+   end
+
+   return gitInfo
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 function runBenchmark(SvgPath, Width, Height, Duration, WarmupRenders)
    local tm = obj.new('time')
    tm.acQuery()
 
    saveMessage('================================================================================')
    saveMessage(string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second) .. '\n')
+   saveMessage('Git branch: ' .. glGitInfo.branch .. ' / ' .. glGitInfo.commit)
 
    logMessage('Starting SVG benchmark...')
    saveMessage('File: ' .. SvgPath)
@@ -330,6 +388,8 @@ end
 
    -- Check for file parameter, show dialog if not provided
    local svgFile = arg('file')
+
+   glGitInfo = getGitInfo()
 
    if not svgFile then
       print('No file parameter provided. Opening file dialog...')
