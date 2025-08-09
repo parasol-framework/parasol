@@ -630,13 +630,13 @@ Defs: Obtain direct access to the SVG definition table.
 Reading the Defs field will return a direct pointer to the SVG definition table, which is declared as a key-value C++
 type:
 
-<pre>std::unordered_map&lt;std::string, OBJECTPTR&gt;</pre>
+<pre>ankerl::unordered_dense::map&lt;std::string, OBJECTPTR&gt;</pre>
 
 Direct access is provided for internal use only and not for the benefit of client programs.
 
 *********************************************************************************************************************/
 
-static ERR GET_Defs(extVectorScene *Self, std::unordered_map<std::string, OBJECTPTR> **Value)
+static ERR GET_Defs(extVectorScene *Self, ankerl::unordered_dense::map<std::string, OBJECTPTR> **Value)
 {
    *Value = &Self->Defs;
    return ERR::Okay;
