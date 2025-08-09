@@ -147,7 +147,7 @@ namespace std {
    };
 }
 
-static std::unordered_map<CacheFileIndex, extCacheFile> glCache;
+static ankerl::unordered_dense::map<CacheFileIndex, extCacheFile> glCache;
 static std::mutex glCacheLock;
 
 //********************************************************************************************************************
@@ -280,7 +280,7 @@ NullArgs:
 ERR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
 {
    if (!Info->Tags) {
-      Info->Tags = new (std::nothrow) std::unordered_map<std::string, std::string>();
+      Info->Tags = new (std::nothrow) ankerl::unordered_dense::map<std::string, std::string>();
       if (!Info->Tags) return ERR::CreateResource;
    }
 

@@ -82,7 +82,7 @@ struct unsubscription {
 };
 
 static std::recursive_mutex glSubLock; // The following variables are locked by this mutex
-static std::unordered_map<OBJECTID, std::unordered_map<int, std::vector<ActionSubscription> > > glSubscriptions;
+static ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::map<int, std::vector<ActionSubscription> > > glSubscriptions;
 static std::vector<unsubscription> glDelayedUnsubscribe;
 static std::vector<subscription> glDelayedSubscribe;
 static int glSubReadOnly = 0; // To prevent modification of glSubscriptions
