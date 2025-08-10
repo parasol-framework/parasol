@@ -104,6 +104,7 @@ function testBasicSSLCommunication()
             if (string.match(msg, 'SSL_ECHO:' .. glSSLTestData)) then
                print('[SSL Server] SSL message integrity verified!')
                ssl_data_received = true
+               Socket.mtDisconnectSocket(Client)
             else
                error('[SSL Server] SSL message integrity check failed. Got: ' .. msg)
             end
