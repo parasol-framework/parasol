@@ -26,7 +26,7 @@ unless otherwise documented.
 
 *********************************************************************************************************************/
 
-static std::unordered_map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
+static ankerl::unordered_dense::map<extVector *, FUNCTION> glResizeSubscriptions; // Temporary cache for holding subscriptions.
 static std::mutex glResizeLock;
 
 static ERR VECTOR_Push(extVector *, struct vec::Push *);

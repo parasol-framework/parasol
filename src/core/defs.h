@@ -441,7 +441,7 @@ class extThread : public objThread {
 class extTask : public objTask {
    public:
    using create = pf::Create<extTask>;
-   std::map<std::string, std::string, CaseInsensitiveMap> Fields; // Variable field storage
+   ankerl::unordered_dense::map<std::string, std::string, CaseInsensitiveHash, CaseInsensitiveEqual> Fields; // Variable field storage
    pf::vector<std::string> Parameters; // Arguments (string array)
    uint64_t AffinityMask;  // CPU affinity mask for process/thread binding
    MEMORYID MessageMID;

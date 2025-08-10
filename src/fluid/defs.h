@@ -23,12 +23,26 @@ struct CaseInsensitiveMap {
    }
 };
 
-extern std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
+struct CaseInsensitiveHash {
+   std::size_t operator()(const std::string& s) const noexcept {
+      std::string lower = s;
+      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+      return std::hash<std::string>{}(lower);
+   }
+};
+
+struct CaseInsensitiveEqual {
+   bool operator()(const std::string& lhs, const std::string& rhs) const noexcept {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
+   }
+};
+
+extern ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
 extern OBJECTPTR clFluid;
-extern std::unordered_map<std::string, ULONG> glStructSizes;
+extern ankerl::unordered_dense::map<std::string, ULONG> glStructSizes;
 
 //********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
@@ -156,7 +170,7 @@ struct struct_name {
       if (colon IS std::string::npos) name = pName;
       else name = pName.substr(0, colon);
    }
-   
+
    bool operator==(const std::string_view &other) const {
       return (name == other);
    }
@@ -199,8 +213,8 @@ struct prvFluid {
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
-   std::unordered_map<struct_name, struct_record, struct_hash> Structs;
-   std::unordered_map<OBJECTID, LONG> StateMap;
+   ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> Structs;
+   ankerl::unordered_dense::map<OBJECTID, LONG> StateMap;
    std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    pf::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
@@ -292,7 +306,7 @@ struct fnumber {
 struct module {
    struct Function *Functions = nullptr;
    OBJECTPTR Module = nullptr;
-   std::unordered_map<uint32_t, int> FunctionMap; // Hash map for O(1) function lookup
+   ankerl::unordered_dense::map<uint32_t, int> FunctionMap; // Hash map for O(1) function lookup
 
    ~module() {
       if (Module) FreeResource(Module);

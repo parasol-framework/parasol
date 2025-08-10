@@ -6,6 +6,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include "ankerl/unordered_dense.h"
 
 struct IPAddress {
    union {
@@ -52,7 +53,7 @@ public:
 };
 
 static std::recursive_mutex csNetLookup;
-static std::unordered_map<WSW_SOCKET, socket_info> glNetLookup;
+static ankerl::unordered_dense::map<WSW_SOCKET, socket_info> glNetLookup;
 static char glSocketsDisabled = false;
 static HWND glNetWindow = 0;
 static char glNetClassInit = false;
@@ -273,7 +274,7 @@ void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
 
 ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
-   if (bind(SocketHandle, Name, NameLen) IS SOCKET_ERROR) return convert_error(0);
+   if (::bind(SocketHandle, Name, NameLen) == SOCKET_ERROR) return convert_error(0);
    else return ERR::Okay;
 }
 

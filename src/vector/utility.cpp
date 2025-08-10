@@ -455,7 +455,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
          auto key = strihash(style + ":" + std::to_string(point_size) + ":" + location);
 
          if (glBitmapFonts.contains(key)) {
-            *Handle = &glBitmapFonts[key];
+            *Handle = glBitmapFonts[key].get();
             return ERR::Okay;
          }
          else if (auto font = objFont::create::global(fl::Name("vector_cached_font"),
@@ -464,8 +464,9 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                fl::Style(style),
                fl::Point(point_size),
                fl::Path(location))) {
-            glBitmapFonts.emplace(key, font);
-            *Handle = &glBitmapFonts[key];
+            auto bmp_font_ptr = std::make_unique<bmp_font>(font);
+            glBitmapFonts.emplace(key, std::move(bmp_font_ptr));
+            *Handle = glBitmapFonts[key].get();
             return ERR::Okay;
          }
          else return ERR::CreateObject;
@@ -534,12 +535,12 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                }
                else styles.try_emplace(style);
 
-               glFreetypeFonts.try_emplace(key, ftface, styles, metrics, meta);
+               glFreetypeFonts.try_emplace(key, std::make_unique<freetype_font>(ftface, styles, metrics, meta));
             }
             else return Log.warning(ERR::ResolvePath);
          }
 
-         auto &font = glFreetypeFonts[key];
+         auto &font = *glFreetypeFonts[key];
          if (auto cache = font.style_cache.find(style); cache != font.style_cache.end()) {
             freetype_font::SIZE_CACHE &sz = cache->second;
             if (auto size = sz.find(Size); size IS sz.end()) {

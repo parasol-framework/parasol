@@ -64,8 +64,8 @@ OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
 OBJECTPTR clFluid = nullptr;
 struct ActionTable *glActions = nullptr;
-std::map<std::string, ACTIONID, CaseInsensitiveMap> glActionLookup;
-std::unordered_map<std::string, ULONG> glStructSizes;
+ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
+ankerl::unordered_dense::map<std::string, ULONG> glStructSizes;
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
@@ -299,7 +299,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    for (LONG action_id=1; glActions[action_id].Name; action_id++) {
       glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
-   
+
    FUNCTION call(CALL::STD_C);
    call.Routine = (APTR)msg_thread_script_callback;
    AddMsgHandler(nullptr, MSGID::FLUID_THREAD_CALLBACK, &call, &glMsgThread);
@@ -729,7 +729,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
       for (n=0; (Line[n] > 0x20) and (Line[n] != ','); n++);
       std::string value(Line, n);
       Line += n;
-      
+
       //log.warning("%s = %s", prefix.c_str(), value.c_str());
 
       if (n > 0) {

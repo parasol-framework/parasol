@@ -33,7 +33,7 @@ static ERR save_vectorpath(extSVG *Self, objXML *XML, objVector *Vector, LONG Pa
 static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG Parent)
 {
    pf::Log log(__FUNCTION__);
-   std::unordered_map<std::string, OBJECTPTR> *defs;
+   ankerl::unordered_dense::map<std::string, OBJECTPTR> *defs;
 
    if (Scene->get(FID_Defs, defs) IS ERR::Okay) {
       ERR error;

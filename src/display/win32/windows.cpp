@@ -87,7 +87,7 @@ HCURSOR glCurrentCursor = 0;
 static BYTE glScreenClassInit = 0;
 
 #ifdef DBGMSG
-static std::map<int, const char *> glCmd = { {
+static ankerl::unordered_dense::map<int, const char *> glCmd = { {
  { WM_SETCURSOR, "WM_SETCURSOR" },
  { WM_NCMOUSEHOVER, "WM_NCMOUSEHOVER" },
  { WM_NCMOUSELEAVE, "WM_NCMOUSELEAVE" }, { WM_NCMOUSEMOVE, "WM_NCMOUSEMOVE" },
@@ -841,7 +841,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          int cwidth  = LOWORD(lParam);
          int cheight = HIWORD(lParam);
 
-         // If the window has just been maximised, check if the surface object has restrictions on the width and height.  
+         // If the window has just been maximised, check if the surface object has restrictions on the width and height.
          // If so, force the window back to its previous dimensions so that it obeys the developer's requirements.
 
          if (wParam & SIZE_MAXIMIZED) {
@@ -881,12 +881,12 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
 
          const int h_margins = ((winrect.right - winrect.left) - (client.right - client.left));
          const int v_margins = ((winrect.bottom - winrect.top) - (client.bottom - client.top));
-         
+
          auto rect = (LPRECT)lParam;
 
          int req_width  = (rect->right - rect->left) - h_margins;
          int req_height = (rect->bottom - rect->top) - v_margins;
-         
+
          int axis = AXIS_BOTH;
          switch(wParam) {
             case WMSZ_LEFT:
@@ -901,7 +901,7 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
          }
 
          CheckWindowSize(winLookupSurfaceID(window), req_width, req_height, client.right - client.left, client.bottom - client.top, axis);
-         
+
          rect->right  = rect->left + req_width + h_margins;
          rect->bottom = rect->top + req_height + v_margins;
          rect->left   = rect->right - req_width - h_margins;
@@ -1086,8 +1086,8 @@ ERR winReadController(int Port, double *Values, CON &Buttons)
       Values[5] = std::clamp(double(state.Gamepad.sThumbRY) * (1.0 / 32767.0), -1.0, 1.0);
 
       if ((Values[2] < tolerance) and (Values[2] > -tolerance) and
-          (Values[3] < tolerance) and (Values[3] > -tolerance)) { 
-         Values[2] = 0; 
+          (Values[3] < tolerance) and (Values[3] > -tolerance)) {
+         Values[2] = 0;
          Values[3] = 0;
       }
 

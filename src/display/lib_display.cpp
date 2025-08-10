@@ -8,7 +8,7 @@ Name: Display
 
 #include "defs.h"
 
-std::unordered_map<WinHook, FUNCTION> glWindowHooks;
+ankerl::unordered_dense::map<WinHook, FUNCTION> glWindowHooks;
 
 namespace gfx {
 

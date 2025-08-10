@@ -134,8 +134,8 @@ class extHTTP : public objHTTP {
    FUNCTION Outgoing;
    FUNCTION AuthCallback;
    FUNCTION StateChanged;
-   std::unordered_map<std::string, std::string> Args;
-   std::unordered_map<std::string, std::string> Headers;
+   ankerl::unordered_dense::map<std::string, std::string> Args;
+   ankerl::unordered_dense::map<std::string, std::string> Headers;
    std::string Response;   // Response header buffer
    std::string URI;        // Temporary string, used only when the user reads the URI
    std::string Username;

@@ -703,10 +703,10 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
 static BYTE datatype(std::string_view String)
 {
    int i = 0;
-   while ((String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
+   while ((i < String.size()) and (String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
 
-   if ((String[i] IS '0') and (String[i+1] IS 'x')) {
-      for (i+=2; String[i]; i++) {
+   if ((i < String.size()) and (String[i] IS '0') and (i+1 < String.size()) and (String[i+1] IS 'x')) {
+      for (i+=2; (i < String.size()) and String[i]; i++) {
          if (((String[i] >= '0') and (String[i] <= '9')) or
              ((String[i] >= 'A') and (String[i] <= 'F')) or
              ((String[i] >= 'a') and (String[i] <= 'f')));
@@ -718,7 +718,7 @@ static BYTE datatype(std::string_view String)
    bool is_number = true;
    bool is_float  = false;
 
-   for (; (String[i]) and (is_number); i++) {
+   for (; (i < String.size()) and (String[i]) and (is_number); i++) {
       if (((String[i] < '0') or (String[i] > '9')) and (String[i] != '.') and (String[i] != '-')) is_number = false;
       if (String[i] IS '.') is_float = true;
    }
@@ -755,7 +755,7 @@ static bool eval_condition(const std::string &String)
 
    size_t i;
    for (i=start; i < String.size(); i++) {
-      if ((String[i] IS '!') and (String[i+1] IS '=')) break;
+      if ((String[i] IS '!') and (i+1 < String.size()) and (String[i+1] IS '=')) break;
       if (String[i] IS '>') break;
       if (String[i] IS '<') break;
       if (String[i] IS '=') break;
@@ -781,7 +781,7 @@ static bool eval_condition(const std::string &String)
    {
       char cond[4];
       int c;
-      for (i=cpos,c=0; (c < 2) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
+      for (i=cpos,c=0; (c < 2) and (i < String.size()) and ((String[i] IS '!') or (String[i] IS '=') or (String[i] IS '>') or (String[i] IS '<')); i++) {
          cond[c++] = String[i];
       }
       cond[c] = 0;
@@ -794,7 +794,7 @@ static bool eval_condition(const std::string &String)
       }
    }
 
-   while ((String[i]) and (unsigned(String[i]) <= 0x20)) i++; // skip white-space
+   while ((i < String.size()) and (String[i]) and (unsigned(String[i]) <= 0x20)) i++; // skip white-space
 
    bool truth = false;
    if (!test.empty()) {
@@ -3369,7 +3369,7 @@ void parser::tag_script(XMLTag &Tag)
       if (InitObject(script) IS ERR::Okay) {
          // Pass document arguments to the script
 
-         std::unordered_map<std::string, std::string> *vs;
+         KEYVALUE *vs;
          if ((script->get(FID_Variables, vs) IS ERR::Okay) and (vs) and (vs->size() > 0)) {
             Self->Vars   = *vs;
             Self->Params = *vs;

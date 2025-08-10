@@ -8,7 +8,7 @@ Name: Input
 
 #include "defs.h"
 
-static std::unordered_map<int, InputCallback> glInputCallbacks;
+static ankerl::unordered_dense::map<int, InputCallback> glInputCallbacks;
 static std::vector<std::pair<int, InputCallback>> glNewSubscriptions;
 std::vector<InputEvent> glInputEvents;
 
