@@ -322,7 +322,21 @@ struct CaseInsensitiveMap {
    }
 };
 
-typedef std::map<std::string, DNSEntry, CaseInsensitiveMap> HOSTMAP;
+struct CaseInsensitiveHash {
+   std::size_t operator()(const std::string& s) const noexcept {
+      std::string lower = s;
+      std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+      return std::hash<std::string>{}(lower);
+   }
+};
+
+struct CaseInsensitiveEqual {
+   bool operator()(const std::string& lhs, const std::string& rhs) const noexcept {
+      return ::strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
+   }
+};
+
+typedef ankerl::unordered_dense::map<std::string, DNSEntry, CaseInsensitiveHash, CaseInsensitiveEqual> HOSTMAP;
 
 //********************************************************************************************************************
 // Performing the socket close in a separate thread means there'll be plenty of time for a
@@ -335,8 +349,8 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 #endif
 
    std::lock_guard<std::mutex> lock(glmThreads);
-      auto thread_ptr = std::make_shared<std::jthread>();     
-      *thread_ptr = std::jthread([] (int Handle) {  
+      auto thread_ptr = std::make_shared<std::jthread>();
+      *thread_ptr = std::jthread([] (int Handle) {
          CLOSESOCKET(Handle);
       }, Handle);
       glThreads.insert(thread_ptr);
@@ -461,17 +475,17 @@ static ERR MODExpunge(void)
 
    {
       std::lock_guard<std::mutex> lock(glmThreads);
- 
+
       for (auto &thread_ptr : glThreads) {
          if (thread_ptr and thread_ptr->joinable()) {
             thread_ptr->request_stop();
          }
       }
-   
+
       // Give threads time to respond to stop request
       constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
       auto start_time = std::chrono::steady_clock::now();
-   
+
       while (!glThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
          // Remove completed threads
          std::erase_if(glThreads, [](const auto& thread_ptr) {

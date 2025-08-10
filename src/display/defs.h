@@ -439,7 +439,7 @@ extern std::array<UBYTE, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
 extern int glLastPort;
 
-extern std::unordered_map<WinHook, FUNCTION> glWindowHooks;
+extern ankerl::unordered_dense::map<WinHook, FUNCTION> glWindowHooks;
 extern std::vector<OBJECTID> glFocusList;
 extern std::recursive_mutex glFocusLock;
 extern std::recursive_mutex glSurfaceLock;

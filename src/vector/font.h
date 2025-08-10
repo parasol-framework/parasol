@@ -74,7 +74,7 @@ class freetype_font {
             glyph & get_glyph(ULONG);
 
             ft_point() : common_font(CF_FREETYPE) { }
-            
+
             ft_point(freetype_font &pFont, METRIC_GROUP &pMetrics, LONG pSize) : common_font(CF_FREETYPE) {
                font = &pFont;
                set_axis(pMetrics);
