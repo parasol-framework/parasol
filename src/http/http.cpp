@@ -126,32 +126,41 @@ constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written 
 
 template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", LONG(code), GetErrorMsg(code)); }
 
+static void secure_clear_memory(void* ptr, size_t len) {
+   // Use volatile to prevent compiler optimization
+   volatile char *p = (volatile char *)ptr;
+   for (size_t i = 0; i < len; i++) p[i] = 0;
+   for (size_t i = 0; i < len; i++) p[i] = 0xff;
+   for (size_t i = 0; i < len; i++) p[i] = 0;
+}
+
 // Enhanced URL validation function
+
 static bool is_valid_url_char(char c, bool allow_reserved = false) {
    // RFC 3986 unreserved characters
-   if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or 
+   if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or
        (c >= '0' and c <= '9') or c IS '-' or c IS '.' or c IS '_' or c IS '~') {
       return true;
    }
-   
+
    // RFC 3986 reserved characters (when explicitly allowed)
-   if (allow_reserved and (c IS ':' or c IS '/' or c IS '?' or c IS '#' or 
-       c IS '[' or c IS ']' or c IS '@' or c IS '!' or c IS '$' or 
-       c IS '&' or c IS '\'' or c IS '(' or c IS ')' or c IS '*' or 
+   if (allow_reserved and (c IS ':' or c IS '/' or c IS '?' or c IS '#' or
+       c IS '[' or c IS ']' or c IS '@' or c IS '!' or c IS '$' or
+       c IS '&' or c IS '\'' or c IS '(' or c IS ')' or c IS '*' or
        c IS '+' or c IS ',' or c IS ';' or c IS '=')) {
       return true;
    }
-   
+
    return false;
 }
 
 // Enhanced URL encoding with validation
 static std::string encode_url_path(const char* input) {
    if (!input) return std::string();
-   
+
    std::string result;
    result.reserve(strlen(input) * 3); // Worst case: every char becomes %XX
-   
+
    for (const char* p = input; *p; p++) {
       if (is_valid_url_char(*p, true)) {
          result += *p;
@@ -172,7 +181,7 @@ static std::string encode_url_path(const char* input) {
          result += encoded;
       }
    }
-   
+
    return result;
 }
 
@@ -805,7 +814,7 @@ static ERR HTTP_Free(extHTTP *Self)
 
    if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC::Free);
    if (Self->Incoming.isScript())     UnsubscribeAction(Self->Incoming.Context, AC::Free);
-   if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);     
+   if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);
    if (Self->Outgoing.isScript())     UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
@@ -1468,7 +1477,7 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
    while (*Value IS '/') Value++; // Skip '/' prefix
 
    std::string encoded_path = encode_url_path(Value);
-   
+
    if (AllocMemory(encoded_path.length() + 1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
       pf::strcopy(encoded_path, Self->Path, encoded_path.length() + 1);
 
