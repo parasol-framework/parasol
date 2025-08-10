@@ -1080,12 +1080,12 @@ class extDocument : public objDocument {
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<ui_link>        Links;
-   std::unordered_map<OBJECTID, vp_to_entity> VPToEntity; // Lookup table for VP -> StreamCode.
+   ankerl::unordered_dense::map<OBJECTID, vp_to_entity> VPToEntity; // Lookup table for VP -> StreamCode.
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
-   std::unordered_map<std::string_view, doc_edit> EditDefs;
+   ankerl::unordered_dense::map<std::string_view, doc_edit> EditDefs;
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face
