@@ -33,7 +33,8 @@ static ERR sslSetup(extNetSocket *Self)
 
    log.traceBranch("Setting up Windows SSL context.");
 
-   if (Self->WinSSL = ssl_wrapper_create_context(); !Self->WinSSL) {
+   bool validate_cert = (Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL ? false : true;
+   if (Self->WinSSL = ssl_wrapper_create_context(validate_cert); !Self->WinSSL) {
       log.warning("Failed to create Windows SSL context");
       return ERR::Failed;
    }

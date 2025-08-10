@@ -35,6 +35,7 @@ typedef int SOCKET_HANDLE;
   flags("NSF", { },
     "SERVER: Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.",
     "SSL: Use Secure Sockets Layer for all communication.",
+    "SSL_NO_VERIFY: Disable SSL certificate verification (for testing only).",
     "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
     "SYNCHRONOUS: Use synchronous (blocking) network calls.",
     "LOG_ALL: Print extra log messages.")

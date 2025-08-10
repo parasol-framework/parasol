@@ -1172,7 +1172,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          // SSL connection has just been established
 
          #ifdef _WIN32
-         if (Self->WinSSL) {
+         if ((Self->WinSSL) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
             if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) {
                log.warning("SSL certificate validation failed.");
                Self->Error = ERR::Security;

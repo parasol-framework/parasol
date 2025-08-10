@@ -34,7 +34,7 @@ typedef enum {
 ERR ssl_wrapper_init(void);
 void ssl_wrapper_cleanup(void);
 
-SSL_HANDLE ssl_wrapper_create_context(void);
+SSL_HANDLE ssl_wrapper_create_context(bool ValidateCredentials = true);
 void ssl_wrapper_free_context(SSL_HANDLE ssl);
 
 SSL_ERROR_CODE ssl_wrapper_connect(SSL_HANDLE, void *, const std::string&);

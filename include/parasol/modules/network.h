@@ -32,9 +32,10 @@ enum class NSF : uint32_t {
    NIL = 0,
    SERVER = 0x00000001,
    SSL = 0x00000002,
-   MULTI_CONNECT = 0x00000004,
-   SYNCHRONOUS = 0x00000008,
-   LOG_ALL = 0x00000010,
+   SSL_NO_VERIFY = 0x00000004,
+   MULTI_CONNECT = 0x00000008,
+   SYNCHRONOUS = 0x00000010,
+   LOG_ALL = 0x00000020,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(NSF)
@@ -141,7 +142,7 @@ class objNetClient : public Object {
    objNetClient * Next;              // The next client IP with connections to the server socket.
    objNetClient * Prev;              // The previous client IP with connections to the server socket.
    objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
-   APTR ClientData;                  // A custom pointer available for development use.
+   APTR ClientData;                  // A custom pointer available for userspace.
    int  TotalConnections;            // The total number of current socket connections for the IP address.
 
    // Action stubs
