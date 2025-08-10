@@ -166,10 +166,9 @@ restart:
 }
 
 //********************************************************************************************************************
-// If the socket refers to a client, this routine will be called from WriteSocket when there is empty space available 
-// on the socket for writing data to the server.
+// This function sends data to the client if there is queued data waiting to go out.  Otherwise it does nothing.
 //
-// It should be noted that this function will prevent the task from going to sleep if it is not managed correctly.  If
+// Note: This function will prevent the task from going to sleep if it is not managed correctly.  If
 // no data is being written to the queue, the program will not be able to sleep until the client stops listening
 // to the write queue.
 

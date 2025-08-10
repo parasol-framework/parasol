@@ -151,7 +151,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
    static const int CHUNK_LENGTH_OFFSET = 16;
    static const int CHUNK_TAIL = 2; // CRLF
 
-   auto Self = (extHTTP *)Socket->ClientData;
+   auto Self = (extHTTP *)CurrentContext();
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, LONG(Self->CurrentState));
@@ -390,10 +390,15 @@ static ERR socket_incoming(objNetSocket *Socket)
          if (Self->Response.empty()) Self->Response.resize(512);
 
          if (Self->ResponseIndex + 1 >= std::ssize(Self->Response)) {
-            Self->Response.resize(Self->Response.size() + 256);
+            if (Self->Response.size() >= MAX_HEADER_SIZE) {
+               log.warning("HTTP response header exceeds maximum size of %d bytes", MAX_HEADER_SIZE);
+               SET_ERROR(log, Self, ERR::InvalidHTTPResponse);
+               return ERR::Terminate;
+            }
+            Self->Response.resize(std::min(Self->Response.size() + 256, size_t(MAX_HEADER_SIZE)));
          }
 
-         Self->Error = acRead(Socket, Self->Response.data() + Self->ResponseIndex, 
+         Self->Error = acRead(Socket, Self->Response.data() + Self->ResponseIndex,
             Self->Response.size() - 1 - Self->ResponseIndex, &len);
 
          if (Self->Error != ERR::Okay) {
@@ -496,7 +501,9 @@ static ERR socket_incoming(objNetSocket *Socket)
                      // authorisation attempts are required in order to receive the 401 from the server first).
 
                      if ((Self->AuthPreset IS false) or (Self->AuthRetries >= 2)) {
-                        for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
+                        if (!Self->Password.empty()) {
+                           secure_clear_memory(const_cast<char*>(Self->Password.data()), Self->Password.size());
+                        }
                         Self->Password.clear();
                      }
                   }
@@ -553,7 +560,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   else log.msg("Authenticate method unknown.");
 
                   Self->setCurrentState(HGS::AUTHENTICATING);
-                  
+
                   ERR error = ERR::Okay;
                   if ((Self->Password.empty()) and ((Self->Flags & HTF::NO_DIALOG) IS HTF::NIL)) {
                      // Pop up a dialog requesting the user to authorise himself with the http server.  The user will
@@ -695,8 +702,18 @@ static ERR socket_incoming(objNetSocket *Socket)
                   for (i=Self->ChunkIndex; i < Self->ChunkBuffered-1; i++) {
                      if ((Self->Chunk[i] IS '\r') and (Self->Chunk[i+1] IS '\n')) {
                         Self->Chunk[i] = 0;
-                        Self->ChunkLen = strtoll((CSTRING)Self->Chunk + Self->ChunkIndex, nullptr, 0);
+                        int64_t temp_chunk_len = strtoll((CSTRING)Self->Chunk + Self->ChunkIndex, nullptr, 16);
                         Self->Chunk[i] = '\r';
+
+                        // Validate chunk length
+                        if (temp_chunk_len < 0 or temp_chunk_len > MAX_CHUNK_LENGTH) {
+                           if (temp_chunk_len > 0) {
+                              log.warning("Chunk length %" PF64 " exceeds maximum %" PF64 ", terminating", temp_chunk_len, MAX_CHUNK_LENGTH);
+                              Self->setCurrentState(HGS::TERMINATED);
+                              return ERR::Terminate;
+                           }
+                        }
+                        Self->ChunkLen = temp_chunk_len;
 
                         if (Self->ChunkLen <= 0) {
                            if (Self->Chunk[Self->ChunkIndex] IS '0') {
@@ -844,12 +861,12 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    //LONG minorv = StrToInt(str); // Currently unused
    while ((b < Response.size()) and (Response[b] > 0x20)) b++;
    while ((b < Response.size()) and (Response[b] <= 0x20)) b++;
-   
+
    int code = 0;
    auto [ ptr, error ] = std::from_chars(Response.data() + b, Response.data() + Response.size(), code);
    if (error IS std::errc()) Self->Status = HTS(code);
    else Self->Status = HTS::NIL;
-   
+
    if (Self->ProxyServer) Self->ContentLength = -1; // Some proxy servers (Squid) strip out information like 'transfer-encoding' yet pass all the requested content anyway :-/
    else Self->ContentLength = 0;
    Self->Chunked = false;
@@ -859,7 +876,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    auto end_line = Response.find("\r\n");
    if (end_line IS std::string::npos) return ERR::Okay;
    Response.remove_prefix(end_line + 2);
-   
+
    log.msg("HTTP response header received, status code %d", code);
 
    while (!Response.empty()) {
@@ -876,7 +893,15 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
          if (pf::iequals(field, "Content-Length")) {
             Self->ContentLength = 0;
-            auto [ ptr, error ] = std::from_chars(value.data(), value.data() + value.size(), Self->ContentLength);
+            int64_t temp_length = 0;
+            auto [ ptr, error ] = std::from_chars(value.data(), value.data() + value.size(), temp_length);
+            if (error IS std::errc() and temp_length >= 0 and temp_length <= MAX_CONTENT_LENGTH) {
+               Self->ContentLength = temp_length;
+            }
+            else {
+               log.warning("Invalid or excessive Content-Length: %.*s (max: %" PF64 ")", int(value.size()), value.data(), MAX_CONTENT_LENGTH);
+               Self->ContentLength = -1; // Treat as streaming
+            }
          }
          else if (pf::iequals(field, "Transfer-Encoding")) {
             if (pf::iequals(value, "chunked")) {
