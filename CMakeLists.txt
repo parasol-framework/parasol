@@ -195,11 +195,11 @@ if (WIN32)
    if (PARASOL_STATIC)
       # NB: MinGW does not guarantee that libgcc and libstdc++ will be static even if these flags are specified.
       if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-         set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+         set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
       endif ()
       set (INIT_LINK "init-win" core)
    else ()
-      set (CMAKE_EXE_LINKER_FLAGS "-static")
+      set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
       set (INIT_LINK "init-win")
    endif ()
 else ()
@@ -216,6 +216,8 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 # --------------------------------------------------------------------------------------------------------------------
 # Use Flute to write tests against your code.  All Flute tests are integration tests, i.e. run them post-install
 # against the target installation folder.
+#
+# The --no-crash-handler option is used because crash dump analysis is better without it.
 
 function (flute_test name path)
    if (BUILD_TESTS)
@@ -226,7 +228,7 @@ function (flute_test name path)
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
-         COMMAND "${FLUTE_EXE}" "--log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
+         COMMAND "${FLUTE_EXE}" "--no-crash-handler --log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
          WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
       set_tests_properties(${name} PROPERTIES LABELS ${name})
    endif ()
