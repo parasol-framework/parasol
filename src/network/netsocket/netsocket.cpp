@@ -459,13 +459,20 @@ obj(NetClient) Client: The client to be disconnected.
 -ERRORS-
 Okay
 NullArgs
+WrongClass: The Client object is not of type `NetClient`.
 -END-
 
 *********************************************************************************************************************/
 
 static ERR NETSOCKET_DisconnectClient(extNetSocket *Self, struct ns::DisconnectClient *Args)
 {
+   pf::Log log;
+
    if ((!Args) or (!Args->Client)) return ERR::NullArgs;
+
+   if (Args->Client->classID() != CLASSID::NETCLIENT) return log.warning(ERR::WrongClass);
+
+   log.branch("Disconnecting client #%d", Args->Client->UID);
    free_client(Self, Args->Client);
    return ERR::Okay;
 }
