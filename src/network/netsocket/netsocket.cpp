@@ -1173,17 +1173,51 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 
          #ifdef _WIN32
          if (Self->WinSSL) {
-            if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) { // Handle the failed verification
-               log.trace("SSL certification was not validated.");
+            if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) {
+               log.warning("SSL certificate validation failed.");
+               Self->Error = ERR::Security;
+               Self->State = NTC::DISCONNECTED;
+               if (Self->Feedback.defined()) {
+                  if (Self->Feedback.isC()) {
+                     pf::SwitchContext context(Self->Feedback.Context);
+                     auto routine = (void (*)(OBJECTPTR, OBJECTPTR, NTC))Self->Feedback.Routine;
+                     routine(Self, (objClientSocket *)Self->Feedback.Meta, NTC::DISCONNECTED);
+                  }
+                  else if (Self->Feedback.isScript()) {
+                     sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+                        { "NetSocket", Self, FD_OBJECTPTR },
+                        { "Client", OBJECTPTR(Self->Feedback.Meta), FD_OBJECTPTR },
+                        { "State", LONG(NTC::DISCONNECTED) }
+                     }));
+                  }
+               }
+               return ERR::Security;
             }
-            else log.trace("SSL certification is valid.");
+            else log.trace("SSL certificate validation successful.");
          }
          #else
          if (Self->SSL) {
-            if (SSL_get_verify_result(Self->SSL) != X509_V_OK) { // Handle the failed verification
-               log.trace("SSL certification was not validated.");
+            if (SSL_get_verify_result(Self->SSL) != X509_V_OK) {
+               log.warning("SSL certificate validation failed.");
+               Self->Error = ERR::Security;
+               Self->State = NTC::DISCONNECTED;
+               if (Self->Feedback.defined()) {
+                  if (Self->Feedback.isC()) {
+                     pf::SwitchContext context(Self->Feedback.Context);
+                     auto routine = (void (*)(OBJECTPTR, OBJECTPTR, NTC))Self->Feedback.Routine;
+                     routine(Self, (objClientSocket *)Self->Feedback.Meta, NTC::DISCONNECTED);
+                  }
+                  else if (Self->Feedback.isScript()) {
+                     sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+                        { "NetSocket", Self, FD_OBJECTPTR },
+                        { "Client", OBJECTPTR(Self->Feedback.Meta), FD_OBJECTPTR },
+                        { "State", LONG(NTC::DISCONNECTED) }
+                     }));
+                  }
+               }
+               return ERR::Security;
             }
-            else log.trace("SSL certification is valid.");
+            else log.trace("SSL certificate validation successful.");
          }
          #endif
       }
