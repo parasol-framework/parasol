@@ -1073,8 +1073,8 @@ public:
 class extDocument : public objDocument {
    public:
    FUNCTION EventCallback;
-   std::unordered_map<std::string, std::string> Vars; // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
-   std::unordered_map<std::string, std::string> Params; // Incoming parameters provided via the URI
+   KEYVALUE Vars;   // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
+   KEYVALUE Params; // Incoming parameters provided via the URI
    std::map<uint32_t, XMLTag *>   TemplateIndex;
    std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
