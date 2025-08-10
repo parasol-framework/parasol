@@ -36,37 +36,6 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #define HKEY_PROXY "\\HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\"
 #endif
 
-class ProxyConfigManager {
-public:
-   static ProxyConfigManager& getInstance() {
-      static ProxyConfigManager instance;
-      return instance;
-   }
-   
-   objConfig * getConfig() {
-      if (!cfg) cfg = objConfig::create::untracked(fl::Path("user:config/network/proxies.cfg"));
-      return cfg;
-   }
-   
-   void resetConfig() {
-      if (cfg) { FreeResource(cfg); cfg = nullptr; }
-   }
-   
-   ~ProxyConfigManager() {
-      resetConfig();
-   }
-   
-   // Disable copy and move operations for singleton
-   ProxyConfigManager(const ProxyConfigManager&) = delete;
-   ProxyConfigManager& operator=(const ProxyConfigManager&) = delete;
-   ProxyConfigManager(ProxyConfigManager&&) = delete;
-   ProxyConfigManager& operator=(ProxyConfigManager&&) = delete;
-   
-private:
-   ProxyConfigManager() = default;
-   objConfig * cfg = nullptr;
-};
-
 //********************************************************************************************************************
 
 class extProxy : public objProxy {
@@ -191,14 +160,11 @@ static ERR PROXY_DeleteRecord(extProxy *Self)
       #endif
    }
 
-   auto& configMgr = ProxyConfigManager::getInstance();
-   configMgr.resetConfig();
+   auto cfg = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
+   if (!cfg.ok()) return log.error(ERR::CreateObject);
 
-   if (auto *config = configMgr.getConfig()) {
-      config->deleteGroup(Self->GroupName.c_str());
-      acSaveSettings(config);
-   }
-
+   cfg->deleteGroup(Self->GroupName.c_str());
+   cfg->saveSettings();
    return ERR::Okay;
 }
 
@@ -271,10 +237,8 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 
    log.traceBranch("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
-   auto& configMgr = ProxyConfigManager::getInstance();
-   configMgr.resetConfig();
-
-   if (auto* config = configMgr.getConfig()) {
+   auto config = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
+   if (config.ok()) {
       #ifdef _WIN32
          // Remove existing host proxy settings
          ConfigGroups *groups;
@@ -338,7 +302,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 
       return find_proxy(Self);
    }
-   else return ERR::AccessObject;
+   else return ERR::CreateObject;
 }
 
 /*********************************************************************************************************************
@@ -394,57 +358,54 @@ static ERR find_proxy(extProxy *Self)
    pf::Log log(__FUNCTION__);
 
    clear_values(Self);
+   
+   auto config = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
+   if (config.ok()) {
+      if (!Self->Find) Self->Find = true; // Start of search
 
-   auto &configMgr = ProxyConfigManager::getInstance();
-   auto *config = configMgr.getConfig();
-   if (!config) {
-      log.trace("Global config not loaded.");
+      ConfigGroups *groups;
+      if (config->get(FID_Data, groups) != ERR::Okay) return ERR::NoData;
+
+      auto group = groups->begin();
+
+      // If continuing search, find next record
+      if (!Self->GroupName.empty()) {
+         group = std::find_if(groups->begin(), groups->end(),
+            [&](const auto& g) { return g.first IS Self->GroupName; });
+         if (group != groups->end()) ++group;
+      }
+
+      log.trace("Finding next proxy. Port: '%d', Enabled: %d", Self->FindPort, Self->FindEnabled);
+
+      // Search for matching proxy
+      for (; group != groups->end(); ++group) {
+         log.trace("Checking group: %s", group->first.c_str());
+
+         const auto& keys = group->second;
+
+         // Apply filters
+         if (!matchesPortFilter(keys, Self->FindPort)) continue;
+         if (!matchesEnabledFilter(keys, Self->FindEnabled)) continue;
+
+         // TODO: Implement network and gateway filters
+         if (keys.contains("NetworkFilter")) {
+            log.error("Network filters not supported yet.");
+         }
+
+         if (keys.contains("GatewayFilter")) {
+            log.error("Gateway filters not supported yet.");
+         }
+
+         log.trace("Found matching proxy.");
+         Self->GroupName = group->first;
+         return get_record(Self);
+      }
+
+      log.trace("No proxy matched.");
+      Self->Find = false;
       return ERR::NoSearchResult;
    }
-
-   if (!Self->Find) Self->Find = true; // Start of search
-
-   ConfigGroups *groups;
-   if (config->get(FID_Data, groups) != ERR::Okay) return ERR::NoData;
-
-   auto group = groups->begin();
-
-   // If continuing search, find next record
-   if (!Self->GroupName.empty()) {
-      group = std::find_if(groups->begin(), groups->end(),
-         [&](const auto& g) { return g.first IS Self->GroupName; });
-      if (group != groups->end()) ++group;
-   }
-
-   log.trace("Finding next proxy. Port: '%d', Enabled: %d", Self->FindPort, Self->FindEnabled);
-
-   // Search for matching proxy
-   for (; group != groups->end(); ++group) {
-      log.trace("Checking group: %s", group->first.c_str());
-
-      const auto& keys = group->second;
-
-      // Apply filters
-      if (!matchesPortFilter(keys, Self->FindPort)) continue;
-      if (!matchesEnabledFilter(keys, Self->FindEnabled)) continue;
-
-      // TODO: Implement network and gateway filters
-      if (keys.contains("NetworkFilter")) {
-         log.error("Network filters not supported yet.");
-      }
-
-      if (keys.contains("GatewayFilter")) {
-         log.error("Gateway filters not supported yet.");
-      }
-
-      log.trace("Found matching proxy.");
-      Self->GroupName = group->first;
-      return get_record(Self);
-   }
-
-   log.trace("No proxy matched.");
-   Self->Find = false;
-   return ERR::NoSearchResult;
+   else return ERR::CreateObject;
 }
 
 //********************************************************************************************************************
@@ -778,38 +739,39 @@ static ERR get_record(extProxy *Self)
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
    Self->Record = std::stoi(Self->GroupName);
+   
+   objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
 
-   auto &configMgr = ProxyConfigManager::getInstance();
-   auto *config = configMgr.getConfig();
-   if (!config) return log.error(ERR::AccessObject);
-
-   std::string str;
-   if (config->read(Self->GroupName, "Server", str) IS ERR::Okay) {
-      Self->setString(Self->Server, str);
+   if (config.ok()) {
+      std::string str;
+      if (config->read(Self->GroupName, "Server", str) IS ERR::Okay) {
+         Self->setString(Self->Server, str);
       
-      if (config->read(Self->GroupName, "NetworkFilter", str) IS ERR::Okay) {
-         Self->setString(Self->NetworkFilter, str);
-      }
-      if (config->read(Self->GroupName, "GatewayFilter", str) IS ERR::Okay) {
-         Self->setString(Self->GatewayFilter, str);
-      }
-      if (config->read(Self->GroupName, "Username", str) IS ERR::Okay) {
-         Self->setString(Self->Username, str);
-      }
-      if (config->read(Self->GroupName, "Password", str) IS ERR::Okay) {
-         Self->setString(Self->Password, str);
-      }
-      if (config->read(Self->GroupName, "Name", str) IS ERR::Okay) {
-         Self->setString(Self->ProxyName, str);
-      }
+         if (config->read(Self->GroupName, "NetworkFilter", str) IS ERR::Okay) {
+            Self->setString(Self->NetworkFilter, str);
+         }
+         if (config->read(Self->GroupName, "GatewayFilter", str) IS ERR::Okay) {
+            Self->setString(Self->GatewayFilter, str);
+         }
+         if (config->read(Self->GroupName, "Username", str) IS ERR::Okay) {
+            Self->setString(Self->Username, str);
+         }
+         if (config->read(Self->GroupName, "Password", str) IS ERR::Okay) {
+            Self->setString(Self->Password, str);
+         }
+         if (config->read(Self->GroupName, "Name", str) IS ERR::Okay) {
+            Self->setString(Self->ProxyName, str);
+         }
       
-      config->read(Self->GroupName, "Port", Self->Port);
-      config->read(Self->GroupName, "ServerPort", Self->ServerPort);
-      config->read(Self->GroupName, "Enabled", Self->Enabled);
-      config->read(Self->GroupName, "Host", Self->Host);
-      return ERR::Okay;
+         config->read(Self->GroupName, "Port", Self->Port);
+         config->read(Self->GroupName, "ServerPort", Self->ServerPort);
+         config->read(Self->GroupName, "Enabled", Self->Enabled);
+         config->read(Self->GroupName, "Host", Self->Host);
+         return ERR::Okay;
+      }
+      else return log.error(ERR::NotFound);
    }
-   else return log.error(ERR::NotFound);
+   else return log.error(ERR::CreateObject);
 }
 
 //********************************************************************************************************************
