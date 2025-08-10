@@ -1427,7 +1427,6 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
             Socket->WinRecursion++;
             #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
             if (ClientSocket) clientsocket_outgoing((HOSTHANDLE)SocketHandle, ClientSocket);
-            else if (Socket->WriteSocket) Socket->WriteSocket(0, Socket);
             else client_server_outgoing(0, Socket);
             #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
             Socket->WinRecursion--;

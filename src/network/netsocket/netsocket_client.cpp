@@ -8,14 +8,14 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 {
    pf::Log log(__FUNCTION__);
    auto Self = (extNetSocket *)Data;
+   
+   pf::SwitchContext context(Self);
 
    log.trace("Connection from server received.");
 
    int result = EHOSTUNREACH; // Default error in case getsockopt() fails
    socklen_t optlen = sizeof(result);
    getsockopt(Self->SocketHandle, SOL_SOCKET, SO_ERROR, &result, &optlen);
-
-   pf::SwitchContext context(Self);
 
    // Remove the write callback
 
@@ -59,21 +59,19 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 }
 #endif
 
-/*********************************************************************************************************************
-** If the socket is the client of a server, messages from the server will come in through here.
-**
-** Incoming information from the server can be read with either the Incoming callback routine (the developer is
-** expected to call the Read action from this) or he can receive the information in the Subscriber's data channel.
-**
-** This function is called from win32_netresponse() and is managed outside of the normal message queue.
-*/
+//********************************************************************************************************************
+// If the socket is the client of a server, messages from the server will come in through here.
+//
+// Incoming information from the server can be read with either the Incoming callback routine (the developer is
+// expected to call the Read action from this) or he can receive the information in the Subscriber's data channel.
+//
+// This function is called from win32_netresponse() and is managed outside of the normal message queue.
 
-static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Data)
+static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   extNetSocket *Self = Data;
 
-   pf::SwitchContext context(Self);
+   pf::SwitchContext context(Self); // Set context & lock
 
    if (Self->Terminating) { // Set by FreeWarning()
       log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
@@ -168,17 +166,18 @@ restart:
 }
 
 //********************************************************************************************************************
-// If the socket refers to a client, this routine will be called when there is empty space available on the socket
-// for writing data to the server.
+// If the socket refers to a client, this routine will be called from WriteSocket when there is empty space available 
+// on the socket for writing data to the server.
 //
 // It should be noted that this function will prevent the task from going to sleep if it is not managed correctly.  If
 // no data is being written to the queue, the program will not be able to sleep until the client stops listening
 // to the write queue.
 
-static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
+static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   extNetSocket *Self = Data;
+   
+   pf::SwitchContext context(Self); // Set context & lock
 
    if (Self->Terminating) return;
 
@@ -200,8 +199,6 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Data)
       log.trace("Recursion detected.");
       return;
    }
-
-   pf::SwitchContext context(Self);
 
    log.traceBranch();
 

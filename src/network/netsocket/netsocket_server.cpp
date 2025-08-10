@@ -260,9 +260,13 @@ static void free_client_socket(extNetSocket *ServerSocket, extClientSocket *Clie
 
    if (Signal) {
       if (ServerSocket->Feedback.isC()) {
-         pf::SwitchContext context(ServerSocket->Feedback.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))ServerSocket->Feedback.Routine;
-         if (routine) routine(ServerSocket, ClientSocket, NTC::DISCONNECTED, ServerSocket->Feedback.Meta);
+         pf::ScopedObjectLock server_lock(ServerSocket);
+         pf::ScopedObjectLock client_lock(ClientSocket);
+         if (server_lock.granted() and client_lock.granted()) {
+            pf::SwitchContext context(ServerSocket->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))ServerSocket->Feedback.Routine;
+            if (routine) routine(ServerSocket, ClientSocket, NTC::DISCONNECTED, ServerSocket->Feedback.Meta);
+         }
       }
       else if (ServerSocket->Feedback.isScript()) {
          sc::Call(ServerSocket->Feedback, std::to_array<ScriptArg>({

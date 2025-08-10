@@ -227,10 +227,9 @@ static ERR sslConnect(extNetSocket *Self)
 ** the RECEIVE() and SEND() functions.
 */
 
-static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
+static void ssl_handshake_write(SOCKET_HANDLE Socket, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
    LONG result;
 
    log.msg("Socket: %" PF64, (MAXINT)Socket);
@@ -241,6 +240,7 @@ static void ssl_handshake_write(SOCKET_HANDLE Socket, APTR Data)
       #elif _WIN32
          if ((Self->WriteSocket) or (Self->Outgoing.defined()) or (Self->WriteQueue.Buffer)) {
             // Do nothing, we are already listening for writes
+            log.trace("Write socket is already listening for writes.");
          }
          else win_socketstate((WSW_SOCKET)Socket, -1, FALSE); // Turn off write listening
       #endif
