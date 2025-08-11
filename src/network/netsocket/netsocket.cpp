@@ -68,7 +68,6 @@ static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
 static void server_incoming_from_client(HOSTHANDLE, extClientSocket *);
 static void clientsocket_outgoing(HOSTHANDLE, extClientSocket *);
 static void free_client(extNetSocket *, objNetClient *);
-static void free_client_socket(extNetSocket *, extClientSocket *, bool);
 static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
 
@@ -503,7 +502,7 @@ static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectS
    pf::Log log;
    if ((!Args) or (!Args->Socket)) return log.warning(ERR::NullArgs);
    if (Args->Socket->classID() != CLASSID::CLIENTSOCKET) return log.warning(ERR::WrongClass);
-   free_client_socket(Self, (extClientSocket *)(Args->Socket), true);
+   FreeResource(Args->Socket); // Disconnects & sends a Feedback message
    return ERR::Okay;
 }
 
@@ -1178,55 +1177,40 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       if ((Self->State IS NTC::CONNECTING_SSL) and (Value IS NTC::CONNECTED)) {
          // SSL connection has just been established
 
+         bool ssl_valid = true;
+
          #ifdef _WIN32
          if ((Self->WinSSL) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
-            if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) {
-               log.warning("SSL certificate validation failed.");
-               Self->Error = ERR::Security;
-               Self->State = NTC::DISCONNECTED;
-               if (Self->Feedback.defined()) {
-                  if (Self->Feedback.isC()) {
-                     pf::SwitchContext context(Self->Feedback.Context);
-                     auto routine = (void (*)(OBJECTPTR, OBJECTPTR, NTC))Self->Feedback.Routine;
-                     routine(Self, (objClientSocket *)Self->Feedback.Meta, NTC::DISCONNECTED);
-                  }
-                  else if (Self->Feedback.isScript()) {
-                     sc::Call(Self->Feedback, std::to_array<ScriptArg>({
-                        { "NetSocket", Self, FD_OBJECTPTR },
-                        { "Client", OBJECTPTR(Self->Feedback.Meta), FD_OBJECTPTR },
-                        { "State", LONG(NTC::DISCONNECTED) }
-                     }));
-                  }
-               }
-               return ERR::Security;
-            }
+            if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) ssl_valid = false;
             else log.trace("SSL certificate validation successful.");
          }
          #else
          if (Self->SSL) {
-            if (SSL_get_verify_result(Self->SSL) != X509_V_OK) {
-               log.warning("SSL certificate validation failed.");
-               Self->Error = ERR::Security;
-               Self->State = NTC::DISCONNECTED;
-               if (Self->Feedback.defined()) {
-                  if (Self->Feedback.isC()) {
-                     pf::SwitchContext context(Self->Feedback.Context);
-                     auto routine = (void (*)(OBJECTPTR, OBJECTPTR, NTC))Self->Feedback.Routine;
-                     routine(Self, (objClientSocket *)Self->Feedback.Meta, NTC::DISCONNECTED);
-                  }
-                  else if (Self->Feedback.isScript()) {
-                     sc::Call(Self->Feedback, std::to_array<ScriptArg>({
-                        { "NetSocket", Self, FD_OBJECTPTR },
-                        { "Client", OBJECTPTR(Self->Feedback.Meta), FD_OBJECTPTR },
-                        { "State", LONG(NTC::DISCONNECTED) }
-                     }));
-                  }
-               }
-               return ERR::Security;
-            }
+            if (SSL_get_verify_result(Self->SSL) != X509_V_OK) ssl_valid = false;
             else log.trace("SSL certificate validation successful.");
          }
          #endif
+         
+         if (!ssl_valid) {
+            log.warning("SSL certificate validation failed.");
+            Self->Error = ERR::Security;
+            Self->State = NTC::DISCONNECTED;
+            if (Self->Feedback.defined()) {
+               if (Self->Feedback.isC()) {
+                  pf::SwitchContext context(Self->Feedback.Context);
+                  auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+                  if (routine) routine(Self, nullptr, NTC::DISCONNECTED, Self->Feedback.Meta);
+               }
+               else if (Self->Feedback.isScript()) {
+                  sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+                     { "NetSocket", Self, FD_OBJECTPTR },
+                     { "ClientSocket", OBJECTPTR(nullptr), FD_OBJECTPTR },
+                     { "State", int(NTC::DISCONNECTED) }
+                  }));
+               }
+            }
+            return ERR::Security;
+         }
       }
       #endif
 
@@ -1243,7 +1227,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          else if (Self->Feedback.isScript()) {
             sc::Call(Self->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    Self, FD_OBJECTPTR },
-               { "ClientSocket", APTR(nullptr), FD_OBJECTPTR },
+               { "ClientSocket", OBJECTPTR(nullptr), FD_OBJECTPTR },
                { "State",        int(Self->State) }
             }));
          }

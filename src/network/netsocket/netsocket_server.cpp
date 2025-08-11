@@ -167,8 +167,6 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
 
    if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
       if (client_ip->Connections) {
-         // Check if the client is alive by writing to it.  If the client is dead, remove it and continue with the new connection.
-
          log.msg("Preventing second connection attempt from IP %d.%d.%d.%d", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
          CLOSESOCKET(clientfd);
          return;
@@ -224,8 +222,8 @@ static void free_client(extNetSocket *Self, objNetClient *Client)
 
    while (Client->Connections) {
       objClientSocket *current_socket = Client->Connections;
-      free_client_socket(Self, (extClientSocket *)Client->Connections, true);
-      if (Client->Connections IS current_socket) {
+      FreeResource(current_socket); // Disconnects & sends a Feedback message
+      if (Client->Connections IS current_socket) { // Sanity check
          log.warning("Resource management error detected in Client->Sockets");
          break;
       }
@@ -245,37 +243,4 @@ static void free_client(extNetSocket *Self, objNetClient *Client)
    Self->TotalClients--;
 
    recursive--;
-}
-
-//********************************************************************************************************************
-// Terminates the connection to the client and removes associated resources.
-
-static void free_client_socket(extNetSocket *ServerSocket, extClientSocket *ClientSocket, bool Signal)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (!ClientSocket) return;
-
-   log.branch("Handle: %d, NetSocket: %d, ClientSocket: %d", ClientSocket->Handle, ServerSocket->UID, ClientSocket->UID);
-
-   if (Signal) {
-      if (ServerSocket->Feedback.isC()) {
-         pf::ScopedObjectLock server_lock(ServerSocket);
-         pf::ScopedObjectLock client_lock(ClientSocket);
-         if (server_lock.granted() and client_lock.granted()) {
-            pf::SwitchContext context(ServerSocket->Feedback.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))ServerSocket->Feedback.Routine;
-            if (routine) routine(ServerSocket, ClientSocket, NTC::DISCONNECTED, ServerSocket->Feedback.Meta);
-         }
-      }
-      else if (ServerSocket->Feedback.isScript()) {
-         sc::Call(ServerSocket->Feedback, std::to_array<ScriptArg>({
-            { "NetSocket",    ServerSocket, FD_OBJECTPTR },
-            { "ClientSocket", ClientSocket, FD_OBJECTPTR },
-            { "State",        int(NTC::DISCONNECTED) }
-         }));
-      }
-   }
-
-   FreeResource(ClientSocket);
 }

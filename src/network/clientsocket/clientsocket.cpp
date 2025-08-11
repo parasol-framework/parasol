@@ -54,7 +54,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
    
    if (error IS ERR::Terminate) {
       log.trace("Terminating socket, failed to read incoming data.");
-      free_client_socket(Socket, client, true);
+      FreeResource(client); // Disconnect & send Feedback message
    }
 
    Socket->InUse--;
