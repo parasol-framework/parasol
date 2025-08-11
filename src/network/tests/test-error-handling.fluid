@@ -165,7 +165,7 @@ function testBufferOverflowHandling()
       end,
       incoming = function(Socket, Script)
          -- Simulate slow reading to cause server buffer buildup
-         processing.sleep(0.5)
+         processing.sleep(0.5, false)
          local buffer = string.alloc(1024)
          local err, read_len = Socket.acRead(buffer)
          if (err != ERR_Okay) then
@@ -255,7 +255,7 @@ function testNTECloseHandling()
             
             -- Force close to trigger NTE_CLOSE handling
             print('[Server] Forcibly closing client connection...')
-            Socket.mtDisconnectClient(Client)
+            Socket.mtDisconnectSocket(Client)
             
          elseif (State == NTC_DISCONNECTED) then
             print('[Server] Client disconnect confirmed')

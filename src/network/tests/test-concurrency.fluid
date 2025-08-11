@@ -144,7 +144,7 @@ function testMultipleConnections()
       assert(err == ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
       
       -- Small delay between connections to avoid overwhelming
-      processing.sleep(0.1)
+      processing.sleep(0.1, false)
    end
    
    -- Wait for test completion
@@ -213,7 +213,7 @@ function testClientLimitEnforcement()
          rejectedConnections = rejectedConnections + 1
          print('[Client ' .. i .. '] Connection rejected: ' .. mSys.GetErrorMsg(err))
       end
-      processing.sleep(0.05) -- Small delay
+      processing.sleep(0.05, false) -- Small delay
    end
    
    -- Allow time for connections to be processed

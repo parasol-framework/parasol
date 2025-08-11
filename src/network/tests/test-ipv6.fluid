@@ -99,7 +99,7 @@ function testIPv6ServerBinding()
    print('[Server] IPv6 server bound successfully on port ' .. glPort)
 
    -- Test connecting with IPv6 loopback
-   processing.sleep(1) -- Small delay for server to be ready
+   processing.sleep(1, false) -- Small delay for server to be ready
 
    local client = obj.new('netsocket', {
       name = 'IPv6TestClient',
