@@ -11,7 +11,7 @@ static void sslDisconnect(extNetSocket *Self)
       SSL_set_info_callback(Self->SSL, nullptr);
       
       // Perform proper bidirectional SSL shutdown
-      int shutdown_result = SSL_shutdown(Self->SSL);
+      auto shutdown_result = SSL_shutdown(Self->SSL);
       if (shutdown_result == 0) {
          // First shutdown call completed, perform second shutdown for bidirectional close
          shutdown_result = SSL_shutdown(Self->SSL);
@@ -76,10 +76,9 @@ static void sslCtxMsgCallback(SSL *s, int where, int ret)
    sslMsgCallback(s, where, ret);
 }
 
-/*********************************************************************************************************************
-** This only needs to be called once to setup the unique SSL context for the NetSocket object and the locations of the
-** certificates.
-*/
+//********************************************************************************************************************
+// This only needs to be called once to setup the unique SSL context for the NetSocket object and the locations of the
+// certificates.
 
 static ERR sslSetup(extNetSocket *Self)
 {
@@ -122,11 +121,11 @@ static ERR sslSetup(extNetSocket *Self)
 
                return ERR::Okay;
             }
-            else { log.warning("Failed to initialise new SSL object."); error = ERR::Failed; }
+            else { log.warning("Failed to initialise new SSL object."); error = ERR::SystemCall; }
          }
          else {
             log.warning("Failed to define certificate folder: %s", path.c_str());
-            error = ERR::Failed;
+            error = ERR::SystemCall;
          }
       }
       else error = ERR::ResolvePath;
@@ -136,7 +135,7 @@ static ERR sslSetup(extNetSocket *Self)
    }
    else {
       log.warning("SSL_CTX_new: %s", ERR_error_string(ERR_get_error(), nullptr));
-      error = ERR::Failed;
+      error = ERR::SystemCall;
    }
 
    return error;
@@ -152,7 +151,7 @@ static ERR sslLinkSocket(extNetSocket *Self)
 
    if ((Self->BIO = BIO_new_socket(Self->SocketHandle, BIO_NOCLOSE))) {
       SSL_set_bio(Self->SSL, Self->BIO, Self->BIO);
-//      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr);
+//      SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr); // SSL library will process 'non-application' data automatically [good]
       SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), nullptr);
       SSL_ctrl(Self->SSL, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), nullptr);
    }
@@ -178,7 +177,7 @@ static ERR sslConnect(extNetSocket *Self)
 
    if (!Self->SSL) return ERR::FieldNotSet;
 
-   LONG result = SSL_connect(Self->SSL);
+   auto result = SSL_connect(Self->SSL);
 
    if (result <= 0) {
       result = SSL_get_error(Self->SSL, result);
@@ -221,20 +220,18 @@ static ERR sslConnect(extNetSocket *Self)
    }
 }
 
-/****************************************************************************
-** Handshaking may be required during normal read/write operations.  This routine simply tells SSL to continue with its
-** handshake and then ceases monitoring of the FD.  If SSL then needs to continue its handshake then it will tell us in
-** the RECEIVE() and SEND() functions.
-*/
+//********************************************************************************************************************
+// Handshaking may be required during normal read/write operations.  This routine simply tells SSL to continue with its
+// handshake and then ceases monitoring of the FD.  If SSL then needs to continue its handshake then it will tell us in
+// the RECEIVE() and SEND() functions.
 
 static void ssl_handshake_write(SOCKET_HANDLE Socket, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   LONG result;
 
    log.msg("Socket: %" PF64, (MAXINT)Socket);
 
-   if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
+   if (auto result = SSL_do_handshake(Self->SSL); result == 1) { // Handshake successful, connection established
       #ifdef __linux__
          RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_write, Self);
       #elif _WIN32
@@ -273,11 +270,10 @@ static void ssl_handshake_read(SOCKET_HANDLE Socket, APTR Data)
 {
    pf::Log log(__FUNCTION__);
    extNetSocket *Self = reinterpret_cast<extNetSocket *>(Data);
-   LONG result;
 
    log.msg("Socket: %" PF64, (MAXINT)Socket);
 
-   if ((result = SSL_do_handshake(Self->SSL)) == 1) { // Handshake successful, connection established
+   if (auto result = SSL_do_handshake(Self->SSL); result == 1) { // Handshake successful, connection established
       #ifdef __linux__
          RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
       #elif _WIN32
