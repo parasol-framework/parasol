@@ -510,7 +510,7 @@ static ERR NETSOCKET_DisconnectSocket(extNetSocket *Self, struct ns::DisconnectS
 
 static ERR NETSOCKET_Free(extNetSocket *Self)
 {
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
    sslDisconnect(Self);
 #endif
 
@@ -619,7 +619,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
    if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR::Okay; // The socket has been pre-configured by the developer
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
    // Initialise the SSL structures (do not perform any connection yet).  Notice the NSF::SSL flag is required
    // for an SSL request, but future SSL checks will instead be reliant on the SSL field having a value.
 
@@ -1173,7 +1173,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
    if (Value != Self->State) {
       if ((Self->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
 
-      #ifdef ENABLE_SSL
+      #ifndef DISABLE_SSL
       if ((Self->State IS NTC::CONNECTING_SSL) and (Value IS NTC::CONNECTED)) {
          // SSL connection has just been established
 
@@ -1278,7 +1278,7 @@ connection is not encrypted, a value of zero is returned to indicate that the co
 
 static ERR GET_ValidCert(extNetSocket *Self, int *Value)
 {
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
    #ifdef _WIN32
    if ((Self->WinSSL) and (Self->State IS NTC::CONNECTED)) {
       *Value = ssl_wrapper_get_verify_result(Self->WinSSL);
@@ -1489,7 +1489,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       if (Error IS ERR::Okay) {
          if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection to server granted.");
 
-         #ifdef ENABLE_SSL
+         #ifndef DISABLE_SSL
             if (Socket->WinSSL) {
                log.traceBranch("Attempting SSL handshake.");
                sslConnect(Socket);

@@ -72,7 +72,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    if (Socket->Terminating) return;
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     if ((Socket->WinSSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
@@ -93,7 +93,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    log.traceBranch();
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifndef _WIN32
     if (Socket->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
   #endif
@@ -108,7 +108,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    while (!ClientSocket->WriteQueue.Buffer.empty()) {
       size_t len = ClientSocket->WriteQueue.Buffer.size() - ClientSocket->WriteQueue.Index;
-      #ifdef ENABLE_SSL
+      #ifndef DISABLE_SSL
          #ifdef _WIN32
             if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else

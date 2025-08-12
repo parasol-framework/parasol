@@ -6,7 +6,7 @@ This file provides the same interface as ssl.cpp but uses the Windows SSL wrappe
 *********************************************************************************************************************/
 
 #ifdef _WIN32
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
 
 //********************************************************************************************************************
 // Disconnect SSL connection on Windows

@@ -21,7 +21,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::REMOVE, &client_connect, nullptr);
 
-   #ifdef ENABLE_SSL
+   #ifndef DISABLE_SSL
    if ((Self->SSL) and (!result)) {
       // Perform the SSL handshake
 
@@ -79,7 +79,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       return;
    }
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Windows SSL handshake in progress, reading raw data.");
@@ -180,7 +180,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
 
    if (Self->Terminating) return;
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     if ((Self->WinSSL) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
@@ -201,7 +201,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
 
    log.traceBranch();
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifndef _WIN32
     if (Self->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
   #endif
@@ -216,7 +216,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
 
    while (!Self->WriteQueue.Buffer.empty()) {
       size_t len = Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index;
-      #ifdef ENABLE_SSL
+      #ifndef DISABLE_SSL
          #ifdef _WIN32
             if ((!Self->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else

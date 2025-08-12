@@ -30,7 +30,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     #include "win32/ssl_wrapper.h"
   #else
@@ -259,7 +259,7 @@ class extNetSocket : public objNetSocket {
       // WriteSocket is to be used only when data is already queued to be written, or the Outgoing callback is defined.
       void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
    #endif
-   #ifdef ENABLE_SSL
+   #ifndef DISABLE_SSL
       #ifdef _WIN32
          union {
             SSL_HANDLE SSL;
@@ -298,7 +298,7 @@ enum {
 
 JUMPTABLE_CORE
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     // Windows SSL wrapper forward declarations
     static ERR sslConnect(extNetSocket *);
@@ -461,7 +461,7 @@ static ERR MODExpunge(void)
    if (clProxy)        { FreeResource(clProxy); clProxy = nullptr; }
    if (clNetLookup)    { FreeResource(clNetLookup); clNetLookup = nullptr; }
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     ssl_wrapper_cleanup();
   #else
@@ -742,7 +742,7 @@ NullArgs: The NetSocket argument was not specified.
 
 ERR SetSSL(objNetSocket *Socket, ...)
 {
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
    int value, tagid;
    ERR error;
    va_list list;
@@ -785,7 +785,7 @@ ERR SetSSL(objNetSocket *Socket, ...)
 
 } // namespace
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     #include "win32_ssl.cpp"
   #else
@@ -807,7 +807,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 
    *Result = 0;
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     // Windows SSL wrapper doesn't use handshake busy state
   #else
@@ -820,7 +820,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 
    if (!BufferSize) return ERR::Okay;
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     if (Self->WinSSL) {
        // If we're in the middle of SSL handshake, read raw data for handshake processing
@@ -866,7 +866,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
          if (result <= 0) {
             switch (SSL_get_error(Self->SSL, result)) {
                case SSL_ERROR_ZERO_RETURN:
-                  return ERR::Disconnected;
+                  return log.traceWarning(ERR::Disconnected);
 
                case SSL_ERROR_WANT_READ:
                   read_blocked = TRUE;
@@ -948,7 +948,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
 
    if (!*Length) return ERR::Okay;
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
     if (Self->WinSSL) {
        log.traceBranch("Windows SSL Length: %d", int(*Length));

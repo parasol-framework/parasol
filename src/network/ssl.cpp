@@ -93,14 +93,7 @@ static ERR sslSetup(extNetSocket *Self)
    {
       std::lock_guard<std::mutex> lock(ssl_init_mutex);
       if (!ssl_initialized) {
-         log.traceBranch();
-
-         SSL_load_error_strings();
-         ERR_load_BIO_strings();
-         ERR_load_crypto_strings();
-         SSL_library_init();
-         OPENSSL_add_all_algorithms_noconf(); // Is this call a significant resource expense?
-
+         OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
          ssl_initialized = true;
       }
    }
