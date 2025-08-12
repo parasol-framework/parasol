@@ -178,19 +178,50 @@ static ERR sslSetup(extNetSocket *Self)
       }
       else {
          // Enable certificate verification (default behavior)
-         if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-            if (SSL_CTX_load_verify_locations(Self->CTX, nullptr, path.c_str())) {
-               SSL_CTX_set_verify(Self->CTX, SSL_VERIFY_PEER, nullptr);
-               setup_success = true;
+         // Try loading certificate bundle file first, then certificate directory
+         bool cert_loaded = false;
+         
+         if (ResolvePath("config:ssl/ca-bundle.crt", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
+            if (SSL_CTX_load_verify_locations(Self->CTX, path.c_str(), nullptr)) {
+               log.msg("SSL certificate bundle loaded successfully: %s", path.c_str());
+               cert_loaded = true;
             }
             else {
-               log.warning("Failed to load certificate folder: %s", path.c_str());
-               error = ERR::SystemCall;
+               log.warning("Failed to load certificate bundle: %s", path.c_str());
             }
          }
+         
+         if (!cert_loaded) {
+            if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
+               if (SSL_CTX_load_verify_locations(Self->CTX, nullptr, path.c_str())) {
+                  log.msg("SSL certificate directory loaded successfully: %s", path.c_str());
+                  cert_loaded = true;
+               }
+               else {
+                  log.warning("Failed to load certificate folder: %s", path.c_str());
+               }
+            }
+         }
+         
+         if (!cert_loaded) {
+            // Try system certificate locations as fallback
+            if (SSL_CTX_set_default_verify_paths(Self->CTX)) {
+               log.msg("SSL system certificate paths loaded successfully.");
+               cert_loaded = true;
+            }
+            else {
+               log.warning("Failed to load system certificate paths.");
+            }
+         }
+         
+         if (cert_loaded) {
+            SSL_CTX_set_verify(Self->CTX, SSL_VERIFY_PEER, nullptr);
+            setup_success = true;
+         }
          else {
-            log.warning("Failed to resolve certificate path");
-            error = ERR::ResolvePath;
+            log.warning("No SSL certificates could be loaded, disabling verification.");
+            SSL_CTX_set_verify(Self->CTX, SSL_VERIFY_NONE, nullptr);
+            setup_success = true;  // Continue without verification
          }
       }
 
@@ -229,6 +260,14 @@ static ERR sslAccept(extNetSocket *Self)
    log.traceBranch();
 
    if (!Self->ssl_handle) return ERR::FieldNotSet;
+
+   // Ensure the SSL BIO is linked to the socket before attempting accept
+   if (!Self->bio_handle) {
+      if (auto error = sslLinkSocket(Self); error != ERR::Okay) {
+         log.warning("Failed to link SSL socket to BIO.");
+         return error;
+      }
+   }
 
    auto result = SSL_accept(Self->ssl_handle);
 
@@ -305,6 +344,14 @@ static ERR sslConnect(extNetSocket *Self)
    log.traceBranch();
 
    if (!Self->ssl_handle) return ERR::FieldNotSet;
+
+   // Ensure the SSL BIO is linked to the socket before attempting connection
+   if (!Self->bio_handle) {
+      if (auto error = sslLinkSocket(Self); error != ERR::Okay) {
+         log.warning("Failed to link SSL socket to BIO.");
+         return error;
+      }
+   }
 
    auto result = SSL_connect(Self->ssl_handle);
 

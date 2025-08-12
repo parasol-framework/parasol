@@ -1181,13 +1181,25 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 
          #ifdef _WIN32
          if ((Self->WinSSL) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
-            if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) ssl_valid = false;
-            else log.trace("SSL certificate validation successful.");
+            // Only perform certificate validation if SSL_NO_VERIFY flag is not set
+            if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
+               log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
+            }
+            else {
+               if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) ssl_valid = false;
+               else log.trace("SSL certificate validation successful.");
+            }
          }
          #else
          if (Self->ssl_handle) {
-            if (SSL_get_verify_result(Self->ssl_handle) != X509_V_OK) ssl_valid = false;
-            else log.trace("SSL certificate validation successful.");
+            // Only perform certificate validation if SSL_NO_VERIFY flag is not set
+            if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
+               log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
+            }
+            else {
+               if (SSL_get_verify_result(Self->ssl_handle) != X509_V_OK) ssl_valid = false;
+               else log.trace("SSL certificate validation successful.");
+            }
          }
          #endif
          

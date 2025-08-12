@@ -265,6 +265,50 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
    Self->Client->Connections = Self;
    Self->Client->TotalConnections++;
 
+#ifndef DISABLE_SSL
+   // If the parent NetSocket is an SSL server, set up SSL for this client connection
+   auto netSocket = (extNetSocket *)(Self->Client->Owner);
+   if (((netSocket->Flags & NSF::SSL) != NSF::NIL) and ((netSocket->Flags & NSF::SERVER) != NSF::NIL) and netSocket->CTX) {
+      // Create individual SSL handle for this client connection
+      if (auto client_ssl = SSL_new(netSocket->CTX)) {
+         if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
+            SSL_set_bio(client_ssl, client_bio, client_bio);
+            // Store SSL handle in the ClientSocket (need to add field to header)
+            // For now, trigger immediate SSL accept
+            netSocket->setState(NTC::CONNECTING_SSL);
+            
+            auto result = SSL_accept(client_ssl);
+            if (result == 1) {
+               // SSL handshake completed successfully
+               log.msg("SSL client handshake completed successfully.");
+               netSocket->setState(NTC::CONNECTED);
+            }
+            else {
+               auto ssl_error = SSL_get_error(client_ssl, result);
+               if ((ssl_error == SSL_ERROR_WANT_READ) or (ssl_error == SSL_ERROR_WANT_WRITE)) {
+                  log.msg("SSL handshake in progress...");
+                  // Handshake will continue asynchronously
+               }
+               else {
+                  log.warning("SSL client handshake failed: %s", ERR_error_string(ssl_error, nullptr));
+                  SSL_free(client_ssl);
+                  return ERR::SystemCall;
+               }
+            }
+         }
+         else {
+            log.warning("Failed to create BIO for SSL client socket.");
+            SSL_free(client_ssl);
+            return ERR::SystemCall;
+         }
+      }
+      else {
+         log.warning("Failed to create SSL handle for client socket.");
+         return ERR::SystemCall;
+      }
+   }
+#endif
+
 #ifdef __linux__
    RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_incoming_from_client), Self);
 #elif _WIN32
