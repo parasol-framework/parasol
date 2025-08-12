@@ -9,8 +9,8 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=local-claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF`
-- Debug: `cmake -S . -B build/claude-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DPARASOL_VLOG=TRUE`
+- Release: `cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF`
+- Debug: `cmake -S . -B build/claude-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/claude-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DPARASOL_VLOG=TRUE`
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
 
 **Build and install:**
