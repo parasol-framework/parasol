@@ -40,7 +40,7 @@ static void sslMsgCallback(const ssl_st *s, int where, int ret)
    const char *state;
    pf::Log log(__FUNCTION__);
 
-   LONG w = where & (~SSL_ST_MASK);
+   int w = where & (~SSL_ST_MASK);
 
    if (w & SSL_ST_CONNECT) state = "SSL_Connect";
    else if (w & SSL_ST_ACCEPT) state = "SSL_Accept";
@@ -106,9 +106,8 @@ static ERR sslSetup(extNetSocket *Self)
    const SSL_METHOD *method;
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       method = TLS_server_method();
-   } else {
-      method = TLS_client_method();
-   }
+   } 
+   else method = TLS_client_method();
    
    if ((Self->CTX = SSL_CTX_new(method))) {
       SSL_CTX_set_info_callback(Self->CTX, &sslCtxMsgCallback);
@@ -131,8 +130,7 @@ static ERR sslSetup(extNetSocket *Self)
                if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) > 0) {
                   if (EVP_PKEY_keygen(ctx, &pkey) > 0) {
                      // Create certificate
-                     cert = X509_new();
-                     if (cert) {
+                     if ((cert = X509_new())) {
                         X509_set_version(cert, 2);
                         ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
                         X509_gmtime_adj(X509_get_notBefore(cert), 0);
@@ -147,12 +145,10 @@ static ERR sslSetup(extNetSocket *Self)
                            if (SSL_CTX_use_certificate(Self->CTX, cert) and SSL_CTX_use_PrivateKey(Self->CTX, pkey)) {
                               log.msg("SSL server certificate configured successfully.");
                               setup_success = true;
-                           } else {
-                              log.warning("Failed to set SSL server certificate and key.");
-                           }
-                        } else {
-                           log.warning("Failed to sign SSL certificate.");
-                        }
+                           } 
+                           else log.warning("Failed to set SSL server certificate and key.");
+                        } 
+                        else log.warning("Failed to sign SSL certificate.");
                      }
                   }
                }
@@ -188,7 +184,7 @@ static ERR sslSetup(extNetSocket *Self)
             cert_loaded = true;
          }
          else {
-            unsigned long ssl_error = ERR_get_error();
+            auto ssl_error = ERR_get_error();
             log.warning("Failed to load system certificate paths - SSL Error: %s", ERR_error_string(ssl_error, nullptr));
          }
          
@@ -201,13 +197,11 @@ static ERR sslSetup(extNetSocket *Self)
                   cert_loaded = true;
                }
                else {
-                  unsigned long ssl_error = ERR_get_error();
-                  log.warning("Failed to load certificate bundle: %s - SSL Error: %s", path.c_str(), ERR_error_string(ssl_error, nullptr));
+                  auto ssl_error = ERR_get_error();
+                  log.warning("Failed to load certificates: %s - SSL Error: %s", path.c_str(), ERR_error_string(ssl_error, nullptr));
                }
             }
-            else {
-               log.warning("Failed to resolve certificate bundle path: config:ssl/ca-bundle.crt");
-            }
+            else log.warning(ERR::ResolvePath);
          }
          
          // Try certificate directory as final fallback
@@ -217,9 +211,7 @@ static ERR sslSetup(extNetSocket *Self)
                   log.msg("SSL certificate directory loaded successfully: %s", path.c_str());
                   cert_loaded = true;
                }
-               else {
-                  log.warning("Failed to load certificate folder: %s", path.c_str());
-               }
+               else log.warning("Failed to load certificate folder: %s", path.c_str());
             }
          }
          
@@ -238,9 +230,7 @@ static ERR sslSetup(extNetSocket *Self)
             
             // Set certificate verification flags for better compatibility
             X509_VERIFY_PARAM *param = SSL_CTX_get0_param(Self->CTX);
-            if (param) {
-               X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
-            }
+            if (param) X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
             
             setup_success = true;
          }
@@ -253,10 +243,7 @@ static ERR sslSetup(extNetSocket *Self)
 
       if (setup_success) {
          if ((Self->ssl_handle = SSL_new(Self->CTX))) {
-            log.msg("SSL connectivity has been configured successfully.");
-
             SSL_set_info_callback(Self->ssl_handle, &sslMsgCallback);
-
             return ERR::Okay;
          }
          else { 
@@ -329,7 +316,6 @@ static ERR sslAccept(extNetSocket *Self)
       return Self->Error;
    }
    else {
-      log.trace("sslAccept:","SSL client connection accepted successfully.");
       Self->setState(NTC::CONNECTED);
       return ERR::Okay;
    }
@@ -348,10 +334,9 @@ static ERR sslLinkSocket(extNetSocket *Self)
 //      SSL_ctrl(Self->ssl_handle, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr); // SSL library will process 'non-application' data automatically [good]
       SSL_ctrl(Self->ssl_handle, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), nullptr);
       SSL_ctrl(Self->ssl_handle, SSL_CTRL_MODE,(SSL_MODE_ENABLE_PARTIAL_WRITE), nullptr);
+      return ERR::Okay;
    }
-   else log.warning("Failed to create a SSL BIO object.");
-
-   return ERR::Okay;
+   else return ERR::SystemCall;
 }
 
 //********************************************************************************************************************
@@ -372,6 +357,7 @@ static ERR sslConnect(extNetSocket *Self)
    if (!Self->ssl_handle) return ERR::FieldNotSet;
 
    // Ensure the SSL BIO is linked to the socket before attempting connection
+
    if (!Self->bio_handle) {
       if (auto error = sslLinkSocket(Self); error != ERR::Okay) {
          log.warning("Failed to link SSL socket to BIO.");
@@ -379,9 +365,22 @@ static ERR sslConnect(extNetSocket *Self)
       }
    }
 
-   auto result = SSL_connect(Self->ssl_handle);
+   // Set SNI (Server Name Indication) if we have a hostname
+   // This is critical for modern HTTPS servers that serve multiple domains
 
-   if (result <= 0) {
+   if (Self->Address and (Self->Flags & NSF::SERVER) IS NSF::NIL) {
+      // Only set SNI for client connections, and only if Address is a hostname (not IP)
+      struct in_addr addr;
+      if (inet_aton(Self->Address, &addr) == 0) {
+         // Address is not an IP, so it's likely a hostname - set SNI
+         if (SSL_set_tlsext_host_name(Self->ssl_handle, Self->Address)) {
+            log.msg("SNI set to: %s", Self->Address);
+         } 
+         else log.warning("Failed to set SNI hostname: %s", Self->Address);
+      }
+   }
+
+   if (auto result = SSL_connect(Self->ssl_handle); result <= 0) {
       result = SSL_get_error(Self->ssl_handle, result);
 
       // The SSL routine may respond with WANT_READ or WANT_WRITE when
@@ -416,7 +415,6 @@ static ERR sslConnect(extNetSocket *Self)
       return Self->Error;
    }
    else {
-      log.trace("sslConnect:","SSL server connection successful.");
       Self->setState(NTC::CONNECTED);
       return ERR::Okay;
    }
@@ -431,7 +429,7 @@ static void ssl_handshake_write(HOSTHANDLE Socket, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.msg("Socket: %" PF64, (MAXINT)Socket);
+   log.trace("Socket: %" PF64, (MAXINT)Socket);
 
    if (auto result = SSL_do_handshake(Self->ssl_handle); result == 1) { // Handshake successful, connection established
       RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
@@ -439,11 +437,13 @@ static void ssl_handshake_write(HOSTHANDLE Socket, extNetSocket *Self)
    }
    else switch (SSL_get_error(Self->ssl_handle, result)) {
       case SSL_ERROR_WANT_READ:
-         #warning Platform support required.
+         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
+         Self->SSLBusy = SSL_HANDSHAKE_READ;
+         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
          break;
 
       case SSL_ERROR_WANT_WRITE:
-         #warning Platform support required.
+         // Continue monitoring for write readiness - no action needed
          break;
 
       default:
@@ -456,7 +456,7 @@ static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
    pf::Log log(__FUNCTION__);
    auto Self = (extNetSocket *)Data;
 
-   log.msg("Socket: %" PF64, (MAXINT)Socket);
+   log.trace("Socket: %" PF64, (MAXINT)Socket);
 
    if (auto result = SSL_do_handshake(Self->ssl_handle); result == 1) { // Handshake successful, connection established
       RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
@@ -464,11 +464,13 @@ static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
    }
    else switch (SSL_get_error(Self->ssl_handle, result)) {
       case SSL_ERROR_WANT_READ:
-         #warning Platform support required.
+         // Continue monitoring for read readiness - no action needed
          break;
 
       case SSL_ERROR_WANT_WRITE:
-         #warning Platform support required.
+         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
+         Self->SSLBusy = SSL_HANDSHAKE_WRITE;
+         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
          break;
 
       default:

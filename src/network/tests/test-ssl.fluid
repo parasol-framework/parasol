@@ -94,6 +94,11 @@ function testBasicSSLCommunication()
          local err, read_len = Client.acRead(buffer)
 
          if (err == ERR_Okay) then
+            if read_len == 0 then 
+               print('Received incoming data notification with no data to read.')
+               raise(ERR_Terminate)
+            end
+
             local msg = buffer:sub(1, read_len)
             print('[SSL Server] Received encrypted message: ' .. msg)
 
@@ -105,6 +110,8 @@ function testBasicSSLCommunication()
             else
                error('[SSL Server] SSL message integrity check failed. Got: ' .. msg)
             end
+         elseif (err == ERR_Disconnected) then
+            raise(ERR_Terminate)
          else
             error('[SSL Server] SSL read error: ' .. mSys.GetErrorMsg(err))
          end
@@ -136,6 +143,11 @@ function testBasicSSLCommunication()
          local err, read_len = Socket.acRead(buffer)
 
          if (err == ERR_Okay) then
+            if read_len == 0 then 
+               print('Received incoming data notification with no data to read.')
+               raise(ERR_Terminate)
+            end
+            
             local msg = buffer:sub(1, read_len)
             print('[SSL Client] Received encrypted message: ' .. msg)
 
@@ -148,7 +160,9 @@ function testBasicSSLCommunication()
             else
                error('[SSL Client] Failed to send encrypted echo: ' .. mSys.GetErrorMsg(err))
             end
-         elseif (err != ERR_Disconnected) then
+         elseif (err == ERR_Disconnected) then
+            raise(ERR_Terminate)
+         else
             error('[SSL Client] SSL read error: ' .. mSys.GetErrorMsg(err))
          end
       end,
@@ -461,6 +475,7 @@ function testHTTPSConnection()
             end
 
             proc.signal()
+            raise(ERR_Terminate)
          end
       end,
       incoming = function(Socket, Script)
@@ -468,6 +483,11 @@ function testHTTPSConnection()
          local err, read_len = Socket.acRead(buffer)
 
          if (err == ERR_Okay) then
+            if read_len == 0 then 
+               print('Received incoming data notification with no data to read.')
+               raise(ERR_Terminate)
+            end
+
             local chunk = buffer:sub(1, read_len)
             page_content = page_content .. chunk
             print('[HTTPS Client] Received ' .. read_len .. ' bytes from www.google.com (total: ' .. #page_content .. ')')
@@ -484,11 +504,14 @@ function testHTTPSConnection()
             if (#page_content > 0) then
                data_received = true
             end
+            proc.signal()
+            raise(ERR_Terminate)
          else
             print('[HTTPS Client] HTTPS read error: ' .. mSys.GetErrorMsg(err))
+            raise(ERR_Terminate)
          end
       end,
-      flags = 'SSL|SSL_NO_VERIFY'
+      flags = 'SSL'
    })
 
    assert(https_client, 'Failed to create HTTPS client socket')
@@ -531,9 +554,9 @@ end
 
    return {
       tests = {
-         --'testBasicSSLCommunication',
-         --'testSSLStateTransitions',
-         --'testSSLDataIntegrity',
+         'testBasicSSLCommunication',
+         'testSSLStateTransitions',
+         'testSSLDataIntegrity',
          'testHTTPSConnection'
       },
       init = function()
