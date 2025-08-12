@@ -246,9 +246,6 @@ class extNetSocket : public objNetSocket {
    uint8_t Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
    uint8_t ExternalSocket:1;      // Set to TRUE if the SocketHandle field was set manually by the client.
    uint8_t InUse;                 // Recursion counter to signal that the object is doing something.
-   #ifndef _WIN32
-      uint8_t  SSLBusy;            // Tracks the current actions of SSL handshaking.
-   #endif
    uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    uint8_t OutgoingRecursion;
    #ifdef _WIN32
@@ -266,9 +263,10 @@ class extNetSocket : public objNetSocket {
             SSL_HANDLE WinSSL;
          };
       #else
-        SSL *SSL;
+        SSL *ssl_handle;
         SSL_CTX *CTX;
-        BIO *BIO;
+        uint8_t  SSLBusy;            // Tracks the current actions of SSL handshaking.
+        BIO *bio_handle;
       #endif
    #endif
 
@@ -305,12 +303,14 @@ JUMPTABLE_CORE
     static void sslDisconnect(extNetSocket *);
     static ERR sslSetup(extNetSocket *);
   #else
-    // OpenSSL forward declarations (non-Windows)
+    // OpenSSL forward declarations
     static bool ssl_init = false;
     static ERR sslConnect(extNetSocket *);
     static void sslDisconnect(extNetSocket *);
     static ERR sslLinkSocket(extNetSocket *);
     static ERR sslSetup(extNetSocket *);
+    static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data);
+    static void ssl_handshake_write(HOSTHANDLE Socket, extNetSocket *Self);
   #endif
 #endif
 
@@ -857,14 +857,14 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
     int8_t read_blocked;
     int pending;
 
-    if (Self->SSL) {
+    if (Self->ssl_handle) {
       do {
          read_blocked = 0;
 
-         int result = SSL_read(Self->SSL, Buffer, BufferSize);
+         int result = SSL_read(Self->ssl_handle, Buffer, BufferSize);
 
          if (result <= 0) {
-            switch (SSL_get_error(Self->SSL, result)) {
+            switch (SSL_get_error(Self->ssl_handle, result)) {
                case SSL_ERROR_ZERO_RETURN:
                   return log.traceWarning(ERR::Disconnected);
 
@@ -878,7 +878,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 
                    log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
-                   RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, &ssl_handshake_write, Self);
+                   RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
                    return ERR::Okay;
 
                 case SSL_ERROR_SYSCALL:
@@ -893,7 +893,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
             Buffer = (APTR)((char *)Buffer + result);
             BufferSize -= result;
          }
-      } while ((pending = SSL_pending(Self->SSL)) and (!read_blocked) and (BufferSize > 0));
+      } while ((pending = SSL_pending(Self->ssl_handle)) and (!read_blocked) and (BufferSize > 0));
 
       log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
@@ -977,7 +977,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
        }
     }
   #else
-    if (Self->SSL) {
+    if (Self->ssl_handle) {
        log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, int(*Length));
 
       if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
@@ -985,11 +985,11 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
 
       if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
 
-      int bytes_sent = SSL_write(Self->SSL, Buffer, *Length);
+      size_t bytes_sent = SSL_write(Self->ssl_handle, Buffer, *Length);
 
       if (bytes_sent < 0) {
          *Length = 0;
-         int ssl_error = SSL_get_error(Self->SSL, bytes_sent);
+         int ssl_error = SSL_get_error(Self->ssl_handle, bytes_sent);
 
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
@@ -1025,7 +1025,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
       }
       else {
          if (*Length != bytes_sent) {
-            log.traceWarning("Sent %d of requested %d bytes.", bytes_sent, *Length);
+            log.traceWarning("Sent %" PF64 " of requested %" PF64 " bytes.", bytes_sent, *Length);
          }
          *Length = bytes_sent;
       }

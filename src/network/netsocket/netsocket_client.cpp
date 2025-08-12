@@ -22,7 +22,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
    RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::REMOVE, &client_connect, nullptr);
 
    #ifndef DISABLE_SSL
-   if ((Self->SSL) and (!result)) {
+   if ((Self->ssl_handle) and (!result)) {
       // Perform the SSL handshake
 
       log.traceBranch("Attempting SSL handshake.");
@@ -92,7 +92,7 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       return;
     }
   #else
-    if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+    if ((Self->ssl_handle) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.traceBranch("Continuing SSL handshake...");
       sslConnect(Self);
       return;
@@ -187,7 +187,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
       return;
     }
   #else
-    if ((Self->SSL) and (Self->State IS NTC::CONNECTING_SSL)) {
+    if ((Self->ssl_handle) and (Self->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
     }
@@ -220,7 +220,7 @@ static void client_server_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
          #ifdef _WIN32
             if ((!Self->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
-            if ((!Self->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+            if ((!Self->ssl_handle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #endif
       #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;

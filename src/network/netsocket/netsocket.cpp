@@ -1185,8 +1185,8 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             else log.trace("SSL certificate validation successful.");
          }
          #else
-         if (Self->SSL) {
-            if (SSL_get_verify_result(Self->SSL) != X509_V_OK) ssl_valid = false;
+         if (Self->ssl_handle) {
+            if (SSL_get_verify_result(Self->ssl_handle) != X509_V_OK) ssl_valid = false;
             else log.trace("SSL certificate validation successful.");
          }
          #endif
@@ -1285,8 +1285,8 @@ static ERR GET_ValidCert(extNetSocket *Self, int *Value)
    }
    else *Value = 0;
    #else
-   if ((Self->SSL) and (Self->State IS NTC::CONNECTED)) {
-      *Value = SSL_get_verify_result(Self->SSL);
+   if ((Self->ssl_handle) and (Self->State IS NTC::CONNECTED)) {
+      *Value = SSL_get_verify_result(Self->ssl_handle);
    }
    else *Value = 0;
    #endif

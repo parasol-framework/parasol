@@ -79,7 +79,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
       return;
     }
   #else
-    if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
+    if ((Socket->ssl_handle) and (Socket->State IS NTC::CONNECTING_SSL)) {
       log.trace("Still connecting via SSL...");
       return;
     }
@@ -112,7 +112,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
          #ifdef _WIN32
             if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #else
-            if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+            if ((!Socket->ssl_handle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
          #endif
       #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;
