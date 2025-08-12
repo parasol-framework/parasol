@@ -48,3 +48,4 @@ flute_test (network_client_server "${CMAKE_CURRENT_SOURCE_DIR}/tests/client-serv
 flute_test (network_error_handling "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-error-handling.fluid")
 flute_test (network_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-ipv6.fluid")
 flute_test (network_concurrency "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-concurrency.fluid")
+flute_test (network_ssl "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-ssl.fluid")

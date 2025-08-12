@@ -2,7 +2,7 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
 #
