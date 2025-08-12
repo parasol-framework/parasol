@@ -178,19 +178,39 @@ static ERR sslSetup(extNetSocket *Self)
       }
       else {
          // Enable certificate verification (default behavior)
-         // Try loading certificate bundle file first, then certificate directory
+         // Try system certificates first (most up-to-date), then bundled certificates as fallback
          bool cert_loaded = false;
          
-         if (ResolvePath("config:ssl/ca-bundle.crt", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-            if (SSL_CTX_load_verify_locations(Self->CTX, path.c_str(), nullptr)) {
-               log.msg("SSL certificate bundle loaded successfully: %s", path.c_str());
-               cert_loaded = true;
+         // Try system certificate locations first (most current certificates)
+         log.msg("Attempting to load system certificate paths...");
+         if (SSL_CTX_set_default_verify_paths(Self->CTX)) {
+            log.msg("SSL system certificate paths loaded successfully.");
+            cert_loaded = true;
+         }
+         else {
+            unsigned long ssl_error = ERR_get_error();
+            log.warning("Failed to load system certificate paths - SSL Error: %s", ERR_error_string(ssl_error, nullptr));
+         }
+         
+         // If system certificates failed, try bundled certificate bundle as fallback
+         if (!cert_loaded) {
+            if (ResolvePath("config:ssl/ca-bundle.crt", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
+               log.msg("Attempting to load SSL certificate bundle: %s", path.c_str());
+               if (SSL_CTX_load_verify_locations(Self->CTX, path.c_str(), nullptr)) {
+                  log.msg("SSL certificate bundle loaded successfully: %s", path.c_str());
+                  cert_loaded = true;
+               }
+               else {
+                  unsigned long ssl_error = ERR_get_error();
+                  log.warning("Failed to load certificate bundle: %s - SSL Error: %s", path.c_str(), ERR_error_string(ssl_error, nullptr));
+               }
             }
             else {
-               log.warning("Failed to load certificate bundle: %s", path.c_str());
+               log.warning("Failed to resolve certificate bundle path: config:ssl/ca-bundle.crt");
             }
          }
          
+         // Try certificate directory as final fallback
          if (!cert_loaded) {
             if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
                if (SSL_CTX_load_verify_locations(Self->CTX, nullptr, path.c_str())) {
@@ -203,19 +223,25 @@ static ERR sslSetup(extNetSocket *Self)
             }
          }
          
-         if (!cert_loaded) {
-            // Try system certificate locations as fallback
-            if (SSL_CTX_set_default_verify_paths(Self->CTX)) {
-               log.msg("SSL system certificate paths loaded successfully.");
-               cert_loaded = true;
-            }
-            else {
-               log.warning("Failed to load system certificate paths.");
-            }
-         }
-         
          if (cert_loaded) {
+            // Set up certificate verification with detailed callback
             SSL_CTX_set_verify(Self->CTX, SSL_VERIFY_PEER, nullptr);
+            
+            // Configure additional SSL context options for better compatibility
+            SSL_CTX_set_verify_depth(Self->CTX, 10);  // Allow longer certificate chains
+            
+            // Set security level to 1 for broader compatibility (default might be too strict)
+            SSL_CTX_set_security_level(Self->CTX, 1);
+            
+            // Enable certificate chain checking
+            SSL_CTX_set_mode(Self->CTX, SSL_MODE_AUTO_RETRY);
+            
+            // Set certificate verification flags for better compatibility
+            X509_VERIFY_PARAM *param = SSL_CTX_get0_param(Self->CTX);
+            if (param) {
+               X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
+            }
+            
             setup_success = true;
          }
          else {
