@@ -432,7 +432,7 @@ function testHTTPSConnection()
          elseif (State == NTC_CONNECTED) then
             print('[HTTPS Client] SSL connection to www.google.com established successfully')
             connection_established = true
-            
+
             -- Send HTTP GET request for the index page
             local http_request = "GET / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\nUser-Agent: Parasol-SSL-Test\r\n\r\n"
             print('[HTTPS Client] Sending HTTP GET request...')
@@ -446,7 +446,7 @@ function testHTTPSConnection()
          elseif (State == NTC_DISCONNECTED) then
             print('[HTTPS Client] HTTPS connection closed')
             response_complete = true
-            
+
             -- Try to read any remaining data before disconnection
             if (connection_established and not data_received) then
                print('[HTTPS Client] Attempting final data read...')
@@ -459,7 +459,7 @@ function testHTTPSConnection()
                   data_received = true
                end
             end
-            
+
             proc.signal()
          end
       end,
@@ -472,12 +472,12 @@ function testHTTPSConnection()
             page_content = page_content .. chunk
             print('[HTTPS Client] Received ' .. read_len .. ' bytes from www.google.com (total: ' .. #page_content .. ')')
             data_received = true
-            
+
             -- Check if we got the full response header
             if (not response_complete and string.match(page_content, 'HTTP/%d%.%d')) then
                print('[HTTPS Client] HTTP response header received')
             end
-            
+
          elseif (err == ERR_Disconnected) then
             print('[HTTPS Client] Server closed connection after sending data')
             response_complete = true
@@ -498,7 +498,7 @@ function testHTTPSConnection()
    assert(err == ERR_Okay, 'HTTPS client connection failed: ' .. mSys.GetErrorMsg(err))
 
    local err = proc.sleep()
-   
+
    -- Don't fail if timeout occurred but we got some response
    if (err == ERR_TimeOut) then
       print('[HTTPS Client] Test timed out, checking if we received data...')
@@ -514,10 +514,10 @@ function testHTTPSConnection()
    assert(connection_established, 'HTTPS connection was not established')
    assert(data_received, 'No data was received from www.google.com')
    assert(#page_content > 0, 'Index page content is empty')
-   
+
    -- Verify we received a proper HTTP response
-   if (string.match(page_content, 'HTTP/%d%.%d') and 
-       (string.match(page_content, '200 OK') or string.match(page_content, '301') or 
+   if (string.match(page_content, 'HTTP/%d%.%d') and
+       (string.match(page_content, '200 OK') or string.match(page_content, '301') or
         string.match(page_content, '302') or string.match(page_content, '404'))) then
       print('[HTTPS Client] Received valid HTTP response (' .. #page_content .. ' bytes total)')
       print('HTTPS connection to www.google.com test completed successfully!')

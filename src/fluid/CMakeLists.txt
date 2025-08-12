@@ -34,6 +34,8 @@ ExternalProject_Add(libffi-3.3
 if (MSVC)
    set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
 
+   # NOTE: Binaries are built amongst the source files when building with MSVC
+
    ExternalProject_Add(
       luajit
       SOURCE_DIR ${LUAJIT_SRC}

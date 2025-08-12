@@ -34,9 +34,21 @@ static ERR sslSetup(extNetSocket *Self)
    log.traceBranch("Setting up Windows SSL context.");
 
    bool validate_cert = (Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL ? false : true;
-   if (Self->WinSSL = ssl_wrapper_create_context(validate_cert); !Self->WinSSL) {
-      log.warning("Failed to create Windows SSL context");
-      return ERR::Failed;
+   
+   // Check if this is a server socket to create appropriate SSL context
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
+      log.trace("Creating server-side SSL context.");
+      if (Self->WinSSL = ssl_wrapper_create_context(validate_cert, true); !Self->WinSSL) {
+         log.warning("Failed to create Windows SSL server context");
+         return ERR::Failed;
+      }
+   }
+   else {
+      log.trace("Creating client-side SSL context.");
+      if (Self->WinSSL = ssl_wrapper_create_context(validate_cert); !Self->WinSSL) {
+         log.warning("Failed to create Windows SSL client context");
+         return ERR::Failed;
+      }
    }
 
    log.trace("Windows SSL connectivity has been configured successfully.");
@@ -80,6 +92,57 @@ static ERR sslHandshakeReceived(extNetSocket *Self, const void* Data, int Length
             ssl_wrapper_get_last_security_status(Self->WinSSL),
             ssl_wrapper_get_last_win32_error(Self->WinSSL),
             ssl_wrapper_get_error_description(Self->WinSSL));
+         Self->Error = ERR::Failed;
+         Self->setState(NTC::DISCONNECTED);
+         return ERR::Failed;
+   }
+}
+
+//********************************************************************************************************************
+// Handle SSL handshake data from client (server-side processing)
+
+static ERR sslServerHandshakeReceived(extNetSocket *Self, const void* Data, int Length, void **ResponseData, int *ResponseLength)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (!Self->WinSSL or !Data or Length <= 0 or !ResponseData or !ResponseLength) return ERR::Args;
+
+   log.traceBranch("Processing server-side SSL handshake data (%d bytes)", Length);
+
+   *ResponseData = nullptr;
+   *ResponseLength = 0;
+
+   SSL_ERROR_CODE result = ssl_wrapper_accept_handshake(Self->WinSSL, Data, Length, ResponseData, ResponseLength);
+
+   switch (result) {
+      case SSL_OK:
+         log.trace("Server SSL handshake completed successfully.");
+         Self->setState(NTC::CONNECTED);
+         return ERR::Okay;
+
+      case SSL_ERROR_CONNECTING:
+         log.trace("Server SSL handshake continuing, sending response to client.");
+         // Server needs to send response data back to client
+         // Stay in CONNECTING_SSL state
+         return ERR::Okay;
+
+      case SSL_ERROR_WOULD_BLOCK:
+         log.trace("Server SSL handshake would block.");
+         return ERR::Okay;
+
+      default:
+         log.warning("Server SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d; %s", result,
+            ssl_wrapper_get_last_security_status(Self->WinSSL),
+            ssl_wrapper_get_last_win32_error(Self->WinSSL),
+            ssl_wrapper_get_error_description(Self->WinSSL));
+         
+         // Clean up response data if allocated
+         if (*ResponseData) {
+            free(*ResponseData);
+            *ResponseData = nullptr;
+            *ResponseLength = 0;
+         }
+         
          Self->Error = ERR::Failed;
          Self->setState(NTC::DISCONNECTED);
          return ERR::Failed;

@@ -34,11 +34,12 @@ typedef enum {
 ERR ssl_wrapper_init(void);
 void ssl_wrapper_cleanup(void);
 
-SSL_HANDLE ssl_wrapper_create_context(bool ValidateCredentials = true);
+SSL_HANDLE ssl_wrapper_create_context(bool ValidateCredentials = true, bool ServerMode = false);
 void ssl_wrapper_free_context(SSL_HANDLE ssl);
 
 SSL_ERROR_CODE ssl_wrapper_connect(SSL_HANDLE, void *, const std::string&);
 SSL_ERROR_CODE ssl_wrapper_continue_handshake(SSL_HANDLE, const void*, int);
+SSL_ERROR_CODE ssl_wrapper_accept_handshake(SSL_HANDLE, const void*, int, void**, int*);  // Server-side handshake
 
 int ssl_wrapper_read(SSL_HANDLE ssl, void* buffer, int buffer_size);
 int ssl_wrapper_write(SSL_HANDLE ssl, const void* buffer, int buffer_size);
