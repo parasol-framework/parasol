@@ -799,18 +799,12 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 {
    pf::Log log(__FUNCTION__);
 
-#ifdef _WIN32
    log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x", Socket, BufferSize, Flags);
-#else
-   log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x, SSLBusy: %d", Socket, BufferSize, Flags, Self->SSLBusy);
-#endif
 
    *Result = 0;
 
 #ifndef DISABLE_SSL
-  #ifdef _WIN32
-    // Windows SSL wrapper doesn't use handshake busy state
-  #else
+  #ifndef _WIN32 // Windows SSL wrapper doesn't use handshake busy state
     if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
     else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
@@ -833,7 +827,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
           return error;
        }
        else { // Normal SSL data read for established connections
-          if (int result = ssl_wrapper_read(Self->WinSSL, Buffer, BufferSize); result > 0) {
+          if (auto result = ssl_wrapper_read(Self->WinSSL, Buffer, BufferSize); result > 0) {
              *Result = result;
              return ERR::Okay;
           }
@@ -841,13 +835,14 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
              return ERR::Disconnected;
           }
           else {
-             SSL_ERROR_CODE error = ssl_wrapper_get_error(Self->WinSSL);
+             CSTRING msg;
+             auto error = ssl_wrapper_get_error(Self->WinSSL, &msg);
              if (error IS SSL_ERROR_WOULD_BLOCK) {
                 log.traceWarning("No more data to read from the SSL socket.");
                 return ERR::Okay;
              }
              else {
-                log.warning("Windows SSL read error: %d", error);
+                log.warning("Windows SSL read error: %s", msg);
                 return ERR::Failed;
              }
           }
@@ -861,7 +856,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
       do {
          read_blocked = 0;
 
-         int result = SSL_read(Self->ssl_handle, Buffer, BufferSize);
+         auto result = SSL_read(Self->ssl_handle, Buffer, BufferSize);
 
          if (result <= 0) {
             switch (SSL_get_error(Self->ssl_handle, result)) {
@@ -953,17 +948,18 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
     if (Self->WinSSL) {
        log.traceBranch("Windows SSL Length: %d", int(*Length));
 
-       size_t bytes_sent = ssl_wrapper_write(Self->WinSSL, Buffer, *Length);
+       auto bytes_sent = ssl_wrapper_write(Self->WinSSL, Buffer, *Length);
 
        if (bytes_sent > 0) {
           if (*Length != bytes_sent) {
-             log.traceWarning("Sent %d of requested %d bytes.", int(bytes_sent), int(*Length));
+             log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
           }
           *Length = bytes_sent;
           return ERR::Okay;
        }
        else {
-          SSL_ERROR_CODE error = ssl_wrapper_get_error(Self->WinSSL);
+          CSTRING msg;
+          auto error = ssl_wrapper_get_error(Self->WinSSL, &msg);
           *Length = 0;
 
           if (error IS SSL_ERROR_WOULD_BLOCK) {
@@ -971,7 +967,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
              return ERR::BufferOverflow;
           }
           else {
-             log.warning("Windows SSL write error: %d", error);
+             log.warning("Windows SSL write error: %s", msg);
              return ERR::Failed;
           }
        }
@@ -985,11 +981,11 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
 
       if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
 
-      size_t bytes_sent = SSL_write(Self->ssl_handle, Buffer, *Length);
+      auto bytes_sent = SSL_write(Self->ssl_handle, Buffer, *Length);
 
       if (bytes_sent < 0) {
          *Length = 0;
-         int ssl_error = SSL_get_error(Self->ssl_handle, bytes_sent);
+         auto ssl_error = SSL_get_error(Self->ssl_handle, bytes_sent);
 
          switch(ssl_error){
             case SSL_ERROR_WANT_WRITE:
@@ -1003,11 +999,7 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
             case SSL_ERROR_WANT_READ:
                log.trace("Handshake requested by server.");
                Self->SSLBusy = SSL_HANDSHAKE_READ;
-               #ifdef __linux__
-                  RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
-               #elif _WIN32
-                  win_socketstate(Socket, TRUE, -1);
-               #endif
+               RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
                return ERR::Okay;
 
             case SSL_ERROR_SYSCALL:

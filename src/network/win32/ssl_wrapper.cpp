@@ -182,8 +182,8 @@ static void generate_error_description(ssl_context* Ctx)
 {
    if (!Ctx->error_description_dirty) return;
 
-   const char* operation = Ctx->error_description.c_str(); // Stored operation
-   const char* status_desc = get_status_description(Ctx->last_security_status);
+   const char *operation = Ctx->error_description.c_str(); // Stored operation
+   const char *status_desc = get_status_description(Ctx->last_security_status);
 
    std::stringstream stream;
    stream << operation << ":" << status_desc << "(Status: " << (uint32_t)Ctx->last_security_status << ", Win32: "
@@ -763,9 +763,10 @@ int ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, int BufferSize)
 //********************************************************************************************************************
 // Get last error
 
-SSL_ERROR_CODE ssl_wrapper_get_error(SSL_HANDLE SSL)
+SSL_ERROR_CODE ssl_wrapper_get_error(SSL_HANDLE SSL, const char **Message)
 {
    if (!SSL) return SSL_ERROR_ARGS;
+   if (Message) *Message = ssl_wrapper_get_error_description(SSL);
    return ((ssl_context*)SSL)->last_error;
 }
 

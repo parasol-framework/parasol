@@ -1,5 +1,4 @@
-#ifndef NETWORK_WINSOCKWRAPPERS_H
-#define NETWORK_WINSOCKWRAPPERS_H TRUE
+#pragma once
 
 typedef unsigned int WSW_SOCKET; // type of socket handle for these wrapper procedures.  Same type as the windows SOCKET
 struct sockaddr;
@@ -65,5 +64,3 @@ enum {
    NTE_CONNECT,
    NTE_CLOSE
 };
-
-#endif // NETWORK_WINSOCKWRAPPERS_H
