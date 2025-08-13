@@ -14,6 +14,102 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 *********************************************************************************************************************/
 
+#ifndef DISABLE_SSL
+//********************************************************************************************************************
+// SSL read function specifically for ClientSocket connections
+
+static ERR clientSocketSSLRead(extClientSocket *Self, APTR Buffer, size_t BufferSize, size_t *Result)
+{
+   pf::Log log(__FUNCTION__);
+   
+   if (!BufferSize) return ERR::Okay;
+   if (!Self->ssl_handle) return ERR::FieldNotSet;
+   
+   log.traceBranch("SSL BufferSize: %d", int(BufferSize));
+   
+   auto result = SSL_read(Self->ssl_handle, Buffer, BufferSize);
+   
+   if (result <= 0) {
+      auto ssl_error = SSL_get_error(Self->ssl_handle, result);
+      switch (ssl_error) {
+         case SSL_ERROR_ZERO_RETURN:
+            return log.traceWarning(ERR::Disconnected);
+            
+         case SSL_ERROR_WANT_READ:
+            *Result = 0;
+            return ERR::Okay; // No data available yet
+            
+         case SSL_ERROR_WANT_WRITE:
+            *Result = 0;
+            return ERR::Okay; // Handshake needs to write
+            
+         case SSL_ERROR_SYSCALL:
+            log.warning("SSL_read() SysError %d: %s", errno, strerror(errno));
+            return ERR::InputOutput;
+            
+         default:
+            log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
+            return ERR::Read;
+      }
+   }
+   else {
+      *Result = result;
+      log.trace("SSL read %d bytes successfully", result);
+      return ERR::Okay;
+   }
+}
+
+//********************************************************************************************************************
+// SSL send function specifically for ClientSocket connections
+
+static ERR clientSocketSSLSend(extClientSocket *Self, CPTR Buffer, size_t *Length)
+{
+   pf::Log log(__FUNCTION__);
+   
+   if (!*Length) return ERR::Okay;
+   if (!Self->ssl_handle) return ERR::FieldNotSet;
+   
+   log.traceBranch("SSL Length: %d", int(*Length));
+   
+   auto bytes_sent = SSL_write(Self->ssl_handle, Buffer, *Length);
+   
+   if (bytes_sent < 0) {
+      *Length = 0;
+      auto ssl_error = SSL_get_error(Self->ssl_handle, bytes_sent);
+      
+      switch(ssl_error){
+         case SSL_ERROR_WANT_WRITE:
+            log.traceWarning("Buffer overflow (SSL want write)");
+            return ERR::BufferOverflow;
+            
+         case SSL_ERROR_WANT_READ:
+            log.traceWarning("SSL want read");
+            return ERR::BufferOverflow;
+            
+         case SSL_ERROR_SYSCALL:
+            log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
+            return ERR::InputOutput;
+            
+         default:
+            log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, nullptr));
+            return ERR::Failed;
+      }
+   }
+   else if (bytes_sent IS 0) {
+      log.warning("SSL_write() returned zero bytes sent");
+      *Length = 0;
+      return ERR::Failed;
+   }
+   else {
+      if (*Length != size_t(bytes_sent)) {
+         log.trace("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
+      }
+      *Length = bytes_sent;
+      return ERR::Okay;
+   }
+}
+#endif
+
 // Data is being received from a client.
 
 static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *client)
@@ -26,6 +122,35 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
       log.warning("Invalid state - socket closed but receiving data.");
       return;
    }
+
+#ifndef DISABLE_SSL
+  #ifdef _WIN32
+     // TODO?
+  #else
+    if (Socket->State IS NTC::CONNECTING_SSL) {
+       // Continue SSL handshake for this ClientSocket
+       if (client->ssl_handle) {
+          auto result = SSL_accept(client->ssl_handle);
+          if (result == 1) {
+             log.msg("SSL handshake completed for client %d", client->UID);
+             Socket->setState(NTC::CONNECTED);
+          }
+          else {
+             auto ssl_error = SSL_get_error(client->ssl_handle, result);
+             if ((ssl_error == SSL_ERROR_WANT_READ) or (ssl_error == SSL_ERROR_WANT_WRITE)) {
+                log.trace("SSL handshake continuing for client %d...", client->UID);
+                // Handshake will continue on next data arrival
+             }
+             else {
+                log.warning("SSL handshake failed for client %d: %s", client->UID, ERR_error_string(ssl_error, nullptr));
+                Socket->setState(NTC::DISCONNECTED);
+             }
+          }
+       }
+       return;
+    }
+  #endif
+#endif
 
    Socket->InUse++;
    client->ReadCalled = false;
@@ -119,7 +244,17 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
       #endif
 
       if (len > 0) {
+#ifndef DISABLE_SSL
+         // Use ClientSocket's SSL handle if available
+         if (ClientSocket->ssl_handle) {
+            error = clientSocketSSLSend(ClientSocket, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len);
+         }
+         else {
+            error = SEND(Socket, ClientSocket->Handle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
+         }
+#else
          error = SEND(Socket, ClientSocket->Handle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
+#endif
          if ((error != ERR::Okay) or (!len)) break;
          ClientSocket->WriteQueue.Index += len;
       }
@@ -212,6 +347,16 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
    pf::Log log;
 
+#ifndef DISABLE_SSL
+   // Clean up SSL handles if they exist
+   if (Self->ssl_handle) {
+      SSL_free(Self->ssl_handle);
+      Self->ssl_handle = nullptr;
+   }
+   // Note: bio_handle is freed automatically by SSL_free()
+   Self->bio_handle = nullptr;
+#endif
+
    disconnect(Self);
 
    if (Self->Client) { // If undefined, ClientSocket was never initialised
@@ -266,22 +411,23 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
    Self->Client->TotalConnections++;
 
 #ifndef DISABLE_SSL
-   // If the parent NetSocket is an SSL server, set up SSL for this client connection
+   // If the parent NetSocket is an SSL server, set up SSL for this client socket
    auto netSocket = (extNetSocket *)(Self->Client->Owner);
    if (((netSocket->Flags & NSF::SSL) != NSF::NIL) and ((netSocket->Flags & NSF::SERVER) != NSF::NIL) and netSocket->CTX) {
-      // Create individual SSL handle for this client connection
       if (auto client_ssl = SSL_new(netSocket->CTX)) {
          if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
             SSL_set_bio(client_ssl, client_bio, client_bio);
-            // Store SSL handle in the ClientSocket (need to add field to header)
-            // For now, trigger immediate SSL accept
+            
+            // Store SSL handles in the ClientSocket
+            Self->ssl_handle = client_ssl;
+            Self->bio_handle = client_bio;
+            
             netSocket->setState(NTC::CONNECTING_SSL);
             
             auto result = SSL_accept(client_ssl);
             if (result == 1) {
-               // SSL handshake completed successfully
                log.msg("SSL client handshake completed successfully.");
-               netSocket->setState(NTC::CONNECTED);
+               // Note: Do not set NetSocket state here - NetSocket manages its own SSL state
             }
             else {
                auto ssl_error = SSL_get_error(client_ssl, result);
@@ -291,6 +437,8 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
                }
                else {
                   log.warning("SSL client handshake failed: %s", ERR_error_string(ssl_error, nullptr));
+                  Self->ssl_handle = nullptr;
+                  Self->bio_handle = nullptr;
                   SSL_free(client_ssl);
                   return ERR::SystemCall;
                }
@@ -354,7 +502,21 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
    }
    Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
-   auto error = RECEIVE((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+   
+   ERR error;
+#ifndef DISABLE_SSL
+   // Use ClientSocket's SSL handle if available
+   if (Self->ssl_handle) {
+      size_t result;
+      error = clientSocketSSLRead(Self, Args->Buffer, Args->Length, &result);
+      Args->Result = result;
+   }
+   else {
+      error = RECEIVE((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+   }
+#else
+   error = RECEIVE((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+#endif
 
    if (error IS ERR::Disconnected) {
       // Detecting a disconnection on read is normal, now handle disconnection gracefully.

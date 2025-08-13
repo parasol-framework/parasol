@@ -229,6 +229,8 @@ class extClientSocket : public objClientSocket {
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
    bool ReadCalled;     // TRUE if the Read action has been called
+   SSL *ssl_handle;     // SSL connection handle for this client
+   BIO *bio_handle;     // SSL BIO handle for this client
 };
 
 class extNetSocket : public objNetSocket {
@@ -859,7 +861,8 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
          auto result = SSL_read(Self->ssl_handle, Buffer, BufferSize);
 
          if (result <= 0) {
-            switch (SSL_get_error(Self->ssl_handle, result)) {
+            auto ssl_error = SSL_get_error(Self->ssl_handle, result);
+            switch (ssl_error) {
                case SSL_ERROR_ZERO_RETURN:
                   return log.traceWarning(ERR::Disconnected);
 
@@ -879,8 +882,8 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
                 case SSL_ERROR_SYSCALL:
 
                 default:
-                   log.warning("SSL read problem");
-                   return ERR::Okay; // Non-fatal
+                   log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
+                   return ERR::Read;
             }
          }
          else {

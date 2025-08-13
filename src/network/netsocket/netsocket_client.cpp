@@ -96,9 +96,8 @@ static void client_server_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       log.traceBranch("Continuing SSL handshake...");
       if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
          sslAccept(Self);  // Server-side SSL handshake
-      } else {
-         sslConnect(Self); // Client-side SSL handshake
-      }
+      } 
+      else sslConnect(Self); // Client-side SSL handshake
       return;
     }
 

@@ -187,17 +187,22 @@ static void server_client_connect(SOCKET_HANDLE FD, extNetSocket *Self)
       return;
    }
 
-   if (Self->Feedback.isC()) {
-      pf::SwitchContext context(Self->Feedback.Context);
-      auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
-      if (routine) routine(Self, client_socket, NTC::CONNECTED, Self->Feedback.Meta);
-   }
-   else if (Self->Feedback.isScript()) {
-      sc::Call(Self->Feedback, std::to_array<ScriptArg>({
-         { "NetSocket",    Self, FD_OBJECTPTR },
-         { "ClientSocket", client_socket, FD_OBJECTPTR },
-         { "State",        int(NTC::CONNECTED) }
-      }));
+   // Note that if the connection is over SSL then handshaking won't have
+   // completed yet, in which case the connection feedback will be sent in a later state change.
+
+   if (Self->State IS NTC::CONNECTED) {
+      if (Self->Feedback.isC()) {
+         pf::SwitchContext context(Self->Feedback.Context);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+         if (routine) routine(Self, client_socket, Self->State, Self->Feedback.Meta);
+      }
+      else if (Self->Feedback.isScript()) {
+         sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+            { "NetSocket",    Self, FD_OBJECTPTR },
+            { "ClientSocket", client_socket, FD_OBJECTPTR },
+            { "State",        int(Self->State) }
+         }));
+      }
    }
 
    log.trace("Total clients: %d", Self->TotalClients);

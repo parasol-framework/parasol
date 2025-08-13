@@ -168,8 +168,13 @@ static ERR sslSetup(extNetSocket *Self)
       }
       else if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
          // Disable certificate verification for client sockets
-         log.msg("SSL certificate verification disabled (SSL_NO_VERIFY flag set).");
+         log.msg("SSL certificate verification disabled (SSL_NO_VERIFY flag set). Flags=0x%x", int(Self->Flags));
          SSL_CTX_set_verify(Self->CTX, SSL_VERIFY_NONE, nullptr);
+         
+         // Additional settings to ensure verification is completely disabled
+         SSL_CTX_set_verify_depth(Self->CTX, 0);
+         SSL_CTX_set_options(Self->CTX, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
+         
          setup_success = true;
       }
       else {
