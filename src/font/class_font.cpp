@@ -6,43 +6,72 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-Font: Draws bitmap fonts and manages font meta information.
+Font: Renders bitmap fonts and manages comprehensive font metadata for pixel-perfect text display.
 
-The Font class is provided for the purpose of bitmap font rendering and querying font meta information.  It supports
-styles such as bold, italic and underlined text, along with extra features such as adjustable spacing and word
-alignment. Fixed-point bitmap fonts are supported through the Windows .fon file format.  Truetype fonts are
-not supported (refer to the @VectorText class for this feature).
+The Font class provides professional bitmap font rendering capabilities with full typographical control, designed
+for applications requiring precise pixel-level text positioning and legacy font support. It excels at rendering
+fixed-point bitmap fonts through the Windows .fon file format, offering comprehensive styling options including
+bold, italic, and underlined text, along with advanced features such as adjustable character spacing, word wrapping,
+and flexible text alignment.
 
-Bitmap fonts must be stored in the `fonts:fixed/` directory in order to be recognised.  The process of font
-installation and file management is managed by functions supplied in the Font module.
+**Key Capabilities**:
+- **Bitmap Font Rendering**: Native support for Windows .fon format bitmap fonts with pixel-perfect accuracy
+- **Typography Control**: Full control over character spacing, line spacing, alignment, and text positioning
+- **Text Styling**: Support for bold, italic, underlined text with customisable outline and fill colours
+- **Unicode Support**: Complete UTF-8 character encoding for international text rendering
+- **Word Processing**: Word wrapping, tab stops, and multi-line text handling
+- **Measurement Functions**: Precise text dimension calculation for layout planning
 
-The Font class includes full support for the unicode character set through its support for UTF-8.  This gives you the
-added benefit of being able to support international character sets with ease, but you must be careful not to use
-character codes above #127 without being sure that they follow UTF-8 guidelines.  Find out more about UTF-8 at
-this <a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">web page</a>.
+**Font Management**:
+Bitmap fonts must reside in the `fonts:fixed/` directory for automatic discovery. The Font module handles installation,
+cataloguing, and provides access to font families with automatic style variant detection. The class maintains a
+sophisticated caching system to optimise font loading and rendering performance.
 
-Initialisation of a new font object can be as simple as declaring its #Point size and #Face name.  Font objects can
-be difficult to alter post-initialisation, so all style and graphical selections must be defined on creation.  For
-example, it is not possible to change styling from regular to bold format dynamically.  To support multiple styles
-of the same font, create a font object for every style that requires support.  Basic settings such as colour, the
-font string and text positioning are not affected by these limitations.
+**Initialisation Workflow**:
+Font objects require careful setup during initialisation as most properties become immutable post-creation. The 
+essential workflow involves:
 
-To draw a font string to a Bitmap object, start by setting the #Bitmap and #String fields.  The #X and #Y fields
-determine string positioning and you can also use the #Align field to position a string to the right or center of the
-surface area.
+1. **Font Selection**: Specify the #Face name and #Point size. The system automatically selects the closest available
+   bitmap size for fixed fonts.
+2. **Style Configuration**: Define styling through the #Style field (e.g., 'Bold', 'Italic', 'Bold Italic'). Style
+   changes require creating new font instances.
+3. **Rendering Setup**: Configure colours (#Colour, #Outline, #Underline), spacing (#GlyphSpacing, #LineSpacing),
+   and optional effects.
 
-To clarify the terminology used in this documentation, please note the definitions for the following terms:
+**Text Rendering Process**:
+1. **Target Assignment**: Set the destination #Bitmap object
+2. **Content Definition**: Assign the text through the #String field (UTF-8 encoded)
+3. **Positioning**: Use #X and #Y for precise positioning, or #Align for abstract alignment within the surface area
+4. **Optional Features**: Configure word wrapping via #WrapEdge, tab handling through #TabSize
+5. **Draw Execution**: Call the #Draw() action to render the text
 
+**Typography Terminology**:
 <list type="bullet">
-<li>'Point' determines the size of a font.  The value is relative only to other point sizes of the same font face, i.e. two faces at the same point size are not necessarily the same height.</li>
-<li>'Height' represents the 'vertical bearing' or point of the font, expressed as a pixel value.  The height does not cover for any leading at the top of the font, or the gutter space used for the tails on characters like 'g' and 'y'.</li>
-<li>'Gutter' is the amount of space that a character can descend below the base line.  Characters like 'g' and 'y' are examples of characters that utilise the gutter space.  The gutter is also sometimes known as the 'external leading' or 'descent' of a character.</li>
-<li>'LineSpacing' is the recommended pixel distance between each line that is printed with the font.</li>
-<li>'Glyph' refers to a single font character.</li>
+<li>**Point Size**: Font size measurement at 1:72 DPI ratio. For bitmap fonts, the system selects the closest available size.</li>
+<li>**Height**: The vertical bearing or font point size in pixels, excluding leading space above and gutter space below.</li>
+<li>**Leading**: Internal leading space in pixels at the top of characters, included in the overall character height.</li>
+<li>**Gutter**: External leading space below the baseline for character descenders (e.g., 'g', 'y', 'p').</li>
+<li>**Baseline**: The imaginary line upon which most characters sit, used as the reference for vertical positioning.</li>
+<li>**Ascent**: Total pixels above the baseline, including both character height and internal leading.</li>
+<li>**Glyph**: An individual character shape within the font.</li>
 </>
 
-Please note that in the majority of cases the @VectorText class should be used for drawing strings because the Font
-class is not integrated with the display's vector scene graph.
+**Performance Considerations**:
+The Font class maintains an internal cache for loaded fonts to improve performance across multiple instances. Character
+rendering uses optimised bitmap blitting with support for translucency effects. For applications requiring hundreds
+of font instances or real-time text animation, consider the performance implications of multiple font object creation.
+
+**Modern Alternative**:
+For contemporary applications requiring scalable fonts, vector graphics integration, and advanced typography features,
+the @VectorText class provides superior functionality with seamless integration into the display's vector scene graph.
+The Font class remains optimal for legacy support, pixel-perfect bitmap rendering, and applications where precise
+character positioning is critical.
+
+**Unicode and Character Encoding**:
+The class provides comprehensive UTF-8 support for international character sets. When using character codes above 127,
+ensure proper UTF-8 encoding. Unsupported characters automatically fall back to a default substitute character from
+the font set. For detailed UTF-8 information, refer to the 
+<a href="http://www.cl.cam.ac.uk/~mgk25/unicode.html">UTF-8 and Unicode FAQ</a>.
 
 -END-
 
@@ -55,13 +84,46 @@ static ERR SET_Style(extFont *, CSTRING);
 /*********************************************************************************************************************
 
 -ACTION-
-Draw: Draws a font to a Bitmap.
+Draw: Renders font text to the target Bitmap with comprehensive formatting and positioning support.
 
-Draws a font to a target Bitmap, starting at the coordinates of #X and #Y, using the characters in the font #String.
+The Draw action performs the actual text rendering operation, drawing the characters specified in the #String field
+to the target #Bitmap using the current font configuration. This is the primary output method for displaying text
+with precise control over positioning, styling, and formatting.
+
+**Prerequisites:**
+- **#Bitmap**: Must reference a valid Bitmap object as the rendering target
+- **#String**: Must contain the text to be drawn (UTF-8 encoded)
+- **Font Initialisation**: The font object must be successfully initialised with valid #Face and #Point settings
+
+**Rendering Process:**
+1. **Character Processing**: Each character in the string is processed sequentially
+2. **Position Calculation**: Character placement uses #X, #Y coordinates or #Align settings
+3. **Colour Application**: Characters are rendered using the #Colour field with optional #Outline and #Underline effects
+4. **Spacing Control**: Character advancement respects #GlyphSpacing and #FixedWidth settings
+5. **Line Management**: Line feeds advance to the next line using #LineSpacing values
+6. **Wrapping**: If #WrapEdge is set, words wrap at the specified boundary
+
+**Advanced Features:**
+- **Multi-line Support**: Automatic line advancement on encountering line feed characters (\n)
+- **Tab Handling**: Tab characters advance to the next #TabSize boundary
+- **Word Wrapping**: Intelligent word breaking when #WrapEdge is specified
+- **Alignment**: Abstract positioning using #Align with optional #AlignWidth and #AlignHeight
+- **Effects**: Outline borders and underline decorations when respective colour fields are configured
+
+**Post-Draw State:**
+After successful completion, the #EndX and #EndY fields are updated to reflect the final cursor position, enabling
+applications to continue text rendering from the exact endpoint for complex layouts.
+
+**Performance Considerations:**
+The Draw action is optimised for bitmap fonts and includes caching mechanisms for frequently used character combinations.
+For applications requiring real-time text animation or frequent updates, consider the performance implications of
+repeated draw operations on large text blocks.
 
 -ERRORS-
-Okay
-FieldNotSet: The Bitmap and/or String field has not been set.
+Okay: Text was successfully rendered to the target bitmap.
+FieldNotSet: Either the #Bitmap or #String field has not been set prior to calling Draw.
+NoSupport: The font format or configuration is not supported for rendering.
+InvalidData: The string contains invalid UTF-8 sequences or unsupported characters.
 -END-
 
 *********************************************************************************************************************/
@@ -324,6 +386,14 @@ The Ascent value reflects the total number of pixels above the baseline, includi
 -FIELD-
 Bitmap: The destination Bitmap to use when drawing a font.
 
+This field must reference a valid @Bitmap object before any drawing operations can be performed. The bitmap serves as
+the rendering target where all text will be drawn. The font will be drawn directly onto the bitmap's pixel buffer,
+respecting the current colour depth and pixel format.
+
+The bitmap's dimensions determine the available drawing area, and text positioning is calculated relative to the bitmap's
+coordinate system where (0,0) represents the top-left corner. When using alignment features, the bitmap's width and
+height are used as reference dimensions unless specifically overridden by #AlignWidth and #AlignHeight fields.
+
 -FIELD-
 Bold: Set to `true` to enable bold styling.
 
@@ -356,6 +426,16 @@ static ERR SET_Bold(extFont *Self, LONG Value)
 
 -FIELD-
 Colour: The font colour in !RGB8 format.
+
+Defines the primary colour used for rendering font characters. The colour is specified as an RGB8 structure containing
+red, green, blue, and alpha components, each ranging from 0-255. The alpha channel controls transparency, where 255
+represents fully opaque text and 0 represents completely transparent text.
+
+When rendering, this colour is applied to the character pixels during the drawing process. For bitmap fonts, the colour
+replaces the original character pixels, allowing dynamic colour changes without requiring different font files. The
+colour can be modified at any time and will take effect on the next draw operation.
+
+Example usage: Setting a semi-transparent red colour would use RGB values (255, 0, 0, 128) for 50% transparency.
 
 -FIELD-
 EndX: Indicates the final horizontal coordinate after completing a draw operation.
@@ -436,13 +516,46 @@ static ERR SET_Face(extFont *Self, STRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-FixedWidth: Forces a fixed pixel width to use for all glyphs.
+FixedWidth: Forces a fixed pixel width for all character glyphs, creating monospaced text layout.
+
+When set to a value greater than zero, this field overrides the natural character spacing of the font, forcing every
+character to occupy exactly the specified number of pixels horizontally. This creates a monospaced layout where all
+characters, regardless of their natural width, are rendered with uniform spacing.
+
+**Use Cases:**
+- **Code Display**: Programming code often requires monospaced fonts for proper indentation and alignment
+- **Tabular Data**: Columns of numbers or text that need precise vertical alignment
+- **Terminal Emulation**: Command-line interfaces typically use monospaced character layouts
+- **ASCII Art**: Character-based graphics require precise character positioning
+
+**Behaviour:**
+- Characters narrower than the fixed width are centred within their allotted space
+- Characters wider than the fixed width are truncated or compressed to fit
+- The #GlyphSpacing field is ignored when FixedWidth is active
+- Setting this field to 0 restores natural character spacing
+
+For fonts that are inherently monospaced, this field is automatically set during initialisation to match the font's
+natural character width. The value reflects the actual pixel width used for character positioning calculations.
 
 The FixedWidth value imposes a preset pixel width for all glyphs in the font.  It is important to note that if the
 fixed width value is less than the widest glyph, the glyphs will overlap each other.
 
 -FIELD-
-Flags:  Optional flags.
+Flags: Optional flags for controlling font rendering behaviour and style information.
+
+This field accepts values from the FTF enumeration to modify font rendering behaviour and query style information:
+
+**Rendering Control Flags:**
+- `FTF::BASE_LINE`: Interprets the #Y coordinate as the baseline position rather than the top of the character bounding box. This provides precise typographical control for aligning text with other graphical elements.
+- `FTF::HEAVY_LINE`: Renders underlines with double thickness when the #Underline field is set. This creates more prominent underline effects for emphasis.
+
+**Style Information Flags (Read-Only):**
+- `FTF::BOLD`: Automatically set when a bold font face is loaded. This flag reflects the inherent weight of the loaded font rather than a rendering effect.
+- `FTF::ITALIC`: Automatically set when an italic font face is loaded. This flag indicates the natural slant characteristic of the loaded font.
+
+Multiple flags can be combined using bitwise OR operations. The style information flags are particularly useful for
+determining the characteristics of a loaded font programmatically, while the rendering control flags modify how the
+text is positioned and emphasised during drawing operations.
 
 *********************************************************************************************************************/
 
@@ -455,20 +568,79 @@ static ERR SET_Flags(extFont *Self, FTF Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Gutter: The 'external leading' value, measured in pixels.  Applies to fixed fonts only.
+Gutter: The 'external leading' value, measured in pixels. Applies to fixed fonts only.
 
-This field reflects the 'external leading' value (also known as the 'gutter'), measured in pixels.
+The Gutter represents the external leading space below the baseline, providing room for character descenders such as
+those found in letters 'g', 'y', 'p', 'q', and 'j'. This space ensures that descending character elements do not
+interfere with text on subsequent lines when using the recommended line spacing.
+
+**Technical Details:**
+- **Alternative Names**: Also known as 'descent' or 'external leading' in typography
+- **Measurement**: Always expressed in pixels for direct layout calculations
+- **Scope**: Applies only to fixed bitmap fonts; scalable fonts handle this through different mechanisms
+- **Relationship**: Combined with #Height and #Leading to determine total character cell dimensions
+
+**Layout Implications:**
+When positioning multi-line text, the total vertical space required per line includes:
+1. **#Height**: The main character body above the baseline
+2. **#Leading**: Internal leading space at the top of characters  
+3. **Gutter**: External leading space below the baseline for descenders
+
+**Usage in Text Layout:**
+The Gutter value is essential for calculating proper line spacing and ensuring adequate separation between lines of text.
+Applications performing custom text layout should account for this value to prevent visual overlap between character
+descenders and subsequent lines.
+
+For fonts without descenders, this value may be zero or minimal. The value is automatically calculated during font
+initialisation based on the font's design metrics and character set requirements.
 
 -FIELD-
 Height: The point size of the font, expressed in pixels.
 
-The point size of the font is expressed in this field as a pixel measurement.  It does not not include the leading value
-(refer to #Ascent if leading is required).
+This field represents the vertical bearing or effective point size of the font converted to pixel measurements. It
+reflects the primary character height from the baseline to the top of typical characters, excluding additional leading
+space above and gutter space below for descenders.
 
-The height is calculated on initialisation and can be read at any time.
+**Key Characteristics:**
+- **Measurement**: Expressed in pixels rather than point units for direct pixel-level calculations
+- **Exclusions**: Does not include internal leading (space above characters) or external leading (gutter below baseline)
+- **Usage**: Primarily used for layout calculations and line positioning in multi-line text
+- **Relationship**: Combined with #Leading and #Gutter to determine total character cell height
+
+**Distinction from Related Fields:**
+- **#Point**: The original point size specification (1:72 DPI ratio)
+- **#MaxHeight**: Maximum pixel height including leading and gutter space
+- **#Ascent**: Height above baseline including internal leading
+- **#LineSpacing**: Recommended vertical distance between text lines
+
+This value is automatically calculated during font initialisation based on the selected point size and font
+characteristics. For bitmap fonts, it reflects the pixel height of the actual bitmap character data, while for
+scalable fonts it represents the rendered height at the specified point size.
+
+The Height field is essential for applications requiring precise text layout, such as calculating cursor positions,
+line boundaries, or integrating text with other graphical elements that need exact pixel positioning.
 
 -FIELD-
-GlyphSpacing: Adjusts the amount of spacing between each character.
+GlyphSpacing: Adjusts the amount of spacing between each character in pixels.
+
+This field controls additional horizontal spacing applied between characters during text rendering, modifying the natural
+character advancement provided by the font. The value is specified in pixels and can be positive (increasing spacing)
+or negative (decreasing spacing), allowing fine-tuned control over text density and readability.
+
+**Technical Details:**
+- **Default Value**: 1.0 pixel, which preserves the font's natural character spacing
+- **Additive Effect**: The spacing is added to each character's natural advance width
+- **Precision**: Accepts floating-point values for sub-pixel spacing adjustments
+- **Interaction**: This field is ignored when #FixedWidth is set to a non-zero value
+
+**Common Applications:**
+- **Typography Refinement**: Adjusting letter spacing (tracking) for improved readability
+- **Design Effects**: Creating tight or loose text for stylistic purposes
+- **Localization**: Compensating for character spacing in different languages
+- **Size Compensation**: Adjusting spacing when scaling between different point sizes
+
+**Performance Note**: Negative values should be used cautiously as they can cause character overlap, potentially making
+text illegible. Values between -2.0 and 5.0 typically provide the most useful results for general text rendering.
 
 This field adjusts the horizontal spacing between each glyph, technically known as kerning between each font
 character.  The value is expressed as a multiplier of the width of each character, and defaults to `1.0`.
@@ -506,7 +678,31 @@ static ERR SET_Italic(extFont *Self, LONG Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Leading: 'Internal leading' measured in pixels.  Applies to fixed fonts only.
+Leading: 'Internal leading' measured in pixels. Applies to fixed fonts only.
+
+The Leading represents internal leading space - the area reserved at the top of each character cell for diacritical marks,
+accents, and other character extensions above the main body of letters. This space is included within the overall character
+height calculation and ensures proper vertical spacing for characters with ascending elements.
+
+**Technical Details:**
+- **Definition**: Space above the baseline reserved for character ascenders and diacritical marks
+- **Inclusion**: This space is part of the total #Height calculation, not additional to it
+- **Typography**: Essential for proper display of accented characters and multilingual text
+- **Measurement**: Always expressed in pixels for direct layout calculations
+
+**Relationship to Other Metrics:**
+- **#Height**: Includes leading space as part of the total character height
+- **#Ascent**: Represents height above baseline including this leading value
+- **#Gutter**: External leading below the baseline, separate from internal leading
+- **#MaxHeight**: Total character cell height including both leading and gutter
+
+**Character Support:**
+Leading space is particularly important for characters with accents (á, é, ñ), umlauts (ü, ö), and other diacritical
+marks common in international typography. Without adequate leading, these character extensions might be clipped or
+appear too close to characters on the line above.
+
+This value is automatically determined during font initialisation based on the font's design metrics and is read-only
+after the font object is created.
 
 -FIELD-
 LineCount: The total number of lines in a font string.

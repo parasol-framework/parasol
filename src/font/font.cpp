@@ -9,13 +9,35 @@ the FreeType home page at www.freetype.org.
 **********************************************************************************************************************
 
 -MODULE-
-Font: Provides font management functionality and hosts the Font class.
+Font: Provides comprehensive font management functionality and hosts the Font class for bitmap font rendering.
 
-The Font module is responsible for managing the font database and provides support for client queries.  Fixed size
-bitmap fonts are supported via the Windows .fon file format, while Truetype fonts are support for scalable fonts.
+The Font module serves as the central hub for font management within the Parasol framework, offering both system-level
+font database management and client-side font rendering capabilities. It supports two primary font formats: bitmap fonts
+via the Windows .fon file format for pixel-perfect fixed-size rendering, and TrueType fonts for scalable font support.
 
-Bitmap fonts can be opened and drawn by the @Font class.  Drawing Truetype fonts is not supported by the Font module,
-but is instead provided by the #Vector module and @VectorText class.
+The module is structured around two main functional areas:
+
+**Font Database Management**: The module maintains a centralised database of installed fonts, automatically scanning
+system font directories and providing enumeration services through functions like ~Font.GetList() and ~Font.SelectFont().
+This database supports both bitmap and scalable fonts, with automatic style detection and family grouping.
+
+**Bitmap Font Rendering**: The @Font class provides direct bitmap font rendering capabilities with full UTF-8 support,
+offering features such as styled text (bold, italic, underlined), adjustable character spacing, word alignment, and
+comprehensive text measurement functions. The class integrates seamlessly with @Bitmap objects for immediate rendering.
+
+**Important Usage Guidelines**:
+- For modern scalable font rendering and vector graphics integration, use the @VectorText class from the #Vector module
+- The Font class is optimised for bitmap fonts and legacy applications requiring pixel-perfect text rendering
+- TrueType fonts are supported for enumeration and metadata queries but not for direct rendering through this module
+
+**Installation and Management**:
+Bitmap fonts must be placed in the `fonts:fixed/` directory for automatic recognition. The module handles font
+installation, file management, and maintains style variants (Regular, Bold, Italic, Bold Italic) with automatic
+fallback generation where supported.
+
+**Unicode Support**:
+Full UTF-8 character encoding is supported, enabling international character sets. Character codes above 127 must
+follow UTF-8 encoding standards for proper display.
 
 For a thorough introduction to typesetting history and terminology as it applies to computing, we recommend visiting
 Google Fonts Knowledge page: https://fonts.google.com/knowledge
