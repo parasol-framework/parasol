@@ -165,15 +165,12 @@ class objClientSocket : public Object {
 
    using create = pf::Create<objClientSocket>;
 
-   int64_t  ConnectTime;      // System time for the creation of this socket.
+   int64_t ConnectTime;       // System time for the creation of this socket.
    objClientSocket * Prev;    // Previous socket in the chain.
    objClientSocket * Next;    // Next socket in the chain.
    objNetClient * Client;     // Parent client object (IP address).
-   APTR     ClientData;       // Available for client data storage.
-   FUNCTION Outgoing;         // Callback for data ready to be sent to the client.
-   FUNCTION Incoming;         // Callback for data being received from the client.
-   NTC      State;            // The current connection state of the ClientSocket object.
-   ERR      Error;            // Reflects the most recent error code.
+   APTR    ClientData;        // Available for client data storage.
+   NTC     State;             // The current connection state of the ClientSocket object.
 
    // Action stubs
 
@@ -227,7 +224,7 @@ class objClientSocket : public Object {
 
    inline ERR setState(const NTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[3];
+      auto field = &this->Class->Dictionary[2];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 

@@ -73,11 +73,8 @@ typedef int SOCKET_HANDLE;
     obj(ClientSocket) Prev   # Previous socket in the chain
     obj(ClientSocket) Next   # Next socket in the chain
     obj(NetClient) Client    # Parent client object
-    ptr  ClientData          # Available for client data storage.
-    func Outgoing            # Callback for data being sent over the socket
-    func Incoming            # Callback for data being received from the socket
+    ptr  ClientData          # Available for user data storage.
     int(NTC) State           # The current connection state of the socket
-    error Error              # Reflects the most recent error code.
   ]])
 
   methods("proxy", "prx", {

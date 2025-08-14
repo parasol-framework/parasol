@@ -190,9 +190,10 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #define NOHANDLE -1
 
    static void CLOSESOCKET(SOCKET_HANDLE Handle) {
+      if (Handle IS NOHANDLE) return;
+      
       pf::Log log(__FUNCTION__);
       log.traceBranch("Handle: %d", Handle);
-      if (Handle IS NOHANDLE) return;
 
       // Perform graceful disconnect before closing
 
@@ -236,12 +237,12 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
 
 class extClientSocket : public objClientSocket {
    public:
-   SOCKET_HANDLE Handle;
+   SOCKET_HANDLE Handle = NOHANDLE;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
-   bool ReadCalled;     // TRUE if the Read action has been called
+   bool ReadCalled;     // True if the Read action has been called
 
    #ifndef DISABLE_SSL
       #ifdef _WIN32
@@ -349,22 +350,6 @@ struct CaseInsensitiveEqual {
 typedef ankerl::unordered_dense::map<std::string, DNSEntry, CaseInsensitiveHash, CaseInsensitiveEqual> HOSTMAP;
 
 //********************************************************************************************************************
-// Performing the socket close in a separate thread means there'll be plenty of time for a
-// graceful socket closure without affecting the current thread.
-
-static void cleanup_completed_threads()
-{
-   std::lock_guard<std::mutex> lock(glmThreads);
-   std::erase_if(glThreads, [](const auto& thread_ptr) {
-      if ((!thread_ptr) or (!thread_ptr->joinable())) return true;
-      // For completed threads, join them and remove from collection
-      if (thread_ptr->get_id() == std::jthread::id{}) {
-         if (thread_ptr->joinable()) thread_ptr->join();
-         return true;
-      }
-      return false;
-   });
-}
 
 static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 {
@@ -373,9 +358,19 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 #endif
 
    // Clean up completed threads periodically to prevent collection growth
+
    static std::atomic<int> cleanup_counter{0};
    if (++cleanup_counter % 50 == 0) {
-      cleanup_completed_threads();
+      std::lock_guard<std::mutex> lock(glmThreads);
+      std::erase_if(glThreads, [](const auto& thread_ptr) {
+         if ((!thread_ptr) or (!thread_ptr->joinable())) return true;
+         // For completed threads, join them and remove from collection
+         if (thread_ptr->get_id() == std::jthread::id{}) {
+            if (thread_ptr->joinable()) thread_ptr->join();
+            return true;
+         }
+         return false;
+      });      
    }
 
    std::lock_guard<std::mutex> lock(glmThreads);
@@ -384,6 +379,8 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
       glThreads.insert(thread_ptr);
       // Don't detach, threads need to be joinable for proper cleanup
 }
+
+//********************************************************************************************************************
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32

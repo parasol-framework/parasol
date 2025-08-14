@@ -160,7 +160,9 @@ static ERR sslSetup(extNetSocket *Self)
    else {
       if (!glClientSSL) {
          if ((glClientSSL = SSL_CTX_new(TLS_client_method()))) {
-            SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
+            if (GetResource(RES::LOG_LEVEL) > 7) {
+               SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
+            }
 
             if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
                // Disable certificate verification for client sockets
@@ -228,7 +230,9 @@ static ERR sslSetup(extNetSocket *Self)
 
             if (setup_success) {
                if ((Self->SSLHandle = SSL_new(glClientSSL))) {
-                  SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
+                  if (GetResource(RES::LOG_LEVEL) > 7) {
+                     SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
+                  }
                   return ERR::Okay;
                }
                else { 

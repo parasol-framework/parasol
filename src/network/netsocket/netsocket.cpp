@@ -266,7 +266,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             }
             else {
                log.warning("IPv6 Connect() failed: %s", strerror(errno));
-               Socket->Error = ERR::Failed;
+               Socket->Error = ERR::SystemCall;
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
@@ -309,7 +309,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             }
             else {
                log.warning("IPv4-mapped IPv6 Connect() failed: %s", strerror(errno));
-               Socket->Error = ERR::Failed;
+               Socket->Error = ERR::SystemCall;
                Socket->setState(NTC::DISCONNECTED);
                return;
             }
@@ -342,7 +342,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          }
          else {
             log.trace("IPv4-mapped IPv6 connect() failed");
-            Socket->Error = ERR::Failed;
+            Socket->Error = ERR::SystemCall;
             Socket->setState(NTC::DISCONNECTED);
          }
          return;
@@ -367,7 +367,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       }
       else {
          log.warning("Connect() failed: %s", strerror(errno));
-         Socket->Error = ERR::Failed;
+         Socket->Error = ERR::SystemCall;
          Socket->setState(NTC::DISCONNECTED);
          return;
       }
@@ -604,7 +604,7 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
       }
       return ERR::Okay;
    }
-   else return log.warning(ERR::Failed);
+   else return log.warning(ERR::SystemCall);
 }
 
 //********************************************************************************************************************
@@ -614,7 +614,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    pf::Log log;
    ERR error;
 
-   if (Self->Handle != (SOCKET_HANDLE)-1) return ERR::Okay; // The socket has been pre-configured by the developer
+   if (Self->Handle != NOHANDLE) return ERR::Okay; // The socket has been pre-configured by the developer
 
 #ifndef DISABLE_SSL
    // Initialise SSL ahead of any connections being made.
@@ -623,8 +623,6 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       if ((error = sslSetup(Self)) != ERR::Okay) return error;
    }
 #endif
-
-   // Create the underlying socket
 
 #ifdef __linux__
 
@@ -655,7 +653,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    // Put the socket into non-blocking mode, this is required when registering it as an FD and also prevents connect()
    // calls from going to sleep.
 
-   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::Failed);
+   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::SystemCall);
 
    // Set the send timeout so that connect() will timeout after a reasonable time
 
@@ -697,7 +695,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                return ERR::Okay;
             }
             else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
-            else return log.warning(ERR::Failed);
+            else return log.warning(ERR::SystemCall);
          #elif _WIN32
             // Windows IPv6 dual-stack server binding
             struct sockaddr_in6 addr;
@@ -738,7 +736,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
             else {
                log.warning("bind() failed with error: %s", strerror(errno));
-               return ERR::Failed;
+               return ERR::SystemCall;
             }
          #elif _WIN32
             if ((error = win_bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
@@ -956,12 +954,13 @@ can be used to determine how a TCP connection was closed.
 Feedback: A callback trigger for when the state of the NetSocket is changed.
 
 The client can define a function in this field to receive notifications whenever the state of the socket changes -
-typically a new connection or a disconnect.  This includes activity both from the server and the client side if the
-`ClientSocket` value is set on receipt.
+typically connection messages.
 
-The function must be in the format `Function(*NetSocket, *ClientSocket, NTC State)`
+In server mode, the function must follow the prototype `Function(*NetSocket, *ClientSocket, NTC State)`.  Otherwise
+`Function(*NetSocket, NTC State)`.
 
-The `NetSocket` parameter refers to the NetSocket object to which the function is subscribed.
+The `NetSocket` parameter refers to the NetSocket object to which the function is subscribed.  In server mode,
+`ClientSocket` refers to the @ClientSocket on which the state has changed.
 
 *********************************************************************************************************************/
 
@@ -997,9 +996,9 @@ Flags: Optional flags.
 Incoming: Callback that is triggered when the socket receives data.
 
 The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The
-function prototype is `ERR Incoming(*NetSocket, OBJECTPTR Context)`.
+function prototype for C++ is `ERR Incoming(*NetSocket, APTR Meta)`.  For Fluid use `function Incoming(NetSocket)`.
 
-The `NetSocket` parameter refers to the NetSocket object.  The `Context` refers to the object that set the `Incoming` field.
+The `NetSocket` parameter refers to the NetSocket object.  `Meta` is optional userdata from the `FUNCTION`.
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
@@ -1036,22 +1035,18 @@ static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 Outgoing: Callback that is triggered when a socket is ready to send data.
 
 The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data.
-The function must be in the format `ERR Outgoing(*NetSocket, OBJECTPTR Context)`
+In client mode the function must be in the format `ERR Outgoing(*NetSocket, APTR Meta)`.  In server mode the function
+format is `ERR Outgoing(*NetSocket, *ClientSocket, APTR Meta)`.
 
-The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.
-
-To send data to the NetSocket object, call the #Write() action.  If the callback function returns
-`ERR::Terminate` then the Outgoing field will be cleared and the function will no longer be called.  All other error
-codes are ignored.
-
-The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).
+To send data to the NetSocket object, call the #Write() action.  If the callback function returns an error other 
+than `ERR::Okay` then the Outgoing field will be cleared and the function will no longer be called.
 
 *********************************************************************************************************************/
 
 static ERR GET_Outgoing(extNetSocket *Self, FUNCTION **Value)
 {
-   if (Self->Incoming.defined()) {
-      *Value = &Self->Incoming;
+   if (Self->Outgoing.defined()) {
+      *Value = &Self->Outgoing;
       return ERR::Okay;
    }
    else return ERR::FieldNotSet;
@@ -1061,26 +1056,21 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 {
    pf::Log log;
 
-   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      return log.warning(ERR::NoSupport);
-   }
-   else {
-      if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
-      Self->Outgoing = *Value;
-      if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
+   if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
+   Self->Outgoing = *Value;
+   if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
 
-      if (Self->initialised()) {
-         if ((Self->Handle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
-            // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
+   if (Self->initialised()) {
+      if ((Self->Handle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
+         // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
-            #ifdef __linux__
-               RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
-            #elif _WIN32
-               win_socketstate(Self->Handle, -1, true);
-            #endif
-         }
-         else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC::CONNECTED).", Self->State);
+         #ifdef __linux__
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
+         #elif _WIN32
+            win_socketstate(Self->Handle, -1, true);
+         #endif
       }
+      else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC::CONNECTED).", Self->State);
    }
 
    return ERR::Okay;
@@ -1148,11 +1138,11 @@ client sockets.  Each @ClientSocket carries its own independent State value for 
 
 *********************************************************************************************************************/
 
-static ERR GET_State(extNextSocket *Self, NTC &Value) 
+static ERR GET_State(extNetSocket *Self, NTC &Value) 
 {
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       pf::Log().warning("Reading the State of a server socket is a probable defect.");
-      Value = ERR::MULTISTATE;
+      Value = NTC::MULTISTATE;
    }
    else Value = Self->State;
    return ERR::Okay;
@@ -1206,14 +1196,13 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             if (Self->Feedback.defined()) {
                if (Self->Feedback.isC()) {
                   pf::SwitchContext context(Self->Feedback.Context);
-                  auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
-                  if (routine) routine(Self, nullptr, NTC::DISCONNECTED, Self->Feedback.Meta);
+                  auto routine = (void (*)(extNetSocket *, NTC, APTR))Self->Feedback.Routine;
+                  if (routine) routine(Self, Self->State, Self->Feedback.Meta);
                }
                else if (Self->Feedback.isScript()) {
                   sc::Call(Self->Feedback, std::to_array<ScriptArg>({
                      { "NetSocket", Self, FD_OBJECTPTR },
-                     { "ClientSocket", OBJECTPTR(nullptr), FD_OBJECTPTR },
-                     { "State", int(NTC::DISCONNECTED) }
+                     { "State", int(Self->State) }
                   }));
                }
             }
@@ -1229,14 +1218,13 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 
          if (Self->Feedback.isC()) {
             pf::SwitchContext context(Self->Feedback.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
-            if (routine) routine(Self, nullptr, Self->State, Self->Feedback.Meta);
+            auto routine = (void (*)(extNetSocket *, NTC, APTR))Self->Feedback.Routine;
+            if (routine) routine(Self, Self->State, Self->Feedback.Meta);
          }
          else if (Self->Feedback.isScript()) {
             sc::Call(Self->Feedback, std::to_array<ScriptArg>({
-               { "NetSocket",    Self, FD_OBJECTPTR },
-               { "ClientSocket", OBJECTPTR(nullptr), FD_OBJECTPTR },
-               { "State",        int(Self->State) }
+               { "NetSocket", Self, FD_OBJECTPTR },
+               { "State",     int(Self->State) }
             }));
          }
       }
@@ -1693,30 +1681,31 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
    if (NewObject(CLASSID::CLIENTSOCKET, &client_socket) IS ERR::Okay) {
       client_socket->Handle = clientfd;
       client_socket->Client = client_ip;
-      InitObject(client_socket);
+      if (InitObject(client_socket) IS ERR::Okay) {
+         // Note that if the connection is over SSL then handshaking won't have
+         // completed yet, in which case the connection feedback will be sent in a later state change.
+
+         if (client_socket->State IS NTC::CONNECTED) {
+            if (Self->Feedback.isC()) {
+               pf::SwitchContext context(Self->Feedback.Context);
+               auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+               if (routine) routine(Self, client_socket, client_socket->State, Self->Feedback.Meta);
+            }
+            else if (Self->Feedback.isScript()) {
+               sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+                  { "NetSocket",    Self, FD_OBJECTPTR },
+                  { "ClientSocket", client_socket, FD_OBJECTPTR },
+                  { "State",        int(client_socket->State) }
+               }));
+            }
+         }
+      }
+      else log.warning(ERR::Init);
    }
    else {
       CLOSESOCKET(clientfd);
       if (!client_ip->Connections) free_client(Self, client_ip);
       return;
-   }
-
-   // Note that if the connection is over SSL then handshaking won't have
-   // completed yet, in which case the connection feedback will be sent in a later state change.
-
-   if (Self->State IS NTC::CONNECTED) {
-      if (Self->Feedback.isC()) {
-         pf::SwitchContext context(Self->Feedback.Context);
-         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
-         if (routine) routine(Self, client_socket, Self->State, Self->Feedback.Meta);
-      }
-      else if (Self->Feedback.isScript()) {
-         sc::Call(Self->Feedback, std::to_array<ScriptArg>({
-            { "NetSocket",    Self, FD_OBJECTPTR },
-            { "ClientSocket", client_socket, FD_OBJECTPTR },
-            { "State",        int(Self->State) }
-         }));
-      }
    }
 
    log.trace("Total clients: %d", Self->TotalClients);
@@ -1725,14 +1714,15 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
 //********************************************************************************************************************
 // Terminates all connections to the client and removes associated resources.
 
-static void free_client(extNetSocket *Self, objNetClient *Client)
+static void free_client(extNetSocket *Socket, objNetClient *Client)
 {
    pf::Log log(__FUNCTION__);
    static THREADVAR int8_t recursive = 0;
 
    if (!Client) return;
-   if (recursive) return;
+   if ((Socket->Flags & NSF::SERVER) IS NSF::NIL) return; // Must be a server
 
+   if (recursive) return;
    recursive++;
 
    log.branch("%d:%d:%d:%d, Connections: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalConnections);
@@ -1753,13 +1743,13 @@ static void free_client(extNetSocket *Self, objNetClient *Client)
       if (Client->Next) Client->Next->Prev = Client->Prev;
    }
    else {
-      Self->Clients = Client->Next;
-      if ((Self->Clients) and (Self->Clients->Next)) Self->Clients->Next->Prev = NULL;
+      Socket->Clients = Client->Next;
+      if ((Socket->Clients) and (Socket->Clients->Next)) Socket->Clients->Next->Prev = NULL;
    }
 
    FreeResource(Client);
 
-   Self->TotalClients--;
+   Socket->TotalClients--;
 
    recursive--;
 }
@@ -1814,7 +1804,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       else if (result IS ENETUNREACH)  Self->Error = ERR::NetworkUnreachable;
       else if (result IS EHOSTUNREACH) Self->Error = ERR::HostUnreachable;
       else if (result IS ETIMEDOUT)    Self->Error = ERR::TimeOut;
-      else Self->Error = ERR::Failed;
+      else Self->Error = ERR::SystemCall;
 
       log.error(Self->Error);
 
@@ -2004,7 +1994,7 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
             if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error != ERR::Okay) Self->Outgoing.clear();
+         if (error != ERR::Okay) Self->Outgoing.clear(); // Any error will terminate the function
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that

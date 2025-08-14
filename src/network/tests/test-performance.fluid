@@ -23,6 +23,14 @@ or scalability issues in the Network module implementation.
    glPerformanceResults = {}
    glLoadTestActive = false
 
+function printableState(State)
+   if (State == NTC_CONNECTED) then return 'CONNECTED'
+   elseif (State == NTC_CONNECTING) then return 'CONNECTING'
+   elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
+   elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
+   else return tostring(State) end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function testMessageThroughput()

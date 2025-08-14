@@ -180,7 +180,7 @@ function testClientLimitEnforcement()
          end
       end,
       port = glPort + 1,
-      flags = 'SERVER|MULTICONNECT',
+      flags = 'SERVER|MULTI_CONNECT',
       socketLimit = limit
    })
    
@@ -271,7 +271,7 @@ function testConnectionIsolation()
          Client.acWrite(echo)
       end,
       port = glPort + 2,
-      flags = 'SERVER|MULTICONNECT'
+      flags = 'SERVER|MULTI_CONNECT'
    })
    
    local clients = {}

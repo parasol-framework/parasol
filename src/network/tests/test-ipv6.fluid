@@ -103,14 +103,14 @@ function testIPv6ServerBinding()
 
    local client = obj.new('netsocket', {
       name = 'IPv6TestClient',
-      feedback = function(Socket, Client, State)
+      feedback = function(Socket, State)
          print('[Client] State: ' .. State)
          if State == NTC_CONNECTED then
             print('[Client] Connected to IPv6 server')
             Socket.acWrite('Hello IPv6 World!', string.len('Hello IPv6 World!'))
          end
       end,
-      incoming = function(Socket, Client)
+      incoming = function(Socket)
          local buffer = string.rep('\\0', 256)
          local err, bytes = Socket.acRead(buffer, string.len(buffer))
          if err == ERR_Okay and bytes > 0 then

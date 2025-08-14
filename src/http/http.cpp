@@ -322,7 +322,7 @@ static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
 static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
-static void socket_feedback(objNetSocket *, objClientSocket *, NTC);
+static void socket_feedback(objNetSocket *, NTC, APTR);
 static ERR  socket_incoming(objNetSocket *);
 static ERR  socket_outgoing(objNetSocket *);
 

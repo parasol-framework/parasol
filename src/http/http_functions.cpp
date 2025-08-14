@@ -1,11 +1,11 @@
 
 //********************************************************************************************************************
 
-static void socket_feedback(objNetSocket *Socket, objClientSocket *Client, NTC State)
+static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
 {
    pf::Log log("http_feedback");
 
-   log.msg("Socket: %p, Client: %p, State: %d, Context: %d", Socket, Client, int(State), CurrentContext()->UID);
+   log.msg("Socket: %p, State: %d, Context: %d", Socket, int(State), CurrentContext()->UID);
 
    auto Self = (extHTTP *)CurrentContext();
    if (Self->classID() != CLASSID::HTTP) { log.warning(ERR::SystemCorrupt); return; }
@@ -708,7 +708,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                         // Validate chunk length
                         if (temp_chunk_len < 0 or temp_chunk_len > MAX_CHUNK_LENGTH) {
                            if (temp_chunk_len > 0) {
-                              log.warning("Chunk length %" PF64 " exceeds maximum %" PF64 ", terminating", temp_chunk_len, MAX_CHUNK_LENGTH);
+                              log.warning("Chunk length %d exceeds maximum %d terminating", int(temp_chunk_len), int(MAX_CHUNK_LENGTH));
                               Self->setCurrentState(HGS::TERMINATED);
                               return ERR::Terminate;
                            }
@@ -899,7 +899,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
                Self->ContentLength = temp_length;
             }
             else {
-               log.warning("Invalid or excessive Content-Length: %.*s (max: %" PF64 ")", int(value.size()), value.data(), MAX_CONTENT_LENGTH);
+               log.warning("Invalid or excessive Content-Length: %.*s", int(value.size()), value.data());
                Self->ContentLength = -1; // Treat as streaming
             }
          }

@@ -240,9 +240,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically a new connection or a disconnect.  This includes activity both from the server and the client side if the <code>ClientSocket</code> value is set on receipt.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
-<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.</p>
+<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically connection messages.</p>
+<p>In server mode, the function must follow the prototype <code>Function(*NetSocket, *ClientSocket, NTC State)</code>.  Otherwise <code>Function(*NetSocket, NTC State)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.  In server mode, <code>ClientSocket</code> refers to the <class name="ClientSocket">ClientSocket</class> on which the state has changed.</p>
       </description>
     </field>
 
@@ -269,8 +269,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype is <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code>.</p>
-<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  The <code>Context</code> refers to the object that set the <code>Incoming</code> field.</p>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype for C++ is <code>ERR Incoming(*NetSocket, APTR Meta)</code>.  For Fluid use <code>function Incoming(NetSocket)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  <code>Meta</code> is optional userdata from the <code>FUNCTION</code>.</p>
 <p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns/raises <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
@@ -323,7 +323,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <field>
       <name>State</name>
       <comment>The current connection state of the NetSocket object.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type lookup="NTC">NTC</type>
       <description>
 <p>The State reflects the connection state of the NetSocket.  If the <fl>Feedback</fl> field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>

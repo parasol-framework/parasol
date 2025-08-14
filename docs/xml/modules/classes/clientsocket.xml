@@ -79,31 +79,10 @@
     </field>
 
     <field>
-      <name>Error</name>
-      <comment>Reflects the most recent error code.</comment>
-      <access read="R">Read</access>
-      <type>ERR</type>
-    </field>
-
-    <field>
-      <name>Incoming</name>
-      <comment>Callback for data being received from the client.</comment>
-      <access read="R">Read</access>
-      <type>FUNCTION</type>
-    </field>
-
-    <field>
       <name>Next</name>
       <comment>Next socket in the chain.</comment>
       <access read="R">Read</access>
       <type class="ClientSocket">*ClientSocket</type>
-    </field>
-
-    <field>
-      <name>Outgoing</name>
-      <comment>Callback for data ready to be sent to the client.</comment>
-      <access read="R">Read</access>
-      <type>FUNCTION</type>
     </field>
 
     <field>
