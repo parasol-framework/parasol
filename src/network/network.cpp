@@ -27,6 +27,9 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <unordered_set>
 #include <ctime>
 #include <type_traits>
+#ifdef __linux__
+ #include <sys/resource.h>
+#endif
 
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
@@ -349,19 +352,37 @@ typedef ankerl::unordered_dense::map<std::string, DNSEntry, CaseInsensitiveHash,
 // Performing the socket close in a separate thread means there'll be plenty of time for a
 // graceful socket closure without affecting the current thread.
 
+static void cleanup_completed_threads()
+{
+   std::lock_guard<std::mutex> lock(glmThreads);
+   std::erase_if(glThreads, [](const auto& thread_ptr) {
+      if ((!thread_ptr) or (!thread_ptr->joinable())) return true;
+      // For completed threads, join them and remove from collection
+      if (thread_ptr->get_id() == std::jthread::id{}) {
+         if (thread_ptr->joinable()) thread_ptr->join();
+         return true;
+      }
+      return false;
+   });
+}
+
 static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 {
 #ifdef _WIN32
    win_deregister_socket(Handle);
 #endif
 
+   // Clean up completed threads periodically to prevent collection growth
+   static std::atomic<int> cleanup_counter{0};
+   if (++cleanup_counter % 50 == 0) {
+      cleanup_completed_threads();
+   }
+
    std::lock_guard<std::mutex> lock(glmThreads);
       auto thread_ptr = std::make_shared<std::jthread>();
-      *thread_ptr = std::jthread([] (int Handle) {
-         CLOSESOCKET(Handle);
-      }, Handle);
+      *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
       glThreads.insert(thread_ptr);
-      thread_ptr->detach();
+      // Don't detach, threads need to be joinable for proper cleanup
 }
 
 #ifndef DISABLE_SSL
@@ -500,26 +521,17 @@ static ERR MODExpunge(void)
    {
       std::lock_guard<std::mutex> lock(glmThreads);
 
-      for (auto &thread_ptr : glThreads) {
-         if (thread_ptr and thread_ptr->joinable()) {
-            thread_ptr->request_stop();
-         }
-      }
-
-      // Give threads time to respond to stop request
-      constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+      constexpr auto JOIN_TIMEOUT = std::chrono::milliseconds(2000);
       auto start_time = std::chrono::steady_clock::now();
-
-      while (!glThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
-         // Remove completed threads
-         std::erase_if(glThreads, [](const auto& thread_ptr) {
-            return !thread_ptr || !thread_ptr->joinable();
-         });
-
-         if (!glThreads.empty()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-         }
+      
+      auto it = glThreads.begin();
+      while (it != glThreads.end() and (std::chrono::steady_clock::now() - start_time) < JOIN_TIMEOUT) {
+         if (*it and (*it)->joinable()) {
+            (*it)->join();
+            it = glThreads.erase(it);
+         } else it = glThreads.erase(it);
       }
+      
       glThreads.clear();
    }
 

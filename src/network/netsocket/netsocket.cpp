@@ -521,11 +521,9 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
    if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
    if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
-   free_socket(Self);
-
-   // Remove all client resources if this is a server
-
    while (Self->Clients) free_client(Self, Self->Clients);
+
+   free_socket(Self);
 
    Self->~extNetSocket();
    return ERR::Okay;
@@ -1149,6 +1147,16 @@ Note that in server mode this State value should not be used as it cannot reflec
 client sockets.  Each @ClientSocket carries its own independent State value for use instead.
 
 *********************************************************************************************************************/
+
+static ERR GET_State(extNextSocket *Self, NTC &Value) 
+{
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
+      pf::Log().warning("Reading the State of a server socket is a probable defect.");
+      Value = ERR::MULTISTATE;
+   }
+   else Value = Self->State;
+   return ERR::Okay;
+}
 
 static ERR SET_State(extNetSocket *Self, NTC Value)
 {
@@ -2062,7 +2070,7 @@ static const FieldArray clSocketFields[] = {
    { "Clients",          FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",       FDF_POINTER|FDF_RW },
    { "Address",          FDF_STRING|FDF_RI, nullptr, SET_Address },
-   { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_State, &clNetSocketState },
+   { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, GET_State, SET_State, &clNetSocketState },
    { "Error",            FDF_INT|FDF_R },
    { "Port",             FDF_INT|FDF_RI },
    { "Flags",            FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clNetSocketFlags },
