@@ -1319,10 +1319,7 @@ static void free_socket(extNetSocket *Self)
    Self->WriteQueue.Index = 0;
 
    if (!Self->terminating()) {
-      if (Self->State != NTC::DISCONNECTED) {
-         log.traceBranch("Changing state to disconnected.");
-         Self->setState(NTC::DISCONNECTED);
-      }
+      if (Self->State != NTC::DISCONNECTED) Self->setState(NTC::DISCONNECTED);
    }
 
    log.trace("Resetting exception handler.");
@@ -1340,8 +1337,12 @@ ERR NetQueue::write(CPTR Message, size_t Length)
    if (!Message) return log.warning(ERR::NullArgs);
    if (Length <= 0) return ERR::Okay;
 
+   // Security: Check for maximum buffer size to prevent memory exhaustion
+   constexpr size_t MAX_QUEUE_SIZE = 16 * 1024 * 1024; // 16MB limit
+   if (Length > MAX_QUEUE_SIZE) return log.warning(ERR::DataSize);
+
    if (!Buffer.empty()) { // Add data to existing queue
-      uint32_t remaining_data = Buffer.size() - Index;
+      size_t remaining_data = Buffer.size() - Index;
 
       if (Index > 8192) { // Compact the queue
          if (remaining_data > 0) Buffer.erase(Buffer.begin(), Buffer.begin() + Index);
@@ -1349,8 +1350,12 @@ ERR NetQueue::write(CPTR Message, size_t Length)
          Index = 0;
       }
 
-      Buffer.resize(Buffer.size() + Length);
-      pf::copymem(Message, Buffer.data() + Buffer.size() - Length, Length);
+      // Security: Check for integer overflow and buffer size limits
+      if (Buffer.size() > MAX_QUEUE_SIZE - Length) return log.warning(ERR::BufferOverflow);
+
+      size_t old_size = Buffer.size();
+      Buffer.resize(old_size + Length);
+      pf::copymem(Message, Buffer.data() + old_size, Length);
    }
    else {
       Buffer.resize(Length);
@@ -1496,9 +1501,27 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
    pf::SwitchContext context(Self);
 
    // Check client limit before accepting to prevent resource exhaustion
-   if (Self->TotalClients >= Self->ClientLimit) {
+   if ((Self->TotalClients >= Self->ClientLimit) or (Self->TotalClients >= glSocketLimit)) {
       log.error(ERR::ArrayFull);
       return;
+   }
+
+   // Basic rate limiting - prevent connection floods
+
+   time_t current_time = time(nullptr);
+   static time_t last_accept = 0;
+   static int accept_count = 0;
+
+   if (current_time != last_accept) {
+      accept_count = 1;
+      last_accept = current_time;
+   }
+   else {
+      accept_count++;
+      if (accept_count > 100) { // Maximum 100 accepts per second
+         log.warning("Connection rate limit exceeded, rejecting connection");
+         return;
+      }
    }
 
    if (Self->IPV6) {

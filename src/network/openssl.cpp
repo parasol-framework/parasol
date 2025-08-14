@@ -85,32 +85,29 @@ static void sslCtxMsgCallback(const SSL *s, int where, int ret)
 
 static ERR sslSetup(extNetSocket *Self)
 {
-   ERR error;
-
-   // Thread-safe SSL initialization
-   static std::mutex ssl_init_mutex;
-   static bool ssl_initialized = false;
-   
-   {
-      std::lock_guard<std::mutex> lock(ssl_init_mutex);
-      if (!ssl_initialized) {
-         OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr);
-         ssl_initialized = true;
-      }
-   }
-
-   if (Self->CTX) return ERR::Okay;
-   
    pf::Log log(__FUNCTION__);
+   
    log.traceBranch();
    
+   ERR error = ERR::Okay;
+
+   static std::mutex ssl_init_mutex;
+   static bool ssl_initialised = false;
+   
+   std::lock_guard<std::mutex> lock(ssl_init_mutex);
+
+   if (!ssl_initialised) {
+      if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr) != 1) {
+         return log.warning(ERR::SystemCall);
+      }
+      ssl_initialised = true;
+   }
+
    bool setup_success = false;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       if (!glServerSSL) {
-         if ((glServerSSL = SSL_CTX_new(TLS_server_method()))) {
-            log.msg("Configuring SSL server with simplified certificate.");
-         
+         if ((glServerSSL = SSL_CTX_new(TLS_server_method()))) {         
             // Generate a simple self-signed certificate using modern OpenSSL APIs
             EVP_PKEY *pkey = nullptr;
             X509 *cert = nullptr;
@@ -157,10 +154,8 @@ static ERR sslSetup(extNetSocket *Self)
                setup_success = true;
             }
          }
-         else error = log.warning(ERR::SystemCall);
+         else return log.warning(ERR::SystemCall);
       }
-
-      Self->CTX = glServerSSL;
    }
    else {
       if (!glClientSSL) {
@@ -169,7 +164,7 @@ static ERR sslSetup(extNetSocket *Self)
 
             if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
                // Disable certificate verification for client sockets
-               log.msg("SSL certificate verification disabled (SSL_NO_VERIFY flag set). Flags=0x%x", int(Self->Flags));
+               log.msg("SSL certificate verification disabled.");
                SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_NONE, nullptr);
          
                // Additional settings to ensure verification is completely disabled
@@ -182,7 +177,6 @@ static ERR sslSetup(extNetSocket *Self)
                // Try system certificates first (most up-to-date), then bundled certificates as fallback
                bool cert_loaded = false;
                if (SSL_CTX_set_default_verify_paths(glClientSSL)) {
-                  log.msg("SSL system certificate paths loaded successfully.");
                   cert_loaded = true;
                }
                else {
@@ -197,7 +191,6 @@ static ERR sslSetup(extNetSocket *Self)
                   if (ResolvePath("config:ssl/ca-bundle.crt", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
                      log.msg("Attempting to load SSL certificate bundle: %s", path.c_str());
                      if (SSL_CTX_load_verify_locations(glClientSSL, path.c_str(), nullptr)) {
-                        log.msg("SSL certificate bundle loaded successfully: %s", path.c_str());
                         cert_loaded = true;
                      }
                      else {
@@ -206,17 +199,6 @@ static ERR sslSetup(extNetSocket *Self)
                      }
                   }
                   else log.warning(ERR::ResolvePath);
-               }
-         
-               // Try certificate directory as final fallback
-               if (!cert_loaded) {
-                  if (ResolvePath("config:ssl/certs", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-                     if (SSL_CTX_load_verify_locations(glClientSSL, nullptr, path.c_str())) {
-                        log.msg("SSL certificate directory loaded successfully: %s", path.c_str());
-                        cert_loaded = true;
-                     }
-                     else log.warning("Failed to load certificate folder: %s", path.c_str());
-                  }
                }
          
                if (cert_loaded) {
@@ -258,10 +240,8 @@ static ERR sslSetup(extNetSocket *Self)
             SSL_CTX_free(glClientSSL);
             glClientSSL = nullptr;
          }
-         else error = log.warning(ERR::SystemCall);
+         else return log.warning(ERR::SystemCall);
       }
-
-      Self->CTX = glClientSSL;
    }
 
    return error;

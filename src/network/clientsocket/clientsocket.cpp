@@ -444,12 +444,11 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
       // Not supported here
    #else
       auto netSocket = (extNetSocket *)(Self->Client->Owner);
-      if (((netSocket->Flags & NSF::SSL) != NSF::NIL) and ((netSocket->Flags & NSF::SERVER) != NSF::NIL) and netSocket->CTX) {
-         if (auto client_ssl = SSL_new(netSocket->CTX)) {
+      if (((netSocket->Flags & NSF::SSL) != NSF::NIL) and ((netSocket->Flags & NSF::SERVER) != NSF::NIL)) {
+         if (auto client_ssl = SSL_new(glClientSSL)) {
             if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
                SSL_set_bio(client_ssl, client_bio, client_bio);
 
-               // Store SSL handles in the ClientSocket
                Self->SSLHandle = client_ssl;
                Self->BIOHandle = client_bio;
 
@@ -457,8 +456,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 
                auto result = SSL_accept(client_ssl);
                if (result == 1) {
-                  // SSL handshake completed successfully
-                  log.msg("SSL client handshake completed successfully.");
+                  log.msg("SSL handshake successful.");
                   Self->setState(NTC::CONNECTED);
                }
                else {
@@ -468,7 +466,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
                      // Handshake will continue asynchronously
                   }
                   else {
-                     log.warning("SSL client handshake failed: %s", ERR_error_string(ssl_error, nullptr));
+                     log.warning("SSL handshake failed: %s", ERR_error_string(ssl_error, nullptr));
                      Self->SSLHandle = nullptr;
                      Self->BIOHandle = nullptr;
                      SSL_free(client_ssl);

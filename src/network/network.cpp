@@ -24,6 +24,9 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 #include <stdio.h>
 #include <sys/types.h>
+#include <unordered_set>
+#include <ctime>
+#include <type_traits>
 
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
@@ -53,6 +56,8 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 std::mutex glmThreads;
 std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
+
+static int glSocketLimit = 0x7fffffff; // System imposed socket limit
 
 struct NetQueue {
    uint32_t Index;    // The current read/write position within the buffer
@@ -272,7 +277,6 @@ class extNetSocket : public objNetSocket {
          SSL_HANDLE SSLHandle;
       #else
         SSL *SSLHandle;
-        SSL_CTX *CTX;
         uint8_t  SSLBusy; // Tracks the current actions of SSL handshaking.
         BIO *BIOHandle;
       #endif
@@ -433,6 +437,13 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (AddMsgHandler(nullptr, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
       return ERR::Failed;
    }
+
+#ifdef __linux__   
+   struct rlimit fd_limit;
+   if (getrlimit(RLIMIT_NOFILE, &fd_limit) == 0) {
+      glSocketLimit = fd_limit.rlim_cur * 0.8; // Set a threshold at 80% of the system limit
+   }
+#endif
 
    return ERR::Okay;
 }
