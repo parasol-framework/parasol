@@ -4,7 +4,11 @@ static SSL_CTX *glServerSSL = nullptr;
 
 //********************************************************************************************************************
 
-static void sslDisconnect(extNetSocket *Self)
+// Forward declarations for template functions
+template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self);
+template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self);
+
+template <class T> void sslDisconnect(T *Self)
 {
    if (Self->SSLHandle) {
       pf::Log log(__FUNCTION__);
@@ -99,6 +103,8 @@ static ERR sslSetup(extNetSocket *Self)
    
    pf::Log log(__FUNCTION__);
    log.traceBranch();
+   
+   bool setup_success = false;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       if (!glServerSSL) {
@@ -160,8 +166,6 @@ static ERR sslSetup(extNetSocket *Self)
       if (!glClientSSL) {
          if ((glClientSSL = SSL_CTX_new(TLS_client_method()))) {
             SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
-
-            bool setup_success = false;
 
             if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
                // Disable certificate verification for client sockets
@@ -231,14 +235,13 @@ static ERR sslSetup(extNetSocket *Self)
                   // Set certificate verification flags for better compatibility
                   X509_VERIFY_PARAM *param = SSL_CTX_get0_param(glClientSSL);
                   if (param) X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
-            
-                  setup_success = true;
                }
                else {
                   log.warning("No SSL certificates could be loaded, disabling verification.");
                   SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_NONE, nullptr);
-                  setup_success = true;  // Continue without verification
                }
+            
+               setup_success = true;
             }
 
             if (setup_success) {
@@ -321,7 +324,7 @@ static ERR sslLinkSocket(extNetSocket *Self)
 
    log.traceBranch();
 
-   if ((Self->BIOHandle = BIO_new_socket(Self->SocketHandle, BIO_NOCLOSE))) {
+   if ((Self->BIOHandle = BIO_new_socket(Self->Handle, BIO_NOCLOSE))) {
       SSL_set_bio(Self->SSLHandle, Self->BIOHandle, Self->BIOHandle);
 //      SSL_ctrl(Self->SSLHandle, SSL_CTRL_MODE,(SSL_MODE_AUTO_RETRY), nullptr); // SSL library will process 'non-application' data automatically [good]
       SSL_ctrl(Self->SSLHandle, SSL_CTRL_MODE,(SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER), nullptr);
@@ -417,21 +420,21 @@ static ERR sslConnect(extNetSocket *Self)
 // handshake and then ceases monitoring of the FD.  If SSL then needs to continue its handshake then it will tell us in
 // the RECEIVE() and SEND() functions.
 
-static void ssl_handshake_write(HOSTHANDLE Socket, extNetSocket *Self)
+template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self)
 {
    pf::Log log(__FUNCTION__);
 
    log.trace("Socket: %" PF64, (MAXINT)Socket);
 
    if (auto result = SSL_do_handshake(Self->SSLHandle); result == 1) { // Handshake successful, connection established
-      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
+      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
       Self->SSLBusy = SSL_NOT_BUSY;
    }
    else switch (SSL_get_error(Self->SSLHandle, result)) {
       case SSL_ERROR_WANT_READ:
-         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
          Self->SSLBusy = SSL_HANDSHAKE_READ;
-         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
          break;
 
       case SSL_ERROR_WANT_WRITE:
@@ -443,15 +446,14 @@ static void ssl_handshake_write(HOSTHANDLE Socket, extNetSocket *Self)
    }
 }
 
-static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
+template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self)
 {
    pf::Log log(__FUNCTION__);
-   auto Self = (extNetSocket *)Data;
 
    log.trace("Socket: %" PF64, (MAXINT)Socket);
 
    if (auto result = SSL_do_handshake(Self->SSLHandle); result == 1) { // Handshake successful, connection established
-      RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
+      RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
       Self->SSLBusy = SSL_NOT_BUSY;
    }
    else switch (SSL_get_error(Self->SSLHandle, result)) {
@@ -460,9 +462,9 @@ static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data)
          break;
 
       case SSL_ERROR_WANT_WRITE:
-         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, &ssl_handshake_read, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
          Self->SSLBusy = SSL_HANDSHAKE_WRITE;
-         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
          break;
 
       default:

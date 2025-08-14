@@ -609,6 +609,26 @@ add_custom_command (
 add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip")
 
 # --------------------------------------------------------------------------------------------------------------------
+# SSL Certificate Bundle Auto-Update (if older than 30 days)
+
+if (NOT DISABLE_SSL)
+   set(SSL_BUNDLE_PATH "${PROJECT_SOURCE_DIR}/data/ssl/ca-bundle.crt")
+   
+   if (EXISTS ${SSL_BUNDLE_PATH})
+      string(TIMESTAMP CURRENT_TIME "%s")
+      file(TIMESTAMP ${SSL_BUNDLE_PATH} BUNDLE_TIME "%s")
+      math(EXPR BUNDLE_AGE "${CURRENT_TIME} - ${BUNDLE_TIME}")
+      
+      if (BUNDLE_AGE GREATER 2592000) # 30 days in seconds
+         file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
+         message(STATUS "Updated SSL certificate bundle")
+      endif()
+   else()
+      file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
+   endif()
+endif()
+
+# --------------------------------------------------------------------------------------------------------------------
 # Installation steps
 
 if (PARASOL_INSTALL)

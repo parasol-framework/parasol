@@ -312,11 +312,8 @@ JUMPTABLE_CORE
     // OpenSSL forward declarations
     static bool ssl_init = false;
     static ERR sslConnect(extNetSocket *);
-    static void sslDisconnect(extNetSocket *);
     static ERR sslLinkSocket(extNetSocket *);
     static ERR sslSetup(extNetSocket *);
-    static void ssl_handshake_read(HOSTHANDLE Socket, APTR Data);
-    static void ssl_handshake_write(HOSTHANDLE Socket, extNetSocket *Self);
   #endif
 #endif
 
@@ -367,7 +364,7 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
   #ifdef _WIN32
     #include "win32/win32_ssl.cpp"
   #else
-    #include "ssl.cpp"
+    #include "openssl.cpp"
   #endif
 #endif
 
@@ -877,7 +874,7 @@ static ERR receive_from_server(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Bu
 
                    log.msg("SSL socket handshake requested by server.");
                    Self->SSLBusy = SSL_HANDSHAKE_WRITE;
-                   RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
+                   RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
                    return ERR::Okay;
 
                 case SSL_ERROR_SYSCALL:
@@ -996,7 +993,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                case SSL_ERROR_WANT_READ:
                   log.trace("Handshake requested by server.");
                   Self->SSLBusy = SSL_HANDSHAKE_READ;
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
+                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<extNetSocket>), Self);
                   return ERR::Okay;
 
                case SSL_ERROR_SYSCALL:

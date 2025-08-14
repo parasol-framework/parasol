@@ -94,7 +94,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
 
                   log.msg("SSL socket handshake requested by server.");
                   Self->SSLBusy = SSL_HANDSHAKE_WRITE;
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&ssl_handshake_write, Self);
+                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extClientSocket>), Self);
                   return ERR::Okay;
 
                case SSL_ERROR_SYSCALL:
@@ -475,17 +475,13 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
                      return ERR::SystemCall;
                   }
                }
-               else {
-                  log.warning("Failed to create BIO for SSL client socket.");
-                  SSL_free(client_ssl);
-                  return ERR::SystemCall;
-               }
             }
             else {
-               log.warning("Failed to create SSL handle for client socket.");
-               return ERR::SystemCall;
+               SSL_free(client_ssl);
+               return log.warning(ERR::SystemCall);
             }
          }
+         else return log.warning(ERR::SystemCall);
       }
    #endif
 #endif
