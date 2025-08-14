@@ -379,7 +379,7 @@ ERR win_listen(WSW_SOCKET SocketHandle, int BackLog)
 
 //********************************************************************************************************************
 
-ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, int Flags, int *Result)
+ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, int Flags, size_t *Result)
 {
    *Result = 0;
    if (!Len) return ERR::Okay;

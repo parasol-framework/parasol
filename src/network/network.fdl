@@ -46,19 +46,13 @@ typedef int SOCKET_HANDLE;
   enum("NTC", { type="int", start=0, comment="NetSocket states" },
     "DISCONNECTED: There is no connection.",
     "CONNECTING: A connection is being established.",
-    "CONNECTING_SSL: An SSL connection is being established.",
-    "CONNECTED: There is an active connection at present."
+    "HANDSHAKING: An SSL connection is being established.",
+    "CONNECTED: There is an active connection at present.",
+    "MULTISTATE: In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections."
   )
 
   enum("NSL", { type="int", start=1, comment="Tags for SetSSL()." },
      "CONNECT: Initiate an SSL connection on this socket.")
-
-  struct("NetQueue", { restrict="c", comment="Stream management for read/write queues" }, [[
-    uint Index    # The current read/write position within the buffer
-  ]],
-  [[
-  std::vector<uint8_t> Buffer; // The buffer hosting the data
-  ]])
 
   class("NetClient", { src="netclient/netclient.cpp", output="netclient/netclient_def.c", comment="Simple data storage class utilised by NetSocket to represent a client machine/IP." }, [[
     char(8) IP                     # IP address in 4/8-byte format
@@ -75,13 +69,15 @@ typedef int SOCKET_HANDLE;
       comment="Simple data storage class utilised by NetClient to represent a single client socket connection."
   },
   [[
-    large ConnectTime                # System time for the creation of this socket
-    obj(ClientSocket) Prev           # Previous socket in the chain
-    obj(ClientSocket) Next           # Next socket in the chain
-    obj(NetClient) Client            # Parent client object
-    ptr  ClientData                  # Available for client data storage.
-    func Outgoing                    # Callback for data being sent over the socket
-    func Incoming                    # Callback for data being received from the socket
+    large ConnectTime        # System time for the creation of this socket
+    obj(ClientSocket) Prev   # Previous socket in the chain
+    obj(ClientSocket) Next   # Next socket in the chain
+    obj(NetClient) Client    # Parent client object
+    ptr  ClientData          # Available for client data storage.
+    func Outgoing            # Callback for data being sent over the socket
+    func Incoming            # Callback for data being received from the socket
+    int(NTC) State           # The current connection state of the socket
+    error Error              # Reflects the most recent error code.
   ]])
 
   methods("proxy", "prx", {

@@ -27,7 +27,7 @@ SSL_ERROR_CODE ssl_wrapper_connect(SSL_HANDLE, void *, const std::string &);
 SSL_ERROR_CODE ssl_wrapper_continue_handshake(SSL_HANDLE, const void *, int);
 SSL_ERROR_CODE ssl_wrapper_accept_handshake(SSL_HANDLE, const void *, int, void **, int *);  // Server-side handshake
 int ssl_wrapper_read(SSL_HANDLE ssl, void* buffer, int buffer_size);
-int ssl_wrapper_write(SSL_HANDLE ssl, const void* buffer, int buffer_size);
+SSL_ERROR_CODE ssl_wrapper_write(SSL_HANDLE ssl, const void* buffer, size_t buffer_size, size_t* bytes_sent);
 SSL_ERROR_CODE ssl_wrapper_get_error(SSL_HANDLE, const char **Message = nullptr);
 uint32_t ssl_wrapper_get_last_win32_error(SSL_HANDLE);
 int ssl_wrapper_get_last_security_status(SSL_HANDLE);

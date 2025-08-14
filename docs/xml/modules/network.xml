@@ -150,8 +150,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
     <constants lookup="NTC" comment="NetSocket states">
       <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
-      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
       <const name="DISCONNECTED">There is no connection.</const>
+      <const name="HANDSHAKING">An SSL connection is being established.</const>
+      <const name="MULTISTATE">In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</const>
     </constants>
 
     <constants lookup="SCV" comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)">

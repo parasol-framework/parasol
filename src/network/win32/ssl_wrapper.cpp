@@ -193,6 +193,7 @@ static void generate_error_description(ssl_context* Ctx)
 }
 
 //********************************************************************************************************************
+// Called on module expunge
 
 void ssl_wrapper_cleanup(void)
 {
@@ -431,7 +432,13 @@ SSL_ERROR_CODE ssl_wrapper_continue_handshake(SSL_HANDLE SSL, const void *Server
          }
 
          // Get stream sizes for future read/write operations
-         QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
+         auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
+         if (stream_status != SEC_E_OK) {
+            SSL->last_security_status = stream_status;
+            SSL->error_description = "Failed to query SSL stream sizes after handshake completion";
+            SSL->last_error = SSL_ERROR_FAILED;
+            return SSL_ERROR_FAILED;
+         }
 
          // Handle any leftover data in buffer
          if (bytes_consumed < SSL->recv_buffer_used) {
@@ -673,11 +680,12 @@ int ssl_wrapper_read(SSL_HANDLE SSL, void *Buffer, int BufferSize)
 //********************************************************************************************************************
 // Write data to SSL connection
 
-int ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, int BufferSize)
+SSL_ERROR_CODE ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, size_t BufferSize, size_t* bytes_sent)
 {
-   if (!SSL or !Buffer or BufferSize <= 0) return -1;
+   if (!SSL or !Buffer or BufferSize == 0 or !bytes_sent) return SSL_ERROR_ARGS;
 
-   if (!SSL->context_initialised) return -1;
+   *bytes_sent = 0;
+   if (!SSL->context_initialised) return SSL_ERROR_FAILED;
 
    // Calculate required buffer sizes based on stream sizes
    size_t header_size = SSL->stream_sizes.cbHeader;
@@ -685,7 +693,7 @@ int ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, int BufferSize)
    size_t max_message_size = SSL->stream_sizes.cbMaximumMessage;
 
    // Limit the data size to what SSL can handle in one record
-   int data_to_send = std::min(BufferSize, int(max_message_size));
+   size_t data_to_send = std::min(BufferSize, max_message_size);
    size_t total_size = header_size + data_to_send + trailer_size;
 
    // Ensure our send buffer is large enough - use capacity check for efficiency
@@ -699,18 +707,18 @@ int ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, int BufferSize)
 
    // Header buffer
    buffers[0].pvBuffer = SSL->send_buffer.data();
-   buffers[0].cbBuffer = header_size;
+   buffers[0].cbBuffer = (ULONG)header_size;
    buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
 
    // Data buffer - copy user data after header
    buffers[1].pvBuffer = SSL->send_buffer.data() + header_size;
-   buffers[1].cbBuffer = data_to_send;
+   buffers[1].cbBuffer = (ULONG)data_to_send;
    buffers[1].BufferType = SECBUFFER_DATA;
    memcpy(buffers[1].pvBuffer, Buffer, data_to_send);
 
    // Trailer buffer
    buffers[2].pvBuffer = SSL->send_buffer.data() + header_size + data_to_send;
-   buffers[2].cbBuffer = trailer_size;
+   buffers[2].cbBuffer = (ULONG)trailer_size;
    buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
 
    // Empty buffer
@@ -728,7 +736,7 @@ int ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, int BufferSize)
    if (status != SEC_E_OK) {
       set_error_status(SSL, status, "EncryptMessage");
       SSL->last_error = SSL_ERROR_FAILED;
-      return -1;
+      return SSL_ERROR_FAILED;
    }
 
    DWORD encrypted_size = buffers[0].cbBuffer + buffers[1].cbBuffer + buffers[2].cbBuffer;
@@ -742,22 +750,24 @@ int ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, int BufferSize)
       if (error == WSAEWOULDBLOCK) {
          SSL->last_error = SSL_ERROR_WOULD_BLOCK;
          SSL->error_description = "SSL write would block (WSAEWOULDBLOCK)";
+         return SSL_ERROR_WOULD_BLOCK;
       }
       else {
          SSL->last_error = SSL_ERROR_FAILED;
          SSL->error_description = "SSL write failed: " + std::to_string(error);
+         return SSL_ERROR_FAILED;
       }
-      return -1;
    }
    else if (sent != int(encrypted_size)) {
       // Partial send - this is problematic for SSL records
       SSL->last_error = SSL_ERROR_FAILED;
       SSL->error_description = "SSL partial write - SSL record boundary violated";
-      return -1;
+      return SSL_ERROR_FAILED;
    }
 
    SSL->last_error = SSL_OK;
-   return data_to_send;
+   *bytes_sent = data_to_send;
+   return SSL_OK;
 }
 
 //********************************************************************************************************************
@@ -1027,7 +1037,13 @@ SSL_ERROR_CODE ssl_wrapper_accept_handshake(SSL_HANDLE SSL, const void* ClientDa
 
    if (status == SEC_E_OK) {
       // Handshake completed successfully
-      QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
+      auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
+      if (stream_status != SEC_E_OK) {
+         SSL->last_security_status = stream_status;
+         SSL->error_description = "Failed to query SSL stream sizes after server handshake completion";
+         SSL->last_error = SSL_ERROR_FAILED;
+         return SSL_ERROR_FAILED;
+      }
       SSL->error_description = "Server SSL handshake completed successfully";
       SSL->last_error = SSL_OK;
 

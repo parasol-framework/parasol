@@ -59,7 +59,7 @@
   <fields>
     <field>
       <name>Client</name>
-      <comment>Parent client object</comment>
+      <comment>Parent client object (IP address).</comment>
       <access read="R">Read</access>
       <type class="NetClient">*NetClient</type>
     </field>
@@ -73,40 +73,69 @@
 
     <field>
       <name>ConnectTime</name>
-      <comment>System time for the creation of this socket</comment>
+      <comment>System time for the creation of this socket.</comment>
       <access read="R">Read</access>
       <type>INT64</type>
     </field>
 
     <field>
+      <name>Error</name>
+      <comment>Reflects the most recent error code.</comment>
+      <access read="R">Read</access>
+      <type>ERR</type>
+    </field>
+
+    <field>
       <name>Incoming</name>
-      <comment>Callback for data being received from the socket</comment>
+      <comment>Callback for data being received from the client.</comment>
       <access read="R">Read</access>
       <type>FUNCTION</type>
     </field>
 
     <field>
       <name>Next</name>
-      <comment>Next socket in the chain</comment>
+      <comment>Next socket in the chain.</comment>
       <access read="R">Read</access>
       <type class="ClientSocket">*ClientSocket</type>
     </field>
 
     <field>
       <name>Outgoing</name>
-      <comment>Callback for data being sent over the socket</comment>
+      <comment>Callback for data ready to be sent to the client.</comment>
       <access read="R">Read</access>
       <type>FUNCTION</type>
     </field>
 
     <field>
       <name>Prev</name>
-      <comment>Previous socket in the chain</comment>
+      <comment>Previous socket in the chain.</comment>
       <access read="R">Read</access>
       <type class="ClientSocket">*ClientSocket</type>
     </field>
 
+    <field>
+      <name>State</name>
+      <comment>The current connection state of the ClientSocket object.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type lookup="NTC">NTC</type>
+      <description>
+<p>The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>
+<p>Note that in server mode this State value should not be used as it cannot reflect the state of all connected client sockets.  Each <class name="ClientSocket">ClientSocket</class> carries its own independent State value for use instead.</p>
+<types lookup="NTC"/>
+      </description>
+    </field>
+
   </fields>
+  <types>
+    <constants lookup="NTC" comment="NetSocket states">
+      <const name="CONNECTED">There is an active connection at present.</const>
+      <const name="CONNECTING">A connection is being established.</const>
+      <const name="DISCONNECTED">There is no connection.</const>
+      <const name="HANDSHAKING">An SSL connection is being established.</const>
+      <const name="MULTISTATE">In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>

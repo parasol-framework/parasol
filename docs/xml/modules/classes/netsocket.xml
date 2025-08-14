@@ -125,6 +125,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="WrongClass">The Client object is not of type <code>NetClient</code>.</error>
       </result>
     </method>
 
@@ -181,8 +182,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  As there is a limit to the number of connections that can be queued, you can adjust the backlog by writing this field.  The default setting is 10 connections.</p>
-<p>If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.</p>
+<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  Setting the Backlog adjusts the maximum number of connections on the queue, which otherwise defaults to 10.</p>
+<p>If the backlog is exceeded, subsequent connections to the socket should expect a connection refused error.</p>
       </description>
     </field>
 
@@ -256,6 +257,13 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>Handle</name>
+      <comment>Platform specific reference to the network socket handle.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+    </field>
+
+    <field>
       <name>Incoming</name>
       <comment>Callback that is triggered when the socket receives data.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -306,13 +314,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
-      <name>SocketHandle</name>
-      <comment>Platform specific reference to the network socket handle.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>APTR</type>
-    </field>
-
-    <field>
       <name>SocketLimit</name>
       <comment>Limits the number of connected sockets per client IP address.</comment>
       <access read="R" write="W">Read/Write</access>
@@ -326,6 +327,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <type lookup="NTC">NTC</type>
       <description>
 <p>The State reflects the connection state of the NetSocket.  If the <fl>Feedback</fl> field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>
+<p>Note that in server mode this State value should not be used as it cannot reflect the state of all connected client sockets.  Each <class name="ClientSocket">ClientSocket</class> carries its own independent State value for use instead.</p>
 <types lookup="NTC"/>
       </description>
     </field>
@@ -366,8 +368,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <constants lookup="NTC" comment="NetSocket states">
       <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
-      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
       <const name="DISCONNECTED">There is no connection.</const>
+      <const name="HANDSHAKING">An SSL connection is being established.</const>
+      <const name="MULTISTATE">In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</const>
     </constants>
 
   </types>

@@ -21,7 +21,6 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #define PRV_NETSOCKET
 #define PRV_CLIENTSOCKET
 #define PRV_NETCLIENT
-#define NO_NETRECURSION
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -54,6 +53,12 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 std::mutex glmThreads;
 std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
+
+struct NetQueue {
+   uint32_t Index;    // The current read/write position within the buffer
+   std::vector<uint8_t> Buffer; // The buffer hosting the data
+   ERR write(CPTR Message, size_t Length);
+};
 
 struct DNSEntry {
    std::string HostName;
@@ -229,18 +234,26 @@ class extClientSocket : public objClientSocket {
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
    bool ReadCalled;     // TRUE if the Read action has been called
-   SSL *ssl_handle;     // SSL connection handle for this client
-   BIO *bio_handle;     // SSL BIO handle for this client
+
+   #ifndef DISABLE_SSL
+      #ifdef _WIN32
+         SSL_HANDLE SSLHandle;
+      #else
+         SSL *SSLHandle;     // SSL connection handle for this client
+         BIO *BIOHandle;     // SSL BIO handle for this client
+         uint8_t  SSLBusy; // Tracks the current actions of SSL handshaking.
+      #endif
+   #endif
 };
 
 class extNetSocket : public objNetSocket {
    public:
-   SOCKET_HANDLE SocketHandle;   // Handle of the socket
+   SOCKET_HANDLE Handle;   // Handle of the socket
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
    objNetLookup *NetLookup;
-   objNetClient *LastClient;
+   objNetClient *LastClient;      // For linked-list management for server sockets.  Points to the last client IP on the chain
    struct NetQueue WriteQueue;
    struct NetQueue ReadQueue;
    uint8_t ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
@@ -251,28 +264,19 @@ class extNetSocket : public objNetSocket {
    uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    uint8_t OutgoingRecursion;
    #ifdef _WIN32
-      #ifdef NO_NETRECURSION
-         WORD WinRecursion; // For win32_netresponse()
-      #endif
-      void (*ReadSocket)(SOCKET_HANDLE, extNetSocket *);
-      // WriteSocket is to be used only when data is already queued to be written, or the Outgoing callback is defined.
-      void (*WriteSocket)(SOCKET_HANDLE, extNetSocket *);
+      int16_t WinRecursion; // For win32_netresponse()
    #endif
    #ifndef DISABLE_SSL
+      // These handles are only used when the NetSocket is a client of a server.
       #ifdef _WIN32
-         union {
-            SSL_HANDLE SSL;
-            SSL_HANDLE WinSSL;
-         };
+         SSL_HANDLE SSLHandle;
       #else
-        SSL *ssl_handle;
+        SSL *SSLHandle;
         SSL_CTX *CTX;
-        uint8_t  SSLBusy;            // Tracks the current actions of SSL handshaking.
-        BIO *bio_handle;
+        uint8_t  SSLBusy; // Tracks the current actions of SSL handshaking.
+        BIO *BIOHandle;
       #endif
    #endif
-
-   ERR write_queue(NetQueue &Queue, CPTR Message, size_t Length);
 };
 
 class extNetLookup : public objNetLookup {
@@ -301,8 +305,8 @@ JUMPTABLE_CORE
 #ifndef DISABLE_SSL
   #ifdef _WIN32
     // Windows SSL wrapper forward declarations
-    static ERR sslConnect(extNetSocket *);
-    static void sslDisconnect(extNetSocket *);
+    template <class T> ERR sslConnect(T *);
+    template <class T> void sslDisconnect(T *);
     static ERR sslSetup(extNetSocket *);
   #else
     // OpenSSL forward declarations
@@ -359,6 +363,14 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
       thread_ptr->detach();
 }
 
+#ifndef DISABLE_SSL
+  #ifdef _WIN32
+    #include "win32/win32_ssl.cpp"
+  #else
+    #include "ssl.cpp"
+  #endif
+#endif
+
 //********************************************************************************************************************
 
 static OBJECTPTR clNetLookup = nullptr;
@@ -371,7 +383,7 @@ static HOSTMAP glAddresses;
 static MSGID glResolveNameMsgID = MSGID::NIL;
 static MSGID glResolveAddrMsgID = MSGID::NIL;
 
-static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
+static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
 static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
@@ -468,6 +480,8 @@ static ERR MODExpunge(void)
     ssl_wrapper_cleanup();
   #else
     if (ssl_init) {
+       if (glClientSSL) { SSL_CTX_free(glClientSSL); glClientSSL = nullptr; }
+       if (glServerSSL) { SSL_CTX_free(glServerSSL); glServerSSL = nullptr; }
        ERR_free_strings();
        EVP_cleanup();
        CRYPTO_cleanup_all_ex_data();
@@ -787,40 +801,23 @@ ERR SetSSL(objNetSocket *Socket, ...)
 
 } // namespace
 
-#ifndef DISABLE_SSL
-  #ifdef _WIN32
-    #include "win32_ssl.cpp"
-  #else
-    #include "ssl.cpp"
-  #endif
-#endif
-
 //********************************************************************************************************************
 
-static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int BufferSize, int Flags, int *Result)
+static ERR receive_from_server(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int BufferSize, int Flags, size_t *Result)
 {
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x", Socket, BufferSize, Flags);
-
+   
    *Result = 0;
-
-#ifndef DISABLE_SSL
-  #ifndef _WIN32 // Windows SSL wrapper doesn't use handshake busy state
-    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
-    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
-
-    if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
-  #endif
-#endif
-
+   
    if (!BufferSize) return ERR::Okay;
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
-    if (Self->WinSSL) {
+    if (Self->SSLHandle) {
        // If we're in the middle of SSL handshake, read raw data for handshake processing
-       if (Self->State IS NTC::CONNECTING_SSL) {
+       if (Self->State IS NTC::HANDSHAKING) {
           log.trace("Windows SSL handshake in progress, reading raw data.");
           ERR error = WIN_RECEIVE(Socket, Buffer, BufferSize, Flags, Result);
           if ((error IS ERR::Okay) and (*Result > 0)) {
@@ -829,19 +826,17 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
           return error;
        }
        else { // Normal SSL data read for established connections
-          if (auto result = ssl_wrapper_read(Self->WinSSL, Buffer, BufferSize); result > 0) {
+          if (auto result = ssl_wrapper_read(Self->SSLHandle, Buffer, BufferSize); result > 0) {
              *Result = result;
-             return ERR::Okay;
           }
           else if (!result) {
              return ERR::Disconnected;
           }
           else {
              CSTRING msg;
-             auto error = ssl_wrapper_get_error(Self->WinSSL, &msg);
+             auto error = ssl_wrapper_get_error(Self->SSLHandle, &msg);
              if (error IS SSL_ERROR_WOULD_BLOCK) {
                 log.traceWarning("No more data to read from the SSL socket.");
-                return ERR::Okay;
              }
              else {
                 log.warning("Windows SSL read error: %s", msg);
@@ -849,25 +844,31 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
              }
           }
        }
+       return ERR::Okay;
     }
   #else // OpenSSL
-    int8_t read_blocked;
+    bool read_blocked;
     int pending;
+    
+    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
+    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-    if (Self->ssl_handle) {
+    if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
+
+    if (Self->SSLHandle) {
       do {
-         read_blocked = 0;
+         read_blocked = false;
 
-         auto result = SSL_read(Self->ssl_handle, Buffer, BufferSize);
+         auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize);
 
          if (result <= 0) {
-            auto ssl_error = SSL_get_error(Self->ssl_handle, result);
+            auto ssl_error = SSL_get_error(Self->SSLHandle, result);
             switch (ssl_error) {
                case SSL_ERROR_ZERO_RETURN:
                   return log.traceWarning(ERR::Disconnected);
 
                case SSL_ERROR_WANT_READ:
-                  read_blocked = TRUE;
+                  read_blocked = true;
                   break;
 
                 case SSL_ERROR_WANT_WRITE:
@@ -880,7 +881,6 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
                    return ERR::Okay;
 
                 case SSL_ERROR_SYSCALL:
-
                 default:
                    log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
                    return ERR::Read;
@@ -891,7 +891,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
             Buffer = (APTR)((char *)Buffer + result);
             BufferSize -= result;
          }
-      } while ((pending = SSL_pending(Self->ssl_handle)) and (!read_blocked) and (BufferSize > 0));
+      } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
 
       log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
@@ -904,7 +904,7 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
          // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
          // data pending.
 
-         RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_incoming), Self);
+         RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
       }
 
       return ERR::Okay;
@@ -913,23 +913,21 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 #endif
 
 #ifdef __linux__
-   {
-      int result = recv(Socket, Buffer, BufferSize, Flags);
+   auto result = recv(Socket, Buffer, BufferSize, Flags);
 
-      if (result > 0) {
-         *Result = result;
-         return ERR::Okay;
-      }
-      else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
-         return ERR::Disconnected;
-      }
-      else if ((errno IS EAGAIN) or (errno IS EINTR)) {
-         return ERR::Okay;
-      }
-      else {
-         log.warning("recv() failed: %s", strerror(errno));
-         return ERR::SystemCall;
-      }
+   if (result > 0) {
+      *Result = result;
+      return ERR::Okay;
+   }
+   else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
+      return ERR::Disconnected;
+   }
+   else if ((errno IS EAGAIN) or (errno IS EINTR)) {
+      return ERR::Okay;
+   }
+   else {
+      log.warning("recv() failed: %s", strerror(errno));
+      return ERR::SystemCall;
    }
 #elif _WIN32
    return WIN_RECEIVE(Socket, Buffer, BufferSize, Flags, Result);
@@ -939,99 +937,94 @@ static ERR RECEIVE(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Buffer, int Bu
 }
 
 //********************************************************************************************************************
+// Template function to handle SSL and socket sending for both NetSocket and ClientSocket
 
-static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *Length, int Flags)
+template<typename T>
+static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 {
    pf::Log log(__FUNCTION__);
 
    if (!*Length) return ERR::Okay;
-
+   
 #ifndef DISABLE_SSL
-  #ifdef _WIN32
-    if (Self->WinSSL) {
-       log.traceBranch("Windows SSL Length: %d", int(*Length));
+   if (Self->SSLHandle) {
+      #ifdef _WIN32
+         log.traceBranch("SSL Length: %d", int(*Length));
 
-       auto bytes_sent = ssl_wrapper_write(Self->WinSSL, Buffer, *Length);
+         size_t bytes_sent;
+         auto error = ssl_wrapper_write(Self->SSLHandle, Buffer, *Length, &bytes_sent);
 
-       if (bytes_sent > 0) {
-          if (*Length != bytes_sent) {
-             log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
-          }
-          *Length = bytes_sent;
-          return ERR::Okay;
-       }
-       else {
-          CSTRING msg;
-          auto error = ssl_wrapper_get_error(Self->WinSSL, &msg);
-          *Length = 0;
-
-          if (error IS SSL_ERROR_WOULD_BLOCK) {
-             log.traceWarning("Buffer overflow (SSL want write)");
-             return ERR::BufferOverflow;
-          }
-          else {
-             log.warning("Windows SSL write error: %s", msg);
-             return ERR::Failed;
-          }
-       }
-    }
-  #else
-    if (Self->ssl_handle) {
-       log.traceBranch("SSLBusy: %d, Length: %d", Self->SSLBusy, int(*Length));
-
-      if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
-      else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
-
-      if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
-
-      auto bytes_sent = SSL_write(Self->ssl_handle, Buffer, *Length);
-
-      if (bytes_sent < 0) {
-         *Length = 0;
-         auto ssl_error = SSL_get_error(Self->ssl_handle, bytes_sent);
-
-         switch(ssl_error){
-            case SSL_ERROR_WANT_WRITE:
-               log.traceWarning("Buffer overflow (SSL want write)");
-               return ERR::BufferOverflow;
-
-            // We get a WANT_READ if we're trying to rehandshake and we block on write during the current connection.
-            //
-            // We need to wait on the socket to be readable but reinitiate our write when it is
-
-            case SSL_ERROR_WANT_READ:
-               log.trace("Handshake requested by server.");
-               Self->SSLBusy = SSL_HANDSHAKE_READ;
-               RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
-               return ERR::Okay;
-
-            case SSL_ERROR_SYSCALL:
-               log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
-               return ERR::Failed;
-
-            default:
-               while (ssl_error) {
-                  log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, nullptr));
-                  ssl_error = ERR_get_error();
-               }
-
-               return ERR::Failed;
+         if (error IS SSL_OK) {
+            if (*Length != bytes_sent) {
+               log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
+            }
+            *Length = bytes_sent;
+            return ERR::Okay;
          }
-      }
-      else {
-         if (*Length != bytes_sent) {
-            log.traceWarning("Sent %" PF64 " of requested %" PF64 " bytes.", bytes_sent, *Length);
+         else {
+            CSTRING msg;
+            ssl_wrapper_get_error(Self->SSLHandle, &msg);
+            *Length = 0;
+         
+            if (error IS SSL_ERROR_WOULD_BLOCK) {
+               return log.traceWarning(ERR::BufferOverflow);
+            }
+            else {
+               log.warning("Windows SSL write error: %s", msg);
+               return ERR::Write;
+            }
          }
-         *Length = bytes_sent;
-      }
+      #else
+         log.traceBranch("SSL Length: %d", int(*Length));
+      
+         if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Self->Handle, Self);
+         else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Self->Handle, Self);
+     
+         if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
+     
+         auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
 
+         if (bytes_sent < 0) {
+            *Length = 0;
+            auto ssl_error = SSL_get_error(Self->SSLHandle, bytes_sent);
+
+            switch(ssl_error){
+               case SSL_ERROR_WANT_WRITE:
+                  log.traceWarning("Buffer overflow (SSL want write)");
+                  return ERR::BufferOverflow;
+
+               case SSL_ERROR_WANT_READ:
+                  log.trace("Handshake requested by server.");
+                  Self->SSLBusy = SSL_HANDSHAKE_READ;
+                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, &ssl_handshake_read, Self);
+                  return ERR::Okay;
+
+               case SSL_ERROR_SYSCALL:
+                  log.warning("SSL_write() SysError %d: %s", errno, strerror(errno));
+                  return ERR::Write;
+
+               default:
+                  while (ssl_error) {
+                     log.warning("SSL_write() error %d, %s", ssl_error, ERR_error_string(ssl_error, nullptr));
+                     ssl_error = ERR_get_error();
+                  }
+                  return ERR::Write;
+            }
+         }
+         else {
+            if (*Length != size_t(bytes_sent)) {
+               log.trace("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
+            }
+            *Length = bytes_sent;
+         }
+      #endif
       return ERR::Okay;
-    }
-  #endif
+   }
 #endif
 
+   // Fallback to regular socket send
 #ifdef __linux__
-   *Length = send(Socket, Buffer, *Length, Flags);
+   *Length = send(Self->Handle, Buffer, *Length, 0);
 
    if (*Length >= 0) return ERR::Okay;
    else {
@@ -1044,9 +1037,9 @@ static ERR SEND(extNetSocket *Self, SOCKET_HANDLE Socket, CPTR Buffer, size_t *L
       }
    }
 #elif _WIN32
-   return WIN_SEND(Socket, Buffer, Length, Flags);
+   return WIN_SEND(Self->Handle, Buffer, Length, 0);
 #else
-   #error No support for SEND()
+   #error No support for send_data()
 #endif
 }
 

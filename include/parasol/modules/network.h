@@ -55,8 +55,9 @@ enum class NTC : int {
    NIL = 0,
    DISCONNECTED = 0,
    CONNECTING = 1,
-   CONNECTING_SSL = 2,
+   HANDSHAKING = 2,
    CONNECTED = 3,
+   MULTISTATE = 4,
 };
 
 // Tags for SetSSL().
@@ -122,11 +123,6 @@ struct IPAddress {
    int      Pad;        // Unused padding for 64-bit alignment
 };
 
-struct NetQueue {
-   uint32_t Index;    // The current read/write position within the buffer
-  std::vector<uint8_t> Buffer; // The buffer hosting the data
-};
-
 // NetClient class definition
 
 #define VER_NETCLIENT (1.000000)
@@ -169,13 +165,15 @@ class objClientSocket : public Object {
 
    using create = pf::Create<objClientSocket>;
 
-   int64_t  ConnectTime;      // System time for the creation of this socket
-   objClientSocket * Prev;    // Previous socket in the chain
-   objClientSocket * Next;    // Next socket in the chain
-   objNetClient * Client;     // Parent client object
+   int64_t  ConnectTime;      // System time for the creation of this socket.
+   objClientSocket * Prev;    // Previous socket in the chain.
+   objClientSocket * Next;    // Next socket in the chain.
+   objNetClient * Client;     // Parent client object (IP address).
    APTR     ClientData;       // Available for client data storage.
-   FUNCTION Outgoing;         // Callback for data being sent over the socket
-   FUNCTION Incoming;         // Callback for data being received from the socket
+   FUNCTION Outgoing;         // Callback for data ready to be sent to the client.
+   FUNCTION Incoming;         // Callback for data being received from the client.
+   NTC      State;            // The current connection state of the ClientSocket object.
+   ERR      Error;            // Reflects the most recent error code.
 
    // Action stubs
 
@@ -226,6 +224,12 @@ class objClientSocket : public Object {
    }
 
    // Customised field setting
+
+   inline ERR setState(const NTC Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
+   }
 
 };
 
@@ -518,13 +522,13 @@ class objNetSocket : public Object {
 
    template <class T> inline ERR setAddress(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setState(const NTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -561,9 +565,9 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setSocketHandle(APTR Value) noexcept {
+   inline ERR setHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -575,13 +579,13 @@ class objNetSocket : public Object {
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

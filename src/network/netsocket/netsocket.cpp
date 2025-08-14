@@ -63,12 +63,12 @@ static size_t glMaxWriteLen = 16 * 1024;
 static void client_connect(HOSTHANDLE, APTR);
 #endif
 
-static void client_server_incoming(SOCKET_HANDLE, extNetSocket *);
-static void client_server_outgoing(SOCKET_HANDLE, extNetSocket *);
+static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
+static void netsocket_outgoing(SOCKET_HANDLE, extNetSocket *);
 static void server_incoming_from_client(HOSTHANDLE, extClientSocket *);
 static void clientsocket_outgoing(HOSTHANDLE, extClientSocket *);
 static void free_client(extNetSocket *, objNetClient *);
-static void server_client_connect(SOCKET_HANDLE, extNetSocket *);
+static void server_accept_client(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
 
 //********************************************************************************************************************
@@ -130,7 +130,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) return ERR::Failed;
 
-   if (!Self->SocketHandle) return log.warning(ERR::NotInitialised);
+   if (!Self->Handle) return log.warning(ERR::NotInitialised);
 
    if (Self->State != NTC::DISCONNECTED) {
       log.warning("Attempt to connect when socket is not in disconnected state");
@@ -185,7 +185,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       return;
    }
 
-   log.msg("Received callback on DNS resolution.  Handle: %d", Socket->SocketHandle);
+   log.msg("Received callback on DNS resolution.  Handle: %d", Socket->Handle);
 
    // Start connect()
 
@@ -232,7 +232,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
          pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
 
-         if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
+         if ((Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
             if (Socket->Error IS ERR::BufferOverflow) {
                log.trace("IPv6 connection in progress...");
                Socket->setState(NTC::CONNECTING);
@@ -255,7 +255,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
          pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
 
-         int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         int result = connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
 
          if (result IS -1) {
             if (errno IS EINPROGRESS) {
@@ -272,13 +272,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             }
 
             Socket->setState(NTC::CONNECTING);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
          }
          else {
             log.trace("IPv6 connect() successful.");
             Socket->setState(NTC::CONNECTED);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
          }
       #endif
       return;
@@ -298,7 +298,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_addr.s6_addr[11] = 0xff;
          *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
 
-         int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6));
+         int result = connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
 
          if (result IS -1) {
             if (errno IS EINPROGRESS) {
@@ -315,13 +315,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             }
 
             Socket->setState(NTC::CONNECTING);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
          }
          else {
             log.trace("IPv4-mapped IPv6 connect() successful.");
             Socket->setState(NTC::CONNECTED);
-            RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
          }
          return;
       #elif _WIN32
@@ -336,7 +336,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          server_address6.sin6_addr.s6_addr[11] = 0xff;
          *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
 
-         if (win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
+         if (win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
             log.trace("IPv4-mapped IPv6 connection initiated successfully");
             Socket->setState(NTC::CONNECTING);
          }
@@ -356,7 +356,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    server_address.sin_addr.s_addr = net::HostToLong(addr->Data[0]);
 
 #ifdef __linux__
-   int result = connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address));
+   int result = connect(Socket->Handle, (struct sockaddr *)&server_address, sizeof(server_address));
 
    if (result IS -1) {
       if (errno IS EINPROGRESS) {
@@ -372,22 +372,22 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          return;
       }
 
-      Socket->setState( NTC::CONNECTING);
-      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+      Socket->setState(NTC::CONNECTING);
+      RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
 
       // The write queue will be signalled once the connection process is completed.
 
-      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+      RegisterFD((HOSTHANDLE)Socket->Handle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
    }
    else {
       log.trace("connect() successful.");
 
       Socket->setState(NTC::CONNECTED);
-      RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
+      RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
    }
 
 #elif _WIN32
-   if ((Socket->Error = win_connect(Socket->SocketHandle, (struct sockaddr *)&server_address, sizeof(server_address))) != ERR::Okay) {
+   if ((Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address, sizeof(server_address))) != ERR::Okay) {
       log.warning("connect() failed: %s", GetErrorMsg(Socket->Error));
       return;
    }
@@ -397,7 +397,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 }
 
 //********************************************************************************************************************
-// Action: DataFeed
+// TODO: Accept data-feed content for writing to the socket.
 
 static ERR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
 {
@@ -428,9 +428,9 @@ static ERR NETSOCKET_Disable(extNetSocket *Self)
    log.trace("");
 
 #ifdef __linux__
-   int result = shutdown(Self->SocketHandle, 2);
+   int result = shutdown(Self->Handle, 2);
 #elif _WIN32
-   int result = win_shutdown(Self->SocketHandle, 2);
+   int result = win_shutdown(Self->Handle, 2);
 #endif
 
    if (result) { // Zero is success on both platforms
@@ -516,14 +516,14 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
 
    if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
-   
+
    if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
    if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
    if (Self->Outgoing.isScript()) UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    free_socket(Self);
 
-   // Remove all client resources
+   // Remove all client resources if this is a server
 
    while (Self->Clients) free_client(Self, Self->Clients);
 
@@ -539,8 +539,7 @@ static ERR NETSOCKET_FreeWarning(extNetSocket *Self)
 {
    if (Self->InUse) {
       if (!Self->Terminating) { // Check terminating state to prevent flooding of the message queue
-         pf::Log log;
-         log.msg("NetSocket in use, cannot free yet (request delayed).");
+         pf::Log().msg("NetSocket in use, cannot free yet (request delayed).");
          Self->Terminating = true;
          SendMessage(MSGID::FREE, MSF::NIL, &Self->UID, sizeof(OBJECTID));
       }
@@ -581,20 +580,20 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 
 #ifdef __linux__
    socklen_t addr_length = sizeof(addr_storage);
-   result = getsockname(Self->SocketHandle, (struct sockaddr *)&addr_storage, &addr_length);
+   result = getsockname(Self->Handle, (struct sockaddr *)&addr_storage, &addr_length);
 #elif _WIN32
    int addr_length = sizeof(addr_storage);
-   result = win_getsockname(Self->SocketHandle, (struct sockaddr *)&addr_storage, &addr_length);
+   result = win_getsockname(Self->Handle, (struct sockaddr *)&addr_storage, &addr_length);
 #endif
 
    if (!result) {
       if (addr_storage.ss_family IS AF_INET6) {
-         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
+         auto addr6 = (struct sockaddr_in6 *)&addr_storage;
          pf::copymem(Args->Address->Data, &addr6->sin6_addr.s6_addr, 16);
          Args->Address->Type = IPADDR::V6;
       }
       else if (addr_storage.ss_family IS AF_INET) {
-         struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
+         auto addr4 = (struct sockaddr_in *)&addr_storage;
          Args->Address->Data[0] = net::LongToHost(addr4->sin_addr.s_addr);
          Args->Address->Data[1] = 0;
          Args->Address->Data[2] = 0;
@@ -617,11 +616,10 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    pf::Log log;
    ERR error;
 
-   if (Self->SocketHandle != (SOCKET_HANDLE)-1) return ERR::Okay; // The socket has been pre-configured by the developer
+   if (Self->Handle != (SOCKET_HANDLE)-1) return ERR::Okay; // The socket has been pre-configured by the developer
 
 #ifndef DISABLE_SSL
-   // Initialise the SSL structures (do not perform any connection yet).  Notice the NSF::SSL flag is required
-   // for an SSL request, but future SSL checks will instead be reliant on the SSL field having a value.
+   // Initialise SSL ahead of any connections being made.
 
    if ((Self->Flags & NSF::SSL) != NSF::NIL) {
       if ((error = sslSetup(Self)) != ERR::Okay) return error;
@@ -633,69 +631,57 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 #ifdef __linux__
 
    // Create socket - IPv6 dual-stack if available, otherwise IPv4
-   if ((Self->SocketHandle = socket(PF_INET6, SOCK_STREAM, 0)) != NOHANDLE) {
+   if ((Self->Handle = socket(PF_INET6, SOCK_STREAM, 0)) != NOHANDLE) {
       Self->IPV6 = true;
 
       // Enable dual-stack mode (accept both IPv4 and IPv6)
       int v6only = 0;
-      if (setsockopt(Self->SocketHandle, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) != 0) {
+      if (setsockopt(Self->Handle, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) != 0) {
          log.warning("Failed to set dual-stack mode: %s", strerror(errno));
       }
 
       int nodelay = 1;
-      setsockopt(Self->SocketHandle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
-
-      log.trace("Created IPv6 dual-stack socket");
+      setsockopt(Self->Handle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
    }
-   else if ((Self->SocketHandle = socket(PF_INET, SOCK_STREAM, 0)) != NOHANDLE) {
+   else if ((Self->Handle = socket(PF_INET, SOCK_STREAM, 0)) != NOHANDLE) {
       Self->IPV6 = false;
 
       int nodelay = 1;
-      setsockopt(Self->SocketHandle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
-
-      log.trace("Created IPv4 socket");
+      setsockopt(Self->Handle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
    }
    else {
       log.warning("Failed to create socket: %s", strerror(errno));
-      return ERR::Failed;
+      return ERR::SystemCall;
    }
 
    // Put the socket into non-blocking mode, this is required when registering it as an FD and also prevents connect()
    // calls from going to sleep.
 
-   #if 0
-      // Was there any reason to use ioctl() when we have fcntl()???
-      uint32_t non_blocking = 1;
-      int result = ioctl(Self->SocketHandle, FIONBIO, &non_blocking);
-      if (result) return log.warning(ERR::Failed);
-   #else
-      if (fcntl(Self->SocketHandle, F_SETFL, fcntl(Self->SocketHandle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::Failed);
-   #endif
+   if (fcntl(Self->Handle, F_SETFL, fcntl(Self->Handle, F_GETFL) | O_NONBLOCK)) return log.warning(ERR::Failed);
 
    // Set the send timeout so that connect() will timeout after a reasonable time
 
    //int timeout = 30000;
-   //result = setsockopt(Self->SocketHandle, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+   //result = setsockopt(Self->Handle, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
    //assert(result IS 0);
 
 #elif _WIN32
 
    // Try IPv6 dual-stack socket first, then fall back to IPv4
    bool is_ipv6;
-   Self->SocketHandle = win_socket_ipv6(Self, true, false, is_ipv6);
-   if (Self->SocketHandle IS NOHANDLE) return ERR::SystemCall;
+   Self->Handle = win_socket_ipv6(Self, true, false, is_ipv6);
+   if (Self->Handle IS NOHANDLE) return ERR::SystemCall;
    Self->IPV6 = is_ipv6;
-   log.msg("Created socket on Windows (handle: %d) IPV6: %d", Self->SocketHandle, int(is_ipv6));
+   log.msg("Created socket on Windows (handle: %d) IPV6: %d", Self->Handle, int(is_ipv6));
 
 #endif
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       if (!Self->Port) return log.warning(ERR::FieldNotSet);
+      Self->State = NTC::MULTISTATE; // Permanent value to indicate that the socket serves multiple clients.
 
       if (Self->IPV6) {
          #ifdef __linux__
-            // IPV6
-
             struct sockaddr_in6 addr;
 
             pf::clearmem(&addr, sizeof(addr));
@@ -705,11 +691,11 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             int result;
             int value = 1;
-            setsockopt(Self->SocketHandle, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+            setsockopt(Self->Handle, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
 
-            if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
-               listen(Self->SocketHandle, Self->Backlog);
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
+            if ((result = bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
+               listen(Self->Handle, Self->Backlog);
+               RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_accept_client), Self);
                return ERR::Okay;
             }
             else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
@@ -722,8 +708,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             addr.sin6_port   = net::HostToShort(Self->Port);
             addr.sin6_addr   = in6addr_any;
 
-            if ((error = win_bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
-               if ((error = win_listen(Self->SocketHandle, Self->Backlog)) IS ERR::Okay) {
+            if ((error = win_bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
+               if ((error = win_listen(Self->Handle, Self->Backlog)) IS ERR::Okay) {
                   return ERR::Okay;
                }
                else return log.warning(error);
@@ -744,11 +730,11 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          #ifdef __linux__
             int result;
             int value = 1;
-            setsockopt(Self->SocketHandle, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+            setsockopt(Self->Handle, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
 
-            if ((result = bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
-               listen(Self->SocketHandle, Self->Backlog);
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_client_connect), Self);
+            if ((result = bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
+               listen(Self->Handle, Self->Backlog);
+               RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_accept_client), Self);
                return ERR::Okay;
             }
             else if (result IS EADDRINUSE) return log.warning(ERR::InUse);
@@ -757,8 +743,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                return ERR::Failed;
             }
          #elif _WIN32
-            if ((error = win_bind(Self->SocketHandle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
-               if ((error = win_listen(Self->SocketHandle, Self->Backlog)) IS ERR::Okay) {
+            if ((error = win_bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
+               if ((error = win_listen(Self->Handle, Self->Backlog)) IS ERR::Okay) {
                   return ERR::Okay;
                }
                else return log.warning(error);
@@ -780,17 +766,13 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 static ERR NETSOCKET_NewObject(extNetSocket *Self)
 {
-   Self->SocketHandle = NOHANDLE;
+   Self->Handle       = NOHANDLE;
    Self->Error        = ERR::Okay;
    Self->Backlog      = 10;
    Self->State        = NTC::DISCONNECTED;
    Self->MsgLimit     = 1024768;
    Self->ClientLimit  = 1024;
    Self->SocketLimit  = 256;
-   #ifdef _WIN32
-      Self->WriteSocket = nullptr;
-      Self->ReadSocket = nullptr;
-   #endif
    return ERR::Okay;
 }
 
@@ -830,13 +812,15 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
       return ERR::NoSupport;
    }
    else { // Read from the server that we're connected to
-      if (Self->SocketHandle IS NOHANDLE) return log.warning(ERR::Disconnected);
+      if (Self->Handle IS NOHANDLE) return log.warning(ERR::Disconnected);
 
       Self->ReadCalled = true;
 
       if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
 
-      ERR error = RECEIVE(Self, Self->SocketHandle, Args->Buffer, Args->Length, 0, &Args->Result);
+      size_t result;
+      ERR error = receive_from_server(Self, Self->Handle, Args->Buffer, Args->Length, 0, &result);
+      Args->Result = result;
 
       if (error != ERR::Okay) {
          log.branch("Freeing socket, error '%s'", GetErrorMsg(error));
@@ -876,9 +860,9 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
       return ERR::NoSupport;
    }
 
-   if ((Self->SocketHandle IS NOHANDLE) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
-      log.trace("Writing %d bytes to server (queued for connection).", Args->Length);
-      Self->write_queue(Self->WriteQueue, Args->Buffer, Args->Length);
+   if ((Self->Handle IS NOHANDLE) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
+      log.trace("Saving %d bytes to queue.", Args->Length);
+      Self->WriteQueue.write(Args->Buffer, std::min<size_t>(Args->Length, Self->MsgLimit));
       return ERR::Okay;
    }
 
@@ -889,7 +873,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    ERR error;
    if (Self->WriteQueue.Buffer.empty()) { // No prior buffer to send
       len = Args->Length;
-      error = SEND(Self, Self->SocketHandle, Args->Buffer, &len, 0);
+      error = send_data(Self, Args->Buffer, &len);
    }
    else {
       len = 0;
@@ -900,12 +884,11 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
       if (error != ERR::Okay) log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
-         Self->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         Self->WriteQueue.write((BYTE *)Args->Buffer + len, std::min<size_t>(Args->Length - len, Self->MsgLimit));
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, true);
-            Self->WriteSocket = &client_server_outgoing;
+            win_socketstate(Self->Handle, -1, true);
          #endif
       }
    }
@@ -939,11 +922,10 @@ static ERR SET_Address(extNetSocket *Self, CSTRING Value)
 -FIELD-
 Backlog: The maximum number of connections that can be queued against the socket.
 
-Incoming connections to NetSocket objects are queued until they are answered by the object.  As there is a limit to the
-number of connections that can be queued, you can adjust the backlog by writing this field.  The default setting is 10
-connections.
+Incoming connections to NetSocket objects are queued until they are answered by the object.  Setting the Backlog
+adjusts the maximum number of connections on the queue, which otherwise defaults to 10.
 
-If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.
+If the backlog is exceeded, subsequent connections to the socket should expect a connection refused error.
 
 -FIELD-
 ClientLimit: The maximum number of clients (unique IP addresses) that can be connected to a server socket.
@@ -1023,7 +1005,7 @@ The `NetSocket` parameter refers to the NetSocket object.  The `Context` refers 
 
 Retrieve data from the socket with the #Read() action. Reading at least some of the data from the socket is
 compulsory - if the function does not do this then the data will be cleared from the socket when the function returns.
-If the callback function returns/raises `ERR::Terminate` then the Incoming field will be cleared and the function 
+If the callback function returns/raises `ERR::Terminate` then the Incoming field will be cleared and the function
 will no longer be called.  All other error codes are ignored.
 
 *********************************************************************************************************************/
@@ -1090,14 +1072,13 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
       if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
 
       if (Self->initialised()) {
-         if ((Self->SocketHandle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
+         if ((Self->Handle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
             // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
             #ifdef __linux__
-               RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
+               RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
             #elif _WIN32
-               win_socketstate(Self->SocketHandle, -1, true);
-               Self->WriteSocket = &client_server_outgoing;
+               win_socketstate(Self->Handle, -1, true);
             #endif
          }
          else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC::CONNECTED).", Self->State);
@@ -1135,22 +1116,22 @@ static ERR GET_OutQueueSize(extNetSocket *Self, int *Value)
 Port: The port number to use for initiating a connection.
 
 -FIELD-
-SocketHandle: Platform specific reference to the network socket handle.
+Handle: Platform specific reference to the network socket handle.
 
 *********************************************************************************************************************/
 
-static ERR GET_SocketHandle(extNetSocket *Self, APTR *Value)
+static ERR GET_Handle(extNetSocket *Self, APTR *Value)
 {
-   *Value = (APTR)(MAXINT)Self->SocketHandle;
+   *Value = (APTR)(MAXINT)Self->Handle;
    return ERR::Okay;
 }
 
-static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
+static ERR SET_Handle(extNetSocket *Self, APTR Value)
 {
-   // The user can set SocketHandle prior to initialisation in order to create a NetSocket object that is linked to a
+   // The user can set Handle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
 
-   Self->SocketHandle = (SOCKET_HANDLE)(MAXINT)Value;
+   Self->Handle = (SOCKET_HANDLE)(MAXINT)Value;
    Self->ExternalSocket = true;
    return ERR::Okay;
 }
@@ -1161,8 +1142,11 @@ static ERR SET_SocketHandle(extNetSocket *Self, APTR Value)
 State: The current connection state of the NetSocket object.
 
 The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
-be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the 
+be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the
 Feedback function is called.
+
+Note that in server mode this State value should not be used as it cannot reflect the state of all connected
+client sockets.  Each @ClientSocket carries its own independent State value for use instead.
 
 *********************************************************************************************************************/
 
@@ -1170,39 +1154,43 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 {
    pf::Log log;
 
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
+      return log.warning(ERR::Immutable);
+   }
+
    if (Value != Self->State) {
       if ((Self->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
 
       #ifndef DISABLE_SSL
-      if ((Self->State IS NTC::CONNECTING_SSL) and (Value IS NTC::CONNECTED)) {
+      if ((Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
          // SSL connection has just been established
 
          bool ssl_valid = true;
 
          #ifdef _WIN32
-         if ((Self->WinSSL) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
+         if ((Self->SSLHandle) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
             // Only perform certificate validation if SSL_NO_VERIFY flag is not set
             if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
             }
             else {
-               if (ssl_wrapper_get_verify_result(Self->WinSSL) != 0) ssl_valid = false;
+               if (ssl_wrapper_get_verify_result(Self->SSLHandle) != 0) ssl_valid = false;
                else log.trace("SSL certificate validation successful.");
             }
          }
          #else
-         if (Self->ssl_handle) {
+         if (Self->SSLHandle) {
             // Only perform certificate validation if SSL_NO_VERIFY flag is not set
             if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
             }
             else {
-               if (SSL_get_verify_result(Self->ssl_handle) != X509_V_OK) ssl_valid = false;
+               if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
                else log.trace("SSL certificate validation successful.");
             }
          }
          #endif
-         
+
          if (!ssl_valid) {
             log.warning("SSL certificate validation failed.");
             Self->Error = ERR::Security;
@@ -1248,10 +1236,9 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       if ((Self->State IS NTC::CONNECTED) and ((!Self->WriteQueue.Buffer.empty()) or (Self->Outgoing.defined()))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->SocketHandle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&client_server_outgoing), Self);
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->SocketHandle, -1, true);
-            Self->WriteSocket = &client_server_outgoing;
+            win_socketstate(Self->Handle, -1, true);
          #endif
       }
    }
@@ -1292,13 +1279,13 @@ static ERR GET_ValidCert(extNetSocket *Self, int *Value)
 {
 #ifndef DISABLE_SSL
    #ifdef _WIN32
-   if ((Self->WinSSL) and (Self->State IS NTC::CONNECTED)) {
-      *Value = ssl_wrapper_get_verify_result(Self->WinSSL);
+   if ((Self->SSLHandle) and (Self->State IS NTC::CONNECTED)) {
+      *Value = ssl_wrapper_get_verify_result(Self->SSLHandle);
    }
    else *Value = 0;
    #else
-   if ((Self->ssl_handle) and (Self->State IS NTC::CONNECTED)) {
-      *Value = SSL_get_verify_result(Self->ssl_handle);
+   if ((Self->SSLHandle) and (Self->State IS NTC::CONNECTED)) {
+      *Value = SSL_get_verify_result(Self->SSLHandle);
    }
    else *Value = 0;
    #endif
@@ -1315,21 +1302,16 @@ static void free_socket(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Handle: %d", Self->SocketHandle);
+   log.branch("Handle: %d", Self->Handle);
 
-   if (Self->SocketHandle != NOHANDLE) {
+   if (Self->Handle != NOHANDLE) {
       log.trace("Deregistering socket.");
 #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-      DeregisterFD((HOSTHANDLE)Self->SocketHandle);
+      DeregisterFD((HOSTHANDLE)Self->Handle);
 #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
 
-      if (!Self->ExternalSocket) { CLOSESOCKET_THREADED(Self->SocketHandle); Self->SocketHandle = NOHANDLE; }
+      if (!Self->ExternalSocket) { CLOSESOCKET_THREADED(Self->Handle); Self->Handle = NOHANDLE; }
    }
-
-   #ifdef _WIN32
-      Self->WriteSocket = nullptr;
-      Self->ReadSocket  = nullptr;
-   #endif
 
    Self->ReadQueue.Buffer.clear();
    Self->WriteQueue.Buffer.clear();
@@ -1351,30 +1333,29 @@ static void free_socket(extNetSocket *Self)
 //********************************************************************************************************************
 // Store data in the write queue
 
-ERR extNetSocket::write_queue(NetQueue &Queue, CPTR Message, size_t Length)
+ERR NetQueue::write(CPTR Message, size_t Length)
 {
    pf::Log log(__FUNCTION__);
 
    if (!Message) return log.warning(ERR::NullArgs);
    if (Length <= 0) return ERR::Okay;
-   if (Length > size_t(MsgLimit)) return log.warning(ERR::BufferOverflow);
 
-   if (!Queue.Buffer.empty()) { // Add data to existing queue
-      uint32_t remaining_data = Queue.Buffer.size() - Queue.Index;
+   if (!Buffer.empty()) { // Add data to existing queue
+      uint32_t remaining_data = Buffer.size() - Index;
 
-      if (Queue.Index > 8192) { // Compact the queue
-         if (remaining_data > 0) Queue.Buffer.erase(Queue.Buffer.begin(), Queue.Buffer.begin() + Queue.Index);
-         else Queue.Buffer.clear();
-         Queue.Index = 0;
+      if (Index > 8192) { // Compact the queue
+         if (remaining_data > 0) Buffer.erase(Buffer.begin(), Buffer.begin() + Index);
+         else Buffer.clear();
+         Index = 0;
       }
 
-      Queue.Buffer.resize(Queue.Buffer.size() + Length);
-      pf::copymem(Message, Queue.Buffer.data() + Queue.Buffer.size() - Length, Length);
+      Buffer.resize(Buffer.size() + Length);
+      pf::copymem(Message, Buffer.data() + Buffer.size() - Length, Length);
    }
    else {
-      Queue.Buffer.resize(Length);
-      Queue.Index = 0;
-      pf::copymem(Message, Queue.Buffer.data(), Length);
+      Buffer.resize(Length);
+      Index = 0;
+      pf::copymem(Message, Buffer.data(), Length);
    }
 
    return ERR::Okay;
@@ -1390,7 +1371,7 @@ ERR extNetSocket::write_queue(NetQueue &Queue, CPTR Message, size_t Length)
 // reliable method of managing recursion problems, but burdens the message queue.
 
 #ifdef _WIN32
-void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int Message, ERR Error)
+void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message, ERR Error)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1411,9 +1392,9 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       ClientSocket = nullptr;
    }
 
-   #if defined(_DEBUG) || defined(ENABLE_TRACE_MSGS)
+   #if defined(_DEBUG)
    static constexpr const char* const msg[] = { "None", "Write", "Read", "Accept", "Connect", "Close" };
-   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, SocketHandle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
+   log.traceBranch("[%d:%d:%p], %s, Error %d, InUse: %d, WinRecursion: %d", Socket->UID, Handle, ClientSocket, msg[Message], int(Error), Socket->InUse, Socket->WinRecursion);
    #endif
 
    // Safety first
@@ -1431,51 +1412,32 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    if (Message IS NTE_READ) {
       if (Error != ERR::Okay) log.warning("Socket failed on incoming data, error %d.", int(Error));
 
-      #ifdef NO_NETRECURSION
-         if (Socket->WinRecursion) {
-            log.trace("Recursion detected (read request)");
-            Socket->InUse--;
-            return;
-         }
-         else {
-            Socket->WinRecursion++;
-            #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-            if (ClientSocket) server_incoming_from_client((HOSTHANDLE)SocketHandle, ClientSocket);
-            else if (Socket->ReadSocket) Socket->ReadSocket(0, Socket);
-            else client_server_incoming(0, Socket);
-            #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-            Socket->WinRecursion--;
-         }
-      #else
-         if (Socket->ReadSocket) Socket->ReadSocket(0, Socket);
-         else client_server_incoming(0, Socket);
-      #endif
+      if (Socket->WinRecursion) log.traceWarning(ERR::Recursion);
+      else {
+         Socket->WinRecursion++;
+         #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+         if (ClientSocket) server_incoming_from_client((HOSTHANDLE)Handle, ClientSocket);
+         else netsocket_incoming(0, Socket);
+         #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
+         Socket->WinRecursion--;
+      }
    }
    else if (Message IS NTE_WRITE) {
       if (Error != ERR::Okay) log.warning("Socket failed on outgoing data, error %d.", int(Error));
 
-      #ifdef NO_NETRECURSION
-         if (Socket->WinRecursion) {
-            log.trace("Recursion detected (write request)");
-            Socket->InUse--;
-            return;
-         }
-         else {
-            Socket->WinRecursion++;
-            #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-            if (ClientSocket) clientsocket_outgoing((HOSTHANDLE)SocketHandle, ClientSocket);
-            else client_server_outgoing(0, Socket);
-            #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
-            Socket->WinRecursion--;
-         }
-      #else
-         if (Socket->WriteSocket) Socket->WriteSocket(0, Socket);
-         else client_server_outgoing(0, Socket);
-      #endif
+      if (Socket->WinRecursion) log.traceWarning(ERR::Recursion);
+      else {
+         Socket->WinRecursion++;
+         #pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
+         if (ClientSocket) clientsocket_outgoing((HOSTHANDLE)Handle, ClientSocket);
+         else netsocket_outgoing(0, Socket);
+         #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
+         Socket->WinRecursion--;
+      }
    }
    else if (Message IS NTE_CLOSE) {
       if (ClientSocket) {
-         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by client.");
+         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Client socket closed.");
          FreeResource(ClientSocket);
          // Note: Disconnection feedback is sent to the NetSocket by the ClientSocket destructor.
       }
@@ -1484,7 +1446,7 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
 
          // Prevent multiple close messages from the same socket
          if (Socket->State IS NTC::DISCONNECTED) {
-            log.trace("Ignoring duplicate close message for socket %d", SocketHandle);
+            log.trace("Ignoring duplicate close message for socket %d", Handle);
             Socket->InUse--;
             return;
          }
@@ -1494,23 +1456,15 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
       }
    }
    else if (Message IS NTE_ACCEPT) {
-      log.traceBranch("Accept message received for new client %d.", SocketHandle);
-      server_client_connect(Socket->SocketHandle, Socket);
+      log.traceBranch("Accept message received for new client %d.", Handle);
+      server_accept_client(Socket->Handle, Socket);
    }
    else if (Message IS NTE_CONNECT) {
       if (Error IS ERR::Okay) {
          if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection to server granted.");
 
          #ifndef DISABLE_SSL
-            if (Socket->WinSSL) {
-               log.traceBranch("Attempting SSL handshake.");
-               sslConnect(Socket);
-
-               if (Socket->State IS NTC::CONNECTING_SSL) {
-                  // In Windows, socket handles are managed in win_messages().
-                  //RegisterFD((HOSTHANDLE)Socket->SocketHandle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&client_server_incoming, Socket);
-               }
-            }
+            if (Socket->SSLHandle) sslConnect(Socket);
             else Socket->setState(NTC::CONNECTED);
          #else
             Socket->setState(NTC::CONNECTED);
@@ -1526,6 +1480,519 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE SocketHandle, int M
    Socket->InUse--;
 }
 #endif
+
+//********************************************************************************************************************
+// Called when a server socket handle detects a new client wanting to connect to it.
+// Used by Win32 (Windows message loop) & Linux (FD hook)
+
+static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
+{
+   pf::Log log(__FUNCTION__);
+   uint8_t ip[8];
+   SOCKET_HANDLE clientfd;
+
+   log.traceBranch("FD: %d", FD);
+
+   pf::SwitchContext context(Self);
+
+   // Check client limit before accepting to prevent resource exhaustion
+   if (Self->TotalClients >= Self->ClientLimit) {
+      log.error(ERR::ArrayFull);
+      return;
+   }
+
+   if (Self->IPV6) {
+      #ifdef __linux__
+         // For dual-stack sockets, use sockaddr_storage to handle both IPv4 and IPv6
+         struct sockaddr_storage addr_storage;
+         socklen_t len = sizeof(addr_storage);
+         clientfd = accept(FD, (struct sockaddr *)&addr_storage, &len);
+         if (clientfd IS NOHANDLE) return;
+
+         int nodelay = 1;
+         setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+
+         if (addr_storage.ss_family IS AF_INET6) { // IPv6 connection
+            struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
+            ip[0] = addr6->sin6_addr.s6_addr[0];
+            ip[1] = addr6->sin6_addr.s6_addr[1];
+            ip[2] = addr6->sin6_addr.s6_addr[2];
+            ip[3] = addr6->sin6_addr.s6_addr[3];
+            ip[4] = addr6->sin6_addr.s6_addr[4];
+            ip[5] = addr6->sin6_addr.s6_addr[5];
+            ip[6] = addr6->sin6_addr.s6_addr[6];
+            ip[7] = addr6->sin6_addr.s6_addr[7];
+            log.trace("Accepted IPv6 client connection");
+         }
+         else if (addr_storage.ss_family IS AF_INET) { // IPv4 connection on dual-stack socket
+            struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
+            uint32_t ipv4_addr = net::LongToHost(addr4->sin_addr.s_addr);
+            ip[0] = ipv4_addr & 0xff;
+            ip[1] = (ipv4_addr >> 8) & 0xff;
+            ip[2] = (ipv4_addr >> 16) & 0xff;
+            ip[3] = (ipv4_addr >> 24) & 0xff;
+            ip[4] = ip[5] = ip[6] = ip[7] = 0;
+            log.trace("Accepted IPv4 client connection on dual-stack socket");
+         }
+         else {
+            log.warning("Unsupported address family: %d", addr_storage.ss_family);
+            close(clientfd);
+            return;
+         }
+      #elif _WIN32
+         // Windows IPv6 dual-stack accept using wrapper function
+         int family;
+         struct sockaddr_storage addr_storage;
+         int len = sizeof(addr_storage);
+         clientfd = win_accept_ipv6(Self, FD, (struct sockaddr *)&addr_storage, &len, &family);
+         if (clientfd IS NOHANDLE) return;
+
+         if (family IS AF_INET6) { // IPv6 connection
+            struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&addr_storage;
+            ip[0] = addr6->sin6_addr.s6_addr[0];
+            ip[1] = addr6->sin6_addr.s6_addr[1];
+            ip[2] = addr6->sin6_addr.s6_addr[2];
+            ip[3] = addr6->sin6_addr.s6_addr[3];
+            ip[4] = addr6->sin6_addr.s6_addr[4];
+            ip[5] = addr6->sin6_addr.s6_addr[5];
+            ip[6] = addr6->sin6_addr.s6_addr[6];
+            ip[7] = addr6->sin6_addr.s6_addr[7];
+            log.trace("Accepted IPv6 client connection on Windows");
+         }
+         else if (family IS AF_INET) { // IPv4 connection on dual-stack socket
+            struct sockaddr_in *addr4 = (struct sockaddr_in *)&addr_storage;
+            uint32_t ipv4_addr = net::LongToHost(addr4->sin_addr.s_addr);
+            ip[0] = ipv4_addr & 0xff;
+            ip[1] = (ipv4_addr >> 8) & 0xff;
+            ip[2] = (ipv4_addr >> 16) & 0xff;
+            ip[3] = (ipv4_addr >> 24) & 0xff;
+            ip[4] = ip[5] = ip[6] = ip[7] = 0;
+            log.trace("Accepted IPv4 client connection on dual-stack socket (Windows)");
+         }
+         else {
+            log.warning("Unsupported address family on Windows: %d", family);
+            CLOSESOCKET(clientfd);
+            return;
+         }
+      #else
+         #warning Platform requires IPV6 support.
+         return;
+      #endif
+   }
+   else {
+      struct sockaddr_in addr;
+
+      #ifdef __linux__
+         socklen_t len = sizeof(addr);
+         clientfd = accept(FD, (struct sockaddr *)&addr, &len);
+
+         if (clientfd != NOHANDLE) {
+            int nodelay = 1;
+            setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+         }
+      #elif _WIN32
+         int len = sizeof(addr);
+         clientfd = win_accept(Self, FD, (struct sockaddr *)&addr, &len);
+      #endif
+
+      if (clientfd IS NOHANDLE) {
+         log.warning("accept() failed to return an FD.");
+         return;
+      }
+
+      ip[0] = addr.sin_addr.s_addr;
+      ip[1] = addr.sin_addr.s_addr>>8;
+      ip[2] = addr.sin_addr.s_addr>>16;
+      ip[3] = addr.sin_addr.s_addr>>24;
+      ip[4] = 0;
+      ip[5] = 0;
+      ip[6] = 0;
+      ip[7] = 0;
+   }
+
+   // Check if this IP address already has a client structure from an earlier socket connection.
+   // (One NetClient represents a single IP address; Multiple ClientSockets can connect from that IP address)
+
+   objNetClient *client_ip;
+   for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
+      if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
+   }
+
+   if (!client_ip) {
+      if (NewObject(CLASSID::NETCLIENT, &client_ip) IS ERR::Okay) {
+         if (InitObject(client_ip) != ERR::Okay) {
+            FreeResource(client_ip);
+            CLOSESOCKET(clientfd);
+            return;
+         }
+      }
+      else {
+         CLOSESOCKET(clientfd);
+         return;
+      }
+
+      ((LARGE *)&client_ip->IP)[0] = ((LARGE *)&ip)[0];
+      client_ip->TotalConnections = 0;
+      Self->TotalClients++;
+
+      if (!Self->Clients) Self->Clients = client_ip;
+      else {
+         if (Self->LastClient) Self->LastClient->Next = client_ip;
+         if (Self->Clients) Self->Clients->Prev = Self->LastClient;
+      }
+      Self->LastClient = client_ip;
+   }
+   else if (client_ip->TotalConnections >= Self->SocketLimit) {
+      log.warning("Socket limit of %d reached for IP %d.%d.%d.%d", Self->SocketLimit, client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+      CLOSESOCKET(clientfd);
+      return;
+   }
+
+   if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
+      if (client_ip->Connections) {
+         log.msg("Preventing second connection attempt from IP %d.%d.%d.%d", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
+         CLOSESOCKET(clientfd);
+         return;
+      }
+   }
+
+   // Socket Management
+
+   extClientSocket *client_socket;
+   if (NewObject(CLASSID::CLIENTSOCKET, &client_socket) IS ERR::Okay) {
+      client_socket->Handle = clientfd;
+      client_socket->Client = client_ip;
+      InitObject(client_socket);
+   }
+   else {
+      CLOSESOCKET(clientfd);
+      if (!client_ip->Connections) free_client(Self, client_ip);
+      return;
+   }
+
+   // Note that if the connection is over SSL then handshaking won't have
+   // completed yet, in which case the connection feedback will be sent in a later state change.
+
+   if (Self->State IS NTC::CONNECTED) {
+      if (Self->Feedback.isC()) {
+         pf::SwitchContext context(Self->Feedback.Context);
+         auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Self->Feedback.Routine;
+         if (routine) routine(Self, client_socket, Self->State, Self->Feedback.Meta);
+      }
+      else if (Self->Feedback.isScript()) {
+         sc::Call(Self->Feedback, std::to_array<ScriptArg>({
+            { "NetSocket",    Self, FD_OBJECTPTR },
+            { "ClientSocket", client_socket, FD_OBJECTPTR },
+            { "State",        int(Self->State) }
+         }));
+      }
+   }
+
+   log.trace("Total clients: %d", Self->TotalClients);
+}
+
+//********************************************************************************************************************
+// Terminates all connections to the client and removes associated resources.
+
+static void free_client(extNetSocket *Self, objNetClient *Client)
+{
+   pf::Log log(__FUNCTION__);
+   static THREADVAR int8_t recursive = 0;
+
+   if (!Client) return;
+   if (recursive) return;
+
+   recursive++;
+
+   log.branch("%d:%d:%d:%d, Connections: %d", Client->IP[0], Client->IP[1], Client->IP[2], Client->IP[3], Client->TotalConnections);
+
+   // Free all sockets (connections) related to this client IP
+
+   while (Client->Connections) {
+      objClientSocket *current_socket = Client->Connections;
+      FreeResource(current_socket); // Disconnects & sends a Feedback message
+      if (Client->Connections IS current_socket) { // Sanity check
+         log.warning("Resource management error detected in Client->Sockets");
+         break;
+      }
+   }
+
+   if (Client->Prev) {
+      Client->Prev->Next = Client->Next;
+      if (Client->Next) Client->Next->Prev = Client->Prev;
+   }
+   else {
+      Self->Clients = Client->Next;
+      if ((Self->Clients) and (Self->Clients->Next)) Self->Clients->Next->Prev = NULL;
+   }
+
+   FreeResource(Client);
+
+   Self->TotalClients--;
+
+   recursive--;
+}
+
+//********************************************************************************************************************
+// See win32_netresponse() for the Windows version.
+
+#ifdef __linux__
+static void client_connect(SOCKET_HANDLE Void, APTR Data)
+{
+   pf::Log log(__FUNCTION__);
+   auto Self = (extNetSocket *)Data;
+
+   pf::SwitchContext context(Self);
+
+   log.trace("Connection from server received.");
+
+   int result = EHOSTUNREACH; // Default error in case getsockopt() fails
+   socklen_t optlen = sizeof(result);
+   getsockopt(Self->Handle, SOL_SOCKET, SO_ERROR, &result, &optlen);
+
+   // Remove the write callback
+
+   RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::REMOVE, &client_connect, nullptr);
+
+   #ifndef DISABLE_SSL
+   if ((Self->SSLHandle) and (!result)) {
+      // Perform the SSL handshake
+
+      log.traceBranch("Attempting SSL handshake.");
+
+      sslConnect(Self);
+      if (Self->Error != ERR::Okay) return;
+
+      if (Self->State IS NTC::HANDSHAKING) {
+         RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+      }
+      return;
+   }
+   #endif
+
+   if (!result) {
+      log.traceBranch("Connection succesful.");
+      Self->setState(NTC::CONNECTED);
+      RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+      return;
+   }
+   else {
+      log.trace("getsockopt() result %d", result);
+
+      if (result IS ECONNREFUSED)      Self->Error = ERR::ConnectionRefused;
+      else if (result IS ENETUNREACH)  Self->Error = ERR::NetworkUnreachable;
+      else if (result IS EHOSTUNREACH) Self->Error = ERR::HostUnreachable;
+      else if (result IS ETIMEDOUT)    Self->Error = ERR::TimeOut;
+      else Self->Error = ERR::Failed;
+
+      log.error(Self->Error);
+
+      Self->setState(NTC::DISCONNECTED);
+   }
+}
+#endif
+
+//********************************************************************************************************************
+// If the socket is the client of a server, messages from the server will come in through here.
+//
+// Incoming information from the server can be read with either the Incoming callback routine (the developer is
+// expected to call the Read action from this) or he can receive the information in the Subscriber's data channel.
+//
+// This function is called from win32_netresponse() and is managed outside of the normal message queue.
+
+static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
+{
+   pf::Log log(__FUNCTION__);
+
+   pf::SwitchContext context(Self); // Set context & lock
+
+   if (Self->Terminating) { // Set by FreeWarning()
+      log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
+      if (Self->Handle != NOHANDLE) free_socket(Self);
+      return;
+   }
+
+#ifndef DISABLE_SSL
+  #ifdef _WIN32
+    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
+      log.trace("Windows SSL handshake in progress, reading raw data.");
+      std::array<char, 4096> buffer;
+      size_t result;
+      ERR error = WIN_RECEIVE(Self->Handle, buffer.data(), buffer.size(), 0, &result);
+      if ((error IS ERR::Okay) and (result > 0)) {
+         sslHandshakeReceived(Self, buffer.data(), result);
+      }
+      return;
+    }
+  #else
+    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
+      log.traceBranch("Continuing SSL handshake...");
+      if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
+         sslAccept(Self);  // Server-side SSL handshake
+      }
+      else sslConnect(Self); // Client-side SSL handshake
+      return;
+    }
+
+    if (Self->SSLBusy) { // TODO: Check state is not HANDSHAKING instead
+      log.trace("SSL object is busy.");
+      return; // SSL object is performing a background operation (e.g. handshake)
+    }
+  #endif
+#endif
+
+   if (Self->IncomingRecursion) {
+      log.trace("[NetSocket:%d] Recursion detected on handle %" PF64, Self->UID, (MAXINT)FD);
+      if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
+      return;
+   }
+
+   log.traceBranch("[NetSocket:%d] Socket: %" PF64, Self->UID, (MAXINT)FD);
+
+   Self->InUse++;
+   Self->IncomingRecursion++;
+
+restart:
+
+   Self->ReadCalled = false;
+
+   size_t result;
+   auto error = ERR::Okay;
+   if (Self->Incoming.defined()) {
+      if (Self->Incoming.isC()) {
+         auto routine = (ERR (*)(extNetSocket *, APTR))Self->Incoming.Routine;
+         pf::SwitchContext context(Self->Incoming.Context);
+         error = routine(Self, Self->Incoming.Meta);
+      }
+      else if (Self->Incoming.isScript()) {
+         if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
+      }
+
+      if (error IS ERR::Terminate) log.trace("Termination of socket requested by channel subscriber.");
+      else if (!Self->ReadCalled) log.warning("[NetSocket:%d] Subscriber did not call Read()", Self->UID);
+   }
+
+   if (!Self->ReadCalled) {
+      std::array<char,512> buffer;
+      int total = 0;
+
+      do {
+         error = receive_from_server(Self, Self->Handle, buffer.data(), buffer.size(), 0, &result);
+         total += result;
+      } while (result > 0);
+
+      if (error != ERR::Okay) error = ERR::Terminate;
+   }
+
+   if (error IS ERR::Terminate) {
+      log.traceBranch("Socket %d will be terminated.", FD);
+      if (Self->Handle != NOHANDLE) free_socket(Self);
+   }
+   else if (Self->IncomingRecursion > 1) {
+      // If client_server_incoming() was called again during the callback, there is more
+      // data available and we should repeat our callback so that the client can receive the rest
+      // of the data.
+
+      Self->IncomingRecursion = 1;
+      goto restart;
+   }
+
+   Self->InUse--;
+   Self->IncomingRecursion = 0;
+}
+
+//********************************************************************************************************************
+// This function sends data to the client if there is queued data waiting to go out.  Otherwise it does nothing.
+//
+// Note: This function will prevent the task from going to sleep if it is not managed correctly.  If
+// no data is being written to the queue, the program will not be able to sleep until the client stops listening
+// to the write queue.
+//
+// Called from either the Windows messaging logic or a Linux FD subscription.
+
+static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
+{
+   pf::Log log(__FUNCTION__);
+
+   pf::SwitchContext context(Self); // Set context & lock
+
+   if (Self->Terminating) return;
+
+   if (Self->State IS NTC::HANDSHAKING) {
+      log.trace("Handshaking...");
+      return;
+   }
+
+   if (Self->OutgoingRecursion) {
+      log.traceWarning(ERR::Recursion);
+      return;
+   }
+
+   log.traceBranch();
+
+   Self->InUse++;
+   Self->OutgoingRecursion++;
+
+   auto error = ERR::Okay;
+
+   // Send out remaining queued data before getting new data to send
+
+   while (!Self->WriteQueue.Buffer.empty()) {
+      size_t len = Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index;
+      #ifndef DISABLE_SSL
+         if ((!Self->SSLHandle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
+      #else
+         if (len > glMaxWriteLen) len = glMaxWriteLen;
+      #endif
+
+      if (len > 0) {
+         error = send_data(Self, Self->WriteQueue.Buffer.data() + Self->WriteQueue.Index, &len);
+         if ((error != ERR::Okay) or (!len)) break;
+         log.trace("Sent %d of %d bytes from the queue.", Self->UID, int(len), int(Self->WriteQueue.Buffer.size() - Self->WriteQueue.Index));
+         Self->WriteQueue.Index += len;
+      }
+
+      if (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size()) {
+         Self->WriteQueue.Buffer.clear();
+         Self->WriteQueue.Index = 0;
+         break;
+      }
+   }
+
+   // Before feeding new data into the queue, the current buffer must be empty.
+
+   if ((Self->WriteQueue.Buffer.empty()) or
+       (Self->WriteQueue.Index >= Self->WriteQueue.Buffer.size())) {
+      if (Self->Outgoing.defined()) {
+         if (Self->Outgoing.isC()) {
+            auto routine = (ERR (*)(extNetSocket *, APTR))Self->Outgoing.Routine;
+            pf::SwitchContext context(Self->Outgoing.Context);
+            error = routine(Self, Self->Outgoing.Meta);
+         }
+         else if (Self->Outgoing.isScript()) {
+            if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
+         }
+
+         if (error != ERR::Okay) Self->Outgoing.clear();
+      }
+
+      // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
+      // we don't tax the system resources.  The WriteSocket function is also dropped because it is intended to
+      // be assigned temporarily.
+
+      if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty())) {
+         log.trace("Write-queue listening on socket %d will now stop.", Self->UID, Self->Handle);
+         #ifdef __linux__
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
+         #elif _WIN32
+            if (auto error = win_socketstate(Self->Handle, -1, 0); error != ERR::Okay) log.warning(error);
+         #endif
+      }
+   }
+
+   Self->InUse--;
+   Self->OutgoingRecursion--;
+}
 
 //********************************************************************************************************************
 
@@ -1582,7 +2049,7 @@ static const FieldArray clSocketFields[] = {
    { "SocketLimit",      FDF_INT|FDF_RW },
    { "MsgLimit",         FDF_INT|FDF_RI },
    // Virtual fields
-   { "SocketHandle",     FDF_POINTER|FDF_RI,     GET_SocketHandle, SET_SocketHandle },
+   { "Handle",           FDF_POINTER|FDF_RI,     GET_Handle, SET_Handle },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
    { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
    { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
@@ -1590,9 +2057,6 @@ static const FieldArray clSocketFields[] = {
    { "ValidCert",        FDF_INT|FDF_LOOKUP,     GET_ValidCert, nullptr, &clValidCert },
    END_FIELD
 };
-
-#include "netsocket_server.cpp"
-#include "netsocket_client.cpp"
 
 //********************************************************************************************************************
 
