@@ -375,7 +375,7 @@ end
 
    return {
       tests = {
-        --'testPostString', 'testGet', 'testPostStringFile', 'testIPV6',
+        'testPostString', 'testGet', 'testPostStringFile',
         'testHTTPS'
       },
       init = function(Path)

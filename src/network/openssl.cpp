@@ -164,16 +164,16 @@ static ERR sslSetup(extNetSocket *Self)
    if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
       if (!glClientSSLNV) {
          if ((glClientSSLNV = SSL_CTX_new(TLS_client_method()))) {
-            if (GetResource(RES::LOG_LEVEL) > 7) SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
+            if (GetResource(RES::LOG_LEVEL) > 7) SSL_CTX_set_info_callback(glClientSSLNV, &sslCtxMsgCallback);
             // Disable certificate verification for client sockets
-            SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_NONE, nullptr);
+            SSL_CTX_set_verify(glClientSSLNV, SSL_VERIFY_NONE, nullptr);
       
             // Additional settings to ensure verification is completely disabled
-            SSL_CTX_set_verify_depth(glClientSSL, 0);
-            SSL_CTX_set_options(glClientSSL, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);         
+            SSL_CTX_set_verify_depth(glClientSSLNV, 0);
+            SSL_CTX_set_options(glClientSSLNV, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);         
          }
+         else return log.warning(ERR::SystemCall);
       }
-      else return log.warning(ERR::SystemCall);
 
       if ((Self->SSLHandle = SSL_new(glClientSSLNV))) {
          if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);

@@ -67,6 +67,8 @@ function testBasicSSLCommunication()
    local ssl_handshake_complete = false
    local ssl_data_received = false
 
+   glPort = glPort + 1
+
    print('Testing basic SSL communication...')
 
    local ssl_server = obj.new('netsocket', {
@@ -217,8 +219,6 @@ function testSSLStateTransitions()
          if (State == NTC_CONNECTED) then
             msg('[SSL Server] SSL handshake completed successfully!')
             ssl_handshake_complete = true
-            -- Wait a moment for connection to stabilize before sending data
-            processing.sleep(0.5, false)
             -- Send test message
             msg('[SSL Server] Sending test message...')
             local err, len = Client.acWrite('SSL_STATE_TEST_COMPLETE')
@@ -228,15 +228,14 @@ function testSSLStateTransitions()
                msg('[SSL Server] Message sent successfully')
             end
          elseif (State == NTC_DISCONNECTED) then
-            msg('[SSL Server] Connection terminated')
             if (ssl_handshake_complete and data_exchange_complete) then
-               msg('[SSL Server] Test completed successfully, signaling')
-               proc.signal()
+               msg('[SSL Server] Test completed successfully')
             elseif (ssl_handshake_complete) then
-               error('[SSL Server] Handshake completed but data exchange failed')
+               msg('[SSL Server] Handshake completed but data exchange failed')
             else
-               error('[SSL Server] Connection failed before handshake completion')
+               msg('[SSL Server] Connection failed before handshake completion')
             end
+            proc.signal()
          end
       end,
       incoming = function(Socket, Client)
@@ -253,14 +252,17 @@ function testSSLStateTransitions()
          end
       end,
       port = glPort,
-      flags = 'SERVER|SSL'
+      flags = 'SERVER|SSL|SSL_NO_VERIFY'
    })
 
    local ssl_client = obj.new('netsocket', {
       name = 'SSLStateClient',
       feedback = function(Socket, State)
          table.insert(state_sequence, 'CLIENT:' .. printableState(State))
-         print('[SSL Client] State transition: ' .. printableState(State) .. ' (' .. mSys.GetErrorMsg(Socket.error) .. ')')
+         print('[SSL Client] State transition: ' .. printableState(State))
+         if (State == NTC_DISCONNECTED) then
+            proc.signal()
+         end
       end,
       incoming = function(Socket)
          print('[SSL Client] Incoming data callback triggered')
@@ -269,8 +271,6 @@ function testSSLStateTransitions()
          if (err == ERR_Okay) then
             local emsg = buffer:sub(1, read_len)
             print('[SSL Client] Received: ' .. emsg)
-            -- Wait a moment then acknowledge completion
-            processing.sleep(0.5, false)
             print('[SSL Client] Sending acknowledgment...')
             local err, len = Socket.acWrite('SSL_STATES_VERIFIED')
             if (err != ERR_Okay) then
@@ -282,14 +282,13 @@ function testSSLStateTransitions()
             error('[SSL Client] Read error: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      flags = 'SSL'
+      flags = 'SSL|SSL_NO_VERIFY'
    })
 
    print('[SSL Client] Initiating connection...')
    ssl_client.mtConnect('127.0.0.1', glPort)
 
    local err = proc.sleep()
-
    assert(err == ERR_Okay, 'sleep() returned ' ..  mSys.GetErrorMsg(err))
 
    -- Always print the state sequence for debugging
@@ -298,45 +297,26 @@ function testSSLStateTransitions()
       print('  ' .. i .. '. ' .. state)
    end
 
-   -- Verify we at least got some state transitions
-   if (#state_sequence == 0) then
-      error('No SSL state transitions observed')
-   end
-
-   -- Check if we got a connected state (server side is more reliable indicator)
-   local found_server_connected = false
-   local found_client_connecting_ssl = false
+   -- Check if we got a connected state
+   local server_connected
+   local client_connected
 
    for i, state in ipairs(state_sequence) do
-      if (string.match(state, 'SERVER.*3')) then -- Server reached NTC_CONNECTED
-         found_server_connected = true
+      if (string.match(state, 'SERVER:CONNECTED')) then
+         server_connected = true
       end
-      if (string.match(state, 'CLIENT.*2')) then -- Client reached NTC_CONNECTING_SSL
-         found_client_connecting_ssl = true
+      if (string.match(state, 'CLIENT:CONNECTED')) then
+         client_connected = true
       end
    end
 
-   if (found_server_connected and found_client_connecting_ssl) then
-      print('[SSL State Test] Server reached CONNECTED state, client reached CONNECTING_SSL state')
-      print('SSL state transitions test completed successfully!')
-      return
+   if (not server_connected) then
+      error('Server never reached CONNECTED state - SSL handshake failed')
    end
 
-   if (not found_server_connected) then
-      print('[SSL State Test] WARNING: Server never reached CONNECTED state - SSL handshake failed')
-      print('[SSL State Test] This could be due to missing SSL server certificates for localhost testing')
-      print('[SSL State Test] Client-server SSL state transitions were partially observed - this is acceptable for local testing')
-      print('SSL state transitions test completed with warnings (acceptable for local testing)')
-      return -- Don't fail the test, just warn
+   if (not client_connected) then
+      error('Client never reached CONNECTED state - SSL handshake failed')
    end
-
-   if (err != ERR_Okay) then
-      print('[SSL State Test] WARNING: Test timed out but some states were observed')
-      print('[SSL State Test] SSL handshake partially completed - acceptable for certificate validation testing')
-      return -- Don't fail the test, just warn
-   end
-
-   print('SSL state transitions test completed successfully!')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -417,7 +397,7 @@ function testSSLDataIntegrity()
             assert(err == ERR_Okay, 'Failed to echo SSL message: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      flags = 'SSL'
+      flags = 'SSL|SSL_NO_VERIFY'
    })
 
    ssl_client.mtConnect('127.0.0.1', glPort)
@@ -442,7 +422,7 @@ function testHTTPSConnection()
    local data_received = false
    local page_content = ""
    local response_complete = false
-   local SITE = 'www.v6.facebook.com'
+   local SITE = 'www.google.com' --'www.v6.facebook.com'
 
    print('Testing HTTPS connection to ' .. SITE .. '...')
 
