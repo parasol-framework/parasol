@@ -95,6 +95,9 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <map>
 #include <sstream>
 #include <charconv>
+#include <limits>
+#include <algorithm>
+
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
@@ -112,10 +115,75 @@ constexpr int HASHHEXLEN = 32;
 typedef char HASH[HASHLEN];
 typedef char HASHHEX[HASHHEXLEN+1];
 
+// Security limits
+constexpr int64_t MAX_CONTENT_LENGTH = 10LL * 1024 * 1024 * 1024; // 10GB max
+constexpr int64_t MAX_CHUNK_LENGTH = 100 * 1024 * 1024; // 100MB max chunk
+constexpr int MAX_HEADER_SIZE = 8 * 1024 * 1024; // 8MB max headers
+constexpr int MAX_PORT_NUMBER = 65535;
+
 constexpr int BUFFER_READ_SIZE = 16384;  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
 template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", LONG(code), GetErrorMsg(code)); }
+
+static void secure_clear_memory(void* ptr, size_t len) {
+   // Use volatile to prevent compiler optimization
+   volatile char *p = (volatile char *)ptr;
+   for (size_t i = 0; i < len; i++) p[i] = 0;
+   for (size_t i = 0; i < len; i++) p[i] = 0xff;
+   for (size_t i = 0; i < len; i++) p[i] = 0;
+}
+
+// Enhanced URL validation function
+
+static bool is_valid_url_char(char c, bool allow_reserved = false) {
+   // RFC 3986 unreserved characters
+   if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or
+       (c >= '0' and c <= '9') or c IS '-' or c IS '.' or c IS '_' or c IS '~') {
+      return true;
+   }
+
+   // RFC 3986 reserved characters (when explicitly allowed)
+   if (allow_reserved and (c IS ':' or c IS '/' or c IS '?' or c IS '#' or
+       c IS '[' or c IS ']' or c IS '@' or c IS '!' or c IS '$' or
+       c IS '&' or c IS '\'' or c IS '(' or c IS ')' or c IS '*' or
+       c IS '+' or c IS ',' or c IS ';' or c IS '=')) {
+      return true;
+   }
+
+   return false;
+}
+
+// Enhanced URL encoding with validation
+static std::string encode_url_path(const char* input) {
+   if (!input) return std::string();
+
+   std::string result;
+   result.reserve(strlen(input) * 3); // Worst case: every char becomes %XX
+
+   for (const char* p = input; *p; p++) {
+      if (is_valid_url_char(*p, true)) {
+         result += *p;
+      }
+      else if (*p IS ' ') {
+         result += "%20";
+      }
+      else if (static_cast<unsigned char>(*p) < 32 or static_cast<unsigned char>(*p) > 126) {
+         // Encode control characters and non-ASCII
+         char encoded[4];
+         snprintf(encoded, sizeof(encoded), "%%%02X", static_cast<unsigned char>(*p));
+         result += encoded;
+      }
+      else {
+         // Other characters that need encoding
+         char encoded[4];
+         snprintf(encoded, sizeof(encoded), "%%%02X", static_cast<unsigned char>(*p));
+         result += encoded;
+      }
+   }
+
+   return result;
+}
 
 static ERR create_http_class(void);
 
@@ -254,7 +322,7 @@ static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
 static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
-static void socket_feedback(objNetSocket *, objClientSocket *, NTC);
+static void socket_feedback(objNetSocket *, NTC, APTR);
 static ERR  socket_incoming(objNetSocket *);
 static ERR  socket_outgoing(objNetSocket *);
 
@@ -746,7 +814,7 @@ static ERR HTTP_Free(extHTTP *Self)
 
    if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC::Free);
    if (Self->Incoming.isScript())     UnsubscribeAction(Self->Incoming.Context, AC::Free);
-   if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);     
+   if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);
    if (Self->Outgoing.isScript())     UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
@@ -762,7 +830,9 @@ static ERR HTTP_Free(extHTTP *Self)
    if (Self->UserAgent)   { FreeResource(Self->UserAgent);   Self->UserAgent = nullptr; }
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
 
-   for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
+   if (!Self->Password.empty()) {
+      secure_clear_memory(const_cast<char*>(Self->Password.data()), Self->Password.size());
+   }
 
    Self->~extHTTP();
    return ERR::Okay;
@@ -1249,9 +1319,15 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      if (auto i = strtol(str, nullptr, 0)) {
-         Self->Port = i;
+      long port_long = strtol(str, nullptr, 0);
+      if (port_long > 0 and port_long <= MAX_PORT_NUMBER) {
+         Self->Port = int(port_long);
          if (Self->Port IS 443) Self->Flags |= HTF::SSL;
+      }
+      else {
+         pf::Log log;
+         log.warning("Invalid port number %ld, using default 80", port_long);
+         Self->Port = 80;
       }
    }
 
@@ -1400,28 +1476,15 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
 
    while (*Value IS '/') Value++; // Skip '/' prefix
 
-   int len = 0;
-   for (LONG i=0; Value[i]; i++) { // Compute the length with consideration to escape codes
-      if (Value[i] IS ' ') len += 3; // '%20'
-      else len++;
-   }
+   std::string encoded_path = encode_url_path(Value);
 
-   if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
-      int len = 0;
-      for (LONG i=0; Value[i]; i++) {
-         if (Value[i] IS ' ') {
-            Self->Path[len++] = '%';
-            Self->Path[len++] = '2';
-            Self->Path[len++] = '0';
-         }
-         else Self->Path[len++] = Value[i];
-      }
-      Self->Path[len] = 0;
+   if (AllocMemory(encoded_path.length() + 1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
+      pf::strcopy(encoded_path, Self->Path, encoded_path.length() + 1);
 
       // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
       // do this if a PUT instruction is executed against the path and we're not authenticated yet.
 
-      auto pview = std::string_view(Self->Path, len);
+      auto pview = std::string_view(Self->Path, encoded_path.length());
       auto folder_len = pview.find_last_of('/');
       if (folder_len IS std::string::npos) folder_len = 0;
 

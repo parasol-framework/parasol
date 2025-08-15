@@ -3,17 +3,19 @@
 static const struct FieldDef clNetSocketState[] = {
    { "Disconnected", 0x00000000 },
    { "Connecting", 0x00000001 },
-   { "ConnectingSSL", 0x00000002 },
+   { "Handshaking", 0x00000002 },
    { "Connected", 0x00000003 },
+   { "Multistate", 0x00000004 },
    { nullptr, 0 }
 };
 
 static const struct FieldDef clNetSocketFlags[] = {
    { "Server", 0x00000001 },
    { "SSL", 0x00000002 },
-   { "MultiConnect", 0x00000004 },
-   { "Synchronous", 0x00000008 },
-   { "LogAll", 0x00000010 },
+   { "SSLNoVerify", 0x00000004 },
+   { "MultiConnect", 0x00000008 },
+   { "Synchronous", 0x00000010 },
+   { "LogAll", 0x00000020 },
    { nullptr, 0 }
 };
 

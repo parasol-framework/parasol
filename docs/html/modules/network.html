@@ -60,14 +60,16 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 <tr><th>NSF::MULTI_CONNECT</th><td>Allow multiple connections from the same IP when in server mode.</td></tr>
 <tr><th>NSF::SERVER</th><td>Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</td></tr>
 <tr><th>NSF::SSL</th><td>Use Secure Sockets Layer for all communication.</td></tr>
+<tr><th>NSF::SSL_NO_VERIFY</th><td>Disable SSL certificate verification (for testing only).</td></tr>
 <tr><th>NSF::SYNCHRONOUS</th><td>Use synchronous (blocking) network calls.</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="NSL"><h1>NSL Type</h1><p class="lead">Tags for SetSSL().</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NSL::CONNECT</th><td>Initiate an SSL connection on this socket.</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="NTC"><h1>NTC Type</h1><p class="lead">NetSocket states</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NTC::CONNECTED</th><td>There is an active connection at present.</td></tr>
 <tr><th>NTC::CONNECTING</th><td>A connection is being established.</td></tr>
-<tr><th>NTC::CONNECTING_SSL</th><td>An SSL connection is being established.</td></tr>
 <tr><th>NTC::DISCONNECTED</th><td>There is no connection.</td></tr>
+<tr><th>NTC::HANDSHAKING</th><td>An SSL connection is being established.</td></tr>
+<tr><th>NTC::MULTISTATE</th><td>In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="SCV"><h1>SCV Type</h1><p class="lead">These error codes for certificate validation match the OpenSSL error codes (X509 definitions)</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>SCV::AKID_ISSUER_SERIAL_MISMATCH</th><td></td></tr>
 <tr><th>SCV::AKID_SKID_MISMATCH</th><td></td></tr>

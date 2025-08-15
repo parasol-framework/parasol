@@ -1,6 +1,10 @@
 {
   "files.associations":{
     "*.fdl": "lua",
-    "*.fluid": "lua"
+    "*.fluid": "lua",
+    "bitset": "cpp",
+    "algorithm": "cpp",
+    "format": "cpp",
+    "mutex": "cpp"
   }
 }

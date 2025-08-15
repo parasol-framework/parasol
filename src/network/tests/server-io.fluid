@@ -4,41 +4,46 @@ This test checks connectivity and I/O with a server by sending a simple HTTP req
 
    include 'network'
 
+function printableState(State)
+   if (State == NTC_CONNECTED) then return 'CONNECTED'
+   elseif (State == NTC_CONNECTING) then return 'CONNECTING'
+   elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
+   elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
+   else return tostring(State) end
+end
+
 ----------------------------------------------------------------------------------------------------------------------
 
 function testRawHTTP()
    local proc = processing.new({ timeout = 5.0 })
-   local netsocket
-   netsocket = obj.new('netsocket', {
-      feedback = function(Socket, Client, State)
-         local state = netsocket.get('$state')
-
-         if (string.lower(state) == 'connecting') then
+   local netsocket = obj.new('netsocket', {
+      feedback = function(Socket, State)
+         local state = printableState(State)
+         if (state == 'CONNECTING') then
             print('Connecting...')
-
-         elseif (string.lower(state) == 'connected') then
+         elseif (state == 'CONNECTED') then
             print('Connected to server.')
-
-            netsocket.acWrite('GET /index.html HTTP/1.1\r\nHost: parasol.ws\r\nConnection: close\r\nUser-Agent: Parasol Client\r\n\r\n')
-
-         elseif (string.lower(state) == 'disconnected') then
+            Socket.acWrite('GET /index.html HTTP/1.1\r\nHost: parasol.ws\r\nConnection: close\r\nUser-Agent: Parasol Client\r\n\r\n')
+         elseif (state == 'DISCONNECTED') then
             print('Disconnected from server.')
             proc.signal()
          else
             print('Unknown netsocket state: ' .. state)
          end
       end,
-      incoming = function(Socket, Script)
+      incoming = function(Socket)
          print('Incoming data...')
          local buffer = string.alloc(1024)
-         local err, read_len = netsocket.acRead(buffer)
+         local err, read_len = Socket.acRead(buffer)
          if (err == ERR_Okay) then
-            print(buffer:sub(1,read_len))
+            print(buffer:sub(1,80))
+         elseif (err == ERR_Disconnected) then
+            proc.signal()
+         else
+            error('Read() failed on NetSocket.')
          end
       end
    } )
-
-   assert(netsocket, 'Failed to create NetSocket object.')
 
    netsocket.mtConnect('parasol.ws', 80)
 

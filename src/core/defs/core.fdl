@@ -38,6 +38,14 @@ constexpr ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYP
 constexpr ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) noexcept { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
 constexpr ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) noexcept { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
 #endif
+
+template<typename T>
+constexpr bool defined(T flags, T test_flag) noexcept {
+   static_assert(std::is_enum_v<T>, "Type must be an enum");
+   using underlying = std::underlying_type_t<T>;
+   return (static_cast<underlying>(flags) & static_cast<underlying>(test_flag)) != 0;
+}
+
   ]])
 
   loadFile(glPath .. 'common.fdl')

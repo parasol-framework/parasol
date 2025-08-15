@@ -13,7 +13,8 @@
     <category>Network</category>
     <copyright>Paul Manias © 2005-2025</copyright>
     <description>
-<p>When a connection is opened between a client IP and a <class name="NetSocket">NetSocket</class> object, a new NetClient object will be created for the client's IP address if one does not already exist.  All <class name="ClientSocket">ClientSocket</class> connections to that IP address are then tracked under the single NetClient object.</p></description>
+<p>When a connection is opened between a client IP and a <class name="NetSocket">NetSocket</class> object, a new NetClient object will be created for the client's IP address if one does not already exist.  All <class name="ClientSocket">ClientSocket</class> connections to that IP address are then tracked under the single NetClient object.</p>
+<p>NetClient objects are intended to be created from the network interfacing code exclusively.</p></description>
     <source>
       <file path="netclient/">netclient.cpp</file>
     </source>
@@ -25,7 +26,7 @@
   <fields>
     <field>
       <name>ClientData</name>
-      <comment>A custom pointer available for development use.</comment>
+      <comment>A custom pointer available for userspace.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>APTR</type>
     </field>
@@ -42,12 +43,6 @@
       <comment>The IP address of the client.</comment>
       <access read="R">Read</access>
       <type>INT8</type>
-    </field>
-
-    <field>
-      <name>NetSocket</name>
-      <access read="R">Read</access>
-      <type>OBJECTPTR</type>
     </field>
 
     <field>

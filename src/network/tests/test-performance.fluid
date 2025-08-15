@@ -23,6 +23,14 @@ or scalability issues in the Network module implementation.
    glPerformanceResults = {}
    glLoadTestActive = false
 
+function printableState(State)
+   if (State == NTC_CONNECTED) then return 'CONNECTED'
+   elseif (State == NTC_CONNECTING) then return 'CONNECTING'
+   elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
+   elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
+   else return tostring(State) end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function testMessageThroughput()
@@ -154,7 +162,7 @@ function testLargeMessagePerformance()
             if (err == ERR_Okay and read_len > 0) then
                total_read = total_read + read_len
             elseif (err == ERR_NoData) then
-               processing.sleep(0.001) -- Brief wait for more data
+               processing.sleep(0.001, false) -- Brief wait for more data
             else
                break
             end
@@ -276,7 +284,7 @@ function testConnectionScaling()
 
       -- Small delay to prevent overwhelming
       if (i % 5 == 0) then
-         processing.sleep(0.01)
+         processing.sleep(0.01, false)
       end
    end
 
@@ -415,7 +423,7 @@ function testMemoryUsageUnderLoad()
       end
 
       -- Brief usage
-      processing.sleep(0.01)
+      processing.sleep(0.01, false)
 
       -- Destroy objects
       for i = 1, objects_per_iteration do

@@ -14,34 +14,203 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 *********************************************************************************************************************/
 
-// Data is being received from a client.
+//********************************************************************************************************************
+// Forward declaration of template function from network.cpp
+
+template<typename T>
+static ERR send_data(T *Self, CPTR Buffer, size_t *Length);
+
+//********************************************************************************************************************
+// Read function specifically for ClientSocket connections
+
+static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t BufferSize, size_t *Result)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (!BufferSize) return ERR::Okay;
+
+#ifndef DISABLE_SSL
+   if (Self->SSLHandle) {
+   #ifdef _WIN32
+       // If we're in the middle of SSL handshake, read raw data for handshake processing
+       if (Self->State IS NTC::HANDSHAKING) {
+          log.trace("Windows SSL handshake in progress, reading raw data.");
+          ERR error = WIN_RECEIVE(Self->Handle, Buffer, BufferSize, 0, Result);
+          if ((error IS ERR::Okay) and (*Result > 0)) {
+             sslHandshakeReceived(Self, Buffer, *Result);
+          }
+          return error;
+       }
+       else { // Normal SSL data read for established connections
+          if (auto result = ssl_wrapper_read(Self->SSLHandle, Buffer, BufferSize); result > 0) {
+             *Result = result;
+             return ERR::Okay;
+          }
+          else if (!result) {
+             return ERR::Disconnected;
+          }
+          else {
+             CSTRING msg;
+             auto error = ssl_wrapper_get_error(Self->SSLHandle, &msg);
+             if (error IS SSL_ERROR_WOULD_BLOCK) {
+                log.traceWarning("No more data to read from the SSL socket.");
+                return ERR::Okay;
+             }
+             else {
+                log.warning("Windows SSL read error: %s", msg);
+                return ERR::Failed;
+             }
+          }
+       }
+   #else // OpenSSL
+      bool read_blocked;
+      int pending;
+
+      if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+      else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
+
+      if (Self->HandshakeStatus != SHS::NIL) return ERR::Okay;
+
+      log.traceBranch("BufferSize: %d", int(BufferSize));
+
+      do {
+         read_blocked = false;
+
+         auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize);
+
+         if (result <= 0) {
+            auto ssl_error = SSL_get_error(Self->SSLHandle, result);
+            switch (ssl_error) {
+               case SSL_ERROR_ZERO_RETURN:
+                  return log.traceWarning(ERR::Disconnected);
+
+               case SSL_ERROR_WANT_READ:
+                  read_blocked = true;
+                  return ERR::Okay; // No data available yet
+
+               case SSL_ERROR_WANT_WRITE:
+                  // WANT_WRITE is returned if we're trying to rehandshake and the write operation would block.  We
+                  // need to wait on the socket to be writeable, then restart the read when it is.
+
+                  log.msg("SSL socket handshake requested by server.");
+                  Self->HandshakeStatus = SHS::WRITE;
+                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extClientSocket>), Self);
+                  return ERR::Okay;
+
+               case SSL_ERROR_SYSCALL:
+               default:
+                  log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
+                  return ERR::Read;
+            }
+         }
+         else {
+            *Result += result;
+            Buffer = (APTR)((char *)Buffer + result);
+            BufferSize -= result;
+         }
+      } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
+
+      log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
+
+      if (pending) {
+         // With regards to non-blocking SSL sockets, be aware that a socket can be empty in terms of incoming data,
+         // yet SSL can keep data that has already arrived in an internal buffer.  This means that we can get stuck
+         // select()ing on the socket because you aren't told that there is internal data waiting to be processed by
+         // SSL_read().
+         //
+         // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
+         // data pending.
+
+         RegisterFD((HOSTHANDLE)Self->Handle, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_incoming_from_client), Self);
+      }
+
+      return ERR::Okay;
+   #endif
+   }
+#endif // DISABLE_SSL
+
+#ifdef __linux__
+   {
+      int result = recv(Self->Handle, Buffer, BufferSize, 0);
+
+      if (result > 0) {
+         *Result = result;
+         return ERR::Okay;
+      }
+      else if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
+         return ERR::Disconnected;
+      }
+      else if ((errno IS EAGAIN) or (errno IS EINTR)) {
+         return ERR::Okay;
+      }
+      else {
+         log.warning("recv() failed: %s", strerror(errno));
+         return ERR::SystemCall;
+      }
+   }
+#elif _WIN32
+   return WIN_RECEIVE(Self->Handle, Buffer, BufferSize, 0, Result);
+#else
+   #error No support for RECEIVE()
+#endif
+}
+
+//********************************************************************************************************************
+// Data has arrived from a client's socket handle.
 
 static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *client)
 {
    pf::Log log(__FUNCTION__);
    if (!client->Client) return;
-   auto Socket = (extNetSocket *)(client->Client->Owner);
+   auto Server = (extNetSocket *)(client->Client->Owner);
 
    if (client->Handle IS NOHANDLE) {
-      log.warning("Invalid state - socket closed but receiving data.");
+      log.warning(ERR::InvalidState); // Socket closed but receiving data.
       return;
    }
 
-   Socket->InUse++;
+#ifndef DISABLE_SSL
+   #ifdef _WIN32
+     // TODO?
+   #else
+      if (client->State IS NTC::HANDSHAKING) {
+         // Continue SSL handshake for this ClientSocket
+         auto result = SSL_accept(client->SSLHandle);
+         if (result == 1) {
+            log.msg("SSL handshake completed for client %d", client->UID);
+            client->setState(NTC::CONNECTED);
+         }
+         else {
+            auto ssl_error = SSL_get_error(client->SSLHandle, result);
+            if ((ssl_error == SSL_ERROR_WANT_READ) or (ssl_error == SSL_ERROR_WANT_WRITE)) {
+               log.trace("SSL handshake continuing for client %d...", client->UID);
+               // Handshake will continue on next data arrival
+            }
+            else {
+               log.warning("SSL handshake failed for client %d: %s", client->UID, ERR_error_string(ssl_error, nullptr));
+               client->setState(NTC::DISCONNECTED);
+            }
+         }
+         return;
+      }
+   #endif
+#endif
+
+   Server->InUse++;
    client->ReadCalled = false;
 
-   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Socket->UID, client->UID);
+   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Server->UID, client->UID);
 
    ERR error = ERR::Okay;
-   if (Socket->Incoming.defined()) {
-      if (Socket->Incoming.isC()) {
-         pf::SwitchContext context(Socket->Incoming.Context);
-         auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Socket->Incoming.Routine;
-         error = routine(Socket, client, Socket->Incoming.Meta);
+   if (Server->Incoming.defined()) {
+      if (Server->Incoming.isC()) {
+         pf::SwitchContext context(Server->Incoming.Context);
+         auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))Server->Incoming.Routine;
+         error = routine(Server, client, Server->Incoming.Meta);
       }
-      else if (Socket->Incoming.isScript()) {
-         if (sc::Call(Socket->Incoming, std::to_array<ScriptArg>({
-               { "NetSocket",    Socket, FD_OBJECTPTR },
+      else if (Server->Incoming.isScript()) {
+         if (sc::Call(Server->Incoming, std::to_array<ScriptArg>({
+               { "NetSocket",    Server, FD_OBJECTPTR },
                { "ClientSocket", client, FD_OBJECTPTR }
             }), error) != ERR::Okay) error = ERR::Terminate;
          if (error IS ERR::Exception) error = ERR::Terminate; // assert() and error() are taken seriously
@@ -50,14 +219,14 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
    }
    else log.traceWarning("No Incoming callback configured.");
 
-   if (client->ReadCalled IS false) error = ERR::Terminate;
-   
+   if (!client->ReadCalled) error = ERR::Terminate;
+
    if (error IS ERR::Terminate) {
       log.trace("Terminating socket, failed to read incoming data.");
-      free_client_socket(Socket, client, true);
+      FreeResource(client); // Disconnect & send Feedback message
    }
 
-   Socket->InUse--;
+   Server->InUse--;
 }
 
 //********************************************************************************************************************
@@ -68,18 +237,18 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
 static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket)
 {
    pf::Log log(__FUNCTION__);
-   auto Socket = (extNetSocket *)(ClientSocket->Client->Owner);
+   auto Server = (extNetSocket *)(ClientSocket->Client->Owner);
 
-   if (Socket->Terminating) return;
+   if (Server->Terminating) return;
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifdef _WIN32
-    if ((Socket->WinSSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
+    if ((ClientSocket->SSLHandle) and (ClientSocket->State IS NTC::HANDSHAKING)) {
       log.trace("Still connecting via SSL...");
       return;
     }
   #else
-    if ((Socket->SSL) and (Socket->State IS NTC::CONNECTING_SSL)) {
+    if ((ClientSocket->SSLHandle) and (ClientSocket->State IS NTC::HANDSHAKING)) {
       log.trace("Still connecting via SSL...");
       return;
     }
@@ -93,9 +262,9 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    log.traceBranch();
 
-#ifdef ENABLE_SSL
+#ifndef DISABLE_SSL
   #ifndef _WIN32
-    if (Socket->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+    if (ClientSocket->HandshakeStatus != SHS::NIL) return;
   #endif
 #endif
 
@@ -108,18 +277,14 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    while (!ClientSocket->WriteQueue.Buffer.empty()) {
       size_t len = ClientSocket->WriteQueue.Buffer.size() - ClientSocket->WriteQueue.Index;
-      #ifdef ENABLE_SSL
-         #ifdef _WIN32
-            if ((!Socket->WinSSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-         #else
-            if ((!Socket->SSL) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-         #endif
+      #ifndef DISABLE_SSL
+         if ((!ClientSocket->SSLHandle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
       #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;
       #endif
 
       if (len > 0) {
-         error = SEND(Socket, ClientSocket->Handle, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len, 0);
+         error = send_data(ClientSocket, ClientSocket->WriteQueue.Buffer.data() + ClientSocket->WriteQueue.Index, &len);
          if ((error != ERR::Okay) or (!len)) break;
          ClientSocket->WriteQueue.Index += len;
       }
@@ -135,27 +300,29 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    if ((ClientSocket->WriteQueue.Buffer.empty()) or
        (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size())) {
-      if (ClientSocket->Outgoing.defined()) {
-         if (ClientSocket->Outgoing.isC()) {
-            auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(ClientSocket->Outgoing.Routine);
-            pf::SwitchContext context(ClientSocket->Outgoing.Context);
-            error = routine(Socket, ClientSocket, ClientSocket->Outgoing.Meta);
+      // Fetch more data
+
+      if (Server->Outgoing.defined()) {
+         if (Server->Outgoing.isC()) {
+            auto routine = (ERR (*)(extNetSocket *, extClientSocket *, APTR))(Server->Outgoing.Routine);
+            pf::SwitchContext context(Server->Outgoing.Context);
+            error = routine(Server, ClientSocket, Server->Outgoing.Meta);
          }
-         else if (ClientSocket->Outgoing.isScript()) {
-            if (sc::Call(ClientSocket->Outgoing, std::to_array<ScriptArg>({
-                  { "NetSocket", Socket, FD_OBJECTPTR },
+         else if (Server->Outgoing.isScript()) {
+            if (sc::Call(Server->Outgoing, std::to_array<ScriptArg>({
+                  { "NetSocket", Server, FD_OBJECTPTR },
                   { "ClientSocket", ClientSocket, FD_OBJECTPTR }
                }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error != ERR::Okay) ClientSocket->Outgoing.clear();
+         if (error != ERR::Okay) Server->Outgoing.clear(); // Any error terminates the function.
       }
 
-      // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
-      // we don't tax the system resources.
+      // If the write queue is empty then we remove the FD-Write registration so that
+      // we don't tax system resources.
 
-      if ((!ClientSocket->Outgoing.defined()) and (ClientSocket->WriteQueue.Buffer.empty())) {
-         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Socket->UID, ClientSocket->Handle);
+      if (ClientSocket->WriteQueue.Buffer.empty()) {
+         log.trace("[NetSocket:%d] Write-queue listening on FD %d will now stop.", Server->UID, ClientSocket->Handle);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)ClientSocket->Handle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
@@ -175,14 +342,14 @@ static void disconnect(extClientSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   if (Self->Handle) {
+   if (Self->Handle != NOHANDLE) {
       log.branch("Disconnecting socket handle %d", Self->Handle);
 
 #ifdef __linux__
       DeregisterFD(Self->Handle);
 #endif
       CLOSESOCKET_THREADED(Self->Handle);
-      Self->Handle = -1;
+      Self->Handle = NOHANDLE;
    }
 
    auto owner = (extNetSocket *)Self->Owner;
@@ -198,7 +365,7 @@ static void disconnect(extClientSocket *Self)
          else if (owner->Feedback.isScript()) {
             sc::Call(owner->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    owner, FD_OBJECTPTR },
-               { "ClientSocket", APTR(Self), FD_OBJECTPTR },
+               { "ClientSocket", Self, FD_OBJECTPTR },
                { "State",        int(NTC::DISCONNECTED) }
             }));
          }
@@ -211,6 +378,10 @@ static void disconnect(extClientSocket *Self)
 static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 {
    pf::Log log;
+
+#ifndef DISABLE_SSL
+   sslDisconnect(Self);
+#endif
 
    disconnect(Self);
 
@@ -244,6 +415,7 @@ static ERR CLIENTSOCKET_Free(extClientSocket *Self)
 static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 {
    pf::Log log;
+
    if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
    pf::ScopedObjectLock lock(Self->Client);
@@ -264,6 +436,57 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 
    Self->Client->Connections = Self;
    Self->Client->TotalConnections++;
+   Self->State = NTC::CONNECTING;
+
+#ifndef DISABLE_SSL
+   // If the parent NetSocket is an SSL server, set up SSL for this client socket
+   #ifdef _WIN32
+      // Not supported here
+      // NB: ClientSocket remains in 'connecting' state.
+   #else
+      auto netSocket = (extNetSocket *)(Self->Client->Owner);
+      if ((netSocket->Flags & NSF::SSL) != NSF::NIL) {
+         if (auto client_ssl = SSL_new(glServerSSL)) { // Use glServerSSL because we represent the server side.
+            if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
+               SSL_set_bio(client_ssl, client_bio, client_bio);
+
+               Self->SSLHandle = client_ssl;
+               Self->BIOHandle = client_bio;
+
+               Self->setState(NTC::HANDSHAKING);
+
+               auto result = SSL_accept(client_ssl);
+               if (result == 1) {
+                  log.trace("SSL handshake successful.");
+                  Self->setState(NTC::CONNECTED);
+               }
+               else {
+                  auto ssl_error = SSL_get_error(client_ssl, result);
+                  if ((ssl_error == SSL_ERROR_WANT_READ) or (ssl_error == SSL_ERROR_WANT_WRITE)) {
+                     log.msg("SSL handshake in progress...");
+                     // Handshake will continue asynchronously
+                  }
+                  else {
+                     log.warning("SSL handshake failed: %s", ERR_error_string(ssl_error, nullptr));
+                     Self->SSLHandle = nullptr;
+                     Self->BIOHandle = nullptr;
+                     SSL_free(client_ssl);
+                     return ERR::SystemCall;
+                  }
+               }
+            }
+            else {
+               SSL_free(client_ssl);
+               return log.warning(ERR::SystemCall);
+            }
+         }
+         else return log.warning(ERR::SystemCall);
+      }
+      else Self->State = NTC::CONNECTED; // Not an SSL socket
+   #endif
+#else
+   Self->State = NTC::CONNECTED;
+#endif
 
 #ifdef __linux__
    RegisterFD(Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_incoming_from_client), Self);
@@ -310,7 +533,10 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
    }
    Self->ReadCalled = true;
    if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
-   auto error = RECEIVE((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, Args->Length, 0, &Args->Result);
+
+   size_t result = 0;
+   auto error = receive_from_client(Self, Args->Buffer, Args->Length, &result);
+   Args->Result = result;
 
    if (error IS ERR::Disconnected) {
       // Detecting a disconnection on read is normal, now handle disconnection gracefully.
@@ -338,16 +564,15 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    if (!Args) return ERR::NullArgs;
    Args->Result = 0;
    if (Self->Handle IS NOHANDLE) return log.error(ERR::Disconnected);
-   if (!Self->Client) return log.warning(ERR::FieldNotSet);
 
    size_t len = Args->Length;
-   ERR error = SEND((extNetSocket *)(Self->Client->Owner), Self->Handle, Args->Buffer, &len, 0);
+   ERR error = send_data(Self, Args->Buffer, &len);
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
-      if (error != ERR::Okay) log.trace("SEND() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
+      if (error != ERR::Okay) log.trace("send_to_server() Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
       else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
-         ((extNetSocket *)(Self->Client->Owner))->write_queue(Self->WriteQueue, (BYTE *)Args->Buffer + len, Args->Length - len);
+         Self->WriteQueue.write((BYTE *)Args->Buffer + len, Args->Length - len);
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32
@@ -361,6 +586,114 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
    return ERR::Okay;
 }
 
+/*********************************************************************************************************************
+
+-FIELD-
+Client: Parent client object (IP address).
+
+-FIELD-
+ClientData: Available for client data storage.
+
+-FIELD-
+ConnectTime: System time for the creation of this socket.
+
+-FIELD-
+Next: Next socket in the chain.
+
+-FIELD-
+Prev: Previous socket in the chain.
+
+-FIELD-
+State: The current connection state of the ClientSocket object.
+
+The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
+be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the
+Feedback function is called.
+
+Note that in server mode this State value should not be used as it cannot reflect the state of all connected
+client sockets.  Each @ClientSocket carries its own independent State value for use instead.
+
+*********************************************************************************************************************/
+
+static ERR CS_SET_State(extClientSocket *Self, NTC Value)
+{
+   pf::Log log;
+
+   if (Value != Self->State) {
+      auto Socket = (extNetSocket *)(Self->Client->Owner);
+
+      if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
+
+      #ifndef DISABLE_SSL
+      if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
+         // SSL connection has just been established
+
+         bool ssl_valid = true;
+
+         #ifdef _WIN32
+            if ((Socket->Flags & NSF::SSL_NO_VERIFY) IS NSF::NIL) {
+               if (ssl_wrapper_get_verify_result(Self->SSLHandle) != 0) ssl_valid = false;
+               else log.trace("SSL certificate validation successful.");
+            }
+         #else
+            if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
+            else log.trace("SSL certificate validation successful.");
+         #endif
+
+         if (!ssl_valid) {
+            log.warning("SSL certificate validation failed.");
+            Self->State = NTC::DISCONNECTED;
+            if (Socket->Feedback.defined()) {
+               if (Socket->Feedback.isC()) {
+                  pf::SwitchContext context(Socket->Feedback.Context);
+                  auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
+                  if (routine) routine(Socket, Self, NTC::DISCONNECTED, Socket->Feedback.Meta);
+               }
+               else if (Socket->Feedback.isScript()) {
+                  sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
+                     { "NetSocket", Socket, FD_OBJECTPTR },
+                     { "ClientSocket", Self, FD_OBJECTPTR },
+                     { "State", int(NTC::DISCONNECTED) }
+                  }));
+               }
+            }
+            return ERR::Security;
+         }
+      }
+      #endif
+
+      Self->State = Value;
+
+      if (Socket->Feedback.defined()) {
+         if (Socket->Feedback.isC()) {
+            pf::SwitchContext context(Socket->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
+            if (routine) routine(Socket, Self, Self->State, Socket->Feedback.Meta);
+         }
+         else if (Socket->Feedback.isScript()) {
+            sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
+               { "NetSocket",    Socket, FD_OBJECTPTR },
+               { "ClientSocket", Self, FD_OBJECTPTR },
+               { "State",        int(Self->State) }
+            }));
+         }
+      }
+
+      if ((Self->State IS NTC::CONNECTED) and ((!Self->WriteQueue.Buffer.empty()))) {
+         log.msg("Sending queued data to server on connection.");
+         #ifdef __linux__
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
+         #elif _WIN32
+            win_socketstate(Self->Handle, -1, true);
+         #endif
+      }
+   }
+
+   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
+
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 
 #include "clientsocket_def.c"
@@ -371,10 +704,7 @@ static const FieldArray clClientSocketFields[] = {
    { "Next",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::CLIENTSOCKET },
    { "Client",      FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
    { "ClientData",  FDF_POINTER|FDF_R },
-   { "Outgoing",    FDF_FUNCTION|FDF_R },
-   { "Incoming",    FDF_FUNCTION|FDF_R },
-   // Virtual fields
-//   { "Handle", FDF_INT|FDF_R|FDF_VIRTUAL, GET_ClientHandle, SET_ClientHandle },
+   { "State",       FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, CS_SET_State, &clNetSocketState },
    END_FIELD
 };
 
