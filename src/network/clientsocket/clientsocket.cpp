@@ -28,7 +28,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
    pf::Log log(__FUNCTION__);
 
    if (!BufferSize) return ERR::Okay;
-   
+
 #ifndef DISABLE_SSL
    if (Self->SSLHandle) {
    #ifdef _WIN32
@@ -66,13 +66,13 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
       bool read_blocked;
       int pending;
 
-      if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Self->Handle, Self);
-      else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Self->Handle, Self);
+      if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+      else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
 
-      if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
+      if (Self->HandshakeStatus != SHS::NIL) return ERR::Okay;
 
       log.traceBranch("BufferSize: %d", int(BufferSize));
-      
+
       do {
          read_blocked = false;
 
@@ -93,7 +93,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
                   // need to wait on the socket to be writeable, then restart the read when it is.
 
                   log.msg("SSL socket handshake requested by server.");
-                  Self->SSLBusy = SSL_HANDSHAKE_WRITE;
+                  Self->HandshakeStatus = SHS::WRITE;
                   RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extClientSocket>), Self);
                   return ERR::Okay;
 
@@ -109,7 +109,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
             BufferSize -= result;
          }
       } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
-      
+
       log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
 
       if (pending) {
@@ -128,7 +128,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
    #endif
    }
 #endif // DISABLE_SSL
-      
+
 #ifdef __linux__
    {
       int result = recv(Self->Handle, Buffer, BufferSize, 0);
@@ -264,7 +264,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
 #ifndef DISABLE_SSL
   #ifndef _WIN32
-    if (ClientSocket->SSLBusy) return; // SSL object is performing a background operation (e.g. handshake)
+    if (ClientSocket->HandshakeStatus) return; // SSL object is performing a background operation (e.g. handshake)
   #endif
 #endif
 
@@ -446,7 +446,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
    #else
       auto netSocket = (extNetSocket *)(Self->Client->Owner);
       if ((netSocket->Flags & NSF::SSL) != NSF::NIL) {
-         if (auto client_ssl = SSL_new(glServerSSL)) {
+         if (auto client_ssl = SSL_new(glServerSSL)) { // Use glServerSSL because we represent the server side.
             if (auto client_bio = BIO_new_socket(Self->Handle, BIO_NOCLOSE)) {
                SSL_set_bio(client_ssl, client_bio, client_bio);
 
@@ -598,7 +598,7 @@ ClientData: Available for client data storage.
 ConnectTime: System time for the creation of this socket.
 
 -FIELD-
-Next: Next socket in the chain. 
+Next: Next socket in the chain.
 
 -FIELD-
 Prev: Previous socket in the chain.
@@ -607,7 +607,7 @@ Prev: Previous socket in the chain.
 State: The current connection state of the ClientSocket object.
 
 The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
-be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the 
+be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the
 Feedback function is called.
 
 Note that in server mode this State value should not be used as it cannot reflect the state of all connected
@@ -639,7 +639,7 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
             if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
             else log.trace("SSL certificate validation successful.");
          #endif
-         
+
          if (!ssl_valid) {
             log.warning("SSL certificate validation failed.");
             Self->State = NTC::DISCONNECTED;

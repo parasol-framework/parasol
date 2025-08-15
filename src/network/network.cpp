@@ -191,7 +191,7 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
 
    static void CLOSESOCKET(SOCKET_HANDLE Handle) {
       if (Handle IS NOHANDLE) return;
-      
+
       pf::Log log(__FUNCTION__);
       log.traceBranch("Handle: %d", Handle);
 
@@ -250,7 +250,7 @@ class extClientSocket : public objClientSocket {
       #else
          SSL *SSLHandle;     // SSL connection handle for this client
          BIO *BIOHandle;     // SSL BIO handle for this client
-         uint8_t  SSLBusy; // Tracks the current actions of SSL handshaking.
+         SHS HandshakeStatus; // Tracks the current actions of SSL handshaking.
       #endif
    #endif
 };
@@ -281,7 +281,7 @@ class extNetSocket : public objNetSocket {
          SSL_HANDLE SSLHandle;
       #else
         SSL *SSLHandle;
-        uint8_t  SSLBusy; // Tracks the current actions of SSL handshaking.
+        SHS HandshakeStatus; // Tracks the current actions of SSL handshaking.
         BIO *BIOHandle;
       #endif
    #endif
@@ -296,11 +296,13 @@ class extNetLookup : public objNetLookup {
 
 //********************************************************************************************************************
 
-enum {
-   SSL_NOT_BUSY=0,
-   SSL_HANDSHAKE_READ,
-   SSL_HANDSHAKE_WRITE
+enum class SHS : uint8_t {
+   NIL = 0,
+   HANDSHAKE_READ,
+   HANDSHAKE_WRITE
 };
+
+DEFINE_ENUM_FLAG_OPERATORS(SHS)
 
 #ifdef _WIN32
    #include "win32/winsockwrappers.h"
@@ -370,7 +372,7 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
             return true;
          }
          return false;
-      });      
+      });
    }
 
    std::lock_guard<std::mutex> lock(glmThreads);
@@ -456,7 +458,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       return ERR::Failed;
    }
 
-#ifdef __linux__   
+#ifdef __linux__
    struct rlimit fd_limit;
    if (getrlimit(RLIMIT_NOFILE, &fd_limit) == 0) {
       glSocketLimit = fd_limit.rlim_cur * 0.8; // Set a threshold at 80% of the system limit
@@ -521,7 +523,7 @@ static ERR MODExpunge(void)
 
       constexpr auto JOIN_TIMEOUT = std::chrono::milliseconds(2000);
       auto start_time = std::chrono::steady_clock::now();
-      
+
       auto it = glThreads.begin();
       while (it != glThreads.end() and (std::chrono::steady_clock::now() - start_time) < JOIN_TIMEOUT) {
          if (*it and (*it)->joinable()) {
@@ -529,7 +531,7 @@ static ERR MODExpunge(void)
             it = glThreads.erase(it);
          } else it = glThreads.erase(it);
       }
-      
+
       glThreads.clear();
    }
 
@@ -826,9 +828,9 @@ static ERR receive_from_server(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Bu
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("Socket: %d, BufSize: %d, Flags: $%.8x", Socket, BufferSize, Flags);
-   
+
    *Result = 0;
-   
+
    if (!BufferSize) return ERR::Okay;
 
 #ifndef DISABLE_SSL
@@ -867,11 +869,11 @@ static ERR receive_from_server(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Bu
   #else // OpenSSL
     bool read_blocked;
     int pending;
-    
-    if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Socket, Self);
-    else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Socket, Self);
 
-    if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
+    if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Socket, Self);
+    else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Socket, Self);
+
+    if (Self->HandshakeStatus != SHS::NIL) return ERR::Okay;
 
     if (Self->SSLHandle) {
       do {
@@ -894,7 +896,7 @@ static ERR receive_from_server(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Bu
                   // need to wait on the socket to be writeable, then restart the read when it is.
 
                    log.msg("SSL socket handshake requested by server.");
-                   Self->SSLBusy = SSL_HANDSHAKE_WRITE;
+                   Self->HandshakeStatus = SHS::WRITE;
                    RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
                    return ERR::Okay;
 
@@ -963,7 +965,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
    pf::Log log(__FUNCTION__);
 
    if (!*Length) return ERR::Okay;
-   
+
 #ifndef DISABLE_SSL
    if (Self->SSLHandle) {
       #ifdef _WIN32
@@ -983,7 +985,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
             CSTRING msg;
             ssl_wrapper_get_error(Self->SSLHandle, &msg);
             *Length = 0;
-         
+
             if (error IS SSL_ERROR_WOULD_BLOCK) {
                return log.traceWarning(ERR::BufferOverflow);
             }
@@ -994,12 +996,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          }
       #else
          log.traceBranch("SSL Length: %d", int(*Length));
-      
-         if (Self->SSLBusy IS SSL_HANDSHAKE_WRITE) ssl_handshake_write(Self->Handle, Self);
-         else if (Self->SSLBusy IS SSL_HANDSHAKE_READ) ssl_handshake_read(Self->Handle, Self);
-     
-         if (Self->SSLBusy != SSL_NOT_BUSY) return ERR::Okay;
-     
+
+         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
+
+         if (Self->HandshakeStatus != SHS::NIL) return ERR::Okay;
+
          auto bytes_sent = SSL_write(Self->SSLHandle, Buffer, *Length);
 
          if (bytes_sent < 0) {
@@ -1013,7 +1015,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
                case SSL_ERROR_WANT_READ:
                   log.trace("Handshake requested by server.");
-                  Self->SSLBusy = SSL_HANDSHAKE_READ;
+                  Self->HandshakeStatus = SHS::READ;
                   RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<extNetSocket>), Self);
                   return ERR::Okay;
 

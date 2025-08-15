@@ -74,7 +74,6 @@ template <class T> ERR sslHandshakeReceived(T *Self, const void* Data, int Lengt
             ssl_wrapper_get_last_security_status(Self->SSLHandle),
             ssl_wrapper_get_last_win32_error(Self->SSLHandle),
             ssl_wrapper_get_error_description(Self->SSLHandle));
-         Self->Error = ERR::Failed;
          Self->setState(NTC::DISCONNECTED);
          return ERR::Failed;
    }

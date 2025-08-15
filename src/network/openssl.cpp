@@ -409,12 +409,12 @@ template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self)
 
    if (auto result = SSL_do_handshake(Self->SSLHandle); result == 1) { // Handshake successful, connection established
       RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
-      Self->SSLBusy = SSL_NOT_BUSY;
+      Self->HandshakeStatus = SHS::NIL;
    }
    else switch (SSL_get_error(Self->SSLHandle, result)) {
       case SSL_ERROR_WANT_READ:
          RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
-         Self->SSLBusy = SSL_HANDSHAKE_READ;
+         Self->HandshakeStatus = SHS::READ;
          RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
          break;
 
@@ -423,7 +423,7 @@ template <class T> void ssl_handshake_write(HOSTHANDLE Socket, T *Self)
          break;
 
       default:
-         Self->SSLBusy = SSL_NOT_BUSY;
+         Self->HandshakeStatus = SHS::NIL;
    }
 }
 
@@ -435,7 +435,7 @@ template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self)
 
    if (auto result = SSL_do_handshake(Self->SSLHandle); result == 1) { // Handshake successful, connection established
       RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
-      Self->SSLBusy = SSL_NOT_BUSY;
+      Self->HandshakeStatus = SHS::NIL;
    }
    else switch (SSL_get_error(Self->SSLHandle, result)) {
       case SSL_ERROR_WANT_READ:
@@ -444,11 +444,11 @@ template <class T> void ssl_handshake_read(HOSTHANDLE Socket, T *Self)
 
       case SSL_ERROR_WANT_WRITE:
          RegisterFD((HOSTHANDLE)Socket, RFD::READ|RFD::REMOVE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<T>), Self);
-         Self->SSLBusy = SSL_HANDSHAKE_WRITE;
+         Self->HandshakeStatus = SHS::WRITE;
          RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<T>), Self);
          break;
 
       default:
-         Self->SSLBusy = SSL_NOT_BUSY;
+         Self->HandshakeStatus = SHS::NIL;
    }
 }

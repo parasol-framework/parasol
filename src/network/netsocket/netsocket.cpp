@@ -1855,7 +1855,7 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       return;
     }
 
-    if (Self->SSLBusy) { // TODO: Check state is not HANDSHAKING instead
+    if (Self->HandshakeStatus) { // TODO: Check state is not HANDSHAKING instead
       log.trace("SSL object is busy.");
       return; // SSL object is performing a background operation (e.g. handshake)
     }
