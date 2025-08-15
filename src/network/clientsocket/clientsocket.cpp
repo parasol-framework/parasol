@@ -264,7 +264,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
 #ifndef DISABLE_SSL
   #ifndef _WIN32
-    if (ClientSocket->HandshakeStatus) return; // SSL object is performing a background operation (e.g. handshake)
+    if (ClientSocket->HandshakeStatus != SHS::NIL) return;
   #endif
 #endif
 

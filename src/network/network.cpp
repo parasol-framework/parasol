@@ -79,6 +79,14 @@ struct DNSEntry {
    }
 };
 
+enum class SHS : uint8_t {
+   NIL = 0,
+   READ,
+   WRITE
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(SHS)
+
 #ifdef __linux__
 typedef int SOCKET_HANDLE;
 #elif _WIN32
@@ -295,14 +303,6 @@ class extNetLookup : public objNetLookup {
 };
 
 //********************************************************************************************************************
-
-enum class SHS : uint8_t {
-   NIL = 0,
-   HANDSHAKE_READ,
-   HANDSHAKE_WRITE
-};
-
-DEFINE_ENUM_FLAG_OPERATORS(SHS)
 
 #ifdef _WIN32
    #include "win32/winsockwrappers.h"
