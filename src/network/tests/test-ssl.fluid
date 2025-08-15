@@ -573,9 +573,5 @@ end
       init = function()
          glSSLSupported = false
          checkSSLSupport()
-      end,
-      cleanup = function()
-         glSSLSupported = false
-         glSSLTestData = nil
       end
    }

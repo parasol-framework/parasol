@@ -1,6 +1,7 @@
 
 static SSL_CTX *glClientSSL = nullptr; // Thread-safe unless you call a SET function
 static SSL_CTX *glServerSSL = nullptr;
+static SSL_CTX *glClientSSLNV = nullptr; // No-verify version
 
 //********************************************************************************************************************
 
@@ -106,146 +107,142 @@ static ERR sslSetup(extNetSocket *Self)
    bool setup_success = false;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      if (!glServerSSL) {
-         if ((glServerSSL = SSL_CTX_new(TLS_server_method()))) {         
-            // Generate a simple self-signed certificate using modern OpenSSL APIs
-            EVP_PKEY *pkey = nullptr;
-            X509 *cert = nullptr;
+      if (glServerSSL) return ERR::Okay;
+
+      if ((glServerSSL = SSL_CTX_new(TLS_server_method()))) {         
+         // Generate a simple self-signed certificate using modern OpenSSL APIs
+         EVP_PKEY *pkey = nullptr;
+         X509 *cert = nullptr;
+      
+         // Generate key pair using EVP interface
          
-            // Generate key pair using EVP interface
-            
-            if (EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr); ctx) {
-               if (EVP_PKEY_keygen_init(ctx) > 0) {
-                  if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) > 0) {
-                     if (EVP_PKEY_keygen(ctx, &pkey) > 0) {
-                        // Create certificate
-                        if ((cert = X509_new())) {
-                           X509_set_version(cert, 2);
-                           ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
-                           X509_gmtime_adj(X509_get_notBefore(cert), 0);
-                           X509_gmtime_adj(X509_get_notAfter(cert), 365 * 24 * 3600);
-                           X509_set_pubkey(cert, pkey);
-                        
-                           auto name = X509_get_subject_name(cert);
-                           X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char*)"localhost", -1, -1, 0);
-                           X509_set_issuer_name(cert, name);
-                        
-                           if (X509_sign(cert, pkey, EVP_sha256()) > 0) {
-                              if (SSL_CTX_use_certificate(glServerSSL, cert) and SSL_CTX_use_PrivateKey(glServerSSL, pkey)) {
-                                 setup_success = true;
-                              } 
-                              else log.warning("Failed to set SSL server certificate and key.");
+         if (EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr); ctx) {
+            if (EVP_PKEY_keygen_init(ctx) > 0) {
+               if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) > 0) {
+                  if (EVP_PKEY_keygen(ctx, &pkey) > 0) {
+                     // Create certificate
+                     if ((cert = X509_new())) {
+                        X509_set_version(cert, 2);
+                        ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
+                        X509_gmtime_adj(X509_get_notBefore(cert), 0);
+                        X509_gmtime_adj(X509_get_notAfter(cert), 365 * 24 * 3600);
+                        X509_set_pubkey(cert, pkey);
+                     
+                        auto name = X509_get_subject_name(cert);
+                        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char*)"localhost", -1, -1, 0);
+                        X509_set_issuer_name(cert, name);
+                     
+                        if (X509_sign(cert, pkey, EVP_sha256()) > 0) {
+                           if (SSL_CTX_use_certificate(glServerSSL, cert) and SSL_CTX_use_PrivateKey(glServerSSL, pkey)) {
+                              setup_success = true;
                            } 
-                           else log.warning("Failed to sign SSL certificate.");
-                        }
+                           else log.warning("Failed to set SSL server certificate and key.");
+                        } 
+                        else log.warning("Failed to sign SSL certificate.");
                      }
                   }
                }
-               EVP_PKEY_CTX_free(ctx);
             }
-         
-            if (pkey) EVP_PKEY_free(pkey);
-            if (cert) X509_free(cert);
-         
-            if (!setup_success) {
-               log.warning("SSL server certificate setup failed, trying with no certificate verification.");
-               // For testing, allow servers without proper certificates
-               SSL_CTX_set_verify(glServerSSL, SSL_VERIFY_NONE, nullptr);
-               setup_success = true;
-            }
+            EVP_PKEY_CTX_free(ctx);
          }
-         else return log.warning(ERR::SystemCall);
+      
+         if (pkey) EVP_PKEY_free(pkey);
+         if (cert) X509_free(cert);
+      
+         if (!setup_success) {
+            log.warning("SSL server certificate setup failed, trying with no certificate verification.");
+            // For testing, allow servers without proper certificates
+            SSL_CTX_set_verify(glServerSSL, SSL_VERIFY_NONE, nullptr);
+         }
+         return ERR::Okay;
       }
+      else return log.warning(ERR::SystemCall);
    }
-   else {
-      if (!glClientSSL) {
-         if ((glClientSSL = SSL_CTX_new(TLS_client_method()))) {
-            if (GetResource(RES::LOG_LEVEL) > 7) {
-               SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
-            }
 
-            if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
-               // Disable certificate verification for client sockets
-               log.msg("SSL certificate verification disabled.");
-               SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_NONE, nullptr);
+   // Client mode - no CA verification
+
+   if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
+      if (!glClientSSLNV) {
+         if ((glClientSSLNV = SSL_CTX_new(TLS_client_method()))) {
+            if (GetResource(RES::LOG_LEVEL) > 7) SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
+            // Disable certificate verification for client sockets
+            SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_NONE, nullptr);
+      
+            // Additional settings to ensure verification is completely disabled
+            SSL_CTX_set_verify_depth(glClientSSL, 0);
+            SSL_CTX_set_options(glClientSSL, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);         
+         }
+      }
+      else return log.warning(ERR::SystemCall);
+
+      if ((Self->SSLHandle = SSL_new(glClientSSLNV))) {
+         if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
+         return ERR::Okay;
+      }
+      else return log.warning(ERR::SystemCall);
+   }
+
+   // Client mode - full verification
+
+   if (!glClientSSL) {
+      if ((glClientSSL = SSL_CTX_new(TLS_client_method()))) {
+         if (GetResource(RES::LOG_LEVEL) > 7) SSL_CTX_set_info_callback(glClientSSL, &sslCtxMsgCallback);
+
+         // Try system certificates first (most up-to-date), then bundled certificates as fallback
+         bool cert_loaded = false;
+         if (SSL_CTX_set_default_verify_paths(glClientSSL)) cert_loaded = true;
+         else {
+            auto ssl_error = ERR_get_error();
+            log.warning("Failed to load system certificate paths - SSL Error: %s", ERR_error_string(ssl_error, nullptr));
+         }
          
-               // Additional settings to ensure verification is completely disabled
-               SSL_CTX_set_verify_depth(glClientSSL, 0);
-               SSL_CTX_set_options(glClientSSL, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
-         
-               setup_success = true;
-            }
-            else {
-               // Try system certificates first (most up-to-date), then bundled certificates as fallback
-               bool cert_loaded = false;
-               if (SSL_CTX_set_default_verify_paths(glClientSSL)) {
+         // If system certificates failed, try bundled certificate as fallback
+
+         std::string path;
+         if (!cert_loaded) {
+            if (ResolvePath("config:ssl/ca-bundle.crt", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
+               if (SSL_CTX_load_verify_locations(glClientSSL, path.c_str(), nullptr)) {
                   cert_loaded = true;
                }
                else {
                   auto ssl_error = ERR_get_error();
-                  log.warning("Failed to load system certificate paths - SSL Error: %s", ERR_error_string(ssl_error, nullptr));
-               }
-         
-               // If system certificates failed, try bundled certificate bundle as fallback
-
-               std::string path;
-               if (!cert_loaded) {
-                  if (ResolvePath("config:ssl/ca-bundle.crt", RSF::NO_FILE_CHECK, &path) IS ERR::Okay) {
-                     log.msg("Attempting to load SSL certificate bundle: %s", path.c_str());
-                     if (SSL_CTX_load_verify_locations(glClientSSL, path.c_str(), nullptr)) {
-                        cert_loaded = true;
-                     }
-                     else {
-                        auto ssl_error = ERR_get_error();
-                        log.warning("Failed to load certificates: %s - SSL Error: %s", path.c_str(), ERR_error_string(ssl_error, nullptr));
-                     }
-                  }
-                  else log.warning(ERR::ResolvePath);
-               }
-         
-               if (cert_loaded) {
-                  // Set up certificate verification with detailed callback
-                  SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_PEER, nullptr);
-            
-                  // Configure additional SSL context options for better compatibility
-                  SSL_CTX_set_verify_depth(glClientSSL, 10);  // Allow longer certificate chains
-            
-                  // Set security level to 1 for broader compatibility (default might be too strict)
-                  SSL_CTX_set_security_level(glClientSSL, 1);
-            
-                  // Enable certificate chain checking
-                  SSL_CTX_set_mode(glClientSSL, SSL_MODE_AUTO_RETRY);
-            
-                  // Set certificate verification flags for better compatibility
-                  X509_VERIFY_PARAM *param = SSL_CTX_get0_param(glClientSSL);
-                  if (param) X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
-               }
-               else {
-                  log.warning("No SSL certificates could be loaded, disabling verification.");
-                  SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_NONE, nullptr);
-               }
-            
-               setup_success = true;
-            }
-
-            if (setup_success) {
-               if ((Self->SSLHandle = SSL_new(glClientSSL))) {
-                  if (GetResource(RES::LOG_LEVEL) > 7) {
-                     SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
-                  }
-                  return ERR::Okay;
-               }
-               else { 
-                  log.warning("Failed to initialise new SSL object."); 
-                  error = ERR::SystemCall; 
+                  log.warning("Failed to load certificates: %s - SSL Error: %s", path.c_str(), ERR_error_string(ssl_error, nullptr));
                }
             }
-
+            else log.warning(ERR::ResolvePath);
+         }
+         
+         if (cert_loaded) {
+            // Set up certificate verification with detailed callback
+            SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_PEER, nullptr);
+            
+            // Configure additional SSL context options for better compatibility
+            SSL_CTX_set_verify_depth(glClientSSL, 10);  // Allow longer certificate chains
+            
+            // Set security level to 1 for broader compatibility (default might be too strict)
+            SSL_CTX_set_security_level(glClientSSL, 1);
+            
+            // Enable certificate chain checking
+            SSL_CTX_set_mode(glClientSSL, SSL_MODE_AUTO_RETRY);
+            
+            // Set certificate verification flags for better compatibility
+            X509_VERIFY_PARAM *param = SSL_CTX_get0_param(glClientSSL);
+            if (param) X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
+         }
+         else {           
             SSL_CTX_free(glClientSSL);
             glClientSSL = nullptr;
+            return ERR::Failed;
          }
-         else return log.warning(ERR::SystemCall);
       }
+   }
+
+   if (glClientSSL) {
+      if ((Self->SSLHandle = SSL_new(glClientSSL))) {
+         if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
+         return ERR::Okay;
+      }
+      else log.warning(ERR::SystemCall); 
    }
 
    return error;

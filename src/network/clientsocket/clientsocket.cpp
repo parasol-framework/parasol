@@ -165,7 +165,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
    auto Server = (extNetSocket *)(client->Client->Owner);
 
    if (client->Handle IS NOHANDLE) {
-      log.warning("Invalid state - socket closed but receiving data.");
+      log.warning(ERR::InvalidState); // Socket closed but receiving data.
       return;
    }
 
@@ -278,11 +278,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
    while (!ClientSocket->WriteQueue.Buffer.empty()) {
       size_t len = ClientSocket->WriteQueue.Buffer.size() - ClientSocket->WriteQueue.Index;
       #ifndef DISABLE_SSL
-         #ifdef _WIN32
-            if ((!ClientSocket->SSLHandle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-         #else
-            if ((!ClientSocket->SSLHandle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
-         #endif
+         if ((!ClientSocket->SSLHandle) and (len > glMaxWriteLen)) len = glMaxWriteLen;
       #else
          if (len > glMaxWriteLen) len = glMaxWriteLen;
       #endif
@@ -369,7 +365,7 @@ static void disconnect(extClientSocket *Self)
          else if (owner->Feedback.isScript()) {
             sc::Call(owner->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    owner, FD_OBJECTPTR },
-               { "ClientSocket", APTR(Self), FD_OBJECTPTR },
+               { "ClientSocket", Self, FD_OBJECTPTR },
                { "State",        int(NTC::DISCONNECTED) }
             }));
          }
@@ -461,7 +457,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
 
                auto result = SSL_accept(client_ssl);
                if (result == 1) {
-                  log.msg("SSL handshake successful.");
+                  log.trace("SSL handshake successful.");
                   Self->setState(NTC::CONNECTED);
                }
                else {
@@ -629,23 +625,19 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
       if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
 
       #ifndef DISABLE_SSL
-      if ((Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
+      if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
          // SSL connection has just been established
 
          bool ssl_valid = true;
 
          #ifdef _WIN32
-         if ((Self->SSLHandle) and ((Socket->Flags & NSF::SERVER) IS NSF::NIL)) {
             if ((Socket->Flags & NSF::SSL_NO_VERIFY) IS NSF::NIL) {
                if (ssl_wrapper_get_verify_result(Self->SSLHandle) != 0) ssl_valid = false;
                else log.trace("SSL certificate validation successful.");
             }
-         }
          #else
-         if ((Self->SSLHandle) and ((Socket->Flags & NSF::SSL_NO_VERIFY) IS NSF::NIL)) {
             if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
             else log.trace("SSL certificate validation successful.");
-         }
          #endif
          
          if (!ssl_valid) {
@@ -660,7 +652,7 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
                else if (Socket->Feedback.isScript()) {
                   sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
                      { "NetSocket", Socket, FD_OBJECTPTR },
-                     { "ClientSocket", OBJECTPTR(Self), FD_OBJECTPTR },
+                     { "ClientSocket", Self, FD_OBJECTPTR },
                      { "State", int(NTC::DISCONNECTED) }
                   }));
                }
@@ -681,7 +673,7 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
          else if (Socket->Feedback.isScript()) {
             sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
                { "NetSocket",    Socket, FD_OBJECTPTR },
-               { "ClientSocket", OBJECTPTR(Self), FD_OBJECTPTR },
+               { "ClientSocket", Self, FD_OBJECTPTR },
                { "State",        int(Self->State) }
             }));
          }

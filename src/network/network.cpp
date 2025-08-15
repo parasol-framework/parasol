@@ -506,8 +506,9 @@ static ERR MODExpunge(void)
     ssl_wrapper_cleanup();
   #else
     if (ssl_init) {
-       if (glClientSSL) { SSL_CTX_free(glClientSSL); glClientSSL = nullptr; }
-       if (glServerSSL) { SSL_CTX_free(glServerSSL); glServerSSL = nullptr; }
+       if (glClientSSL)   { SSL_CTX_free(glClientSSL);   glClientSSL = nullptr; }
+       if (glClientSSLNV) { SSL_CTX_free(glClientSSLNV); glClientSSLNV = nullptr; }
+       if (glServerSSL)   { SSL_CTX_free(glServerSSL);   glServerSSL = nullptr; }
        ERR_free_strings();
        EVP_cleanup();
        CRYPTO_cleanup_all_ex_data();
