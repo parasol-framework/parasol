@@ -26,6 +26,7 @@ struct IPAddress {
 #include <unordered_map>
 #include <cstdio>
 #include <mutex>
+#include <optional>
 
 using namespace std;
 
@@ -216,18 +217,22 @@ void win_net_processing(int Status, void *Args)
 
 //********************************************************************************************************************
 // Sets the read/write state for a socket.
-// Set Read/Write value to -1 if state should be unchanged
+// Use std::nullopt if state should be unchanged
 
-ERR win_socketstate(WSW_SOCKET Socket, char Read, char Write)
+ERR win_socketstate(WSW_SOCKET Socket, std::optional<bool> Read, std::optional<bool> Write)
 {
    const lock_guard<recursive_mutex> lock(csNetLookup);
    socket_info &sock = glNetLookup[Socket];
 
-   if (Read IS 0) sock.Flags &= ~FD_READ;
-   else if (Read IS 1) sock.Flags |= FD_READ;
+   if (Read.has_value()) {
+      if (Read.value() IS false) sock.Flags &= ~FD_READ;
+      else if (Read.value() IS true) sock.Flags |= FD_READ;
+   }
 
-   if (Write IS 0) sock.Flags &= ~FD_WRITE;
-   else if (Write IS 1) sock.Flags |= FD_WRITE;
+   if (Write.has_value()) {
+      if (Write.value() IS false) sock.Flags &= ~FD_WRITE;
+      else if (Write.value() IS true) sock.Flags |= FD_WRITE;
+   }
 
    if (!glSocketsDisabled) {
       auto winerror = WSAAsyncSelect(Socket, glNetWindow, WM_NETWORK, sock.Flags);

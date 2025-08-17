@@ -1,7 +1,8 @@
 --[[
 SSL Communication Test
 
-This test verifies SSL-enabled network communications using the NSF::SSL flag.
+This test suite verifies SSL-enabled network communications using the NSF_SSL flag.
+
 Tests include:
 - SSL server socket creation and certificate handling
 - SSL client connection establishment and handshake
@@ -106,7 +107,7 @@ function testBasicSSLCommunication()
          local err, read_len = Client.acRead(buffer)
 
          if (err == ERR_Okay) then
-            if read_len == 0 then 
+            if read_len == 0 then
                msg('Received incoming data notification with no data to read.')
             --   raise(ERR_Terminate)
             end
@@ -155,7 +156,7 @@ function testBasicSSLCommunication()
          local err, read_len = Socket.acRead(buffer)
 
          if (err == ERR_Okay) then
-            if read_len == 0 then 
+            if read_len == 0 then
                print('Received incoming data notification with no data to read.')
                raise(ERR_Terminate)
             end
@@ -324,7 +325,7 @@ end
 function testSSLDataIntegrity()
    if (not glSSLSupported) then return end
 
-   local proc = processing.new({ timeout = 10.0 })
+   local proc = processing.new({ timeout = 3.0 })
    local test_messages = {
       'Binary data: ' .. string.char(0, 1, 2, 3, 255, 254, 253),
       string.rep('Large SSL message ', 500), -- ~9KB message
@@ -417,7 +418,7 @@ end
 function testHTTPSConnection()
    if (not glSSLSupported) then return end
 
-   local proc = processing.new({ timeout = 15.0 })
+   local proc = processing.new({ timeout = 5.0 })
    local connection_established = false
    local data_received = false
    local page_content = ""
@@ -474,7 +475,7 @@ function testHTTPSConnection()
          local err, read_len = Socket.acRead(buffer)
 
          if (err == ERR_Okay) then
-            if read_len == 0 then 
+            if read_len == 0 then
                print('Received incoming data notification with no data to read.')
                raise(ERR_Terminate)
             end

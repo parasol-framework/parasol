@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 typedef unsigned int WSW_SOCKET; // type of socket handle for these wrapper procedures.  Same type as the windows SOCKET
 struct sockaddr;
 struct hostent;
@@ -18,7 +20,7 @@ int win_getsockname(WSW_SOCKET, struct sockaddr *, int *);
 unsigned long win_inet_addr(const char *);
 char *win_inet_ntoa(unsigned long);//struct in_addr);
 ERR win_listen(WSW_SOCKET, int);
-ERR win_socketstate(WSW_SOCKET, char, char);
+ERR win_socketstate(WSW_SOCKET, std::optional<bool>, std::optional<bool>);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */

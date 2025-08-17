@@ -18,35 +18,138 @@ Pure Windows implementation that avoids all Parasol headers to prevent conflicts
 #include <sspi.h>
 #include <security.h>
 #include <wincrypt.h>
+#include <prsht.h>
+#include <cryptuiapi.h>
 #include <cstring>
 #include <vector>
 #include <string>
 #include <sstream>
 #include <array>
 #include <algorithm>
+#include <span>
 
 #include "ssl_wrapper.h"
+
+static void ssl_debug_log(int level, const char* format, ...);
+
+// Define provider names if not available
+#ifndef MS_ENH_RSA_AES_PROV
+#define MS_ENH_RSA_AES_PROV "Microsoft Enhanced RSA and AES Cryptographic Provider"
+#endif
 
 // Buffer size for SSL operations - optimized for SSL record sizes
 constexpr size_t SSL_IO_BUFFER_SIZE = 0x8000;  // 32KB - 2x max SSL record size (16KB)
 constexpr size_t SSL_INITIAL_BUFFER_SIZE = 0x4000;  // 16KB initial size
 constexpr size_t SSL_MAX_RECORD_SIZE = 0x4000;  // 16KB max SSL record size
+constexpr size_t SSL_RECORD_HEADER_SIZE = 5;  // SSL record header size
+constexpr size_t MIN_SSL_RECORD_SIZE = 32;  // Conservative minimum for a valid SSL record
+constexpr int MAX_INVALID_TOKEN_RETRIES = 3;  // Maximum retries for invalid token errors
 
-// Internal SSL context structure
+// Modern buffer management class for SSL operations
+class SSLBuffer {
+private:
+   std::vector<unsigned char> data_;
+   size_t used_ = 0;
+   
+public:
+   explicit SSLBuffer(size_t initial_size = SSL_INITIAL_BUFFER_SIZE) 
+      : data_(initial_size) {}
+   
+   // Get available space for writing
+   std::span<unsigned char> available_space() {
+      return std::span<unsigned char>(data_.data() + used_, data_.size() - used_);
+   }
+   
+   // Get used data for reading
+   std::span<const unsigned char> used_data() const {
+      return std::span<const unsigned char>(data_.data(), used_);
+   }
+   
+   // Get mutable view of used data
+   std::span<unsigned char> used_data_mutable() {
+      return std::span<unsigned char>(data_.data(), used_);
+   }
+   
+   // Advance the used counter after writing data
+   void advance_used(size_t bytes) {
+      if (used_ + bytes <= data_.size()) used_ += bytes;
+   }
+   
+   // Ensure buffer has at least min_size capacity
+   void ensure_capacity(size_t min_size) {
+      if (data_.size() < min_size) {
+         data_.resize(std::min(min_size, SSL_IO_BUFFER_SIZE));
+      }
+   }
+   
+   void reset() { used_ = 0; }
+   
+   void clear() {
+      used_ = 0;
+      data_.clear();
+      data_.resize(SSL_INITIAL_BUFFER_SIZE);
+   }
+   
+   bool append(std::span<const unsigned char> data) {
+      size_t total_needed = used_ + data.size();
+      if (total_needed > SSL_IO_BUFFER_SIZE) return false; // Would exceed maximum buffer size     
+      if (data_.size() < total_needed) data_.resize(total_needed);    
+      std::memcpy(data_.data() + used_, data.data(), data.size());
+      used_ += data.size();
+      return true;
+   }
+   
+   // Remove bytes from beginning of buffer
+   void consume_front(size_t bytes) {
+      if (bytes >= used_) reset();
+      else {
+         std::memmove(data_.data(), data_.data() + bytes, used_ - bytes);
+         used_ -= bytes;
+      }
+   }
+   
+   // Move remaining data to front and update used count
+   void compact(size_t bytes_consumed) {
+      if (bytes_consumed >= used_) reset();
+      else {
+         size_t remaining = used_ - bytes_consumed;
+         std::memmove(data_.data(), data_.data() + bytes_consumed, remaining);
+         used_ = remaining;
+      }
+   }
+   
+   unsigned char * data() { return data_.data(); }
+   const unsigned char * data() const { return data_.data(); }
+   size_t size() const { return used_; }
+   size_t capacity() const { return data_.size(); }
+   bool empty() const { return used_ == 0; }
+   size_t available() const { return data_.size() - used_; }
+   
+   void reserve(size_t new_cap) {
+      if (new_cap <= SSL_IO_BUFFER_SIZE and new_cap > data_.size()) {
+         data_.reserve(new_cap);
+      }
+   }
+   
+   void resize(size_t new_size) {
+      if (new_size <= SSL_IO_BUFFER_SIZE) {
+         data_.resize(new_size);
+         if (used_ > new_size) used_ = new_size;
+      }
+   }
+};
+
 struct ssl_context {
    CredHandle credentials;
    CtxtHandle context;
    SecPkgContext_StreamSizes stream_sizes;
    SOCKET socket_handle;
-   std::vector<unsigned char> io_buffer;
-   std::vector<unsigned char> recv_buffer;     // Persistent buffer for incomplete SSL messages
-   size_t recv_buffer_used;                    // Bytes currently in recv_buffer
-   std::vector<unsigned char> send_buffer;     // Buffer for SSL encryption
-   std::vector<unsigned char> decrypted_buffer; // Buffer for leftover decrypted data
-   size_t decrypted_buffer_used;               // Bytes of decrypted data available
+   SSLBuffer io_buffer;
+   SSLBuffer recv_buffer;                      // Persistent buffer for incomplete SSL messages
+   SSLBuffer send_buffer;                      // Buffer for SSL encryption
+   SSLBuffer decrypted_buffer;                 // Buffer for leftover decrypted data
    size_t decrypted_buffer_offset;             // Bytes already returned to user
    bool error_description_dirty;               // True if error description needs regeneration
-   SSL_ERROR_CODE last_error;
    SECURITY_STATUS last_security_status;
    DWORD last_win32_error;
    std::string error_description;
@@ -57,56 +160,55 @@ struct ssl_context {
    bool is_server_mode;                        // True for server-side SSL, false for client-side
    PCCERT_CONTEXT server_certificate;          // Server certificate for server-side SSL
 
-   ssl_context() {
-      socket_handle            = INVALID_SOCKET;
-      last_error               = SSL_OK;
-      last_security_status     = SEC_E_OK;
-      last_win32_error         = 0;
-      error_description        = "No error";
-      validate_credentials     = true;
-      credentials_acquired     = false;
-      context_initialised      = false;
-      recv_buffer_used         = 0;
-      decrypted_buffer_used    = 0;
-      decrypted_buffer_offset  = 0;
-      error_description_dirty  = false;
-      is_server_mode           = false;
-      server_certificate       = nullptr;
+   ssl_context() 
+      : socket_handle(INVALID_SOCKET)
+      , io_buffer(SSL_INITIAL_BUFFER_SIZE)
+      , recv_buffer(SSL_INITIAL_BUFFER_SIZE)
+      , send_buffer(SSL_INITIAL_BUFFER_SIZE)
+      , decrypted_buffer(SSL_MAX_RECORD_SIZE)
+      , decrypted_buffer_offset(0)
+      , error_description_dirty(false)
+      , last_security_status(SEC_E_OK)
+      , last_win32_error(0)
+      , error_description("No error")
+      , validate_credentials(true)
+      , credentials_acquired(false)
+      , context_initialised(false)
+      , is_server_mode(false)
+      , server_certificate(nullptr)
+   {
       // Pre-allocate buffers with optimized sizes
       io_buffer.reserve(SSL_IO_BUFFER_SIZE);
       recv_buffer.reserve(SSL_IO_BUFFER_SIZE);
       send_buffer.reserve(SSL_IO_BUFFER_SIZE);
       decrypted_buffer.reserve(SSL_MAX_RECORD_SIZE);
-      io_buffer.resize(SSL_INITIAL_BUFFER_SIZE);
-      recv_buffer.resize(SSL_INITIAL_BUFFER_SIZE);
-      send_buffer.resize(SSL_INITIAL_BUFFER_SIZE);
    }
 
    ~ssl_context() {
       if (context_initialised) DeleteSecurityContext(&context);
       if (credentials_acquired) FreeCredentialsHandle(&credentials);
+      if (server_certificate) CertFreeCertificateContext(server_certificate);
    }
 
    SSL_ERROR_CODE process_recv_error(int Result, std::string Process)
    {
       if (!Result) {
-         last_error = SSL_ERROR_DISCONNECTED;
          error_description = "Connection closed by server during " + Process;
+         return SSL_ERROR_DISCONNECTED;
       }
       else if (Result == -1) {
          last_win32_error = WSAGetLastError();
          if (last_win32_error == WSAEWOULDBLOCK) {
-            last_error = SSL_ERROR_WOULD_BLOCK;
             error_description = "Socket would block during " + Process + " and is in non-blocking mode.";
+            return SSL_ERROR_WOULD_BLOCK;
          }
          else {
-            last_error = SSL_ERROR_FAILED;
             error_description = "Failed to receive response during " + Process + ": " + std::to_string(last_win32_error);
+            return SSL_ERROR_FAILED;
          }
       }
-      else last_error = SSL_OK;
 
-      return last_error;
+      return SSL_OK;
    }
 };
 
@@ -114,8 +216,12 @@ struct ssl_context {
 
 static bool glSSLInitialised = false;
 //static HCERTSTORE g_cert_store = nullptr;
+static SSL_DEBUG_CALLBACK g_debug_callback = nullptr;
 
-static PCCERT_CONTEXT create_self_signed_certificate();
+static PCCERT_CONTEXT load_pem_certificate(const std::string &);
+static PCCERT_CONTEXT load_pkcs12_certificate(const std::string &);
+
+#include "ssl_certs.cpp"
 
 //********************************************************************************************************************
 // Helper function to convert SECURITY_STATUS to description
@@ -157,6 +263,8 @@ static const char* get_status_description(SECURITY_STATUS status)
       case SEC_E_SECURITY_QOS_FAILED: return "Security QOS failed";
       case SEC_E_UNFINISHED_CONTEXT_DELETED: return "Unfinished context deleted";
       case SEC_E_INVALID_PARAMETER: return "Invalid parameter";
+      case SECURITY_STATUS(0x90321): return "Wrong credential handle";
+      case SECURITY_STATUS(0x80090317): return "No context available";
       case SEC_I_CONTINUE_NEEDED: return "Continue needed";
       case SEC_I_COMPLETE_NEEDED: return "Complete needed";
       case SEC_I_COMPLETE_AND_CONTINUE: return "Complete and continue";
@@ -193,9 +301,89 @@ static void generate_error_description(ssl_context* Ctx)
 }
 
 //********************************************************************************************************************
+// SSL Debug logging function
+
+static void ssl_debug_log(int level, const char* format, ...)
+{
+   if (!g_debug_callback) return;
+   
+   char buffer[1024];
+   va_list args;
+   va_start(args, format);
+   vsnprintf(buffer, sizeof(buffer), format, args);
+   va_end(args);
+   
+   g_debug_callback(buffer, level);
+}
+
+//********************************************************************************************************************
+// Debug handshake state using QueryContextAttributes
+
+static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
+{
+   if (!g_debug_callback or !SSL->context_initialised) return;
+   
+   ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Context initialized, querying attributes...", operation);
+   
+   // Query connection info
+   SecPkgContext_ConnectionInfo conn_info;
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CONNECTION_INFO, &conn_info) == SEC_E_OK) {
+      ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Protocol: 0x%X, Cipher: 0x%X, Hash: 0x%X, KeyExch: 0x%X", 
+                   operation, conn_info.dwProtocol, conn_info.aiCipher, conn_info.aiHash, conn_info.aiExch);
+   }
+   else ssl_debug_log(SSL_DEBUG_WARNING, "SSL Debug [%s] - Failed to query connection info", operation);
+   
+   // Query cipher info (Windows 10+)
+   SecPkgContext_CipherInfo cipher_info;
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CIPHER_INFO, &cipher_info) == SEC_E_OK) {
+      ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Cipher Suite: %S", operation, cipher_info.szCipherSuite);
+   }
+   
+   // Query key info
+   SecPkgContext_KeyInfo key_info;
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_KEY_INFO, &key_info) == SEC_E_OK) {
+      ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Signature: %S, Encryption: %S", 
+                   operation, key_info.sSignatureAlgorithmName, key_info.sEncryptAlgorithmName);
+   }
+}
+
+//********************************************************************************************************************
+// Enhanced security status debugging
+
+static void debug_security_status(SECURITY_STATUS status, const char* operation)
+{
+   if (!g_debug_callback) return;
+   
+   ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug - %s: Status=0x%08X (%s), Win32=%d", 
+                operation, status, get_status_description(status), GetLastError());
+   
+   // Additional detailed error info
+   switch (status) {
+      case SEC_E_CERT_UNKNOWN:
+         ssl_debug_log(SSL_DEBUG_WARNING, "  Certificate issue detected - server may not have valid certificate");
+         break;
+      case SEC_E_INVALID_TOKEN:
+         ssl_debug_log(SSL_DEBUG_WARNING, "  Invalid handshake token - possible protocol mismatch or malformed data");
+         break;
+      case SEC_E_INCOMPLETE_MESSAGE:
+         ssl_debug_log(SSL_DEBUG_TRACE, "  Incomplete SSL message - need more handshake data");
+         break;
+      case SEC_I_CONTINUE_NEEDED:
+         ssl_debug_log(SSL_DEBUG_TRACE, "  SSL handshake continuing - more exchanges needed");
+         break;
+      case SEC_E_UNTRUSTED_ROOT:
+         ssl_debug_log(SSL_DEBUG_WARNING, "  Untrusted root certificate - self-signed or unknown CA");
+         break;
+      case SEC_E_NO_CREDENTIALS:
+         ssl_debug_log(SSL_DEBUG_ERROR, "  No credentials available for SSL context");
+         break;
+   }
+}
+
+//********************************************************************************************************************
 // Called on module expunge
 
-void ssl_wrapper_cleanup(void)
+void ssl_cleanup(void)
 {
    if (!glSSLInitialised) return;
 
@@ -207,7 +395,7 @@ void ssl_wrapper_cleanup(void)
 //********************************************************************************************************************
 // Create SSL context
 
-SSL_HANDLE ssl_wrapper_create_context(bool ValidateCredentials, bool ServerMode)
+SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredentials, bool ServerMode)
 {
    if (!glSSLInitialised) {
       // The certificate store would be needed if you want to:
@@ -229,862 +417,107 @@ SSL_HANDLE ssl_wrapper_create_context(bool ValidateCredentials, bool ServerMode)
       ctx->is_server_mode = true;
       ctx->validate_credentials = ValidateCredentials;
 
-      // Try to get a server certificate for localhost testing
-      ctx->server_certificate = create_self_signed_certificate();
+      // Try to get a server certificate for localhost testing (Windows does not have reliable support for self-signed certs)
+      // You can use mkcert to generate a local certificate for testing.
+      // First try to load mkcert-generated PKCS#12 certificate (includes private key)
+
+      ctx->server_certificate = load_pkcs12_certificate(CertPath + "localhost.p12");
+      
+      if (ctx->server_certificate) {
+         ssl_debug_log(SSL_DEBUG_INFO, "Loaded mkcert PKCS#12 certificate for localhost");
+      }
+      else {
+         ssl_debug_log(SSL_DEBUG_INFO, "mkcert PKCS#12 not found, trying PEM certificate");
+         ctx->server_certificate = load_pem_certificate(CertPath + "localhost.pem");
+         
+         if (ctx->server_certificate) {
+            ssl_debug_log(SSL_DEBUG_INFO, "Loaded mkcert PEM certificate for localhost");
+         }
+         else {
+            ssl_debug_log(SSL_DEBUG_WARNING, "Failed to find server certificate for localhost");
+            delete ctx;
+            return nullptr; // No valid server certificate found
+         }
+      }
    }
 
    return ctx;
 }
 
 //********************************************************************************************************************
-// Free SSL context
 
-void ssl_wrapper_free_context(SSL_HANDLE SSL)
+void ssl_free_context(SSL_HANDLE SSL)
 {
-   if (!SSL) return;
-
-   // Clean up server certificate if it exists
-   if (SSL->server_certificate) {
-      CertFreeCertificateContext(SSL->server_certificate);
-   }
-
-   delete SSL;
+   delete SSL; // Destructor handles all cleanup
 }
 
 //********************************************************************************************************************
-// Perform SSL connect and handshake
 
-SSL_ERROR_CODE ssl_wrapper_connect(SSL_HANDLE SSL, void *SocketHandle, const std::string &HostName)
+void ssl_get_error(SSL_HANDLE SSL, const char **Message)
 {
-   if ((!SSL) or ((SOCKET)SocketHandle == INVALID_SOCKET)) return SSL_ERROR_ARGS;
-
-   SSL->socket_handle = (SOCKET)SocketHandle;
-   SSL->hostname = HostName;
-
-   if (SSL->context_initialised) return SSL_ERROR_CONNECTING; // Already in handshake process
-
-   // Acquire credentials
-   SCHANNEL_CRED cred_data{};
-   cred_data.dwVersion = SCHANNEL_CRED_VERSION;
-
-   if (SSL->validate_credentials) {
-      cred_data.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION;
-   }
-   else cred_data.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION;
-
-   cred_data.grbitEnabledProtocols = 0; // Use system defaults
-
-   TimeStamp expiry;
-   auto status = AcquireCredentialsHandle(
-      nullptr, const_cast<char*>(UNISP_NAME), SECPKG_CRED_OUTBOUND,
-      nullptr, &cred_data, nullptr, nullptr,
-      &SSL->credentials, &expiry);
-
-   if (status != SEC_E_OK) {
-      set_error_status(SSL, status, "AcquireCredentialsHandle");
-      SSL->last_error = SSL_ERROR_FAILED;
-      return SSL_ERROR_FAILED;
-   }
-
-   SSL->credentials_acquired = true;
-
-   DWORD flags = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY |
-                 ISC_REQ_EXTENDED_ERROR | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
-
-   SecBuffer out_buffer;
-   out_buffer.pvBuffer = nullptr;
-   out_buffer.BufferType = SECBUFFER_TOKEN;
-   out_buffer.cbBuffer = 0;
-
-   SecBufferDesc out_buffer_desc;
-   out_buffer_desc.cBuffers = 1;
-   out_buffer_desc.pBuffers = &out_buffer;
-   out_buffer_desc.ulVersion = SECBUFFER_VERSION;
-
-   DWORD out_flags;
-   status = InitializeSecurityContext(
-      &SSL->credentials, nullptr, const_cast<char*>(HostName.c_str()), flags,
-      0, SECURITY_NATIVE_DREP, nullptr, 0,
-      &SSL->context, &out_buffer_desc, &out_flags, &expiry);
-
-   if (status != SEC_I_CONTINUE_NEEDED) {
-      set_error_status(SSL, status, "InitializeSecurityContext");
-      SSL->last_error = SSL_ERROR_FAILED;
-      return SSL_ERROR_FAILED;
-   }
-
-   SSL->context_initialised = true;
-
-   // Send initial handshake data
-   if ((out_buffer.cbBuffer > 0) and (out_buffer.pvBuffer != nullptr)) {
-      int sent = send(SSL->socket_handle, (char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
-      FreeContextBuffer(out_buffer.pvBuffer);
-
-      if (sent == SOCKET_ERROR) {
-         int error = WSAGetLastError();
-         SSL->last_win32_error = error;
-         if (error == WSAEWOULDBLOCK) {
-            SSL->error_description = "SSL handshake send would block (WSAEWOULDBLOCK)";
-            SSL->last_error = SSL_ERROR_WOULD_BLOCK;
-            return SSL_ERROR_WOULD_BLOCK;
-         }
-         SSL->error_description = "SSL handshake send failed: %d" + std::to_string(error);
-         SSL->last_error = SSL_ERROR_FAILED;
-         return SSL_ERROR_FAILED;
-      }
-   }
-
-   // For simplicity, return connecting status - full handshake would need more rounds
-   SSL->last_error = SSL_ERROR_CONNECTING;
-   return SSL_ERROR_CONNECTING;
+   if (Message) *Message = ssl_error_description(SSL);
 }
 
 //********************************************************************************************************************
-// Continue SSL handshake with server response.  Ref: sslHandshakeReceived()
 
-SSL_ERROR_CODE ssl_wrapper_continue_handshake(SSL_HANDLE SSL, const void *ServerData, int DataLength)
+uint32_t ssl_last_win32_error(SSL_HANDLE SSL)
 {
-   if ((!SSL) or (!ServerData) or (DataLength <= 0)) return SSL_ERROR_ARGS;
-
-   if (!SSL->context_initialised) return SSL_ERROR_FAILED;
-
-   // Append new handshake data to receive buffer to handle fragmentation
-   size_t total_needed = SSL->recv_buffer_used + DataLength;
-   if (SSL->recv_buffer.size() < total_needed) {
-      if (total_needed > SSL_IO_BUFFER_SIZE) {
-         SSL->error_description = "SSL handshake data exceeds maximum buffer size";
-         SSL->last_error = SSL_ERROR_FAILED;
-         return SSL_ERROR_FAILED;
-      }
-      SSL->recv_buffer.resize(total_needed);
-   }
-
-   // Append new data to existing buffer
-   memcpy(SSL->recv_buffer.data() + SSL->recv_buffer_used, ServerData, DataLength);
-   SSL->recv_buffer_used += DataLength;
-
-   while (SSL->recv_buffer_used > 0) {
-      // Setup input buffers using accumulated handshake data
-      std::array<SecBuffer, 2> in_buffers;
-      in_buffers[0].pvBuffer = SSL->recv_buffer.data();
-      in_buffers[0].cbBuffer = (ULONG)SSL->recv_buffer_used;
-      in_buffers[0].BufferType = SECBUFFER_TOKEN;
-
-      in_buffers[1].pvBuffer = nullptr;
-      in_buffers[1].cbBuffer = 0;
-      in_buffers[1].BufferType = SECBUFFER_EMPTY;
-
-      SecBufferDesc in_buffer_desc;
-      in_buffer_desc.cBuffers = (ULONG)in_buffers.size();
-      in_buffer_desc.pBuffers = in_buffers.data();
-      in_buffer_desc.ulVersion = SECBUFFER_VERSION;
-
-      // Output buffer for next handshake message
-      SecBuffer out_buffer;
-      out_buffer.pvBuffer = nullptr;
-      out_buffer.BufferType = SECBUFFER_TOKEN;
-      out_buffer.cbBuffer = 0;
-
-      SecBufferDesc out_buffer_desc;
-      out_buffer_desc.cBuffers = 1;
-      out_buffer_desc.pBuffers = &out_buffer;
-      out_buffer_desc.ulVersion = SECBUFFER_VERSION;
-
-      DWORD flags = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY |
-                    ISC_REQ_EXTENDED_ERROR | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
-
-      TimeStamp expiry;
-      DWORD out_flags;
-
-      auto status = InitializeSecurityContext(
-         &SSL->credentials, &SSL->context, const_cast<char*>(SSL->hostname.c_str()), flags,
-         0, SECURITY_NATIVE_DREP, &in_buffer_desc, 0,
-         &SSL->context, &out_buffer_desc, &out_flags, &expiry);
-
-      // Check if we consumed some of the input data and handle extra data
-      size_t bytes_consumed = SSL->recv_buffer_used;
-      
-      // Check for extra data in input buffer
-      for (const auto& buf : in_buffers) {
-         if (buf.BufferType == SECBUFFER_EXTRA and buf.cbBuffer > 0) {
-            // There's extra data beyond what was consumed
-            bytes_consumed = SSL->recv_buffer_used - buf.cbBuffer;
-            break;
-         }
-      }
-
-      // Handle different handshake states
-      if (status == SEC_E_OK) {
-         // Handshake completed successfully
-
-         // Send any final handshake data if present
-         if (out_buffer.cbBuffer > 0 and out_buffer.pvBuffer != nullptr) {
-            int sent = send(SSL->socket_handle, (char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
-            FreeContextBuffer(out_buffer.pvBuffer);
-
-            if (sent == SOCKET_ERROR) {
-               int error = WSAGetLastError();
-               SSL->last_win32_error = error;
-               SSL->error_description = "SSL handshake final send failed, WSA error: " + std::to_string(error);
-               SSL->last_error = SSL_ERROR_FAILED;
-               return SSL_ERROR_FAILED;
-            }
-         }
-
-         // Get stream sizes for future read/write operations
-         auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
-         if (stream_status != SEC_E_OK) {
-            SSL->last_security_status = stream_status;
-            SSL->error_description = "Failed to query SSL stream sizes after handshake completion";
-            SSL->last_error = SSL_ERROR_FAILED;
-            return SSL_ERROR_FAILED;
-         }
-
-         // Handle any leftover data in buffer
-         if (bytes_consumed < SSL->recv_buffer_used) {
-            size_t remaining = SSL->recv_buffer_used - bytes_consumed;
-            memmove(SSL->recv_buffer.data(), SSL->recv_buffer.data() + bytes_consumed, remaining);
-            SSL->recv_buffer_used = remaining;
-         }
-         else SSL->recv_buffer_used = 0;
-
-         SSL->error_description = "SSL handshake completed successfully";
-         SSL->last_error = SSL_OK;
-         return SSL_OK;
-      }
-      else if (status == SEC_I_CONTINUE_NEEDED) {
-         // More handshake data needed - consume input and send response
-
-         // Send handshake response if present
-         if ((out_buffer.cbBuffer > 0) and (out_buffer.pvBuffer != nullptr)) {
-            int sent = send(SSL->socket_handle, (char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
-            FreeContextBuffer(out_buffer.pvBuffer);
-
-            if (sent == SOCKET_ERROR) {
-               int error = WSAGetLastError();
-               SSL->last_win32_error = error;
-               if (error == WSAEWOULDBLOCK) {
-                  SSL->error_description = "SSL handshake continue send would block (WSAEWOULDBLOCK)";
-                  SSL->last_error = SSL_ERROR_WOULD_BLOCK;
-                  return SSL_ERROR_WOULD_BLOCK;
-               }
-               SSL->error_description = "SSL handshake continue send failed; WSA error: " + std::to_string(error);
-               SSL->last_error = SSL_ERROR_FAILED;
-               return SSL_ERROR_FAILED;
-            }
-         }
-
-         // Handle consumed data
-         if (bytes_consumed < SSL->recv_buffer_used) {
-            size_t remaining = SSL->recv_buffer_used - bytes_consumed;
-            memmove(SSL->recv_buffer.data(), SSL->recv_buffer.data() + bytes_consumed, remaining);
-            SSL->recv_buffer_used = remaining;
-         }
-         else {
-            SSL->recv_buffer_used = 0;
-            // Need more handshake data from server
-            SSL->last_error = SSL_ERROR_CONNECTING;
-            return SSL_ERROR_CONNECTING;
-         }
-      }
-      else if (status == SEC_E_INCOMPLETE_MESSAGE) {
-         // Need more handshake data to complete the message
-         SSL->last_error = SSL_ERROR_CONNECTING;
-         SSL->error_description = "SSL handshake incomplete message - waiting for more data";
-         return SSL_ERROR_CONNECTING;
-      }
-      else { // Handshake failed
-         set_error_status(SSL, status, "InitializeSecurityContext (continue)");
-         SSL->last_error = SSL_ERROR_FAILED;
-         SSL->recv_buffer_used = 0; // Clear buffer on failure
-         return SSL_ERROR_FAILED;
-      }
-   }
-
-   // Should not reach here, but return connecting state as safe fallback
-   SSL->last_error = SSL_ERROR_CONNECTING;
-   return SSL_ERROR_CONNECTING;
-}
-
-//********************************************************************************************************************
-// Read data from SSL connection (post-handshake).  Designed for non-blocking sockets only.
-
-int ssl_wrapper_read(SSL_HANDLE SSL, void *Buffer, int BufferSize)
-{
-   if ((!SSL) or (!Buffer) or (BufferSize <= 0)) return -1;
-
-   if (!SSL->context_initialised) return -1;
-
-   // First, check if we have leftover decrypted data from previous calls
-   if (SSL->decrypted_buffer_used > SSL->decrypted_buffer_offset) {
-      size_t available = SSL->decrypted_buffer_used - SSL->decrypted_buffer_offset;
-      size_t to_copy = std::min(size_t(BufferSize), available);
-
-      memcpy(Buffer, SSL->decrypted_buffer.data() + SSL->decrypted_buffer_offset, to_copy);
-      SSL->decrypted_buffer_offset += to_copy;
-
-      // If we've consumed all leftover data, reset the buffer
-      if (SSL->decrypted_buffer_offset >= SSL->decrypted_buffer_used) {
-         SSL->decrypted_buffer_used = 0;
-         SSL->decrypted_buffer_offset = 0;
-      }
-
-      SSL->last_error = SSL_OK;
-      return int(to_copy);
-   }
-
-   while (true) {
-      // Try to decrypt any data we already have in the receive buffer
-      if (SSL->recv_buffer_used > 0) {
-         std::array<SecBuffer, 4> buffers;
-         buffers[0].pvBuffer = SSL->recv_buffer.data();
-         buffers[0].cbBuffer = (ULONG)SSL->recv_buffer_used;
-         buffers[0].BufferType = SECBUFFER_DATA;
-
-         buffers[1].BufferType = SECBUFFER_EMPTY;
-         buffers[2].BufferType = SECBUFFER_EMPTY;
-         buffers[3].BufferType = SECBUFFER_EMPTY;
-
-         SecBufferDesc bufferDesc;
-         bufferDesc.ulVersion = SECBUFFER_VERSION;
-         bufferDesc.cBuffers = (ULONG)buffers.size();
-         bufferDesc.pBuffers = buffers.data();
-
-         SECURITY_STATUS status = DecryptMessage(&SSL->context, &bufferDesc, 0, nullptr);
-
-         if (status == SEC_E_OK) {
-            // Successfully decrypted data
-            int extra_bytes = 0;
-            unsigned char* decrypted_data = nullptr;
-            size_t decrypted_size = 0;
-
-            // Find decrypted data and extra buffers
-            for (const auto& buf : buffers) {
-               if (buf.BufferType == SECBUFFER_DATA and buf.pvBuffer) {
-                  decrypted_data = (unsigned char*)buf.pvBuffer;
-                  decrypted_size = buf.cbBuffer;
-               }
-               else if (buf.BufferType == SECBUFFER_EXTRA and buf.cbBuffer > 0) {
-                  // Save any extra encrypted data for next read
-                  extra_bytes = int(buf.cbBuffer);
-               }
-            }
-
-            // Handle the decrypted data efficiently without temporary copies
-            if (decrypted_data and decrypted_size > 0) {
-               if (decrypted_size <= size_t(BufferSize)) {
-                  // All decrypted data fits in user buffer - copy directly
-                  memcpy(Buffer, decrypted_data, decrypted_size);
-
-                  // Handle leftover encrypted data after copying decrypted data
-                  if (extra_bytes > 0) { // Move extra data to beginning of buffer
-                     memmove(SSL->recv_buffer.data(), (char*)SSL->recv_buffer.data() + (SSL->recv_buffer_used - extra_bytes), extra_bytes);
-                     SSL->recv_buffer_used = extra_bytes;
-                  }
-                  else SSL->recv_buffer_used = 0;
-
-                  SSL->last_error = SSL_OK;
-                  return int(decrypted_size);
-               }
-               else {
-                  // Decrypted data is larger than user buffer
-                  memcpy(Buffer, decrypted_data, BufferSize);
-
-                  // Store remaining data in decrypted buffer - ensure sufficient capacity
-                  size_t remaining = decrypted_size - BufferSize;
-                  if (SSL->decrypted_buffer.capacity() < remaining) {
-                     SSL->decrypted_buffer.reserve(std::max(remaining, SSL->decrypted_buffer.capacity() * 2));
-                  }
-                  if (SSL->decrypted_buffer.size() < remaining) {
-                     SSL->decrypted_buffer.resize(remaining);
-                  }
-                  memcpy(SSL->decrypted_buffer.data(), decrypted_data + BufferSize, remaining);
-                  SSL->decrypted_buffer_used = remaining;
-                  SSL->decrypted_buffer_offset = 0;
-
-                  // Handle leftover encrypted data
-                  if (extra_bytes > 0) {
-                     memmove(SSL->recv_buffer.data(), (char*)SSL->recv_buffer.data() + (SSL->recv_buffer_used - extra_bytes), extra_bytes);
-                     SSL->recv_buffer_used = extra_bytes;
-                  }
-                  else SSL->recv_buffer_used = 0;
-
-                  SSL->last_error = SSL_OK;
-                  return BufferSize;
-               }
-            }
-            else {
-               // No decrypted data but successful status - handle extra bytes
-               if (extra_bytes > 0) {
-                  memmove(SSL->recv_buffer.data(), (char*)SSL->recv_buffer.data() + (SSL->recv_buffer_used - extra_bytes), extra_bytes);
-                  SSL->recv_buffer_used = extra_bytes;
-               }
-               else SSL->recv_buffer_used = 0;
-            }
-         }
-         else if (status == SEC_E_INCOMPLETE_MESSAGE) {
-            // Need more encrypted data - since socket is non-blocking, we can safely try recv()
-            // Fall through to receive more data
-         }
-         else { // Decryption failed
-            SSL->last_security_status = status;
-            if (status == SEC_E_DECRYPT_FAILURE) { // Connection likely closed
-               SSL->last_error = SSL_ERROR_DISCONNECTED;
-               return 0;
-            }
-            set_error_status(SSL, status, "DecryptMessage");
-            SSL->last_error = SSL_ERROR_FAILED;
-            return -1;
-         }
-      }
-
-      // Try to receive more encrypted data (socket is always non-blocking)
-      size_t space_available = SSL->recv_buffer.size() - SSL->recv_buffer_used;
-      if (space_available == 0) {
-         // Buffer full but no complete message - expand buffer if possible
-         if (SSL->recv_buffer.size() < SSL_IO_BUFFER_SIZE) {
-            SSL->recv_buffer.resize(std::min(SSL->recv_buffer.size() * 2, SSL_IO_BUFFER_SIZE));
-            space_available = SSL->recv_buffer.size() - SSL->recv_buffer_used;
-         }
-         else {
-            SSL->error_description = "SSL receive buffer overflow";
-            SSL->last_error = SSL_ERROR_FAILED;
-            return -1;
-         }
-      }
-
-      auto received = recv(SSL->socket_handle, (char*)SSL->recv_buffer.data() + SSL->recv_buffer_used, int(space_available), 0);
-
-      if (received == SOCKET_ERROR) {
-         auto error = WSAGetLastError();
-         if (error == WSAEWOULDBLOCK) {
-            // No more data available on non-blocking socket
-            // If we have any buffered data, try decryption once more, otherwise return would-block
-            if (SSL->recv_buffer_used > 0) continue; // Try to decrypt existing buffer data
-            SSL->last_error = SSL_ERROR_WOULD_BLOCK;
-            return -1;
-         }
-
-         return SSL->process_recv_error(received, "ssl_wrapper_read");
-      }
-      else if (received == 0) { // Connection closed gracefully
-         SSL->last_error = SSL_ERROR_DISCONNECTED;
-         return 0;
-      }
-      else { // Successfully received encrypted data
-         SSL->recv_buffer_used += received;
-      }
-   }
-}
-
-//********************************************************************************************************************
-// Write data to SSL connection
-
-SSL_ERROR_CODE ssl_wrapper_write(SSL_HANDLE SSL, const void* Buffer, size_t BufferSize, size_t* bytes_sent)
-{
-   if (!SSL or !Buffer or BufferSize == 0 or !bytes_sent) return SSL_ERROR_ARGS;
-
-   *bytes_sent = 0;
-   if (!SSL->context_initialised) return SSL_ERROR_FAILED;
-
-   // Calculate required buffer sizes based on stream sizes
-   size_t header_size = SSL->stream_sizes.cbHeader;
-   size_t trailer_size = SSL->stream_sizes.cbTrailer;
-   size_t max_message_size = SSL->stream_sizes.cbMaximumMessage;
-
-   // Limit the data size to what SSL can handle in one record
-   size_t data_to_send = std::min(BufferSize, max_message_size);
-   size_t total_size = header_size + data_to_send + trailer_size;
-
-   // Ensure our send buffer is large enough - use capacity check for efficiency
-   if (SSL->send_buffer.capacity() < total_size) {
-      SSL->send_buffer.reserve(std::max(total_size, SSL->send_buffer.capacity() * 2));
-   }
-   if (SSL->send_buffer.size() < total_size) SSL->send_buffer.resize(total_size);
-
-   // Set up SecBuffer structures for encryption
-   std::array<SecBuffer, 4> buffers;
-
-   // Header buffer
-   buffers[0].pvBuffer = SSL->send_buffer.data();
-   buffers[0].cbBuffer = (ULONG)header_size;
-   buffers[0].BufferType = SECBUFFER_STREAM_HEADER;
-
-   // Data buffer - copy user data after header
-   buffers[1].pvBuffer = SSL->send_buffer.data() + header_size;
-   buffers[1].cbBuffer = (ULONG)data_to_send;
-   buffers[1].BufferType = SECBUFFER_DATA;
-   memcpy(buffers[1].pvBuffer, Buffer, data_to_send);
-
-   // Trailer buffer
-   buffers[2].pvBuffer = SSL->send_buffer.data() + header_size + data_to_send;
-   buffers[2].cbBuffer = (ULONG)trailer_size;
-   buffers[2].BufferType = SECBUFFER_STREAM_TRAILER;
-
-   // Empty buffer
-   buffers[3].pvBuffer = nullptr;
-   buffers[3].cbBuffer = 0;
-   buffers[3].BufferType = SECBUFFER_EMPTY;
-
-   SecBufferDesc bufferDesc;
-   bufferDesc.ulVersion = SECBUFFER_VERSION;
-   bufferDesc.cBuffers = (ULONG)buffers.size();
-   bufferDesc.pBuffers = buffers.data();
-
-   auto status = EncryptMessage(&SSL->context, 0, &bufferDesc, 0);
-
-   if (status != SEC_E_OK) {
-      set_error_status(SSL, status, "EncryptMessage");
-      SSL->last_error = SSL_ERROR_FAILED;
-      return SSL_ERROR_FAILED;
-   }
-
-   DWORD encrypted_size = buffers[0].cbBuffer + buffers[1].cbBuffer + buffers[2].cbBuffer;
-
-   // Send the encrypted data
-   auto sent = send(SSL->socket_handle, (const char*)SSL->send_buffer.data(), encrypted_size, 0);
-
-   if (sent == SOCKET_ERROR) {
-      auto error = WSAGetLastError();
-      SSL->last_win32_error = error;
-      if (error == WSAEWOULDBLOCK) {
-         SSL->last_error = SSL_ERROR_WOULD_BLOCK;
-         SSL->error_description = "SSL write would block (WSAEWOULDBLOCK)";
-         return SSL_ERROR_WOULD_BLOCK;
-      }
-      else {
-         SSL->last_error = SSL_ERROR_FAILED;
-         SSL->error_description = "SSL write failed: " + std::to_string(error);
-         return SSL_ERROR_FAILED;
-      }
-   }
-   else if (sent != int(encrypted_size)) {
-      // Partial send - this is problematic for SSL records
-      SSL->last_error = SSL_ERROR_FAILED;
-      SSL->error_description = "SSL partial write - SSL record boundary violated";
-      return SSL_ERROR_FAILED;
-   }
-
-   SSL->last_error = SSL_OK;
-   *bytes_sent = data_to_send;
-   return SSL_OK;
-}
-
-//********************************************************************************************************************
-// Get last error
-
-SSL_ERROR_CODE ssl_wrapper_get_error(SSL_HANDLE SSL, const char **Message)
-{
-   if (!SSL) return SSL_ERROR_ARGS;
-   if (Message) *Message = ssl_wrapper_get_error_description(SSL);
-   return ((ssl_context*)SSL)->last_error;
-}
-
-//********************************************************************************************************************
-// Get detailed Windows error information
-
-uint32_t ssl_wrapper_get_last_win32_error(SSL_HANDLE SSL)
-{
-   if (!SSL) return 0;
    return ((ssl_context*)SSL)->last_win32_error;
+}
+
+//********************************************************************************************************************
+// Debug handshake public function
+
+void ssl_debug_handshake(SSL_HANDLE SSL, const char* operation)
+{
+   debug_ssl_handshake_state(SSL, operation);
+}
+
+//********************************************************************************************************************
+// Set socket handle for server-side SSL contexts
+
+void ssl_set_socket(SSL_HANDLE SSL, void* socket_handle)
+{
+   if (!socket_handle) return;
+   SSL->socket_handle = (SOCKET)(size_t)socket_handle;
+   ssl_debug_log(SSL_DEBUG_TRACE, "SSL socket handle set: %d", (int)SSL->socket_handle);
+}
+
+//********************************************************************************************************************
+// Check if SSL context has decrypted application data ready
+
+bool ssl_has_decrypted_data(SSL_HANDLE SSL)
+{
+   return SSL->decrypted_buffer.size() > SSL->decrypted_buffer_offset;
 }
 
 //********************************************************************************************************************
 // Get last security status
 
-int ssl_wrapper_get_last_security_status(SSL_HANDLE SSL)
+int ssl_last_security_status(SSL_HANDLE SSL)
 {
-   if (!SSL) return 0;
    return int(((ssl_context*)SSL)->last_security_status);
 }
 
 //********************************************************************************************************************
 // Get human-readable error description
 
-const char* ssl_wrapper_get_error_description(SSL_HANDLE SSL)
+const char* ssl_error_description(SSL_HANDLE SSL)
 {
-   if (!SSL) return "Invalid SSL handle";
    generate_error_description(SSL); // Generate description if needed
    return SSL->error_description.c_str();
 }
 
 //********************************************************************************************************************
-// Get certificate verification result
+// Set debug callback function
 
-int ssl_wrapper_get_verify_result(SSL_HANDLE SSL)
+void ssl_set_debug_callback(SSL_DEBUG_CALLBACK callback)
 {
-   if (!SSL) return -1;
-
-   // Check if SSL context is properly initialized for certificate validation
-   if (!SSL->context_initialised) return -1;
-
-   // Query certificate context from the established SSL connection
-   PCCERT_CONTEXT cert_context = nullptr;
-   SECURITY_STATUS status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_REMOTE_CERT_CONTEXT, &cert_context);
-
-   if (status != SEC_E_OK) { // Failed to get certificate context - connection is not secure
-      SSL->last_security_status = status;
-      SSL->last_error = SSL_ERROR_FAILED;
-      return -1; // Certificate validation failed
-   }
-
-   if (!cert_context) return -1; // No certificate presented by server
-
-   // Query connection info to check if certificate validation succeeded
-   SecPkgContext_ConnectionInfo conn_info;
-   status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_CONNECTION_INFO, &conn_info);
-
-   if (status != SEC_E_OK) {
-      CertFreeCertificateContext(cert_context);
-      SSL->last_security_status = status;
-      return -1;
-   }
-
-   // With SCH_CRED_AUTO_CRED_VALIDATION, Windows should have validated the certificate
-   // Check if we have a valid cipher suite (indicates successful validation)
-
-   if (conn_info.aiCipher == 0 or conn_info.aiHash == 0) {
-      CertFreeCertificateContext(cert_context);
-      return -1; // Invalid cipher negotiation indicates cert issues
-   }
-
-   // Additional validation: Check certificate chain trust
-   CERT_CHAIN_PARA chain_para{};
-   chain_para.cbSize = sizeof(CERT_CHAIN_PARA);
-
-   PCCERT_CHAIN_CONTEXT chain_context = nullptr;
-   BOOL chain_result = CertGetCertificateChain(
-      nullptr,           // use default chain engine
-      cert_context,      // certificate to validate
-      nullptr,           // use current time
-      cert_context->hCertStore, // additional store
-      &chain_para,       // chain building parameters
-      0,                 // flags
-      nullptr,           // reserved
-      &chain_context     // returned chain context
-   );
-
-   int result = 0; // Default to success (X509_V_OK equivalent)
-
-   if (!chain_result or !chain_context) {
-      result = -1; // Certificate chain validation failed
-   }
-   else {
-      // Check chain trust status
-      CERT_TRUST_STATUS trust_status = chain_context->TrustStatus;
-
-      // Check for any critical errors in certificate chain
-      if (trust_status.dwErrorStatus != CERT_TRUST_NO_ERROR) {
-         if (trust_status.dwErrorStatus & CERT_TRUST_IS_NOT_TIME_VALID) {
-            result = 10; // Certificate expired (similar to X509_V_ERR_CERT_HAS_EXPIRED)
-         }
-         else if (trust_status.dwErrorStatus & CERT_TRUST_IS_UNTRUSTED_ROOT) {
-            result = 19; // Untrusted root (similar to X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN)
-         }
-         else if (trust_status.dwErrorStatus & CERT_TRUST_IS_PARTIAL_CHAIN) {
-            result = 2;  // Unable to get issuer certificate
-         }
-         else if (trust_status.dwErrorStatus & CERT_TRUST_IS_REVOKED) {
-            result = 23; // Certificate revoked
-         }
-         else {
-            result = -1; // General certificate error
-         }
-      }
-   }
-
-   if (chain_context) CertFreeCertificateChain(chain_context);
-   CertFreeCertificateContext(cert_context);
-
-   return result;
+   g_debug_callback = callback;
 }
 
-//********************************************************************************************************************
-// Create or find a self-signed certificate for localhost testing
-
-static PCCERT_CONTEXT create_self_signed_certificate()
-{
-   // Try to find existing localhost certificate first
-   HCERTSTORE cert_store = CertOpenSystemStore(0, "MY");
-   if (!cert_store) return nullptr;
-
-   PCCERT_CONTEXT cert_context = nullptr;
-
-   // Look for existing localhost certificate
-   while ((cert_context = CertEnumCertificatesInStore(cert_store, cert_context)) != nullptr) {
-      DWORD name_len = CertGetNameString(cert_context, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, nullptr, 0);
-      if (name_len > 1) {
-         std::vector<char> name_buffer(name_len);
-         CertGetNameString(cert_context, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, name_buffer.data(), name_len);
-
-         std::string cert_name(name_buffer.data());
-         if (cert_name == "localhost" or cert_name == "127.0.0.1") {
-            // Found a suitable certificate for localhost
-            CertCloseStore(cert_store, 0);
-            return CertDuplicateCertificateContext(cert_context);
-         }
-      }
-   }
-
-   // No suitable certificate found, create a self-signed one for testing
-   // This is a simplified approach - in production, proper certificates should be used
-
-   CertCloseStore(cert_store, 0);
-   return nullptr; // For now, return null - we'll implement cert creation if needed
-}
-
-//********************************************************************************************************************
-// Server-side handshake handling using AcceptSecurityContext
-
-SSL_ERROR_CODE ssl_wrapper_accept_handshake(SSL_HANDLE SSL, const void* ClientData, int DataLength, void** ResponseData, int* ResponseLength)
-{
-   if (!SSL or !ClientData or DataLength <= 0 or !ResponseData or !ResponseLength) {
-      return SSL_ERROR_ARGS;
-   }
-
-   *ResponseData = nullptr;
-   *ResponseLength = 0;
-
-   // Acquire server credentials if not already done
-   if (!SSL->credentials_acquired) {
-      SCHANNEL_CRED cred_data;
-      memset(&cred_data, 0, sizeof(cred_data));
-      cred_data.dwVersion = SCHANNEL_CRED_VERSION;
-      cred_data.dwFlags = SCH_CRED_NO_SYSTEM_MAPPER | SCH_CRED_NO_DEFAULT_CREDS;
-
-      // If we have a server certificate, use it
-      if (SSL->server_certificate) {
-         cred_data.cCreds = 1;
-         cred_data.paCred = &SSL->server_certificate;
-      }
-
-      TimeStamp expiry;
-      auto status = AcquireCredentialsHandle(
-         nullptr, const_cast<char*>(UNISP_NAME), SECPKG_CRED_INBOUND,  // INBOUND for server
-         nullptr, &cred_data, nullptr, nullptr,
-         &SSL->credentials, &expiry);
-
-      if (status != SEC_E_OK) {
-         set_error_status(SSL, status, "AcquireCredentialsHandle (server)");
-         SSL->last_error = SSL_ERROR_FAILED;
-         return SSL_ERROR_FAILED;
-      }
-
-      SSL->credentials_acquired = true;
-   }
-
-   // Setup input buffer with client data
-   SecBuffer in_buffers[2];
-   in_buffers[0].pvBuffer = const_cast<void*>(ClientData);
-   in_buffers[0].cbBuffer = DataLength;
-   in_buffers[0].BufferType = SECBUFFER_TOKEN;
-   in_buffers[1].pvBuffer = nullptr;
-   in_buffers[1].cbBuffer = 0;
-   in_buffers[1].BufferType = SECBUFFER_EMPTY;
-
-   SecBufferDesc in_buffer_desc;
-   in_buffer_desc.cBuffers = 2;
-   in_buffer_desc.pBuffers = in_buffers;
-   in_buffer_desc.ulVersion = SECBUFFER_VERSION;
-
-   // Setup output buffer for response
-   SecBuffer out_buffer;
-   out_buffer.pvBuffer = nullptr;
-   out_buffer.BufferType = SECBUFFER_TOKEN;
-   out_buffer.cbBuffer = 0;
-
-   SecBufferDesc out_buffer_desc;
-   out_buffer_desc.cBuffers = 1;
-   out_buffer_desc.pBuffers = &out_buffer;
-   out_buffer_desc.ulVersion = SECBUFFER_VERSION;
-
-   DWORD context_attr;
-   TimeStamp expiry;
-
-   SECURITY_STATUS status;
-   if (!SSL->context_initialised) {
-      // Initial server-side handshake
-      status = AcceptSecurityContext(
-         &SSL->credentials,
-         nullptr,  // No existing context
-         &in_buffer_desc,
-         ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_CONFIDENTIALITY |
-         ASC_REQ_EXTENDED_ERROR | ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_STREAM,
-         SECURITY_NATIVE_DREP,
-         &SSL->context,
-         &out_buffer_desc,
-         &context_attr,
-         &expiry);
-
-      if (status == SEC_E_OK or status == SEC_I_CONTINUE_NEEDED) {
-         SSL->context_initialised = true;
-      }
-   }
-   else {
-      // Continue handshake with existing context
-      status = AcceptSecurityContext(
-         &SSL->credentials,
-         &SSL->context,  // Use existing context
-         &in_buffer_desc,
-         ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_CONFIDENTIALITY |
-         ASC_REQ_EXTENDED_ERROR | ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_STREAM,
-         SECURITY_NATIVE_DREP,
-         &SSL->context,
-         &out_buffer_desc,
-         &context_attr,
-         &expiry);
-   }
-
-   if (status == SEC_E_OK) {
-      // Handshake completed successfully
-      auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
-      if (stream_status != SEC_E_OK) {
-         SSL->last_security_status = stream_status;
-         SSL->error_description = "Failed to query SSL stream sizes after server handshake completion";
-         SSL->last_error = SSL_ERROR_FAILED;
-         return SSL_ERROR_FAILED;
-      }
-      SSL->error_description = "Server SSL handshake completed successfully";
-      SSL->last_error = SSL_OK;
-
-      // If there's response data, copy it
-      if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-         *ResponseData = malloc(out_buffer.cbBuffer);
-         if (*ResponseData) {
-            memcpy(*ResponseData, out_buffer.pvBuffer, out_buffer.cbBuffer);
-            *ResponseLength = out_buffer.cbBuffer;
-         }
-         FreeContextBuffer(out_buffer.pvBuffer);
-      }
-
-      return SSL_OK;
-   }
-   else if (status == SEC_I_CONTINUE_NEEDED) {
-      // More handshake data needed
-      SSL->last_error = SSL_ERROR_CONNECTING;
-      SSL->error_description = "Server SSL handshake needs more data";
-
-      // Copy response data to send back to client
-      if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-         *ResponseData = malloc(out_buffer.cbBuffer);
-         if (*ResponseData) {
-            memcpy(*ResponseData, out_buffer.pvBuffer, out_buffer.cbBuffer);
-            *ResponseLength = out_buffer.cbBuffer;
-         }
-         FreeContextBuffer(out_buffer.pvBuffer);
-      }
-
-      return SSL_ERROR_CONNECTING;
-   }
-   else {
-      // Handshake failed
-      set_error_status(SSL, status, "AcceptSecurityContext");
-      SSL->last_error = SSL_ERROR_FAILED;
-
-      if (out_buffer.pvBuffer) FreeContextBuffer(out_buffer.pvBuffer);
-
-      return SSL_ERROR_FAILED;
-   }
-}
+#include "ssl_handshake.cpp"
+#include "ssl_io.cpp"
+#include "ssl_connect.cpp"
 
 #endif // _WIN32

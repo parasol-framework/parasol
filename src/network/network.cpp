@@ -384,16 +384,6 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 
 //********************************************************************************************************************
 
-#ifndef DISABLE_SSL
-  #ifdef _WIN32
-    #include "win32/win32_ssl.cpp"
-  #else
-    #include "openssl.cpp"
-  #endif
-#endif
-
-//********************************************************************************************************************
-
 static OBJECTPTR clNetLookup = nullptr;
 static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
@@ -403,6 +393,19 @@ static HOSTMAP glHosts;
 static HOSTMAP glAddresses;
 static MSGID glResolveNameMsgID = MSGID::NIL;
 static MSGID glResolveAddrMsgID = MSGID::NIL;
+static std::string glCertPath;
+
+//********************************************************************************************************************
+
+#ifndef DISABLE_SSL
+  #ifdef _WIN32
+    #include "win32/win32_ssl.cpp"
+  #else
+    #include "openssl.cpp"
+  #endif
+#endif
+
+//********************************************************************************************************************
 
 static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
 static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
@@ -465,6 +468,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    }
 #endif
 
+   ResolvePath("system:config/ssl/", RSF::NO_FILE_CHECK, &glCertPath);
+
    return ERR::Okay;
 }
 
@@ -505,7 +510,7 @@ static ERR MODExpunge(void)
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
-    ssl_wrapper_cleanup();
+    ssl_cleanup();
   #else
     if (ssl_init) {
        if (glClientSSL)   { SSL_CTX_free(glClientSSL);   glClientSSL = nullptr; }
@@ -846,22 +851,21 @@ static ERR receive_from_server(extNetSocket *Self, SOCKET_HANDLE Socket, APTR Bu
           return error;
        }
        else { // Normal SSL data read for established connections
-          if (auto result = ssl_wrapper_read(Self->SSLHandle, Buffer, BufferSize); result > 0) {
-             *Result = result;
+          int bytes_read = 0;
+          auto error = ssl_read(Self->SSLHandle, Buffer, BufferSize, &bytes_read);
+          if (error IS SSL_OK) {
+             *Result = bytes_read;
           }
-          else if (!result) {
+          else if (error IS SSL_ERROR_DISCONNECTED) {
              return ERR::Disconnected;
           }
+          else if (error IS SSL_ERROR_WOULD_BLOCK) {
+             log.traceWarning("No more data to read from the SSL socket.");
+          }
           else {
-             CSTRING msg;
-             auto error = ssl_wrapper_get_error(Self->SSLHandle, &msg);
-             if (error IS SSL_ERROR_WOULD_BLOCK) {
-                log.traceWarning("No more data to read from the SSL socket.");
-             }
-             else {
-                log.warning("Windows SSL read error: %s", msg);
-                return ERR::Failed;
-             }
+             CSTRING msg = ssl_error_description(Self->SSLHandle);
+             log.warning("Windows SSL read error (code %d): %s", error, msg);
+             return ERR::Failed;
           }
        }
        return ERR::Okay;
@@ -972,7 +976,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          log.traceBranch("SSL Length: %d", int(*Length));
 
          size_t bytes_sent;
-         auto error = ssl_wrapper_write(Self->SSLHandle, Buffer, *Length, &bytes_sent);
+         auto error = ssl_write(Self->SSLHandle, Buffer, *Length, &bytes_sent);
 
          if (error IS SSL_OK) {
             if (*Length != bytes_sent) {
@@ -983,7 +987,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          }
          else {
             CSTRING msg;
-            ssl_wrapper_get_error(Self->SSLHandle, &msg);
+            ssl_get_error(Self->SSLHandle, &msg);
             *Length = 0;
 
             if (error IS SSL_ERROR_WOULD_BLOCK) {

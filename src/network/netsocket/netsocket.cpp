@@ -852,7 +852,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    Args->Result = 0;
 
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      log.warning("DEPRECATED: Write to the target ClientSocket object rather than the NetSocket");
+      log.warning("Write to the ClientSocket objects of this server.");
       return ERR::NoSupport;
    }
 
@@ -870,23 +870,25 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
    if (Self->WriteQueue.Buffer.empty()) { // No prior buffer to send
       len = Args->Length;
       error = send_data(Self, Args->Buffer, &len);
+      // len now reflects the total bytes that were sent to the server.
    }
-   else {
+   else { // Content remains in the write queue
       len = 0;
       error = ERR::BufferOverflow;
    }
 
    if ((error != ERR::Okay) or (len < size_t(Args->Length))) {
-      if (error != ERR::Okay) log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
-      else log.trace("Queuing %d of %d remaining bytes for transfer...", Args->Length - len, Args->Length);
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
+         // Put data into the write queue and register the socket for write events
+         log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
          Self->WriteQueue.write((BYTE *)Args->Buffer + len, std::min<size_t>(Args->Length - len, Self->MsgLimit));
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->Handle, -1, true);
+            win_socketstate(Self->Handle, std::nullopt, true);
          #endif
       }
+      else return error;
    }
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
@@ -1038,7 +1040,7 @@ The Outgoing field can be set with a custom function that will be called wheneve
 In client mode the function must be in the format `ERR Outgoing(*NetSocket, APTR Meta)`.  In server mode the function
 format is `ERR Outgoing(*NetSocket, *ClientSocket, APTR Meta)`.
 
-To send data to the NetSocket object, call the #Write() action.  If the callback function returns an error other 
+To send data to the NetSocket object, call the #Write() action.  If the callback function returns an error other
 than `ERR::Okay` then the Outgoing field will be cleared and the function will no longer be called.
 
 *********************************************************************************************************************/
@@ -1067,7 +1069,7 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->Handle, -1, true);
+            win_socketstate(Self->Handle, std::nullopt, true);
          #endif
       }
       else log.trace("Will not listen for socket-writes (no socket handle, or state %d != NTC::CONNECTED).", Self->State);
@@ -1138,7 +1140,7 @@ client sockets.  Each @ClientSocket carries its own independent State value for 
 
 *********************************************************************************************************************/
 
-static ERR GET_State(extNetSocket *Self, NTC &Value) 
+static ERR GET_State(extNetSocket *Self, NTC &Value)
 {
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       pf::Log().warning("Reading the State of a server socket is a probable defect.");
@@ -1171,10 +1173,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
             if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
                log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
             }
-            else {
-               if (ssl_wrapper_get_verify_result(Self->SSLHandle) != 0) ssl_valid = false;
-               else log.trace("SSL certificate validation successful.");
-            }
+            else ssl_valid = ssl_get_verify_result(Self->SSLHandle);
          }
          #else
          if (Self->SSLHandle) {
@@ -1234,7 +1233,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
          #elif _WIN32
-            win_socketstate(Self->Handle, -1, true);
+            win_socketstate(Self->Handle, std::nullopt, true);
          #endif
       }
    }
@@ -1259,40 +1258,7 @@ ClientData: A client-defined value that can be useful in action notify events.
 
 This is a free-entry field value that can store client data for future reference.
 
--FIELD-
-ValidCert: Indicates certificate validity if the socket is encrypted with a certificate.
-
-After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of
-the server's certificate.
-
-If encrypted communication is not supported, `ERR::NoSupport` is returned.  If the certificate is valid or the
-connection is not encrypted, a value of zero is returned to indicate that the connection is valid.
--END-
-
 *********************************************************************************************************************/
-
-static ERR GET_ValidCert(extNetSocket *Self, int *Value)
-{
-#ifndef DISABLE_SSL
-   #ifdef _WIN32
-   if ((Self->SSLHandle) and (Self->State IS NTC::CONNECTED)) {
-      *Value = ssl_wrapper_get_verify_result(Self->SSLHandle);
-   }
-   else *Value = 0;
-   #else
-   if ((Self->SSLHandle) and (Self->State IS NTC::CONNECTED)) {
-      *Value = SSL_get_verify_result(Self->SSLHandle);
-   }
-   else *Value = 0;
-   #endif
-
-   return ERR::Okay;
-#else
-   return ERR::NoSupport;
-#endif
-}
-
-//********************************************************************************************************************
 
 static void free_socket(extNetSocket *Self)
 {
@@ -1324,7 +1290,7 @@ static void free_socket(extNetSocket *Self)
 }
 
 //********************************************************************************************************************
-// Store data in the write queue
+// Store data in the queue
 
 ERR NetQueue::write(CPTR Message, size_t Length)
 {
@@ -1827,24 +1793,52 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 
    pf::SwitchContext context(Self); // Set context & lock
 
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) { // Sanity check
+      log.warning("Invalid call from server socket.");
+      return;
+   }
+
    if (Self->Terminating) { // Set by FreeWarning()
-      log.trace("[NetSocket:%d] Socket terminating...", Self->UID);
+      log.trace("Socket terminating...", Self->UID);
       if (Self->Handle != NOHANDLE) free_socket(Self);
       return;
    }
 
 #ifndef DISABLE_SSL
   #ifdef _WIN32
-    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
+   if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
       log.trace("Windows SSL handshake in progress, reading raw data.");
       std::array<char, 4096> buffer;
       size_t result;
-      ERR error = WIN_RECEIVE(Self->Handle, buffer.data(), buffer.size(), 0, &result);
-      if ((error IS ERR::Okay) and (result > 0)) {
-         sslHandshakeReceived(Self, buffer.data(), result);
+      if (ERR error = WIN_RECEIVE(Self->Handle, buffer.data(), buffer.size(), 0, &result); error IS ERR::Okay) {
+         int bytes_consumed = 0;
+         sslHandshakeReceived(Self, buffer.data(), int(result), &bytes_consumed);
+
+         // If handshake completed, check for leftover encrypted data and decrypted application data
+         if (Self->State IS NTC::CONNECTED) {
+            log.msg("SSL handshake completed - consumed %d of %d bytes", bytes_consumed, int(result));
+
+            /*if (ssl_has_decrypted_data(Self->SSLHandle)) {
+               log.msg("SSL handshake completed with ready application data - triggering immediate processing");
+               // Continue to process the application data through normal channels
+               // The decrypted data is already available in the SSL context
+            }
+            else*/
+            if (bytes_consumed < int(result)) {
+               // There's leftover encrypted data after the handshake that hasn't been decrypted yet
+               size_t leftover_size = result - bytes_consumed;
+               log.msg("Queuing %d bytes of leftover encrypted data for later processing", int(leftover_size));
+               // Fall through to handle encrypted data
+            }
+         }
+         else return; // Still handshaking, no user data to process yet
       }
-      return;
-    }
+      else {
+         log.warning(error);
+         return; // Error or no data (also considered an error!)
+      }
+   }
+
   #else
     if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
       log.traceBranch("Continuing SSL handshake...");
@@ -1875,8 +1869,10 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 
 restart:
 
-   Self->ReadCalled = false;
+   // The Incoming callback will normally be defined by the user and is expected to call the Read() action.
+   // Otherwise we clear the unprocessed content.
 
+   Self->ReadCalled = false;
    size_t result;
    auto error = ERR::Okay;
    if (Self->Incoming.defined()) {
@@ -1894,6 +1890,8 @@ restart:
    }
 
    if (!Self->ReadCalled) {
+      log.trace("Clearing unprocessed data from socket %d", Self->UID);
+
       std::array<char,512> buffer;
       int total = 0;
 
@@ -2006,7 +2004,7 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
-            if (auto error = win_socketstate(Self->Handle, -1, 0); error != ERR::Okay) log.warning(error);
+            if (auto error = win_socketstate(Self->Handle, std::nullopt, false); error != ERR::Okay) log.warning(error);
          #endif
       }
    }
@@ -2016,43 +2014,6 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
 }
 
 //********************************************************************************************************************
-
-static const FieldDef clValidCert[] = {
-   { "Okay",                          SCV_OK },                                 // The operation was successful.
-   { "UnableToGetIssuerCert",         SCV_UNABLE_TO_GET_ISSUER_CERT },          // unable to get issuer certificate the issuer certificate could not be found: this occurs if the issuer certificate of an untrusted certificate cannot be found.
-   { "UnableToGetCRL",                SCV_UNABLE_TO_GET_CRL },                  // unable to get certificate CRL the CRL of a certificate could not be found. Unused.
-   { "UnableToDecryptCertSignature",  SCV_UNABLE_TO_DECRYPT_CERT_SIGNATURE },   // unable to decrypt certificate's signature the certificate signature could not be decrypted. This means that the actual signature value could not be determined rather than it not matching the expected value, this is only meaningful for RSA keys.
-   { "UnableToDecryptCRLSignature",   SCV_UNABLE_TO_DECRYPT_CRL_SIGNATURE },    // unable to decrypt CRL's signature the CRL signature could not be decrypted: this means that the actual signature value could not be determined rather than it not matching the expected value. Unused.
-   { "UnableToDecodeIssuerPublicKey", SCV_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY }, // unable to decode issuer public key the public key in the certificate SubjectPublicKeyInfo could not be read.
-   { "CertSignatureFailure",          SCV_CERT_SIGNATURE_FAILURE },             // certificate signature failure the signature of the certificate is invalid.
-   { "CRLSignuatreFailure",           SCV_CRL_SIGNATURE_FAILURE },              // CRL signature failure the signature of the certificate is invalid. Unused.
-   { "CertNotYetValid",               SCV_CERT_NOT_YET_VALID },                 // certificate is not yet valid the certificate is not yet valid: the notBefore date is after the current time.
-   { "CertHasExpired",                SCV_CERT_HAS_EXPIRED },                   // certificate has expired the certificate has expired: that is the notAfter date is before the current time.
-   { "CRLNotYetValid",                SCV_CRL_NOT_YET_VALID },                  // CRL is not yet valid the CRL is not yet valid. Unused.
-   { "CRLHasExpired",                 SCV_CRL_HAS_EXPIRED },                    // CRL has expired the CRL has expired. Unused.
-   { "ErrorInCertNotBeforeField",     SCV_ERROR_IN_CERT_NOT_BEFORE_FIELD },     // format error in certificate's notBefore field the certificate notBefore field contains an invalid time.
-   { "ErrorInCertNotAfterField",      SCV_ERROR_IN_CERT_NOT_AFTER_FIELD },      // format error in certificate's notAfter field the certificate notAfter field contains an invalid time.
-   { "ErrorInCRLLastUpdateField",     SCV_ERROR_IN_CRL_LAST_UPDATE_FIELD },     // format error in CRL's lastUpdate field the CRL lastUpdate field contains an invalid time. Unused.
-   { "ErrorInCRLNextUpdateField",     SCV_ERROR_IN_CRL_NEXT_UPDATE_FIELD },     // format error in CRL's nextUpdate field the CRL nextUpdate field contains an invalid time. Unused.
-   { "OutOfMemory",                   SCV_OUT_OF_MEM },                         // out of memory an error occurred trying to allocate memory. This should never happen.
-   { "DepthZeroSelfSignedCert",       SCV_DEPTH_ZERO_SELF_SIGNED_CERT },        // self signed certificate the passed certificate is self signed and the same certificate cannot be found in the list of trusted certificates.
-   { "SelfSignedCertInChain",         SCV_SELF_SIGNED_CERT_IN_CHAIN },          // self signed certificate in certificate chain the certificate chain could be built up using the untrusted certificates but the root could not be found locally.
-   { "UnableToGetIssuerCertLocally",  SCV_UNABLE_TO_GET_ISSUER_CERT_LOCALLY },  // unable to get local issuer certificate the issuer certificate of a locally looked up certificate could not be found. This normally means the list of trusted certificates is not complete.
-   { "UnableToVertifyLeafSignature",  SCV_UNABLE_TO_VERIFY_LEAF_SIGNATURE },    // unable to verify the first certificate no signatures could be verified because the chain contains only one certificate and it is not self signed.
-   { "CertChainTooLong",              SCV_CERT_CHAIN_TOO_LONG },                // certificate chain too long the certificate chain length is greater than the supplied maximum depth. Unused.
-   { "CertRevoked",                   SCV_CERT_REVOKED },                       // certificate revoked the certificate has been revoked. Unused.
-   { "InvalidCA",                     SCV_INVALID_CA },                         // invalid CA certificate a CA certificate is invalid. Either it is not a CA or its extensions are not consistent with the supplied purpose.
-   { "PathLengthExceeded",            SCV_PATH_LENGTH_EXCEEDED },               // path length constraint exceeded the basicConstraints pathlength parameter has been exceeded.
-   { "InvalidPurpose",                SCV_INVALID_PURPOSE },                    // unsupported certificate purpose the supplied certificate cannot be used for the specified purpose.
-   { "CertUntrusted",                 SCV_CERT_UNTRUSTED },                     // certificate not trusted the root CA is not marked as trusted for the specified purpose.
-   { "CertRejected",                  SCV_CERT_REJECTED },                      // certificate rejected the root CA is marked to reject the specified purpose.
-   { "SubjectIssuerMismatch",         SCV_SUBJECT_ISSUER_MISMATCH },            // subject issuer mismatch the current candidate issuer certificate was rejected because its subject name did not match the issuer name of the current certificate. Only dis-played when the -issuer_checks option is set.
-   { "KeyMismatch",                   SCV_AKID_SKID_MISMATCH },                 // authority and subject key identifier mismatch the current candidate issuer certificate was rejected because its subject key identifier was present and did not match the authority key identifier current certificate. Only displayed when the -issuer_checks option is set.
-   { "KeyIssuerSerialMismatch",       SCV_AKID_ISSUER_SERIAL_MISMATCH },        // authority and issuer serial number mismatch the current candidate issuer certificate was rejected because its issuer name and serial number was present and did not match the authority key identifier of the current certificate. Only displayed when the -issuer_checks option is set.
-   { "KeyUsageNoCertSign",            SCV_KEYUSAGE_NO_CERTSIGN },               // key usage does not include certificate signing the current candidate issuer certificate was rejected because its keyUsage extension does not permit certificate signing.
-   { "ApplicationVerification",       SCV_APPLICATION_VERIFICATION },           // application verification failure an application specific error. Unused.
-   { 0, 0 },
-};
 
 #include "netsocket_def.c"
 
@@ -2075,7 +2036,6 @@ static const FieldArray clSocketFields[] = {
    { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
    { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
    { "OutQueueSize",     FDF_INT|FDF_R,          GET_OutQueueSize },
-   { "ValidCert",        FDF_INT|FDF_LOOKUP,     GET_ValidCert, nullptr, &clValidCert },
    END_FIELD
 };
 
