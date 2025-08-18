@@ -29,9 +29,10 @@ unique messages to verify proper isolation and delivery.
 function testMultipleConnections()
    local proc = processing.new({ timeout = 3.0 })
    
-   print('Testing multiple concurrent connections with NSF::MULTI_CONNECT...')
-   print('Creating server that accepts up to ' .. glMaxSockets .. ' clients')
+   print('Testing multiple concurrent connections with NSF::MULTI_CONNECT and ' .. glMaxSockets .. ' clients')
    
+   glClientsCreated = 0
+
    local server = obj.new('netsocket', {
       name = 'ConcurrentServer',
       feedback = function(Socket, Client, State)
@@ -48,7 +49,7 @@ function testMultipleConnections()
             glActiveClients = glActiveClients - 1
             print('[Server] Client disconnected. Active clients: ' .. glActiveClients)
             
-            if (glActiveClients == 0) then
+            if (glClientsCreated == glMaxSockets) and (glActiveClients == 0) then
                print('[Server] All clients disconnected, test complete')
                proc.signal()
             end
@@ -72,7 +73,7 @@ function testMultipleConnections()
          assert(err == ERR_Okay, '[Server] Failed to echo to client: ' .. mSys.GetErrorMsg(err))
       end,
       port = glPort,
-      flags = 'SERVER|MULTICONNECT',
+      flags = 'SERVER|MULTI_CONNECT',
       socketLimit = glMaxSockets
    })
    
@@ -82,8 +83,6 @@ function testMultipleConnections()
    local clients = {}
    local client_data = { }
    for i = 1, glMaxSockets do
-      print('[Test] Creating client ' .. i)
-            
       clients[i] = obj.new('netsocket', {
          name = 'ConcurrentClient' .. i,
          feedback = function(Socket, Client, State)
@@ -100,7 +99,6 @@ function testMultipleConnections()
             assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to read: ' .. mSys.GetErrorMsg(err))
             
             local msg = buffer:sub(1, read_len)
-            print('[Client ' .. data.id .. '] Received: ' .. msg)
             data.messagesReceived = data.messagesReceived + 1
             
             -- Store response for verification
@@ -109,7 +107,6 @@ function testMultipleConnections()
             if (string.match(msg, 'WELCOME:')) then
                -- Send first test message
                local test_msg = 'CLIENT_' .. data.id .. '_MSG_1'
-               print('[Client ' .. data.id .. '] Sending: ' .. test_msg)
                local err, len = Socket.acWrite(test_msg)
                assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                data.messagesSent = data.messagesSent + 1
@@ -119,13 +116,10 @@ function testMultipleConnections()
                if (data.messagesSent < glMessagesPerClient) then
                   data.messagesSent = data.messagesSent + 1
                   local test_msg = 'CLIENT_' .. data.id .. '_MSG_' .. data.messagesSent
-                  print('[Client ' .. data.id .. '] Sending: ' .. test_msg)
                   local err, len = Socket.acWrite(test_msg)
                   assert(err == ERR_Okay, '[Client ' .. data.id .. '] Failed to send: ' .. mSys.GetErrorMsg(err))
                else
-                  print('[Client ' .. data.id .. '] All messages sent, disconnecting...')
-                  proc.signal()
-                  raise(ERR_Terminate)
+                  raise(ERR_Terminate) -- Disconnect
                end
             end
 
@@ -137,14 +131,13 @@ function testMultipleConnections()
       assert(clients[i], 'Failed to create client ' .. i)
    end
    
-   -- Connect all clients simultaneously
+   -- Connect all clients as fast as possible
+
    print('[Test] Connecting all ' .. glMaxSockets .. ' clients...')
    for i = 1, glMaxSockets do
       local err = clients[i].mtConnect('127.0.0.1', glPort)
       assert(err == ERR_Okay, '[Client ' .. i .. '] Failed to connect: ' .. mSys.GetErrorMsg(err))
-      
-      -- Small delay between connections to avoid overwhelming
-      processing.sleep(0.1)
+      glClientsCreated = glClientsCreated + 1
    end
    
    -- Wait for test completion
@@ -187,7 +180,7 @@ function testClientLimitEnforcement()
          end
       end,
       port = glPort + 1,
-      flags = 'SERVER|MULTICONNECT',
+      flags = 'SERVER|MULTI_CONNECT',
       socketLimit = limit
    })
    
@@ -213,7 +206,7 @@ function testClientLimitEnforcement()
          rejectedConnections = rejectedConnections + 1
          print('[Client ' .. i .. '] Connection rejected: ' .. mSys.GetErrorMsg(err))
       end
-      processing.sleep(0.05) -- Small delay
+      processing.sleep(0.05, false) -- Small delay
    end
    
    -- Allow time for connections to be processed
@@ -278,7 +271,7 @@ function testConnectionIsolation()
          Client.acWrite(echo)
       end,
       port = glPort + 2,
-      flags = 'SERVER|MULTICONNECT'
+      flags = 'SERVER|MULTI_CONNECT'
    })
    
    local clients = {}

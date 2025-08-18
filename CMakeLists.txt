@@ -2,7 +2,7 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
 #
@@ -228,7 +228,7 @@ function (flute_test name path)
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
-         COMMAND "${FLUTE_EXE}" "--no-crash-handler --log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
+         COMMAND "${FLUTE_EXE}" "--no-crash-handler" "--log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
          WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
       set_tests_properties(${name} PROPERTIES LABELS ${name})
    endif ()
@@ -607,6 +607,26 @@ add_custom_command (
    COMMENT "Zipping icons")
 
 add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip")
+
+# --------------------------------------------------------------------------------------------------------------------
+# SSL Certificate Bundle Auto-Update (if older than 30 days)
+
+if (NOT DISABLE_SSL)
+   set(SSL_BUNDLE_PATH "${PROJECT_SOURCE_DIR}/data/ssl/ca-bundle.crt")
+   
+   if (EXISTS ${SSL_BUNDLE_PATH})
+      string(TIMESTAMP CURRENT_TIME "%s")
+      file(TIMESTAMP ${SSL_BUNDLE_PATH} BUNDLE_TIME "%s")
+      math(EXPR BUNDLE_AGE "${CURRENT_TIME} - ${BUNDLE_TIME}")
+      
+      if (BUNDLE_AGE GREATER 2592000) # 30 days in seconds
+         file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
+         message(STATUS "Updated SSL certificate bundle")
+      endif()
+   else()
+      file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
+   endif()
+endif()
 
 # --------------------------------------------------------------------------------------------------------------------
 # Installation steps

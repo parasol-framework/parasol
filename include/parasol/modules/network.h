@@ -32,9 +32,10 @@ enum class NSF : uint32_t {
    NIL = 0,
    SERVER = 0x00000001,
    SSL = 0x00000002,
-   MULTI_CONNECT = 0x00000004,
-   SYNCHRONOUS = 0x00000008,
-   LOG_ALL = 0x00000010,
+   SSL_NO_VERIFY = 0x00000004,
+   MULTI_CONNECT = 0x00000008,
+   SYNCHRONOUS = 0x00000010,
+   LOG_ALL = 0x00000020,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(NSF)
@@ -54,8 +55,9 @@ enum class NTC : int {
    NIL = 0,
    DISCONNECTED = 0,
    CONNECTING = 1,
-   CONNECTING_SSL = 2,
+   HANDSHAKING = 2,
    CONNECTED = 3,
+   MULTISTATE = 4,
 };
 
 // Tags for SetSSL().
@@ -121,11 +123,6 @@ struct IPAddress {
    int      Pad;        // Unused padding for 64-bit alignment
 };
 
-struct NetQueue {
-   uint32_t Index;    // The current read/write position within the buffer
-  std::vector<uint8_t> Buffer; // The buffer hosting the data
-};
-
 // NetClient class definition
 
 #define VER_NETCLIENT (1.000000)
@@ -141,7 +138,7 @@ class objNetClient : public Object {
    objNetClient * Next;              // The next client IP with connections to the server socket.
    objNetClient * Prev;              // The previous client IP with connections to the server socket.
    objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
-   APTR ClientData;                  // A custom pointer available for development use.
+   APTR ClientData;                  // A custom pointer available for userspace.
    int  TotalConnections;            // The total number of current socket connections for the IP address.
 
    // Action stubs
@@ -168,13 +165,12 @@ class objClientSocket : public Object {
 
    using create = pf::Create<objClientSocket>;
 
-   int64_t  ConnectTime;      // System time for the creation of this socket
-   objClientSocket * Prev;    // Previous socket in the chain
-   objClientSocket * Next;    // Next socket in the chain
-   objNetClient * Client;     // Parent client object
-   APTR     ClientData;       // Available for client data storage.
-   FUNCTION Outgoing;         // Callback for data being sent over the socket
-   FUNCTION Incoming;         // Callback for data being received from the socket
+   int64_t ConnectTime;       // System time for the creation of this socket.
+   objClientSocket * Prev;    // Previous socket in the chain.
+   objClientSocket * Next;    // Next socket in the chain.
+   objNetClient * Client;     // Parent client object (IP address).
+   APTR    ClientData;        // Available for client data storage.
+   NTC     State;             // The current connection state of the ClientSocket object.
 
    // Action stubs
 
@@ -225,6 +221,12 @@ class objClientSocket : public Object {
    }
 
    // Customised field setting
+
+   inline ERR setState(const NTC Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
+   }
 
 };
 
@@ -517,13 +519,13 @@ class objNetSocket : public Object {
 
    template <class T> inline ERR setAddress(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setState(const NTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -560,9 +562,9 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setSocketHandle(APTR Value) noexcept {
+   inline ERR setHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
@@ -574,13 +576,13 @@ class objNetSocket : public Object {
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 

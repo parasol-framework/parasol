@@ -1,10 +1,5 @@
 --[[
 Client-Server Network Communications test.  Creates a server socket and then starts client sockets to connect to itself.
-
-1. Client initiates connection to server
-2. Server responds to the connection with 'Hello from the server'
-3. Client responds with 'Reply from the client'
-4. Server prints the received message.
 --]]
 
    include 'network'
@@ -17,6 +12,14 @@ Client-Server Network Communications test.  Creates a server socket and then sta
    glPort = 8206
    glTestCompleted = false
 
+function printableState(State)
+   if (State == NTC_CONNECTED) then return 'CONNECTED'
+   elseif (State == NTC_CONNECTING) then return 'CONNECTING'
+   elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
+   elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
+   else return tostring(State) end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function testClientServer()
@@ -28,12 +31,16 @@ function testClientServer()
       name = 'Server',
       feedback = function(Socket, Client, State)
          if (State == NTC_CONNECTED) then
+            print('[Server] Connection established to new client.')
             local err, len = Client.acWrite('Hello from the server')
             assert(err == ERR_Okay, '[Server] Failed to send message to the client: ' .. mSys.GetErrorMsg(err))
+         else
+            print('[Server] Ignoring state ' .. printableState(State))
          end
       end,
       incoming = function(Socket, Client)
-         assert(Socket, 'Socket parameter not defined.')
+         assert(Socket, '[Server] Socket parameter not defined.')
+         assert(Client, '[Server] Client parameter not defined.')
          local buffer = string.alloc(1024)
          local err, read_len = Client.acRead(buffer)
          assert(err == ERR_Okay, 'Failed to read data from client, error: ' .. mSys.GetErrorMsg(err))
@@ -45,14 +52,14 @@ function testClientServer()
          end
       end,
       port  = glPort,
-      flags = 'SERVER|MULTICONNECT'
+      flags = 'SERVER'
    } )
 
    print('Creating client socket.')
 
    local clientSocket = obj.new('netsocket', {
       name = 'Client',
-      feedback = function(Socket, Client, State)
+      feedback = function(Socket, State)
          assert(Socket, 'Socket parameter not defined.')
          if (State == NTC_CONNECTED) then
             print('[Client] Writing hello message to the server...')
@@ -65,7 +72,9 @@ function testClientServer()
          local err, read_len = Socket.acRead(buffer)
          assert(err == ERR_Okay, '[Client] Failed to read data from the socket.')
          print('[Client] Received: ' .. buffer:sub(1,read_len))
+         print('[Client] Sending reply to server...')
          local err, len = Socket.acWrite('Reply from the client.')
+         assert(err == ERR_Okay, '[Client] Failed to send reply, error: ' .. mSys.GetErrorMsg(err))
       end
    } )
 
@@ -82,13 +91,15 @@ end
 function testBasicCommunication()
    local proc = processing.new({ timeout = 10.0 })
 
+   glPort = glPort + 1
+
    print('Starting basic client-server communication test on port ' .. glPort)
 
    -- Create server socket with comprehensive message handling
    local sockServer = obj.new('netsocket', {
       name = 'BasicTestServer',
       feedback = function(Socket, Client, State)
-         print('[Server] Client state change: ' .. State)
+         print('[Server] Client state change: ' .. printableState(State))
          if (State == NTC_CONNECTED) then
             print('[Server] Client connected, sending welcome message...')
             local err, len = Client.acWrite('WELCOME:Server ready for communication')
@@ -147,15 +158,15 @@ function testBasicCommunication()
    -- Create client socket with state-aware message handling
    local clientSocket = obj.new('netsocket', {
       name = 'BasicTestClient',
-      feedback = function(Socket, Client, State)
-         print('[Client] Connection state: ' .. State)
+      feedback = function(Socket, State)
+         print('[Client] Connection state: ' .. printableState(State))
          if (State == NTC_CONNECTED) then
             print('[Client] Connected to server, waiting for welcome...')
          elseif (State == NTC_DISCONNECTED) then
             print('[Client] Disconnected from server')
          end
       end,
-      incoming = function(Socket, Script)
+      incoming = function(Socket)
          local buffer = string.alloc(2048)
          local err, read_len = Socket.acRead(buffer)
          assert(err == ERR_Okay, '[Client] Failed to read data from server: ' .. mSys.GetErrorMsg(err))
@@ -213,30 +224,32 @@ function testConnectionStates()
    local proc = processing.new({ timeout = 5.0 })
    local stateChanges = {}
 
+   glPort = glPort + 1
+
    print('Testing connection state transitions...')
 
    local server = obj.new('netsocket', {
       name = 'StateTestServer',
       feedback = function(Socket, Client, State)
          print('Server received state change.')
-         table.insert(stateChanges, 'SERVER_CLIENT_' .. State)
+         table.insert(stateChanges, 'SERVER_CLIENT_' .. printableState(State))
       end,
-      port = glPort + 1,
+      port = glPort,
       flags = 'SERVER'
    })
 
    local client = obj.new('netsocket', {
       name = 'StateTestClient',
-      feedback = function(Socket, Client, State)
+      feedback = function(Socket, State)
          print('Client received state change.')
-         table.insert(stateChanges, 'CLIENT_' .. State)
+         table.insert(stateChanges, 'CLIENT_' .. printableState(State))
          if (State == NTC_CONNECTED) then
             proc.signal()
          end
       end
    })
 
-   client.mtConnect('127.0.0.1', glPort + 1)
+   client.mtConnect('127.0.0.1', glPort)
    local err = proc.sleep()
    assert(err == ERR_Okay, 'Connection state test failed: ' .. mSys.GetErrorMsg(err))
 
@@ -247,8 +260,8 @@ function testConnectionStates()
    local foundServerConnected = false
    for i, state in ipairs(stateChanges) do
       print('State change ' .. i .. ': ' .. state)
-      if (string.match(state, 'CLIENT.*' .. NTC_CONNECTED)) then foundClientConnected = true end
-      if (string.match(state, 'SERVER.*' .. NTC_CONNECTED)) then foundServerConnected = true end
+      if (string.match(state, 'CLIENT_CONNECTED')) then foundClientConnected = true end
+      if (string.match(state, 'SERVER_CLIENT_CONNECTED')) then foundServerConnected = true end
    end
 
    assert(foundClientConnected, 'Client connection state change not detected')
@@ -260,10 +273,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 'testClientServer', 'testBasicCommunication', 'testConnectionStates' },
-      cleanup = function()
-         glTestSteps = 0
-         glServerData = nil
-         glClientData = nil
-      end
+      tests = { 
+         'testClientServer', 
+         'testBasicCommunication', 
+         'testConnectionStates'
+      }
    }

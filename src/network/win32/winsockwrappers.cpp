@@ -26,6 +26,7 @@ struct IPAddress {
 #include <unordered_map>
 #include <cstdio>
 #include <mutex>
+#include <optional>
 
 using namespace std;
 
@@ -216,18 +217,22 @@ void win_net_processing(int Status, void *Args)
 
 //********************************************************************************************************************
 // Sets the read/write state for a socket.
-// Set Read/Write value to -1 if state should be unchanged
+// Use std::nullopt if state should be unchanged
 
-ERR win_socketstate(WSW_SOCKET Socket, char Read, char Write)
+ERR win_socketstate(WSW_SOCKET Socket, std::optional<bool> Read, std::optional<bool> Write)
 {
    const lock_guard<recursive_mutex> lock(csNetLookup);
    socket_info &sock = glNetLookup[Socket];
 
-   if (Read IS 0) sock.Flags &= ~FD_READ;
-   else if (Read IS 1) sock.Flags |= FD_READ;
+   if (Read.has_value()) {
+      if (Read.value() IS false) sock.Flags &= ~FD_READ;
+      else if (Read.value() IS true) sock.Flags |= FD_READ;
+   }
 
-   if (Write IS 0) sock.Flags &= ~FD_WRITE;
-   else if (Write IS 1) sock.Flags |= FD_WRITE;
+   if (Write.has_value()) {
+      if (Write.value() IS false) sock.Flags &= ~FD_WRITE;
+      else if (Write.value() IS true) sock.Flags |= FD_WRITE;
+   }
 
    if (!glSocketsDisabled) {
       auto winerror = WSAAsyncSelect(Socket, glNetWindow, WM_NETWORK, sock.Flags);
@@ -379,13 +384,32 @@ ERR win_listen(WSW_SOCKET SocketHandle, int BackLog)
 
 //********************************************************************************************************************
 
-ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, int Flags, int *Result)
+ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, size_t *Result)
 {
    *Result = 0;
    if (!Len) return ERR::Okay;
-   auto result = recv(SocketHandle, reinterpret_cast<char *>(Buffer), Len, Flags);
+   auto result = recv(SocketHandle, reinterpret_cast<char *>(Buffer), Len, 0);
    if (result > 0) {
       *Result = result;
+      return ERR::Okay;
+   }
+   else if (result IS 0) return ERR::Disconnected;
+   else if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay;
+   else return convert_error(0);
+}
+
+// This variant makes it easier to append data to buffers.
+
+template <class T> ERR WIN_APPEND(WSW_SOCKET SocketHandle, std::vector<uint8_t> &Buffer, size_t Len, T &Result)
+{
+   Result = 0;
+   if (!Len) return ERR::Okay;
+   auto offset = Buffer.size();
+   Buffer.resize(Buffer.size() + Len);
+   auto result = recv(SocketHandle, (char *)Buffer.data() + offset, Len, 0);
+   if (result > 0) {
+      if (size_t(result) < Len) Buffer.resize(offset + result);
+      Result = result;
       return ERR::Okay;
    }
    else if (result IS 0) {
@@ -394,6 +418,9 @@ ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, int Flags, in
    else if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay;
    else return convert_error(0);
 }
+
+// Explicit template instantiations
+template ERR WIN_APPEND<size_t>(WSW_SOCKET, std::vector<uint8_t> &, size_t, size_t &);
 
 //********************************************************************************************************************
 

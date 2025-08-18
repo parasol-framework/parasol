@@ -9,14 +9,9 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B release -DCMAKE_BUILD_TYPE=Release`
-- Debug: `cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE`
+- Release: `cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF`
+- Debug: `cmake -S . -B build/claude-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/claude-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DPARASOL_VLOG=TRUE`
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
-
-**Recommended Visual Studio 2022 Configuration:**
-```bash
-cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=local-claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DINSTALL_EXAMPLES=FALSE -DINSTALL_INCLUDES=FALSE
-```
 
 **Build and install:**
 - Build: `cmake --build build/claude --config Release -j 8`
@@ -37,6 +32,7 @@ Key build options (use with `-D` flag):
 - `BUILD_DEFS=ON/OFF` - Auto-generate C/C++ headers from FDL files
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
 - `DISABLE_*=ON/OFF` - Disable specific modules (SSL, X11, AUDIO, etc.)
+- `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in debug builds (has no effect on release builds).
 
 ## Architecture Overview
 
@@ -101,10 +97,12 @@ scripts/*.fluid           # APIs
 ### Flute Testing
 
 Tests are written in Fluid and executed with the Flute test runner:
-- Test files are typically named `test-*.fluid` in module directories and can be used for learning.
+- Test files are typically named `test-*.fluid` in module directories.
+- Read at least 3 Flute test files to learn the patterns before writing your first test file.
 - Use `flute_test()` CMake function to register tests
 - Tests run post-install against the installed framework
 - Always use `--gfx-driver=headless` for CI/automated testing
+- You can append `--log-api` to the runner to see log messages
 
 **Proper Flute Test Command Format:**
 ```bash

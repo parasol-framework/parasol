@@ -46,8 +46,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Backlog" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Backlog"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"></i></td><th class="col-md-1">Backlog</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>The maximum number of connections that can be queued against the socket.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Backlog" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  As there is a limit to the number of connections that can be queued, you can adjust the backlog by writing this field.  The default setting is 10 connections.</p>
-<p>If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.</p>
+<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  Setting the Backlog adjusts the maximum number of connections on the queue, which otherwise defaults to 10.</p>
+<p>If the backlog is exceeded, subsequent connections to the socket should expect a connection refused error.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-ClientData" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ClientData"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
@@ -83,9 +83,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Feedback" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Feedback"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Feedback</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>A callback trigger for when the state of the NetSocket is changed.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Feedback" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically a new connection or a disconnect.  This includes activity both from the server and the client side if the <code>ClientSocket</code> value is set on receipt.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
-<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.</p>
+<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically connection messages.</p>
+<p>In server mode, the function must follow the prototype <code>Function(*NetSocket, *ClientSocket, NTC State)</code>.  Otherwise <code>Function(*NetSocket, NTC State)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.  In server mode, <code>ClientSocket</code> refers to the <a href="clientsocket.html">ClientSocket</a> on which the state has changed.</p>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Flags" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Flags"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
@@ -95,15 +95,19 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><th class="col-md-1">NSF::MULTI_CONNECT</th><td>Allow multiple connections from the same IP when in server mode.</td></tr>
 <tr><th class="col-md-1">NSF::SERVER</th><td>Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</td></tr>
 <tr><th class="col-md-1">NSF::SSL</th><td>Use Secure Sockets Layer for all communication.</td></tr>
+<tr><th class="col-md-1">NSF::SSL_NO_VERIFY</th><td>Disable SSL certificate verification (for testing only).</td></tr>
 <tr><th class="col-md-1">NSF::SYNCHRONOUS</th><td>Use synchronous (blocking) network calls.</td></tr>
 </tbody></table>
       
 </div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-Handle" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Handle"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
+                           
+                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Handle</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Platform specific reference to the network socket handle.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Incoming" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Incoming"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Incoming</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>Callback that is triggered when the socket receives data.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Incoming" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype is <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code>.</p>
-<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  The <code>Context</code> refers to the object that set the <code>Incoming</code> field.</p>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype for C++ is <code>ERR Incoming(*NetSocket, APTR Meta)</code>.  For Fluid use <code>function Incoming(NetSocket)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  <code>Meta</code> is optional userdata from the <code>FUNCTION</code>.</p>
 <p>Retrieve data from the socket with the <a data-bs-toggle="tooltip" title="Read information from the socket." href="#ta-Read">Read()</a> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns/raises <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       
 </div></div></td></tr>
@@ -129,20 +133,19 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Port" style="scroll-margin:3em;"><td class="col-md-1" id="tf-Port"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-lg text-success" data-bs-toggle="tooltip" title="Immutable"></i></td><th class="col-md-1">Port</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>The port number to use for initiating a connection.</td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-SocketHandle" style="scroll-margin:3em;"><td class="col-md-1" id="tf-SocketHandle"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
-                           
-                          <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">SocketHandle</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Platform specific reference to the network socket handle.</td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-SocketLimit" style="scroll-margin:3em;"><td class="col-md-1" id="tf-SocketLimit"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            
                           <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">SocketLimit</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Limits the number of connected sockets per client IP address.</td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-State" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-State"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
+<tr data-bs-toggle="collapse" data-bs-target="#fl-State" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-State"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">State</th><td class="col-md-1"><span class="text-nowrap">NTC</span></td><td>The current connection state of the NetSocket object.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-State" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>The State reflects the connection state of the NetSocket.  If the <a data-bs-toggle="tooltip" title="A callback trigger for when the state of the NetSocket is changed." href="#tf-Feedback">Feedback</a> field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>
+<p>Note that in server mode this State value should not be used as it cannot reflect the state of all connected client sockets.  Each <a href="clientsocket.html">ClientSocket</a> carries its own independent State value for use instead.</p>
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">NTC::CONNECTED</th><td>There is an active connection at present.</td></tr>
 <tr><th class="col-md-1">NTC::CONNECTING</th><td>A connection is being established.</td></tr>
-<tr><th class="col-md-1">NTC::CONNECTING_SSL</th><td>An SSL connection is being established.</td></tr>
 <tr><th class="col-md-1">NTC::DISCONNECTED</th><td>There is no connection.</td></tr>
+<tr><th class="col-md-1">NTC::HANDSHAKING</th><td>An SSL connection is being established.</td></tr>
+<tr><th class="col-md-1">NTC::MULTISTATE</th><td>In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</td></tr>
 </tbody></table>
       
 </div></div></td></tr>
@@ -207,6 +210,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<tr><th class="col-md-1">WrongClass</th><td>The Client object is not of type <code>NetClient</code>.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-DisconnectSocket" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">DisconnectSocket</th><td id="tm-DisconnectSocket">Disconnects a single socket that is connected to a client IP address.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-DisconnectSocket" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR ns::DisconnectSocket(OBJECTPTR Object, objClientSocket * Socket)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Socket</td><td>The client socket to be disconnected.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
@@ -228,12 +232,14 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <tr><th>NSF::MULTI_CONNECT</th><td>Allow multiple connections from the same IP when in server mode.</td></tr>
 <tr><th>NSF::SERVER</th><td>Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</td></tr>
 <tr><th>NSF::SSL</th><td>Use Secure Sockets Layer for all communication.</td></tr>
+<tr><th>NSF::SSL_NO_VERIFY</th><td>Disable SSL certificate verification (for testing only).</td></tr>
 <tr><th>NSF::SYNCHRONOUS</th><td>Use synchronous (blocking) network calls.</td></tr>
 </tbody></table><div class="footer copyright text-right">NetSocket module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="NTC"><h1>NTC Type</h1><p class="lead">NetSocket states</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NTC::CONNECTED</th><td>There is an active connection at present.</td></tr>
 <tr><th>NTC::CONNECTING</th><td>A connection is being established.</td></tr>
-<tr><th>NTC::CONNECTING_SSL</th><td>An SSL connection is being established.</td></tr>
 <tr><th>NTC::DISCONNECTED</th><td>There is no connection.</td></tr>
+<tr><th>NTC::HANDSHAKING</th><td>An SSL connection is being established.</td></tr>
+<tr><th>NTC::MULTISTATE</th><td>In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</td></tr>
 </tbody></table><div class="footer copyright text-right">NetSocket module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="struct-IPAddress"><h1>IPAddress Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Data</th><td><span class="text-nowrap">INT</span></td><td>128-bit array for supporting both V4 and V6 IP addresses.</td></tr>
 <tr><th>Type</th><td><span class="text-nowrap">IPADDR</span></td><td>Identifies the address Data value as a V4 or V6 address type.</td></tr>

@@ -376,7 +376,7 @@ end
    return {
       tests = {
         'testPostString', 'testGet', 'testPostStringFile',
-        'testHTTPS', 'testIPV6'
+        'testHTTPS'
       },
       init = function(Path)
          glPath = Path

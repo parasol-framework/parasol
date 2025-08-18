@@ -1,5 +1,6 @@
-#ifndef NETWORK_WINSOCKWRAPPERS_H
-#define NETWORK_WINSOCKWRAPPERS_H TRUE
+#pragma once
+
+#include <optional>
 
 typedef unsigned int WSW_SOCKET; // type of socket handle for these wrapper procedures.  Same type as the windows SOCKET
 struct sockaddr;
@@ -19,11 +20,12 @@ int win_getsockname(WSW_SOCKET, struct sockaddr *, int *);
 unsigned long win_inet_addr(const char *);
 char *win_inet_ntoa(unsigned long);//struct in_addr);
 ERR win_listen(WSW_SOCKET, int);
-ERR win_socketstate(WSW_SOCKET, char, char);
+ERR win_socketstate(WSW_SOCKET, std::optional<bool>, std::optional<bool>);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */
-ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, int, int *);
+ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, size_t *);
+template <class T> ERR WIN_APPEND(WSW_SOCKET, std::vector<uint8_t> &, size_t, T &);
 void winCloseResolveHandle(void *);
 void win_socket_reference(WSW_SOCKET, void *);
 
@@ -65,5 +67,3 @@ enum {
    NTE_CONNECT,
    NTE_CLOSE
 };
-
-#endif // NETWORK_WINSOCKWRAPPERS_H
