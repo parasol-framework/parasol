@@ -24,6 +24,7 @@ ERR ssl_wrapper_init();
 void ssl_cleanup();
 void ssl_enable_logging();
 SSL_HANDLE ssl_create_context(const std::string &, bool ValidateCredentials = true, bool ServerMode = false);
+void ssl_shutdown(SSL_HANDLE ssl);
 void ssl_free_context(SSL_HANDLE ssl);
 SSL_ERROR_CODE ssl_connect(SSL_HANDLE, void *, const std::string &);
 SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE, const void *, int, int &);
@@ -39,6 +40,24 @@ uint32_t ssl_last_win32_error(SSL_HANDLE);
 int ssl_last_security_status(SSL_HANDLE);
 const char* ssl_error_description(SSL_HANDLE);
 bool ssl_get_verify_result(SSL_HANDLE);
+
+// Connection information structure
+struct SSL_CONNECTION_INFO {
+    const char* protocol_version;     // e.g., "TLS 1.3", "TLS 1.2"
+    const char* cipher_suite;         // e.g., "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+    const char* key_exchange;         // e.g., "ECDHE"
+    const char* signature_algorithm;  // e.g., "RSA"
+    const char* encryption_algorithm; // e.g., "AES_256_GCM"
+    int key_size_bits;               // e.g., 256
+    bool certificate_chain_valid;    // true if cert chain validation passed
+    int certificate_chain_length;    // number of certificates in chain
+};
+
+// Connection information queries
+bool ssl_get_connection_info(SSL_HANDLE ssl, SSL_CONNECTION_INFO* info);
+const char* ssl_get_protocol_version(SSL_HANDLE ssl);
+const char* ssl_get_cipher_suite(SSL_HANDLE ssl);
+int ssl_get_key_size_bits(SSL_HANDLE ssl);
 
 // SSL Debug callback function type
 typedef void (*SSL_DEBUG_CALLBACK)(const char* message, int level);

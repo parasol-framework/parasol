@@ -182,7 +182,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
             SSL_ERROR_CODE accept_result = ssl_accept(client->SSLHandle, buffer.data(), bytes_received);
 
             switch (accept_result) {
-               case SSL_OK: 
+               case SSL_OK:
                   log.trace("SSL handshake completed for client %d", client->UID);
                   client->setState(NTC::CONNECTED);
                   return;
@@ -488,14 +488,14 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
                Self->SSLHandle = client_ssl;
                Self->BIOHandle = client_bio;
 
-               Self->setState(NTC::HANDSHAKING);
-
                auto result = SSL_accept(client_ssl);
                if (result == 1) {
                   log.trace("SSL handshake successful.");
                   Self->setState(NTC::CONNECTED);
                }
                else {
+                  Self->setState(NTC::HANDSHAKING);
+
                   auto ssl_error = SSL_get_error(client_ssl, result);
                   if ((ssl_error == SSL_ERROR_WANT_READ) or (ssl_error == SSL_ERROR_WANT_WRITE)) {
                      log.msg("SSL handshake in progress...");

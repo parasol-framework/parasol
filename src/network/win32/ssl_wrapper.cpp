@@ -33,6 +33,9 @@ Pure Windows implementation that avoids all Parasol headers to prevent conflicts
 static void ssl_debug_log(int level, const char* format, ...);
 extern "C" void ssl_debug_to_parasol_log(const char* message, int level);
 
+// Forward declarations
+static void cache_connection_info(ssl_context* SSL);
+
 // Define provider names if not available
 #ifndef MS_ENH_RSA_AES_PROV
 #define MS_ENH_RSA_AES_PROV "Microsoft Enhanced RSA and AES Cryptographic Provider"
@@ -46,7 +49,6 @@ constexpr size_t SSL_RECORD_HEADER_SIZE = 5;  // SSL record header size
 constexpr size_t MIN_SSL_RECORD_SIZE = 32;  // Conservative minimum for a valid SSL record
 constexpr int MAX_INVALID_TOKEN_RETRIES = 3;  // Maximum retries for invalid token errors
 
-// Modern buffer management class for SSL operations
 class SSLBuffer {
 private:
    std::vector<unsigned char> data_;
@@ -56,27 +58,22 @@ public:
    explicit SSLBuffer(size_t initial_size = SSL_INITIAL_BUFFER_SIZE) 
       : data_(initial_size) {}
    
-   // Get available space for writing
    std::span<unsigned char> available_space() {
       return std::span<unsigned char>(data_.data() + used_, data_.size() - used_);
    }
    
-   // Get used data for reading
    std::span<const unsigned char> used_data() const {
       return std::span<const unsigned char>(data_.data(), used_);
    }
    
-   // Get mutable view of used data
    std::span<unsigned char> used_data_mutable() {
       return std::span<unsigned char>(data_.data(), used_);
    }
    
-   // Advance the used counter after writing data
    void advance_used(size_t bytes) {
       if (used_ + bytes <= data_.size()) used_ += bytes;
    }
    
-   // Ensure buffer has at least min_size capacity
    void ensure_capacity(size_t min_size) {
       if (data_.size() < min_size) {
          data_.resize(std::min(min_size, SSL_IO_BUFFER_SIZE));
@@ -100,7 +97,6 @@ public:
       return true;
    }
    
-   // Remove bytes from beginning of buffer
    void consume_front(size_t bytes) {
       if (bytes >= used_) reset();
       else {
@@ -109,7 +105,6 @@ public:
       }
    }
    
-   // Move remaining data to front and update used count
    void compact(size_t bytes_consumed) {
       if (bytes_consumed >= used_) reset();
       else {
@@ -160,6 +155,19 @@ struct ssl_context {
    bool context_initialised;
    bool is_server_mode;                        // True for server-side SSL, false for client-side
    PCCERT_CONTEXT server_certificate;          // Server certificate for server-side SSL
+   PCCERT_CONTEXT peer_certificate;            // Peer certificate for validation
+   PCCERT_CHAIN_CONTEXT certificate_chain;     // Certificate chain context for validation
+   
+   // Connection information cache
+   std::string protocol_version_str;
+   std::string cipher_suite_str;  
+   std::string key_exchange_str;
+   std::string signature_algorithm_str;
+   std::string encryption_algorithm_str;
+   int key_size_bits;
+   bool certificate_chain_valid;
+   int certificate_chain_length;
+   bool connection_info_cached;
 
    ssl_context() 
       : socket_handle(INVALID_SOCKET)
@@ -177,8 +185,13 @@ struct ssl_context {
       , context_initialised(false)
       , is_server_mode(false)
       , server_certificate(nullptr)
+      , peer_certificate(nullptr)
+      , certificate_chain(nullptr)
+      , key_size_bits(0)
+      , certificate_chain_valid(false)
+      , certificate_chain_length(0)
+      , connection_info_cached(false)
    {
-      // Pre-allocate buffers with optimized sizes
       io_buffer.reserve(SSL_IO_BUFFER_SIZE);
       recv_buffer.reserve(SSL_IO_BUFFER_SIZE);
       send_buffer.reserve(SSL_IO_BUFFER_SIZE);
@@ -186,9 +199,26 @@ struct ssl_context {
    }
 
    ~ssl_context() {
-      if (context_initialised) DeleteSecurityContext(&context);
-      if (credentials_acquired) FreeCredentialsHandle(&credentials);
-      if (server_certificate) CertFreeCertificateContext(server_certificate);
+      if (context_initialised) {
+         DeleteSecurityContext(&context);
+         context_initialised = false;
+      }
+      if (credentials_acquired) {
+         FreeCredentialsHandle(&credentials);
+         credentials_acquired = false;
+      }
+      if (server_certificate) {
+         CertFreeCertificateContext(server_certificate);
+         server_certificate = nullptr;
+      }
+      if (peer_certificate) {
+         CertFreeCertificateContext(peer_certificate);
+         peer_certificate = nullptr;
+      }
+      if (certificate_chain) {
+         CertFreeCertificateChain(certificate_chain);
+         certificate_chain = nullptr;
+      }
    }
 
    SSL_ERROR_CODE process_recv_error(int Result, std::string Process)
@@ -217,7 +247,6 @@ struct ssl_context {
 
 static bool glSSLInitialised = false;
 static bool glLoggingEnabled = false;
-//static HCERTSTORE g_cert_store = nullptr;
 static SSL_DEBUG_CALLBACK g_debug_callback = nullptr;
 
 static PCCERT_CONTEXT load_pem_certificate(const std::string &);
@@ -226,7 +255,6 @@ static PCCERT_CONTEXT load_pkcs12_certificate(const std::string &);
 #include "ssl_certs.cpp"
 
 //********************************************************************************************************************
-// Helper function to convert SECURITY_STATUS to description
 
 static const char* get_status_description(SECURITY_STATUS status)
 {
@@ -275,24 +303,21 @@ static const char* get_status_description(SECURITY_STATUS status)
    }
 }
 
-// Set error status - lazy description generation
 
 static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status, const char* Operation)
 {
    Ctx->last_security_status = Status;
    Ctx->last_win32_error = GetLastError();
    Ctx->error_description_dirty = true;
-   // Store operation for later description generation
-   Ctx->error_description = Operation; // Temporary storage
+   Ctx->error_description = Operation;
 }
 
-// Generate error description only when requested
 
 static void generate_error_description(ssl_context* Ctx)
 {
    if (!Ctx->error_description_dirty) return;
 
-   const char *operation = Ctx->error_description.c_str(); // Stored operation
+   const char *operation = Ctx->error_description.c_str();
    const char *status_desc = get_status_description(Ctx->last_security_status);
 
    std::stringstream stream;
@@ -303,7 +328,6 @@ static void generate_error_description(ssl_context* Ctx)
 }
 
 //********************************************************************************************************************
-// SSL Debug logging function
 
 static void ssl_debug_log(int level, const char* format, ...)
 {
@@ -319,29 +343,18 @@ static void ssl_debug_log(int level, const char* format, ...)
 }
 
 //********************************************************************************************************************
-// Debug handshake state using QueryContextAttributes
 
 static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
 {
    if (!glLoggingEnabled or !SSL->context_initialised) return;
    
-   ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Context initialized, querying attributes...", operation);
-   
-   // Query connection info
    SecPkgContext_ConnectionInfo conn_info;
-   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CONNECTION_INFO, &conn_info) == SEC_E_OK) {
-      ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Protocol: 0x%X, Cipher: 0x%X, Hash: 0x%X, KeyExch: 0x%X", 
-                   operation, conn_info.dwProtocol, conn_info.aiCipher, conn_info.aiHash, conn_info.aiExch);
-   }
-   else ssl_debug_log(SSL_DEBUG_WARNING, "SSL Debug [%s] - Failed to query connection info", operation);
+   QueryContextAttributes(&SSL->context, SECPKG_ATTR_CONNECTION_INFO, &conn_info);
    
-   // Query cipher info (Windows 10+)
    SecPkgContext_CipherInfo cipher_info;
    if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CIPHER_INFO, &cipher_info) == SEC_E_OK) {
       ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Cipher Suite: %S", operation, cipher_info.szCipherSuite);
    }
-   
-   // Query key info
    SecPkgContext_KeyInfo key_info;
    if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_KEY_INFO, &key_info) == SEC_E_OK) {
       ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Signature: %S, Encryption: %S", 
@@ -350,7 +363,6 @@ static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
 }
 
 //********************************************************************************************************************
-// Enhanced security status debugging
 
 static void debug_security_status(SECURITY_STATUS status, const char* operation)
 {
@@ -358,44 +370,19 @@ static void debug_security_status(SECURITY_STATUS status, const char* operation)
    
    ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug - %s: Status=0x%08X (%s), Win32=%d", 
                 operation, status, get_status_description(status), GetLastError());
-   
-   // Additional detailed error info
-   switch (status) {
-      case SEC_E_CERT_UNKNOWN:
-         ssl_debug_log(SSL_DEBUG_WARNING, "  Certificate issue detected - server may not have valid certificate");
-         break;
-      case SEC_E_INVALID_TOKEN:
-         ssl_debug_log(SSL_DEBUG_WARNING, "  Invalid handshake token - possible protocol mismatch or malformed data");
-         break;
-      case SEC_E_INCOMPLETE_MESSAGE:
-         ssl_debug_log(SSL_DEBUG_TRACE, "  Incomplete SSL message - need more handshake data");
-         break;
-      case SEC_I_CONTINUE_NEEDED:
-         ssl_debug_log(SSL_DEBUG_TRACE, "  SSL handshake continuing - more exchanges needed");
-         break;
-      case SEC_E_UNTRUSTED_ROOT:
-         ssl_debug_log(SSL_DEBUG_WARNING, "  Untrusted root certificate - self-signed or unknown CA");
-         break;
-      case SEC_E_NO_CREDENTIALS:
-         ssl_debug_log(SSL_DEBUG_ERROR, "  No credentials available for SSL context");
-         break;
-   }
 }
 
 //********************************************************************************************************************
-// Called on module expunge
 
 void ssl_cleanup(void)
 {
    if (!glSSLInitialised) return;
 
-   //if (g_cert_store) { CertCloseStore(g_cert_store, 0); g_cert_store = nullptr; }
 
    glSSLInitialised = false;
 }
 
 //********************************************************************************************************************
-// Create SSL context
 
 SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredentials, bool ServerMode)
 {
@@ -425,20 +412,12 @@ SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredenti
 
       ctx->server_certificate = load_pkcs12_certificate(CertPath + "localhost.p12");
       
-      if (ctx->server_certificate) {
-         ssl_debug_log(SSL_DEBUG_INFO, "Loaded mkcert PKCS#12 certificate for localhost");
-      }
-      else {
-         ssl_debug_log(SSL_DEBUG_INFO, "mkcert PKCS#12 not found, trying PEM certificate");
+      if (!ctx->server_certificate) {
          ctx->server_certificate = load_pem_certificate(CertPath + "localhost.pem");
          
-         if (ctx->server_certificate) {
-            ssl_debug_log(SSL_DEBUG_INFO, "Loaded mkcert PEM certificate for localhost");
-         }
-         else {
-            ssl_debug_log(SSL_DEBUG_WARNING, "Failed to find server certificate for localhost");
+         if (!ctx->server_certificate) {
             delete ctx;
-            return nullptr; // No valid server certificate found
+            return nullptr;
          }
       }
    }
@@ -448,9 +427,56 @@ SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredenti
 
 //********************************************************************************************************************
 
+void ssl_shutdown(SSL_HANDLE SSL)
+{
+   if ((!SSL) or (!SSL->context_initialised)) return;
+   
+   // Step 1: Apply shutdown control token
+   DWORD shutdown_type = SCHANNEL_SHUTDOWN;
+   SecBuffer shutdown_buf;
+   shutdown_buf.cbBuffer = sizeof(shutdown_type);
+   shutdown_buf.BufferType = SECBUFFER_TOKEN;
+   shutdown_buf.pvBuffer = &shutdown_type;
+
+   SecBufferDesc shutdown_desc;
+   shutdown_desc.cBuffers = 1;
+   shutdown_desc.pBuffers = &shutdown_buf;
+   shutdown_desc.ulVersion = SECBUFFER_VERSION;
+
+   auto status = ApplyControlToken(&SSL->context, &shutdown_desc);
+   if (status != SEC_E_OK) {
+      return;
+   }
+
+   SecBuffer out_buffer;
+   out_buffer.pvBuffer = nullptr;
+   out_buffer.cbBuffer = 0;
+   out_buffer.BufferType = SECBUFFER_TOKEN;
+
+   SecBufferDesc out_desc;
+   out_desc.cBuffers = 1;
+   out_desc.pBuffers = &out_buffer;
+   out_desc.ulVersion = SECBUFFER_VERSION;
+
+   DWORD ctx_attrs = 0;
+   TimeStamp expiry;
+   status = InitializeSecurityContext(
+      &SSL->credentials, &SSL->context, nullptr,
+      ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY,
+      0, SECURITY_NATIVE_DREP, &shutdown_desc, 0, nullptr, &out_desc, &ctx_attrs, &expiry);
+
+   if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
+      send(SSL->socket_handle, (const char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
+      FreeContextBuffer(out_buffer.pvBuffer);
+   }
+}
+
 void ssl_free_context(SSL_HANDLE SSL)
 {
-   delete SSL; // Destructor handles all cleanup
+   if (SSL) {
+      ssl_shutdown(SSL);
+      delete SSL;
+   }
 }
 
 //********************************************************************************************************************
@@ -482,7 +508,6 @@ void ssl_set_socket(SSL_HANDLE SSL, void* socket_handle)
 {
    if (!socket_handle) return;
    SSL->socket_handle = (SOCKET)(size_t)socket_handle;
-   ssl_debug_log(SSL_DEBUG_TRACE, "SSL socket handle set: %d", (int)SSL->socket_handle);
 }
 
 //********************************************************************************************************************
@@ -510,17 +535,151 @@ int ssl_last_security_status(SSL_HANDLE SSL)
 }
 
 //********************************************************************************************************************
-// Get human-readable error description
 
 const char* ssl_error_description(SSL_HANDLE SSL)
 {
-   generate_error_description(SSL); // Generate description if needed
+   generate_error_description(SSL);
    return SSL->error_description.c_str();
 }
 
 void ssl_enable_logging()
 {
    glLoggingEnabled = true;
+}
+
+//********************************************************************************************************************
+
+static bool validate_certificate_chain(ssl_context* SSL)
+{
+   if (!SSL->peer_certificate) return false;
+
+   CERT_CHAIN_PARA chain_para = {};
+   chain_para.cbSize = sizeof(chain_para);
+   
+   // Build the certificate chain
+   BOOL result = CertGetCertificateChain(
+      nullptr,                           // Use default chain engine
+      SSL->peer_certificate,             // End certificate
+      nullptr,                           // Use current system time
+      SSL->peer_certificate->hCertStore, // Additional store
+      &chain_para,                       // Chain building parameters
+      CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY, // Check revocation from cache only
+      nullptr,                           // Reserved
+      &SSL->certificate_chain            // Chain context output
+   );
+
+   if (!result or !SSL->certificate_chain) {
+      return false;
+   }
+
+   PCERT_SIMPLE_CHAIN simple_chain = SSL->certificate_chain->rgpChain[0];
+   SSL->certificate_chain_length = int(simple_chain->cElement);
+   
+   DWORD chain_error_status = SSL->certificate_chain->TrustStatus.dwErrorStatus;
+   bool chain_valid = (chain_error_status == CERT_TRUST_NO_ERROR);
+
+   SSL->certificate_chain_valid = chain_valid;
+   return chain_valid;
+}
+
+//********************************************************************************************************************
+
+static void cache_connection_info(ssl_context* SSL)
+{
+   if (SSL->connection_info_cached or !SSL->context_initialised) return;
+
+   SecPkgContext_ConnectionInfo conn_info = {};
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CONNECTION_INFO, &conn_info) == SEC_E_OK) {
+      SSL->key_size_bits = int(conn_info.dwCipherStrength);
+      switch (conn_info.dwProtocol) {
+         case SP_PROT_TLS1_3_CLIENT:
+         case SP_PROT_TLS1_3_SERVER: SSL->protocol_version_str = "TLS 1.3"; break;
+         case SP_PROT_TLS1_2_CLIENT:
+         case SP_PROT_TLS1_2_SERVER: SSL->protocol_version_str = "TLS 1.2"; break;
+         case SP_PROT_TLS1_1_CLIENT:
+         case SP_PROT_TLS1_1_SERVER: SSL->protocol_version_str = "TLS 1.1"; break;
+         case SP_PROT_TLS1_CLIENT:
+         case SP_PROT_TLS1_SERVER: SSL->protocol_version_str = "TLS 1.0"; break;
+         default: SSL->protocol_version_str = "Unknown"; break;
+      }
+   }
+
+   SecPkgContext_CipherInfo cipher_info = {};
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CIPHER_INFO, &cipher_info) == SEC_E_OK) {
+      size_t converted = 0;
+      char cipher_buf[256];
+      wcstombs_s(&converted, cipher_buf, sizeof(cipher_buf), cipher_info.szCipherSuite, _TRUNCATE);
+      SSL->cipher_suite_str = cipher_buf;
+   }
+
+   SecPkgContext_KeyInfo key_info = {};
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_KEY_INFO, &key_info) == SEC_E_OK) {
+      size_t converted = 0;
+      char sig_buf[128], enc_buf[128];
+      
+      if (key_info.sSignatureAlgorithmName) {
+         wcstombs_s(&converted, sig_buf, sizeof(sig_buf), (const wchar_t*)key_info.sSignatureAlgorithmName, _TRUNCATE);
+         SSL->signature_algorithm_str = sig_buf;
+      }
+      
+      if (key_info.sEncryptAlgorithmName) {
+         wcstombs_s(&converted, enc_buf, sizeof(enc_buf), (const wchar_t*)key_info.sEncryptAlgorithmName, _TRUNCATE);
+         SSL->encryption_algorithm_str = enc_buf;
+      }
+   }
+
+   if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_REMOTE_CERT_CONTEXT, (PVOID)&SSL->peer_certificate) == SEC_E_OK) {
+      if (SSL->peer_certificate and SSL->validate_credentials) {
+         validate_certificate_chain(SSL);
+      }
+      else {
+         SSL->certificate_chain_valid = !SSL->validate_credentials;
+         SSL->certificate_chain_length = 1;
+      }
+   }
+
+   SSL->connection_info_cached = true;
+}
+
+//********************************************************************************************************************
+
+bool ssl_get_connection_info(SSL_HANDLE SSL, SSL_CONNECTION_INFO* info)
+{
+   if (!SSL or !info) return false;
+   
+   cache_connection_info(SSL);
+   
+   info->protocol_version = SSL->protocol_version_str.c_str();
+   info->cipher_suite = SSL->cipher_suite_str.c_str();
+   info->key_exchange = SSL->key_exchange_str.c_str();
+   info->signature_algorithm = SSL->signature_algorithm_str.c_str();
+   info->encryption_algorithm = SSL->encryption_algorithm_str.c_str();
+   info->key_size_bits = SSL->key_size_bits;
+   info->certificate_chain_valid = SSL->certificate_chain_valid;
+   info->certificate_chain_length = SSL->certificate_chain_length;
+   
+   return true;
+}
+
+const char* ssl_get_protocol_version(SSL_HANDLE SSL)
+{
+   if (!SSL) return "Unknown";
+   cache_connection_info(SSL);
+   return SSL->protocol_version_str.c_str();
+}
+
+const char* ssl_get_cipher_suite(SSL_HANDLE SSL)
+{
+   if (!SSL) return "Unknown";
+   cache_connection_info(SSL);
+   return SSL->cipher_suite_str.c_str();
+}
+
+int ssl_get_key_size_bits(SSL_HANDLE SSL)
+{
+   if (!SSL) return 0;
+   cache_connection_info(SSL);
+   return SSL->key_size_bits;
 }
 
 #include "ssl_handshake.cpp"

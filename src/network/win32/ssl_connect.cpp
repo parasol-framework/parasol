@@ -88,14 +88,11 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
       return SSL_ERROR_ARGS;
    }
 
-   ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept - Processing %d bytes from client", DataLength);
-
    // Acquire server credentials if not already done
    if (!SSL->credentials_acquired) {
       SCHANNEL_CRED cred_data;
       memset(&cred_data, 0, sizeof(cred_data));
       cred_data.dwVersion = SCHANNEL_CRED_VERSION;
-      // For localhost testing, use more permissive flags to ignore certificate validation issues
       cred_data.dwFlags = SCH_CRED_NO_SYSTEM_MAPPER | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION |
                         SCH_CRED_IGNORE_NO_REVOCATION_CHECK | SCH_CRED_IGNORE_REVOCATION_OFFLINE;
       cred_data.cCreds = 1;
@@ -109,11 +106,8 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
 
       if (status != SEC_E_OK) {
          set_error_status(SSL, status, "AcquireCredentialsHandle (server)");
-         debug_security_status(status, "AcquireCredentialsHandle (server)");
          return SSL_ERROR_FAILED;
       }
-
-      ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept - Server credentials acquired successfully");
 
       SSL->credentials_acquired = true;
    }
@@ -148,14 +142,13 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
 
    SECURITY_STATUS status;
    if (!SSL->context_initialised) {
-      // Initial server-side handshake with permissive flags for localhost testing
       status = AcceptSecurityContext(
          &SSL->credentials,
-         nullptr,  // No existing context
+         nullptr,
          &in_buffer_desc,
          ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_CONFIDENTIALITY |
          ASC_REQ_EXTENDED_ERROR | ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_STREAM |
-         ASC_REQ_MUTUAL_AUTH,  // Allow but don't require mutual auth for localhost
+         ASC_REQ_MUTUAL_AUTH,
          SECURITY_NATIVE_DREP,
          &SSL->context,
          &out_buffer_desc,
@@ -167,14 +160,13 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
       }
    }
    else {
-      // Continue handshake with existing context
       status = AcceptSecurityContext(
          &SSL->credentials,
-         &SSL->context,  // Use existing context
+         &SSL->context,
          &in_buffer_desc,
          ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_CONFIDENTIALITY |
          ASC_REQ_EXTENDED_ERROR | ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_STREAM |
-         ASC_REQ_MUTUAL_AUTH,  // Allow but don't require mutual auth for localhost
+         ASC_REQ_MUTUAL_AUTH,
          SECURITY_NATIVE_DREP,
          &SSL->context,
          &out_buffer_desc,
@@ -182,12 +174,8 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
          &expiry);
    }
 
-   debug_security_status(status, "AcceptSecurityContext");
-
    if ((status == SEC_E_OK) or (status == SEC_I_CONTINUE_NEEDED)) {
       if (status == SEC_E_OK) {
-         ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept - Server handshake completed successfully");
-         debug_ssl_handshake_state(SSL, "ServerHandshakeComplete");
          auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
          if (stream_status != SEC_E_OK) {
             SSL->last_security_status = stream_status;
@@ -197,32 +185,25 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
          SSL->error_description = "SSL handshake completed successfully";
       }
       else {
-         ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept - More exchanges required");
          SSL->error_description = "Server SSL handshake needs more data";
       }
 
       if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-         ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept - Sending final %d bytes to client", out_buffer.cbBuffer);
-
          auto bytes_sent = send(SSL->socket_handle, (const char *)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
          if (bytes_sent < 0) {
-            ssl_debug_log(SSL_DEBUG_TRACE, "Failed to send complete SSL handshake response to client");
             return SSL_ERROR_FAILED;
          }
          else if (bytes_sent != out_buffer.cbBuffer) {
-            // TODO: Handle partial send for non-blocking socket if needed
-            ssl_debug_log(SSL_DEBUG_TRACE, "Failed to send complete SSL handshake response to client");
             return SSL_ERROR_FAILED;
          }
 
          FreeContextBuffer(out_buffer.pvBuffer);
       }
-      else ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept - No final response data to send");
 
       if (status == SEC_E_OK) return SSL_OK;
-      else return SSL_NEED_DATA; // More data needed for handshake completion
+      else return SSL_NEED_DATA;
    }
-   else { // Handshake failed
+   else {
       set_error_status(SSL, status, "AcceptSecurityContext");
       if (out_buffer.pvBuffer) FreeContextBuffer(out_buffer.pvBuffer);
       return SSL_ERROR_FAILED;

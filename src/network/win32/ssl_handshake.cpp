@@ -9,7 +9,6 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
    
    if (!SSL->context_initialised) return SSL_ERROR_FAILED;
    
-   ssl_debug_log(SSL_DEBUG_TRACE, "SSL Continue Handshake - Processing %d bytes of handshake data, buffer had %zu bytes", DataLength, SSL->recv_buffer.size());
 
    // Append new handshake data to receive buffer to handle fragmentation
    std::span<const unsigned char> server_data_span(static_cast<const unsigned char*>(ServerData), DataLength);
@@ -57,39 +56,17 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          0, SECURITY_NATIVE_DREP, &in_buffer_desc, 0,
          &SSL->context, &out_buffer_desc, &out_flags, &expiry);
       
-      debug_security_status(status, "InitializeSecurityContext (continue)");
-
       // Check if we consumed some of the input data and handle extra data
       size_t bytes_consumed = SSL->recv_buffer.size();
       
-      // Debug: Log all buffer types after InitializeSecurityContext
-      ssl_debug_log(SSL_DEBUG_TRACE, "SSL handshake buffers after InitializeSecurityContext:");
-      for (size_t i = 0; i < in_buffers.size(); ++i) {
-         ssl_debug_log(SSL_DEBUG_TRACE, "  Buffer[%zu]: Type=%d, Size=%lu", i, in_buffers[i].BufferType, in_buffers[i].cbBuffer);
-      }
-      
-      // Check for extra data in input buffer - this indicates unused/leftover data after handshake processing
+      // Check for extra data in input buffer
       for (const auto& buf : in_buffers) {
          if (buf.BufferType == SECBUFFER_EXTRA and buf.cbBuffer > 0) {
-            // SECBUFFER_EXTRA indicates leftover data that wasn't consumed by the handshake
-            // This data needs to be preserved for the next handshake round or SSL processing
-            ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake found SECBUFFER_EXTRA with %lu bytes", buf.cbBuffer);
-            
-            // The extra data is located at the end of the input buffer
-            // We need to move it to the beginning and update our buffer management
             if (buf.cbBuffer <= SSL->recv_buffer.size()) {
-               // Calculate consumed bytes: total buffer minus extra bytes
                bytes_consumed = SSL->recv_buffer.size() - buf.cbBuffer;
-               
-               // Use SSLBuffer's compact method to handle the data movement
                SSL->recv_buffer.compact(bytes_consumed);
-              
-               ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake consumed %zu bytes, preserved %lu bytes for next round", bytes_consumed, buf.cbBuffer);
             }
             else {
-               // Safety check - extra buffer size should not exceed total buffer
-               ssl_debug_log(SSL_DEBUG_WARNING, "SSL handshake SECBUFFER_EXTRA size (%lu) exceeds buffer size (%zu) - ignoring", 
-                           buf.cbBuffer, SSL->recv_buffer.size());
                bytes_consumed = SSL->recv_buffer.size();
                SSL->recv_buffer.reset();
             }
@@ -99,11 +76,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
 
       // Handle different handshake states
       if (status == SEC_E_OK) {
-         // Handshake completed successfully
-         ssl_debug_log(SSL_DEBUG_INFO, "SSL Continue Handshake - Handshake completed successfully");
-         debug_ssl_handshake_state(SSL, "HandshakeComplete");
 
-         // Send any final handshake data if present
          if (out_buffer.cbBuffer > 0 and out_buffer.pvBuffer != nullptr) {
             int sent = send(SSL->socket_handle, (char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
             FreeContextBuffer(out_buffer.pvBuffer);
@@ -116,7 +89,6 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
             }
          }
 
-         // Get stream sizes for future read/write operations
          auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
          if (stream_status != SEC_E_OK) {
             SSL->last_security_status = stream_status;
@@ -124,14 +96,6 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
             return SSL_ERROR_FAILED;
          }
 
-         // Process any extra data that remains after handshake completion  
-         // Note: At this point, recv_buffer may have been modified by SECBUFFER_EXTRA processing
-         ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake buffer analysis: original_total=%zu, consumed=%zu, current_recv_buffer=%zu", 
-                      SSL->recv_buffer.size() + bytes_consumed, bytes_consumed, SSL->recv_buffer.size());
-         
-         // Handle leftover data after handshake completion
-         // Based on chatgpt_ssl.cpp approach: only preserve data if we have valid SECBUFFER_EXTRA
-         // For external servers, leftover data is often handshake completion messages that will cause decryption errors
          bool found_valid_extra = false;
          for (const auto& buf : in_buffers) {
             if (buf.BufferType == SECBUFFER_EXTRA and buf.cbBuffer > 0 and buf.cbBuffer < SSL->recv_buffer.size() + bytes_consumed) {
@@ -141,26 +105,18 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          }
          
          if (!SSL->recv_buffer.empty()) {
-            if (found_valid_extra) {
-               ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - preserving %zu bytes from valid SECBUFFER_EXTRA", SSL->recv_buffer.size());
-            }
-            else {
-               ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - clearing %zu bytes (no valid SECBUFFER_EXTRA found)", SSL->recv_buffer.size());
+            if (!found_valid_extra) {
                SSL->recv_buffer.reset();
             }
          }
-         else {
-            ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - no extra data to preserve (consumed all %zu bytes)", bytes_consumed);
-         }
 
+         cache_connection_info(SSL);
+         
          SSL->error_description = "SSL handshake completed successfully";
          ConsumedOut = int(bytes_consumed);
          return SSL_OK;
       }
       else if (status == SEC_I_CONTINUE_NEEDED) {
-         // More handshake data needed - consume input and send response
-
-         // Send handshake response if present
          if ((out_buffer.cbBuffer > 0) and (out_buffer.pvBuffer != nullptr)) {
             int sent = send(SSL->socket_handle, (char*)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
             FreeContextBuffer(out_buffer.pvBuffer);
@@ -177,11 +133,9 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
             }
          }
 
-         // Reduce the recv_buffer content by the amount of consumed data
          ConsumedOut = int(bytes_consumed); 
          if (bytes_consumed < SSL->recv_buffer.size()) {
             SSL->recv_buffer.compact(bytes_consumed);
-            // Continue processing if there's more data in the buffer
          }
          else {
             SSL->recv_buffer.reset();
@@ -189,18 +143,16 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          }
       }
       else if (status == SEC_E_INCOMPLETE_MESSAGE) {
-         // Need more handshake data to complete the message
          SSL->error_description = "SSL handshake incomplete message - waiting for more data";
          ConsumedOut = int(bytes_consumed);
          return SSL_NEED_DATA;
       }
-      else { // Handshake failed
+      else {
          set_error_status(SSL, status, "InitializeSecurityContext (continue)");
-         SSL->recv_buffer.reset(); // Clear buffer on failure
+         SSL->recv_buffer.reset();
          return SSL_ERROR_FAILED;
       }
    }
 
-   // Should not reach here, but return connecting state as safe fallback
    return SSL_NEED_DATA;
 }
