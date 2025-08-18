@@ -9,7 +9,6 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
    
    if (!SSL->context_initialised) return SSL_ERROR_FAILED;
    
-
    // Append new handshake data to receive buffer to handle fragmentation
    std::span<const unsigned char> server_data_span(static_cast<const unsigned char*>(ServerData), DataLength);
    if (!SSL->recv_buffer.append(server_data_span)) {

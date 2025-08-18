@@ -938,6 +938,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
       return ERR::SystemCall;
    }
 #elif _WIN32
+   size_t result;
    auto error = WIN_RECEIVE(Self->Handle, (char *)Args->Buffer, Args->Length, &result);
    Args->Result = result;
    return error;
@@ -1926,27 +1927,14 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 #ifndef DISABLE_SSL
   #ifdef _WIN32
    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
-      log.trace("Windows SSL handshake in progress, reading raw data.");
+      pf::Log log(__FUNCTION__);
+      log.traceBranch("Windows SSL handshake in progress, reading raw data.");
       size_t result;
-      if (ERR error = WIN_APPEND(Self->Handle, Self->ReadQueue.Buffer, 4096, result); error IS ERR::Okay) {
-         int bytes_consumed = 0;
-         sslHandshakeReceived(Self, Self->ReadQueue.Buffer.data(), int(Self->ReadQueue.Buffer.size()), &bytes_consumed);
-         if (bytes_consumed > 0) {
-            Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_consumed);
-         }
+      std::vector<uint8_t> buffer;
+      if (ERR error = WIN_APPEND(Self->Handle, buffer, 4096, result); error IS ERR::Okay) {
+         sslHandshakeReceived(Self, buffer.data(), int(buffer.size()));
 
-         if (Self->State IS NTC::CONNECTED) {
-            log.msg("SSL handshake completed - queue contains %" PF64 " bytes", Self->ReadQueue.Buffer.size());
-            
-            // Clear the encrypted post-handshake data from ReadQueue
-            // This data should be processed through the normal SSL read path, not as plain data
-            if (!Self->ReadQueue.Buffer.empty()) {
-               log.trace("Clearing %" PF64 " bytes of encrypted post-handshake data - will be read via SSL", Self->ReadQueue.Buffer.size());
-               Self->ReadQueue.Buffer.clear();
-            }
-         }
-
-         if ((Self->State != NTC::CONNECTED) or (Self->ReadQueue.Buffer.empty() and !ssl_has_decrypted_data(Self->SSLHandle) and !ssl_has_encrypted_data(Self->SSLHandle))) {
+         if ((Self->State != NTC::CONNECTED) or (!ssl_has_decrypted_data(Self->SSLHandle) and !ssl_has_encrypted_data(Self->SSLHandle))) {
             // In most cases we return without further processing unless we're definitely connected and
             // there is data sitting in the queue or SSL has data available (decrypted or encrypted).
             return;
@@ -1954,7 +1942,7 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       }
       else {
          log.warning(error);
-         return; // Error or no data (also considered an error!)
+         return;
       }
    }
 

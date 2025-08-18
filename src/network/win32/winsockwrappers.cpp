@@ -160,8 +160,10 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          else error = ERR::Okay;
 
          socket_info &info = glNetLookup[(WSW_SOCKET)wParam];
+         bool read_disabled = false;
          if ((info.Flags & FD_READ) and (!glSocketsDisabled)) {
             WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
+            read_disabled = true;
          }
 
          if (info.Reference) {
@@ -173,9 +175,16 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          }
          else printf("win_messages() Missing reference for FD %d, state %d\n", info.SocketHandle, state);
 
+         // Re-enable read events if we disabled them and sockets are still active
+         if ((read_disabled) and (!glSocketsDisabled)) {
+            if (glNetLookup.contains((WSW_SOCKET)wParam) and (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_READ)) {
+               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, glNetLookup[(WSW_SOCKET)wParam].Flags);
+            }
+         }
+
          if ((resub_write) and (!glSocketsDisabled)) {
-            if (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_WRITE) { // Sanity check in case write was switched off in win32_netresponse()
-               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, info.Flags);
+            if (glNetLookup.contains((WSW_SOCKET)wParam) and (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_WRITE)) { // Sanity check in case write was switched off in win32_netresponse()
+               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, glNetLookup[(WSW_SOCKET)wParam].Flags);
             }
          }
          return 0;

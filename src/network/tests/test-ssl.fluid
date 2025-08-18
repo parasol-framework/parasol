@@ -421,6 +421,11 @@ function testHTTPSConnection()
    local page_content = ""
    local response_complete = false
    local SITE = 'www.google.com' --'www.v6.facebook.com'
+   local chunks_received = 0
+   local start_time = mSys.PreciseTime()
+   local connection_time = 0
+   local expected_content_length = 0
+   local headers_complete = false
 
    print('Testing HTTPS connection to ' .. SITE .. '...')
 
@@ -433,7 +438,9 @@ function testHTTPSConnection()
             print('[HTTPS Client] Performing SSL handshake with ' .. SITE .. '...')
 
          elseif (State == NTC_CONNECTED) then
-            print('[HTTPS Client] SSL connection to ' .. SITE .. ' established successfully')
+            connection_time = mSys.PreciseTime()
+            print('[HTTPS Client] SSL connection to ' .. SITE .. ' established successfully in ' .. 
+                  string.format("%.3f", (connection_time - start_time) / 1000000.0) .. ' seconds')
             connection_established = true
 
             -- Send HTTP GET request for the index page
@@ -443,7 +450,7 @@ function testHTTPSConnection()
             if (err != ERR_Okay) then
                error('[HTTPS Client] Failed to send HTTP request: ' .. mSys.GetErrorMsg(err))
             else
-               print('[HTTPS Client] HTTP request sent successfully')
+               print('[HTTPS Client] HTTP request sent successfully (' .. len .. ' bytes)')
             end
 
          elseif (State == NTC_DISCONNECTED) then
@@ -468,36 +475,63 @@ function testHTTPSConnection()
          end
       end,
       incoming = function(Socket)
-         local buffer = string.alloc(8192)
-         local err, read_len = Socket.acRead(buffer)
+         local current_time = mSys.PreciseTime()
+         local elapsed = string.format("%.3f", (current_time - start_time) / 1000000.0)
+         local callback_total = 0
+         
+         -- Read all available data in this callback
+         while true do
+            local buffer = string.alloc(8192)
+            local err, read_len = Socket.acRead(buffer)
 
-         if (err == ERR_Okay) then
-            if read_len == 0 then
-               print('Received incoming data notification with no data to read.')
+            if (err == ERR_Okay) then
+               if read_len == 0 then -- No more data available right now           
+                  error('Received incoming data notification with no data to read.')
+               end
+
+               chunks_received = chunks_received + 1
+               callback_total = callback_total + read_len
+               local chunk = buffer:sub(1, read_len)
+               page_content = page_content .. chunk
+               
+               print('[HTTPS Client] Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' .. 
+                     SITE .. ' at ' .. elapsed .. 's (total: ' .. #page_content .. ' bytes)')
+               data_received = true
+
+               -- Parse headers if not done yet
+               if (not headers_complete and string.match(page_content, '\r\n\r\n')) then
+                  headers_complete = true
+                  local headers = string.match(page_content, '(.-)\r\n\r\n')
+                  print('[HTTPS Client] HTTP headers received (' .. #headers .. ' bytes)')
+                  
+                  -- Extract Content-Length if present
+                  local content_length = string.match(headers, 'Content%-Length:%s*(%d+)')
+                  if content_length then
+                     expected_content_length = tonumber(content_length)
+                     print('[HTTPS Client] Content-Length: ' .. expected_content_length .. ' bytes')
+                  else
+                     print('[HTTPS Client] No Content-Length header found (chunked encoding?)')
+                  end
+               end
+
+               -- Check if we got the full response header
+               if (not response_complete and string.match(page_content, 'HTTP/%d%.%d')) then
+                  print('[HTTPS Client] HTTP response status line received')
+               end
+            elseif (err == ERR_Disconnected) then
+               print('[HTTPS Client] Server closed connection after sending data')
+               response_complete = true
+               if #page_content > 0 then data_received = true end
+               proc.signal()
+               raise(ERR_Terminate)
+            else
+               print('[HTTPS Client] HTTPS read error: ' .. mSys.GetErrorMsg(err))
                raise(ERR_Terminate)
             end
-
-            local chunk = buffer:sub(1, read_len)
-            page_content = page_content .. chunk
-            print('[HTTPS Client] Received ' .. read_len .. ' bytes from ' .. SITE .. ' (total: ' .. #page_content .. ')')
-            data_received = true
-
-            -- Check if we got the full response header
-            if (not response_complete and string.match(page_content, 'HTTP/%d%.%d')) then
-               print('[HTTPS Client] HTTP response header received')
-            end
-
-         elseif (err == ERR_Disconnected) then
-            print('[HTTPS Client] Server closed connection after sending data')
-            response_complete = true
-            if (#page_content > 0) then
-               data_received = true
-            end
-            proc.signal()
-            raise(ERR_Terminate)
-         else
-            print('[HTTPS Client] HTTPS read error: ' .. mSys.GetErrorMsg(err))
-            raise(ERR_Terminate)
+         end
+         
+         if callback_total > 0 then
+            print('[HTTPS Client] Incoming callback processed ' .. callback_total .. ' bytes total in this call')
          end
       end,
       flags = 'SSL'
@@ -517,22 +551,43 @@ function testHTTPSConnection()
       if (connection_established and data_received and #page_content > 0) then
          print('[HTTPS Client] Timeout but data was received - acceptable for this test')
       else
-         assert(false, 'HTTPS connection test timed out without receiving data')
+         error('HTTPS connection test timed out without receiving data')
       end
    elseif (err != ERR_Okay) then
-      assert(false, 'HTTPS connection test failed: ' .. mSys.GetErrorMsg(err))
+      error('HTTPS connection test failed: ' .. mSys.GetErrorMsg(err))
    end
 
    assert(connection_established, 'HTTPS connection was not established')
-   assert(data_received, 'No data was received from ' .. SITE)
-   assert(#page_content > 0, 'Index page content is empty')
+   assert(data_received, 'No data was received from the HTTPS server')
+   assert(#page_content != 0, 'Index page content is empty')
 
-   -- Verify we received a proper HTTP response
+   local final_time = mSys.PreciseTime()
+   local total_duration = string.format("%.3f", (final_time - start_time) / 1000000.0)
+   print('[HTTPS Client] Received ' .. chunks_received .. ' chunks, ' .. #page_content .. ' total bytes')
+   
+   if expected_content_length > 0 then
+      local content_start = string.find(page_content, '\r\n\r\n')
+      if content_start then
+         local actual_content_length = #page_content - content_start - 3
+         print('[HTTPS Client] Body length: ' .. actual_content_length .. ' bytes (expected: ' .. expected_content_length .. ')')
+         if actual_content_length < expected_content_length then
+            print('[HTTPS Client] WARNING: Incomplete response - missing ' .. (expected_content_length - actual_content_length) .. ' bytes')
+         end
+      end
+   end
+
    if (string.match(page_content, 'HTTP/%d%.%d') and
        (string.match(page_content, '200 OK') or string.match(page_content, '301') or
         string.match(page_content, '302') or string.match(page_content, '404'))) then
       print('[HTTPS Client] Received valid HTTP response (' .. #page_content .. ' bytes total)')
-      print('HTTPS connection to ' .. SITE .. ' test completed successfully!')
+
+      if #page_content < 2048 then
+         print('Response content:')
+         print(page_content)
+      else
+         print('Response preview (first 500 chars):')
+         print(string.sub(page_content, 1, 500) .. '...')
+      end
    else
       print('[HTTPS Client] Response content preview: ' .. string.sub(page_content, 1, 200))
       error('Invalid HTTP response received from ' .. SITE)
