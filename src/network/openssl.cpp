@@ -249,55 +249,6 @@ static ERR sslSetup(extNetSocket *Self)
 }
 
 //********************************************************************************************************************
-// For SSL servers, we need to perform SSL_accept instead of SSL_connect when a client connects
-
-#warning This code is setting the NetSocket state
-
-static ERR sslAccept(extNetSocket *Self)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.traceBranch();
-
-   if (!Self->SSLHandle) return ERR::FieldNotSet;
-
-   // Ensure the SSL BIO is linked to the socket before attempting accept
-   if (!Self->BIOHandle) {
-      if (auto error = sslLinkSocket(Self); error != ERR::Okay) {
-         log.warning("Failed to link SSL socket to BIO.");
-         return error;
-      }
-   }  
-
-   if (auto result = SSL_accept(Self->SSLHandle); result <= 0) {
-      result = SSL_get_error(Self->SSLHandle, result);
-
-      switch(result) {
-         case SSL_ERROR_NONE:             Self->Error = ERR::Okay; return ERR::Okay;
-         case SSL_ERROR_ZERO_RETURN:      Self->Error = ERR::Disconnected; break;
-         case SSL_ERROR_WANT_READ:        Self->setState(NTC::HANDSHAKING); return ERR::Okay;
-         case SSL_ERROR_WANT_WRITE:       Self->setState(NTC::HANDSHAKING); return ERR::Okay;
-         case SSL_ERROR_WANT_CONNECT:     Self->Error = ERR::WouldBlock; break;
-         case SSL_ERROR_WANT_ACCEPT:      Self->Error = ERR::WouldBlock; break;
-         case SSL_ERROR_WANT_X509_LOOKUP: Self->Error = ERR::Retry; break;
-         case SSL_ERROR_SYSCALL:          Self->Error = ERR::InputOutput; break;
-         case SSL_ERROR_SSL:              Self->Error = ERR::SystemCall;
-                                          ERR_print_errors(Self->BIOHandle);
-                                          break;
-         default:                         Self->Error = ERR::Failed;
-      }
-
-      log.warning("SSL_accept: %s (%s)", ERR_error_string(result, nullptr), GetErrorMsg(Self->Error));
-      Self->setState(NTC::DISCONNECTED);
-      return Self->Error;
-   }
-   else {
-      Self->setState(NTC::CONNECTED);
-      return ERR::Okay;
-   }
-}
-
-//********************************************************************************************************************
 
 static ERR sslLinkSocket(extNetSocket *Self)
 {

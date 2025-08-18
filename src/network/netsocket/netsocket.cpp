@@ -818,8 +818,6 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 
    if (!Args->Length) return ERR::Okay;
 
-   size_t result = 0;
-
 #ifndef DISABLE_SSL
    if (Self->SSLHandle) {
       #ifdef _WIN32
@@ -852,14 +850,16 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          bool read_blocked;
          int pending;
      
-         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Socket, Self);
-         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Socket, Self);
+         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
+         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
      
          if (Self->HandshakeStatus != SHS::NIL) { // Still handshaking
             log.trace("SSL handshake still in progress.");
             return ERR::Okay;
          }
      
+         auto Buffer = Args->Buffer;
+         auto BufferSize = Args->Length;
          do {
             read_blocked = false;
             if (auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize); result <= 0) {
@@ -875,7 +875,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
         
                       log.msg("SSL socket handshake requested by server.");
                       Self->HandshakeStatus = SHS::WRITE;
-                      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
+                      RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
                       return ERR::Okay;
         
                    case SSL_ERROR_SYSCALL:
@@ -885,13 +885,13 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                }
             }
             else {
-               *Result += result;
+               Args->Result += result;
                Buffer = (APTR)((char *)Buffer + result);
                BufferSize -= result;
             }
          } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
      
-        log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
+         log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
      
          if (pending) {
             // With regards to non-blocking SSL sockets, be aware that a socket can be empty in terms of incoming data,
@@ -902,7 +902,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
             // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
             // data pending.
         
-            RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+            RegisterFD((HOSTHANDLE)Self->Handle, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
          }
         
          return ERR::Okay;
@@ -922,14 +922,14 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    }
 
 #ifdef __linux__
-   auto result = recv(Socket, Args->Buffer, Args->Length, 0);
+   auto bytes_received = recv(Self->Handle, Args->Buffer, Args->Length, 0);
 
-   if (result > 0) {
-      Args->Result = result;
+   if (bytes_received > 0) {
+      Args->Result = bytes_received;
       return ERR::Okay;
    }
 
-   if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
+   if (bytes_received IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
       return ERR::Disconnected;
    }
    else if ((errno IS EAGAIN) or (errno IS EINTR)) return ERR::Okay;
