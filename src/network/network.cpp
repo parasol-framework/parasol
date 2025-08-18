@@ -247,7 +247,6 @@ class extClientSocket : public objClientSocket {
    public:
    SOCKET_HANDLE Handle = NOHANDLE;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
-   struct NetQueue ReadQueue;  // Read queue, often used for reading whole messages
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
    bool ReadCalled;     // True if the Read action has been called
@@ -272,7 +271,6 @@ class extNetSocket : public objNetSocket {
    objNetLookup *NetLookup;
    objNetClient *LastClient;      // For linked-list management for server sockets.  Points to the last client IP on the chain
    struct NetQueue WriteQueue;
-   struct NetQueue ReadQueue;
    uint8_t ReadCalled:1;          // The Read() action sets this to TRUE whenever called.
    uint8_t IPV6:1;
    uint8_t Terminating:1;         // Set to TRUE when the NetSocket is marked for deletion.
