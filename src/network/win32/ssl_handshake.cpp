@@ -13,7 +13,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
    // Append new handshake data to receive buffer to handle fragmentation
    std::span<const unsigned char> server_data_span(static_cast<const unsigned char*>(ServerData), DataLength);
    if (!SSL->recv_buffer.append(server_data_span)) {
-      SSL->error_description = "SSL handshake data exceeds maximum buffer size";
+      // SSL handshake data exceeds maximum buffer size
       return SSL_ERROR_FAILED;
    }
 
@@ -82,9 +82,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
             FreeContextBuffer(out_buffer.pvBuffer);
 
             if (sent == SOCKET_ERROR) {
-               int error = WSAGetLastError();
-               SSL->last_win32_error = error;
-               SSL->error_description = "SSL handshake final send failed, WSA error: " + std::to_string(error);
+               SSL->last_win32_error = WSAGetLastError();
                return SSL_ERROR_FAILED;
             }
          }
@@ -92,7 +90,6 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
          if (stream_status != SEC_E_OK) {
             SSL->last_security_status = stream_status;
-            SSL->error_description = "Failed to query SSL stream sizes after handshake completion";
             return SSL_ERROR_FAILED;
          }
 
@@ -112,7 +109,6 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
 
          cache_connection_info(SSL);
          
-         SSL->error_description = "SSL handshake completed successfully";
          ConsumedOut = int(bytes_consumed);
          return SSL_OK;
       }
@@ -124,11 +120,7 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
             if (sent == SOCKET_ERROR) {
                int error = WSAGetLastError();
                SSL->last_win32_error = error;
-               if (error == WSAEWOULDBLOCK) {
-                  SSL->error_description = "SSL handshake continue send would block (WSAEWOULDBLOCK)";
-                  return SSL_ERROR_WOULD_BLOCK;
-               }
-               SSL->error_description = "SSL handshake continue send failed; WSA error: " + std::to_string(error);
+               if (error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;
                return SSL_ERROR_FAILED;
             }
          }
@@ -143,12 +135,11 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          }
       }
       else if (status == SEC_E_INCOMPLETE_MESSAGE) {
-         SSL->error_description = "SSL handshake incomplete message - waiting for more data";
          ConsumedOut = int(bytes_consumed);
          return SSL_NEED_DATA;
       }
       else {
-         set_error_status(SSL, status, "InitializeSecurityContext (continue)");
+         set_error_status(SSL, status);
          SSL->recv_buffer.reset();
          return SSL_ERROR_FAILED;
       }

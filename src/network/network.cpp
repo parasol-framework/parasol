@@ -842,27 +842,17 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
          log.traceBranch("SSL Length: %d", int(*Length));
 
          size_t bytes_sent;
-         auto error = ssl_write(Self->SSLHandle, Buffer, *Length, &bytes_sent);
-
-         if (error IS SSL_OK) {
-            if (*Length != bytes_sent) {
-               log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
-            }
+         if (auto error = ssl_write(Self->SSLHandle, Buffer, *Length, &bytes_sent); error IS SSL_OK) {
+            if (*Length != bytes_sent) log.traceWarning("Sent %d of %d bytes.", int(bytes_sent), int(*Length));
             *Length = bytes_sent;
             return ERR::Okay;
          }
          else {
-            CSTRING msg;
-            ssl_get_error(Self->SSLHandle, &msg);
             *Length = 0;
-
             if (error IS SSL_ERROR_WOULD_BLOCK) {
                return log.traceWarning(ERR::BufferOverflow);
             }
-            else {
-               log.warning("Windows SSL write error: %s", msg);
-               return ERR::Write;
-            }
+            else return log.warning(ERR::Write);
          }
       #else
          log.traceBranch("SSL Length: %d", int(*Length));

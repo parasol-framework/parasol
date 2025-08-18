@@ -35,10 +35,8 @@ bool ssl_has_encrypted_data(SSL_HANDLE ssl);
 int ssl_read_internal(SSL_HANDLE ssl, void* buffer, int buffer_size, int &);
 SSL_ERROR_CODE ssl_read(SSL_HANDLE ssl, void* buffer, int buffer_size, int* bytes_read);
 SSL_ERROR_CODE ssl_write(SSL_HANDLE ssl, const void* buffer, size_t buffer_size, size_t* bytes_sent);
-void ssl_get_error(SSL_HANDLE, const char **Message = nullptr);
 uint32_t ssl_last_win32_error(SSL_HANDLE);
 int ssl_last_security_status(SSL_HANDLE);
-const char* ssl_error_description(SSL_HANDLE);
 bool ssl_get_verify_result(SSL_HANDLE);
 
 // Connection information structure

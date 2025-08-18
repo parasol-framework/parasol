@@ -145,10 +145,8 @@ struct ssl_context {
    SSLBuffer send_buffer;                      // Buffer for SSL encryption
    SSLBuffer decrypted_buffer;                 // Buffer for leftover decrypted data
    size_t decrypted_buffer_offset;             // Bytes already returned to user
-   bool error_description_dirty;               // True if error description needs regeneration
    SECURITY_STATUS last_security_status;
    DWORD last_win32_error;
-   std::string error_description;
    std::string hostname;
    bool validate_credentials;
    bool credentials_acquired;
@@ -176,10 +174,8 @@ struct ssl_context {
       , send_buffer(SSL_INITIAL_BUFFER_SIZE)
       , decrypted_buffer(SSL_MAX_RECORD_SIZE)
       , decrypted_buffer_offset(0)
-      , error_description_dirty(false)
       , last_security_status(SEC_E_OK)
       , last_win32_error(0)
-      , error_description("No error")
       , validate_credentials(true)
       , credentials_acquired(false)
       , context_initialised(false)
@@ -224,19 +220,12 @@ struct ssl_context {
    SSL_ERROR_CODE process_recv_error(int Result, std::string Process)
    {
       if (!Result) {
-         error_description = "Connection closed by server during " + Process;
          return SSL_ERROR_DISCONNECTED;
       }
       else if (Result == -1) {
          last_win32_error = WSAGetLastError();
-         if (last_win32_error == WSAEWOULDBLOCK) {
-            error_description = "Socket would block during " + Process + " and is in non-blocking mode.";
-            return SSL_ERROR_WOULD_BLOCK;
-         }
-         else {
-            error_description = "Failed to receive response during " + Process + ": " + std::to_string(last_win32_error);
-            return SSL_ERROR_FAILED;
-         }
+         if (last_win32_error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;         
+         else return SSL_ERROR_FAILED;
       }
 
       return SSL_OK;
@@ -303,28 +292,10 @@ static const char* get_status_description(SECURITY_STATUS status)
    }
 }
 
-
-static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status, const char* Operation)
+static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status)
 {
    Ctx->last_security_status = Status;
    Ctx->last_win32_error = GetLastError();
-   Ctx->error_description_dirty = true;
-   Ctx->error_description = Operation;
-}
-
-
-static void generate_error_description(ssl_context* Ctx)
-{
-   if (!Ctx->error_description_dirty) return;
-
-   const char *operation = Ctx->error_description.c_str();
-   const char *status_desc = get_status_description(Ctx->last_security_status);
-
-   std::stringstream stream;
-   stream << operation << ":" << status_desc << "(Status: " << (uint32_t)Ctx->last_security_status << ", Win32: "
-          << Ctx->last_win32_error << ")";
-   Ctx->error_description = stream.str();
-   Ctx->error_description_dirty = false;
 }
 
 //********************************************************************************************************************
@@ -360,16 +331,6 @@ static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
       ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Signature: %S, Encryption: %S", 
                    operation, key_info.sSignatureAlgorithmName, key_info.sEncryptAlgorithmName);
    }
-}
-
-//********************************************************************************************************************
-
-static void debug_security_status(SECURITY_STATUS status, const char* operation)
-{
-   if (!g_debug_callback) return;
-   
-   ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug - %s: Status=0x%08X (%s), Win32=%d", 
-                operation, status, get_status_description(status), GetLastError());
 }
 
 //********************************************************************************************************************
@@ -481,13 +442,6 @@ void ssl_free_context(SSL_HANDLE SSL)
 
 //********************************************************************************************************************
 
-void ssl_get_error(SSL_HANDLE SSL, const char **Message)
-{
-   if (Message) *Message = ssl_error_description(SSL);
-}
-
-//********************************************************************************************************************
-
 uint32_t ssl_last_win32_error(SSL_HANDLE SSL)
 {
    return ((ssl_context*)SSL)->last_win32_error;
@@ -535,12 +489,6 @@ int ssl_last_security_status(SSL_HANDLE SSL)
 }
 
 //********************************************************************************************************************
-
-const char* ssl_error_description(SSL_HANDLE SSL)
-{
-   generate_error_description(SSL);
-   return SSL->error_description.c_str();
-}
 
 void ssl_enable_logging()
 {

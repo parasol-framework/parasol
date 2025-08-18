@@ -25,7 +25,7 @@ SSL_ERROR_CODE ssl_connect(SSL_HANDLE SSL, void *SocketHandle, const std::string
       nullptr, &cred_data, nullptr, nullptr, &SSL->credentials, &expiry);
 
    if (status != SEC_E_OK) {
-      set_error_status(SSL, status, "AcquireCredentialsHandle");
+      set_error_status(SSL, status);
       return SSL_ERROR_FAILED;
    }
 
@@ -51,7 +51,7 @@ SSL_ERROR_CODE ssl_connect(SSL_HANDLE SSL, void *SocketHandle, const std::string
       &SSL->context, &out_buffer_desc, &out_flags, &expiry);
 
    if (status != SEC_I_CONTINUE_NEEDED) {
-      set_error_status(SSL, status, "InitializeSecurityContext");
+      set_error_status(SSL, status);
       return SSL_ERROR_FAILED;
    }
 
@@ -66,10 +66,8 @@ SSL_ERROR_CODE ssl_connect(SSL_HANDLE SSL, void *SocketHandle, const std::string
          int error = WSAGetLastError();
          SSL->last_win32_error = error;
          if (error == WSAEWOULDBLOCK) {
-            SSL->error_description = "SSL handshake send would block (WSAEWOULDBLOCK)";
             return SSL_ERROR_WOULD_BLOCK;
          }
-         SSL->error_description = "SSL handshake send failed: " + std::to_string(error);
          return SSL_ERROR_FAILED;
       }
    }
@@ -105,7 +103,7 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
          &SSL->credentials, &expiry);
 
       if (status != SEC_E_OK) {
-         set_error_status(SSL, status, "AcquireCredentialsHandle (server)");
+         set_error_status(SSL, status);
          return SSL_ERROR_FAILED;
       }
 
@@ -178,24 +176,15 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
       if (status == SEC_E_OK) {
          auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
          if (stream_status != SEC_E_OK) {
-            SSL->last_security_status = stream_status;
-            SSL->error_description = "Failed to query SSL stream sizes after server handshake completion";
+            SSL->last_security_status = stream_status;            
             return SSL_ERROR_FAILED;
          }
-         SSL->error_description = "SSL handshake completed successfully";
-      }
-      else {
-         SSL->error_description = "Server SSL handshake needs more data";
       }
 
       if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
          auto bytes_sent = send(SSL->socket_handle, (const char *)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
-         if (bytes_sent < 0) {
-            return SSL_ERROR_FAILED;
-         }
-         else if (bytes_sent != out_buffer.cbBuffer) {
-            return SSL_ERROR_FAILED;
-         }
+         if (bytes_sent < 0) return SSL_ERROR_FAILED;
+         else if (unsigned(bytes_sent) != out_buffer.cbBuffer) return SSL_ERROR_FAILED;
 
          FreeContextBuffer(out_buffer.pvBuffer);
       }
@@ -204,7 +193,7 @@ SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength
       else return SSL_NEED_DATA;
    }
    else {
-      set_error_status(SSL, status, "AcceptSecurityContext");
+      set_error_status(SSL, status);
       if (out_buffer.pvBuffer) FreeContextBuffer(out_buffer.pvBuffer);
       return SSL_ERROR_FAILED;
    }

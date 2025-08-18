@@ -124,12 +124,12 @@ SSL_ERROR_CODE ssl_read(SSL_HANDLE SSL, void *Buffer, int BufferSize, int* Bytes
                   SSL->recv_buffer.reset();
                }
                
-               set_error_status(SSL, status, "DecryptMessage (renegotiation not supported)");
+               set_error_status(SSL, status);
                return SSL_ERROR_FAILED;
             }
             else if (status == 0x90321) {
                SSL->recv_buffer.reset();
-               set_error_status(SSL, status, "DecryptMessage (wrong credential handle)");
+               set_error_status(SSL, status);
                return SSL_ERROR_FAILED;
             }
             else if (status == SEC_E_INVALID_TOKEN) {
@@ -140,10 +140,10 @@ SSL_ERROR_CODE ssl_read(SSL_HANDLE SSL, void *Buffer, int BufferSize, int* Bytes
                // There's a protocol/cipher mismatch that manifests as the peer aborting the handshake.
 
                SSL->recv_buffer.reset();
-               set_error_status(SSL, status, "DecryptMessage (invalid token)");
+               set_error_status(SSL, status);
                return SSL_ERROR_DISCONNECTED;
             }
-            set_error_status(SSL, status, "DecryptMessage");
+            set_error_status(SSL, status);
             return SSL_ERROR_FAILED;
          }
       }
@@ -156,7 +156,6 @@ SSL_ERROR_CODE ssl_read(SSL_HANDLE SSL, void *Buffer, int BufferSize, int* Bytes
             space_available = SSL->recv_buffer.available();
          }
          else {
-            SSL->error_description = "SSL receive buffer overflow";
             return SSL_ERROR_FAILED;
          }
       }
@@ -229,7 +228,7 @@ SSL_ERROR_CODE ssl_write(SSL_HANDLE SSL, const void* Buffer, size_t BufferSize, 
    auto status = EncryptMessage(&SSL->context, 0, &bufferDesc, 0);
 
    if (status != SEC_E_OK) {
-      set_error_status(SSL, status, "EncryptMessage");
+      set_error_status(SSL, status);
       return SSL_ERROR_FAILED;
    }
 
@@ -242,18 +241,11 @@ SSL_ERROR_CODE ssl_write(SSL_HANDLE SSL, const void* Buffer, size_t BufferSize, 
    if (sent == SOCKET_ERROR) {
       auto error = WSAGetLastError();
       SSL->last_win32_error = error;
-      if (error == WSAEWOULDBLOCK) {
-         SSL->error_description = "SSL write would block (WSAEWOULDBLOCK)";
-         return SSL_ERROR_WOULD_BLOCK;
-      }
-      else {
-         SSL->error_description = "SSL write failed: " + std::to_string(error);
-         return SSL_ERROR_FAILED;
-      }
+      if (error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;
+      else return SSL_ERROR_FAILED;
    }
    else if (sent != int(encrypted_size)) {
       // Partial send - this is problematic for SSL records
-      SSL->error_description = "SSL partial write - SSL record boundary violated";
       return SSL_ERROR_FAILED;
    }
 

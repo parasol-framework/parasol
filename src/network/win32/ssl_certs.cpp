@@ -29,10 +29,7 @@ static PCCERT_CONTEXT load_pkcs12_certificate(const std::string &Path)
    pfx_blob.pbData = p12_data.data();
    
    HCERTSTORE pfx_store = PFXImportCertStore(&pfx_blob, L"", CRYPT_EXPORTABLE | CRYPT_USER_KEYSET);
-   if (!pfx_store) {
-      DWORD error = GetLastError();
-      return nullptr;
-   }
+   if (!pfx_store) return nullptr;
    
    // Find the certificate in the imported store
    PCCERT_CONTEXT cert_context = CertEnumCertificatesInStore(pfx_store, nullptr);

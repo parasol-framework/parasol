@@ -92,10 +92,9 @@ template <class T> ERR sslHandshakeReceived(T *Self, const void *Data, int Lengt
          return ERR::Okay;
 
       default:
-         log.warning("SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d; %s", result,
+         log.warning("SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d", result,
             ssl_last_security_status(Self->SSLHandle),
-            ssl_last_win32_error(Self->SSLHandle),
-            ssl_error_description(Self->SSLHandle));
+            ssl_last_win32_error(Self->SSLHandle));
          Self->setState(NTC::DISCONNECTED);
          return ERR::Failed;
    }
@@ -131,7 +130,7 @@ template <class T> ERR sslConnect(T *Self)
          return ERR::Okay;
 
       default:
-         log.warning("SSL connection failed with code %d; %s", result, ssl_error_description(Self->SSLHandle));
+         log.warning("SSL connection failed with code %d", result);
          log.warning("Security status: 0x%08X, Win32 error: %d",
             ssl_last_security_status(Self->SSLHandle),
             ssl_last_win32_error(Self->SSLHandle));

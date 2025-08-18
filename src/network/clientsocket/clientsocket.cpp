@@ -40,30 +40,21 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
              sslHandshakeReceived(Self, Buffer, *Result);
           }
           return error;
-       }
-       else { // Normal SSL data read for established connections
-          int bytes_read = 0;
-          auto ssl_error = ssl_read(Self->SSLHandle, Buffer, BufferSize, &bytes_read);
-          if (ssl_error IS SSL_OK and bytes_read > 0) {
-             *Result = bytes_read;
-             return ERR::Okay;
-          }
-          else if (ssl_error IS SSL_OK and !bytes_read) {
-             return ERR::Disconnected;
-          }
-          else {
-             CSTRING msg;
-             ssl_get_error(Self->SSLHandle, &msg);
-             if (ssl_error IS SSL_ERROR_WOULD_BLOCK) {
-                log.traceWarning("No more data to read from the SSL socket.");
-                return ERR::Okay;
-             }
-             else {
-                log.warning("Windows SSL read error: %s", msg);
-                return ERR::Failed;
-             }
-          }
-       }
+      }
+      else { // Normal SSL data read for established connections
+         int bytes_read = 0;
+         auto ssl_error = ssl_read(Self->SSLHandle, Buffer, BufferSize, &bytes_read);
+         if ((ssl_error IS SSL_OK) and (bytes_read > 0)) {
+            *Result = bytes_read;
+            return ERR::Okay;
+         }
+         else if ((ssl_error IS SSL_OK) and (!bytes_read)) return ERR::Disconnected;
+         else if (ssl_error IS SSL_ERROR_WOULD_BLOCK) {
+            log.traceWarning("No more data to read from the SSL socket.");
+            return ERR::Okay;
+         }
+         else log.warning(ERR::Failed);
+      }
    #else // OpenSSL
       bool read_blocked;
       int pending;
@@ -191,10 +182,9 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
                   return;
 
                default:
-                  log.warning("Server SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d; %s", accept_result,
+                  log.warning("Server SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d", accept_result,
                      ssl_last_security_status(client->SSLHandle),
-                     ssl_last_win32_error(client->SSLHandle),
-                     ssl_error_description(client->SSLHandle));
+                     ssl_last_win32_error(client->SSLHandle));
                   client->setState(NTC::DISCONNECTED);
                   return;
             }
@@ -472,7 +462,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
          // Server-side SSL setup - create SSL context and wait for client handshake
          Self->SSLHandle = ssl_create_context(glCertPath, false, true); // No verification, server mode
          if (Self->SSLHandle) {
-            ssl_set_socket(Self->SSLHandle, (void*)Self->Handle); // Set socket handle for server-side SSL
+            ssl_set_socket(Self->SSLHandle, (void*)(size_t)Self->Handle); // Set socket handle for server-side SSL
             Self->State = NTC::HANDSHAKING;
          }
          else Self->State = NTC::DISCONNECTED;

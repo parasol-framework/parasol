@@ -845,8 +845,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          else if (error IS SSL_ERROR_DISCONNECTED) return log.traceWarning(ERR::Disconnected);
          else if (error IS SSL_ERROR_WOULD_BLOCK) return ERR::Okay; // Not considered an error.
          else {
-            CSTRING msg = ssl_error_description(Self->SSLHandle);
-            log.warning("Windows SSL read error (code %d): %s", error, msg);
+            log.warning("Windows SSL read error (code %d)", error);
             return ERR::Failed;
          }
       #else // OpenSSL
