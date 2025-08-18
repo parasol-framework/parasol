@@ -24,7 +24,8 @@ ERR win_socketstate(WSW_SOCKET, std::optional<bool>, std::optional<bool>);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
 int win_shutdown(WSW_SOCKET, int);
 WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */
-ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, int, size_t *);
+ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, size_t *);
+template <class T> ERR WIN_APPEND(WSW_SOCKET, std::vector<uint8_t> &, size_t, T &);
 void winCloseResolveHandle(void *);
 void win_socket_reference(WSW_SOCKET, void *);
 

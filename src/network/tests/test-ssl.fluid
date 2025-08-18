@@ -380,7 +380,7 @@ function testSSLDataIntegrity()
          end
       end,
       port = glPort,
-      flags = 'SERVER|SSL'
+      flags = 'SERVER|SSL|SSL_NO_VERIFY'
    })
 
    local ssl_client = obj.new('netsocket', {

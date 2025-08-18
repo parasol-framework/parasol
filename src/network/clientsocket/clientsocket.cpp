@@ -35,7 +35,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
        // If we're in the middle of SSL handshake, read raw data for handshake processing
        if (Self->State IS NTC::HANDSHAKING) {
           log.trace("Windows SSL handshake in progress, reading raw data.");
-          ERR error = WIN_RECEIVE(Self->Handle, Buffer, BufferSize, 0, Result);
+          ERR error = WIN_RECEIVE(Self->Handle, Buffer, BufferSize, Result);
           if ((error IS ERR::Okay) and (*Result > 0)) {
              sslHandshakeReceived(Self, Buffer, *Result);
           }
@@ -151,7 +151,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
       }
    }
 #elif _WIN32
-   return WIN_RECEIVE(Self->Handle, Buffer, BufferSize, 0, Result);
+   return WIN_RECEIVE(Self->Handle, Buffer, BufferSize, Result);
 #else
    #error No support for RECEIVE()
 #endif
@@ -177,7 +177,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
          log.trace("Windows SSL server handshake in progress, reading raw data.");
          std::array<char, 4096> buffer;
          size_t result;
-         ERR error = WIN_RECEIVE(client->Handle, buffer.data(), buffer.size(), 0, &result);
+         ERR error = WIN_RECEIVE(client->Handle, buffer.data(), buffer.size(), &result);
          if ((error IS ERR::Okay) and (result > 0)) {
             std::vector<unsigned char> response_data;
             ERR handshake_result = sslServerHandshakeReceived(client, buffer.data(), int(result), response_data);

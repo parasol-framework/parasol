@@ -789,10 +789,14 @@ The Read() action will read incoming data from the socket and write it to the pr
 is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all
 other return codes indicate permanent failure and the socket connection will be closed when the action returns.
 
+Because NetSocket objects are non-blocking, reading from the socket is normally performed in the #Incoming
+callback.  Reading from the socket when no data is available will result in an immediate return with no output.
+
 -ERRORS-
 Okay: Read successful (if no data was on the socket, success is still indicated).
 NullArgs
 Disconnected: The socket connection is closed.
+InvalidState: The socket is not in a state that allows reading (e.g. during SSL handshake).
 Failed: A permanent failure has occurred and socket has been closed.
 
 *********************************************************************************************************************/
@@ -803,28 +807,145 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 
    if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
 
-   if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-      // Not allowed - client must read from the ClientSocket.
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) { // Not allowed - client must read from the ClientSocket.
       return ERR::NoSupport;
    }
-   else { // Read from the server that we're connected to
-      if (Self->Handle IS NOHANDLE) return log.warning(ERR::Disconnected);
 
-      Self->ReadCalled = true;
+   if (Self->Handle IS NOHANDLE) return log.warning(ERR::Disconnected);
 
-      if (!Args->Length) { Args->Result = 0; return ERR::Okay; }
+   Self->ReadCalled = true;
+   Args->Result = 0;
 
-      size_t result;
-      ERR error = receive_from_server(Self, Self->Handle, Args->Buffer, Args->Length, 0, &result);
-      Args->Result = result;
+   if (!Args->Length) return ERR::Okay;
 
-      if (error != ERR::Okay) {
-         log.branch("Freeing socket, error '%s'", GetErrorMsg(error));
-         free_socket(Self);
+   size_t result = 0;
+
+#ifndef DISABLE_SSL
+   #ifdef _WIN32
+      if (Self->SSLHandle) {
+         // If we're in the middle of SSL handshake, return nothing.  The automated incoming data handler is managing the object state.
+         if (Self->State IS NTC::HANDSHAKING) return log.traceWarning(ERR::InvalidState);
+         else if (Self->State != NTC::CONNECTED) return log.warning(ERR::Disconnected);
+         
+         if (!Self->ReadQueue.Buffer.empty()) {
+            // If we have data in the read queue, copy it to the Args buffer.
+            size_t bytes_to_copy = std::min<size_t>(Args->Length, Self->ReadQueue.Buffer.size());
+            pf::copymem(Self->ReadQueue.Buffer.data(), Args->Buffer, bytes_to_copy);
+            Args->Result = bytes_to_copy;
+            Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_to_copy);
+            return ERR::Okay;
+         }
+
+         int bytes_read = 0;      
+         if (auto error = ssl_read(Self->SSLHandle, Args->Buffer, Args->Length, &bytes_read); error IS SSL_OK) {
+            Args->Result = bytes_read;
+            return ERR::Okay;
+         }
+         else if (error IS SSL_ERROR_DISCONNECTED) return log.traceWarning(ERR::Disconnected);
+         else if (error IS SSL_ERROR_WOULD_BLOCK) return ERR::Okay; // Not considered an error.
+         else {
+            CSTRING msg = ssl_error_description(Self->SSLHandle);
+            log.warning("Windows SSL read error (code %d): %s", error, msg);
+            return ERR::Failed;
+         }
       }
-
-      return error;
+   #else // OpenSSL
+      bool read_blocked;
+      int pending;
+     
+      if (Self->SSLHandle) {
+         if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Socket, Self);
+         else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Socket, Self);
+     
+         if (Self->HandshakeStatus != SHS::NIL) { // Still handshaking
+            log.trace("SSL handshake still in progress.");
+            return ERR::Okay;
+         }
+     
+         do {
+            read_blocked = false;
+            if (auto result = SSL_read(Self->SSLHandle, Buffer, BufferSize); result <= 0) {
+               auto ssl_error = SSL_get_error(Self->SSLHandle, result);
+               switch (ssl_error) {
+                  case SSL_ERROR_ZERO_RETURN: return log.traceWarning(ERR::Disconnected);
+        
+                  case SSL_ERROR_WANT_READ: read_blocked = true; break;
+        
+                   case SSL_ERROR_WANT_WRITE:
+                     // WANT_WRITE is returned if we're trying to rehandshake and the write operation would block.  We
+                     // need to wait on the socket to be writeable, then restart the read when it is.
+        
+                      log.msg("SSL socket handshake requested by server.");
+                      Self->HandshakeStatus = SHS::WRITE;
+                      RegisterFD((HOSTHANDLE)Socket, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
+                      return ERR::Okay;
+        
+                   case SSL_ERROR_SYSCALL:
+                   default:
+                      log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
+                      return ERR::Read;
+               }
+            }
+            else {
+               *Result += result;
+               Buffer = (APTR)((char *)Buffer + result);
+               BufferSize -= result;
+            }
+         } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
+     
+        log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
+     
+         if (pending) {
+            // With regards to non-blocking SSL sockets, be aware that a socket can be empty in terms of incoming data,
+            // yet SSL can keep data that has already arrived in an internal buffer.  This means that we can get stuck
+            // select()ing on the socket because you aren't told that there is internal data waiting to be processed by
+            // SSL_read().
+            //
+            // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
+            // data pending.
+        
+            RegisterFD((HOSTHANDLE)Socket, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+         }
+        
+         return ERR::Okay;
+      }
+   #endif
+#endif
+      
+   if (!Self->ReadQueue.Buffer.empty()) {
+      // If we have data in the read queue, copy it to the Args buffer.
+      size_t bytes_to_copy = std::min<size_t>(Args->Length, Self->ReadQueue.Buffer.size());
+      pf::copymem(Self->ReadQueue.Buffer.data(), Args->Buffer, bytes_to_copy);
+      Args->Result += bytes_to_copy;
+      Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_to_copy);
+      // TODO: We could drop through here to read more data from the socket if the ReadQueue is empty and
+      // we have more space in the buffer.
+      return ERR::Okay;
    }
+
+#ifdef __linux__
+   auto result = recv(Socket, Args->Buffer, Args->Length, 0);
+
+   if (result > 0) {
+      Args->Result = result;
+      return ERR::Okay;
+   }
+
+   if (result IS 0) { // man recv() says: The return value is 0 when the peer has performed an orderly shutdown.
+      return ERR::Disconnected;
+   }
+   else if ((errno IS EAGAIN) or (errno IS EINTR)) return ERR::Okay;
+   else {
+      log.warning("recv() failed: %s", strerror(errno));
+      return ERR::SystemCall;
+   }
+#elif _WIN32
+   auto error = WIN_RECEIVE(Self->Handle, (char *)Args->Buffer, Args->Length, &result);
+   Args->Result = result;
+   return error;
+#else
+   #error No support for RECEIVE()
+#endif
 }
 
 /*********************************************************************************************************************
@@ -1783,7 +1904,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 // If the socket is the client of a server, messages from the server will come in through here.
 //
 // Incoming information from the server can be read with either the Incoming callback routine (the developer is
-// expected to call the Read action from this) or he can receive the information in the Subscriber's data channel.
+// expected to call the Read action from this).
 //
 // This function is called from win32_netresponse() and is managed outside of the normal message queue.
 
@@ -1808,30 +1929,23 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
   #ifdef _WIN32
    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
       log.trace("Windows SSL handshake in progress, reading raw data.");
-      std::array<char, 4096> buffer;
       size_t result;
-      if (ERR error = WIN_RECEIVE(Self->Handle, buffer.data(), buffer.size(), 0, &result); error IS ERR::Okay) {
+      if (ERR error = WIN_APPEND(Self->Handle, Self->ReadQueue.Buffer, 4096, result); error IS ERR::Okay) {
          int bytes_consumed = 0;
-         sslHandshakeReceived(Self, buffer.data(), int(result), &bytes_consumed);
-
-         // If handshake completed, check for leftover encrypted data and decrypted application data
-         if (Self->State IS NTC::CONNECTED) {
-            log.msg("SSL handshake completed - consumed %d of %d bytes", bytes_consumed, int(result));
-
-            /*if (ssl_has_decrypted_data(Self->SSLHandle)) {
-               log.msg("SSL handshake completed with ready application data - triggering immediate processing");
-               // Continue to process the application data through normal channels
-               // The decrypted data is already available in the SSL context
-            }
-            else*/
-            if (bytes_consumed < int(result)) {
-               // There's leftover encrypted data after the handshake that hasn't been decrypted yet
-               size_t leftover_size = result - bytes_consumed;
-               log.msg("Queuing %d bytes of leftover encrypted data for later processing", int(leftover_size));
-               // Fall through to handle encrypted data
-            }
+         sslHandshakeReceived(Self, Self->ReadQueue.Buffer.data(), int(result), &bytes_consumed);
+         if (bytes_consumed > 0) {
+            Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_consumed);
          }
-         else return; // Still handshaking, no user data to process yet
+
+         if (Self->State IS NTC::CONNECTED) {
+            log.msg("SSL handshake completed - queue contains %" PF64 " bytes", Self->ReadQueue.Buffer.size());
+         }
+
+         if ((Self->State != NTC::CONNECTED) or (Self->ReadQueue.Buffer.empty())) {
+            // In most cases we return without further processing unless we're definitely connected and
+            // there is data sitting in the queue.
+            return;
+         }
       }
       else {
          log.warning(error);
@@ -1842,10 +1956,7 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
   #else
     if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
       log.traceBranch("Continuing SSL handshake...");
-      if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
-         sslAccept(Self);  // Server-side SSL handshake
-      }
-      else sslConnect(Self); // Client-side SSL handshake
+      sslConnect(Self);
       return;
     }
 
@@ -1873,7 +1984,6 @@ restart:
    // Otherwise we clear the unprocessed content.
 
    Self->ReadCalled = false;
-   size_t result;
    auto error = ERR::Okay;
    if (Self->Incoming.defined()) {
       if (Self->Incoming.isC()) {
@@ -1892,11 +2002,11 @@ restart:
    if (!Self->ReadCalled) {
       log.trace("Clearing unprocessed data from socket %d", Self->UID);
 
-      std::array<char,512> buffer;
+      std::array<char,1024> buffer;
       int total = 0;
-
+      int result;
       do {
-         error = receive_from_server(Self, Self->Handle, buffer.data(), buffer.size(), 0, &result);
+         error = acRead(Self, buffer.data(), buffer.size(), &result);
          total += result;
       } while (result > 0);
 
