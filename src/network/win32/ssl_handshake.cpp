@@ -129,10 +129,25 @@ SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE SSL, const void *ServerData, in
          ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake buffer analysis: original_total=%zu, consumed=%zu, current_recv_buffer=%zu", 
                       SSL->recv_buffer.size() + bytes_consumed, bytes_consumed, SSL->recv_buffer.size());
          
-         // Check if recv_buffer contains application data (from SECBUFFER_EXTRA) that should be preserved
+         // Handle leftover data after handshake completion
+         // Based on chatgpt_ssl.cpp approach: only preserve data if we have valid SECBUFFER_EXTRA
+         // For external servers, leftover data is often handshake completion messages that will cause decryption errors
+         bool found_valid_extra = false;
+         for (const auto& buf : in_buffers) {
+            if (buf.BufferType == SECBUFFER_EXTRA and buf.cbBuffer > 0 and buf.cbBuffer < SSL->recv_buffer.size() + bytes_consumed) {
+               found_valid_extra = true;
+               break;
+            }
+         }
+         
          if (!SSL->recv_buffer.empty()) {
-            ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - preserving %zu bytes of application data for decryption", SSL->recv_buffer.size());
-            // Do NOT clear the buffer - it contains encrypted application data to be processed by ssl_read()
+            if (found_valid_extra) {
+               ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - preserving %zu bytes from valid SECBUFFER_EXTRA", SSL->recv_buffer.size());
+            }
+            else {
+               ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - clearing %zu bytes (no valid SECBUFFER_EXTRA found)", SSL->recv_buffer.size());
+               SSL->recv_buffer.reset();
+            }
          }
          else {
             ssl_debug_log(SSL_DEBUG_INFO, "SSL handshake complete - no extra data to preserve (consumed all %zu bytes)", bytes_consumed);

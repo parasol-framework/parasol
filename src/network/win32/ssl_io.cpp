@@ -38,13 +38,13 @@ SSL_ERROR_CODE ssl_read(SSL_HANDLE SSL, void *Buffer, int BufferSize, int* Bytes
             ssl_debug_log(SSL_DEBUG_ERROR, "SSL read attempted with uninitialized context");
             return SSL_ERROR_FAILED;
          }
-         
+
          // Validate stream sizes are set (indicates successful handshake completion)
          if (SSL->stream_sizes.cbMaximumMessage == 0) {
             ssl_debug_log(SSL_DEBUG_ERROR, "SSL read attempted before stream sizes were initialized - handshake may not be complete");
             return SSL_ERROR_FAILED;
          }
-         
+
          std::array<SecBuffer, 4> buffers;
          auto recv_data = SSL->recv_buffer.used_data_mutable();
          buffers[0].pvBuffer = recv_data.data();
@@ -136,17 +136,17 @@ SSL_ERROR_CODE ssl_read(SSL_HANDLE SSL, void *Buffer, int BufferSize, int* Bytes
               return SSL_ERROR_DISCONNECTED;
             }
             else if (status == 0x90321) { // Wrong credential handle - context corruption
-               ssl_debug_log(SSL_DEBUG_ERROR, "SSL read wrong credential handle - SSL context may be corrupted");
-               SSL->recv_buffer.reset(); // Clear potentially corrupted buffer
+               ssl_debug_log(SSL_DEBUG_ERROR, "SSL read wrong credential handle - SSL context corrupted");
+               SSL->recv_buffer.reset();
                set_error_status(SSL, status, "DecryptMessage (wrong credential handle)");
-               return SSL_ERROR_DISCONNECTED;
+               return SSL_ERROR_FAILED;
             }
             else if (status == SEC_E_INVALID_TOKEN) {
                // This can happen if:
-               // You fed in garbage or truncated bytes (common if you didn’t wait for a full record and passed partial data).
+               // You fed in garbage or truncated bytes (common if you didn't wait for a full record and passed partial data).
                // The peer sent malformed TLS (e.g., not really TLS, wrong port).
                // The state machine is out of sync (e.g., you called ISC/ASC at the wrong time).
-               // There’s a protocol/cipher mismatch that manifests as the peer aborting the handshake.
+               // There's a protocol/cipher mismatch that manifests as the peer aborting the handshake.
 
                SSL->recv_buffer.reset();
                set_error_status(SSL, status, "DecryptMessage (invalid token)");
