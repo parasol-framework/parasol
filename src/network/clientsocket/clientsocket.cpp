@@ -176,21 +176,27 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
       if (client->State IS NTC::HANDSHAKING) {
          log.trace("Windows SSL server handshake in progress, reading raw data.");
          std::array<char, 4096> buffer;
-         size_t result;
-         ERR error = WIN_RECEIVE(client->Handle, buffer.data(), buffer.size(), &result);
-         if ((error IS ERR::Okay) and (result > 0)) {
-            std::vector<unsigned char> response_data;
-            ERR handshake_result = sslServerHandshakeReceived(client, buffer.data(), int(result), response_data);
+         size_t bytes_received;
+         ERR error = WIN_RECEIVE(client->Handle, buffer.data(), buffer.size(), &bytes_received);
+         if ((error IS ERR::Okay) and (bytes_received > 0)) {
+            SSL_ERROR_CODE accept_result = ssl_accept(client->SSLHandle, buffer.data(), bytes_received);
 
-            // Send handshake response data back to client if present
-            if ((handshake_result IS ERR::Okay) and !response_data.empty()) {
-               log.trace("Sending SSL handshake response (%d bytes) to client.", int(response_data.size()));
-               size_t bytes_to_send = response_data.size();
-               ERR send_result = WIN_SEND(client->Handle, response_data.data(), &bytes_to_send, 0);
-               if ((send_result != ERR::Okay) or (bytes_to_send != response_data.size())) {
-                  log.warning("Failed to send complete SSL handshake response to client: %s", GetErrorMsg(send_result));
+            switch (accept_result) {
+               case SSL_OK: 
+                  log.trace("SSL handshake completed for client %d", client->UID);
+                  client->setState(NTC::CONNECTED);
+                  return;
+               case SSL_ERROR_WOULD_BLOCK:
+               case SSL_NEED_DATA: // Server needs to send response data back to client
+                  return;
+
+               default:
+                  log.warning("Server SSL handshake failed: %d; SecStatus: 0x%08X; WinError: %d; %s", accept_result,
+                     ssl_last_security_status(client->SSLHandle),
+                     ssl_last_win32_error(client->SSLHandle),
+                     ssl_error_description(client->SSLHandle));
                   client->setState(NTC::DISCONNECTED);
-               }
+                  return;
             }
          }
          return;

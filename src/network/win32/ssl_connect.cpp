@@ -74,22 +74,21 @@ SSL_ERROR_CODE ssl_connect(SSL_HANDLE SSL, void *SocketHandle, const std::string
       }
    }
 
-   // For simplicity, return connecting status - full handshake would need more rounds
-   return SSL_ERROR_CONNECTING;
+   // For simplicity, full handshake would need more rounds
+   return SSL_NEED_DATA;
 }
 
 //********************************************************************************************************************
 // Server-side handshake handling using AcceptSecurityContext
+// Called by sslServerHandshakeReceived()
 
-SSL_ERROR_CODE ssl_accept_handshake(SSL_HANDLE SSL, const void* ClientData, int DataLength, std::vector<unsigned char>& ResponseData)
+SSL_ERROR_CODE ssl_accept(SSL_HANDLE SSL, const void* ClientData, int DataLength)
 {
    if ((!SSL) or (!ClientData) or (!SSL->server_certificate) or (DataLength <= 0)) {
       return SSL_ERROR_ARGS;
    }
 
-   ResponseData.clear();
-   
-   ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept Handshake - Processing %d bytes from client", DataLength);
+   ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept - Processing %d bytes from client", DataLength);
 
    // Acquire server credentials if not already done
    if (!SSL->credentials_acquired) {
@@ -97,7 +96,7 @@ SSL_ERROR_CODE ssl_accept_handshake(SSL_HANDLE SSL, const void* ClientData, int 
       memset(&cred_data, 0, sizeof(cred_data));
       cred_data.dwVersion = SCHANNEL_CRED_VERSION;
       // For localhost testing, use more permissive flags to ignore certificate validation issues
-      cred_data.dwFlags = SCH_CRED_NO_SYSTEM_MAPPER | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION | 
+      cred_data.dwFlags = SCH_CRED_NO_SYSTEM_MAPPER | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_MANUAL_CRED_VALIDATION |
                         SCH_CRED_IGNORE_NO_REVOCATION_CHECK | SCH_CRED_IGNORE_REVOCATION_OFFLINE;
       cred_data.cCreds = 1;
       cred_data.paCred = &SSL->server_certificate;
@@ -113,8 +112,8 @@ SSL_ERROR_CODE ssl_accept_handshake(SSL_HANDLE SSL, const void* ClientData, int 
          debug_security_status(status, "AcquireCredentialsHandle (server)");
          return SSL_ERROR_FAILED;
       }
-      
-      ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept Handshake - Server credentials acquired successfully");
+
+      ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept - Server credentials acquired successfully");
 
       SSL->credentials_acquired = true;
    }
@@ -184,47 +183,46 @@ SSL_ERROR_CODE ssl_accept_handshake(SSL_HANDLE SSL, const void* ClientData, int 
    }
 
    debug_security_status(status, "AcceptSecurityContext");
-   
-   if (status == SEC_E_OK) { // Handshake completed successfully
-      ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept Handshake - Server handshake completed successfully");
-      debug_ssl_handshake_state(SSL, "ServerHandshakeComplete");
-      auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
-      if (stream_status != SEC_E_OK) {
-         SSL->last_security_status = stream_status;
-         SSL->error_description = "Failed to query SSL stream sizes after server handshake completion";
-         return SSL_ERROR_FAILED;
-      }
-      SSL->error_description = "Server SSL handshake completed successfully";
 
-      // If there's response data, copy it to vector
+   if ((status == SEC_E_OK) or (status == SEC_I_CONTINUE_NEEDED)) {
+      if (status == SEC_E_OK) {
+         ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept - Server handshake completed successfully");
+         debug_ssl_handshake_state(SSL, "ServerHandshakeComplete");
+         auto stream_status = QueryContextAttributes(&SSL->context, SECPKG_ATTR_STREAM_SIZES, &SSL->stream_sizes);
+         if (stream_status != SEC_E_OK) {
+            SSL->last_security_status = stream_status;
+            SSL->error_description = "Failed to query SSL stream sizes after server handshake completion";
+            return SSL_ERROR_FAILED;
+         }
+         SSL->error_description = "SSL handshake completed successfully";
+      }
+      else {
+         ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept - More exchanges required");
+         SSL->error_description = "Server SSL handshake needs more data";
+      }
+
       if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-         ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept Handshake - Sending final %d bytes to client", out_buffer.cbBuffer);
-         ResponseData.resize(out_buffer.cbBuffer);
-         memcpy(ResponseData.data(), out_buffer.pvBuffer, out_buffer.cbBuffer);
+         ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept - Sending final %d bytes to client", out_buffer.cbBuffer);
+
+         auto bytes_sent = send(SSL->socket_handle, (const char *)out_buffer.pvBuffer, out_buffer.cbBuffer, 0);
+         if (bytes_sent < 0) {
+            ssl_debug_log(SSL_DEBUG_TRACE, "Failed to send complete SSL handshake response to client");
+            return SSL_ERROR_FAILED;
+         }
+         else if (bytes_sent != out_buffer.cbBuffer) {
+            // TODO: Handle partial send for non-blocking socket if needed
+            ssl_debug_log(SSL_DEBUG_TRACE, "Failed to send complete SSL handshake response to client");
+            return SSL_ERROR_FAILED;
+         }
+
          FreeContextBuffer(out_buffer.pvBuffer);
       }
-      else ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept Handshake - No final response data to send");
+      else ssl_debug_log(SSL_DEBUG_INFO, "SSL Accept - No final response data to send");
 
-      return SSL_OK;
+      if (status == SEC_E_OK) return SSL_OK;
+      else return SSL_NEED_DATA; // More data needed for handshake completion
    }
-   else if (status == SEC_I_CONTINUE_NEEDED) {
-      // More handshake data needed
-      ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept Handshake - Continue needed, more exchanges required");
-      SSL->error_description = "Server SSL handshake needs more data";
-
-      // Copy response data to send back to client
-      if (out_buffer.pvBuffer and out_buffer.cbBuffer > 0) {
-         ssl_debug_log(SSL_DEBUG_TRACE, "SSL Accept Handshake - Sending %d bytes response to client", out_buffer.cbBuffer);
-         ResponseData.resize(out_buffer.cbBuffer);
-         memcpy(ResponseData.data(), out_buffer.pvBuffer, out_buffer.cbBuffer);
-         FreeContextBuffer(out_buffer.pvBuffer);
-      }
-      else ssl_debug_log(SSL_DEBUG_WARNING, "SSL Accept Handshake - Continue needed but no response data generated");
-
-      return SSL_ERROR_CONNECTING;
-   }
-   else {
-      // Handshake failed
+   else { // Handshake failed
       set_error_status(SSL, status, "AcceptSecurityContext");
       if (out_buffer.pvBuffer) FreeContextBuffer(out_buffer.pvBuffer);
       return SSL_ERROR_FAILED;

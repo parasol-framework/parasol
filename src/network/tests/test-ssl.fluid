@@ -9,7 +9,7 @@ Tests include:
 - Encrypted data transfer verification
 - SSL-specific error conditions and recovery
 - Certificate validation scenarios
-- SSL state transitions (NTC_CONNECTING_SSL)
+- SSL state transitions (NTC_HANDSHAKING)
 - Cross-platform SSL implementation testing
 - SSL connection termination and cleanup
 
@@ -25,7 +25,6 @@ If SSL is not available, tests will be skipped with appropriate messages.
 
 function printableState(State)
    if (State == NTC_CONNECTED) then return 'CONNECTED'
-   elseif (State == NTC_CONNECTING) then return 'CONNECTING'
    elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
    elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
    else return tostring(State) end
@@ -73,13 +72,13 @@ function testBasicSSLCommunication()
    print('Testing basic SSL communication...')
 
    local ssl_server = obj.new('netsocket', {
-      name = 'SSLTestServer',
+      name = 'server',
       feedback = function(Socket, Client, State)
          msg('[SSL Server] Client state: ' .. printableState(State))
 
          assert(Client, 'Client parameter is empty')
 
-         if (State == NTC_CONNECTING_SSL) then
+         if (State == NTC_HANDSHAKING) then
             msg('[SSL Server] SSL handshake in progress...')
 
          elseif (State == NTC_CONNECTED) then
@@ -87,7 +86,7 @@ function testBasicSSLCommunication()
             ssl_handshake_complete = true
 
             -- Send encrypted test message
-            msg('[SSL Server] Sending encrypted message...')
+            msg('[SSL Server] Sending encrypted message to client...')
             local err, len = Client.acWrite(glSSLTestData)
             if (err == ERR_Okay) then
                msg('[SSL Server] Encrypted message sent successfully')
@@ -108,12 +107,11 @@ function testBasicSSLCommunication()
 
          if (err == ERR_Okay) then
             if read_len == 0 then
-               msg('Received incoming data notification with no data to read.')
-            --   raise(ERR_Terminate)
+               error('Received incoming data notification with no data to read.')
             end
 
             local emsg = buffer:sub(1, read_len)
-            msg('[SSL Server] Received encrypted message: "' .. emsg .. '"')
+            msg('[SSL Server] Received encrypted message of ' .. read_len .. ' bytes: "' .. nz(emsg,'NIL') .. '"')
 
             -- Verify message integrity over SSL
             if (string.match(emsg, 'SSL_ECHO:' .. glSSLTestData)) then
@@ -137,11 +135,11 @@ function testBasicSSLCommunication()
    assert(ssl_server.error == ERR_Okay, 'SSL server error: ' .. mSys.GetErrorMsg(ssl_server.error))
 
    local ssl_client = obj.new('netsocket', {
-      name = 'SSLTestClient',
+      name = 'client',
       feedback = function(Socket, State)
          msg('[SSL Client] Connection state: ' .. printableState(State))
 
-         if (State == NTC_CONNECTING_SSL) then
+         if (State == NTC_HANDSHAKING) then
             msg('[SSL Client] Performing SSL handshake...')
 
          elseif (State == NTC_CONNECTED) then
@@ -157,12 +155,11 @@ function testBasicSSLCommunication()
 
          if (err == ERR_Okay) then
             if read_len == 0 then
-               print('Received incoming data notification with no data to read.')
-               raise(ERR_Terminate)
+               error('Received incoming data notification with no data to read.')
             end
 
             local emsg = buffer:sub(1, read_len)
-            msg('[SSL Client] Received encrypted message: ' .. nz(emsg,'NIL'))
+            msg('[SSL Client] Received encrypted message of ' .. read_len .. ' bytes: "' .. nz(emsg,'NIL') .. '"')
 
             -- Echo back the message to verify bidirectional SSL
             local echo_msg = 'SSL_ECHO:' .. emsg
@@ -432,7 +429,7 @@ function testHTTPSConnection()
       feedback = function(Socket, State)
          print('[HTTPS Client] Connection state: ' .. printableState(State))
 
-         if (State == NTC_CONNECTING_SSL) then
+         if (State == NTC_HANDSHAKING) then
             print('[HTTPS Client] Performing SSL handshake with ' .. SITE .. '...')
 
          elseif (State == NTC_CONNECTED) then

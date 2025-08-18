@@ -31,6 +31,7 @@ Pure Windows implementation that avoids all Parasol headers to prevent conflicts
 #include "ssl_wrapper.h"
 
 static void ssl_debug_log(int level, const char* format, ...);
+extern "C" void ssl_debug_to_parasol_log(const char* message, int level);
 
 // Define provider names if not available
 #ifndef MS_ENH_RSA_AES_PROV
@@ -215,6 +216,7 @@ struct ssl_context {
 //********************************************************************************************************************
 
 static bool glSSLInitialised = false;
+static bool glLoggingEnabled = false;
 //static HCERTSTORE g_cert_store = nullptr;
 static SSL_DEBUG_CALLBACK g_debug_callback = nullptr;
 
@@ -305,7 +307,7 @@ static void generate_error_description(ssl_context* Ctx)
 
 static void ssl_debug_log(int level, const char* format, ...)
 {
-   if (!g_debug_callback) return;
+   if (!glLoggingEnabled) return;
    
    char buffer[1024];
    va_list args;
@@ -313,7 +315,7 @@ static void ssl_debug_log(int level, const char* format, ...)
    vsnprintf(buffer, sizeof(buffer), format, args);
    va_end(args);
    
-   g_debug_callback(buffer, level);
+   ssl_debug_to_parasol_log(buffer, level);
 }
 
 //********************************************************************************************************************
@@ -321,7 +323,7 @@ static void ssl_debug_log(int level, const char* format, ...)
 
 static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
 {
-   if (!g_debug_callback or !SSL->context_initialised) return;
+   if (!glLoggingEnabled or !SSL->context_initialised) return;
    
    ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Context initialized, querying attributes...", operation);
    
@@ -492,6 +494,14 @@ bool ssl_has_decrypted_data(SSL_HANDLE SSL)
 }
 
 //********************************************************************************************************************
+// Check if SSL context has encrypted data ready for decryption
+
+bool ssl_has_encrypted_data(SSL_HANDLE SSL)
+{
+   return !SSL->recv_buffer.empty();
+}
+
+//********************************************************************************************************************
 // Get last security status
 
 int ssl_last_security_status(SSL_HANDLE SSL)
@@ -508,12 +518,9 @@ const char* ssl_error_description(SSL_HANDLE SSL)
    return SSL->error_description.c_str();
 }
 
-//********************************************************************************************************************
-// Set debug callback function
-
-void ssl_set_debug_callback(SSL_DEBUG_CALLBACK callback)
+void ssl_enable_logging()
 {
-   g_debug_callback = callback;
+   glLoggingEnabled = true;
 }
 
 #include "ssl_handshake.cpp"

@@ -821,14 +821,15 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
    size_t result = 0;
 
 #ifndef DISABLE_SSL
-   #ifdef _WIN32
-      if (Self->SSLHandle) {
+   if (Self->SSLHandle) {
+      #ifdef _WIN32
          // If we're in the middle of SSL handshake, return nothing.  The automated incoming data handler is managing the object state.
          if (Self->State IS NTC::HANDSHAKING) return log.traceWarning(ERR::InvalidState);
          else if (Self->State != NTC::CONNECTED) return log.warning(ERR::Disconnected);
          
          if (!Self->ReadQueue.Buffer.empty()) {
             // If we have data in the read queue, copy it to the Args buffer.
+            // NOTE: Be wary of encrypted data appearing in ReadQueue - this is a coding error if it happens.
             size_t bytes_to_copy = std::min<size_t>(Args->Length, Self->ReadQueue.Buffer.size());
             pf::copymem(Self->ReadQueue.Buffer.data(), Args->Buffer, bytes_to_copy);
             Args->Result = bytes_to_copy;
@@ -848,12 +849,10 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
             log.warning("Windows SSL read error (code %d): %s", error, msg);
             return ERR::Failed;
          }
-      }
-   #else // OpenSSL
-      bool read_blocked;
-      int pending;
+      #else // OpenSSL
+         bool read_blocked;
+         int pending;
      
-      if (Self->SSLHandle) {
          if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Socket, Self);
          else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Socket, Self);
      
@@ -908,8 +907,8 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          }
         
          return ERR::Okay;
-      }
-   #endif
+      #endif
+   }
 #endif
       
    if (!Self->ReadQueue.Buffer.empty()) {
@@ -1280,7 +1279,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
    }
 
    if (Value != Self->State) {
-      if ((Self->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
+      log.branch("State changed from %d to %d", int(Self->State), int(Value));
 
       #ifndef DISABLE_SSL
       if ((Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
@@ -1932,18 +1931,25 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       size_t result;
       if (ERR error = WIN_APPEND(Self->Handle, Self->ReadQueue.Buffer, 4096, result); error IS ERR::Okay) {
          int bytes_consumed = 0;
-         sslHandshakeReceived(Self, Self->ReadQueue.Buffer.data(), int(result), &bytes_consumed);
+         sslHandshakeReceived(Self, Self->ReadQueue.Buffer.data(), int(Self->ReadQueue.Buffer.size()), &bytes_consumed);
          if (bytes_consumed > 0) {
             Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_consumed);
          }
 
          if (Self->State IS NTC::CONNECTED) {
             log.msg("SSL handshake completed - queue contains %" PF64 " bytes", Self->ReadQueue.Buffer.size());
+            
+            // Clear the encrypted post-handshake data from ReadQueue
+            // This data should be processed through the normal SSL read path, not as plain data
+            if (!Self->ReadQueue.Buffer.empty()) {
+               log.trace("Clearing %" PF64 " bytes of encrypted post-handshake data - will be read via SSL", Self->ReadQueue.Buffer.size());
+               Self->ReadQueue.Buffer.clear();
+            }
          }
 
-         if ((Self->State != NTC::CONNECTED) or (Self->ReadQueue.Buffer.empty())) {
+         if ((Self->State != NTC::CONNECTED) or (Self->ReadQueue.Buffer.empty() and !ssl_has_decrypted_data(Self->SSLHandle) and !ssl_has_encrypted_data(Self->SSLHandle))) {
             // In most cases we return without further processing unless we're definitely connected and
-            // there is data sitting in the queue.
+            // there is data sitting in the queue or SSL has data available (decrypted or encrypted).
             return;
          }
       }

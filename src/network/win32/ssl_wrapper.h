@@ -8,26 +8,29 @@ typedef void * SOCKET;
 
 typedef struct ssl_context * SSL_HANDLE;
 
-// Error codes - mirror Parasol ERR enum values
+// Error codes
 typedef enum {
     SSL_OK = 0,
-    SSL_ERROR_ARGS = -2,
-    SSL_ERROR_FAILED = -1,
-    SSL_ERROR_MEMORY = -8,
-    SSL_ERROR_WOULD_BLOCK = -18,
-    SSL_ERROR_DISCONNECTED = -28,
-    SSL_ERROR_CONNECTING = -100  // Custom code for SSL handshake in progress
+    SSL_ERROR_ARGS = -1,
+    SSL_ERROR_FAILED = -2,
+    SSL_ERROR_MEMORY = -3,
+    SSL_ERROR_WOULD_BLOCK = -4,
+    SSL_ERROR_DISCONNECTED = -5,
+    SSL_NEED_DATA = -6, // Indicates more data needed to complete operation
+    SSL_ERROR_CONNECTING = -7
 } SSL_ERROR_CODE;
 
-ERR ssl_wrapper_init(void);
-void ssl_cleanup(void);
+ERR ssl_wrapper_init();
+void ssl_cleanup();
+void ssl_enable_logging();
 SSL_HANDLE ssl_create_context(const std::string &, bool ValidateCredentials = true, bool ServerMode = false);
 void ssl_free_context(SSL_HANDLE ssl);
 SSL_ERROR_CODE ssl_connect(SSL_HANDLE, void *, const std::string &);
 SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE, const void *, int, int &);
-SSL_ERROR_CODE ssl_accept_handshake(SSL_HANDLE, const void *, int, std::vector<unsigned char>&);
+SSL_ERROR_CODE ssl_accept(SSL_HANDLE, const void *, int);
 void ssl_set_socket(SSL_HANDLE ssl, void* socket_handle);
 bool ssl_has_decrypted_data(SSL_HANDLE ssl);
+bool ssl_has_encrypted_data(SSL_HANDLE ssl);
 int ssl_read_internal(SSL_HANDLE ssl, void* buffer, int buffer_size, int &);
 SSL_ERROR_CODE ssl_read(SSL_HANDLE ssl, void* buffer, int buffer_size, int* bytes_read);
 SSL_ERROR_CODE ssl_write(SSL_HANDLE ssl, const void* buffer, size_t buffer_size, size_t* bytes_sent);
