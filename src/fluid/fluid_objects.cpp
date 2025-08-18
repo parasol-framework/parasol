@@ -33,7 +33,7 @@ template<class... Args> void RMSG(Args...) {
    //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
 }
 
-static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_key, OJH_getKey;
+static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_key, OJH_getKey;
 static ULONG OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
 
 static int object_action_call_args(lua_State *);
@@ -57,6 +57,7 @@ static int object_newindex(lua_State *);
 static int object_set(lua_State *);
 static int object_setkey(lua_State *);
 static int object_state(lua_State *);
+static int object_state_dep(lua_State *);
 static int object_subscribe(lua_State *);
 static int object_unsubscribe(lua_State *);
 
@@ -106,6 +107,7 @@ static int stack_object_newchild(lua_State *Lua, const obj_read &Handle, object 
 static int stack_object_set(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_set); return 1; }
 static int stack_object_setKey(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_setkey); return 1; }
 static int stack_object_state(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state); return 1; }
+static int stack_object_state_dep(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_state_dep); return 1; }
 static int stack_object_subscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_subscribe); return 1; }
 static int stack_object_unsubscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
 
@@ -194,6 +196,7 @@ inline void build_read_table(object *Def)
    jmp.emplace(OJH_get, stack_object_get);
    jmp.emplace(OJH_new, stack_object_newchild);
    jmp.emplace(OJH_state, stack_object_state);
+   jmp.emplace(OJH_state_dep, stack_object_state_dep);
    jmp.emplace(OJH_key, stack_object_getKey);
    jmp.emplace(OJH_getKey, stack_object_getKey);
    jmp.emplace(OJH_set, stack_object_set);
@@ -440,7 +443,7 @@ static int object_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: state = some_object.state()
+// Usage: state = some_object._state()
 //
 // Returns a table that can be used to store information that is specific to the object.  The state is linked to the
 // object ID to ensure that the state values are still accessible if referenced elsewhere in the script.
@@ -455,7 +458,7 @@ static int object_state(lua_State *Lua)
 
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   // Note: At this time no cleanup is performed on the StateMap.  Ideally this would be done with a hook into garbage
+   // TODO: At this time no cleanup is performed on prv->StateMap.  Ideally this would be done with a hook into garbage
    // collection cycles.
 
    pf::Log log(__FUNCTION__);
@@ -471,6 +474,13 @@ static int object_state(lua_State *Lua)
       lua_rawgeti(Lua, LUA_REGISTRYINDEX, state_ref);
       return 1;
    }
+}
+
+static int object_state_dep(lua_State *Lua)
+{
+   pf::Log log;
+   log.warning("state() is deprecated, use _state().");
+   return object_state(Lua);
 }
 
 //********************************************************************************************************************
@@ -499,10 +509,6 @@ static int object_newchild(lua_State *Lua)
       log.trace("$%.8x", class_id);
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
-      if (class_name[0] IS '@') { // Deprecated
-         class_name++;
-         log.warning("Use of @ for allocating public objects is deprecated.");
-      }
       class_id = CLASSID(strihash(class_name));
       log.trace("%s, $%.8x", class_name, class_id);
    }
@@ -1172,7 +1178,8 @@ void register_object_class(lua_State *Lua)
    OJH_detach      = simple_hash("detach");
    OJH_get         = simple_hash("get");
    OJH_new         = simple_hash("new");
-   OJH_state       = simple_hash("state");
+   OJH_state_dep   = simple_hash("state"); // Deprecated, use _state
+   OJH_state       = simple_hash("_state");
    OJH_key         = simple_hash("key");
    OJH_getKey      = simple_hash("getKey");
    OJH_set         = simple_hash("set");
