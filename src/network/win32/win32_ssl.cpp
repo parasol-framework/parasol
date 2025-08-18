@@ -62,19 +62,16 @@ static ERR sslSetup(extNetSocket *Self)
 // SSL handshake data from the server.  Win32 error 87 (ERROR_INVALID_PARAMETER) can be caused by server
 // certificate/SSL configuration issues
 
-template <class T> ERR sslHandshakeReceived(T *Self, const void *Data, int Length, int *BytesConsumed = nullptr)
+template <class T> ERR sslHandshakeReceived(T *Self, const void *Data, int Length)
 {
    pf::Log log(__FUNCTION__);
 
    if (!Self->SSLHandle or !Data or Length <= 0) return ERR::Args;
-   if (BytesConsumed) *BytesConsumed = 0;
 
    log.traceBranch("Processing SSL handshake data (%d bytes)", Length);
 
    int handshake_consumed = 0;
    SSL_ERROR_CODE result = ssl_continue_handshake(Self->SSLHandle, Data, Length, handshake_consumed);
-
-   if (BytesConsumed) *BytesConsumed = handshake_consumed;
 
    switch (result) {
       case SSL_OK:

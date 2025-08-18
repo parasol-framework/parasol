@@ -185,6 +185,7 @@ For Fluid code, verify:
 - Always use lower snake_case for the names of variables inside C++ functions.
 - Use three spaces for tabulation in C++ and Fluid code.
 - C++ functions that use global variables must be written with thread safety in mind.
+- Use modern C++ conventions where possible, up to and including C++20 features.
 
 ### Testing
 

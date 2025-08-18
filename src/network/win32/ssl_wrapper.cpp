@@ -236,7 +236,6 @@ struct ssl_context {
 
 static bool glSSLInitialised = false;
 static bool glLoggingEnabled = false;
-static SSL_DEBUG_CALLBACK g_debug_callback = nullptr;
 
 static PCCERT_CONTEXT load_pem_certificate(const std::string &);
 static PCCERT_CONTEXT load_pkcs12_certificate(const std::string &);
@@ -244,53 +243,6 @@ static PCCERT_CONTEXT load_pkcs12_certificate(const std::string &);
 #include "ssl_certs.cpp"
 
 //********************************************************************************************************************
-
-static const char* get_status_description(SECURITY_STATUS status)
-{
-   switch (status) {
-      case SEC_E_OK: return "Success";
-      case SEC_E_INSUFFICIENT_MEMORY: return "Insufficient memory";
-      case SEC_E_INVALID_HANDLE: return "Invalid handle";
-      case SEC_E_UNSUPPORTED_FUNCTION: return "Unsupported function";
-      case SEC_E_TARGET_UNKNOWN: return "Target unknown";
-      case SEC_E_INTERNAL_ERROR: return "Internal error";
-      case SEC_E_SECPKG_NOT_FOUND: return "Security package not found";
-      case SEC_E_NOT_OWNER: return "Not owner";
-      case SEC_E_CANNOT_INSTALL: return "Cannot install";
-      case SEC_E_INVALID_TOKEN: return "Invalid token";
-      case SEC_E_CANNOT_PACK: return "Cannot pack";
-      case SEC_E_QOP_NOT_SUPPORTED: return "QOP not supported";
-      case SEC_E_NO_IMPERSONATION: return "No impersonation";
-      case SEC_E_LOGON_DENIED: return "Logon denied";
-      case SEC_E_UNKNOWN_CREDENTIALS: return "Unknown credentials";
-      case SEC_E_NO_CREDENTIALS: return "No credentials";
-      case SEC_E_MESSAGE_ALTERED: return "Message altered";
-      case SEC_E_OUT_OF_SEQUENCE: return "Out of sequence";
-      case SEC_E_NO_AUTHENTICATING_AUTHORITY: return "No authenticating authority";
-      case SEC_E_INCOMPLETE_MESSAGE: return "Incomplete message";
-      case SEC_E_INCOMPLETE_CREDENTIALS: return "Incomplete credentials";
-      case SEC_E_BUFFER_TOO_SMALL: return "Buffer too small";
-      case SEC_E_WRONG_PRINCIPAL: return "Wrong principal";
-      case SEC_E_TIME_SKEW: return "Time skew";
-      case SEC_E_UNTRUSTED_ROOT: return "Untrusted root certificate";
-      case SEC_E_ILLEGAL_MESSAGE: return "Illegal message";
-      case SEC_E_CERT_UNKNOWN: return "Certificate unknown";
-      case SEC_E_CERT_EXPIRED: return "Certificate expired";
-      case SEC_E_ENCRYPT_FAILURE: return "Encrypt failure";
-      case SEC_E_DECRYPT_FAILURE: return "Decrypt failure";
-      case SEC_E_ALGORITHM_MISMATCH: return "Algorithm mismatch";
-      case SEC_E_SECURITY_QOS_FAILED: return "Security QOS failed";
-      case SEC_E_UNFINISHED_CONTEXT_DELETED: return "Unfinished context deleted";
-      case SEC_E_INVALID_PARAMETER: return "Invalid parameter";
-      case SECURITY_STATUS(0x90321): return "Wrong credential handle";
-      case SECURITY_STATUS(0x80090317): return "No context available";
-      case SEC_I_CONTINUE_NEEDED: return "Continue needed";
-      case SEC_I_COMPLETE_NEEDED: return "Complete needed";
-      case SEC_I_COMPLETE_AND_CONTINUE: return "Complete and continue";
-      case SEC_I_LOCAL_LOGON: return "Local logon";
-      default: return "Unknown status";
-   }
-}
 
 static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status)
 {

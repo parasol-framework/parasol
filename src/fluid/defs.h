@@ -42,16 +42,16 @@ extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
 extern OBJECTPTR clFluid;
-extern ankerl::unordered_dense::map<std::string, ULONG> glStructSizes;
+extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
 //********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
 // Note that struct name hashes are case sensitive.
 
-inline ULONG STRUCTHASH(CSTRING String)
+inline uint32_t STRUCTHASH(CSTRING String)
 {
-   ULONG hash = 5381;
-   UBYTE c;
+   uint32_t hash = 5381;
+   uint8_t c;
    while ((c = *String++)) {
       if ((c >= 'A') and (c <= 'Z'));
       else if ((c >= 'a') and (c <= 'z'));
@@ -72,8 +72,8 @@ struct code_reader_handle {
 struct actionmonitor {
    struct object *Object;      // Fluid.obj original passed in for the subscription.
    const FunctionField *Args;  // The args of the action/method are stored here so that we can build the arg value table later.
-   LONG     Function;          // Index of function to call back.
-   LONG     Reference;         // A custom reference to pass to the callback (optional)
+   int     Function;          // Index of function to call back.
+   int     Reference;         // A custom reference to pass to the callback (optional)
    ACTIONID ActionID;          // Action being monitored.
    OBJECTID ObjectID;          // Object being monitored
 
@@ -82,7 +82,7 @@ struct actionmonitor {
    ~actionmonitor() {
       if (ObjectID) {
          pf::Log log(__FUNCTION__);
-         log.trace("Unsubscribe action %s from object #%d", glActions[LONG(ActionID)].Name, ObjectID);
+         log.trace("Unsubscribe action %s from object #%d", glActions[int(ActionID)].Name, ObjectID);
          OBJECTPTR obj;
          if (AccessObject(ObjectID, 3000, &obj) IS ERR::Okay) {
             UnsubscribeAction(obj, ActionID);
@@ -102,11 +102,11 @@ struct actionmonitor {
 //********************************************************************************************************************
 
 struct eventsub {
-   LONG    Function;     // Lua function index
+   int    Function;     // Lua function index
    EVENTID EventID;      // Event message ID
    APTR    EventHandle;
 
-   eventsub(LONG pFunction, EVENTID pEventID, APTR pEventHandle) :
+   eventsub(int pFunction, EVENTID pEventID, APTR pEventHandle) :
       Function(pFunction), EventID(pEventID), EventHandle(pEventHandle) { }
 
    ~eventsub() {
@@ -125,10 +125,10 @@ struct eventsub {
 
 struct datarequest {
    OBJECTID SourceID;
-   LONG Callback;
-   LARGE TimeCreated;
+   int Callback;
+   int64_t TimeCreated;
 
-   datarequest(OBJECTID pSourceID, LONG pCallback) : SourceID(pSourceID), Callback(pCallback) {
+   datarequest(OBJECTID pSourceID, int pCallback) : SourceID(pSourceID), Callback(pCallback) {
       TimeCreated = PreciseTime();
    }
 };
@@ -136,25 +136,25 @@ struct datarequest {
 //********************************************************************************************************************
 
 struct struct_field {
-   std::string Name;       // Field name
-   std::string StructRef;  // Named reference to other structure
-   UWORD Offset    = 0;    // Offset to the field value.
-   LONG  Type      = 0;    // FD flags
-   LONG  ArraySize = 0;    // Set if the field is an array
+   std::string Name;      // Field name
+   std::string StructRef; // Named reference to other structure
+   uint16_t Offset = 0;   // Offset to the field value.
+   int  Type      = 0;    // FD flags
+   int  ArraySize = 0;    // Set if the field is an array
 
-   ULONG nameHash() {
+   uint32_t nameHash() {
       if (!NameHash) NameHash = strihash(Name);
       return NameHash;
    }
 
    private:
-   ULONG NameHash = 0;     // Lowercase hash of the field name
+   uint32_t NameHash = 0;     // Lowercase hash of the field name
 };
 
 struct struct_record {
    std::string Name;
    std::vector<struct_field> Fields;
-   LONG Size = 0; // Total byte size of the structure
+   int Size = 0; // Total byte size of the structure
    struct_record(std::string_view pName) : Name(pName) { }
    struct_record() = default;
 };
@@ -182,25 +182,25 @@ struct struct_name {
 
 struct struct_hash {
    std::size_t operator()(const struct_name &k) const {
-      ULONG hash = 5381;
+      uint32_t hash = 5381;
       for (auto c : k.name) {
          if ((c >= 'A') and (c <= 'Z'));
          else if ((c >= 'a') and (c <= 'z'));
          else if ((c >= '0') and (c <= '9'));
          else break;
-         hash = ((hash<<5) + hash) + UBYTE(c);
+         hash = ((hash<<5) + hash) + uint8_t(c);
       }
       return hash;
    }
 
    std::size_t operator()(const std::string_view k) const {
-      ULONG hash = 5381;
+      uint32_t hash = 5381;
       for (auto c : k) {
          if ((c >= 'A') and (c <= 'Z'));
          else if ((c >= 'a') and (c <= 'z'));
          else if ((c >= '0') and (c <= '9'));
          else break;
-         hash = ((hash<<5) + hash) + UBYTE(c);
+         hash = ((hash<<5) + hash) + uint8_t(c);
       }
       return hash;
    }
@@ -214,42 +214,42 @@ struct prvFluid {
    std::vector<eventsub> EventList;       // Event subscriptions managed by subscribeEvent()
    std::vector<datarequest> Requests;     // For drag and drop requests
    ankerl::unordered_dense::map<struct_name, struct_record, struct_hash> Structs;
-   ankerl::unordered_dense::map<OBJECTID, LONG> StateMap;
+   ankerl::unordered_dense::map<OBJECTID, int> StateMap;
    std::set<std::string, CaseInsensitiveMap> Includes; // Stores the status of loaded include files.
    pf::vector<std::string> Procedures;
    std::vector<std::unique_ptr<std::jthread>> Threads; // Simple mechanism for auto-joining all the threads on object destruction
-   APTR   FocusEventHandle;
-   struct finput *InputList;         // Managed by the input interface
+   APTR     FocusEventHandle;
+   struct finput *InputList;           // Managed by the input interface
    DateTime CacheDate;
-   ERR  CaughtError;               // Set to -1 to enable catching of ERR results.
-   PERMIT CachePermissions;
-   LONG   LoadedSize;
-   UBYTE  Recurse;
-   UBYTE  SaveCompiled;
-   UWORD  Catch;                     // Operating within a catch() block if > 0
-   UWORD  RequireCounter;
-   LONG   ErrorLine;                 // Line at which the last error was thrown.
+   ERR      CaughtError;               // Set to -1 to enable catching of ERR results.
+   PERMIT   CachePermissions;
+   int      LoadedSize;
+   uint8_t  Recurse;
+   uint8_t  SaveCompiled;
+   uint16_t Catch;                     // Operating within a catch() block if > 0
+   uint16_t RequireCounter;
+   int      ErrorLine;                 // Line at which the last error was thrown.
 };
 
 struct array {
    struct struct_record *StructDef; // Set if the array represents a known struct.
-   LONG Total;        // Total number of elements
-   LONG Type;         // FD_BYTE, FD_INT etc...
-   LONG TypeSize;     // Byte-size of the type, e.g. LARGE == 8 bytes
-   LONG ArraySize;    // Size of the array *in bytes*
-   LONG AlignedSize;  // For struct alignment
+   int Total;        // Total number of elements
+   int Type;         // FD_BYTE, FD_INT etc...
+   int TypeSize;     // Byte-size of the type, e.g. int64_t == 8 bytes
+   int ArraySize;    // Size of the array *in bytes*
+   int AlignedSize;  // For struct alignment
    bool Allocated;
    bool ReadOnly;
-   union {
-      DOUBLE *ptrDouble;
-      LARGE  *ptrLarge;
-      APTR   *ptrPointer;
-      STRING *ptrString;
-      FLOAT  *ptrFloat;
-      LONG   *ptrLong;
-      WORD   *ptrWord;
-      UBYTE  *ptrByte;
-      APTR   ptrVoid;
+   union { // TODO: Use std::variant
+      double  *ptrDouble;
+      int64_t *ptrLarge;
+      APTR    *ptrPointer;
+      STRING  *ptrString;
+      float   *ptrFloat;
+      int     *ptrLong;
+      int16_t *ptrWord;
+      uint8_t *ptrByte;
+      APTR    ptrVoid;
    };
 };
 
@@ -257,21 +257,21 @@ struct array {
 
 struct fstruct {
    APTR Data;          // Pointer to the structure data
-   LONG StructSize;    // Size of the structure
-   LONG AlignedSize;   // 64-bit alignment size of the structure.
+   int StructSize;    // Size of the structure
+   int AlignedSize;   // 64-bit alignment size of the structure.
    struct struct_record *Def; // The structure definition
    bool Deallocate;    // Deallocate the struct when Lua collects this resource.
 };
 
 struct fprocessing {
-   DOUBLE Timeout;
+   double Timeout;
    std::list<ObjectSignal> *Signals;
 };
 
 struct metafield {
-   ULONG ID;
-   LONG GetFunction;
-   LONG SetFunction;
+   uint32_t ID;
+   int GetFunction;
+   int SetFunction;
 };
 
 #define FIM_KEYBOARD 1
@@ -282,24 +282,24 @@ struct finput {
    struct finput *Next;
    APTR  KeyEvent;
    OBJECTID SurfaceID;
-   LONG  InputHandle;
-   LONG  Callback;
-   LONG  InputValue;
+   int   InputHandle;
+   int   Callback;
+   int   InputValue;
    JTYPE Mask;
    BYTE  Mode;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
 
-struct fnumber {
-   LONG Type;      // Expressed as an FD_ flag.
+struct fnumber { // TODO: Use std::variant
+   int Type;     // Expressed as an FD_ flag.
    union {
-      DOUBLE f64;
-      FLOAT  f32;
-      LARGE  i64;
-      LONG   i32;
-      WORD   i16;
-      BYTE   i8;
+      double  f64;
+      float   f32;
+      int64_t i64;
+      int     i32;
+      int16_t i16;
+      BYTE    i8;
    };
 };
 
@@ -313,7 +313,7 @@ struct module {
    }
 };
 
-inline ULONG simple_hash(CSTRING String, uint32_t Hash = 5381) {
+inline uint32_t simple_hash(CSTRING String, uint32_t Hash = 5381) {
    while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
    return Hash;
 }
@@ -324,7 +324,7 @@ inline ULONG simple_hash(CSTRING String, uint32_t Hash = 5381) {
 struct obj_read {
    typedef int JUMP(lua_State *, const struct obj_read &, struct object *);
 
-   ULONG Hash;
+   uint32_t Hash;
    JUMP *Call;
    APTR Data;
 
@@ -334,9 +334,9 @@ struct obj_read {
        return 0;
    }
 
-   obj_read(ULONG pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
-   obj_read(ULONG pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
-   obj_read(ULONG pHash) : Hash(pHash) { }
+   obj_read(uint32_t pHash, JUMP pJump, APTR pData) : Hash(pHash), Call(pJump), Data(pData) { }
+   obj_read(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_read(uint32_t pHash) : Hash(pHash) { }
 };
 
 inline auto read_hash = [](const obj_read &a, const obj_read &b) { return a.Hash < b.Hash; };
@@ -346,9 +346,9 @@ typedef std::set<obj_read, decltype(read_hash)> READ_TABLE;
 //********************************************************************************************************************
 
 struct obj_write {
-   typedef ERR JUMP(lua_State *, OBJECTPTR, struct Field *, LONG);
+   typedef ERR JUMP(lua_State *, OBJECTPTR, struct Field *, int);
 
-   ULONG Hash;
+   uint32_t Hash;
    JUMP *Call;
    struct Field *Field;
 
@@ -358,9 +358,9 @@ struct obj_write {
        return 0;
    }
 
-   obj_write(ULONG pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
-   obj_write(ULONG pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
-   obj_write(ULONG pHash) : Hash(pHash) { }
+   obj_write(uint32_t pHash, JUMP pJump, struct Field *pField) : Hash(pHash), Call(pJump), Field(pField) { }
+   obj_write(uint32_t pHash, JUMP pJump) : Hash(pHash), Call(pJump) { }
+   obj_write(uint32_t pHash) : Hash(pHash) { }
 };
 
 inline auto write_hash = [](const obj_write &a, const obj_write &b) { return a.Hash < b.Hash; };
@@ -375,7 +375,7 @@ struct object {
    READ_TABLE *ReadTable;
    WRITE_TABLE *WriteTable;
    OBJECTID UID;          // If the object is referenced externally, access is managed by ID
-   UWORD AccessCount;     // Controlled by access_object() and release_object()
+   uint16_t AccessCount;     // Controlled by access_object() and release_object()
    bool  Detached;        // True if the object is an external reference or is not to be garbage collected
    bool  Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
    bool  DelayCall;       // If true, the next action/method call is to be delayed.
@@ -383,29 +383,29 @@ struct object {
 
 struct lua_ref {
    CPTR Address;
-   LONG Ref;
+   int Ref;
 };
 
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
-ERR build_args(lua_State *, const struct FunctionField *, LONG, BYTE *, LONG *);
+ERR build_args(lua_State *, const struct FunctionField *, int, BYTE *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 ERR create_fluid(void);
-void get_line(objScript *, LONG, STRING, LONG);
-APTR get_meta(lua_State *Lua, LONG Arg, CSTRING);
+void get_line(objScript *, int, STRING, int);
+APTR get_meta(lua_State *Lua, int Arg, CSTRING);
 void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
 ERR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
-void make_any_table(lua_State *, LONG, CSTRING, LONG, CPTR ) __attribute__((unused));
-void make_array(lua_State *, LONG, CSTRING, APTR *, LONG, bool);
-void make_table(lua_State *, LONG, LONG, CPTR ) __attribute__((unused));
+void make_any_table(lua_State *, int, CSTRING, int, CPTR ) __attribute__((unused));
+void make_array(lua_State *, int, CSTRING, APTR *, int, bool);
+void make_table(lua_State *, int, int, CPTR ) __attribute__((unused));
 ERR make_struct(lua_State *, std::string_view, CSTRING) __attribute__((unused));
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
-void make_struct_ptr_table(lua_State *, CSTRING, LONG, CPTR *);
-void make_struct_serial_table(lua_State *, CSTRING, LONG, CPTR);
+void make_struct_ptr_table(lua_State *, CSTRING, int, CPTR *);
+void make_struct_serial_table(lua_State *, CSTRING, int, CPTR);
 CSTRING next_line(CSTRING String);
 void notify_action(OBJECTPTR, ACTIONID, ERR, APTR);
 void process_error(objScript *, CSTRING);
@@ -446,9 +446,9 @@ int fcmd_subscribe_event(lua_State *);
 int fcmd_unsubscribe_event(lua_State *);
 
 #ifdef __arm__
-extern void armExecFunction(APTR, APTR, LONG);
+extern void armExecFunction(APTR, APTR, int);
 #elif _LP64
-extern void x64ExecFunction(APTR, LONG, LARGE *, LONG);
+extern void x64ExecFunction(APTR, int, int64_t *, int);
 #else
-extern void x86ExecFunction(APTR, APTR, LONG);
+extern void x86ExecFunction(APTR, APTR, int);
 #endif

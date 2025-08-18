@@ -824,18 +824,8 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
          // If we're in the middle of SSL handshake, return nothing.  The automated incoming data handler is managing the object state.
          if (Self->State IS NTC::HANDSHAKING) return log.traceWarning(ERR::InvalidState);
          else if (Self->State != NTC::CONNECTED) return log.warning(ERR::Disconnected);
-         
-         if (!Self->ReadQueue.Buffer.empty()) {
-            // If we have data in the read queue, copy it to the Args buffer.
-            // NOTE: Be wary of encrypted data appearing in ReadQueue - this is a coding error if it happens.
-            size_t bytes_to_copy = std::min<size_t>(Args->Length, Self->ReadQueue.Buffer.size());
-            pf::copymem(Self->ReadQueue.Buffer.data(), Args->Buffer, bytes_to_copy);
-            Args->Result = bytes_to_copy;
-            Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_to_copy);
-            return ERR::Okay;
-         }
 
-         int bytes_read = 0;      
+         int bytes_read = 0;
          if (auto error = ssl_read(Self->SSLHandle, Args->Buffer, Args->Length, &bytes_read); error IS SSL_OK) {
             Args->Result = bytes_read;
             return ERR::Okay;
@@ -849,15 +839,15 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
       #else // OpenSSL
          bool read_blocked;
          int pending;
-     
+
          if (Self->HandshakeStatus IS SHS::WRITE) ssl_handshake_write(Self->Handle, Self);
          else if (Self->HandshakeStatus IS SHS::READ) ssl_handshake_read(Self->Handle, Self);
-     
+
          if (Self->HandshakeStatus != SHS::NIL) { // Still handshaking
             log.trace("SSL handshake still in progress.");
             return ERR::Okay;
          }
-     
+
          auto Buffer = Args->Buffer;
          auto BufferSize = Args->Length;
          do {
@@ -866,18 +856,18 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                auto ssl_error = SSL_get_error(Self->SSLHandle, result);
                switch (ssl_error) {
                   case SSL_ERROR_ZERO_RETURN: return log.traceWarning(ERR::Disconnected);
-        
+
                   case SSL_ERROR_WANT_READ: read_blocked = true; break;
-        
+
                    case SSL_ERROR_WANT_WRITE:
                      // WANT_WRITE is returned if we're trying to rehandshake and the write operation would block.  We
                      // need to wait on the socket to be writeable, then restart the read when it is.
-        
+
                       log.msg("SSL socket handshake requested by server.");
                       Self->HandshakeStatus = SHS::WRITE;
                       RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
                       return ERR::Okay;
-        
+
                    case SSL_ERROR_SYSCALL:
                    default:
                       log.warning("SSL read failed with error %d: %s", ssl_error, ERR_error_string(ssl_error, nullptr));
@@ -890,9 +880,9 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
                BufferSize -= result;
             }
          } while ((pending = SSL_pending(Self->SSLHandle)) and (!read_blocked) and (BufferSize > 0));
-     
+
          log.trace("Pending: %d, BufSize: %d, Blocked: %d", pending, BufferSize, read_blocked);
-     
+
          if (pending) {
             // With regards to non-blocking SSL sockets, be aware that a socket can be empty in terms of incoming data,
             // yet SSL can keep data that has already arrived in an internal buffer.  This means that we can get stuck
@@ -901,25 +891,14 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
             //
             // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
             // data pending.
-        
+
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
          }
-        
+
          return ERR::Okay;
       #endif
    }
 #endif
-      
-   if (!Self->ReadQueue.Buffer.empty()) {
-      // If we have data in the read queue, copy it to the Args buffer.
-      size_t bytes_to_copy = std::min<size_t>(Args->Length, Self->ReadQueue.Buffer.size());
-      pf::copymem(Self->ReadQueue.Buffer.data(), Args->Buffer, bytes_to_copy);
-      Args->Result += bytes_to_copy;
-      Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_to_copy);
-      // TODO: We could drop through here to read more data from the socket if the ReadQueue is empty and
-      // we have more space in the buffer.
-      return ERR::Okay;
-   }
 
 #ifdef __linux__
    auto bytes_received = recv(Self->Handle, Args->Buffer, Args->Length, 0);
@@ -938,6 +917,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
       return ERR::SystemCall;
    }
 #elif _WIN32
+   size_t result;
    auto error = WIN_RECEIVE(Self->Handle, (char *)Args->Buffer, Args->Length, &result);
    Args->Result = result;
    return error;
@@ -1394,9 +1374,7 @@ static void free_socket(extNetSocket *Self)
       if (!Self->ExternalSocket) { CLOSESOCKET_THREADED(Self->Handle); Self->Handle = NOHANDLE; }
    }
 
-   Self->ReadQueue.Buffer.clear();
    Self->WriteQueue.Buffer.clear();
-   Self->ReadQueue.Index = 0;
    Self->WriteQueue.Index = 0;
 
    if (!Self->terminating()) {
@@ -1926,27 +1904,14 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 #ifndef DISABLE_SSL
   #ifdef _WIN32
    if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING)) {
-      log.trace("Windows SSL handshake in progress, reading raw data.");
+      pf::Log log(__FUNCTION__);
+      log.traceBranch("Windows SSL handshake in progress, reading raw data.");
       size_t result;
-      if (ERR error = WIN_APPEND(Self->Handle, Self->ReadQueue.Buffer, 4096, result); error IS ERR::Okay) {
-         int bytes_consumed = 0;
-         sslHandshakeReceived(Self, Self->ReadQueue.Buffer.data(), int(Self->ReadQueue.Buffer.size()), &bytes_consumed);
-         if (bytes_consumed > 0) {
-            Self->ReadQueue.Buffer.erase(Self->ReadQueue.Buffer.begin(), Self->ReadQueue.Buffer.begin() + bytes_consumed);
-         }
+      std::vector<uint8_t> buffer;
+      if (ERR error = WIN_APPEND(Self->Handle, buffer, 4096, result); error IS ERR::Okay) {
+         sslHandshakeReceived(Self, buffer.data(), int(buffer.size()));
 
-         if (Self->State IS NTC::CONNECTED) {
-            log.msg("SSL handshake completed - queue contains %" PF64 " bytes", Self->ReadQueue.Buffer.size());
-            
-            // Clear the encrypted post-handshake data from ReadQueue
-            // This data should be processed through the normal SSL read path, not as plain data
-            if (!Self->ReadQueue.Buffer.empty()) {
-               log.trace("Clearing %" PF64 " bytes of encrypted post-handshake data - will be read via SSL", Self->ReadQueue.Buffer.size());
-               Self->ReadQueue.Buffer.clear();
-            }
-         }
-
-         if ((Self->State != NTC::CONNECTED) or (Self->ReadQueue.Buffer.empty() and !ssl_has_decrypted_data(Self->SSLHandle) and !ssl_has_encrypted_data(Self->SSLHandle))) {
+         if ((Self->State != NTC::CONNECTED) or (!ssl_has_decrypted_data(Self->SSLHandle) and !ssl_has_encrypted_data(Self->SSLHandle))) {
             // In most cases we return without further processing unless we're definitely connected and
             // there is data sitting in the queue or SSL has data available (decrypted or encrypted).
             return;
@@ -1954,7 +1919,7 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
       }
       else {
          log.warning(error);
-         return; // Error or no data (also considered an error!)
+         return;
       }
    }
 
