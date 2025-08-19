@@ -12,7 +12,9 @@ SIGN_PACKAGE="no"
 
 # Function to show usage
 usage() {
-    echo "Usage: $0 [options]"
+    echo "Usage: $0 <tarball> [options]"
+    echo "Arguments:"
+    echo "  tarball                 Path to .tar.gz file containing compiled Parasol release"
     echo "Options:"
     echo "  -h, --help              Show this help message"
     echo "  -c, --clean             Clean build directory before building"
@@ -21,10 +23,26 @@ usage() {
     echo "  -b, --build-dir DIR     Use custom build directory (default: build-deb)"
     echo ""
     echo "Examples:"
-    echo "  $0                      Build runtime package only"
-    echo "  $0 --dev               Build both runtime and development packages"
-    echo "  $0 --clean --dev       Clean build and create both packages"
+    echo "  $0 parasol-linux64-20250731.tar.gz          Build runtime package"
+    echo "  $0 parasol-linux64-20250731.tar.gz --dev    Build both runtime and dev packages"
+    echo "  $0 parasol-linux64-20250731.tar.gz --clean  Clean build and create package"
 }
+
+# Check if tarball is provided
+if [[ $# -eq 0 ]]; then
+    echo "Error: No tarball specified"
+    usage
+    exit 1
+fi
+
+TARBALL="$1"
+shift
+
+# Validate tarball exists
+if [[ ! -f "$TARBALL" ]]; then
+    echo "Error: Tarball '$TARBALL' not found"
+    exit 1
+fi
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -64,22 +82,31 @@ if ! command -v dpkg-deb &> /dev/null; then
     exit 1
 fi
 
-if ! command -v cmake &> /dev/null; then
-    echo "Error: cmake is required but not installed."
+if ! command -v tar &> /dev/null; then
+    echo "Error: tar is required but not installed."
     exit 1
 fi
 
-# Get version from CMakeLists.txt
-VERSION=$(grep "project (Parasol VERSION" CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')
+# Extract version from tarball filename
+TARBALL_BASENAME=$(basename "$TARBALL" .tar.gz)
+VERSION=$(echo "$TARBALL_BASENAME" | sed -n 's/.*-\([0-9]\{8\}\).*/\1/p')
 if [ -z "$VERSION" ]; then
-    echo "Error: Could not extract version from CMakeLists.txt"
-    exit 1
+    # Fallback: try to get version from CMakeLists.txt if available
+    if [ -f "CMakeLists.txt" ]; then
+        VERSION=$(grep "project (Parasol VERSION" CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')
+    fi
+    if [ -z "$VERSION" ]; then
+        echo "Error: Could not extract version from tarball filename or CMakeLists.txt"
+        echo "Expected tarball format: parasol-linux64-YYYYMMDD.tar.gz"
+        exit 1
+    fi
 fi
 
 # Detect architecture
 ARCH=$(dpkg --print-architecture)
 
-echo "Building Parasol Debian packages..."
+echo "Building Parasol Debian packages from tarball..."
+echo "Tarball: $TARBALL"
 echo "Version: $VERSION"
 echo "Architecture: $ARCH"
 echo "Build directory: $BUILD_DIR"
@@ -94,23 +121,12 @@ fi
 # Create build directory
 mkdir -p "$BUILD_DIR"
 
-# Configure CMake with Debian package generation
-echo "Configuring CMake..."
-cmake -S . -B "$BUILD_DIR" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DGENERATE_DEBIAN_PKG=ON \
-    -DPARASOL_STATIC=ON \
-    -DRUN_ANYWHERE=OFF \
-    -DBUILD_TESTS=OFF \
-    -DBUILD_DEFS=OFF \
-    -DINSTALL_EXAMPLES=OFF \
-    -DINSTALL_INCLUDES="$INSTALL_INCLUDES" \
-    -DINSTALL_TESTS=OFF
+# Extract tarball to build directory
+echo "Extracting tarball..."
+mkdir -p "$BUILD_DIR/extracted"
+tar -xzf "$TARBALL" -C "$BUILD_DIR/extracted" --strip-components=1
 
-# Build the project
-echo "Building project..."
-cmake --build "$BUILD_DIR" --config Release -j $(nproc)
+echo "Tarball extracted to $BUILD_DIR/extracted"
 
 # Create staging directories for packages
 RUNTIME_STAGING="$BUILD_DIR/debian/parasol"
@@ -124,14 +140,49 @@ if [ "$INSTALL_INCLUDES" = "ON" ]; then
     mkdir -p "$DEV_STAGING/DEBIAN" "$DEV_STAGING/usr"
 fi
 
-# Install to staging directory
+# Copy files from extracted tarball to staging directory
 echo "Installing to staging directory..."
-DESTDIR="$RUNTIME_STAGING" cmake --install "$BUILD_DIR"
 
-# Copy debian control files for runtime package
-cp "$BUILD_DIR/debian/control" "$RUNTIME_STAGING/DEBIAN/"
-cp "$BUILD_DIR/debian/copyright" "$RUNTIME_STAGING/usr/share/doc/parasol/" 2>/dev/null || mkdir -p "$RUNTIME_STAGING/usr/share/doc/parasol/" && cp "$BUILD_DIR/debian/copyright" "$RUNTIME_STAGING/usr/share/doc/parasol/"
-cp "$BUILD_DIR/debian/changelog" "$RUNTIME_STAGING/usr/share/doc/parasol/"
+# Create necessary directories
+mkdir -p "$RUNTIME_STAGING/usr/bin"
+mkdir -p "$RUNTIME_STAGING/usr/share/parasol"
+mkdir -p "$RUNTIME_STAGING/usr/share/doc/parasol"
+
+# Copy the main parasol binary
+cp "$BUILD_DIR/extracted/parasol" "$RUNTIME_STAGING/usr/bin/"
+chmod 755 "$RUNTIME_STAGING/usr/bin/parasol"
+
+# Copy configuration and scripts
+cp -r "$BUILD_DIR/extracted/config" "$RUNTIME_STAGING/usr/share/parasol/"
+cp -r "$BUILD_DIR/extracted/scripts" "$RUNTIME_STAGING/usr/share/parasol/"
+
+# Copy examples if they exist
+if [ -d "$BUILD_DIR/extracted/examples" ]; then
+    cp -r "$BUILD_DIR/extracted/examples" "$RUNTIME_STAGING/usr/share/parasol/"
+fi
+
+# Create copyright and changelog files
+cat > "$RUNTIME_STAGING/usr/share/doc/parasol/copyright" << 'EOF'
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Parasol Framework
+Upstream-Contact: Parasol Framework Team <team@parasol-framework.org>
+Source: https://github.com/parasol-framework/parasol
+
+Files: *
+Copyright: Parasol Framework Team
+License: Custom
+ This package is distributed under the terms described in the LICENSE.TXT file
+ that is distributed with this package. Please refer to it for further
+ information on licensing.
+EOF
+
+cat > "$RUNTIME_STAGING/usr/share/doc/parasol/changelog" << EOF
+parasol ($VERSION-1) stable; urgency=medium
+
+  * Packaged from compiled release tarball
+
+ -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
+EOF
 
 # Create runtime package control file
 cat > "$RUNTIME_STAGING/DEBIAN/control" << EOF
@@ -140,7 +191,7 @@ Version: $VERSION-1
 Section: graphics
 Priority: optional
 Architecture: $ARCH
-Depends: libfreetype6, zlib1g
+Depends: libasound2, libx11-6, libxext6, libxrandr2, libstdc++6
 Maintainer: Parasol Framework Team <team@parasol-framework.org>
 Description: Vector graphics engine and application framework
  Parasol is a vector graphics engine and application framework designed for
@@ -166,7 +217,7 @@ Version: $VERSION-1
 Section: libdevel
 Priority: optional
 Architecture: $ARCH
-Depends: parasol (= $VERSION-1), libfreetype6-dev, zlib1g-dev
+Depends: parasol (= $VERSION-1), libasound2-dev, libx11-dev, libxext-dev, libxrandr-dev
 Maintainer: Parasol Framework Team <team@parasol-framework.org>
 Description: Development files for Parasol framework
  This package contains the header files and development libraries needed
@@ -175,8 +226,30 @@ EOF
 
     # Copy documentation to dev package
     mkdir -p "$DEV_STAGING/usr/share/doc/parasol-dev"
-    cp "$BUILD_DIR/debian/copyright" "$DEV_STAGING/usr/share/doc/parasol-dev/"
-    cp "$BUILD_DIR/debian/changelog" "$DEV_STAGING/usr/share/doc/parasol-dev/"
+    
+    # Create copyright file for dev package
+    cat > "$DEV_STAGING/usr/share/doc/parasol-dev/copyright" << 'EOF'
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Parasol Framework
+Upstream-Contact: Parasol Framework Team <team@parasol-framework.org>
+Source: https://github.com/parasol-framework/parasol
+
+Files: *
+Copyright: Parasol Framework Team
+License: Custom
+ This package is distributed under the terms described in the LICENSE.TXT file
+ that is distributed with this package. Please refer to it for further
+ information on licensing.
+EOF
+
+    # Create changelog file for dev package
+    cat > "$DEV_STAGING/usr/share/doc/parasol-dev/changelog" << EOF
+parasol-dev ($VERSION-1) stable; urgency=medium
+
+  * Development package for compiled release tarball
+
+ -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
+EOF
 fi
 
 # Build the packages

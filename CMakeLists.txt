@@ -680,7 +680,8 @@ if (PARASOL_INSTALL)
 endif ()
 
 # --------------------------------------------------------------------------------------------------------------------
-# Debian Package Generation
+# Debian Package Generation.  Use in conjunction with tools/build-deb.sh to create a 'true' Debian package.
+# Alternatively use tools/build-deb-tarball.sh to convert the standard release to a portable Debian package.
 
 if (GENERATE_DEBIAN_PKG)
    # Detect system architecture
