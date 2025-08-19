@@ -360,8 +360,9 @@ static void disconnect(extClientSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
+   log.branch("Disconnecting socket handle %d", Self->Handle);
+
    if (Self->Handle != NOHANDLE) {
-      log.branch("Disconnecting socket handle %d", Self->Handle);
 
 #ifdef __linux__
       DeregisterFD(Self->Handle);
@@ -370,25 +371,7 @@ static void disconnect(extClientSocket *Self)
       Self->Handle = NOHANDLE;
    }
 
-   auto owner = (extNetSocket *)Self->Owner;
-   if ((owner) and (owner->classID() IS CLASSID::NETSOCKET)) {
-      if (owner->Feedback.defined()) {
-         log.traceBranch("Reporting client disconnection to NetSocket %p.", owner);
-
-         if (owner->Feedback.isC()) {
-            pf::SwitchContext context(owner->Feedback.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))owner->Feedback.Routine;
-            if (routine) routine(owner, Self, NTC::DISCONNECTED, owner->Feedback.Meta);
-         }
-         else if (owner->Feedback.isScript()) {
-            sc::Call(owner->Feedback, std::to_array<ScriptArg>({
-               { "NetSocket",    owner, FD_OBJECTPTR },
-               { "ClientSocket", Self, FD_OBJECTPTR },
-               { "State",        int(NTC::DISCONNECTED) }
-            }));
-         }
-      }
-   }
+   if (Self->State != NTC::DISCONNECTED) Self->setState(NTC::DISCONNECTED);
 }
 
 //********************************************************************************************************************
@@ -567,7 +550,7 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 
    if (error IS ERR::Disconnected) {
       // Detecting a disconnection on read is normal, now handle disconnection gracefully.
-      log.msg("Client disconnection detected.");
+      log.branch("Client disconnection detected.");
       disconnect(Self);
    }
    return error;
@@ -665,21 +648,21 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
    pf::Log log;
 
    if (Value != Self->State) {
-      auto Socket = (extNetSocket *)(Self->Client->Owner);
+      auto server = (extNetSocket *)(Self->Client->Owner);
 
-      log.msg("State changed from %s to %s", clientsocket_state(Self->State), clientsocket_state(Value));
+      log.branch("State changed from %s to %s", clientsocket_state(Self->State), clientsocket_state(Value));
 
       Self->State = Value;
 
-      if (Socket->Feedback.defined()) {
-         if (Socket->Feedback.isC()) {
-            pf::SwitchContext context(Socket->Feedback.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
-            if (routine) routine(Socket, Self, Self->State, Socket->Feedback.Meta);
+      if (server->Feedback.defined()) {
+         if (server->Feedback.isC()) {
+            pf::SwitchContext context(server->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))server->Feedback.Routine;
+            if (routine) routine(server, Self, Self->State, server->Feedback.Meta);
          }
-         else if (Socket->Feedback.isScript()) {
-            sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
-               { "NetSocket",    Socket, FD_OBJECTPTR },
+         else if (server->Feedback.isScript()) {
+            sc::Call(server->Feedback, std::to_array<ScriptArg>({
+               { "NetSocket",    server, FD_OBJECTPTR },
                { "ClientSocket", Self, FD_OBJECTPTR },
                { "State",        int(Self->State) }
             }));

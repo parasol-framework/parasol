@@ -1909,7 +1909,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
 }
 
 //********************************************************************************************************************
-// Terminates all connections to the client and removes associated resources.
+// Terminates all connections for a client IP address and removes associated resources.
 
 static void free_client(extNetSocket *Socket, objNetClient *Client)
 {
