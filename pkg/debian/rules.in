@@ -1,0 +1,40 @@
+#!/usr/bin/make -f
+# debian/rules for parasol
+
+# Uncomment this to turn on verbose mode
+#export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work
+export DH_OPTIONS
+
+# Enable hardening flags
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DPARASOL_STATIC=ON \
+		-DRUN_ANYWHERE=OFF \
+		-DBUILD_TESTS=OFF \
+		-DBUILD_DEFS=OFF \
+		-DINSTALL_EXAMPLES=OFF \
+		-DINSTALL_INCLUDES=@INSTALL_INCLUDES@ \
+		-DINSTALL_TESTS=OFF
+
+override_dh_auto_build:
+	dh_auto_build -- -j@NPROC@
+
+override_dh_auto_install:
+	dh_auto_install
+
+# Don't strip debug symbols in debug packages
+override_dh_strip:
+	dh_strip --dbg-package=parasol-dbg
+
+# Make sure shared libraries are properly handled
+override_dh_shlibdeps:
+	dh_shlibdeps -l debian/parasol/usr/lib
