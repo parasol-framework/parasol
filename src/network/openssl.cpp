@@ -3,6 +3,9 @@ static SSL_CTX *glClientSSL = nullptr; // Thread-safe unless you call a SET func
 static SSL_CTX *glServerSSL = nullptr;
 static SSL_CTX *glClientSSLNV = nullptr; // No-verify version
 
+static ERR loadPKCS12Certificate(const std::string &, std::optional<const std::string> &, SSL_CTX *);
+static ERR loadPEMCertificate(const std::string &, std::optional<const std::string> &, std::optional<const std::string> &, SSL_CTX *);
+
 //********************************************************************************************************************
 
 // Forward declarations for template functions
@@ -114,6 +117,8 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
       }
       else return log.warning(ERR::InvalidData);
    }
+   
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -123,77 +128,55 @@ static ERR loadPEMCertificate(const std::string &certPath, std::optional<const s
 {
    pf::Log log(__FUNCTION__);
 
-   if (!certPath or !*certPath) return ERR::Args;
-
-   // Load certificate
-   FILE *cert_file = fopen(certPath, "r");
-   if (!cert_file) {
-      log.warning("Cannot open certificate file: %s", certPath);
-      return ERR::File;
-   }
+   FILE *cert_file = fopen(certPath.c_str(), "r");
+   if (!cert_file) return log.warning(ERR::File);
 
    X509 *cert = PEM_read_X509(cert_file, nullptr, nullptr, nullptr);
    fclose(cert_file);
 
-   if (!cert) {
-      log.warning("Failed to read PEM certificate from: %s", certPath);
-      return ERR::InvalidData;
-   }
+   if (!cert) return log.warning(ERR::InvalidData);
 
    if (SSL_CTX_use_certificate(ctx, cert) != 1) {
       X509_free(cert);
-      log.warning("Failed to use certificate from: %s", certPath);
-      return ERR::Failed;
+      return log.warning(ERR::Failed);
    }
 
    X509_free(cert);
 
    // Load private key
-   const char *key_file_path = keyPath and *keyPath ? keyPath : certPath;
-   FILE *key_file = fopen(key_file_path, "r");
-   if (!key_file) {
-      log.warning("Cannot open private key file: %s", key_file_path);
-      return ERR::File;
-   }
+   std::string key_file_path = keyPath.has_value() ? keyPath.value() : certPath;
 
-   EVP_PKEY *pkey = PEM_read_PrivateKey(key_file, nullptr, nullptr, (void*)password);
+   auto key_file = fopen(key_file_path.c_str(), "r");
+   if (!key_file) return log.warning(ERR::File);
+
+   EVP_PKEY *pkey = PEM_read_PrivateKey(key_file, nullptr, nullptr, (void*)(password.has_value() ? password.value().c_str() : nullptr));
    fclose(key_file);
 
-   if (!pkey) {
-      log.warning("Failed to read private key from: %s", key_file_path);
-      return ERR::InvalidData;
-   }
+   if (!pkey) return log.warning(ERR::InvalidData);
 
    if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
       EVP_PKEY_free(pkey);
-      log.warning("Failed to use private key from: %s", key_file_path);
-      return ERR::Failed;
+      return log.warning(ERR::Failed);
    }
 
    EVP_PKEY_free(pkey);
 
    // Verify certificate and key match
-   if (SSL_CTX_check_private_key(ctx) != 1) {
-      log.warning("Certificate and private key do not match");
-      return ERR::Mismatch;
-   }
+   if (SSL_CTX_check_private_key(ctx) != 1) return log.warning(ERR::Mismatch);
 
-   log.msg("Successfully loaded PEM certificate and key");
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 // Load PKCS#12 format certificate bundle
 
-static ERR loadPKCS12Certificate(const char *p12Path, const char *password, SSL_CTX *ctx)
+static ERR loadPKCS12Certificate(const std::string &p12Path, std::optional<const std::string> &password, SSL_CTX *ctx)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!p12Path or !*p12Path) return ERR::Args;
-
-   auto p12_file = fopen(p12Path, "rb");
+   auto p12_file = fopen(p12Path.c_str(), "rb");
    if (!p12_file) {
-      log.warning("Cannot open PKCS#12 file: %s", p12Path);
+      log.warning("Cannot open PKCS#12 file: %s", p12Path.c_str());
       return ERR::File;
    }
 
@@ -201,7 +184,7 @@ static ERR loadPKCS12Certificate(const char *p12Path, const char *password, SSL_
    fclose(p12_file);
 
    if (!p12) {
-      log.warning("Failed to read PKCS#12 file: %s", p12Path);
+      log.warning("Failed to read PKCS#12 file: %s", p12Path.c_str());
       return ERR::InvalidData;
    }
 
@@ -209,9 +192,9 @@ static ERR loadPKCS12Certificate(const char *p12Path, const char *password, SSL_
    X509 *cert = nullptr;
    STACK_OF(X509) *ca_certs = nullptr;
 
-   if (PKCS12_parse(p12, password ? password : "", &pkey, &cert, &ca_certs) != 1) {
+   if (PKCS12_parse(p12, password.has_value() ? password.value().c_str() : "", &pkey, &cert, &ca_certs) != 1) {
       PKCS12_free(p12);
-      log.warning("Failed to parse PKCS#12 file: %s (check password)", p12Path);
+      log.warning("Failed to parse PKCS#12 file: %s (check password)", p12Path.c_str());
       return ERR::InvalidData;
    }
 
@@ -220,15 +203,15 @@ static ERR loadPKCS12Certificate(const char *p12Path, const char *password, SSL_
    auto result = ERR::Okay;
 
    if (SSL_CTX_use_certificate(ctx, cert) != 1) {
-      log.warning("Failed to use certificate from PKCS#12 file: %s", p12Path);
+      log.warning("Failed to use certificate from PKCS#12 file: %s", p12Path.c_str());
       result = ERR::Failed;
    }
    else if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
-      log.warning("Failed to use private key from PKCS#12 file: %s", p12Path);
+      log.warning("Failed to use private key from PKCS#12 file: %s", p12Path.c_str());
       result = ERR::Failed;
    }
    else if (SSL_CTX_check_private_key(ctx) != 1) {
-      log.warning("Certificate and private key do not match in PKCS#12 file: %s", p12Path);
+      log.warning("Certificate and private key do not match in PKCS#12 file: %s", p12Path.c_str());
       result = ERR::Mismatch;
    }
    else { // Load certificate chain if available
