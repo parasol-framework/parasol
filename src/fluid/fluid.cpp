@@ -302,7 +302,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    FUNCTION call(CALL::STD_C);
    call.Routine = (APTR)msg_thread_script_callback;
-   AddMsgHandler(nullptr, MSGID::FLUID_THREAD_CALLBACK, &call, &glMsgThread);
+   AddMsgHandler(MSGID::FLUID_THREAD_CALLBACK, &call, &glMsgThread);
 
    return create_fluid();
 }

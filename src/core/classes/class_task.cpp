@@ -1370,25 +1370,25 @@ static ERR TASK_Init(extTask *Self)
       FUNCTION call;
       call.Type = CALL::STD_C;
       call.Routine = (APTR)msg_action;
-      AddMsgHandler(nullptr, MSGID::ACTION, &call, &Self->MsgAction);
+      AddMsgHandler(MSGID::ACTION, &call, &Self->MsgAction);
 
       call.Routine = (APTR)msg_free;
-      AddMsgHandler(nullptr, MSGID::FREE, &call, &Self->MsgFree);
+      AddMsgHandler(MSGID::FREE, &call, &Self->MsgFree);
 
       call.Routine = (APTR)msg_quit;
-      AddMsgHandler(nullptr, MSGID::QUIT, &call, &Self->MsgQuit);
+      AddMsgHandler(MSGID::QUIT, &call, &Self->MsgQuit);
 
       call.Routine = (APTR)msg_waitforobjects;
-      AddMsgHandler(nullptr, MSGID::WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
+      AddMsgHandler(MSGID::WAIT_FOR_OBJECTS, &call, &Self->MsgWaitForObjects);
 
       call.Routine = (APTR)msg_event; // lib_events.c
-      AddMsgHandler(nullptr, MSGID::EVENT, &call, &Self->MsgEvent);
+      AddMsgHandler(MSGID::EVENT, &call, &Self->MsgEvent);
 
       call.Routine = (APTR)msg_threadcallback; // class_thread.c
-      AddMsgHandler(nullptr, MSGID::THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
+      AddMsgHandler(MSGID::THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
 
       call.Routine = (APTR)msg_threadaction; // class_thread.c
-      AddMsgHandler(nullptr, MSGID::THREAD_ACTION, &call, &Self->MsgThreadAction);
+      AddMsgHandler(MSGID::THREAD_ACTION, &call, &Self->MsgThreadAction);
 
       log.msg("Process Path: %s", Self->ProcessPath);
       log.msg("Working Path: %s", Self->Path);

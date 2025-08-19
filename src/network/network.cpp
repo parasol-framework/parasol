@@ -452,12 +452,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    auto recv_function = C_FUNCTION(resolve_name_receiver);
    recv_function.Context = CurrentTask();
-   if (AddMsgHandler(nullptr, glResolveNameMsgID, &recv_function, &glResolveNameHandler) != ERR::Okay) {
+   if (AddMsgHandler(glResolveNameMsgID, &recv_function, &glResolveNameHandler) != ERR::Okay) {
       return ERR::Failed;
    }
 
    recv_function.Routine = (APTR)resolve_addr_receiver;
-   if (AddMsgHandler(nullptr, glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
+   if (AddMsgHandler(glResolveAddrMsgID, &recv_function, &glResolveAddrHandler) != ERR::Okay) {
       return ERR::Failed;
    }
 

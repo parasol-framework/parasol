@@ -12,10 +12,10 @@ CSTRING ProgName = "Fluid";
 
 extern struct CoreBase *CoreBase;
 
-static CSTRING *glArgs = NULL;
+static CSTRING *glArgs = nullptr;
 static bool glTime = false;
-static STRING glProcedure = NULL;
-static STRING glTargetFile = NULL;
+static STRING glProcedure = nullptr;
+static STRING glTargetFile = nullptr;
 
 static const char glHelp[] = {
 "Usage: fluid [options...] script.fluid [--arg1=v1 --arg2=v2 ...]\n\
@@ -50,7 +50,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
       argname[j] = 0;
       LONG al = j;
 
-      CSTRING value = NULL;
+      CSTRING value = nullptr;
       if (Args[i][k] IS '=') {
          value = Args[i] + k + 1;
       }
@@ -191,7 +191,7 @@ static ERROR process_args(void)
             glTime = true;
          }
          else if (iequals(args[i], "--procedure")) {
-            if (glProcedure) { FreeResource(glProcedure); glProcedure = NULL; }
+            if (glProcedure) { FreeResource(glProcedure); glProcedure = nullptr; }
 
             if (args[i+1]) {
                glProcedure = StrClone(args[i+1]);
@@ -232,7 +232,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    pf::Log log(__FUNCTION__);
 
    if (Status IS ERR_Finished) {
-      SendMessage(glScriptReceivedMsg, MSF::WAIT, NULL, 0);
+      SendMessage(glScriptReceivedMsg, MSF::WAIT, nullptr, 0);
       log.msg("Input pipe closed.");
       return;
    }
@@ -240,7 +240,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
    glScriptBuffer.write(Buffer, Size);
 
    if (Buffer[Size-1] IS 0x1a) { // Ctrl-Z
-      SendMessage(glScriptReceivedMsg, MSF::WAIT, NULL, 0);
+      SendMessage(glScriptReceivedMsg, MSF::WAIT, nullptr, 0);
       log.msg("EOF received.");
       return;
    }
@@ -282,7 +282,7 @@ int main(int argc, CSTRING *argv)
          glScriptReceivedMsg = AllocateID(IDTYPE_MESSAGE);
 
          auto call = C_FUNCTION(msg_script_received);
-         AddMsgHandler(NULL, glScriptReceivedMsg, &call, NULL);
+         AddMsgHandler(glScriptReceivedMsg, &call, nullptr);
 
          CurrentTask()->setInputCallback(FUNCTION(read_stdin));
 
@@ -306,8 +306,8 @@ int main(int argc, CSTRING *argv)
       }
    }
 
-   if (glProcedure)    { FreeResource(glProcedure);    glProcedure = NULL; }
-   if (glTargetFile)   { FreeResource(glTargetFile);   glTargetFile = NULL; }
+   if (glProcedure)  { FreeResource(glProcedure);  glProcedure = nullptr; }
+   if (glTargetFile) { FreeResource(glTargetFile); glTargetFile = nullptr; }
 
    close_parasol();
 
