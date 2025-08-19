@@ -56,6 +56,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <span>
 #include <cstring>
 #include <thread>
+#include <optional>
 
 std::mutex glmThreads;
 std::unordered_set<std::shared_ptr<std::jthread>> glThreads;

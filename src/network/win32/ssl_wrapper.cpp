@@ -53,50 +53,50 @@ class SSLBuffer {
 private:
    std::vector<unsigned char> data_;
    size_t used_ = 0;
-   
+
 public:
-   explicit SSLBuffer(size_t initial_size = SSL_INITIAL_BUFFER_SIZE) 
+   explicit SSLBuffer(size_t initial_size = SSL_INITIAL_BUFFER_SIZE)
       : data_(initial_size) {}
-   
+
    std::span<unsigned char> available_space() {
       return std::span<unsigned char>(data_.data() + used_, data_.size() - used_);
    }
-   
+
    std::span<const unsigned char> used_data() const {
       return std::span<const unsigned char>(data_.data(), used_);
    }
-   
+
    std::span<unsigned char> used_data_mutable() {
       return std::span<unsigned char>(data_.data(), used_);
    }
-   
+
    void advance_used(size_t bytes) {
       if (used_ + bytes <= data_.size()) used_ += bytes;
    }
-   
+
    void ensure_capacity(size_t min_size) {
       if (data_.size() < min_size) {
          data_.resize(std::min(min_size, SSL_IO_BUFFER_SIZE));
       }
    }
-   
+
    void reset() { used_ = 0; }
-   
+
    void clear() {
       used_ = 0;
       data_.clear();
       data_.resize(SSL_INITIAL_BUFFER_SIZE);
    }
-   
+
    bool append(std::span<const unsigned char> data) {
       size_t total_needed = used_ + data.size();
-      if (total_needed > SSL_IO_BUFFER_SIZE) return false; // Would exceed maximum buffer size     
-      if (data_.size() < total_needed) data_.resize(total_needed);    
+      if (total_needed > SSL_IO_BUFFER_SIZE) return false; // Would exceed maximum buffer size
+      if (data_.size() < total_needed) data_.resize(total_needed);
       std::memcpy(data_.data() + used_, data.data(), data.size());
       used_ += data.size();
       return true;
    }
-   
+
    void consume_front(size_t bytes) {
       if (bytes >= used_) reset();
       else {
@@ -104,7 +104,7 @@ public:
          used_ -= bytes;
       }
    }
-   
+
    void compact(size_t bytes_consumed) {
       if (bytes_consumed >= used_) reset();
       else {
@@ -113,20 +113,20 @@ public:
          used_ = remaining;
       }
    }
-   
+
    unsigned char * data() { return data_.data(); }
    const unsigned char * data() const { return data_.data(); }
    size_t size() const { return used_; }
    size_t capacity() const { return data_.size(); }
    bool empty() const { return used_ == 0; }
    size_t available() const { return data_.size() - used_; }
-   
+
    void reserve(size_t new_cap) {
       if (new_cap <= SSL_IO_BUFFER_SIZE and new_cap > data_.size()) {
          data_.reserve(new_cap);
       }
    }
-   
+
    void resize(size_t new_size) {
       if (new_size <= SSL_IO_BUFFER_SIZE) {
          data_.resize(new_size);
@@ -155,10 +155,10 @@ struct ssl_context {
    PCCERT_CONTEXT server_certificate;          // Server certificate for server-side SSL
    PCCERT_CONTEXT peer_certificate;            // Peer certificate for validation
    PCCERT_CHAIN_CONTEXT certificate_chain;     // Certificate chain context for validation
-   
+
    // Connection information cache
    std::string protocol_version_str;
-   std::string cipher_suite_str;  
+   std::string cipher_suite_str;
    std::string key_exchange_str;
    std::string signature_algorithm_str;
    std::string encryption_algorithm_str;
@@ -167,7 +167,7 @@ struct ssl_context {
    int certificate_chain_length;
    bool connection_info_cached;
 
-   ssl_context() 
+   ssl_context()
       : socket_handle(INVALID_SOCKET)
       , io_buffer(SSL_INITIAL_BUFFER_SIZE)
       , recv_buffer(SSL_INITIAL_BUFFER_SIZE)
@@ -224,7 +224,7 @@ struct ssl_context {
       }
       else if (Result == -1) {
          last_win32_error = WSAGetLastError();
-         if (last_win32_error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;         
+         if (last_win32_error == WSAEWOULDBLOCK) return SSL_ERROR_WOULD_BLOCK;
          else return SSL_ERROR_FAILED;
       }
 
@@ -236,9 +236,6 @@ struct ssl_context {
 
 static bool glSSLInitialised = false;
 static bool glLoggingEnabled = false;
-
-static PCCERT_CONTEXT load_pem_certificate(const std::string &);
-static PCCERT_CONTEXT load_pkcs12_certificate(const std::string &);
 
 #include "ssl_certs.cpp"
 
@@ -255,13 +252,13 @@ static void set_error_status(ssl_context* Ctx, SECURITY_STATUS Status)
 static void ssl_debug_log(int level, const char* format, ...)
 {
    if (!glLoggingEnabled) return;
-   
+
    char buffer[1024];
    va_list args;
    va_start(args, format);
    vsnprintf(buffer, sizeof(buffer), format, args);
    va_end(args);
-   
+
    ssl_debug_to_parasol_log(buffer, level);
 }
 
@@ -270,17 +267,17 @@ static void ssl_debug_log(int level, const char* format, ...)
 static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
 {
    if (!glLoggingEnabled or !SSL->context_initialised) return;
-   
+
    SecPkgContext_ConnectionInfo conn_info;
    QueryContextAttributes(&SSL->context, SECPKG_ATTR_CONNECTION_INFO, &conn_info);
-   
+
    SecPkgContext_CipherInfo cipher_info;
    if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_CIPHER_INFO, &cipher_info) == SEC_E_OK) {
       ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Cipher Suite: %S", operation, cipher_info.szCipherSuite);
    }
    SecPkgContext_KeyInfo key_info;
    if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_KEY_INFO, &key_info) == SEC_E_OK) {
-      ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Signature: %S, Encryption: %S", 
+      ssl_debug_log(SSL_DEBUG_INFO, "SSL Debug [%s] - Signature: %S, Encryption: %S",
                    operation, key_info.sSignatureAlgorithmName, key_info.sEncryptAlgorithmName);
    }
 }
@@ -290,14 +287,12 @@ static void debug_ssl_handshake_state(ssl_context* SSL, const char* operation)
 void ssl_cleanup(void)
 {
    if (!glSSLInitialised) return;
-
-
    glSSLInitialised = false;
 }
 
 //********************************************************************************************************************
 
-SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredentials, bool ServerMode)
+SSL_HANDLE ssl_create_context(bool ValidateCredentials, bool ServerMode)
 {
    if (!glSSLInitialised) {
       // The certificate store would be needed if you want to:
@@ -313,28 +308,10 @@ SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredenti
    }
 
    ssl_context *ctx = new (std::nothrow) ssl_context;
-   if (ctx) ctx->validate_credentials = ValidateCredentials;
-
-   if (ServerMode) {
-      ctx->is_server_mode = true;
-      ctx->validate_credentials = ValidateCredentials;
-
-      // Try to get a server certificate for localhost testing (Windows does not have reliable support for self-signed certs)
-      // You can use mkcert to generate a local certificate for testing.
-      // First try to load mkcert-generated PKCS#12 certificate (includes private key)
-
-      ctx->server_certificate = load_pkcs12_certificate(CertPath + "localhost.p12");
-      
-      if (!ctx->server_certificate) {
-         ctx->server_certificate = load_pem_certificate(CertPath + "localhost.pem");
-         
-         if (!ctx->server_certificate) {
-            delete ctx;
-            return nullptr;
-         }
-      }
-   }
-
+   if (!ctx) return nullptr;
+   
+   ctx->validate_credentials = ValidateCredentials;
+   ctx->is_server_mode = ServerMode;
    return ctx;
 }
 
@@ -343,7 +320,7 @@ SSL_HANDLE ssl_create_context(const std::string &CertPath, bool ValidateCredenti
 void ssl_shutdown(SSL_HANDLE SSL)
 {
    if ((!SSL) or (!SSL->context_initialised)) return;
-   
+
    // Step 1: Apply shutdown control token
    DWORD shutdown_type = SCHANNEL_SHUTDOWN;
    SecBuffer shutdown_buf;
@@ -357,9 +334,7 @@ void ssl_shutdown(SSL_HANDLE SSL)
    shutdown_desc.ulVersion = SECBUFFER_VERSION;
 
    auto status = ApplyControlToken(&SSL->context, &shutdown_desc);
-   if (status != SEC_E_OK) {
-      return;
-   }
+   if (status != SEC_E_OK) return;
 
    SecBuffer out_buffer;
    out_buffer.pvBuffer = nullptr;
@@ -455,7 +430,7 @@ static bool validate_certificate_chain(ssl_context* SSL)
 
    CERT_CHAIN_PARA chain_para = {};
    chain_para.cbSize = sizeof(chain_para);
-   
+
    // Build the certificate chain
    BOOL result = CertGetCertificateChain(
       nullptr,                           // Use default chain engine
@@ -468,13 +443,11 @@ static bool validate_certificate_chain(ssl_context* SSL)
       &SSL->certificate_chain            // Chain context output
    );
 
-   if (!result or !SSL->certificate_chain) {
-      return false;
-   }
+   if (!result or !SSL->certificate_chain) return false;
 
    PCERT_SIMPLE_CHAIN simple_chain = SSL->certificate_chain->rgpChain[0];
    SSL->certificate_chain_length = int(simple_chain->cElement);
-   
+
    DWORD chain_error_status = SSL->certificate_chain->TrustStatus.dwErrorStatus;
    bool chain_valid = (chain_error_status == CERT_TRUST_NO_ERROR);
 
@@ -516,12 +489,12 @@ static void cache_connection_info(ssl_context* SSL)
    if (QueryContextAttributes(&SSL->context, SECPKG_ATTR_KEY_INFO, &key_info) == SEC_E_OK) {
       size_t converted = 0;
       char sig_buf[128], enc_buf[128];
-      
+
       if (key_info.sSignatureAlgorithmName) {
          wcstombs_s(&converted, sig_buf, sizeof(sig_buf), (const wchar_t*)key_info.sSignatureAlgorithmName, _TRUNCATE);
          SSL->signature_algorithm_str = sig_buf;
       }
-      
+
       if (key_info.sEncryptAlgorithmName) {
          wcstombs_s(&converted, enc_buf, sizeof(enc_buf), (const wchar_t*)key_info.sEncryptAlgorithmName, _TRUNCATE);
          SSL->encryption_algorithm_str = enc_buf;
@@ -543,43 +516,69 @@ static void cache_connection_info(ssl_context* SSL)
 
 //********************************************************************************************************************
 
-bool ssl_get_connection_info(SSL_HANDLE SSL, SSL_CONNECTION_INFO* info)
+bool ssl_get_connection_info(SSL_HANDLE SSL, SSL_CONNECTION_INFO *Info)
 {
-   if (!SSL or !info) return false;
-   
+   if (!SSL or !Info) return false;
+
    cache_connection_info(SSL);
-   
-   info->protocol_version = SSL->protocol_version_str.c_str();
-   info->cipher_suite = SSL->cipher_suite_str.c_str();
-   info->key_exchange = SSL->key_exchange_str.c_str();
-   info->signature_algorithm = SSL->signature_algorithm_str.c_str();
-   info->encryption_algorithm = SSL->encryption_algorithm_str.c_str();
-   info->key_size_bits = SSL->key_size_bits;
-   info->certificate_chain_valid = SSL->certificate_chain_valid;
-   info->certificate_chain_length = SSL->certificate_chain_length;
-   
+
+   Info->protocol_version         = SSL->protocol_version_str.c_str();
+   Info->cipher_suite             = SSL->cipher_suite_str.c_str();
+   Info->key_exchange             = SSL->key_exchange_str.c_str();
+   Info->signature_algorithm      = SSL->signature_algorithm_str.c_str();
+   Info->encryption_algorithm     = SSL->encryption_algorithm_str.c_str();
+   Info->key_size_bits            = SSL->key_size_bits;
+   Info->certificate_chain_valid  = SSL->certificate_chain_valid;
+   Info->certificate_chain_length = SSL->certificate_chain_length;
    return true;
 }
 
 const char* ssl_get_protocol_version(SSL_HANDLE SSL)
 {
-   if (!SSL) return "Unknown";
    cache_connection_info(SSL);
    return SSL->protocol_version_str.c_str();
 }
 
 const char* ssl_get_cipher_suite(SSL_HANDLE SSL)
 {
-   if (!SSL) return "Unknown";
    cache_connection_info(SSL);
    return SSL->cipher_suite_str.c_str();
 }
 
 int ssl_get_key_size_bits(SSL_HANDLE SSL)
 {
-   if (!SSL) return 0;
    cache_connection_info(SSL);
    return SSL->key_size_bits;
+}
+
+//********************************************************************************************************************
+// Load server certificate from file
+
+// TODO: Key path and password handling for PKCS#12 files
+
+SSL_ERROR_CODE ssl_load_server_certificate(SSL_HANDLE SSL, const std::string &CertPath, std::optional<const std::string> &KeyPath, std::optional<const std::string> &Password)
+{
+   if (!SSL->is_server_mode) return SSL_ERROR_FAILED;
+
+   std::string ext = CertPath.substr(CertPath.find_last_of(".") + 1);
+   std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+   bool success = false;
+   if ((ext == "p12") or (ext == "pfx")) { // Load PKCS#12 certificate
+      success = load_pkcs12_certificate(SSL, CertPath);
+   }
+   else if ((ext == "pem") or (ext == "crt") or (ext == "cert")) { // Load PEM certificate
+      success = load_pem_certificate(SSL, CertPath);
+   }
+
+   return success ? SSL_OK : SSL_ERROR_FAILED;
+}
+
+//********************************************************************************************************************
+
+void ssl_set_server_certificate(SSL_HANDLE Server, SSL_HANDLE Client)
+{
+   Client->server_certificate = Server->server_certificate;
 }
 
 #include "ssl_handshake.cpp"

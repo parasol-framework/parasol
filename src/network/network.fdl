@@ -35,7 +35,7 @@ typedef int SOCKET_HANDLE;
   flags("NSF", { },
     "SERVER: Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.",
     "SSL: Use Secure Sockets Layer for all communication.",
-    "SSL_NO_VERIFY: Disable SSL certificate verification (for testing only).",
+    "DISABLE_SERVER_VERIFY: Disable SSL certificate verification (for testing only).",
     "MULTI_CONNECT: Allow multiple connections from the same IP when in server mode.",
     "SYNCHRONOUS: Use synchronous (blocking) network calls.",
     "LOG_ALL: Print extra log messages.")
@@ -120,6 +120,9 @@ typedef int SOCKET_HANDLE;
     obj(NetClient) Clients # ServerMode - Attached clients
     ptr ClientData    # Pointer to user data that can be used during events
     str Address       # Connect the socket to this remote address (if client)
+    str SSLCertificate # Path to SSL certificate file (PEM/P12 format, for SSL servers)
+    str SSLPrivateKey  # Path to SSL private key file (PEM format, optional if using P12)
+    str SSLKeyPassword # Optional password for encrypted private keys
     int(NTC) State    # Connection state
     error Error       # The last NetSocket error can be read from this field
     int Port          # Connect socket to this remote port if client, or local port if server

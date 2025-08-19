@@ -142,7 +142,8 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
 
    if (msgcode IS WM_NETWORK) {
       const lock_guard<recursive_mutex> lock(csNetLookup);
-      if (glNetLookup.contains((WSW_SOCKET)wParam)) {
+      auto socket_handle = (WSW_SOCKET)wParam;
+      if (glNetLookup.contains(socket_handle)) {
          int state;
          int resub_write = false;
          switch (event) {
@@ -159,10 +160,10 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          else if (winerror) error = convert_error(winerror);
          else error = ERR::Okay;
 
-         socket_info &info = glNetLookup[(WSW_SOCKET)wParam];
+         socket_info &info = glNetLookup[socket_handle];
          bool read_disabled = false;
          if ((info.Flags & FD_READ) and (!glSocketsDisabled)) {
-            WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
+            WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
             read_disabled = true;
          }
 
@@ -171,20 +172,20 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
                // Do nothing when receiving queued write messages for a socket that has turned them off.
                return 0;
             }
-            else win32_netresponse((struct Object *)info.Reference, info.SocketHandle, state, error);
+            else win32_netresponse((struct Object *)info.Reference, socket_handle, state, error);
          }
-         else printf("win_messages() Missing reference for FD %d, state %d\n", info.SocketHandle, state);
+         else printf("win_messages() Missing reference for FD %d, state %d\n", socket_handle, state);
 
          // Re-enable read events if we disabled them and sockets are still active
          if ((read_disabled) and (!glSocketsDisabled)) {
-            if (glNetLookup.contains((WSW_SOCKET)wParam) and (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_READ)) {
-               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, glNetLookup[(WSW_SOCKET)wParam].Flags);
+            if (glNetLookup.contains(socket_handle) and (glNetLookup[socket_handle].Flags & FD_READ)) {
+               WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, glNetLookup[socket_handle].Flags);
             }
          }
 
          if ((resub_write) and (!glSocketsDisabled)) {
-            if (glNetLookup.contains((WSW_SOCKET)wParam) and (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_WRITE)) { // Sanity check in case write was switched off in win32_netresponse()
-               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, glNetLookup[(WSW_SOCKET)wParam].Flags);
+            if (glNetLookup.contains(socket_handle) and (glNetLookup[socket_handle].Flags & FD_WRITE)) { // Sanity check in case write was switched off in win32_netresponse()
+               WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, glNetLookup[socket_handle].Flags);
             }
          }
          return 0;

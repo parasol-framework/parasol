@@ -47,6 +47,37 @@ addresses and their connections to the server port.
 To send data to a client, write it to the target @ClientSocket.
 
 All data that is received from client sockets will be passed to the #Incoming feedback routine with a reference to a @ClientSocket.
+
+<header>SSL Server Certificates</>
+
+For SSL server sockets, custom certificates can be specified using the #SSLCertificate field. Both PEM and PKCS#12
+formats are supported across all platforms.
+
+Example with PKCS#12 certificate:
+
+```
+netsocket = obj.new('netsocket', {
+   flags = 'SERVER|SSL',
+   port = 8443,
+   sslCertificate = 'config:ssl/server.p12',
+   sslKeyPassword = 'password123'
+})
+```
+
+Example with PEM certificate and separate private key:
+
+```
+netsocket = obj.new('netsocket', {
+   flags = 'SERVER|SSL',
+   port = 8443,
+   sslCertificate = 'config:ssl/server.crt',
+   sslPrivateKey = 'config:ssl/server.key'
+})
+```
+
+If no custom certificate is specified, the framework will automatically use a localhost self-signed certificate
+for development purposes.  For production use, always specify a proper certificate signed by a trusted CA.
+
 -END-
 
 *********************************************************************************************************************/
@@ -70,6 +101,7 @@ static void clientsocket_outgoing(HOSTHANDLE, extClientSocket *);
 static void free_client(extNetSocket *, objNetClient *);
 static void server_accept_client(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
+static CSTRING netsocket_state(NTC Value);
 
 //********************************************************************************************************************
 
@@ -514,8 +546,11 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
    sslDisconnect(Self);
 #endif
 
-   if (Self->Address) { FreeResource(Self->Address); Self->Address = nullptr; }
-   if (Self->NetLookup) { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
+   if (Self->Address)        { FreeResource(Self->Address); Self->Address = nullptr; }
+   if (Self->NetLookup)      { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
+   if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
+   if (Self->SSLKeyPassword) { FreeResource(Self->SSLKeyPassword); Self->SSLKeyPassword = nullptr; }
+   if (Self->SSLPrivateKey)  { FreeResource(Self->SSLPrivateKey); Self->SSLPrivateKey = nullptr; }
 
    if (Self->Feedback.isScript()) UnsubscribeAction(Self->Feedback.Context, AC::Free);
    if (Self->Incoming.isScript()) UnsubscribeAction(Self->Incoming.Context, AC::Free);
@@ -708,9 +743,15 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                if ((error = win_listen(Self->Handle, Self->Backlog)) IS ERR::Okay) {
                   return ERR::Okay;
                }
-               else return log.warning(error);
+               else {
+                  log.warning("Listen failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+                  return error;
+               }
             }
-            else return log.warning(error);
+            else {
+               log.warning("Bind failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+               return error;
+            }
          #else
             return ERR::NoSupport;
          #endif
@@ -743,9 +784,15 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
                if ((error = win_listen(Self->Handle, Self->Backlog)) IS ERR::Okay) {
                   return ERR::Okay;
                }
-               else return log.warning(error);
+               else {
+                  log.warning("Listen failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+                  return error;
+               }
             }
-            else return log.warning(error);
+            else {
+               log.warning("Bind failed on port %d, error: %s", Self->Port, GetErrorMsg(error));
+               return error;
+            }
          #endif
       }
    }
@@ -1228,6 +1275,93 @@ static ERR SET_Handle(extNetSocket *Self, APTR Value)
 /*********************************************************************************************************************
 
 -FIELD-
+SSLCertificate: SSL certificate file to use if in server mode.
+
+Set SSLCertificate to the path of an SSL certificate file to use when the NetSocket is in server mode.  The
+certificate file must be in a supported format such as PEM, CRT, or P12.  If no certificate is defined, the
+NetSocket will either self-sign or use a localhost certificate, if available.
+
+*********************************************************************************************************************/
+
+static ERR SET_SSLCertificate(extNetSocket *Self, CSTRING Value)
+{
+   if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
+
+   if ((Value) and (*Value)) {
+      pf::Log log(__FUNCTION__);
+
+      LOC type;
+      if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+         // Check file extension for supported formats
+         std::string path(Value);
+         std::string ext = path.substr(path.find_last_of(".") + 1);
+         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+         if ((ext IS "pem") or (ext IS "crt") or (ext IS "cert") or (ext IS "p12") or (ext IS "pfx")) {
+            Self->SSLCertificate = pf::strclone(Value);
+         }
+         else return log.warning(ERR::InvalidData);
+      }
+      else return log.warning(ERR::FileNotFound);
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+SSLPrivateKey: Private key file to use if in server mode.
+
+Set SSLPrivateKey to the path of an SSL private key file to use when the NetSocket is in server mode.  The
+private key file must be in a supported format such as PEM or KEY.  If no private key is defined, the NetSocket
+will either self-sign or use a localhost private key, if available.
+
+*********************************************************************************************************************/
+
+static ERR SET_SSLPrivateKey(extNetSocket *Self, CSTRING Value)
+{
+   if (Self->SSLPrivateKey) { FreeResource(Self->SSLPrivateKey); Self->SSLPrivateKey = nullptr; }
+
+   if ((Value) and (*Value)) {
+      pf::Log log(__FUNCTION__);
+
+      LOC type;
+      if ((AnalysePath(Value, &type) IS ERR::Okay) and (type IS LOC::FILE)) {
+         // Check file extension for supported formats
+         std::string path(Value);
+         std::string ext = path.substr(path.find_last_of(".") + 1);
+         std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+         if ((ext IS "pem") or (ext IS "key")) {
+            Self->SSLPrivateKey = pf::strclone(Value);
+         }
+         else return log.warning(ERR::InvalidData);
+      }
+      else return log.warning(ERR::FileNotFound);
+   }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+SSLKeyPassword: SSL private key password.
+
+If the SSL private key is encrypted, set this field to the password required to decrypt it.  If the private key is
+not encrypted, this field can be left empty.
+
+*********************************************************************************************************************/
+
+static ERR SET_SSLKeyPassword(extNetSocket *Self, CSTRING Value)
+{
+   if (Self->SSLKeyPassword) { FreeResource(Self->SSLKeyPassword); Self->SSLKeyPassword = nullptr; }
+   if ((Value) and (*Value)) Self->SSLKeyPassword = pf::strclone(Value);
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 State: The current connection state of the NetSocket object.
 
 The State reflects the connection state of the NetSocket.  If the #Feedback field is defined with a function, it will
@@ -1258,7 +1392,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
    }
 
    if (Value != Self->State) {
-      log.branch("State changed from %d to %d", int(Self->State), int(Value));
+      log.branch("State changed from %s to %s", netsocket_state(Self->State), netsocket_state(Value));
 
       #ifndef DISABLE_SSL
       if ((Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
@@ -1268,17 +1402,17 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
 
          #ifdef _WIN32
          if ((Self->SSLHandle) and ((Self->Flags & NSF::SERVER) IS NSF::NIL)) {
-            // Only perform certificate validation if SSL_NO_VERIFY flag is not set
-            if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
-               log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
+            // Only perform certificate validation if DISABLE_SERVER_VERIFY flag is not set
+            if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
+               log.trace("SSL certificate validation skipped.");
             }
             else ssl_valid = ssl_get_verify_result(Self->SSLHandle);
          }
          #else
          if (Self->SSLHandle) {
-            // Only perform certificate validation if SSL_NO_VERIFY flag is not set
-            if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
-               log.trace("SSL certificate validation skipped (SSL_NO_VERIFY flag set).");
+            // Only perform certificate validation if DISABLE_SERVER_VERIFY flag is not set
+            if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
+               log.trace("SSL certificate validation skipped.");
             }
             else {
                if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
@@ -2097,29 +2231,38 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
 
 #include "netsocket_def.c"
 
+//********************************************************************************************************************
+
 static const FieldArray clSocketFields[] = {
-   { "Clients",          FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
-   { "ClientData",       FDF_POINTER|FDF_RW },
-   { "Address",          FDF_STRING|FDF_RI, nullptr, SET_Address },
-   { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, GET_State, SET_State, &clNetSocketState },
-   { "Error",            FDF_INT|FDF_R },
-   { "Port",             FDF_INT|FDF_RI },
-   { "Flags",            FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clNetSocketFlags },
-   { "TotalClients",     FDF_INT|FDF_R },
-   { "Backlog",          FDF_INT|FDF_RI },
-   { "ClientLimit",      FDF_INT|FDF_RW },
-   { "SocketLimit",      FDF_INT|FDF_RW },
-   { "MsgLimit",         FDF_INT|FDF_RI },
+   { "Clients",        FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::NETCLIENT },
+   { "ClientData",     FDF_POINTER|FDF_RW },
+   { "Address",        FDF_STRING|FDF_RI, nullptr, SET_Address },
+   { "SSLCertificate", FDF_STRING|FDF_RI, nullptr, SET_SSLCertificate },
+   { "SSLPrivateKey",  FDF_STRING|FDF_RI, nullptr, SET_SSLPrivateKey },
+   { "SSLKeyPassword", FDF_STRING|FDF_RI, nullptr, SET_SSLKeyPassword },
+   { "State",          FDF_INT|FDF_LOOKUP|FDF_RW, GET_State, SET_State, &clNetSocketState },
+   { "Error",          FDF_INT|FDF_R },
+   { "Port",           FDF_INT|FDF_RI },
+   { "Flags",          FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clNetSocketFlags },
+   { "TotalClients",   FDF_INT|FDF_R },
+   { "Backlog",        FDF_INT|FDF_RI },
+   { "ClientLimit",    FDF_INT|FDF_RW },
+   { "SocketLimit",    FDF_INT|FDF_RW },
+   { "MsgLimit",       FDF_INT|FDF_RI },
    // Virtual fields
-   { "Handle",           FDF_POINTER|FDF_RI,     GET_Handle, SET_Handle },
-   { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
-   { "Incoming",         FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
-   { "Outgoing",         FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
-   { "OutQueueSize",     FDF_INT|FDF_R,          GET_OutQueueSize },
+   { "Handle",         FDF_POINTER|FDF_RI,     GET_Handle, SET_Handle },
+   { "Feedback",       FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
+   { "Incoming",       FDF_FUNCTIONPTR|FDF_RW, GET_Incoming, SET_Incoming },
+   { "Outgoing",       FDF_FUNCTIONPTR|FDF_W,  GET_Outgoing, SET_Outgoing },
+   { "OutQueueSize",   FDF_INT|FDF_R,          GET_OutQueueSize },
    END_FIELD
 };
 
 //********************************************************************************************************************
+
+static CSTRING netsocket_state(NTC Value) {
+   return clNetSocketState[int(Value)].Name;
+}
 
 static ERR init_netsocket(void)
 {

@@ -18,7 +18,7 @@ meaningful error reporting while maintaining system stability.
 
    include 'network'
 
-   glPort = 8304
+   glPort = 18304
    glErrorScenarios = {}
    glTestResults = {}
 
@@ -34,7 +34,8 @@ end
 
 function testConnectionFailures()
    local proc = processing.new({ timeout = 2.0 })
-   
+   glPort = glPort + 1
+
    print('Testing connection failure scenarios...')
    
    -- Test 1: Invalid IP address
@@ -125,6 +126,7 @@ end
 function testBufferOverflowHandling()
    local proc = processing.new({ timeout = 10.0 })
    local overflow_handled = false
+   glPort = glPort + 1
    
    print('Testing buffer overflow scenarios...')
    
@@ -156,7 +158,7 @@ function testBufferOverflowHandling()
          -- Don't read data to force buffer buildup
          print('[Server] Data available but not reading (simulating slow consumer)')
       end,
-      port = glPort + 1,
+      port = glPort,
       flags = 'SERVER'
    })
    
@@ -188,7 +190,7 @@ function testBufferOverflowHandling()
       end
    })
    
-   client.mtConnect('127.0.0.1', glPort + 1)
+   client.mtConnect('127.0.0.1', glPort)
    
    local err = proc.sleep()
    -- Note: This test may timeout if buffers are very large, which is also acceptable
@@ -206,6 +208,7 @@ end
 function testNetworkTimeouts()
    local proc = processing.new({ timeout = 8.0 })
    local timeout_handled = false
+   glPort = glPort + 1
    
    print('Testing network timeout scenarios...')
    
@@ -249,8 +252,9 @@ end
 function testNTECloseHandling()
    local proc = processing.new({ timeout = 8.0 })
    local close_handled = false
+   glPort = glPort + 1
    
-   print('Testing NTE_CLOSE message handling (recent fix)...')
+   print('Testing NTE_CLOSE message handling...')
    
    local server = obj.new('netsocket', {
       name = 'CloseTestServer',
@@ -280,7 +284,7 @@ function testNTECloseHandling()
             print('[Server] Read error during close: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      port = glPort + 2,
+      port = glPort,
       flags = 'SERVER'
    })
    
@@ -309,7 +313,7 @@ function testNTECloseHandling()
       end
    })
    
-   client.mtConnect('127.0.0.1', glPort + 2)
+   client.mtConnect('127.0.0.1', glPort)
    
    local err = proc.sleep()
    assert(err == ERR_Okay, 'NTE_CLOSE handling test failed: ' .. mSys.GetErrorMsg(err))
@@ -322,6 +326,7 @@ end
 
 function testInvalidParameters()
    print('Testing invalid parameter handling...')
+   glPort = glPort + 1
    
    -- Test invalid socket creation parameters
    local invalid_socket = obj.new('netsocket', {
@@ -356,6 +361,7 @@ end
 
 function testResourceCleanup()
    local proc = processing.new({ timeout = 5.0 })
+   glPort = glPort + 1
    
    print('Testing resource cleanup under error conditions...')
    

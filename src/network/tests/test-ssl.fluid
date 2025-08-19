@@ -19,7 +19,7 @@ If SSL is not available, tests will be skipped with appropriate messages.
 
    include 'network'
 
-   glPort = 8305
+   glPort = 21605
    glSSLSupported = false
    glSSLTestData = 'SECRET_SSL_MESSAGE_123'
 
@@ -68,8 +68,6 @@ function testBasicSSLCommunication()
    local ssl_data_received = false
 
    glPort = glPort + 1
-
-   print('Testing basic SSL communication...')
 
    local ssl_server = obj.new('netsocket', {
       name = 'server',
@@ -128,7 +126,7 @@ function testBasicSSLCommunication()
          end
       end,
       port = glPort,
-      flags = 'SERVER|SSL|SSL_NO_VERIFY'
+      flags = 'SERVER|SSL'
    })
 
    assert(ssl_server, 'Failed to create SSL server socket')
@@ -176,7 +174,7 @@ function testBasicSSLCommunication()
             error('[SSL Client] SSL read error: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      flags = 'SSL|SSL_NO_VERIFY'
+      flags = 'SSL|DISABLE_SERVER_VERIFY'
    })
 
    assert(ssl_client, 'Failed to create SSL client socket')
@@ -190,8 +188,6 @@ function testBasicSSLCommunication()
 
    assert(ssl_handshake_complete, 'SSL handshake did not complete')
    assert(ssl_data_received, 'SSL data exchange did not complete')
-
-   print('Basic SSL communication test completed successfully!')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -203,8 +199,6 @@ function testSSLStateTransitions()
    local state_sequence = {}
    local ssl_handshake_complete = false
    local data_exchange_complete = false
-
-   print('Testing SSL connection state transitions...')
 
    glPort = glPort + 1
 
@@ -250,7 +244,7 @@ function testSSLStateTransitions()
          end
       end,
       port = glPort,
-      flags = 'SERVER|SSL|SSL_NO_VERIFY'
+      flags = 'SERVER|SSL'
    })
 
    local ssl_client = obj.new('netsocket', {
@@ -280,10 +274,10 @@ function testSSLStateTransitions()
             error('[SSL Client] Read error: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      flags = 'SSL|SSL_NO_VERIFY'
+      flags = 'SSL|DISABLE_SERVER_VERIFY'
    })
 
-   print('[SSL Client] Initiating connection...')
+   msg('[SSL Client] Initiating connection...')
    ssl_client.mtConnect('127.0.0.1', glPort)
 
    local err = proc.sleep()
@@ -332,8 +326,6 @@ function testSSLDataIntegrity()
    }
    local messages_verified = 0
 
-   print('Testing SSL data integrity with various message types...')
-
    glPort = glPort + 1
 
    local msgIndex = 1
@@ -377,7 +369,7 @@ function testSSLDataIntegrity()
          end
       end,
       port = glPort,
-      flags = 'SERVER|SSL|SSL_NO_VERIFY'
+      flags = 'SERVER|SSL'
    })
 
    local ssl_client = obj.new('netsocket', {
@@ -395,7 +387,7 @@ function testSSLDataIntegrity()
             assert(err == ERR_Okay, 'Failed to echo SSL message: ' .. mSys.GetErrorMsg(err))
          end
       end,
-      flags = 'SSL|SSL_NO_VERIFY'
+      flags = 'SSL|DISABLE_SERVER_VERIFY'
    })
 
    ssl_client.mtConnect('127.0.0.1', glPort)
@@ -405,9 +397,6 @@ function testSSLDataIntegrity()
 
    assert(messages_verified == #test_messages,
       'Not all messages verified. Expected: ' .. #test_messages .. ', Verified: ' .. messages_verified)
-
-   print('SSL data integrity test completed successfully!')
-   print('Verified ' .. messages_verified .. ' different message types over SSL')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -439,7 +428,7 @@ function testHTTPSConnection()
 
          elseif (State == NTC_CONNECTED) then
             connection_time = mSys.PreciseTime()
-            print('[HTTPS Client] SSL connection to ' .. SITE .. ' established successfully in ' .. 
+            print('[HTTPS Client] SSL connection to ' .. SITE .. ' established successfully in ' ..
                   string.format("%.3f", (connection_time - start_time) / 1000000.0) .. ' seconds')
             connection_established = true
 
@@ -478,14 +467,14 @@ function testHTTPSConnection()
          local current_time = mSys.PreciseTime()
          local elapsed = string.format("%.3f", (current_time - start_time) / 1000000.0)
          local callback_total = 0
-         
+
          -- Read all available data in this callback
          while true do
             local buffer = string.alloc(8192)
             local err, read_len = Socket.acRead(buffer)
 
             if (err == ERR_Okay) then
-               if read_len == 0 then -- No more data available right now           
+               if read_len == 0 then -- No more data available right now
                   error('Received incoming data notification with no data to read.')
                end
 
@@ -493,8 +482,8 @@ function testHTTPSConnection()
                callback_total = callback_total + read_len
                local chunk = buffer:sub(1, read_len)
                page_content = page_content .. chunk
-               
-               print('[HTTPS Client] Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' .. 
+
+               print('[HTTPS Client] Chunk ' .. chunks_received .. ' received: ' .. read_len .. ' bytes from ' ..
                      SITE .. ' at ' .. elapsed .. 's (total: ' .. #page_content .. ' bytes)')
                data_received = true
 
@@ -503,7 +492,7 @@ function testHTTPSConnection()
                   headers_complete = true
                   local headers = string.match(page_content, '(.-)\r\n\r\n')
                   print('[HTTPS Client] HTTP headers received (' .. #headers .. ' bytes)')
-                  
+
                   -- Extract Content-Length if present
                   local content_length = string.match(headers, 'Content%-Length:%s*(%d+)')
                   if content_length then
@@ -529,7 +518,7 @@ function testHTTPSConnection()
                raise(ERR_Terminate)
             end
          end
-         
+
          if callback_total > 0 then
             print('[HTTPS Client] Incoming callback processed ' .. callback_total .. ' bytes total in this call')
          end
@@ -564,7 +553,7 @@ function testHTTPSConnection()
    local final_time = mSys.PreciseTime()
    local total_duration = string.format("%.3f", (final_time - start_time) / 1000000.0)
    print('[HTTPS Client] Received ' .. chunks_received .. ' chunks, ' .. #page_content .. ' total bytes')
-   
+
    if expected_content_length > 0 then
       local content_start = string.find(page_content, '\r\n\r\n')
       if content_start then
@@ -596,11 +585,108 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testCustomCertificate()
+   if (not glSSLSupported) then return end
+
+   local proc = processing.new({ timeout = 10.0 })
+   local custom_cert_test_complete = false
+   local handshake_successful = false
+   local CERT_PATH = 'config:ssl/localhost.p12'
+
+   glPort = glPort + 1
+
+   if (mSys.AnalysePath(CERT_PATH) != ERR_Okay) then
+      print('Test certificate not installed, skipping test...')
+      return
+   end
+
+   -- Test with localhost.p12 certificate if available
+   local ssl_server = obj.new('netsocket', {
+      name = 'CustomCertServer',
+      sslCertificate = CERT_PATH,
+      feedback = function(Socket, Client, State)
+         msg('[Custom Cert Server] State: ' .. printableState(State))
+
+         if (State == NTC_CONNECTED) then
+            handshake_successful = true
+            msg('[Custom Cert Server] SSL handshake with custom certificate successful!')
+
+            -- Send confirmation message
+            local err, len = Client.acWrite('CUSTOM_CERT_CONFIRMED')
+            if (err == ERR_Okay) then
+               msg('[Custom Cert Server] Custom certificate test message sent')
+            else
+               error('[Custom Cert Server] Failed to send test message: ' .. mSys.GetErrorMsg(err))
+            end
+
+         elseif (State == NTC_DISCONNECTED) then
+            if not (handshake_successful and custom_cert_test_complete) then
+               msg('Disconnected before test was completed.')
+            end
+            proc.signal()
+         end
+      end,
+      incoming = function(Socket, Client)
+         local buffer = string.alloc(1024)
+         local err, read_len = Client.acRead(buffer)
+         if (err == ERR_Okay) then
+            local message = buffer:sub(1, read_len)
+            msg('[Custom Cert Server] Received: ' .. message)
+            custom_cert_test_complete = true
+            Socket.mtDisconnectSocket(Client)
+         end
+      end,
+      port = glPort,
+      flags = 'SERVER|SSL'
+   })
+
+   if (not ssl_server) then
+      error('Failed to create custom certificate SSL server')
+   end
+
+   local ssl_client = obj.new('netsocket', {
+      name = 'CustomCertClient',
+      feedback = function(Socket, State)
+         msg('[Custom Cert Client] State: ' .. printableState(State))
+
+         if (State == NTC_CONNECTED) then
+            msg('Connected to custom certificate server')
+
+            local err, len = Socket.acWrite('CLIENT_RESPONSE')
+            if (err == ERR_Okay) then
+               msg('Response sent to custom cert server')
+            else
+               error('Failed to send response: ' .. mSys.GetErrorMsg(err))
+            end
+         end
+      end,
+      flags = 'SSL|DISABLE_SERVER_VERIFY'  -- Use no-verify for test certificate
+   })
+
+   if (not ssl_client) then
+      error('Failed to create custom certificate SSL client')
+   end
+
+   local err = ssl_client.mtConnect('127.0.0.1', glPort)
+   if (err != ERR_Okay) then
+      error('Failed to initiate connection to custom cert server: ' .. mSys.GetErrorMsg(err))
+   end
+
+   msg('[Custom Cert] Connecting to custom certificate server...')
+
+   local err = proc.sleep()
+   assert(err == ERR_Okay, 'Custom certificate test failed: ' .. mSys.GetErrorMsg(err))
+   assert(handshake_successful, 'Custom certificate SSL handshake failed')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
    return {
       tests = {
          'testBasicSSLCommunication',
          'testSSLStateTransitions',
          'testSSLDataIntegrity',
+         'testCustomCertificate',
          'testHTTPSConnection'
       },
       init = function()

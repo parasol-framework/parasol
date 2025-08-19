@@ -32,7 +32,7 @@ enum class NSF : uint32_t {
    NIL = 0,
    SERVER = 0x00000001,
    SSL = 0x00000002,
-   SSL_NO_VERIFY = 0x00000004,
+   DISABLE_SERVER_VERIFY = 0x00000004,
    MULTI_CONNECT = 0x00000008,
    SYNCHRONOUS = 0x00000010,
    LOG_ALL = 0x00000020,
@@ -431,6 +431,9 @@ class objNetSocket : public Object {
    objNetClient * Clients;    // For server sockets, lists all clients connected to the server.
    APTR   ClientData;         // A client-defined value that can be useful in action notify events.
    STRING Address;            // An IP address or domain name to connect to.
+   STRING SSLCertificate;     // SSL certificate file to use if in server mode.
+   STRING SSLPrivateKey;      // Private key file to use if in server mode.
+   STRING SSLKeyPassword;     // SSL private key password.
    NTC    State;              // The current connection state of the NetSocket object.
    ERR    Error;              // Information about the last error that occurred during a NetSocket operation
    int    Port;               // The port number to use for initiating a connection.
@@ -523,6 +526,24 @@ class objNetSocket : public Object {
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
+   template <class T> inline ERR setSSLCertificate(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSSLPrivateKey(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSSLKeyPassword(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
    inline ERR setState(const NTC Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[5];
@@ -570,13 +591,13 @@ class objNetSocket : public Object {
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
