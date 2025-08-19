@@ -775,6 +775,6 @@ if (GENERATE_DEBIAN_PKG)
    file(CHMOD "${CMAKE_BINARY_DIR}/debian/rules" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
    message(STATUS "Debian packaging files generated in ${CMAKE_BINARY_DIR}/debian/")
-   message(STATUS "Use build-deb.sh script to build the package")
+   message(STATUS "Use tools/build-deb.sh script to build the package")
 endif()
 
