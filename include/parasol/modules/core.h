@@ -1935,11 +1935,10 @@ typedef struct MemInfo {
 } MEMINFO;
 
 struct MsgHandler {
-   struct MsgHandler * Prev;    // Previous message handler in the chain
-   struct MsgHandler * Next;    // Next message handler in the chain
-   APTR     Custom;             // Custom pointer to send to the message handler
-   FUNCTION Function;           // Call this function
-   MSGID    MsgType;            // Type of message being filtered
+   struct MsgHandler * Prev;    // Previous message handler in the chain.
+   struct MsgHandler * Next;    // Next message handler in the chain.
+   FUNCTION Function;           // Call this function to handle the message.
+   MSGID    MsgType;            // Type of message being filtered.
 };
 
 struct CacheFile {
@@ -2144,7 +2143,7 @@ struct CoreBase {
    ERR (*_DeleteVolume)(CSTRING Name);
    ERR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_UpdateMessage)(int Message, MSGID Type, APTR Data, int Size);
-   ERR (*_AddMsgHandler)(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
+   ERR (*_AddMsgHandler)(MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
    ERR (*_QueueAction)(AC Action, OBJECTID Object, APTR Args);
    int64_t (*_PreciseTime)(void);
    ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
@@ -2238,7 +2237,7 @@ inline ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CS
 inline ERR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
-inline ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
+inline ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(MsgType,Routine,Handle); }
 inline ERR QueueAction(AC Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline int64_t PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
@@ -2326,7 +2325,7 @@ extern "C" ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label
 extern "C" ERR DeleteVolume(CSTRING Name);
 extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size);
-extern "C" ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
+extern "C" ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
 extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
 extern "C" int64_t PreciseTime(void);
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);

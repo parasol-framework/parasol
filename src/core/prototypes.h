@@ -66,7 +66,7 @@ extern "C" ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label
 extern "C" ERR DeleteVolume(CSTRING Name);
 extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION * Callback);
 extern "C" ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size);
-extern "C" ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
+extern "C" ERR AddMsgHandler(MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle);
 extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
 extern "C" int64_t PreciseTime();
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo ** Info);

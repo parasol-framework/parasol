@@ -184,9 +184,8 @@ struct FunctionField argsResize[] = {
     <name>AddMsgHandler</name>
     <category>Messages</category>
     <comment>Adds a new message handler for processing incoming messages.</comment>
-    <prototype>ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
+    <prototype>ERR AddMsgHandler(MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</prototype>
     <input>
-      <param type="APTR" name="Custom">A custom pointer that will be passed to the message handler when messages are received.</param>
       <param type="MSGID" name="MsgType" lookup="MSGID">The message type that the handler will intercept.  If zero, all incoming messages are passed to the handler.</param>
       <param type="FUNCTION *" name="Routine">Refers to the function that will handle incoming messages.</param>
       <param type="struct MsgHandler **" name="Handle">The resulting handle of the new message handler - retain for <function>FreeResource</function>.</param>
@@ -194,8 +193,8 @@ struct FunctionField argsResize[] = {
     <description>
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
 <p>During a call to <function>ProcessMessages</function>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
-<p>When calling AddMsgHandler(), you can provide an optional <code>Custom</code> pointer that will have meaning to the handler.  The <code>MsgType</code> acts as a filter so that only messages with the same type identifier will be passed to the handler.  The <code>Routine</code> parameter must point to the function handler, which will follow this definition:</p>
-<pre>ERR handler(APTR Custom, MSGID MsgID, INT MsgType, APTR Message, INT MsgSize)</pre>
+<p>When calling AddMsgHandler(), the <code>MsgType</code> acts as a filter so that only messages with the same type identifier will be passed to the handler.  The <code>Routine</code> parameter must point to the function handler, which will follow this definition:</p>
+<pre>ERR handler(APTR Meta, MSGID MsgID, INT MsgType, APTR Message, INT MsgSize)</pre>
 <p>The handler must return <code>ERR::Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR::NothingDone</code> if the message has been ignored or <code>ERR::Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR::Terminate</code> to break the current <function>ProcessMessages</function> loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
 <p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <function>FreeResource</function> once it is no longer required.</p>
     </description>
@@ -1415,7 +1414,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
     <description>
 <p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR::Okay</code>.</p>
 <p>The following example illustrates a scan for <code>MSGID::QUIT</code> messages:</p>
-<pre>while (!ScanMessages(&amp;handle, MSGID::QUIT, NULL, NULL)) {
+<pre>while (!ScanMessages(&amp;handle, MSGID::QUIT, nullptr, nullptr)) {
    ...
 }
 </pre>

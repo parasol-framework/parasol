@@ -216,16 +216,16 @@ static int processing_get(lua_State *Lua)
 
 //********************************************************************************************************************
 // Call a function on the next message processing cycle.
-// 
+//
 // Usage: processing.delayedCall(function() ... end)
 
 static MsgHandler *delayed_call_handle;
 
-static ERR msg_handler(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR msg_handler(APTR Meta, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 {
    if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
 
-   auto lua = (lua_State *)Custom;
+   auto lua = (lua_State *)Meta;
    auto prv = (prvFluid *)lua->Script->ChildPrivate;
    int ref = *(int *)Message;
    lua_rawgeti(lua, LUA_REGISTRYINDEX, ref); // Get the function from the registry
@@ -241,8 +241,8 @@ static int processing_delayed_call(lua_State *Lua)
    static MSGID msgid = MSGID::NIL;
    if (msgid IS MSGID::NIL) {
       msgid = MSGID(AllocateID(IDTYPE::MESSAGE));
-      auto func = C_FUNCTION(msg_handler, Lua->Script);
-      if (AddMsgHandler(Lua, msgid, &func, &delayed_call_handle) != ERR::Okay) {
+      auto func = C_FUNCTION(msg_handler, Lua);
+      if (AddMsgHandler(msgid, &func, &delayed_call_handle) != ERR::Okay) {
          luaL_error(Lua, "Failed to register handler for delayedCall().");
       }
    }

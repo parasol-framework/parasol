@@ -990,11 +990,10 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
   ]])
 
   struct("MsgHandler", { restrict="c" }, [[
-    ptr(struct(MsgHandler)) Prev  # Previous message handler in the chain
-    ptr(struct(MsgHandler)) Next  # Next message handler in the chain
-    ptr Custom                    # Custom pointer to send to the message handler
-    func Function                 # Call this function
-    int(MSGID) MsgType            # Type of message being filtered
+    ptr(struct(MsgHandler)) Prev  # Previous message handler in the chain.
+    ptr(struct(MsgHandler)) Next  # Next message handler in the chain.
+    func Function                 # Call this function to handle the message.
+    int(MSGID) MsgType            # Type of message being filtered.
   ]])
 
   struct("CacheFile", { restrict="c", comment="Internal structure for managing files cached by LoadFile()." }, [[
