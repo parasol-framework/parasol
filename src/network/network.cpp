@@ -376,10 +376,10 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
    }
 
    std::lock_guard<std::mutex> lock(glmThreads);
-      auto thread_ptr = std::make_shared<std::jthread>();
-      *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
-      glThreads.insert(thread_ptr);
-      // Don't detach, threads need to be joinable for proper cleanup
+   auto thread_ptr = std::make_shared<std::jthread>();
+   *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
+   glThreads.insert(thread_ptr);
+   // Don't detach, threads need to be joinable for proper cleanup
 }
 
 //********************************************************************************************************************

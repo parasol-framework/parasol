@@ -1584,10 +1584,18 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
    if (SocketObject->classID() IS CLASSID::CLIENTSOCKET) {
       ClientSocket = (extClientSocket *)SocketObject;
       Socket = (extNetSocket *)ClientSocket->Client->Owner;
+      if (ClientSocket->Handle != Handle) {
+         log.warning(ERR::SanityCheckFailed);
+         return;
+      }
    }
    else {
       Socket = (extNetSocket *)SocketObject;
       ClientSocket = nullptr;
+      if (Socket->Handle != Handle) {
+         log.warning(ERR::SanityCheckFailed);
+         return;
+      }
    }
 
    #if defined(_DEBUG)
@@ -1635,12 +1643,12 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
    }
    else if (Message IS NTE_CLOSE) {
       if (ClientSocket) {
-         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Client socket closed.");
+         log.branch("Client socket closed.");
          FreeResource(ClientSocket);
          // Note: Disconnection feedback is sent to the NetSocket by the ClientSocket destructor.
       }
       else {
-         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection closed by server, error %d.", int(Error));
+         log.branch("Connection closed by host, error %d.", int(Error));
 
          // Prevent multiple close messages from the same socket
          if (Socket->State IS NTC::DISCONNECTED) {
@@ -1659,14 +1667,20 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
    }
    else if (Message IS NTE_CONNECT) {
       if (Error IS ERR::Okay) {
-         if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("Connection to server granted.");
-
-         #ifndef DISABLE_SSL
-            if (Socket->SSLHandle) sslConnect(Socket);
-            else Socket->setState(NTC::CONNECTED);
-         #else
-            Socket->setState(NTC::CONNECTED);
-         #endif
+         if (ClientSocket) { // Server mode - connect message shouldn't be received for ClientSocket
+            log.warning("Unexpected connect message for ClientSocket, ignoring.");
+            Socket->InUse--;
+            return;
+         }
+         else {
+            log.traceBranch("Connection to host granted.");
+            #ifndef DISABLE_SSL
+               if (Socket->SSLHandle) sslConnect(Socket);
+               else Socket->setState(NTC::CONNECTED);
+            #else
+               Socket->setState(NTC::CONNECTED);
+            #endif
+         }
       }
       else {
          log.msg("Connection state changed, error: %s", GetErrorMsg(Error));

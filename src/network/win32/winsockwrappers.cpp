@@ -301,10 +301,32 @@ void win_deregister_socket(WSW_SOCKET SocketHandle)
 {
    const lock_guard<recursive_mutex> lock(csNetLookup);
    glNetLookup.erase(SocketHandle);
+
+   // Cancel all pending async events for SocketHandle
+   // This prevents stale events from being delivered to new sockets that reuse the handle
+   WSAAsyncSelect(SocketHandle, glNetWindow, 0, 0);
+   
+   // Process pending Windows messages for this socket to clear the queue
+   // NB: closesocket() does not perform this task in spite of MSDN implying it does.
+
+   std::vector<MSG> other_messages;
+   MSG msg;
+   while (PeekMessage(&msg, glNetWindow, WM_NETWORK, WM_NETWORK, PM_REMOVE)) {
+      if (msg.wParam IS SocketHandle) {
+         // Discard this message - it's for the socket we're closing
+      }
+      else other_messages.push_back(msg);
+   }
+   
+   for (const auto &saved_msg : other_messages) {
+      PostMessage(glNetWindow, saved_msg.message, saved_msg.wParam, saved_msg.lParam);
+   }
 }
 
 //********************************************************************************************************************
 // Wrapped by CLOSESOCKET()
+// NOTE: Windows reuses socket handles frequently.  Our closure process is designed to overcome many of these problems,
+// but if you notice any weird socket behaviour then give consideration to the possibility of handle re-use.
 
 void win_closesocket(WSW_SOCKET SocketHandle)
 {

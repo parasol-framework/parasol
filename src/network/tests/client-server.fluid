@@ -87,6 +87,7 @@ function testClientServer()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- One-on-one basic communication test between client and server.
 
 function testBasicCommunication()
    local proc = processing.new({ timeout = 10.0 })
