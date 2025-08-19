@@ -47,6 +47,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
     #include <openssl/evp.h>
     #include <openssl/x509.h>
     #include <openssl/pem.h>
+    #include <openssl/pkcs12.h>
   #endif
 #endif
 
@@ -56,6 +57,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <span>
 #include <cstring>
 #include <thread>
+#include <optional>
 
 std::mutex glmThreads;
 std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
@@ -374,10 +376,10 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
    }
 
    std::lock_guard<std::mutex> lock(glmThreads);
-      auto thread_ptr = std::make_shared<std::jthread>();
-      *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
-      glThreads.insert(thread_ptr);
-      // Don't detach, threads need to be joinable for proper cleanup
+   auto thread_ptr = std::make_shared<std::jthread>();
+   *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
+   glThreads.insert(thread_ptr);
+   // Don't detach, threads need to be joinable for proper cleanup
 }
 
 //********************************************************************************************************************

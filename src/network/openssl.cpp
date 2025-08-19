@@ -3,6 +3,9 @@ static SSL_CTX *glClientSSL = nullptr; // Thread-safe unless you call a SET func
 static SSL_CTX *glServerSSL = nullptr;
 static SSL_CTX *glClientSSLNV = nullptr; // No-verify version
 
+static ERR loadPKCS12Certificate(const std::string &, std::optional<const std::string> &, SSL_CTX *);
+static ERR loadPEMCertificate(const std::string &, std::optional<const std::string> &, std::optional<const std::string> &, SSL_CTX *);
+
 //********************************************************************************************************************
 
 // Forward declarations for template functions
@@ -17,9 +20,9 @@ template <class T> void sslDisconnect(T *Self)
       log.traceBranch("Closing SSL connection.");
 
       SSL_set_info_callback(Self->SSLHandle, nullptr);
-      
+
       // Perform proper bidirectional SSL shutdown
-      
+
       if (auto shutdown_result = SSL_shutdown(Self->SSLHandle); shutdown_result == 0) {
          // First shutdown call completed, perform second shutdown for bidirectional close
          shutdown_result = SSL_shutdown(Self->SSLHandle);
@@ -30,7 +33,7 @@ template <class T> void sslDisconnect(T *Self)
             }
          }
       }
-      
+
       SSL_free(Self->SSLHandle);
       Self->SSLHandle = nullptr;
       Self->BIOHandle = nullptr; // BIO is terminated by SSL_free()
@@ -81,20 +84,171 @@ static void sslCtxMsgCallback(const SSL *s, int where, int ret)
 }
 
 //********************************************************************************************************************
+// Load custom certificate from file for OpenSSL server context
+
+static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (!Self->SSLCertificate or !*Self->SSLCertificate) return ERR::FieldNotSet;
+
+   // Determine certificate format from file extension
+   std::string cp(Self->SSLCertificate);
+   std::string ext = cp.substr(cp.find_last_of(".") + 1);
+   std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+   
+   std::string cert_path, key_path;
+   if (ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path) IS ERR::Okay) {
+      auto opt_password = std::make_optional<const std::string>();
+      auto opt_key_path = std::make_optional<const std::string>();
+
+      if (Self->SSLPrivateKey) {
+         ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path);
+         opt_key_path.emplace(key_path);
+      }
+
+      if (Self->SSLKeyPassword) opt_password.emplace(Self->SSLKeyPassword);
+
+      if ((ext IS "p12") or (ext IS "pfx")) {
+         return loadPKCS12Certificate(cert_path, opt_password, ctx);
+      }
+      else if ((ext IS "pem") or (ext IS "crt") or (ext IS "cert")) {
+         return loadPEMCertificate(cert_path, opt_key_path, opt_password, ctx);
+      }
+      else return log.warning(ERR::InvalidData);
+   }
+   
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Load PEM format certificate and private key
+
+static ERR loadPEMCertificate(const std::string &certPath, std::optional<const std::string> &keyPath, std::optional<const std::string> &password, SSL_CTX *ctx)
+{
+   pf::Log log(__FUNCTION__);
+
+   FILE *cert_file = fopen(certPath.c_str(), "r");
+   if (!cert_file) return log.warning(ERR::File);
+
+   X509 *cert = PEM_read_X509(cert_file, nullptr, nullptr, nullptr);
+   fclose(cert_file);
+
+   if (!cert) return log.warning(ERR::InvalidData);
+
+   if (SSL_CTX_use_certificate(ctx, cert) != 1) {
+      X509_free(cert);
+      return log.warning(ERR::Failed);
+   }
+
+   X509_free(cert);
+
+   // Load private key
+   std::string key_file_path = keyPath.has_value() ? keyPath.value() : certPath;
+
+   auto key_file = fopen(key_file_path.c_str(), "r");
+   if (!key_file) return log.warning(ERR::File);
+
+   EVP_PKEY *pkey = PEM_read_PrivateKey(key_file, nullptr, nullptr, (void*)(password.has_value() ? password.value().c_str() : nullptr));
+   fclose(key_file);
+
+   if (!pkey) return log.warning(ERR::InvalidData);
+
+   if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+      EVP_PKEY_free(pkey);
+      return log.warning(ERR::Failed);
+   }
+
+   EVP_PKEY_free(pkey);
+
+   // Verify certificate and key match
+   if (SSL_CTX_check_private_key(ctx) != 1) return log.warning(ERR::Mismatch);
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Load PKCS#12 format certificate bundle
+
+static ERR loadPKCS12Certificate(const std::string &p12Path, std::optional<const std::string> &password, SSL_CTX *ctx)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto p12_file = fopen(p12Path.c_str(), "rb");
+   if (!p12_file) {
+      log.warning("Cannot open PKCS#12 file: %s", p12Path.c_str());
+      return ERR::File;
+   }
+
+   PKCS12 *p12 = d2i_PKCS12_fp(p12_file, nullptr);
+   fclose(p12_file);
+
+   if (!p12) {
+      log.warning("Failed to read PKCS#12 file: %s", p12Path.c_str());
+      return ERR::InvalidData;
+   }
+
+   EVP_PKEY *pkey = nullptr;
+   X509 *cert = nullptr;
+   STACK_OF(X509) *ca_certs = nullptr;
+
+   if (PKCS12_parse(p12, password.has_value() ? password.value().c_str() : "", &pkey, &cert, &ca_certs) != 1) {
+      PKCS12_free(p12);
+      log.warning("Failed to parse PKCS#12 file: %s (check password)", p12Path.c_str());
+      return ERR::InvalidData;
+   }
+
+   PKCS12_free(p12);
+
+   auto result = ERR::Okay;
+
+   if (SSL_CTX_use_certificate(ctx, cert) != 1) {
+      log.warning("Failed to use certificate from PKCS#12 file: %s", p12Path.c_str());
+      result = ERR::Failed;
+   }
+   else if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+      log.warning("Failed to use private key from PKCS#12 file: %s", p12Path.c_str());
+      result = ERR::Failed;
+   }
+   else if (SSL_CTX_check_private_key(ctx) != 1) {
+      log.warning("Certificate and private key do not match in PKCS#12 file: %s", p12Path.c_str());
+      result = ERR::Mismatch;
+   }
+   else { // Load certificate chain if available
+      if (ca_certs) {
+         for (int i = 0; i < sk_X509_num(ca_certs); i++) {
+            X509 *ca_cert = sk_X509_value(ca_certs, i);
+            if (SSL_CTX_add_extra_chain_cert(ctx, ca_cert) != 1) {
+               log.warning("Failed to add certificate chain cert %d", i);
+            }
+            else X509_up_ref(ca_cert); // Increment reference count since SSL_CTX takes ownership
+         }
+      }
+      log.msg("Successfully loaded PKCS#12 certificate and key");
+   }
+
+   if (pkey) EVP_PKEY_free(pkey);
+   if (cert) X509_free(cert);
+   if (ca_certs) sk_X509_pop_free(ca_certs, X509_free);
+
+   return result;
+}
+
+//********************************************************************************************************************
 // This only needs to be called once to setup the unique SSL context for the NetSocket object and the locations of the
 // certificates.
 
 static ERR sslSetup(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   
+
    log.traceBranch();
-   
+
    ERR error = ERR::Okay;
 
    static std::mutex ssl_init_mutex;
    static bool ssl_initialised = false;
-   
+
    std::lock_guard<std::mutex> lock(ssl_init_mutex);
 
    if (!ssl_initialised) {
@@ -109,46 +263,61 @@ static ERR sslSetup(extNetSocket *Self)
    if ((Self->Flags & NSF::SERVER) != NSF::NIL) {
       if (glServerSSL) return ERR::Okay;
 
-      if ((glServerSSL = SSL_CTX_new(TLS_server_method()))) {         
-         // Generate a simple self-signed certificate using modern OpenSSL APIs
-         EVP_PKEY *pkey = nullptr;
-         X509 *cert = nullptr;
-      
-         // Generate key pair using EVP interface
-         
-         if (EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr); ctx) {
-            if (EVP_PKEY_keygen_init(ctx) > 0) {
-               if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) > 0) {
-                  if (EVP_PKEY_keygen(ctx, &pkey) > 0) {
-                     // Create certificate
-                     if ((cert = X509_new())) {
-                        X509_set_version(cert, 2);
-                        ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
-                        X509_gmtime_adj(X509_get_notBefore(cert), 0);
-                        X509_gmtime_adj(X509_get_notAfter(cert), 365 * 24 * 3600);
-                        X509_set_pubkey(cert, pkey);
-                     
-                        auto name = X509_get_subject_name(cert);
-                        X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char*)"localhost", -1, -1, 0);
-                        X509_set_issuer_name(cert, name);
-                     
-                        if (X509_sign(cert, pkey, EVP_sha256()) > 0) {
-                           if (SSL_CTX_use_certificate(glServerSSL, cert) and SSL_CTX_use_PrivateKey(glServerSSL, pkey)) {
-                              setup_success = true;
-                           } 
-                           else log.warning("Failed to set SSL server certificate and key.");
-                        } 
-                        else log.warning("Failed to sign SSL certificate.");
+      if ((glServerSSL = SSL_CTX_new(TLS_server_method()))) {
+         // Check if custom certificate is specified
+         if (Self->SSLCertificate and *Self->SSLCertificate) {
+            log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate);
+            if ((error = loadCustomCertificateOpenSSL(Self, glServerSSL)) IS ERR::Okay) {
+               setup_success = true;
+               log.msg("Custom SSL server certificate loaded successfully.");
+            }
+            else {
+               log.warning("Failed to load custom SSL certificate: %s", GetErrorMsg(error));
+            }
+         }
+
+         if (!setup_success) {
+            log.msg("Generating self-signed certificate for localhost...");
+            // Generate a simple self-signed certificate using modern OpenSSL APIs
+            EVP_PKEY *pkey = nullptr;
+            X509 *cert = nullptr;
+
+            // Generate key pair using EVP interface
+
+            if (EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr); ctx) {
+               if (EVP_PKEY_keygen_init(ctx) > 0) {
+                  if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) > 0) {
+                     if (EVP_PKEY_keygen(ctx, &pkey) > 0) {
+                        // Create certificate
+                        if ((cert = X509_new())) {
+                           X509_set_version(cert, 2);
+                           ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
+                           X509_gmtime_adj(X509_get_notBefore(cert), 0);
+                           X509_gmtime_adj(X509_get_notAfter(cert), 365 * 24 * 3600);
+                           X509_set_pubkey(cert, pkey);
+
+                           auto name = X509_get_subject_name(cert);
+                           X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char*)"localhost", -1, -1, 0);
+                           X509_set_issuer_name(cert, name);
+
+                           if (X509_sign(cert, pkey, EVP_sha256()) > 0) {
+                              if (SSL_CTX_use_certificate(glServerSSL, cert) and SSL_CTX_use_PrivateKey(glServerSSL, pkey)) {
+                                 setup_success = true;
+                              }
+                              else log.warning("Failed to set SSL server certificate and key.");
+                           }
+                           else log.warning("Failed to sign SSL certificate.");
+                        }
                      }
                   }
                }
+               EVP_PKEY_CTX_free(ctx);
             }
-            EVP_PKEY_CTX_free(ctx);
+
+            if (pkey) EVP_PKEY_free(pkey);
+            if (cert) X509_free(cert);
          }
-      
-         if (pkey) EVP_PKEY_free(pkey);
-         if (cert) X509_free(cert);
-      
+
          if (!setup_success) {
             log.warning("SSL server certificate setup failed, trying with no certificate verification.");
             // For testing, allow servers without proper certificates
@@ -161,16 +330,16 @@ static ERR sslSetup(extNetSocket *Self)
 
    // Client mode - no CA verification
 
-   if ((Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL) {
+   if ((Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL) {
       if (!glClientSSLNV) {
          if ((glClientSSLNV = SSL_CTX_new(TLS_client_method()))) {
             if (GetResource(RES::LOG_LEVEL) > 7) SSL_CTX_set_info_callback(glClientSSLNV, &sslCtxMsgCallback);
             // Disable certificate verification for client sockets
             SSL_CTX_set_verify(glClientSSLNV, SSL_VERIFY_NONE, nullptr);
-      
+
             // Additional settings to ensure verification is completely disabled
             SSL_CTX_set_verify_depth(glClientSSLNV, 0);
-            SSL_CTX_set_options(glClientSSLNV, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);         
+            SSL_CTX_set_options(glClientSSLNV, SSL_OP_NO_COMPRESSION | SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
          }
          else return log.warning(ERR::SystemCall);
       }
@@ -195,7 +364,7 @@ static ERR sslSetup(extNetSocket *Self)
             auto ssl_error = ERR_get_error();
             log.warning("Failed to load system certificate paths - SSL Error: %s", ERR_error_string(ssl_error, nullptr));
          }
-         
+
          // If system certificates failed, try bundled certificate as fallback
 
          std::string path;
@@ -211,25 +380,25 @@ static ERR sslSetup(extNetSocket *Self)
             }
             else log.warning(ERR::ResolvePath);
          }
-         
+
          if (cert_loaded) {
             // Set up certificate verification with detailed callback
             SSL_CTX_set_verify(glClientSSL, SSL_VERIFY_PEER, nullptr);
-            
+
             // Configure additional SSL context options for better compatibility
             SSL_CTX_set_verify_depth(glClientSSL, 10);  // Allow longer certificate chains
-            
+
             // Set security level to 1 for broader compatibility (default might be too strict)
             SSL_CTX_set_security_level(glClientSSL, 1);
-            
+
             // Enable certificate chain checking
             SSL_CTX_set_mode(glClientSSL, SSL_MODE_AUTO_RETRY);
-            
+
             // Set certificate verification flags for better compatibility
             X509_VERIFY_PARAM *param = SSL_CTX_get0_param(glClientSSL);
             if (param) X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_TRUSTED_FIRST);
          }
-         else {           
+         else {
             SSL_CTX_free(glClientSSL);
             glClientSSL = nullptr;
             return ERR::Failed;
@@ -242,7 +411,7 @@ static ERR sslSetup(extNetSocket *Self)
          if (GetResource(RES::LOG_LEVEL) > 7) SSL_set_info_callback(Self->SSLHandle, &sslMsgCallback);
          return ERR::Okay;
       }
-      else log.warning(ERR::SystemCall); 
+      else log.warning(ERR::SystemCall);
    }
 
    return error;
@@ -302,7 +471,7 @@ static ERR sslConnect(extNetSocket *Self)
          // Address is not an IP, so it's likely a hostname - set SNI
          if (SSL_set_tlsext_host_name(Self->SSLHandle, Self->Address)) {
             log.msg("SNI set to: %s", Self->Address);
-         } 
+         }
          else log.warning("Failed to set SNI hostname: %s", Self->Address);
       }
    }

@@ -17,7 +17,7 @@ unique messages to verify proper isolation and delivery.
 
    include 'network'
 
-   glPort = 8303
+   glPort = 14603
    glActiveClients = 0
    glMaxSockets = 5
    glMessagesPerClient = 3
@@ -31,6 +31,7 @@ function testMultipleConnections()
 
    print('Testing multiple concurrent connections with NSF::MULTI_CONNECT and ' .. glMaxSockets .. ' clients')
 
+   glPort = glPort + 1
    glClientsCreated = 0
 
    local server = obj.new('netsocket', {
@@ -168,6 +169,7 @@ function testClientLimitEnforcement()
    local connectAttempts = 4
    local successfulConnections = 0
    local rejectedConnections = 0
+   glPort = glPort + 1
 
    print('Testing client limit enforcement (limit: ' .. limit .. ', attempts: ' .. connectAttempts .. ')...')
 
@@ -179,7 +181,7 @@ function testClientLimitEnforcement()
             print('[Server] Client connected. Total: ' .. successfulConnections)
          end
       end,
-      port = glPort + 1,
+      port = glPort,
       flags = 'SERVER|MULTI_CONNECT',
       socketLimit = limit
    })
@@ -201,7 +203,7 @@ function testClientLimitEnforcement()
 
    -- Attempt connections rapidly
    for i = 1, connectAttempts do
-      local err = clients[i].mtConnect('127.0.0.1', glPort + 1)
+      local err = clients[i].mtConnect('127.0.0.1', glPort)
       if (err != ERR_Okay) then
          rejectedConnections = rejectedConnections + 1
          print('[Client ' .. i .. '] Connection rejected: ' .. mSys.GetErrorMsg(err))
@@ -234,6 +236,7 @@ function testConnectionIsolation()
    local clientCount = 3
    local clientMessages = {}
    local messagesPerClient = 2
+   glPort = glPort + 1
 
    print('Testing message isolation between concurrent clients...')
 
@@ -249,7 +252,7 @@ function testConnectionIsolation()
       name = 'IsolationTestServer',
       feedback = function(Socket, Client, State)
          if (State == NTC_CONNECTED) then
-            print('[Server] Client connected')
+            print('[Server] Client connected, sending start message')
             -- Send unique start signal to each client
             local start_msg = 'START:' .. mSys.PreciseTime()
             Client.acWrite(start_msg)
@@ -270,7 +273,7 @@ function testConnectionIsolation()
          local echo = 'ECHO_TO_CLIENT_' .. client_id .. ':' .. msg
          Client.acWrite(echo)
       end,
-      port = glPort + 2,
+      port = glPort,
       flags = 'SERVER|MULTI_CONNECT'
    })
 
@@ -321,7 +324,7 @@ function testConnectionIsolation()
 
    -- Connect all clients
    for i = 1, clientCount do
-      clients[i].socket.mtConnect('127.0.0.1', glPort + 2)
+      clients[i].socket.mtConnect('127.0.0.1', glPort)
    end
 
    local err = proc.sleep()

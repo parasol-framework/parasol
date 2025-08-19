@@ -1,6 +1,7 @@
 #pragma once
 
 #include <parasol/system/errors.h>
+#include <optional>
 
 #ifndef _WINSOCK2API_
 typedef void * SOCKET;
@@ -23,21 +24,25 @@ typedef enum {
 ERR ssl_wrapper_init();
 void ssl_cleanup();
 void ssl_enable_logging();
-SSL_HANDLE ssl_create_context(const std::string &, bool ValidateCredentials = true, bool ServerMode = false);
-void ssl_shutdown(SSL_HANDLE ssl);
-void ssl_free_context(SSL_HANDLE ssl);
+SSL_HANDLE ssl_create_context(bool ValidateCredentials = true, bool ServerMode = false);
+void ssl_shutdown(SSL_HANDLE);
+void ssl_free_context(SSL_HANDLE);
 SSL_ERROR_CODE ssl_connect(SSL_HANDLE, void *, const std::string &);
 SSL_ERROR_CODE ssl_continue_handshake(SSL_HANDLE, const void *, int, int &);
 SSL_ERROR_CODE ssl_accept(SSL_HANDLE, const void *, int);
-void ssl_set_socket(SSL_HANDLE ssl, void* socket_handle);
-bool ssl_has_decrypted_data(SSL_HANDLE ssl);
-bool ssl_has_encrypted_data(SSL_HANDLE ssl);
-int ssl_read_internal(SSL_HANDLE ssl, void* buffer, int buffer_size, int &);
-SSL_ERROR_CODE ssl_read(SSL_HANDLE ssl, void* buffer, int buffer_size, int* bytes_read);
-SSL_ERROR_CODE ssl_write(SSL_HANDLE ssl, const void* buffer, size_t buffer_size, size_t* bytes_sent);
+void ssl_set_socket(SSL_HANDLE, void* socket_handle);
+bool ssl_has_decrypted_data(SSL_HANDLE);
+bool ssl_has_encrypted_data(SSL_HANDLE);
+int ssl_read_internal(SSL_HANDLE, void* buffer, int buffer_size, int &);
+SSL_ERROR_CODE ssl_read(SSL_HANDLE, void* buffer, int buffer_size, int* bytes_read);
+SSL_ERROR_CODE ssl_write(SSL_HANDLE, const void* buffer, size_t buffer_size, size_t* bytes_sent);
 uint32_t ssl_last_win32_error(SSL_HANDLE);
 int ssl_last_security_status(SSL_HANDLE);
 bool ssl_get_verify_result(SSL_HANDLE);
+SSL_ERROR_CODE ssl_load_server_certificate(SSL_HANDLE, const std::string &, std::optional<const std::string> &, std::optional<const std::string> &);
+void ssl_set_server_certificate(SSL_HANDLE Server, SSL_HANDLE Client);
+bool load_pem_certificate(SSL_HANDLE SSL, const std::string &Path);
+bool load_pkcs12_certificate(SSL_HANDLE SSL, const std::string &Path);
 
 // Connection information structure
 struct SSL_CONNECTION_INFO {
@@ -52,10 +57,10 @@ struct SSL_CONNECTION_INFO {
 };
 
 // Connection information queries
-bool ssl_get_connection_info(SSL_HANDLE ssl, SSL_CONNECTION_INFO* info);
-const char* ssl_get_protocol_version(SSL_HANDLE ssl);
-const char* ssl_get_cipher_suite(SSL_HANDLE ssl);
-int ssl_get_key_size_bits(SSL_HANDLE ssl);
+bool ssl_get_connection_info(SSL_HANDLE, SSL_CONNECTION_INFO* info);
+const char* ssl_get_protocol_version(SSL_HANDLE);
+const char* ssl_get_cipher_suite(SSL_HANDLE);
+int ssl_get_key_size_bits(SSL_HANDLE);
 
 // SSL Debug callback function type
 typedef void (*SSL_DEBUG_CALLBACK)(const char* message, int level);
@@ -70,4 +75,4 @@ enum SSL_DEBUG_LEVEL {
 
 // Debug functions
 void ssl_set_debug_callback(SSL_DEBUG_CALLBACK callback);
-void ssl_debug_handshake(SSL_HANDLE ssl, const char* operation);
+void ssl_debug_handshake(SSL_HANDLE, const char* operation);

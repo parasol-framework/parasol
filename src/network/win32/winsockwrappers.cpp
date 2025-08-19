@@ -142,7 +142,8 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
 
    if (msgcode IS WM_NETWORK) {
       const lock_guard<recursive_mutex> lock(csNetLookup);
-      if (glNetLookup.contains((WSW_SOCKET)wParam)) {
+      auto socket_handle = (WSW_SOCKET)wParam;
+      if (glNetLookup.contains(socket_handle)) {
          int state;
          int resub_write = false;
          switch (event) {
@@ -159,10 +160,10 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
          else if (winerror) error = convert_error(winerror);
          else error = ERR::Okay;
 
-         socket_info &info = glNetLookup[(WSW_SOCKET)wParam];
+         socket_info &info = glNetLookup[socket_handle];
          bool read_disabled = false;
          if ((info.Flags & FD_READ) and (!glSocketsDisabled)) {
-            WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
+            WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, info.Flags & (~FD_READ));
             read_disabled = true;
          }
 
@@ -171,20 +172,20 @@ static LRESULT CALLBACK win_messages(HWND window, UINT msgcode, WPARAM wParam, L
                // Do nothing when receiving queued write messages for a socket that has turned them off.
                return 0;
             }
-            else win32_netresponse((struct Object *)info.Reference, info.SocketHandle, state, error);
+            else win32_netresponse((struct Object *)info.Reference, socket_handle, state, error);
          }
-         else printf("win_messages() Missing reference for FD %d, state %d\n", info.SocketHandle, state);
+         else printf("win_messages() Missing reference for FD %d, state %d\n", socket_handle, state);
 
          // Re-enable read events if we disabled them and sockets are still active
          if ((read_disabled) and (!glSocketsDisabled)) {
-            if (glNetLookup.contains((WSW_SOCKET)wParam) and (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_READ)) {
-               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, glNetLookup[(WSW_SOCKET)wParam].Flags);
+            if (glNetLookup.contains(socket_handle) and (glNetLookup[socket_handle].Flags & FD_READ)) {
+               WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, glNetLookup[socket_handle].Flags);
             }
          }
 
          if ((resub_write) and (!glSocketsDisabled)) {
-            if (glNetLookup.contains((WSW_SOCKET)wParam) and (glNetLookup[(WSW_SOCKET)wParam].Flags & FD_WRITE)) { // Sanity check in case write was switched off in win32_netresponse()
-               WSAAsyncSelect(info.SocketHandle, glNetWindow, WM_NETWORK, glNetLookup[(WSW_SOCKET)wParam].Flags);
+            if (glNetLookup.contains(socket_handle) and (glNetLookup[socket_handle].Flags & FD_WRITE)) { // Sanity check in case write was switched off in win32_netresponse()
+               WSAAsyncSelect(socket_handle, glNetWindow, WM_NETWORK, glNetLookup[socket_handle].Flags);
             }
          }
          return 0;
@@ -300,10 +301,32 @@ void win_deregister_socket(WSW_SOCKET SocketHandle)
 {
    const lock_guard<recursive_mutex> lock(csNetLookup);
    glNetLookup.erase(SocketHandle);
+
+   // Cancel all pending async events for SocketHandle
+   // This prevents stale events from being delivered to new sockets that reuse the handle
+   WSAAsyncSelect(SocketHandle, glNetWindow, 0, 0);
+   
+   // Process pending Windows messages for this socket to clear the queue
+   // NB: closesocket() does not perform this task in spite of MSDN implying it does.
+
+   std::vector<MSG> other_messages;
+   MSG msg;
+   while (PeekMessage(&msg, glNetWindow, WM_NETWORK, WM_NETWORK, PM_REMOVE)) {
+      if (msg.wParam IS SocketHandle) {
+         // Discard this message - it's for the socket we're closing
+      }
+      else other_messages.push_back(msg);
+   }
+   
+   for (const auto &saved_msg : other_messages) {
+      PostMessage(glNetWindow, saved_msg.message, saved_msg.wParam, saved_msg.lParam);
+   }
 }
 
 //********************************************************************************************************************
 // Wrapped by CLOSESOCKET()
+// NOTE: Windows reuses socket handles frequently.  Our closure process is designed to overcome many of these problems,
+// but if you notice any weird socket behaviour then give consideration to the possibility of handle re-use.
 
 void win_closesocket(WSW_SOCKET SocketHandle)
 {

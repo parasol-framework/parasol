@@ -12,7 +12,7 @@ static const struct FieldDef clNetSocketState[] = {
 static const struct FieldDef clNetSocketFlags[] = {
    { "Server", 0x00000001 },
    { "SSL", 0x00000002 },
-   { "SSLNoVerify", 0x00000004 },
+   { "DisableServerVerify", 0x00000004 },
    { "MultiConnect", 0x00000008 },
    { "Synchronous", 0x00000010 },
    { "LogAll", 0x00000020 },

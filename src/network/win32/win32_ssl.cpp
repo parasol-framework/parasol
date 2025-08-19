@@ -46,13 +46,46 @@ static ERR sslSetup(extNetSocket *Self)
 
    if (GetResource(RES::LOG_LEVEL) >= 5) ssl_enable_logging();
 
-   bool validate_cert = (Self->Flags & NSF::SSL_NO_VERIFY) != NSF::NIL ? false : true;
+   bool validate_cert = (Self->Flags & NSF::DISABLE_SERVER_VERIFY) != NSF::NIL ? false : true;
    bool server_mode = ((Self->Flags & NSF::SERVER) != NSF::NIL);
-   if (Self->SSLHandle = ssl_create_context(glCertPath, validate_cert, server_mode); !Self->SSLHandle) {
-      log.warning("Failed to create SSL server context");
+   if (Self->SSLHandle = ssl_create_context(validate_cert, server_mode); !Self->SSLHandle) {
       return ERR::Failed;
    }
-   else return ERR::Okay;
+   
+   // Load custom certificate if specified for server mode
+   if (server_mode) {
+      if (Self->SSLCertificate) {
+         log.msg("Loading custom SSL server certificate: %s", Self->SSLCertificate);
+
+         std::string cert_path, key_path;
+         if (ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path) IS ERR::Okay) {
+            auto opt_password = std::make_optional<const std::string>();
+            auto opt_key_path = std::make_optional<const std::string>();
+
+            if (Self->SSLPrivateKey) {
+               ResolvePath(Self->SSLPrivateKey, RSF::NIL, &key_path);
+               opt_key_path.emplace(key_path);
+            }
+
+            if (Self->SSLKeyPassword) opt_password.emplace(Self->SSLKeyPassword);
+
+            if (auto error = ssl_load_server_certificate(Self->SSLHandle, cert_path, opt_key_path, opt_password); error != SSL_OK) {
+               ssl_free_context(Self->SSLHandle);
+               Self->SSLHandle = nullptr;
+               return log.warning(ERR::Failed);
+            }
+         }
+      }
+      else {
+         if (!load_pkcs12_certificate(Self->SSLHandle, glCertPath + "localhost.p12")) {
+            if (!load_pem_certificate(Self->SSLHandle, glCertPath + "localhost.pem")) {
+               return log.warning(ERR::Failed);
+            }
+         }
+      }
+   }
+   
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************

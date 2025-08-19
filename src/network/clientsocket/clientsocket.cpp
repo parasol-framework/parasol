@@ -14,11 +14,12 @@ is opened by a client.  This is a very simple class that assists in the manageme
 
 *********************************************************************************************************************/
 
-//********************************************************************************************************************
 // Forward declaration of template function from network.cpp
 
 template<typename T>
 static ERR send_data(T *Self, CPTR Buffer, size_t *Length);
+
+static CSTRING clientsocket_state(NTC Value);
 
 //********************************************************************************************************************
 // Read function specifically for ClientSocket connections
@@ -359,8 +360,9 @@ static void disconnect(extClientSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
+   log.branch("Disconnecting socket handle %d", Self->Handle);
+
    if (Self->Handle != NOHANDLE) {
-      log.branch("Disconnecting socket handle %d", Self->Handle);
 
 #ifdef __linux__
       DeregisterFD(Self->Handle);
@@ -369,25 +371,7 @@ static void disconnect(extClientSocket *Self)
       Self->Handle = NOHANDLE;
    }
 
-   auto owner = (extNetSocket *)Self->Owner;
-   if ((owner) and (owner->classID() IS CLASSID::NETSOCKET)) {
-      if (owner->Feedback.defined()) {
-         log.traceBranch("Reporting client disconnection to NetSocket %p.", owner);
-
-         if (owner->Feedback.isC()) {
-            pf::SwitchContext context(owner->Feedback.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))owner->Feedback.Routine;
-            if (routine) routine(owner, Self, NTC::DISCONNECTED, owner->Feedback.Meta);
-         }
-         else if (owner->Feedback.isScript()) {
-            sc::Call(owner->Feedback, std::to_array<ScriptArg>({
-               { "NetSocket",    owner, FD_OBJECTPTR },
-               { "ClientSocket", Self, FD_OBJECTPTR },
-               { "State",        int(NTC::DISCONNECTED) }
-            }));
-         }
-      }
-   }
+   if (Self->State != NTC::DISCONNECTED) Self->setState(NTC::DISCONNECTED);
 }
 
 //********************************************************************************************************************
@@ -460,8 +444,9 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
       auto server = (extNetSocket *)(Self->Client->Owner);
       if ((server->Flags & NSF::SSL) != NSF::NIL) {
          // Server-side SSL setup - create SSL context and wait for client handshake
-         Self->SSLHandle = ssl_create_context(glCertPath, false, true); // No verification, server mode
+         Self->SSLHandle = ssl_create_context(false, true); // No verification, server mode
          if (Self->SSLHandle) {
+            ssl_set_server_certificate(server->SSLHandle, Self->SSLHandle);
             ssl_set_socket(Self->SSLHandle, (void*)(size_t)Self->Handle); // Set socket handle for server-side SSL
             Self->State = NTC::HANDSHAKING;
          }
@@ -565,7 +550,7 @@ static ERR CLIENTSOCKET_Read(extClientSocket *Self, struct acRead *Args)
 
    if (error IS ERR::Disconnected) {
       // Detecting a disconnection on read is normal, now handle disconnection gracefully.
-      log.msg("Client disconnection detected.");
+      log.branch("Client disconnection detected.");
       disconnect(Self);
    }
    return error;
@@ -663,58 +648,21 @@ static ERR CS_SET_State(extClientSocket *Self, NTC Value)
    pf::Log log;
 
    if (Value != Self->State) {
-      auto Socket = (extNetSocket *)(Self->Client->Owner);
+      auto server = (extNetSocket *)(Self->Client->Owner);
 
-      if ((Socket->Flags & NSF::LOG_ALL) != NSF::NIL) log.msg("State changed from %d to %d", int(Self->State), int(Value));
-
-      #ifndef DISABLE_SSL
-      if ((Self->SSLHandle) and (Self->State IS NTC::HANDSHAKING) and (Value IS NTC::CONNECTED)) {
-         // SSL connection has just been established
-
-         bool ssl_valid = true;
-
-         #ifdef _WIN32
-            if ((Socket->Flags & NSF::SSL_NO_VERIFY) IS NSF::NIL) {
-               ssl_valid = ssl_get_verify_result(Self->SSLHandle);
-            }
-         #else
-            if (SSL_get_verify_result(Self->SSLHandle) != X509_V_OK) ssl_valid = false;
-            else log.trace("SSL certificate validation successful.");
-         #endif
-
-         if (!ssl_valid) {
-            log.warning("SSL certificate validation failed.");
-            Self->State = NTC::DISCONNECTED;
-            if (Socket->Feedback.defined()) {
-               if (Socket->Feedback.isC()) {
-                  pf::SwitchContext context(Socket->Feedback.Context);
-                  auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
-                  if (routine) routine(Socket, Self, NTC::DISCONNECTED, Socket->Feedback.Meta);
-               }
-               else if (Socket->Feedback.isScript()) {
-                  sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
-                     { "NetSocket", Socket, FD_OBJECTPTR },
-                     { "ClientSocket", Self, FD_OBJECTPTR },
-                     { "State", int(NTC::DISCONNECTED) }
-                  }));
-               }
-            }
-            return ERR::Security;
-         }
-      }
-      #endif
+      log.branch("State changed from %s to %s", clientsocket_state(Self->State), clientsocket_state(Value));
 
       Self->State = Value;
 
-      if (Socket->Feedback.defined()) {
-         if (Socket->Feedback.isC()) {
-            pf::SwitchContext context(Socket->Feedback.Context);
-            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))Socket->Feedback.Routine;
-            if (routine) routine(Socket, Self, Self->State, Socket->Feedback.Meta);
+      if (server->Feedback.defined()) {
+         if (server->Feedback.isC()) {
+            pf::SwitchContext context(server->Feedback.Context);
+            auto routine = (void (*)(extNetSocket *, objClientSocket *, NTC, APTR))server->Feedback.Routine;
+            if (routine) routine(server, Self, Self->State, server->Feedback.Meta);
          }
-         else if (Socket->Feedback.isScript()) {
-            sc::Call(Socket->Feedback, std::to_array<ScriptArg>({
-               { "NetSocket",    Socket, FD_OBJECTPTR },
+         else if (server->Feedback.isScript()) {
+            sc::Call(server->Feedback, std::to_array<ScriptArg>({
+               { "NetSocket",    server, FD_OBJECTPTR },
                { "ClientSocket", Self, FD_OBJECTPTR },
                { "State",        int(Self->State) }
             }));
@@ -751,6 +699,10 @@ static const FieldArray clClientSocketFields[] = {
 };
 
 //********************************************************************************************************************
+
+static CSTRING clientsocket_state(NTC Value) {
+   return clClientSocketState[int(Value)].Name;
+}
 
 static ERR init_clientsocket(void)
 {

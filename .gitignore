@@ -80,3 +80,5 @@ msys-debug/
 msys-release/
 src/link/parasol.manifest
 src/link/resource.rc
+data/ssl/localhost.p12
+data/ssl/localhost.pem

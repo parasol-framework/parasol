@@ -135,11 +135,11 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
     </constants>
 
     <constants lookup="NSF">
+      <const name="DISABLE_SERVER_VERIFY">Disable SSL certificate verification (for testing only).</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
       <const name="SSL">Use Secure Sockets Layer for all communication.</const>
-      <const name="SSL_NO_VERIFY">Disable SSL certificate verification (for testing only).</const>
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
