@@ -13,13 +13,35 @@ INSTALL_INCLUDES="OFF"
 CLEAN_BUILD="no"
 SIGN_PACKAGE="no"
 
+# Function to escape shell metacharacters in changelog entries
+escape_changelog_line() {
+    local line="$1"
+    # Remove or escape potentially dangerous characters for shell safety
+    echo "$line" | sed 's/[`$\\]/\\&/g; s/[|&;(){}]/\\&/g'
+}
+
 # Function to generate changelog entries from Git log
 generate_changelog_entries() {
     local max_entries="${1:-10}"
     
     if command -v git &> /dev/null && git rev-parse --git-dir &> /dev/null; then
-        # Use quote-safe Git log formatting as recommended in the GitHub review
-        git log --oneline --pretty=format:"  * %s" -n "$max_entries" 2>/dev/null || echo "  * Initial release"
+        # Use quote-safe Git log formatting and escape output for security
+        local git_output
+        git_output=$(git log --oneline --pretty=format:"%s" -n "$max_entries" 2>/dev/null) || {
+            echo "  * Initial release"
+            return
+        }
+        
+        # Process each line safely to prevent command injection
+        if [ -n "$git_output" ]; then
+            while IFS= read -r line; do
+                if [ -n "$line" ]; then
+                    echo "  * $(escape_changelog_line "$line")"
+                fi
+            done <<< "$git_output"
+        else
+            echo "  * Initial release"
+        fi
     else
         echo "  * Package built from source"
     fi
@@ -108,10 +130,18 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --build-dir requires a directory argument"
                 exit 1
             fi
-            # Sanitize build directory path
-            BUILD_DIR="$(realpath -m "$2")"
+            # Sanitize and validate build directory path
+            BUILD_DIR="$(realpath "$2" 2>/dev/null || readlink -f "$2" 2>/dev/null || echo "$2")"
             if [[ "$BUILD_DIR" =~ [\;\&\|\`\$] ]]; then
                 echo "Error: Build directory path contains invalid characters"
+                exit 1
+            fi
+            
+            # Ensure the parent directory exists for the build directory
+            local parent_dir
+            parent_dir="$(dirname "$BUILD_DIR")"
+            if [[ ! -d "$parent_dir" ]]; then
+                echo "Error: Parent directory for build path does not exist: $parent_dir"
                 exit 1
             fi
             shift 2

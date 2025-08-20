@@ -11,5 +11,5 @@ Depends: @
 Restrictions: allow-stderr
 
 Tests: library-dependencies
-Depends: @, ldd
+Depends: @, libc-bin
 Restrictions: allow-stderr
