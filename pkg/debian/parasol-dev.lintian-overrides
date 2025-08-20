@@ -1,0 +1,7 @@
+# Lintian overrides for Parasol development package
+
+# Development package may contain header files that seem unused
+parasol-dev: unused-file-in-deb usr/include/parasol/*
+
+# Some development files may have unusual permissions
+parasol-dev: unusual-file-perm usr/include/parasol/*

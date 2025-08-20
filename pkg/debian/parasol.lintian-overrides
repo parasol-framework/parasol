@@ -1,0 +1,17 @@
+# Lintian overrides for Parasol package
+
+# Parasol uses a custom module loading system, so some libraries
+# may appear unused but are dynamically loaded at runtime
+parasol: unused-shlib-entry-in-control-file
+
+# Parasol includes example scripts that may have different permissions
+parasol: script-not-executable usr/share/parasol/scripts/*
+
+# Parasol may include some large data files for graphics/fonts
+parasol: package-contains-large-file
+
+# Custom configuration files that don't follow standard locations
+parasol: non-standard-dir-in-usr usr/share/parasol/
+
+# Parasol framework specific paths
+parasol: unusual-interpreter usr/share/parasol/scripts/*.fluid

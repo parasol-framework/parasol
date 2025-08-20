@@ -69,6 +69,7 @@ option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling 
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
 option (INSTALL_TESTS     "Install the test programs." OFF)
 option (ENABLE_ANALYSIS   "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
+option (GENERATE_DEBIAN_PKG "Generate Debian packaging files" OFF)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -613,12 +614,12 @@ add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/D
 
 if (NOT DISABLE_SSL)
    set(SSL_BUNDLE_PATH "${PROJECT_SOURCE_DIR}/data/ssl/ca-bundle.crt")
-   
+
    if (EXISTS ${SSL_BUNDLE_PATH})
       string(TIMESTAMP CURRENT_TIME "%s")
       file(TIMESTAMP ${SSL_BUNDLE_PATH} BUNDLE_TIME "%s")
       math(EXPR BUNDLE_AGE "${CURRENT_TIME} - ${BUNDLE_TIME}")
-      
+
       if (BUNDLE_AGE GREATER 2592000) # 30 days in seconds
          file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
          message(STATUS "Updated SSL certificate bundle")
@@ -677,4 +678,111 @@ if (PARASOL_INSTALL)
       install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
    endif ()
 endif ()
+
+# --------------------------------------------------------------------------------------------------------------------
+# Debian Package Generation.  Use in conjunction with tools/build-deb.sh to create a 'true' Debian package.
+# Alternatively use tools/build-deb-tarball.sh to convert the standard release to a portable Debian package.
+
+if (GENERATE_DEBIAN_PKG)
+   # Detect system architecture
+   if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+      set(DEBIAN_ARCH "amd64")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "i[3-6]86")
+      set(DEBIAN_ARCH "i386")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+      set(DEBIAN_ARCH "arm64")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "armv7")
+      set(DEBIAN_ARCH "armhf")
+   else()
+      set(DEBIAN_ARCH "any")
+   endif()
+
+   # Get number of processors for parallel build
+   include(ProcessorCount)
+   ProcessorCount(NPROC)
+   if(NPROC EQUAL 0)
+      set(NPROC 1)
+   endif()
+
+   # Set version from project
+   set(VERSION "${PROJECT_VERSION}")
+
+   # Generate build date in Debian format
+   string(TIMESTAMP BUILD_DATE "%a, %d %b %Y %H:%M:%S %z")
+
+   # Set whether to install includes based on whether we're building dev package
+   if (INSTALL_INCLUDES)
+      set(INSTALL_INCLUDES_VAL "TRUE")
+   else()
+      set(INSTALL_INCLUDES_VAL "FALSE")
+   endif()
+
+   # Create debian directory in build folder
+   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/debian")
+
+   # Generate debian control file
+   configure_file(
+      "${CMAKE_SOURCE_DIR}/pkg/debian/control.in"
+      "${CMAKE_BINARY_DIR}/debian/control"
+      @ONLY
+   )
+
+   # Generate debian rules file
+   configure_file(
+      "${CMAKE_SOURCE_DIR}/pkg/debian/rules.in"
+      "${CMAKE_BINARY_DIR}/debian/rules"
+      @ONLY
+   )
+
+   # Generate debian changelog
+   # Try to get recent git commits for changelog entries
+   find_package(Git QUIET)
+   if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+      execute_process(
+         COMMAND ${GIT_EXECUTABLE} log --oneline -n 5 --pretty=format:"  * %s"
+         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+         OUTPUT_VARIABLE GIT_LOG_ENTRIES
+         OUTPUT_STRIP_TRAILING_WHITESPACE
+         ERROR_QUIET
+      )
+      )
+      # Remove double quotes
+      string(REPLACE "\"" "" GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace newlines with spaces
+      string(REPLACE "\n" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace carriage returns with spaces
+      string(REPLACE "\r" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace tabs with spaces
+      string(REPLACE "\t" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      set(CHANGELOG_ENTRIES "${GIT_LOG_ENTRIES}")
+   else()
+      set(CHANGELOG_ENTRIES "  * Release build")
+   endif()
+
+   configure_file(
+      "${CMAKE_SOURCE_DIR}/pkg/debian/changelog.in"
+      "${CMAKE_BINARY_DIR}/debian/changelog"
+      @ONLY
+   )
+
+   # Copy static files
+   file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/copyright"
+        DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+   file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/compat"
+        DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+   file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/parasol.install"
+        DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+
+   # Copy dev package install file if building with headers
+   if (INSTALL_INCLUDES)
+      file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/parasol-dev.install"
+           DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+   endif()
+
+   # Make rules file executable
+   file(CHMOD "${CMAKE_BINARY_DIR}/debian/rules" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+
+   message(STATUS "Debian packaging files generated in ${CMAKE_BINARY_DIR}/debian/")
+   message(STATUS "Use tools/build-deb.sh script to build the package")
+endif()
 

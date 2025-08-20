@@ -1,0 +1,35 @@
+#!/bin/bash
+# Library dependencies test for Parasol package
+
+set -e
+
+echo "Testing Parasol library dependencies..."
+
+# Check if all required libraries are available for the parasol binary
+PARASOL_BIN="/usr/bin/parasol"
+
+if [ ! -x "$PARASOL_BIN" ]; then
+    echo "FAIL: Parasol executable not found"
+    exit 1
+fi
+
+echo "Checking library dependencies for $PARASOL_BIN..."
+
+# Use ldd to check dependencies
+if ! ldd_output=$(ldd "$PARASOL_BIN" 2>&1); then
+    echo "FAIL: Could not check library dependencies"
+    echo "ldd output: $ldd_output"
+    exit 1
+fi
+
+echo "Library dependencies:"
+echo "$ldd_output"
+
+# Check for any missing libraries (look for "not found")
+if echo "$ldd_output" | grep -q "not found"; then
+    echo "FAIL: Missing library dependencies found:"
+    echo "$ldd_output" | grep "not found"
+    exit 1
+fi
+
+echo "PASS: All library dependencies satisfied"
