@@ -29,7 +29,7 @@ if [ -d "$CONFIG_DIR" ]; then
         fi
     done
     
-    if [ $config_files_found -eq 1 ]; then
+    if [ $config_files_found -ge 1 ]; then
         echo "Configuration files found and readable"
     else
         echo "Note: No configuration files found (may be normal)"
