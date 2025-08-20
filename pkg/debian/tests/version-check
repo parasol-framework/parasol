@@ -20,5 +20,8 @@ if [ -z "$PACKAGE_VERSION" ]; then
     echo "FAIL: Package version is empty"
     exit 1
 fi
-
+if [ "$PACKAGE_VERSION" = "unknown" ] || [ -z "$PACKAGE_VERSION" ]; then
+    echo "FAIL: Could not determine package version"
+    exit 1
+fi
 echo "PASS: Version check completed successfully"
