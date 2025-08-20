@@ -17,7 +17,7 @@ override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX=/usr \
-		-DPARASOL_STATIC=ON \
+		-DPARASOL_STATIC=OFF \
 		-DRUN_ANYWHERE=OFF \
 		-DBUILD_TESTS=OFF \
 		-DBUILD_DEFS=OFF \
