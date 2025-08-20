@@ -13,6 +13,61 @@ INSTALL_INCLUDES="OFF"
 CLEAN_BUILD="no"
 SIGN_PACKAGE="no"
 
+# Function to generate changelog entries from Git log
+generate_changelog_entries() {
+    local max_entries="${1:-10}"
+    
+    if command -v git &> /dev/null && git rev-parse --git-dir &> /dev/null; then
+        # Use quote-safe Git log formatting as recommended in the GitHub review
+        git log --oneline --pretty=format:"  * %s" -n "$max_entries" 2>/dev/null || echo "  * Initial release"
+    else
+        echo "  * Package built from source"
+    fi
+}
+
+# Function to process control file templates
+process_control_template() {
+    local template_file="$1"
+    local output_file="$2"
+    local package_version="$3"
+    local architecture="$4"
+    
+    if [[ ! -f "$template_file" ]]; then
+        echo "Error: Control template not found: $template_file"
+        return 1
+    fi
+    
+    # Get current date in RFC 2822 format for Debian changelog
+    local current_date
+    current_date=$(date -R 2>/dev/null || date)
+    
+    # Process template variables with proper escaping
+    sed -e "s/@VERSION@/$package_version/g" \
+        -e "s/@DEBIAN_ARCH@/$architecture/g" \
+        -e "s/@INSTALL_INCLUDES@/ON/g" \
+        -e "s/@NPROC@/${JOBS:-4}/g" \
+        -e "s/@DATE@/$current_date/g" \
+        "$template_file" > "$output_file" || {
+        echo "Error: Failed to process control template"
+        return 1
+    }
+}
+
+# Function to create Debian changelog from template
+create_debian_changelog() {
+    local output_file="$1"
+    local package_name="$2"
+    local version="$3"
+    
+    cat > "$output_file" << EOF
+$package_name ($version-1) stable; urgency=medium
+
+$(generate_changelog_entries 5)
+
+ -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
+EOF
+}
+
 # Function to show usage
 usage() {
     echo "Usage: $0 [options]"
@@ -69,15 +124,79 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check for required tools
-if ! command -v dpkg-deb &> /dev/null; then
-    echo "Error: dpkg-deb is required but not installed."
-    echo "Install it with: sudo apt install dpkg-dev"
-    exit 1
-fi
+# Function to validate build dependencies
+validate_build_dependencies() {
+    local missing_deps=()
+    local missing_packages=()
+    
+    echo "Validating build dependencies..."
+    
+    # Essential build tools
+    if ! command -v cmake &> /dev/null; then
+        missing_deps+=("cmake")
+        missing_packages+=("cmake")
+    fi
+    
+    if ! command -v dpkg-deb &> /dev/null; then
+        missing_deps+=("dpkg-deb")
+        missing_packages+=("dpkg-dev")
+    fi
+    
+    if ! command -v make &> /dev/null; then
+        missing_deps+=("make")
+        missing_packages+=("build-essential")
+    fi
+    
+    if ! command -v gcc &> /dev/null; then
+        missing_deps+=("gcc")
+        missing_packages+=("build-essential")
+    fi
+    
+    # Check for debhelper (used by proper Debian packaging)
+    if ! command -v dh &> /dev/null; then
+        missing_deps+=("debhelper")
+        missing_packages+=("debhelper")
+    fi
+    
+    # Development libraries (check for pkg-config files or headers)
+    if ! pkg-config --exists freetype2 2>/dev/null && [[ ! -f /usr/include/freetype2/freetype/freetype.h ]]; then
+        missing_deps+=("libfreetype6-dev")
+        missing_packages+=("libfreetype6-dev")
+    fi
+    
+    if [[ ! -f /usr/include/zlib.h ]]; then
+        missing_deps+=("zlib1g-dev")
+        missing_packages+=("zlib1g-dev")
+    fi
+    
+    if [[ ! -f /usr/include/X11/Xlib.h ]]; then
+        missing_deps+=("libx11-dev")
+        missing_packages+=("libx11-dev")
+    fi
+    
+    if [[ ! -f /usr/include/alsa/asoundlib.h ]]; then
+        missing_deps+=("libasound2-dev")
+        missing_packages+=("libasound2-dev")
+    fi
+    
+    # Report missing dependencies
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        echo "Error: Missing required build dependencies:"
+        printf "  - %s\\n" "${missing_deps[@]}"
+        echo ""
+        echo "Install missing packages with:"
+        echo "  sudo apt update"
+        echo "  sudo apt install $(printf "%s " "${missing_packages[@]}" | sort -u | xargs)"
+        echo ""
+        return 1
+    fi
+    
+    echo "✓ All build dependencies satisfied"
+    return 0
+}
 
-if ! command -v cmake &> /dev/null; then
-    echo "Error: cmake is required but not installed."
+# Validate dependencies before proceeding
+if ! validate_build_dependencies; then
     exit 1
 fi
 
@@ -168,12 +287,16 @@ fi
 if [ ! -d "$RUNTIME_STAGING/usr/share/doc/parasol/" ]; then
     mkdir -p "$RUNTIME_STAGING/usr/share/doc/parasol/" || { echo "Failed to create directory $RUNTIME_STAGING/usr/share/doc/parasol/"; exit 1; }
 fi
-# Copy documentation files if they exist
+# Copy or generate documentation files
 if [ -f "$BUILD_DIR/debian/copyright" ]; then
     cp "$BUILD_DIR/debian/copyright" "$RUNTIME_STAGING/usr/share/doc/parasol/" || { echo "Failed to copy copyright file"; exit 1; }
 fi
+
+# Generate changelog if not provided by CMake
 if [ -f "$BUILD_DIR/debian/changelog" ]; then
     cp "$BUILD_DIR/debian/changelog" "$RUNTIME_STAGING/usr/share/doc/parasol/" || { echo "Failed to copy changelog file"; exit 1; }
+else
+    create_debian_changelog "$RUNTIME_STAGING/usr/share/doc/parasol/changelog" "parasol" "$VERSION"
 fi
 
 # Copy maintainer scripts if they exist
@@ -190,21 +313,11 @@ if [ -f "pkg/debian/parasol.lintian-overrides" ]; then
     cp "pkg/debian/parasol.lintian-overrides" "$RUNTIME_STAGING/usr/share/lintian/overrides/parasol" || { echo "Warning: Failed to copy lintian overrides"; }
 fi
 
-# Create runtime package control file
-cat > "$RUNTIME_STAGING/DEBIAN/control" << EOF
-Package: parasol
-Version: $VERSION-1
-Section: graphics
-Priority: optional
-Architecture: $ARCH
-Depends: libfreetype6, zlib1g, libasound2, libx11-6, libxext6, libxrandr2, libstdc++6
-Maintainer: Parasol Framework Team <team@parasol-framework.org>
-Description: Vector graphics engine and application framework
- Parasol is a vector graphics engine and application framework designed for
- creating scalable user interfaces. The framework automatically handles display
- resolution and scaling concerns, allowing developers to focus on application
- logic rather than display technicalities.
-EOF
+# Create runtime package control file from template
+if ! process_control_template "pkg/debian/control-runtime.in" "$RUNTIME_STAGING/DEBIAN/control" "$VERSION" "$ARCH"; then
+    echo "Error: Failed to create runtime control file"
+    exit 1
+fi
 
 # Handle development package if requested
 if [ "$INSTALL_INCLUDES" = "ON" ]; then
@@ -216,24 +329,24 @@ if [ "$INSTALL_INCLUDES" = "ON" ]; then
         mv "$RUNTIME_STAGING/usr/include" "$DEV_STAGING/usr/"
     fi
     
-    # Create dev package control file
-    cat > "$DEV_STAGING/DEBIAN/control" << EOF
-Package: parasol-dev
-Version: $VERSION-1
-Section: libdevel
-Priority: optional
-Architecture: $ARCH
-Depends: parasol (= $VERSION-1), libfreetype6-dev, zlib1g-dev, libasound2-dev, libx11-dev, libxext-dev, libxrandr-dev
-Maintainer: Parasol Framework Team <team@parasol-framework.org>
-Description: Development files for Parasol framework
- This package contains the header files and development libraries needed
- to compile applications that use the Parasol framework.
-EOF
+    # Create dev package control file from template
+    if ! process_control_template "pkg/debian/control-dev.in" "$DEV_STAGING/DEBIAN/control" "$VERSION" "$ARCH"; then
+        echo "Error: Failed to create dev control file"
+        exit 1
+    fi
 
     # Copy documentation to dev package
     mkdir -p "$DEV_STAGING/usr/share/doc/parasol-dev"
-    cp "$BUILD_DIR/debian/copyright" "$DEV_STAGING/usr/share/doc/parasol-dev/"
-    cp "$BUILD_DIR/debian/changelog" "$DEV_STAGING/usr/share/doc/parasol-dev/"
+    if [ -f "$BUILD_DIR/debian/copyright" ]; then
+        cp "$BUILD_DIR/debian/copyright" "$DEV_STAGING/usr/share/doc/parasol-dev/"
+    fi
+    
+    # Generate or copy changelog
+    if [ -f "$BUILD_DIR/debian/changelog" ]; then
+        cp "$BUILD_DIR/debian/changelog" "$DEV_STAGING/usr/share/doc/parasol-dev/"
+    else
+        create_debian_changelog "$DEV_STAGING/usr/share/doc/parasol-dev/changelog" "parasol-dev" "$VERSION"
+    fi
     
     # Copy lintian overrides for dev package if they exist
     if [ -f "pkg/debian/parasol-dev.lintian-overrides" ]; then

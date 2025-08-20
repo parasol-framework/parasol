@@ -13,6 +13,55 @@ INSTALL_INCLUDES="OFF"
 CLEAN_BUILD="no"
 SIGN_PACKAGE="no"
 
+# Function to generate changelog entries from Git log
+generate_changelog_entries() {
+    local max_entries="${1:-10}"
+    
+    if command -v git &> /dev/null && git rev-parse --git-dir &> /dev/null; then
+        # Use quote-safe Git log formatting as recommended in the GitHub review
+        git log --oneline --pretty=format:"  * %s" -n "$max_entries" 2>/dev/null || echo "  * Initial release"
+    else
+        echo "  * Package built from pre-compiled release"
+    fi
+}
+
+# Function to process control file templates
+process_control_template() {
+    local template_file="$1"
+    local output_file="$2"
+    local package_version="$3"
+    local architecture="$4"
+    
+    if [[ ! -f "$template_file" ]]; then
+        echo "Error: Control template not found: $template_file"
+        return 1
+    fi
+    
+    # Process template variables with proper escaping
+    sed -e "s/@VERSION@/$package_version/g" \
+        -e "s/@DEBIAN_ARCH@/$architecture/g" \
+        -e "s/@INSTALL_INCLUDES@/ON/g" \
+        "$template_file" > "$output_file" || {
+        echo "Error: Failed to process control template"
+        return 1
+    }
+}
+
+# Function to create Debian changelog from template
+create_debian_changelog() {
+    local output_file="$1"
+    local package_name="$2"
+    local version="$3"
+    
+    cat > "$output_file" << EOF
+$package_name ($version-1) stable; urgency=medium
+
+$(generate_changelog_entries 5)
+
+ -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
+EOF
+}
+
 # Function to show usage
 usage() {
     echo "Usage: $0 <tarball> [options]"
@@ -105,15 +154,48 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check for required tools
-if ! command -v dpkg-deb &> /dev/null; then
-    echo "Error: dpkg-deb is required but not installed."
-    echo "Install it with: sudo apt install dpkg-dev"
-    exit 1
-fi
+# Function to validate build dependencies for tarball packaging
+validate_tarball_dependencies() {
+    local missing_deps=()
+    local missing_packages=()
+    
+    echo "Validating packaging dependencies..."
+    
+    # Essential packaging tools
+    if ! command -v dpkg-deb &> /dev/null; then
+        missing_deps+=("dpkg-deb")
+        missing_packages+=("dpkg-dev")
+    fi
+    
+    if ! command -v tar &> /dev/null; then
+        missing_deps+=("tar")
+        missing_packages+=("tar")
+    fi
+    
+    # Check for debhelper (recommended for proper Debian packaging)
+    if ! command -v dh &> /dev/null; then
+        missing_deps+=("debhelper (recommended)")
+        missing_packages+=("debhelper")
+    fi
+    
+    # Report missing dependencies
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        echo "Error: Missing required packaging dependencies:"
+        printf "  - %s\\n" "${missing_deps[@]}"
+        echo ""
+        echo "Install missing packages with:"
+        echo "  sudo apt update"
+        echo "  sudo apt install $(printf "%s " "${missing_packages[@]}" | sort -u | xargs)"
+        echo ""
+        return 1
+    fi
+    
+    echo "✓ All packaging dependencies satisfied"
+    return 0
+}
 
-if ! command -v tar &> /dev/null; then
-    echo "Error: tar is required but not installed."
+# Validate dependencies before proceeding
+if ! validate_tarball_dependencies; then
     exit 1
 fi
 
@@ -234,13 +316,8 @@ License: Custom
  information on licensing.
 EOF
 
-cat > "$RUNTIME_STAGING/usr/share/doc/parasol/changelog" << EOF
-parasol ($VERSION-1) stable; urgency=medium
-
-  * Packaged from compiled release tarball
-
- -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
-EOF
+# Generate changelog with Git history if available
+create_debian_changelog "$RUNTIME_STAGING/usr/share/doc/parasol/changelog" "parasol" "$VERSION"
 
 # Copy maintainer scripts if they exist
 for script in postinst prerm postrm; do
@@ -256,21 +333,11 @@ if [ -f "pkg/debian/parasol.lintian-overrides" ]; then
     cp "pkg/debian/parasol.lintian-overrides" "$RUNTIME_STAGING/usr/share/lintian/overrides/parasol" || { echo "Warning: Failed to copy lintian overrides"; }
 fi
 
-# Create runtime package control file
-cat > "$RUNTIME_STAGING/DEBIAN/control" << EOF
-Package: parasol
-Version: $VERSION-1
-Section: graphics
-Priority: optional
-Architecture: $ARCH
-Depends: libasound2, libx11-6, libxext6, libxrandr2, libstdc++6
-Maintainer: Parasol Framework Team <team@parasol-framework.org>
-Description: Vector graphics engine and application framework
- Parasol is a vector graphics engine and application framework designed for
- creating scalable user interfaces. The framework automatically handles display
- resolution and scaling concerns, allowing developers to focus on application
- logic rather than display technicalities.
-EOF
+# Create runtime package control file from template
+if ! process_control_template "pkg/debian/control-runtime.in" "$RUNTIME_STAGING/DEBIAN/control" "$VERSION" "$ARCH"; then
+    echo "Error: Failed to create runtime control file"
+    exit 1
+fi
 
 # Handle development package if requested
 if [ "$INSTALL_INCLUDES" = "ON" ]; then
@@ -282,19 +349,11 @@ if [ "$INSTALL_INCLUDES" = "ON" ]; then
         mv "$RUNTIME_STAGING/usr/include" "$DEV_STAGING/usr/"
     fi
     
-    # Create dev package control file
-    cat > "$DEV_STAGING/DEBIAN/control" << EOF
-Package: parasol-dev
-Version: $VERSION-1
-Section: libdevel
-Priority: optional
-Architecture: $ARCH
-Depends: parasol (= $VERSION-1), libasound2-dev, libx11-dev, libxext-dev, libxrandr-dev
-Maintainer: Parasol Framework Team <team@parasol-framework.org>
-Description: Development files for Parasol framework
- This package contains the header files and development libraries needed
- to compile applications that use the Parasol framework.
-EOF
+    # Create dev package control file from template
+    if ! process_control_template "pkg/debian/control-dev.in" "$DEV_STAGING/DEBIAN/control" "$VERSION" "$ARCH"; then
+        echo "Error: Failed to create dev control file"
+        exit 1
+    fi
 
     # Copy documentation to dev package
     mkdir -p "$DEV_STAGING/usr/share/doc/parasol-dev"
@@ -314,14 +373,8 @@ License: Custom
  information on licensing.
 EOF
 
-    # Create changelog file for dev package
-    cat > "$DEV_STAGING/usr/share/doc/parasol-dev/changelog" << EOF
-parasol-dev ($VERSION-1) stable; urgency=medium
-
-  * Development package for compiled release tarball
-
- -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
-EOF
+    # Generate changelog for dev package
+    create_debian_changelog "$DEV_STAGING/usr/share/doc/parasol-dev/changelog" "parasol-dev" "$VERSION"
 fi
 
 # Build the packages
