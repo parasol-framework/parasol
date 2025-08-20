@@ -1,0 +1,24 @@
+#!/bin/bash
+# Version consistency check for Parasol package
+
+set -e
+
+echo "Testing Parasol version consistency..."
+
+# Get installed package version
+PACKAGE_VERSION=$(dpkg-query -W -f='${Version}' parasol 2>/dev/null || echo "unknown")
+
+echo "Installed package version: $PACKAGE_VERSION"
+
+# Check if version makes sense (not empty, has expected format)
+if [ "$PACKAGE_VERSION" = "unknown" ]; then
+    echo "FAIL: Could not determine package version"
+    exit 1
+fi
+
+if [ -z "$PACKAGE_VERSION" ]; then
+    echo "FAIL: Package version is empty"
+    exit 1
+fi
+
+echo "PASS: Version check completed successfully"

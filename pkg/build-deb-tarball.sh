@@ -2,7 +2,10 @@
 # Parasol Debian Package Builder
 # This script builds .deb packages for Parasol Framework
 
-set -e
+set -e -u -o pipefail
+
+# Enable debug mode if DEBUG environment variable is set
+[[ "${DEBUG:-}" == "1" ]] && set -x
 
 # Default values
 BUILD_DIR="build-deb"
@@ -35,18 +38,36 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-TARBALL="$1"
+# Sanitize and validate tarball path
+TARBALL="$(realpath "$1" 2>/dev/null || echo "$1")"
 shift
 
-# Validate tarball exists
+# Validate tarball path doesn't contain dangerous characters
+if [[ "$TARBALL" =~ [\\;\\&\\|\\`] ]]; then
+    echo "Error: Tarball path contains invalid characters"
+    exit 1
+fi
+
+# Validate tarball exists and is readable
 if [[ ! -f "$TARBALL" ]]; then
     echo "Error: Tarball '$TARBALL' not found"
     exit 1
 fi
 
-# Parse command line arguments
+if [[ ! -r "$TARBALL" ]]; then
+    echo "Error: Tarball '$TARBALL' is not readable"
+    exit 1
+fi
+
+# Validate tarball format
+if [[ ! "$TARBALL" =~ \.tar\.gz$ ]]; then
+    echo "Error: Tarball must be a .tar.gz file"
+    exit 1
+fi
+
+# Parse command line arguments with input validation
 while [[ $# -gt 0 ]]; do
-    case $1 in
+    case "$1" in
         -h|--help)
             usage
             exit 0
@@ -64,7 +85,16 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -b|--build-dir)
-            BUILD_DIR="$2"
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --build-dir requires a directory argument"
+                exit 1
+            fi
+            # Sanitize build directory path
+            BUILD_DIR="$(realpath -m "$2")"
+            if [[ "$BUILD_DIR" =~ [\;\&\|\`\$] ]]; then
+                echo "Error: Build directory path contains invalid characters"
+                exit 1
+            fi
             shift 2
             ;;
         *)
@@ -125,10 +155,20 @@ fi
 # Create build directory
 mkdir -p "$BUILD_DIR"
 
-# Extract tarball to build directory
+# Extract tarball to build directory with validation
 echo "Extracting tarball..."
-mkdir -p "$BUILD_DIR/extracted"
-tar -xzf "$TARBALL" -C "$BUILD_DIR/extracted" --strip-components=1
+mkdir -p "$BUILD_DIR/extracted" || { echo "Error: Failed to create extraction directory"; exit 1; }
+
+if ! tar -xzf "$TARBALL" -C "$BUILD_DIR/extracted" --strip-components=1; then
+    echo "Error: Failed to extract tarball. The file may be corrupted."
+    exit 1
+fi
+
+# Verify essential files exist in extracted tarball
+if [[ ! -f "$BUILD_DIR/extracted/parasol" ]]; then
+    echo "Error: Parasol executable not found in tarball"
+    exit 1
+fi
 
 echo "Tarball extracted to $BUILD_DIR/extracted"
 
@@ -152,13 +192,27 @@ mkdir -p "$RUNTIME_STAGING/usr/bin"
 mkdir -p "$RUNTIME_STAGING/usr/share/parasol"
 mkdir -p "$RUNTIME_STAGING/usr/share/doc/parasol"
 
-# Copy the main parasol binary
-cp "$BUILD_DIR/extracted/parasol" "$RUNTIME_STAGING/usr/bin/"
-chmod 755 "$RUNTIME_STAGING/usr/bin/parasol"
+# Copy the main parasol binary with validation
+if [[ ! -f "$BUILD_DIR/extracted/parasol" ]]; then
+    echo "Error: Parasol executable not found in extracted files"
+    exit 1
+fi
 
-# Copy configuration and scripts
-cp -r "$BUILD_DIR/extracted/config" "$RUNTIME_STAGING/usr/share/parasol/"
-cp -r "$BUILD_DIR/extracted/scripts" "$RUNTIME_STAGING/usr/share/parasol/"
+cp "$BUILD_DIR/extracted/parasol" "$RUNTIME_STAGING/usr/bin/" || { echo "Error: Failed to copy parasol executable"; exit 1; }
+chmod 755 "$RUNTIME_STAGING/usr/bin/parasol" || { echo "Error: Failed to set executable permissions"; exit 1; }
+
+# Copy configuration and scripts with validation
+if [[ -d "$BUILD_DIR/extracted/config" ]]; then
+    cp -r "$BUILD_DIR/extracted/config" "$RUNTIME_STAGING/usr/share/parasol/" || { echo "Warning: Failed to copy config directory"; }
+else
+    echo "Warning: No config directory found in tarball"
+fi
+
+if [[ -d "$BUILD_DIR/extracted/scripts" ]]; then
+    cp -r "$BUILD_DIR/extracted/scripts" "$RUNTIME_STAGING/usr/share/parasol/" || { echo "Warning: Failed to copy scripts directory"; }
+else
+    echo "Warning: No scripts directory found in tarball"
+fi
 
 # Copy examples if they exist
 if [ -d "$BUILD_DIR/extracted/examples" ]; then
@@ -187,6 +241,20 @@ parasol ($VERSION-1) stable; urgency=medium
 
  -- Parasol Framework Team <team@parasol-framework.org>  $(date -R)
 EOF
+
+# Copy maintainer scripts if they exist
+for script in postinst prerm postrm; do
+    if [ -f "pkg/debian/${script}.in" ]; then
+        cp "pkg/debian/${script}.in" "$RUNTIME_STAGING/DEBIAN/${script}" || { echo "Warning: Failed to copy ${script} script"; }
+        chmod 755 "$RUNTIME_STAGING/DEBIAN/${script}" 2>/dev/null || true
+    fi
+done
+
+# Copy lintian overrides if they exist
+if [ -f "pkg/debian/parasol.lintian-overrides" ]; then
+    mkdir -p "$RUNTIME_STAGING/usr/share/lintian/overrides"
+    cp "pkg/debian/parasol.lintian-overrides" "$RUNTIME_STAGING/usr/share/lintian/overrides/parasol" || { echo "Warning: Failed to copy lintian overrides"; }
+fi
 
 # Create runtime package control file
 cat > "$RUNTIME_STAGING/DEBIAN/control" << EOF
