@@ -6,7 +6,9 @@ Build-Depends: debhelper (>= 9), cmake (>= 3.15), build-essential, libfreetype6-
 Standards-Version: 4.1.2
 Homepage: https://github.com/team-parasol/parasol
 Vcs-Git: https://github.com/team-parasol/parasol.git
-Vcs-Browser: https://github.com/team-parasol/parasol
+Homepage: https://github.com/parasol-framework/parasol
+Vcs-Git: https://github.com/parasol-framework/parasol.git
+Vcs-Browser: https://github.com/parasol-framework/parasol
 
 Package: parasol
 Architecture: @DEBIAN_ARCH@
