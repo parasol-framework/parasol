@@ -130,7 +130,10 @@ DESTDIR="$RUNTIME_STAGING" cmake --install "$BUILD_DIR"
 
 # Copy debian control files for runtime package
 cp "$BUILD_DIR/debian/control" "$RUNTIME_STAGING/DEBIAN/"
-cp "$BUILD_DIR/debian/copyright" "$RUNTIME_STAGING/usr/share/doc/parasol/" 2>/dev/null || mkdir -p "$RUNTIME_STAGING/usr/share/doc/parasol/" && cp "$BUILD_DIR/debian/copyright" "$RUNTIME_STAGING/usr/share/doc/parasol/"
+if [ ! -d "$RUNTIME_STAGING/usr/share/doc/parasol/" ]; then
+    mkdir -p "$RUNTIME_STAGING/usr/share/doc/parasol/" || { echo "Failed to create directory $RUNTIME_STAGING/usr/share/doc/parasol/"; exit 1; }
+fi
+cp "$BUILD_DIR/debian/copyright" "$RUNTIME_STAGING/usr/share/doc/parasol/" || { echo "Failed to copy copyright file"; exit 1; }
 cp "$BUILD_DIR/debian/changelog" "$RUNTIME_STAGING/usr/share/doc/parasol/"
 
 # Create runtime package control file
