@@ -89,10 +89,12 @@ fi
 
 # Extract version from tarball filename
 TARBALL_BASENAME=$(basename "$TARBALL" .tar.gz)
-VERSION=$(echo "$TARBALL_BASENAME" | sed -n 's/.*-\([0-9]\{8\}\).*/\1/p')
 DATE_VERSION=$(echo "$TARBALL_BASENAME" | sed -n 's/.*-\([0-9]\{8\}\).*/\1/p')
-VERSION=""
-if [ -z "$DATE_VERSION" ]; then
+
+if [ -n "$DATE_VERSION" ]; then
+    # Use date-based version format
+    VERSION="$DATE_VERSION"
+else
     # Fallback: try to get version from CMakeLists.txt if available
     if [ -f "CMakeLists.txt" ]; then
         VERSION=$(grep "project (Parasol VERSION" CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')

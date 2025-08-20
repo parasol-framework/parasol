@@ -2,17 +2,15 @@ Source: parasol
 Section: graphics
 Priority: optional
 Maintainer: Parasol Framework Team <team@parasol-framework.org>
-Build-Depends: debhelper (>= 9), cmake (>= 3.15), build-essential, libfreetype6-dev, zlib1g-dev
-Standards-Version: 4.1.2
-Homepage: https://github.com/team-parasol/parasol
-Vcs-Git: https://github.com/team-parasol/parasol.git
+Build-Depends: debhelper (>= 9), cmake (>= 3.15), build-essential, libfreetype6-dev, zlib1g-dev, libasound2-dev, libx11-dev, libxext-dev, libxrandr-dev
+Standards-Version: 4.6.2
 Homepage: https://github.com/parasol-framework/parasol
 Vcs-Git: https://github.com/parasol-framework/parasol.git
 Vcs-Browser: https://github.com/parasol-framework/parasol
 
 Package: parasol
 Architecture: @DEBIAN_ARCH@
-Depends: ${shlibs:Depends}, ${misc:Depends}, libfreetype6, zlib1g
+Depends: ${shlibs:Depends}, ${misc:Depends}, libfreetype6, zlib1g, libasound2, libx11-6, libxext6, libxrandr2, libstdc++6
 Description: Vector graphics engine and application framework
  Parasol is a vector graphics engine and application framework designed for
  creating scalable user interfaces. The framework automatically handles display
@@ -30,7 +28,7 @@ Description: Vector graphics engine and application framework
 Package: parasol-dev
 Architecture: @DEBIAN_ARCH@
 Section: libdevel
-Depends: ${misc:Depends}, parasol (= ${binary:Version}), libfreetype6-dev, zlib1g-dev
+Depends: ${misc:Depends}, parasol (= ${binary:Version}), libfreetype6-dev, zlib1g-dev, libasound2-dev, libx11-dev, libxext-dev, libxrandr-dev
 Description: Development files for Parasol framework
  This package contains the header files and development libraries needed
  to compile applications that use the Parasol framework.

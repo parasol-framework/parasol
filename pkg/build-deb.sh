@@ -100,7 +100,7 @@ cmake -S . -B "$BUILD_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DGENERATE_DEBIAN_PKG=ON \
-    -DPARASOL_STATIC=ON \
+    -DPARASOL_STATIC=OFF \
     -DRUN_ANYWHERE=OFF \
     -DBUILD_TESTS=OFF \
     -DBUILD_DEFS=OFF \
@@ -143,7 +143,7 @@ Version: $VERSION-1
 Section: graphics
 Priority: optional
 Architecture: $ARCH
-Depends: libfreetype6, zlib1g
+Depends: libfreetype6, zlib1g, libasound2, libx11-6, libxext6, libxrandr2, libstdc++6
 Maintainer: Parasol Framework Team <team@parasol-framework.org>
 Description: Vector graphics engine and application framework
  Parasol is a vector graphics engine and application framework designed for
@@ -169,7 +169,7 @@ Version: $VERSION-1
 Section: libdevel
 Priority: optional
 Architecture: $ARCH
-Depends: parasol (= $VERSION-1), libfreetype6-dev, zlib1g-dev
+Depends: parasol (= $VERSION-1), libfreetype6-dev, zlib1g-dev, libasound2-dev, libx11-dev, libxext-dev, libxrandr-dev
 Maintainer: Parasol Framework Team <team@parasol-framework.org>
 Description: Development files for Parasol framework
  This package contains the header files and development libraries needed
