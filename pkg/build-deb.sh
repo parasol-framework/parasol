@@ -242,7 +242,15 @@ if [ ! -f "CMakeLists.txt" ]; then
     exit 1
 fi
 
-VERSION=$(grep "project (Parasol VERSION" CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/' || true)
+VERSION=$(awk '
+    BEGIN { version = "" }
+    # Match project(Parasol ... VERSION x.y.z ...)
+    /project[[:space:]]*\([[:space:]]*Parasol[[:space:]]+VERSION[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+/ {
+        match($0, /VERSION[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)/, arr)
+        if (arr[1] != "") { version = arr[1] }
+    }
+    END { print version }
+' CMakeLists.txt)
 if [ -z "$VERSION" ] || [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "Error: Could not extract valid version from CMakeLists.txt"
     echo "Expected format: project (Parasol VERSION x.y.z)"
