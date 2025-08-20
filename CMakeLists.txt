@@ -745,7 +745,15 @@ if (GENERATE_DEBIAN_PKG)
          OUTPUT_STRIP_TRAILING_WHITESPACE
          ERROR_QUIET
       )
+      )
+      # Remove double quotes
       string(REPLACE "\"" "" GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace newlines with spaces
+      string(REPLACE "\n" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace carriage returns with spaces
+      string(REPLACE "\r" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace tabs with spaces
+      string(REPLACE "\t" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
       set(CHANGELOG_ENTRIES "${GIT_LOG_ENTRIES}")
    else()
       set(CHANGELOG_ENTRIES "  * Release build")
