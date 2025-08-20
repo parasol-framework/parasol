@@ -110,7 +110,11 @@ if [[ $# -eq 0 ]]; then
 fi
 
 # Sanitize and validate tarball path
-TARBALL="$(realpath "$1" 2>/dev/null || echo "$1")"
+TARBALL="$(realpath "$1" 2>/dev/null)"
+if [[ -z "$TARBALL" ]]; then
+    echo "Error: Failed to resolve absolute path for tarball: $1"
+    exit 1
+fi
 shift
 
 # Validate tarball path doesn't contain dangerous characters
