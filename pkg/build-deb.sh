@@ -17,7 +17,12 @@ SIGN_PACKAGE="no"
 escape_changelog_line() {
     local line="$1"
     # Remove or escape potentially dangerous characters for shell safety
-    echo "$line" | sed 's/[`$\\]/\\&/g; s/[|&;(){}]/\\&/g'
+# Function to robustly quote changelog entries for shell safety
+escape_changelog_line() {
+    local line="$1"
+    # Use single quotes and escape embedded single quotes
+    # This produces a shell-safe, literal string
+    printf "'%s'" "$(echo "$line" | sed "s/'/'\\\\''/g")"
 }
 
 # Function to generate changelog entries from Git log
