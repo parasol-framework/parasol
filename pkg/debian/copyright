@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: parasol
-Source: https://github.com/team-parasol/parasol
+Source: https://github.com/parasol-framework/parasol
 
 Files: *
 Copyright: Copyright holders of Parasol Framework
