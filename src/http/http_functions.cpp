@@ -425,7 +425,12 @@ static ERR socket_incoming(objNetSocket *Socket)
                   if (Self->Status IS HTS::OKAY) {
                      // Proxy tunnel established.  Convert the socket to an SSL connection, then send the HTTP command.
 
-                     if (net::SetSSL(Socket, NSL::CONNECT, TRUE, TAGEND) IS ERR::Okay) {
+                     // Set SSL verification flags before enabling SSL
+                     if ((Self->Flags & HTF::DISABLE_SERVER_VERIFY) != HTF::NIL) {
+                        Socket->Flags |= NSF::DISABLE_SERVER_VERIFY;
+                     }
+
+                     if (net::SetSSL(Socket, "EnableSSL", nullptr) IS ERR::Okay) {
                         return acActivate(Self);
                      }
                      else {

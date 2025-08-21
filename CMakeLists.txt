@@ -745,7 +745,6 @@ if (GENERATE_DEBIAN_PKG)
          OUTPUT_STRIP_TRAILING_WHITESPACE
          ERROR_QUIET
       )
-      )
       # Remove double quotes
       string(REPLACE "\"" "" GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
       # Replace newlines with spaces

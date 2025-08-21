@@ -73,17 +73,26 @@
   <function>
     <name>SetSSL</name>
     <comment>Alters SSL settings on an initialised NetSocket object.</comment>
-    <prototype>ERR net::SetSSL(objNetSocket * NetSocket, ...)</prototype>
+    <prototype>ERR net::SetSSL(objNetSocket * NetSocket, CSTRING Command, CSTRING Value)</prototype>
     <input>
       <param type="objNetSocket *" name="NetSocket">The target NetSocket object.</param>
-      <param type="..." name="Tags">Series of tags terminated by TAGEND.</param>
+      <param type="CSTRING" name="Command">Name of a command or option to set (case-sensitive, camel-case).</param>
+      <param type="CSTRING" name="Value">Value to set for the command or option.</param>
     </input>
     <description>
-<p>Use the SetSSL() function to send SSL commands to a NetSocket object.  The following table illustrates the commands that are currently available:</p>
+<p>Use the SetSSL() function to adjust the SSL capabilities of a NetSocket object.  The following commands are currently available:</p>
+<list type="bullet">
+<li>
+<b>EnableSSL</b>: Starts an SSL handshaking process with the remote server.  Does nothing if the socket is already in SSL mode.</li>
+<li>
+<b>DisableSSL</b>: Disconnects the SSL connection and reverts to unencrypted mode.</li>
+</list>
 <p>If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is returned immediately.</p>
+<p>SetSSL() can also be used to check if SSL is supported in the current build, in which case <code>ERR::NoSupport</code> will be the return value if all other arguments are <code>NULL</code>.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="NoSupport">SSL support is disabled in this build.</error>
       <error code="NullArgs">The NetSocket argument was not specified.</error>
     </result>
   </function>
@@ -143,16 +152,13 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
     </constants>
 
-    <constants lookup="NSL" comment="Tags for SetSSL().">
-      <const name="CONNECT">Initiate an SSL connection on this socket.</const>
-    </constants>
-
     <constants lookup="NTC" comment="NetSocket states">
       <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
       <const name="DISCONNECTED">There is no connection.</const>
       <const name="HANDSHAKING">An SSL connection is being established.</const>
       <const name="MULTISTATE">In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</const>
+      <const name="RESOLVING">The host name is being resolved.</const>
     </constants>
 
     <constants lookup="SCV" comment="These error codes for certificate validation match the OpenSSL error codes (X509 definitions)">

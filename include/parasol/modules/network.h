@@ -54,17 +54,11 @@ DEFINE_ENUM_FLAG_OPERATORS(NLF)
 enum class NTC : int {
    NIL = 0,
    DISCONNECTED = 0,
-   CONNECTING = 1,
-   HANDSHAKING = 2,
-   CONNECTED = 3,
-   MULTISTATE = 4,
-};
-
-// Tags for SetSSL().
-
-enum class NSL : int {
-   NIL = 0,
-   CONNECT = 1,
+   RESOLVING = 1,
+   CONNECTING = 2,
+   HANDSHAKING = 3,
+   CONNECTED = 4,
+   MULTISTATE = 5,
 };
 
 // These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
@@ -627,7 +621,7 @@ struct NetworkBase {
    uint32_t (*_HostToLong)(uint32_t Value);
    uint32_t (*_ShortToHost)(uint32_t Value);
    uint32_t (*_LongToHost)(uint32_t Value);
-   ERR (*_SetSSL)(objNetSocket *NetSocket, ...);
+   ERR (*_SetSSL)(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 #endif // PARASOL_STATIC
 };
 
@@ -641,7 +635,7 @@ inline uint32_t HostToShort(uint32_t Value) { return NetworkBase->_HostToShort(V
 inline uint32_t HostToLong(uint32_t Value) { return NetworkBase->_HostToLong(Value); }
 inline uint32_t ShortToHost(uint32_t Value) { return NetworkBase->_ShortToHost(Value); }
 inline uint32_t LongToHost(uint32_t Value) { return NetworkBase->_LongToHost(Value); }
-template<class... Args> ERR SetSSL(objNetSocket *NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
+inline ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value) { return NetworkBase->_SetSSL(NetSocket,Command,Value); }
 } // namespace
 #else
 namespace net {
@@ -651,7 +645,7 @@ extern uint32_t HostToShort(uint32_t Value);
 extern uint32_t HostToLong(uint32_t Value);
 extern uint32_t ShortToHost(uint32_t Value);
 extern uint32_t LongToHost(uint32_t Value);
-extern ERR SetSSL(objNetSocket *NetSocket, ...);
+extern ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

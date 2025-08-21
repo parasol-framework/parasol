@@ -2,10 +2,11 @@
 
 static const struct FieldDef clClientSocketState[] = {
    { "Disconnected", 0x00000000 },
-   { "Connecting", 0x00000001 },
-   { "Handshaking", 0x00000002 },
-   { "Connected", 0x00000003 },
-   { "Multistate", 0x00000004 },
+   { "Resolving", 0x00000001 },
+   { "Connecting", 0x00000002 },
+   { "Handshaking", 0x00000003 },
+   { "Connected", 0x00000004 },
+   { "Multistate", 0x00000005 },
    { nullptr, 0 }
 };
 

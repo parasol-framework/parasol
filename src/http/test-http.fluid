@@ -145,7 +145,6 @@ function testHTTPS()
       src        = 'https://www.google.com',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = HTF_DEBUG_SOCKET,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
             content = file.readAll(glOutFile)
@@ -341,12 +340,13 @@ function testMultiPart()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- ipv6.google.com test-ipv6.com ipv6.he.net ipv6.cloudflare.com
 
 function testIPV6()
    local proc = processing.new({ timeout = 10.0 })
 
    local http = obj.new('http', {
-      src        = 'http://www.v6.facebook.com/',
+      src        = 'http://ipv6.google.com/',
       method     = 'get',
       outputFile = glOutFile,
       flags      = HTF_DEBUG_SOCKET,

@@ -252,6 +252,7 @@ class extClientSocket : public objClientSocket {
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
    bool ReadCalled;     // True if the Read action has been called
+   uint8_t ErrorCountdown = 8;  // Counts down on each error, disconnect occurs at zero.
 
    #ifndef DISABLE_SSL
       #ifdef _WIN32
@@ -266,7 +267,7 @@ class extClientSocket : public objClientSocket {
 
 class extNetSocket : public objNetSocket {
    public:
-   SOCKET_HANDLE Handle;   // Handle of the socket
+   SOCKET_HANDLE Handle = NOHANDLE;   // Handle of the socket
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
@@ -280,6 +281,7 @@ class extNetSocket : public objNetSocket {
    uint8_t InUse;                 // Recursion counter to signal that the object is doing something.
    uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    uint8_t OutgoingRecursion;
+   uint8_t ErrorCountdown = 8;    // Counts down on each error, disconnect occurs at zero.
    #ifdef _WIN32
       int16_t WinRecursion; // For win32_netresponse()
    #endif
@@ -293,6 +295,16 @@ class extNetSocket : public objNetSocket {
         BIO *BIOHandle;
       #endif
    #endif
+
+   extNetSocket() {
+      // objNetSocket defaults
+      Error        = ERR::Okay;
+      Backlog      = 10;
+      State        = NTC::DISCONNECTED;
+      MsgLimit     = 1024768;
+      ClientLimit  = 1024;
+      SocketLimit  = 256;
+   }
 };
 
 class extNetLookup : public objNetLookup {
@@ -760,64 +772,69 @@ uint32_t LongToHost(uint32_t Value)
 -FUNCTION-
 SetSSL: Alters SSL settings on an initialised NetSocket object.
 
-Use the SetSSL() function to send SSL commands to a NetSocket object.  The following table illustrates the commands
-that are currently available:
+Use the SetSSL() function to adjust the SSL capabilities of a NetSocket object.  The following commands are currently 
+available:
 
-
-
-
+<list type="bullet">
+<li><b>EnableSSL</b>: Starts an SSL handshaking process with the remote server.  Does nothing if the socket is already in SSL mode.</li>
+<li><b>DisableSSL</b>: Disconnects the SSL connection and reverts to unencrypted mode.</li>
+</list>
 
 If a failure occurs when executing a command, the execution of all further commands is aborted and the error code is
 returned immediately.
 
+SetSSL() can also be used to check if SSL is supported in the current build, in which case `ERR::NoSupport` will
+be the return value if all other arguments are `NULL`.
+
 -INPUT-
 obj(NetSocket) NetSocket: The target NetSocket object.
-tags Tags: Series of tags terminated by TAGEND.
+cstr Command: Name of a command or option to set (case-sensitive, camel-case).
+cstr Value: Value to set for the command or option.
 
 -ERRORS-
 Okay:
 NullArgs: The NetSocket argument was not specified.
+NoSupport: SSL support is disabled in this build.
 -END-
 
 *********************************************************************************************************************/
 
-ERR SetSSL(objNetSocket *Socket, ...)
+ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 {
-#ifndef DISABLE_SSL
-   int value, tagid;
-   ERR error;
-   va_list list;
+#ifndef DISABLE_SSL   
+   pf::Log log(__FUNCTION__);
+   log.traceBranch("Command: %s = %s", Command, Value ? Value : "NULL");
 
-   if (!Socket) return ERR::NullArgs;
+   if ((!Socket) or (!Command)) return ERR::NullArgs;
+   if (Socket->classID() != CLASSID::NETSOCKET) return ERR::WrongClass;
 
-   va_start(list, Socket);
-   while ((tagid = va_arg(list, LONG))) {
-      pf::Log log(__FUNCTION__);
-      log.traceBranch("Command: %d", tagid);
-
-      switch(NSL(tagid)) {
-         case NSL::CONNECT:
-            value = va_arg(list, LONG);
-            if (value) { // Initiate an SSL connection on this socket
-               if ((error = sslSetup((extNetSocket *)Socket)) IS ERR::Okay) {
-                  error = sslConnect((extNetSocket *)Socket);
+   auto hash = pf::strhash(Command);
+   switch(hash) {
+      case pf::strhash("EnableSSL"):
+         if ((Socket->Flags & NSF::SSL) IS NSF::NIL) {
+            if (auto error = sslSetup((extNetSocket *)Socket); error IS ERR::Okay) {
+               if (error = sslConnect((extNetSocket *)Socket); error IS ERR::Okay) {
+                  Socket->Flags |= NSF::SSL;
                }
+               else sslDisconnect((extNetSocket*)Socket);
+               return error;
+            }
+            else return error;
+         }
+         else return ERR::Okay; // Already enabled
 
-               if (error != ERR::Okay) {
-                  va_end(list);
-                  return error;
-               }
-            }
-            else { // Disconnect SSL (i.e. go back to unencrypted mode)
-               sslDisconnect((extNetSocket *)Socket);
-            }
-            break;
-         default:
-            break;
-      }
+      case pf::strhash("DisableSSL"): // Disconnect SSL (i.e. go back to unencrypted mode)
+         if ((Socket->Flags & NSF::SSL) != NSF::NIL) {
+            Socket->Flags &= ~NSF::SSL;
+            sslDisconnect((extNetSocket *)Socket);
+         }
+         break;
+
+      default:
+         log.warning("Unknown SSL command: %s", Command);
+         break;
    }
 
-   va_end(list);
    return ERR::Okay;
 #else
    return ERR::NoSupport;

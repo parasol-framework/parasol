@@ -112,6 +112,7 @@
       <const name="DISCONNECTED">There is no connection.</const>
       <const name="HANDSHAKING">An SSL connection is being established.</const>
       <const name="MULTISTATE">In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</const>
+      <const name="RESOLVING">The host name is being resolved.</const>
     </constants>
 
   </types>
