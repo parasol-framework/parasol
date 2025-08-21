@@ -3,10 +3,15 @@ Simple HTTP server for serving static files from a folder.
 
 Usage: parasol.exe http_server.fluid folder=path/to/files port=8080
 
+If a config file is stored at user:config/http_server_cfg.fluid then it will be loaded automatically.  Options
+can still be overrided via the command-line, or you can refer to another file via the config
+
 Parameters:
+
+  config - Refers to a Fluid config file with the options assigned to a glOptions table.
   folder - The folder containing HTML pages and static files to serve
   port   - The port number to listen on (default: 8080)
-  config - A Fluid config file with more
+
 --]]
 
 include 'network'
@@ -22,11 +27,9 @@ glOptions = {
    folder = '.'
 }
 
-   if not glConfigFile then glConfigFile = glPath .. 'http_server_cfg.fluid' end
+   if not glConfigFile then glConfigFile = 'user:config/http_server_cfg.fluid' end
 
    if glConfigFile then
-      loadFile(glConfigFile, glOptions)
-   else
       if mSys.AnalysePath(glConfigFile) == ERR_Okay then
          loadFile(glConfigFile, glOptions)
       end
@@ -146,7 +149,7 @@ function serveFile(client, filePath)
    end
 
    local fileSize = file.size
-   local buffer = string.reserve(fileSize)
+   local buffer = string.alloc(fileSize)
    local err, bytesRead = file.acRead(buffer)
    file.free()
 
@@ -180,10 +183,9 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function formatDate(timestamp)
-   local tm = obj.new('time')
-   tm.acSet(timestamp)
-   return string.format('%04d-%02d-%02d %02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute)
+local function printableTime(Time)
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d',
+      Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -212,27 +214,24 @@ function generateDirectoryListing(dirPath, urlPath)
 
    -- Add parent directory link if not root
    if urlPath != '/' then
-      local parentPath = urlPath:match('(.+)/')
+      local parentPath = urlPath:match('(.+)/.+/')
       if not parentPath then parentPath = '/' end
       html = html .. '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
    end
 
    -- List directory contents
-   local dir
-   catch(function()
-      dir = obj.new('file', { path = dirPath, flags = FL_FOLDER })
-   end)
-
-   if dir then
-      local err = dir.acNext()
-      while err == ERR_Okay do
-         local name = dir.name
-         local isFolder = bit.band(dir.flags, FL_FOLDER) != 0
-         local size = isFolder and '-' or formatFileSize(dir.size)
-         local modTime = formatDate(dir.timeStamp)
+   print('Scanning folder ' .. dirPath)
+   local err, dir = mSys.OpenDir(dirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
+   if err == ERR_Okay then
+      local count = 0
+      while mSys.ScanDir(dir) == ERR_Okay do
+         local info = dir.info
+         local name = info.Name
+         local isFolder = bit.band(info.flags, RDF_FOLDER) != 0
+         local size = isFolder and '-' or formatFileSize(info.size)
+         local modTime = printableTime(info.modified)
 
          local href = urlPath
-         if href != '/' then href = href .. '/' end
          href = href .. name
          if isFolder then href = href .. '/' end
 
@@ -243,10 +242,10 @@ function generateDirectoryListing(dirPath, urlPath)
          html = html .. '<tr><td><a href="' .. href .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
          html = html .. '<td class="size">' .. size .. '</td>'
          html = html .. '<td>' .. modTime .. '</td></tr>\n'
-
-         err = dir.acNext()
+         count = count + 1
       end
-      dir.free()
+   else
+      print('Failed to open folder ' .. nz(dirPath,'NIL'))
    end
 
    html = html .. '</tbody>\n</table>\n'
@@ -258,16 +257,10 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function serveDirectory(client, dirPath, urlPath)
-   local indexPath = dirPath .. '/index.html'
+   local indexPath = dirPath .. 'index.html'
 
-   -- Try to serve index.html first
-   local indexFile
-   catch(function()
-      indexFile = obj.new('file', { path = indexPath, flags = 'READ' })
-   end)
-
-   if indexFile then
-      indexFile.free()
+   local err, type = mSys.AnalysePath(indexPath)
+   if type == LOC_FILE then
       serveFile(client, indexPath)
       return
    end
@@ -290,7 +283,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function handleRequest(client)
-   local buffer = string.reserve(4096)
+   local buffer = string.alloc(4096)
    local err, bytesRead = client.acRead(buffer)
 
    if err != ERR_Okay then
@@ -334,14 +327,12 @@ function handleRequest(client)
    end
 
    local filePath = glOptions.folder .. urlPath
+   filePath = filePath:gsub('//', '/')
 
    -- Check if path exists and determine if it's a file or directory
-   local fileObj
-   catch(function()
-      fileObj = obj.new('file', { path = filePath })
-   end)
 
-   if not fileObj then
+   local err, fileType = mSys.AnalysePath(filePath)
+   if err != ERR_Okay then
       local errorBody = "<html><body><h1>404 Not Found</h1><p>The requested resource was not found.</p></body></html>"
       sendHttpResponse(client, 404, "Not Found", {
          ['content-type'] = 'text/html'
@@ -349,10 +340,7 @@ function handleRequest(client)
       return
    end
 
-   local isFolder = bit.band(fileObj.flags, FL_FOLDER) != 0
-   fileObj.free()
-
-   if isFolder then
+   if fileType == LOC_FOLDER then
       -- Ensure directory URLs end with /
       if not urlPath:match('/$') then
          sendHttpResponse(client, 301, 'Moved Permanently', {

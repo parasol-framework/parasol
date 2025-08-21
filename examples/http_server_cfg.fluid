@@ -1,4 +1,0 @@
--- HTTP server config file
-
-glOptions.port = 8080
-glOptions.folder = glPath .. '../docs/html/'
