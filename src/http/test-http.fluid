@@ -21,7 +21,6 @@ function testGet()
       src        = 'http://www.parasol.ws/index.html',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = HTF_DEBUG_SOCKET,
       connectTimeout = 10,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
@@ -53,7 +52,7 @@ function testPostString()
    local http = obj.new('http', {
       src        = 'http://httpbin.org/post',
       method     = 'post',
-      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_NO_HEAD),
+      flags      = HTF_NO_HEAD,
       outputFile = glOutFile,
       contentLength = -1,
       outgoing = function(HTTP, BufferSize)
@@ -92,7 +91,7 @@ function testPostStringFile()
       src        = 'http://httpbin.org/post',
       method     = 'post',
       contentType = 'text/plain',
-      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_NO_HEAD),
+      flags      = HTF_NO_HEAD,
       inputFile  = 'string:' .. body,
       size       = body:len(),
       stateChanged = function(HTTP, State)
@@ -123,7 +122,6 @@ function testSSLProxy()
       src         = 'https://www.google.co.uk/',
       method      = 'get',
       outputFile  = glOutFile,
-      flags       = HTF_DEBUG_SOCKET,
       proxyserver = 'localhost',
       proxyport   = '8080'
    })
@@ -177,7 +175,6 @@ function testRedirectedHTTPS()
       src        = 'https://www.google.co.uk',
       method     = 'get',
       outputFile = glOutFile,
-      flags      = HTF_DEBUG_SOCKET,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
             content = file.readAll(glOutFile)
@@ -204,9 +201,8 @@ function testPHPPost()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
-      src        = 'http://parasol.ws/upload.php',
+      src        = 'http://127.0.0.1/upload.php',
       method     = 'post',
-      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_DEBUG_OUTGOING),
       inputfile  = 'string:file=fred.txt&amp;contentsize=4&amp;content=ABCD',
       outputFile = glOutFile
    })
@@ -220,9 +216,8 @@ function testUploadChunked()
    local proc = processing.new({ timeout = 5.0 })
 
    local http = obj.new('http', {
-      src        = 'http://parasol.ws/upload.php',
+      src        = 'http://127.0.0.1/upload.php',
       method     = 'post',
-      flags      = bit.bor(HTF_DEBUG_SOCKET, HTF_DEBUG_OUTGOING),
       inputfile  = glPath .. 'test_http.fluid',
       outputFile = glOutFile
    })
@@ -239,8 +234,7 @@ function testChunks()
    local http = obj.new('http', {
       src        = 'http://news.bbc.co.uk',
       method     = 'get',
-      outputFile = glOutFile,
-      flags      = HTF_DEBUG_SOCKET
+      outputFile = glOutFile
    })
 
    http.acActivate()
@@ -255,8 +249,7 @@ function testDownload()
    local http = obj.new('http', {
       src        = 'http://www.parasol.ws/index.html',
       method     = 'get',
-      outputFile = glOutFile,
-      flags      = HTF_DEBUG_SOCKET
+      outputFile = glOutFile
    })
 
    http.acActivate()
@@ -271,8 +264,7 @@ function testUpload()
    local http = obj.new('http', {
       src       = 'http://www.parasol.ws/dav/test-upload',
       method    = 'put',
-      inputfile = glinFile,
-      flags     = HTF_DEBUG_SOCKET
+      inputfile = glinFile
    })
 
    http.acActivate()
@@ -289,7 +281,7 @@ function testMultiPart()
       src         = 'http://parasol.ws/tkr/upload.php',
       method      = 'post',
       outputFile  = glOutFile,
-      flags       = bit.bor(HTF_NO_HEADER, HTF_DEBUG_SOCKET),
+      flags       = HTF_NO_HEADER,
       contenttype = 'multipart/form-data; boundary=' .. boundary
    } )
 
@@ -344,21 +336,22 @@ end
 
 function testIPV6()
    local proc = processing.new({ timeout = 10.0 })
+   local content = ''
 
    local http = obj.new('http', {
       src        = 'http://ipv6.google.com/',
       method     = 'get',
-      outputFile = glOutFile,
-      flags      = HTF_DEBUG_SOCKET,
       connectTimeout = 10,
       stateChanged = function(HTTP, State)
          if (State == HGS_COMPLETED) then
-            local content = file.readAll(glOutFile)
             print(string.format('%.80s [80 of %d bytes]', content, content:len()))
          end
          if (State == HGS_COMPLETED) or (State == HGS_TERMINATED) then
             proc.signal()
          end
+      end,
+      incoming = function(HTTP, Buffer)
+         if (Buffer) then content = content .. Buffer end
       end
    })
 
@@ -369,6 +362,14 @@ function testIPV6()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
    if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
+
+   if #content < 2048 then
+       print('Response content:')
+       print(content)
+   else
+       print('Response preview (first 500 chars):')
+       print(string.sub(content, 1, 500) .. '...')
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -376,7 +377,7 @@ end
    return {
       tests = {
         'testPostString', 'testGet', 'testPostStringFile',
-        'testHTTPS'
+        'testHTTPS', 'testRedirectedHTTPS', 'testIPV6'
       },
       init = function(Path)
          glPath = Path
