@@ -17,6 +17,18 @@
 # This may be useful if you intend to use a limited feature-set, like the vector graphics API.  Static builds
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
+#
+# Windows release packages can be created using CPack integration:
+#
+#   cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DPARASOL_STATIC=ON -DINSTALL_EXAMPLES=ON
+#   cmake --build release --config Release
+#   cmake --install release
+#   cd release && cpack -G ZIP
+#   cmake --build . --target package_sfx  # Creates Self-Extracting EXE (requires 7-Zip)
+#
+# Requirements:
+#   - 7-Zip installed for SFX generation (optional, auto-detected)
+#   - NSIS for installer generation (optional, auto-detected)
 
 cmake_minimum_required(VERSION 3.15)
 
@@ -70,6 +82,7 @@ option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client r
 option (INSTALL_TESTS     "Install the test programs." OFF)
 option (ENABLE_ANALYSIS   "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
 option (GENERATE_DEBIAN_PKG "Generate Debian packaging files" OFF)
+option (DISABLE_CPACK     "Disable CPack Windows packaging support" OFF)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -745,7 +758,6 @@ if (GENERATE_DEBIAN_PKG)
          OUTPUT_STRIP_TRAILING_WHITESPACE
          ERROR_QUIET
       )
-      )
       # Remove double quotes
       string(REPLACE "\"" "" GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
       # Replace newlines with spaces
@@ -784,5 +796,155 @@ if (GENERATE_DEBIAN_PKG)
 
    message(STATUS "Debian packaging files generated in ${CMAKE_BINARY_DIR}/debian/")
    message(STATUS "Use tools/build-deb.sh script to build the package")
+endif()
+
+# --------------------------------------------------------------------------------------------------------------------
+# Windows Package Generation using CPack
+
+if(WIN32 AND NOT DISABLE_CPACK)
+   # Detect Windows architecture for package naming
+   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      set(WIN_ARCH "win64")
+   else()
+      set(WIN_ARCH "win32")
+   endif()
+
+   # Generate timestamp for release naming (matches existing pattern)
+   string(TIMESTAMP RELEASE_DATE "%Y%m%d")
+
+   # Basic package information
+   set(CPACK_PACKAGE_NAME "Parasol")
+   set(CPACK_PACKAGE_VENDOR "Parasol Framework")
+   set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+   set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Parasol Vector Graphics Framework")
+   set(CPACK_PACKAGE_DESCRIPTION "A cross-platform vector graphics engine and application framework designed for creating scalable user interfaces with automatic resolution handling.")
+
+   # Package file naming to match existing releases (parasol-win64-YYYYMMDD)
+   set(CPACK_PACKAGE_FILE_NAME "parasol-${WIN_ARCH}-${RELEASE_DATE}")
+
+   # Check for 7-Zip availability for SFX generation
+   find_program(SEVENZIP_EXECUTABLE NAMES 7z 7za 7zip HINTS "C:/Program Files/7-Zip" "C:/Program Files (x86)/7-Zip")
+
+   # Configure generators - ZIP for portable distribution, NSIS for installer, 7Z for SFX
+   set(CPACK_GENERATOR "ZIP")
+   if(SEVENZIP_EXECUTABLE)
+      list(APPEND CPACK_GENERATOR "7Z")
+      message(STATUS "7-Zip found at ${SEVENZIP_EXECUTABLE} - SFX support enabled")
+   else()
+      message(STATUS "7-Zip not found - SFX generation disabled")
+   endif()
+
+   if(NOT PARASOL_STATIC)
+      # Only provide NSIS installer for modular builds (static builds are portable)
+      list(APPEND CPACK_GENERATOR "NSIS")
+   endif()
+
+   # ZIP Archive configuration (primary distribution method)
+   set(CPACK_ARCHIVE_FILE_NAME "parasol-${WIN_ARCH}-${RELEASE_DATE}")
+   set(CPACK_SOURCE_IGNORE_FILES "/build/;/.git/;/\\\\.DS_Store")
+
+   # NSIS installer configuration (for modular builds)
+   if(NOT PARASOL_STATIC)
+      set(CPACK_NSIS_DISPLAY_NAME "Parasol Framework ${PROJECT_VERSION}")
+      set(CPACK_NSIS_PACKAGE_NAME "Parasol")
+      set(CPACK_NSIS_INSTALLED_ICON_NAME "parasol.exe")
+      set(CPACK_NSIS_MUI_ICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
+      set(CPACK_NSIS_MUI_UNIICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
+      set(CPACK_NSIS_HELP_LINK "https://github.com/parasol-framework/parasol")
+      set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/parasol-framework/parasol")
+      set(CPACK_NSIS_CONTACT "support@parasol.net")
+
+      # Create shortcuts for installer
+      set(CPACK_NSIS_CREATE_ICONS_EXTRA
+         "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
+         "CreateShortCut '$DESKTOP\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
+      )
+
+      set(CPACK_NSIS_DELETE_ICONS_EXTRA
+         "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk'"
+         "Delete '$DESKTOP\\\\Parasol.lnk'"
+      )
+
+      # Add to PATH for command-line access
+      set(CPACK_NSIS_MODIFY_PATH ON)
+
+      # Installation directory
+      if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+         set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+      else()
+         set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
+      endif()
+   endif()
+
+   # License file (if available)
+   if(EXISTS "${PROJECT_SOURCE_DIR}/LICENSE")
+      set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+   elseif(EXISTS "${PROJECT_SOURCE_DIR}/LICENSE.md")
+      set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.md")
+   endif()
+
+   # Component configuration (matches existing install structure)
+   set(CPACK_COMPONENTS_ALL Runtime Config Scripts Examples)
+   set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "Parasol Runtime")
+   set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "Core Parasol executable and libraries")
+   set(CPACK_COMPONENT_RUNTIME_REQUIRED TRUE)
+
+   set(CPACK_COMPONENT_CONFIG_DISPLAY_NAME "Configuration Files")
+   set(CPACK_COMPONENT_CONFIG_DESCRIPTION "Fonts, styles, and configuration data")
+   set(CPACK_COMPONENT_CONFIG_REQUIRED TRUE)
+
+   set(CPACK_COMPONENT_SCRIPTS_DISPLAY_NAME "Fluid Scripts")
+   set(CPACK_COMPONENT_SCRIPTS_DESCRIPTION "Standard library and GUI toolkit")
+   set(CPACK_COMPONENT_SCRIPTS_REQUIRED TRUE)
+
+   set(CPACK_COMPONENT_EXAMPLES_DISPLAY_NAME "Examples")
+   set(CPACK_COMPONENT_EXAMPLES_DESCRIPTION "Example applications and demonstrations")
+   set(CPACK_COMPONENT_EXAMPLES_REQUIRED FALSE)
+
+   # Include CPack
+   include(CPack)
+
+   # Add custom SFX generation target if 7-Zip is available
+   if(SEVENZIP_EXECUTABLE)
+      # Create SFX configuration file
+      set(SFX_CONFIG_FILE "${CMAKE_BINARY_DIR}/sfx_config.txt")
+      file(WRITE ${SFX_CONFIG_FILE}
+";!@Install@!UTF-8!
+Title=\"Parasol Framework ${PROJECT_VERSION}\"
+BeginPrompt=\"Extract Parasol Framework to a directory of your choice.\"
+ExtractTitle=\"Extracting Parasol Framework...\"
+ExtractDialogText=\"Please wait while Parasol Framework is extracted.\"
+InstallPath=\"%ProgramFiles%\\\\Parasol\"
+OverwriteMode=2
+ExecuteFile=\"parasol.exe\"
+ExecuteParameters=\"\"
+;!@InstallEnd@!
+")
+
+      add_custom_target(package_sfx
+         COMMAND ${CMAKE_COMMAND} -E echo "Creating Self-Extracting Archive..."
+         COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_BINARY_DIR}/sfx_temp"
+         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/sfx_temp"
+         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_INSTALL_PREFIX}" "${CMAKE_BINARY_DIR}/sfx_temp"
+         COMMAND ${SEVENZIP_EXECUTABLE} a -t7z -mx9 "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}-sfx.exe" "${CMAKE_BINARY_DIR}/sfx_temp/*" -sfx
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+         COMMENT "Creating Self-Extracting Archive: ${CPACK_PACKAGE_FILE_NAME}-sfx.exe"
+         DEPENDS install
+      )
+
+      message(STATUS "SFX target 'package_sfx' created - use 'cmake --build . --target package_sfx' to generate SFX")
+   endif()
+
+   # Summary message
+   set(PACKAGE_TYPES "ZIP archive")
+   if(SEVENZIP_EXECUTABLE)
+      set(PACKAGE_TYPES "${PACKAGE_TYPES} + Self-Extracting EXE")
+   endif()
+   if(NOT PARASOL_STATIC)
+      set(PACKAGE_TYPES "${PACKAGE_TYPES} + NSIS installer")
+   endif()
+
+   message(STATUS "Windows packaging configured: ${PACKAGE_TYPES}")
+   message(STATUS "Package name: ${CPACK_PACKAGE_FILE_NAME}")
 endif()
 
