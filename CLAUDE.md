@@ -9,7 +9,7 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF`
+- Release: `cmake -S . -B build/claude -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/claude -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON`
 - Debug: `cmake -S . -B build/claude-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/claude-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DPARASOL_VLOG=TRUE`
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
 
@@ -255,3 +255,7 @@ Key dependencies between modules:
 - **`vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
 - **`gradients.fluid`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
 - **`tools/idl/idl-c.fluid`** - Extensive file I/O and general API usage
+
+## Agentic Behaviour
+
+- Always give an honest, balanced opinion in your responses.
