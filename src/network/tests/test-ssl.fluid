@@ -149,6 +149,9 @@ function testBasicSSLCommunication()
 
             -- Convert the socket to SSL using SetSSL
             local err = mNet.SetSSL(Socket, "EnableSSL")
+            if err ~= ERR_Okay then
+               error('[Client] Failed to enable SSL: ' .. mSys.GetErrorMsg(err))
+            end
          elseif (State == NTC_DISCONNECTED) then
             msg('[Client] SSL connection closed')
          end
