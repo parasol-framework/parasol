@@ -124,7 +124,7 @@ constexpr int MAX_PORT_NUMBER = 65535;
 constexpr int BUFFER_READ_SIZE = 16384;  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", LONG(code), GetErrorMsg(code)); }
+template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", int(code), GetErrorMsg(code)); }
 
 static void secure_clear_memory(void* ptr, size_t len) {
    // Use volatile to prevent compiler optimization
@@ -309,15 +309,15 @@ static const FieldDef clStatus[] = {
 //********************************************************************************************************************
 
 static ERR  check_incoming_end(extHTTP *);
-static ERR  parse_file(extHTTP *, STRING, LONG);
+static ERR  parse_file(extHTTP *, STRING, int);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
-static ERR  process_data(extHTTP *, APTR, LONG);
+static ERR  process_data(extHTTP *, APTR, int);
 static int extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERR  write_socket(extHTTP *, CPTR, LONG, int *);
+static ERR  write_socket(extHTTP *, CPTR, int, int *);
 static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
@@ -340,9 +340,9 @@ static ERR  socket_outgoing(objNetSocket *);
 
 //********************************************************************************************************************
 
-INLINE CSTRING GETSTATUS(LONG Code) __attribute__((unused));
+INLINE CSTRING GETSTATUS(int Code) __attribute__((unused));
 
-INLINE CSTRING GETSTATUS(LONG Code)
+INLINE CSTRING GETSTATUS(int Code)
 {
    for (WORD i=0; clStatus[i].Name; i++) {
       if (clStatus[i].Value IS Code) return clStatus[i].Name;
@@ -628,7 +628,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
       }
       else {
-         log.warning("HTTP method no. %d not understood.", LONG(Self->Method));
+         log.warning("HTTP method no. %d not understood.", int(Self->Method));
          SET_ERROR(log, Self, ERR::Failed);
          return Self->Error;
       }
@@ -695,7 +695,13 @@ static ERR HTTP_Activate(extHTTP *Self)
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
 
-      auto flags = (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
+      auto flags = NSF::NIL;
+      if (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) {
+         flags |= NSF::SSL;
+         if ((Self->Flags & HTF::DISABLE_SERVER_VERIFY) != HTF::NIL) {
+            flags |= NSF::DISABLE_SERVER_VERIFY;
+         }
+      }
 
       if (!(Self->Socket = objNetSocket::create::local(
             fl::ClientData(Self),
@@ -1048,9 +1054,9 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
 {
    pf::Log log;
 
-   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR::OutOfRange);
+   if ((int(Value) < 0) or (int(Value) >= int(HGS::END))) return log.warning(ERR::OutOfRange);
 
-   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
+   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[int(Value)].Name, clHTTPCurrentState[int(Self->CurrentState)].Name);
 
    if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
       Self->CurrentState = Value;
@@ -1067,7 +1073,7 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
       else if (Self->StateChanged.isScript()) {
          if (sc::Call(Self->StateChanged, std::to_array<ScriptArg>({
             { "HTTP", Self->UID, FD_OBJECTID },
-            { "State", LONG(Self->CurrentState) }
+            { "State", int(Self->CurrentState) }
          }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::Okay;
@@ -1212,7 +1218,7 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 
       // Check if the path contains multiple inputs, separated by the pipe symbol.
 
-      for (LONG i=0; Self->InputFile[i]; i++) {
+      for (int i=0; Self->InputFile[i]; i++) {
          if (Self->InputFile[i] IS '"') {
             i++;
             while ((Self->InputFile[i]) and (Self->InputFile[i] != '"')) i++;

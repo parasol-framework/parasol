@@ -2,10 +2,11 @@
 
 static const struct FieldDef clNetSocketState[] = {
    { "Disconnected", 0x00000000 },
-   { "Connecting", 0x00000001 },
-   { "Handshaking", 0x00000002 },
-   { "Connected", 0x00000003 },
-   { "Multistate", 0x00000004 },
+   { "Resolving", 0x00000001 },
+   { "Connecting", 0x00000002 },
+   { "Handshaking", 0x00000003 },
+   { "Connected", 0x00000004 },
+   { "Multistate", 0x00000005 },
    { nullptr, 0 }
 };
 
@@ -38,7 +39,6 @@ static const struct ActionArray clNetSocketActions[] = {
    { AC::Free, NETSOCKET_Free },
    { AC::FreeWarning, NETSOCKET_FreeWarning },
    { AC::Init, NETSOCKET_Init },
-   { AC::NewObject, NETSOCKET_NewObject },
    { AC::NewPlacement, NETSOCKET_NewPlacement },
    { AC::Read, NETSOCKET_Read },
    { AC::Write, NETSOCKET_Write },

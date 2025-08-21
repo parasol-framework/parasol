@@ -177,6 +177,8 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
    }
    Self->Port = Args->Port;
 
+   Self->setState(NTC::RESOLVING);
+
    IPAddress server_ip;
    if (net::StrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
       std::vector<IPAddress> list;
@@ -214,6 +216,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
    if (Error != ERR::Okay) {
       log.warning("DNS resolution failed: %s", GetErrorMsg(Error));
+      Socket->Error = ERR::HostNotFound;
+      Socket->setState(NTC::DISCONNECTED);
       return;
    }
 
@@ -807,20 +811,6 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 //********************************************************************************************************************
 
-static ERR NETSOCKET_NewObject(extNetSocket *Self)
-{
-   Self->Handle       = NOHANDLE;
-   Self->Error        = ERR::Okay;
-   Self->Backlog      = 10;
-   Self->State        = NTC::DISCONNECTED;
-   Self->MsgLimit     = 1024768;
-   Self->ClientLimit  = 1024;
-   Self->SocketLimit  = 256;
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
-
 static ERR NETSOCKET_NewPlacement(extNetSocket * Self)
 {
    new (Self) extNetSocket;
@@ -1034,7 +1024,11 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
             win_socketstate(Self->Handle, std::nullopt, true);
          #endif
       }
-      else return error;
+      else {
+         Self->ErrorCountdown--;
+         if (!Self->ErrorCountdown) Self->setState(NTC::DISCONNECTED);
+         return error;
+      }
    }
    else log.trace("Successfully wrote all %d bytes to the server.", Args->Length);
 
@@ -1471,7 +1465,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       }
    }
 
-   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with our exception handler
+   SetResourcePtr(RES::EXCEPTION_HANDLER, nullptr); // Stop winsock from fooling with the Core exception handler
 
    return ERR::Okay;
 }
@@ -2220,7 +2214,7 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
             if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({ { "NetSocket", Self, FD_OBJECTPTR } }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error != ERR::Okay) Self->Outgoing.clear(); // Any error will terminate the function
+         if (error != ERR::Okay) Self->Outgoing.clear();
       }
 
       // If the write queue is empty and all data has been retrieved, we can remove the FD-Write registration so that
@@ -2234,6 +2228,11 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
          #elif _WIN32
             if (auto error = win_socketstate(Self->Handle, std::nullopt, false); error != ERR::Okay) log.warning(error);
          #endif
+      }
+
+      if (error != ERR::Okay) {
+         Self->ErrorCountdown--;
+         if (!Self->ErrorCountdown) Self->setState(NTC::DISCONNECTED);
       }
    }
 

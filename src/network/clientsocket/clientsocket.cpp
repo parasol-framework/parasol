@@ -22,6 +22,27 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length);
 static CSTRING clientsocket_state(NTC Value);
 
 //********************************************************************************************************************
+// Disconnect a client socket and report the state change.
+
+static void disconnect(extClientSocket *Self)
+{
+   pf::Log log(__FUNCTION__);
+
+   log.branch("Disconnecting socket handle %d", Self->Handle);
+
+   if (Self->Handle != NOHANDLE) {
+
+#ifdef __linux__
+      DeregisterFD(Self->Handle);
+#endif
+      CLOSESOCKET_THREADED(Self->Handle);
+      Self->Handle = NOHANDLE;
+   }
+
+   if (Self->State != NTC::DISCONNECTED) Self->setState(NTC::DISCONNECTED);
+}
+
+//********************************************************************************************************************
 // Read function specifically for ClientSocket connections
 
 static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t BufferSize, size_t *Result)
@@ -316,8 +337,8 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
 
    // Before feeding new data into the queue, the current buffer must be empty.
 
-   if ((ClientSocket->WriteQueue.Buffer.empty()) or
-       (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size())) {
+   if ((error IS ERR::Okay) and ((ClientSocket->WriteQueue.Buffer.empty()) or
+       (ClientSocket->WriteQueue.Index >= ClientSocket->WriteQueue.Buffer.size()))) {
       // Fetch more data
 
       if (Server->Outgoing.defined()) {
@@ -333,7 +354,7 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
                }), error) != ERR::Okay) error = ERR::Terminate;
          }
 
-         if (error != ERR::Okay) Server->Outgoing.clear(); // Any error terminates the function.
+         if (error != ERR::Okay) Server->Outgoing.clear();
       }
 
       // If the write queue is empty then we remove the FD-Write registration so that
@@ -349,29 +370,13 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
       }
    }
 
-   ClientSocket->InUse--;
-   ClientSocket->OutgoingRecursion--;
-}
-
-//********************************************************************************************************************
-// Disconnect a client socket and report it through the NetSocket server.
-
-static void disconnect(extClientSocket *Self)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Disconnecting socket handle %d", Self->Handle);
-
-   if (Self->Handle != NOHANDLE) {
-
-#ifdef __linux__
-      DeregisterFD(Self->Handle);
-#endif
-      CLOSESOCKET_THREADED(Self->Handle);
-      Self->Handle = NOHANDLE;
+   if (error != ERR::Okay) {
+      ClientSocket->ErrorCountdown--;
+      if (!ClientSocket->ErrorCountdown) disconnect(ClientSocket);
    }
 
-   if (Self->State != NTC::DISCONNECTED) Self->setState(NTC::DISCONNECTED);
+   ClientSocket->InUse--;
+   ClientSocket->OutgoingRecursion--;
 }
 
 //********************************************************************************************************************
