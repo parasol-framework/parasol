@@ -49,7 +49,7 @@ static struct eventsub *glEventList = NULL;
 static UBYTE glCallSignal = 0;
 static bool glEventListAltered = false;
 
-static std::unordered_map<ULONG, std::string> glEventNames;
+static ankerl::unordered_dense::map<ULONG, std::string> glEventNames;
 
 //********************************************************************************************************************
 

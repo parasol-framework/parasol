@@ -213,12 +213,15 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    setegid(glGID);  // Ensure that we run under the user's default group (important for file creation)
 
 #elif _WIN32
-   LONG id = 0;
-   #ifdef _DEBUG
-      winInitialise(&id, nullptr); // Don't set a break handler, this will allow GDB intercept CTRL-C.
-   #else
-      winInitialise(&id, (APTR)&BreakHandler);
-   #endif
+   int id = 0;
+   if (glEnableCrashHandler) {
+      #ifdef _DEBUG
+         winInitialise(&id, nullptr); // Don't set a break handler, this will allow GDB intercept CTRL-C.
+      #else
+         winInitialise(&id, (APTR)&BreakHandler);
+      #endif
+   }
+   else winInitialise(&id, nullptr);
 #endif
 
    // Randomise the internal random variables

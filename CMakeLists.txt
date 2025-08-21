@@ -2,7 +2,7 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
-# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DINSTALL_INCLUDES=FALSE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
+# Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
 #
@@ -17,6 +17,18 @@
 # This may be useful if you intend to use a limited feature-set, like the vector graphics API.  Static builds
 # should be customised with an isolated output folder that is exclusive to the target project.  Sharing a static
 # build across multiple projects can otherwise lead to confusing outcomes.
+#
+# Windows release packages can be created using CPack integration:
+#
+#   cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -DPARASOL_STATIC=ON -DINSTALL_EXAMPLES=ON
+#   cmake --build release --config Release
+#   cmake --install release
+#   cd release && cpack -G ZIP
+#   cmake --build . --target package_sfx  # Creates Self-Extracting EXE (requires 7-Zip)
+#
+# Requirements:
+#   - 7-Zip installed for SFX generation (optional, auto-detected)
+#   - NSIS for installer generation (optional, auto-detected)
 
 cmake_minimum_required(VERSION 3.15)
 
@@ -69,6 +81,8 @@ option (INSTALL_EXAMPLES  "Install the example scripts, typically for compiling 
 option (INSTALL_INCLUDES  "Install the header files.  Turn this off for client releases." OFF)
 option (INSTALL_TESTS     "Install the test programs." OFF)
 option (ENABLE_ANALYSIS   "Enable run-time program analysis (with performance penalties) if available.  May negatively affect gdb." OFF)
+option (GENERATE_DEBIAN_PKG "Generate Debian packaging files" OFF)
+option (DISABLE_CPACK     "Disable CPack Windows packaging support" OFF)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
@@ -195,11 +209,11 @@ if (WIN32)
    if (PARASOL_STATIC)
       # NB: MinGW does not guarantee that libgcc and libstdc++ will be static even if these flags are specified.
       if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-         set (CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++")
+         set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
       endif ()
       set (INIT_LINK "init-win" core)
    else ()
-      set (CMAKE_EXE_LINKER_FLAGS "-static")
+      set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
       set (INIT_LINK "init-win")
    endif ()
 else ()
@@ -216,6 +230,8 @@ add_custom_target(build_headers ALL COMMENT "Generate headers and definition fil
 # --------------------------------------------------------------------------------------------------------------------
 # Use Flute to write tests against your code.  All Flute tests are integration tests, i.e. run them post-install
 # against the target installation folder.
+#
+# The --no-crash-handler option is used because crash dump analysis is better without it.
 
 function (flute_test name path)
    if (BUILD_TESTS)
@@ -226,7 +242,7 @@ function (flute_test name path)
       endif ()
       get_filename_component(FLUTE_FULL_PATH "${path}" ABSOLUTE)
       add_test (NAME ${name}
-         COMMAND "${FLUTE_EXE}" "--log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
+         COMMAND "${FLUTE_EXE}" "--no-crash-handler" "--log-warning" "--gfx-driver=headless" "${FLUTE_SCRIPT}" "file=${FLUTE_FULL_PATH}"
          WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
       set_tests_properties(${name} PROPERTIES LABELS ${name})
    endif ()
@@ -304,10 +320,10 @@ endfunction ()
 # --------------------------------------------------------------------------------------------------------------------
 # This is a convenience function that configures the default settings needed for Parasol modules
 
-function (set_module_defaults ARG_TARGET)
+function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
    target_include_directories (${ARG_TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/include")
 
-   add_compile_definitions ("MOD_NAME=${ARG_TARGET}")
+   add_compile_definitions ("MOD_NAME=${ARG_TARGET}" "MOD_NAMESPACE=${ARG_NAMESPACE}")
 
    if (MSVC)
 
@@ -462,9 +478,54 @@ add_library(base64 OBJECT src/link/base64.cpp)
 
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 
+include(ExternalProject)
+
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
 add_subdirectory (3rdparty/freetype-2.13.2)
+
+# --------------------------------------------------------------------------------------------------------------------
+# Build libjpeg-turbo as an external project
+
+if (MSVC)
+   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/jpeg-static.lib")
+else ()
+   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
+endif ()
+
+ExternalProject_Add(libjpeg-turbo-project
+   URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
+   URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
+   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+   PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+   INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+   BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
+   CMAKE_ARGS
+      -DENABLE_SHARED=OFF
+      -DENABLE_STATIC=ON
+      -DWITH_TURBOJPEG=ON
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+      -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+   BUILD_ALWAYS FALSE
+)
+
+ExternalProject_Get_Property(libjpeg-turbo-project install_dir)
+set(LIBJPEG_TURBO_INCLUDE_DIRS "${install_dir}/include")
+
+# Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
+file(MAKE_DIRECTORY ${LIBJPEG_TURBO_INCLUDE_DIRS})
+
+add_library(libjpeg-turbo STATIC IMPORTED)
+
+set_target_properties(libjpeg-turbo PROPERTIES
+   IMPORTED_LOCATION ${LIBJPEG_TURBO_LIB_PATH}
+   INTERFACE_INCLUDE_DIRECTORIES ${LIBJPEG_TURBO_INCLUDE_DIRS})
+
+add_dependencies(libjpeg-turbo libjpeg-turbo-project)
+
+# --------------------------------------------------------------------------------------------------------------------
 
 if (NOT DISABLE_AUDIO)
    add_subdirectory (src/audio)
@@ -562,6 +623,26 @@ add_custom_command (
 add_custom_target (icon_package ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/icons/Default.zip")
 
 # --------------------------------------------------------------------------------------------------------------------
+# SSL Certificate Bundle Auto-Update (if older than 30 days)
+
+if (NOT DISABLE_SSL)
+   set(SSL_BUNDLE_PATH "${PROJECT_SOURCE_DIR}/data/ssl/ca-bundle.crt")
+
+   if (EXISTS ${SSL_BUNDLE_PATH})
+      string(TIMESTAMP CURRENT_TIME "%s")
+      file(TIMESTAMP ${SSL_BUNDLE_PATH} BUNDLE_TIME "%s")
+      math(EXPR BUNDLE_AGE "${CURRENT_TIME} - ${BUNDLE_TIME}")
+
+      if (BUNDLE_AGE GREATER 2592000) # 30 days in seconds
+         file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
+         message(STATUS "Updated SSL certificate bundle")
+      endif()
+   else()
+      file(DOWNLOAD "https://curl.se/ca/cacert.pem" ${SSL_BUNDLE_PATH} TIMEOUT 30 TLS_VERIFY ON)
+   endif()
+endif()
+
+# --------------------------------------------------------------------------------------------------------------------
 # Installation steps
 
 if (PARASOL_INSTALL)
@@ -610,4 +691,260 @@ if (PARASOL_INSTALL)
       install (CODE "MESSAGE(STATUS \"\nParasol has been installed to '${CMAKE_INSTALL_PREFIX}' and shared files are in '${PARASOL_ROOT}'.\")")
    endif ()
 endif ()
+
+# --------------------------------------------------------------------------------------------------------------------
+# Debian Package Generation.  Use in conjunction with tools/build-deb.sh to create a 'true' Debian package.
+# Alternatively use tools/build-deb-tarball.sh to convert the standard release to a portable Debian package.
+
+if (GENERATE_DEBIAN_PKG)
+   # Detect system architecture
+   if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+      set(DEBIAN_ARCH "amd64")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "i[3-6]86")
+      set(DEBIAN_ARCH "i386")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+      set(DEBIAN_ARCH "arm64")
+   elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "armv7")
+      set(DEBIAN_ARCH "armhf")
+   else()
+      set(DEBIAN_ARCH "any")
+   endif()
+
+   # Get number of processors for parallel build
+   include(ProcessorCount)
+   ProcessorCount(NPROC)
+   if(NPROC EQUAL 0)
+      set(NPROC 1)
+   endif()
+
+   # Set version from project
+   set(VERSION "${PROJECT_VERSION}")
+
+   # Generate build date in Debian format
+   string(TIMESTAMP BUILD_DATE "%a, %d %b %Y %H:%M:%S %z")
+
+   # Set whether to install includes based on whether we're building dev package
+   if (INSTALL_INCLUDES)
+      set(INSTALL_INCLUDES_VAL "TRUE")
+   else()
+      set(INSTALL_INCLUDES_VAL "FALSE")
+   endif()
+
+   # Create debian directory in build folder
+   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/debian")
+
+   # Generate debian control file
+   configure_file(
+      "${CMAKE_SOURCE_DIR}/pkg/debian/control.in"
+      "${CMAKE_BINARY_DIR}/debian/control"
+      @ONLY
+   )
+
+   # Generate debian rules file
+   configure_file(
+      "${CMAKE_SOURCE_DIR}/pkg/debian/rules.in"
+      "${CMAKE_BINARY_DIR}/debian/rules"
+      @ONLY
+   )
+
+   # Generate debian changelog
+   # Try to get recent git commits for changelog entries
+   find_package(Git QUIET)
+   if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+      execute_process(
+         COMMAND ${GIT_EXECUTABLE} log --oneline -n 5 --pretty=format:"  * %s"
+         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+         OUTPUT_VARIABLE GIT_LOG_ENTRIES
+         OUTPUT_STRIP_TRAILING_WHITESPACE
+         ERROR_QUIET
+      )
+      # Remove double quotes
+      string(REPLACE "\"" "" GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace newlines with spaces
+      string(REPLACE "\n" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace carriage returns with spaces
+      string(REPLACE "\r" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      # Replace tabs with spaces
+      string(REPLACE "\t" " " GIT_LOG_ENTRIES "${GIT_LOG_ENTRIES}")
+      set(CHANGELOG_ENTRIES "${GIT_LOG_ENTRIES}")
+   else()
+      set(CHANGELOG_ENTRIES "  * Release build")
+   endif()
+
+   configure_file(
+      "${CMAKE_SOURCE_DIR}/pkg/debian/changelog.in"
+      "${CMAKE_BINARY_DIR}/debian/changelog"
+      @ONLY
+   )
+
+   # Copy static files
+   file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/copyright"
+        DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+   file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/compat"
+        DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+   file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/parasol.install"
+        DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+
+   # Copy dev package install file if building with headers
+   if (INSTALL_INCLUDES)
+      file(COPY "${CMAKE_SOURCE_DIR}/pkg/debian/parasol-dev.install"
+           DESTINATION "${CMAKE_BINARY_DIR}/debian/")
+   endif()
+
+   # Make rules file executable
+   file(CHMOD "${CMAKE_BINARY_DIR}/debian/rules" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+
+   message(STATUS "Debian packaging files generated in ${CMAKE_BINARY_DIR}/debian/")
+   message(STATUS "Use tools/build-deb.sh script to build the package")
+endif()
+
+# --------------------------------------------------------------------------------------------------------------------
+# Windows Package Generation using CPack
+
+if(WIN32 AND NOT DISABLE_CPACK)
+   # Detect Windows architecture for package naming
+   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      set(WIN_ARCH "win64")
+   else()
+      set(WIN_ARCH "win32")
+   endif()
+
+   # Generate timestamp for release naming (matches existing pattern)
+   string(TIMESTAMP RELEASE_DATE "%Y%m%d")
+
+   # Basic package information
+   set(CPACK_PACKAGE_NAME "Parasol")
+   set(CPACK_PACKAGE_VENDOR "Parasol Framework")
+   set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+   set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Parasol Vector Graphics Framework")
+   set(CPACK_PACKAGE_DESCRIPTION "A cross-platform vector graphics engine and application framework designed for creating scalable user interfaces with automatic resolution handling.")
+
+   # Package file naming to match existing releases (parasol-win64-YYYYMMDD)
+   set(CPACK_PACKAGE_FILE_NAME "parasol-${WIN_ARCH}-${RELEASE_DATE}")
+
+   # Check for 7-Zip availability for SFX generation
+   find_program(SEVENZIP_EXECUTABLE NAMES 7z 7za 7zip HINTS "C:/Program Files/7-Zip" "C:/Program Files (x86)/7-Zip")
+
+   # Configure generators - ZIP for portable distribution, NSIS for installer, 7Z for SFX
+   set(CPACK_GENERATOR "ZIP")
+   if(SEVENZIP_EXECUTABLE)
+      list(APPEND CPACK_GENERATOR "7Z")
+      message(STATUS "7-Zip found at ${SEVENZIP_EXECUTABLE} - SFX support enabled")
+   else()
+      message(STATUS "7-Zip not found - SFX generation disabled")
+   endif()
+
+   if(NOT PARASOL_STATIC)
+      # Only provide NSIS installer for modular builds (static builds are portable)
+      list(APPEND CPACK_GENERATOR "NSIS")
+   endif()
+
+   # ZIP Archive configuration (primary distribution method)
+   set(CPACK_ARCHIVE_FILE_NAME "parasol-${WIN_ARCH}-${RELEASE_DATE}")
+   set(CPACK_SOURCE_IGNORE_FILES "/build/;/.git/;/\\\\.DS_Store")
+
+   # NSIS installer configuration (for modular builds)
+   if(NOT PARASOL_STATIC)
+      set(CPACK_NSIS_DISPLAY_NAME "Parasol Framework ${PROJECT_VERSION}")
+      set(CPACK_NSIS_PACKAGE_NAME "Parasol")
+      set(CPACK_NSIS_INSTALLED_ICON_NAME "parasol.exe")
+      set(CPACK_NSIS_MUI_ICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
+      set(CPACK_NSIS_MUI_UNIICON "${PROJECT_SOURCE_DIR}/src/link/parasol_sphere.ico")
+      set(CPACK_NSIS_HELP_LINK "https://github.com/parasol-framework/parasol")
+      set(CPACK_NSIS_URL_INFO_ABOUT "https://github.com/parasol-framework/parasol")
+      set(CPACK_NSIS_CONTACT "support@parasol.net")
+
+      # Create shortcuts for installer
+      set(CPACK_NSIS_CREATE_ICONS_EXTRA
+         "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
+         "CreateShortCut '$DESKTOP\\\\Parasol.lnk' '$INSTDIR\\\\parasol.exe'"
+      )
+
+      set(CPACK_NSIS_DELETE_ICONS_EXTRA
+         "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Parasol.lnk'"
+         "Delete '$DESKTOP\\\\Parasol.lnk'"
+      )
+
+      # Add to PATH for command-line access
+      set(CPACK_NSIS_MODIFY_PATH ON)
+
+      # Installation directory
+      if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+         set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+      else()
+         set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
+      endif()
+   endif()
+
+   # License file (if available)
+   if(EXISTS "${PROJECT_SOURCE_DIR}/LICENSE")
+      set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
+   elseif(EXISTS "${PROJECT_SOURCE_DIR}/LICENSE.md")
+      set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.md")
+   endif()
+
+   # Component configuration (matches existing install structure)
+   set(CPACK_COMPONENTS_ALL Runtime Config Scripts Examples)
+   set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "Parasol Runtime")
+   set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "Core Parasol executable and libraries")
+   set(CPACK_COMPONENT_RUNTIME_REQUIRED TRUE)
+
+   set(CPACK_COMPONENT_CONFIG_DISPLAY_NAME "Configuration Files")
+   set(CPACK_COMPONENT_CONFIG_DESCRIPTION "Fonts, styles, and configuration data")
+   set(CPACK_COMPONENT_CONFIG_REQUIRED TRUE)
+
+   set(CPACK_COMPONENT_SCRIPTS_DISPLAY_NAME "Fluid Scripts")
+   set(CPACK_COMPONENT_SCRIPTS_DESCRIPTION "Standard library and GUI toolkit")
+   set(CPACK_COMPONENT_SCRIPTS_REQUIRED TRUE)
+
+   set(CPACK_COMPONENT_EXAMPLES_DISPLAY_NAME "Examples")
+   set(CPACK_COMPONENT_EXAMPLES_DESCRIPTION "Example applications and demonstrations")
+   set(CPACK_COMPONENT_EXAMPLES_REQUIRED FALSE)
+
+   # Include CPack
+   include(CPack)
+
+   # Add custom SFX generation target if 7-Zip is available
+   if(SEVENZIP_EXECUTABLE)
+      # Create SFX configuration file
+      set(SFX_CONFIG_FILE "${CMAKE_BINARY_DIR}/sfx_config.txt")
+      file(WRITE ${SFX_CONFIG_FILE}
+";!@Install@!UTF-8!
+Title=\"Parasol Framework ${PROJECT_VERSION}\"
+BeginPrompt=\"Extract Parasol Framework to a directory of your choice.\"
+ExtractTitle=\"Extracting Parasol Framework...\"
+ExtractDialogText=\"Please wait while Parasol Framework is extracted.\"
+InstallPath=\"%ProgramFiles%\\\\Parasol\"
+OverwriteMode=2
+ExecuteFile=\"parasol.exe\"
+ExecuteParameters=\"\"
+;!@InstallEnd@!
+")
+
+      add_custom_target(package_sfx
+         COMMAND ${CMAKE_COMMAND} -E echo "Creating Self-Extracting Archive..."
+         COMMAND ${CMAKE_COMMAND} -E remove_directory "${CMAKE_BINARY_DIR}/sfx_temp"
+         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/sfx_temp"
+         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_INSTALL_PREFIX}" "${CMAKE_BINARY_DIR}/sfx_temp"
+         COMMAND ${SEVENZIP_EXECUTABLE} a -t7z -mx9 "${CMAKE_BINARY_DIR}/${CPACK_PACKAGE_FILE_NAME}-sfx.exe" "${CMAKE_BINARY_DIR}/sfx_temp/*" -sfx
+         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+         COMMENT "Creating Self-Extracting Archive: ${CPACK_PACKAGE_FILE_NAME}-sfx.exe"
+         DEPENDS install
+      )
+
+      message(STATUS "SFX target 'package_sfx' created - use 'cmake --build . --target package_sfx' to generate SFX")
+   endif()
+
+   # Summary message
+   set(PACKAGE_TYPES "ZIP archive")
+   if(SEVENZIP_EXECUTABLE)
+      set(PACKAGE_TYPES "${PACKAGE_TYPES} + Self-Extracting EXE")
+   endif()
+   if(NOT PARASOL_STATIC)
+      set(PACKAGE_TYPES "${PACKAGE_TYPES} + NSIS installer")
+   endif()
+
+   message(STATUS "Windows packaging configured: ${PACKAGE_TYPES}")
+   message(STATUS "Package name: ${CPACK_PACKAGE_FILE_NAME}")
+endif()
 

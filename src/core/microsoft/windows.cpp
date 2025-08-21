@@ -475,7 +475,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
    //setbuf(stdout, nullptr);
    //setbuf(stderr, nullptr);
 
-   // Setup a handler for intercepting CTRL-C and CTRL-BREAK signals.  This function is limited to Windows 2000 Professional and above.
+   // Setup a handler for intercepting CTRL-C, CTRL-BREAK and segfaults.  This function is limited to Windows 2000 Professional and above.
 
    if (BreakHandler) {
       glBreakHandler = BreakHandler;

@@ -80,7 +80,7 @@ class extFilterEffect;
 class extVectorViewport;
 class extVectorClip;
 
-extern std::unordered_map<std::string, std::array<FRGB, 256>> glColourMaps;
+extern ankerl::unordered_dense::map<std::string, std::array<FRGB, 256>> glColourMaps;
 extern objConfig *glFontConfig;
 
 class PIXEL_ORDER {
@@ -472,12 +472,12 @@ class extVectorScene : public objVectorScene {
    double ActiveVectorX, ActiveVectorY; // X,Y location of the active vector.
    agg::rendering_buffer *Buffer; // AGG representation of the target bitmap
    APTR KeyHandle; // Keyboard subscription
-   std::unordered_map<std::string, OBJECTPTR> Defs;
+   ankerl::unordered_dense::map<std::string, OBJECTPTR> Defs;
    std::unordered_set<extVectorViewport *> PendingResizeMsgs;
-   std::unordered_map<extVector *, JTYPE> InputSubscriptions;
+   ankerl::unordered_dense::map<extVector *, JTYPE> InputSubscriptions;
    std::set<extVector *, TabOrderedVector> KeyboardSubscriptions;
    std::vector<class InputBoundary> InputBoundaries; // Defined on the fly each time that the scene is rendered.  Used to manage input events and cursor changes.
-   std::unordered_map<extVectorViewport *, std::unordered_map<extVector *, FUNCTION>> ResizeSubscriptions;
+   ankerl::unordered_dense::map<extVectorViewport *, ankerl::unordered_dense::map<extVector *, FUNCTION>> ResizeSubscriptions;
    OBJECTID ButtonLock; // The vector currently holding a button lock
    OBJECTID ActiveVector; // The most recent vector to have received an input movement event.
    int InputHandle;
@@ -1062,7 +1062,7 @@ inline static void save_bitmap(std::string Name, uint8_t *Data, int Width, int H
       auto &bmp = pic->Bitmap;
       if (BPP IS 8) {
          for (uint32_t i=0; i < bmp->Palette->AmtColours; i++) {
-            bmp->Palette->Col[i] = { .Red = uint8_t(i), .Green = uint8_t(i), .Blue = uint8_t(i), .Alpha = 255 };
+            bmp->Palette->Col[i] = { uint8_t(i), uint8_t(i), uint8_t(i), 255 };
          }
       }
 

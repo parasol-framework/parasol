@@ -75,7 +75,7 @@ typedef objXML::CURSOR CURSOR;
 
 class extXML : public objXML {
    public:
-   std::unordered_map<LONG, XMLTag *> Map; // Lookup for any indexed tag.
+   ankerl::unordered_dense::map<LONG, XMLTag *> Map; // Lookup for any indexed tag.
    STRING Statement;
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
@@ -88,7 +88,7 @@ class extXML : public objXML {
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
-   std::unordered_map<LONG, XMLTag *> & getMap() {
+   ankerl::unordered_dense::map<LONG, XMLTag *> & getMap() {
       if (StaleMap) {
          Map.clear();
          updateIDs(Tags, 0);

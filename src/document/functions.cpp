@@ -775,7 +775,8 @@ static void process_parameters(extDocument *Self, const std::string_view String)
             }
             else Self->Params.emplace(arg, "1");
 
-            while ((String[pos]) and (String[pos] != '#') and (String[pos] != '&') and (String[pos] != ';')) pos++;
+            while ((pos < String.size()) and (String[pos]) and (String[pos] != '#') and (String[pos] != '&') and (String[pos] != ';')) pos++;
+            if (pos >= String.size()) break;
             if ((String[pos] != '&') and (String[pos] != ';')) break;
             pos++;
          }

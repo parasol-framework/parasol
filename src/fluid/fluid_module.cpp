@@ -18,6 +18,8 @@ extern "C" {
 #include "defs.h"
 
 #include <ffi.h>
+#include <unordered_map>
+#include <algorithm>
 
 template<class... Args> void RMSG(Args...) {
    //log.msg(Args)
@@ -27,6 +29,28 @@ constexpr int MAX_MODULE_ARGS = 16;
 
 static int module_call(lua_State *);
 static int process_results(prvFluid *, APTR, const FunctionField *);
+
+//********************************************************************************************************************
+
+void new_module(lua_State *Lua, objModule *Module) 
+{
+   auto mod = (module *)lua_newuserdata(Lua, sizeof(module));
+   new (mod) module;
+
+   luaL_getmetatable(Lua, "Fluid.mod");
+   lua_setmetatable(Lua, -2);
+
+   mod->Module = Module;
+   Module->get(FID_FunctionList, mod->Functions);
+      
+   // Build hash map for O(1) function lookups
+   if (mod->Functions) {
+      for (int i = 0; mod->Functions[i].Name; i++) {
+         auto hash = strihash(mod->Functions[i].Name);
+         mod->FunctionMap[hash] = i;
+      }
+   }
+}
 
 //********************************************************************************************************************
 // Usage: module = mod.load('core')
@@ -52,14 +76,7 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
-      auto mod = (module *)lua_newuserdata(Lua, sizeof(module));
-      clearmem(mod, sizeof(struct module));
-
-      luaL_getmetatable(Lua, "Fluid.mod");
-      lua_setmetatable(Lua, -2);
-
-      mod->Module = loaded_mod;
-      loaded_mod->get(FID_FunctionList, mod->Functions);
+      new_module(Lua, loaded_mod);     
       return 1;  // new userdatum is already on the stack
    }
    else {
@@ -75,7 +92,7 @@ static int module_load(lua_State *Lua)
 static int module_destruct(lua_State *Lua)
 {
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
-      FreeResource(mod->Module);
+      mod->~module();
    }
 
    return 0;
@@ -105,14 +122,13 @@ static int module_index(lua_State *Lua)
 {
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       if (auto function = luaL_checkstring(Lua, 2)) {
-         if (auto list = mod->Functions) {
-            for (int i=0; list[i].Name; i++) {
-               if (pf::iequals(list[i].Name, function)) { // Function call stack management
-                  lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
-                  lua_pushinteger(Lua, i); // Arg2: Index of the function that is being called
-                  lua_pushcclosure(Lua, module_call, 2);
-                  return 1;
-               }
+         if (mod->Functions) {            
+            auto it = mod->FunctionMap.find(strihash(function)); // Case sensitive (lower camel case expected)
+            if (it != mod->FunctionMap.end()) {
+               lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
+               lua_pushinteger(Lua, it->second); // Arg2: Index of the function that is being called
+               lua_pushcclosure(Lua, module_call, 2);
+               return 1;
             }
 
             luaL_error(Lua, "Call to function %s() not recognised.", function);
@@ -150,7 +166,6 @@ static int module_call(lua_State *Lua)
    auto prv = (prvFluid *)Self->ChildPrivate;
    if (!prv) {
       log.warning(ERR::ObjectCorrupt);
-      cleanup();
       return 0;
    }
 
@@ -241,13 +256,15 @@ static int module_call(lua_State *Lua)
                }
             }
             else {
+               cleanup();
                luaL_error(Lua, "A memory buffer is required in arg #%d.", i);
                return 0;
             }
          }
          else if (argtype & FD_STR) { // FD_RESULT
             if (argtype & FD_CPP) {
-               // Special case; we provide a std::string that will be used as a buffer for storing the result.
+               // Special case; we provide a std::string that will be used as a buffer for storing the result and destroy
+               // it after processing results.
                auto str_ptr = new std::string;
                allocated_strings.push_back(str_ptr);
                ((std::string **)(buffer + j))[0] = str_ptr;
@@ -289,6 +306,7 @@ static int module_call(lua_State *Lua)
             j += sizeof(APTR);
          }
          else {
+            cleanup();
             luaL_error(Lua, "Unrecognised arg %d type %d", i, argtype);
             return 0;
          }
@@ -320,6 +338,7 @@ static int module_call(lua_State *Lua)
                break;
 
             default:
+               cleanup();
                luaL_error(Lua, "Type mismatch, arg #%d (%s) expected function, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
                return 0;
          }
@@ -345,10 +364,12 @@ static int module_call(lua_State *Lua)
             ((CSTRING *)(buffer + j))[0] = nullptr;
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
+            cleanup();
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
          else {
+            cleanup();
             luaL_error(Lua, "Type mismatch, arg #%d (%s) expected string, got %s '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)), lua_tostring(Lua, i));
             return 0;
          }
@@ -409,17 +430,20 @@ static int module_call(lua_State *Lua)
                      i++;
                   }
                   else {
+                     cleanup();
                      luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                      return 0;
                   }
                }
             }
             else {
+               cleanup();
                luaL_error(Lua, "Function '%s' is not compatible with Fluid.", mod->Functions[index].Name);
                return 0;
             }
          }
          else {
+            cleanup();
             luaL_error(Lua, "Type mismatch, arg #%d (%s) expected array, got '%s'.", i, args[i].Name, lua_typename(Lua, lua_type(Lua, i)));
             return 0;
          }
@@ -577,43 +601,56 @@ static int module_call(lua_State *Lua)
          j += sizeof(int);
       }
       else if (argtype & (FD_TAGS|FD_VARTAGS)) {
+         cleanup();
          luaL_error(Lua, "Functions using tags are not supported.");
          return 0;
       }
       else {
+         cleanup();
          log.warning("%s() unsupported arg '%s', flags $%.8x, aborting now.", mod->Functions[index].Name, args[i].Name, argtype);
          return 0;
       }
    }
 
-   // Call the function.  The method used for execution depends on the function's result type.
-
+   // Call the function.  Determine return type and prepare FFI call interface once.
+   
    int restype = args->Type;
    int result = 1;
    int total_args = i - 1;
+   
+   // Determine the correct FFI return type
 
-   if (restype & FD_STR) {
-      if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
-         ffi_call(&cif, (void (*)())function, &rc, arg_values);
+   ffi_type *return_type;
+   if (restype & FD_STR) return_type = &ffi_type_pointer;
+   else if (restype & FD_OBJECT) return_type = &ffi_type_pointer;
+   else if (restype & FD_PTR) return_type = &ffi_type_pointer;
+   else if (restype & (FD_INT|FD_ERROR)) {
+      if (restype & FD_UNSIGNED) return_type = &ffi_type_uint32;
+      else return_type = &ffi_type_sint32;
+   }
+   else if (restype & FD_DOUBLE) return_type = &ffi_type_double;
+   else if (restype & FD_INT64) return_type = &ffi_type_sint64;
+   else { // Void
+      return_type = &ffi_type_void;
+      result = 0;
+   }
+   
+   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, return_type, arg_types) IS FFI_OK) {
+      ffi_call(&cif, (void (*)())function, &rc, arg_values);
+      
+      // Process the result based on the return type
+      if (restype & FD_STR) {
          lua_pushstring(Lua, (CSTRING)rc);
       }
-      else lua_pushnil(Lua);
-   }
-   else if (restype & FD_OBJECT) {
-      if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
-         ffi_call(&cif, (void (*)())function, &rc, arg_values);
+      else if (restype & FD_OBJECT) {
          if ((OBJECTPTR)rc) {
             object *obj = push_object(Lua, (OBJECTPTR)rc);
             if (restype & FD_ALLOC) obj->Detached = false;
          }
          else lua_pushnil(Lua);
       }
-      else lua_pushnil(Lua);
-   }
-   else if (restype & FD_PTR) {
-      if (restype & FD_STRUCT) {
-         if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
-            ffi_call(&cif, (void (*)())function, &rc, arg_values);
+      else if (restype & FD_PTR) {
+         if (restype & FD_STRUCT) {
             if (auto structptr = (APTR)rc) {
                ERR error;
                // A structure marked as a resource will be returned as an accessible struct pointer.  This is typically
@@ -628,6 +665,7 @@ static int module_call(lua_State *Lua)
                      lua_pushlightuserdata(Lua, (APTR)structptr);
                   }
                   else {
+                     cleanup();
                      luaL_error(Lua, "Failed to resolve struct %s, error: %s", args->Name, GetErrorMsg(error));
                      return 0;
                   }
@@ -635,65 +673,40 @@ static int module_call(lua_State *Lua)
             }
             else lua_pushnil(Lua);
          }
-         else lua_pushnil(Lua);
+         else {
+            if ((APTR)rc) lua_pushlightuserdata(Lua, (APTR)rc);
+            else lua_pushnil(Lua);
+         }
       }
-      else if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_pointer, arg_types) IS FFI_OK) {
-         ffi_call(&cif, (void (*)())function, &rc, arg_values);
-         if ((APTR)rc) lua_pushlightuserdata(Lua, (APTR)rc);
-         else lua_pushnil(Lua);
-      }
-      else lua_pushnil(Lua);
-   }
-   else if (restype & (FD_INT|FD_ERROR)) {
-      if (restype & FD_UNSIGNED) {
-         if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_uint32, arg_types) IS FFI_OK) {
-            ffi_call(&cif, (void (*)())function, &rc, arg_values);
+      else if (restype & (FD_INT|FD_ERROR)) {
+         if (restype & FD_UNSIGNED) {
             lua_pushnumber(Lua, (uint32_t)rc);
          }
-         else lua_pushnil(Lua);
-      }
-      else {
-         if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint32, arg_types) IS FFI_OK) {
-            ffi_call(&cif, (void (*)())function, &rc, arg_values);
+         else {
             lua_pushinteger(Lua, (int)rc);
-
             if ((prv->Catch) and (restype & FD_ERROR) and (rc >= int(ERR::ExceptionThreshold))) {
                prv->CaughtError = ERR(rc);
                luaL_error(prv->Lua, GetErrorMsg(ERR(rc)));
             }
          }
-         else lua_pushnil(Lua);
       }
-   }
-   else if (restype & FD_DOUBLE) {
-      if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_double, arg_types) IS FFI_OK) {
-         ffi_call(&cif, (void (*)())function, &rc, arg_values);
+      else if (restype & FD_DOUBLE) {
          lua_pushnumber(Lua, (double)rc);
       }
-      else lua_pushnil(Lua);
-   }
-   else if (restype & FD_INT64) {
-      if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_sint64, arg_types) IS FFI_OK) {
-         ffi_call(&cif, (void (*)())function, &rc, arg_values);
+      else if (restype & FD_INT64) {
          lua_pushnumber(Lua, (int64_t)rc);
       }
-      else lua_pushnil(Lua);
+      // Void functions don't push anything to the stack
    }
-   else { // Void
-      if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, &ffi_type_void, arg_types) IS FFI_OK) {
-         ffi_call(&cif, (void (*)())function, &rc, arg_values);
-      }
-      result = 0;
+   else {
+      lua_pushnil(Lua);
    }
 
-   // Cleanup dynamically allocated objects after successful function call
-   for (auto ptr : allocated_string_views) delete ptr;
-   for (auto ptr : allocated_structs) FreeResource(ptr);
+   auto return_code = process_results(prv, buffer, args) + result;
 
-   // Clear the allocated_strings vector since those pointers are consumed by process_results()
-   allocated_strings.clear();
-   
-   return process_results(prv, buffer, args) + result;
+   cleanup();
+
+   return return_code;
 }
 
 //********************************************************************************************************************
@@ -742,7 +755,6 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
                if (argtype & FD_CPP) { // std::string variant
                   auto str_result = (std::string *)var;
                   lua_pushlstring(prv->Lua, str_result->data(), str_result->size());
-                  delete str_result;
                }
                else {
                   lua_pushstring(prv->Lua, ((STRING *)var)[0]);
@@ -751,9 +763,6 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
             }
             else lua_pushnil(prv->Lua);
             results++;
-         }
-         else if (argtype & FD_CPP) { // Delete dynamically created std::string_view
-            delete ((std::string_view **)scan)[0];
          }
          scan += sizeof(APTR);
       }

@@ -82,7 +82,7 @@ endif ()
 
 add_library (${MOD})
 
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Gfx")
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/lib")

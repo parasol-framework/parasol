@@ -282,7 +282,7 @@ class extSound : public objSound {
    #ifdef _WIN32
    UBYTE  PlatformData[64];   // Data area for holding platform/hardware specific information
    #endif
-   std::unordered_map<std::string, std::string> Tags;
+   ankerl::unordered_dense::map<std::string, std::string> Tags;
    objFile *File;
    STRING Path;
    TIMER  StreamTimer;        // Timer to regularly trigger for provisioning streaming data.

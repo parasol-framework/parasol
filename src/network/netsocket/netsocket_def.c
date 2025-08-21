@@ -2,24 +2,27 @@
 
 static const struct FieldDef clNetSocketState[] = {
    { "Disconnected", 0x00000000 },
-   { "Connecting", 0x00000001 },
-   { "ConnectingSSL", 0x00000002 },
-   { "Connected", 0x00000003 },
+   { "Resolving", 0x00000001 },
+   { "Connecting", 0x00000002 },
+   { "Handshaking", 0x00000003 },
+   { "Connected", 0x00000004 },
+   { "Multistate", 0x00000005 },
    { nullptr, 0 }
 };
 
 static const struct FieldDef clNetSocketFlags[] = {
    { "Server", 0x00000001 },
    { "SSL", 0x00000002 },
-   { "MultiConnect", 0x00000004 },
-   { "Synchronous", 0x00000008 },
-   { "LogAll", 0x00000010 },
+   { "DisableServerVerify", 0x00000004 },
+   { "MultiConnect", 0x00000008 },
+   { "Synchronous", 0x00000010 },
+   { "LogAll", 0x00000020 },
    { nullptr, 0 }
 };
 
 FDEF maConnect[] = { { "Address", FD_STR }, { "Port", FD_INT }, { 0, 0 } };
 FDEF maGetLocalIPAddress[] = { { "IPAddress:Address", FD_PTR|FD_STRUCT }, { 0, 0 } };
-FDEF maDisconnectClient[] = { { "NetClient:Client", FD_PTR|FD_STRUCT }, { 0, 0 } };
+FDEF maDisconnectClient[] = { { "Client", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maDisconnectSocket[] = { { "Socket", FD_OBJECTPTR }, { 0, 0 } };
 
 static const struct MethodEntry clNetSocketMethods[] = {
@@ -36,7 +39,6 @@ static const struct ActionArray clNetSocketActions[] = {
    { AC::Free, NETSOCKET_Free },
    { AC::FreeWarning, NETSOCKET_FreeWarning },
    { AC::Init, NETSOCKET_Init },
-   { AC::NewObject, NETSOCKET_NewObject },
    { AC::NewPlacement, NETSOCKET_NewPlacement },
    { AC::Read, NETSOCKET_Read },
    { AC::Write, NETSOCKET_Write },

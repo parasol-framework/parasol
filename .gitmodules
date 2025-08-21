@@ -1,3 +1,4 @@
 [submodule "docs/wiki"]
 	path = docs/wiki
 	url = https://github.com/parasol-framework/parasol.wiki.git
+	branch = master

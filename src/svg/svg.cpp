@@ -83,8 +83,8 @@ struct svgState;
 class extSVG : public objSVG {
    public:
    FUNCTION FrameCallback;
-   std::unordered_map<std::string, XMLTag *> IDs;
-   std::unordered_map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
+   ankerl::unordered_dense::map<std::string, XMLTag *> IDs;
+   ankerl::unordered_dense::map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
    DOUBLE SVGVersion;
    DOUBLE AnimEpoch;  // Epoch time for the animations.
    objXML *XML;
@@ -93,12 +93,12 @@ class extSVG : public objSVG {
    std::string Colour = "rgb(0,0,0)"; // Default colour, used for 'currentColor' references
    class objVectorViewport *Viewport; // First viewport (the <svg> tag) to be created on parsing the SVG document.
    std::list<std::variant<anim_transform, anim_motion, anim_value>> Animations; // NB: Pointer stability is a container requirement
-   std::map<OBJECTID, svgAnimState> Animatrix; // For animated transforms, a vector may have one matrix only.
+   ankerl::unordered_dense::map<OBJECTID, svgAnimState> Animatrix; // For animated transforms, a vector may have one matrix only.
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    std::vector<OBJECTID> Resources; // Resources to terminate if ENFORCE_TRACKING was enabled.
-   std::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
-   std::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
+   ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
+   ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
    TIMER AnimationTimer;
    WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  PreserveWS; // Preserve white-space

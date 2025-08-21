@@ -180,20 +180,21 @@ inline void camelcase(std::string &s) noexcept {
 
 // Inline C++ implementations of the StrHash() function
 
-[[nodiscard]] inline ULONG strhash(const std::string_view String) noexcept
+[[nodiscard]] constexpr inline uint32_t strhash(const std::string_view String) noexcept
 {
-   ULONG hash = 5381;
+   uint32_t hash = 5381;
    std::for_each(String.begin(), String.end(), [&hash](char a) {
       hash = (hash<<5) + hash + a;
    });
    return hash;
 }
 
-[[nodiscard]] inline ULONG strihash(const std::string_view String) noexcept
+[[nodiscard]] constexpr inline uint32_t strihash(const std::string_view String) noexcept
 {
-   ULONG hash = 5381;
+   uint32_t hash = 5381;
    std::for_each(String.begin(), String.end(), [&hash](char c) {
-       hash = (hash<<5) + hash + std::tolower(c);
+      if ((c >= 'A') and (c <= 'Z')) c = c - 'A' + 'a';
+      hash = (hash<<5) + hash + c;
    });
    return hash;
 }
@@ -269,7 +270,7 @@ template <class T> [[nodiscard]] T svtonum(const std::string_view String) noexce
 
 // Speed efficient way of setting a string field that is managed with AllocMemory().
 
-inline ERR set_string_field(const std::string_view Source, STRING &Dest) 
+inline ERR set_string_field(const std::string_view Source, STRING &Dest)
 {
    MemInfo info;
    if (auto error = MemoryIDInfo(GetMemoryID(Dest), &info, sizeof(info)); error IS ERR::Okay) {

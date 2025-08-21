@@ -29,7 +29,16 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <fl>Feedback</fl> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
 <p>Information on all active connections can be read from the <fl>Clients</fl> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
 <p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
-<p>All data that is received from client sockets will be passed to the <fl>Incoming</fl> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p></description>
+<p>All data that is received from client sockets will be passed to the <fl>Incoming</fl> feedback routine with a reference to a <class name="ClientSocket">ClientSocket</class>.</p>
+<header>SSL Server Certificates</header>
+<p>For SSL server sockets, custom certificates can be specified using the <fl>SSLCertificate</fl> field. Both PEM and PKCS#12 formats are supported across all platforms.</p>
+<p>Example with PKCS#12 certificate:</p>
+<p>
+<code/><code> netsocket = obj.new('netsocket', { flags = 'SERVER|SSL', port = 8443, sslCertificate = 'config:ssl/server.p12', sslKeyPassword = 'password123' }) </code><code/></p>
+<p>Example with PEM certificate and separate private key:</p>
+<p>
+<code/><code> netsocket = obj.new('netsocket', { flags = 'SERVER|SSL', port = 8443, sslCertificate = 'config:ssl/server.crt', sslPrivateKey = 'config:ssl/server.key' }) </code><code/></p>
+<p>If no custom certificate is specified, the framework will automatically use a localhost self-signed certificate for development purposes.  For production use, always specify a proper certificate signed by a trusted CA.</p></description>
     <source>
       <file path="netsocket/">netsocket.cpp</file>
     </source>
@@ -60,10 +69,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </input>
       <description>
 <p>The Read() action will read incoming data from the socket and write it to the provided buffer.  If the socket connection is safe, success will always be returned by this action regardless of whether or not data was available.  Almost all other return codes indicate permanent failure and the socket connection will be closed when the action returns.</p>
+<p>Because NetSocket objects are non-blocking, reading from the socket is normally performed in the <fl>Incoming</fl> callback.  Reading from the socket when no data is available will result in an immediate return with no output.</p>
       </description>
       <result>
         <error code="Okay">Read successful (if no data was on the socket, success is still indicated).</error>
         <error code="Failed">A permanent failure has occurred and socket has been closed.</error>
+        <error code="InvalidState">The socket is not in a state that allows reading (e.g. during SSL handshake).</error>
         <error code="Disconnected">The socket connection is closed.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -114,9 +125,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>DisconnectClient</name>
       <comment>Disconnects all sockets connected to a specific client IP.</comment>
-      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, struct NetClient * Client)</prototype>
+      <prototype>ERR ns::DisconnectClient(OBJECTPTR Object, objNetClient * Client)</prototype>
       <input>
-        <param type="struct NetClient *" name="Client">The client to be disconnected.</param>
+        <param type="objNetClient *" name="Client">The client to be disconnected.</param>
       </input>
       <description>
 <p>For server sockets with client IP connections, this method will terminate all socket connections made to a specific client IP and free the resources allocated to it.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued for each socket connection.</p>
@@ -125,6 +136,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="WrongClass">The Client object is not of type <code>NetClient</code>.</error>
       </result>
     </method>
 
@@ -137,6 +149,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </input>
       <description>
 <p>This method will disconnect a socket connection for a given client.  If <fl>Feedback</fl> is defined, a <code>DISCONNECTED</code> state message will also be issued.</p>
+<p>NOTE: To terminate the connection of a socket acting as the client, either free the object or return/raise <code>ERR::Terminate</code> during <fl>Incoming</fl> feedback.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -180,8 +193,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
       <description>
-<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  As there is a limit to the number of connections that can be queued, you can adjust the backlog by writing this field.  The default setting is 10 connections.</p>
-<p>If the backlog is exceeded, subsequent connections to the socket will typically be met with a connection refused error.</p>
+<p>Incoming connections to NetSocket objects are queued until they are answered by the object.  Setting the Backlog adjusts the maximum number of connections on the queue, which otherwise defaults to 10.</p>
+<p>If the backlog is exceeded, subsequent connections to the socket should expect a connection refused error.</p>
       </description>
     </field>
 
@@ -197,16 +210,19 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>ClientLimit</name>
-      <comment>The maximum number of clients that can be connected to a server socket.</comment>
+      <comment>The maximum number of clients (unique IP addresses) that can be connected to a server socket.</comment>
       <access read="R" write="W">Read/Write</access>
       <type>INT</type>
+      <description>
+<p>The ClientLimit value limits the maximum number of IP addresses that can be connected to the socket at any one time. For socket limits per client, see the <fl>SocketLimit</fl> field.</p>
+      </description>
     </field>
 
     <field>
       <name>Clients</name>
       <comment>For server sockets, lists all clients connected to the server.</comment>
       <access read="R">Read</access>
-      <type>struct NetClient *</type>
+      <type class="NetClient">*NetClient</type>
     </field>
 
     <field>
@@ -235,9 +251,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Refer to a custom function in this field and it will be called whenever the <fl>State</fl> of the socket (such as connection or disconnection) changes.</p>
-<p>The function must be in the format <code>Function(*NetSocket, *ClientSocket, NTC State)</code></p>
-<p>The NetSocket parameter will refer to the NetSocket object to which the Feedback function is subscribed.  The reflects the new value in the <fl>State</fl> field.</p>
+<p>The client can define a function in this field to receive notifications whenever the state of the socket changes - typically connection messages.</p>
+<p>In server mode, the function must follow the prototype <code>Function(*NetSocket, *ClientSocket, NTC State)</code>.  Otherwise <code>Function(*NetSocket, NTC State)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object to which the function is subscribed.  In server mode, <code>ClientSocket</code> refers to the <class name="ClientSocket">ClientSocket</class> on which the state has changed.</p>
       </description>
     </field>
 
@@ -252,14 +268,21 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>Handle</name>
+      <comment>Platform specific reference to the network socket handle.</comment>
+      <access read="G" write="S">Get/Set</access>
+      <type>APTR</type>
+    </field>
+
+    <field>
       <name>Incoming</name>
       <comment>Callback that is triggered when the socket receives data.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function must follow this definition: <code>ERR Incoming(*NetSocket, OBJECTPTR Context)</code></p>
-<p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Incoming field.</p>
-<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
+<p>The Incoming field can be set with a custom function that will be called whenever the socket receives data.  The function prototype for C++ is <code>ERR Incoming(*NetSocket, APTR Meta)</code>.  For Fluid use <code>function Incoming(NetSocket)</code>.</p>
+<p>The <code>NetSocket</code> parameter refers to the NetSocket object.  <code>Meta</code> is optional userdata from the <code>FUNCTION</code>.</p>
+<p>Retrieve data from the socket with the <action>Read</action> action. Reading at least some of the data from the socket is compulsory - if the function does not do this then the data will be cleared from the socket when the function returns. If the callback function returns/raises <code>ERR::Terminate</code> then the Incoming field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
       </description>
     </field>
 
@@ -287,10 +310,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. The function must be in the format <code>ERR Outgoing(*NetSocket, OBJECTPTR Context)</code></p>
-<p>The NetSocket parameter refers to the NetSocket object.  The Context refers to the object that set the Outgoing field.</p>
-<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns <code>ERR::Terminate</code> then the Outgoing field will be cleared and the function will no longer be called.  All other error codes are ignored.</p>
-<p>The Outgoing field is ineffective if the NetSocket is in server mode (target a connected client socket instead).</p>
+<p>The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data. In client mode the function must be in the format <code>ERR Outgoing(*NetSocket, APTR Meta)</code>.  In server mode the function format is <code>ERR Outgoing(*NetSocket, *ClientSocket, APTR Meta)</code>.</p>
+<p>To send data to the NetSocket object, call the <action>Write</action> action.  If the callback function returns an error other than <code>ERR::Okay</code> then the Outgoing field will be cleared and the function will no longer be called.</p>
       </description>
     </field>
 
@@ -302,18 +323,40 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
-      <name>SocketHandle</name>
-      <comment>Platform specific reference to the network socket handle.</comment>
-      <access read="G" write="S">Get/Set</access>
-      <type>APTR</type>
+      <name>SSLCertificate</name>
+      <comment>SSL certificate file to use if in server mode.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>Set SSLCertificate to the path of an SSL certificate file to use when the NetSocket is in server mode.  The certificate file must be in a supported format such as PEM, CRT, or P12.  If no certificate is defined, the NetSocket will either self-sign or use a localhost certificate, if available.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SSLKeyPassword</name>
+      <comment>SSL private key password.</comment>
+      <access read="R" write="S">Read/Set</access>
+      <type>STRING</type>
+      <description>
+<p>If the SSL private key is encrypted, set this field to the password required to decrypt it.  If the private key is not encrypted, this field can be left empty.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>SocketLimit</name>
+      <comment>Limits the number of connected sockets per client IP address.</comment>
+      <access read="R" write="W">Read/Write</access>
+      <type>INT</type>
     </field>
 
     <field>
       <name>State</name>
       <comment>The current connection state of the NetSocket object.</comment>
-      <access read="R" write="S">Read/Set</access>
+      <access read="G" write="S">Get/Set</access>
       <type lookup="NTC">NTC</type>
       <description>
+<p>The State reflects the connection state of the NetSocket.  If the <fl>Feedback</fl> field is defined with a function, it will be called automatically whenever the state is changed.  Note that the ClientSocket parameter will be NULL when the Feedback function is called.</p>
+<p>Note that in server mode this State value should not be used as it cannot reflect the state of all connected client sockets.  Each <class name="ClientSocket">ClientSocket</class> carries its own independent State value for use instead.</p>
 <types lookup="NTC"/>
       </description>
     </field>
@@ -324,25 +367,15 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <access read="R">Read</access>
       <type>INT</type>
       <description>
-<p>In server mode, the netsocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
+<p>In server mode, the NetSocket will maintain a count of the total number of clients currently connected to the socket. You can read the total number of connections from this field.</p>
 <p>In client mode, this field is always set to zero.</p>
-      </description>
-    </field>
-
-    <field>
-      <name>ValidCert</name>
-      <comment>Indicates certificate validity if the socket is encrypted with a certificate.</comment>
-      <access read="G">Get</access>
-      <type>INT</type>
-      <description>
-<p>After an encrypted connection has been made to a server, the ValidCert field can be used to determine the validity of the server's certificate.</p>
-<p>If encrypted communication is not supported, <code>ERR::NoSupport</code> is returned.  If the certificate is valid or the connection is not encrypted, a value of zero is returned to indicate that the connection is valid.</p>
       </description>
     </field>
 
   </fields>
   <types>
     <constants lookup="NSF">
+      <const name="DISABLE_SERVER_VERIFY">Disable SSL certificate verification (for testing only).</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
@@ -353,8 +386,10 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <constants lookup="NTC" comment="NetSocket states">
       <const name="CONNECTED">There is an active connection at present.</const>
       <const name="CONNECTING">A connection is being established.</const>
-      <const name="CONNECTING_SSL">An SSL connection is being established.</const>
       <const name="DISCONNECTED">There is no connection.</const>
+      <const name="HANDSHAKING">An SSL connection is being established.</const>
+      <const name="MULTISTATE">In server mode the NetSocket will be set to MULTISTATE to indicate one or more client connections.</const>
+      <const name="RESOLVING">The host name is being resolved.</const>
     </constants>
 
   </types>
@@ -363,16 +398,6 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
       <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
-    </struct>
-
-    <struct name="NetClient" comment="Simple data storage class utilised by NetSocket to represent a client machine/IP.">
-      <field name="IP" type="INT8" size="8">IP address in 4/8-byte format</field>
-      <field name="Next" type="struct NetClient *">Next client in the chain</field>
-      <field name="Prev" type="struct NetClient *">Previous client in the chain</field>
-      <field name="NetSocket" type="objNetSocket *">Reference to the parent socket</field>
-      <field name="Connections" type="objClientSocket *">Pointer to a list of connections opened by this client.</field>
-      <field name="ClientData" type="APTR">Free for user data storage.</field>
-      <field name="TotalConnections" type="INT">Count of all socket-based connections</field>
     </struct>
 
   </structs>

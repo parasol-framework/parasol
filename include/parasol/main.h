@@ -104,7 +104,7 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing locked mem
       void release() {
          if (error IS ERR::Okay) {
             ReleaseMemory(ptr);
-            error = ERR::NotLocked;
+            error = ERR::ResourceNotLocked;
          }
       }
 };
@@ -190,7 +190,7 @@ class ScopedObjectLock {
       inline ScopedObjectLock(T *Object, int Milliseconds = 3000) {
          if (!Object) {
             obj = nullptr;
-            error = ERR::NotLocked;
+            error = ERR::ResourceNotLocked;
             quicklock = false;
          }
          else if (error = Object->lock(Milliseconds); error IS ERR::Okay) {
@@ -206,7 +206,7 @@ class ScopedObjectLock {
          }
       }
 
-      inline ScopedObjectLock() { obj = nullptr; error = ERR::NotLocked; }
+      inline ScopedObjectLock() { obj = nullptr; error = ERR::ResourceNotLocked; }
       [[nodiscard]] inline bool granted() { return error == ERR::Okay; }
 
       inline T * operator->() { return obj; }; // Promotes underlying methods and fields
@@ -439,12 +439,19 @@ template <class T>
 class SwitchContext { // C++ wrapper for changing the current context with a resource guard in place
    private:
       OBJECTPTR old_context;
+      T new_context;
    public:
-      SwitchContext(T NewContext) {
-         if (NewContext) old_context = SetContext((OBJECTPTR)NewContext);
+      SwitchContext(T NewContext) : new_context(NewContext) {
+         if (new_context) {
+            new_context->lock();
+            old_context = SetContext((OBJECTPTR)NewContext);
+         }
          else old_context = nullptr;
       }
-      ~SwitchContext() { if (old_context) SetContext(old_context); }
+      ~SwitchContext() {
+         if (new_context) new_context->unlock();
+         if (old_context) SetContext(old_context); 
+      }
 };
 
 } // namespace
@@ -453,6 +460,7 @@ class SwitchContext { // C++ wrapper for changing the current context with a res
 // These field name and type declarations help to ensure that fields are paired with the correct type during create().
 
 class objBitmap;
+class objNetClient;
 
 namespace fl {
    using namespace pf;
@@ -546,15 +554,20 @@ inline FieldValue Pretext(const std::string &Value) { return FieldValue(FID_Pret
 [[nodiscard]] constexpr FieldValue Category(CCF Value) { return FieldValue(FID_Category, int(Value)); }
 [[nodiscard]] constexpr FieldValue ClassID(CLASSID Value) { return FieldValue(FID_ClassID, int(Value)); }
 [[nodiscard]] constexpr FieldValue ClassVersion(double Value) { return FieldValue(FID_ClassVersion, Value); }
+[[nodiscard]] constexpr FieldValue Client(struct NetClient *Value) { return FieldValue(FID_Client, Value); }
 [[nodiscard]] constexpr FieldValue Closed(bool Value) { return FieldValue(FID_Closed, (Value ? 1 : 0)); }
 [[nodiscard]] constexpr FieldValue Cursor(PTC Value) { return FieldValue(FID_Cursor, int(Value)); }
 [[nodiscard]] constexpr FieldValue DataFlags(MEM Value) { return FieldValue(FID_DataFlags, int(Value)); }
 [[nodiscard]] constexpr FieldValue DoubleClick(double Value) { return FieldValue(FID_DoubleClick, Value); }
+[[nodiscard]] inline    FieldValue Feedback(const FUNCTION &Value) { return FieldValue(FID_Feedback, Value); }
 [[nodiscard]] constexpr FieldValue Feedback(CPTR Value) { return FieldValue(FID_Feedback, Value); }
 [[nodiscard]] constexpr FieldValue Fields(const FieldArray *Value) { return FieldValue(FID_Fields, Value, FD_ARRAY); }
 [[nodiscard]] constexpr FieldValue Flags(int Value) { return FieldValue(FID_Flags, Value); }
 [[nodiscard]] constexpr FieldValue Font(OBJECTPTR Value) { return FieldValue(FID_Font, Value); }
+[[nodiscard]] constexpr FieldValue Handle(int Value) { return FieldValue(FID_Handle, Value); }
+[[nodiscard]] constexpr FieldValue Handle(APTR Value) { return FieldValue(FID_Handle, Value); }
 [[nodiscard]] constexpr FieldValue HostScene(OBJECTPTR Value) { return FieldValue(FID_HostScene, Value); }
+[[nodiscard]] inline    FieldValue Incoming(const FUNCTION &Value) { return FieldValue(FID_Incoming, Value); }
 [[nodiscard]] constexpr FieldValue Incoming(CPTR Value) { return FieldValue(FID_Incoming, Value); }
 [[nodiscard]] constexpr FieldValue Input(CPTR Value) { return FieldValue(FID_Input, Value); }
 [[nodiscard]] constexpr FieldValue LineLimit(int Value) { return FieldValue(FID_LineLimit, Value); }
@@ -612,10 +625,9 @@ template <class T> [[nodiscard]] FieldValue ColourSpace(T Value) {
    return FieldValue(FID_ColourSpace, int(Value));
 }
 
-template <class T> [[nodiscard]] FieldValue Flags(T Value) {
-   static_assert(std::is_arithmetic_v<T> or std::is_enum_v<T>, "Flags value must be numeric or enum");
-   if constexpr (std::is_enum_v<T>) return FieldValue(FID_Flags, int(Value));
-   else return FieldValue(FID_Flags, int(Value));
+template <class T> requires std::is_arithmetic_v<T> || std::is_enum_v<T> 
+[[nodiscard]] FieldValue Flags(T Value) {
+   return FieldValue(FID_Flags, int(Value));
 }
 
 template <class T> [[nodiscard]] FieldValue Units(T Value) {

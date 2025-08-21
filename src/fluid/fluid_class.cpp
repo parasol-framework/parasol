@@ -144,6 +144,7 @@ void process_error(objScript *Self, CSTRING Procedure)
       Self->Error = prv->CaughtError;
       if (Self->Error <= ERR::Terminate) flags = VLF::DETAIL; // Non-critical errors are muted to prevent log noise.
    }
+   else Self->Error = ERR::Exception; // Unspecified exception, e.g. an error() or assert().  The result string will indicate detail.
 
    pf::Log log;
    CSTRING str = lua_tostring(prv->Lua, -1);
@@ -376,12 +377,7 @@ static ERR FLUID_Activate(objScript *Self)
 
       if (auto core = objModule::create::global(fl::Name("core"))) {
          SetName(core, "mSys");
-         auto mod = (struct module *)lua_newuserdata(prv->Lua, sizeof(struct module));
-         clearmem(mod, sizeof(struct module));
-         luaL_getmetatable(prv->Lua, "Fluid.mod");
-         lua_setmetatable(prv->Lua, -2);
-         mod->Module = core;
-         core->get(FID_FunctionList, mod->Functions);
+         new_module(prv->Lua, core);
          lua_setglobal(prv->Lua, "mSys");
       }
       else {
@@ -465,7 +461,6 @@ static ERR FLUID_Activate(objScript *Self)
          log.traceBranch("Collecting functions prior to procedure call...");
 
          if (lua_pcall(prv->Lua, 0, 0, 0)) {
-            Self->Error = ERR::Failed;
             process_error(Self, "Activation");
          }
       }

@@ -1073,19 +1073,19 @@ public:
 class extDocument : public objDocument {
    public:
    FUNCTION EventCallback;
-   std::unordered_map<std::string, std::string> Vars; // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
-   std::unordered_map<std::string, std::string> Params; // Incoming parameters provided via the URI
+   KEYVALUE Vars;   // Variables as defined by the client program.  Transparently accessible like URI params.  Names have priority over params.
+   KEYVALUE Params; // Incoming parameters provided via the URI
    std::map<uint32_t, XMLTag *>   TemplateIndex;
    std::vector<OBJECTID>       UIObjects;    // List of temporary objects in the UI
    std::vector<doc_segment>    Segments;
    std::vector<sorted_segment> SortSegments; // Used for UI interactivity when determining who is front-most
    std::vector<ui_link>        Links;
-   std::unordered_map<OBJECTID, vp_to_entity> VPToEntity; // Lookup table for VP -> StreamCode.
+   ankerl::unordered_dense::map<OBJECTID, vp_to_entity> VPToEntity; // Lookup table for VP -> StreamCode.
    std::vector<mouse_over>     MouseOverChain;
    std::vector<docresource>    Resources; // Tracks resources that are page related.  Terminated on page unload.
    std::vector<tab>            Tabs;
    std::vector<edit_cell>      EditCells;
-   std::unordered_map<std::string_view, doc_edit> EditDefs;
+   ankerl::unordered_dense::map<std::string_view, doc_edit> EditDefs;
    std::array<std::vector<FUNCTION>, size_t(DRT::END)> Triggers;
    std::vector<const XMLTag *> TemplateArgs; // If a template is called, the tag is referred here so that args can be pulled from it
    std::string FontFace;       // Default font face

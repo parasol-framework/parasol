@@ -361,6 +361,7 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li><a class="rounded" href="classes/clientsocket.html">ClientSocket</a></li>
               <li><a class="rounded" href="classes/http.html">HTTP</a></li>
+              <li><a class="rounded" href="classes/netclient.html">NetClient</a></li>
               <li><a class="rounded" href="classes/netsocket.html">NetSocket</a></li>
               <li><a class="rounded" href="classes/proxy.html">Proxy</a></li>
             </ul>

@@ -14,6 +14,7 @@
 #include <mutex>
 #endif
 
+class objNetClient;
 class objClientSocket;
 class objProxy;
 class objNetLookup;
@@ -31,9 +32,10 @@ enum class NSF : uint32_t {
    NIL = 0,
    SERVER = 0x00000001,
    SSL = 0x00000002,
-   MULTI_CONNECT = 0x00000004,
-   SYNCHRONOUS = 0x00000008,
-   LOG_ALL = 0x00000010,
+   DISABLE_SERVER_VERIFY = 0x00000004,
+   MULTI_CONNECT = 0x00000008,
+   SYNCHRONOUS = 0x00000010,
+   LOG_ALL = 0x00000020,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(NSF)
@@ -52,16 +54,11 @@ DEFINE_ENUM_FLAG_OPERATORS(NLF)
 enum class NTC : int {
    NIL = 0,
    DISCONNECTED = 0,
-   CONNECTING = 1,
-   CONNECTING_SSL = 2,
-   CONNECTED = 3,
-};
-
-// Tags for SetSSL().
-
-enum class NSL : int {
-   NIL = 0,
-   CONNECT = 1,
+   RESOLVING = 1,
+   CONNECTING = 2,
+   HANDSHAKING = 3,
+   CONNECTED = 4,
+   MULTISTATE = 5,
 };
 
 // These error codes for certificate validation match the OpenSSL error codes (X509 definitions)
@@ -120,19 +117,35 @@ struct IPAddress {
    int      Pad;        // Unused padding for 64-bit alignment
 };
 
-struct NetQueue {
-   uint32_t Index;    // The current read/write position within the buffer
-  std::vector<uint8_t> Buffer; // The buffer hosting the data
-};
+// NetClient class definition
 
-struct NetClient {
-   char IP[8];                       // IP address in 4/8-byte format
-   struct NetClient * Next;          // Next client in the chain
-   struct NetClient * Prev;          // Previous client in the chain
-   objNetSocket * NetSocket;         // Reference to the parent socket
-   objClientSocket * Connections;    // Pointer to a list of connections opened by this client.
-   APTR ClientData;                  // Free for user data storage.
-   int  TotalConnections;            // Count of all socket-based connections
+#define VER_NETCLIENT (1.000000)
+
+class objNetClient : public Object {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::NETCLIENT;
+   static constexpr CSTRING CLASS_NAME = "NetClient";
+
+   using create = pf::Create<objNetClient>;
+
+   char IP[8];                       // The IP address of the client.
+   objNetClient * Next;              // The next client IP with connections to the server socket.
+   objNetClient * Prev;              // The previous client IP with connections to the server socket.
+   objClientSocket * Connections;    // Pointer to the first established socket connection for the client IP.
+   APTR ClientData;                  // A custom pointer available for userspace.
+   int  TotalConnections;            // The total number of current socket connections for the IP address.
+
+   // Action stubs
+
+   inline ERR init() noexcept { return InitObject(this); }
+
+   // Customised field setting
+
+   inline ERR setClientData(APTR Value) noexcept {
+      this->ClientData = Value;
+      return ERR::Okay;
+   }
+
 };
 
 // ClientSocket class definition
@@ -146,14 +159,12 @@ class objClientSocket : public Object {
 
    using create = pf::Create<objClientSocket>;
 
-   int64_t  ConnectTime;         // System time for the creation of this socket
-   objClientSocket * Prev;       // Previous socket in the chain
-   objClientSocket * Next;       // Next socket in the chain
-   struct NetClient * Client;    // Parent client structure
-   APTR     ClientData;          // Available for client data storage.
-   FUNCTION Outgoing;            // Callback for data being sent over the socket
-   FUNCTION Incoming;            // Callback for data being received from the socket
-   int      ReadCalled:1;        // TRUE if the Read action has been called
+   int64_t ConnectTime;       // System time for the creation of this socket.
+   objClientSocket * Prev;    // Previous socket in the chain.
+   objClientSocket * Next;    // Next socket in the chain.
+   objNetClient * Client;     // Parent client object (IP address).
+   APTR    ClientData;        // Available for client data storage.
+   NTC     State;             // The current connection state of the ClientSocket object.
 
    // Action stubs
 
@@ -204,6 +215,12 @@ class objClientSocket : public Object {
    }
 
    // Customised field setting
+
+   inline ERR setState(const NTC Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[2];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
+   }
 
 };
 
@@ -393,7 +410,7 @@ class objNetLookup : public Object {
 namespace ns {
 struct Connect { CSTRING Address; int Port; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct DisconnectClient { struct NetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct DisconnectClient { objNetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
@@ -405,17 +422,21 @@ class objNetSocket : public Object {
 
    using create = pf::Create<objNetSocket>;
 
-   struct NetClient * Clients;    // For server sockets, lists all clients connected to the server.
-   APTR   ClientData;             // A client-defined value that can be useful in action notify events.
-   STRING Address;                // An IP address or domain name to connect to.
-   NTC    State;                  // The current connection state of the NetSocket object.
-   ERR    Error;                  // Information about the last error that occurred during a NetSocket operation
-   int    Port;                   // The port number to use for initiating a connection.
-   NSF    Flags;                  // Optional flags.
-   int    TotalClients;           // Indicates the total number of clients currently connected to the socket (if in server mode).
-   int    Backlog;                // The maximum number of connections that can be queued against the socket.
-   int    ClientLimit;            // The maximum number of clients that can be connected to a server socket.
-   int    MsgLimit;               // Limits the size of incoming and outgoing data packets.
+   objNetClient * Clients;    // For server sockets, lists all clients connected to the server.
+   APTR   ClientData;         // A client-defined value that can be useful in action notify events.
+   STRING Address;            // An IP address or domain name to connect to.
+   STRING SSLCertificate;     // SSL certificate file to use if in server mode.
+   STRING SSLPrivateKey;      // Private key file to use if in server mode.
+   STRING SSLKeyPassword;     // SSL private key password.
+   NTC    State;              // The current connection state of the NetSocket object.
+   ERR    Error;              // Information about the last error that occurred during a NetSocket operation
+   int    Port;               // The port number to use for initiating a connection.
+   NSF    Flags;              // Optional flags.
+   int    TotalClients;       // Indicates the total number of clients currently connected to the socket (if in server mode).
+   int    Backlog;            // The maximum number of connections that can be queued against the socket.
+   int    ClientLimit;        // The maximum number of clients (unique IP addresses) that can be connected to a server socket.
+   int    SocketLimit;        // Limits the number of connected sockets per client IP address.
+   int    MsgLimit;           // Limits the size of incoming and outgoing data packets.
 
    // Action stubs
 
@@ -477,7 +498,7 @@ class objNetSocket : public Object {
       struct ns::GetLocalIPAddress args = { Address };
       return(Action(AC(-2), this, &args));
    }
-   inline ERR disconnectClient(struct NetClient * Client) noexcept {
+   inline ERR disconnectClient(objNetClient * Client) noexcept {
       struct ns::DisconnectClient args = { Client };
       return(Action(AC(-3), this, &args));
    }
@@ -495,13 +516,31 @@ class objNetSocket : public Object {
 
    template <class T> inline ERR setAddress(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSSLCertificate(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[16];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSSLPrivateKey(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[10];
+      return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSSLKeyPassword(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    inline ERR setState(const NTC Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[4];
+      auto field = &this->Class->Dictionary[5];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -527,33 +566,38 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setSocketLimit(const int Value) noexcept {
+      this->SocketLimit = Value;
+      return ERR::Okay;
+   }
+
    inline ERR setMsgLimit(const int Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->MsgLimit = Value;
       return ERR::Okay;
    }
 
-   inline ERR setSocketHandle(APTR Value) noexcept {
+   inline ERR setHandle(APTR Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[0];
       return field->WriteValue(target, field, 0x08000500, Value, 1);
    }
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
@@ -577,7 +621,7 @@ struct NetworkBase {
    uint32_t (*_HostToLong)(uint32_t Value);
    uint32_t (*_ShortToHost)(uint32_t Value);
    uint32_t (*_LongToHost)(uint32_t Value);
-   ERR (*_SetSSL)(objNetSocket *NetSocket, ...);
+   ERR (*_SetSSL)(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 #endif // PARASOL_STATIC
 };
 
@@ -591,7 +635,7 @@ inline uint32_t HostToShort(uint32_t Value) { return NetworkBase->_HostToShort(V
 inline uint32_t HostToLong(uint32_t Value) { return NetworkBase->_HostToLong(Value); }
 inline uint32_t ShortToHost(uint32_t Value) { return NetworkBase->_ShortToHost(Value); }
 inline uint32_t LongToHost(uint32_t Value) { return NetworkBase->_LongToHost(Value); }
-template<class... Args> ERR SetSSL(objNetSocket *NetSocket, Args... Tags) { return NetworkBase->_SetSSL(NetSocket,Tags...); }
+inline ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value) { return NetworkBase->_SetSSL(NetSocket,Command,Value); }
 } // namespace
 #else
 namespace net {
@@ -601,7 +645,7 @@ extern uint32_t HostToShort(uint32_t Value);
 extern uint32_t HostToLong(uint32_t Value);
 extern uint32_t ShortToHost(uint32_t Value);
 extern uint32_t LongToHost(uint32_t Value);
-extern ERR SetSSL(objNetSocket *NetSocket, ...);
+extern ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

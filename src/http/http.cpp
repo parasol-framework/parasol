@@ -95,6 +95,9 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <map>
 #include <sstream>
 #include <charconv>
+#include <limits>
+#include <algorithm>
+
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
@@ -112,10 +115,75 @@ constexpr int HASHHEXLEN = 32;
 typedef char HASH[HASHLEN];
 typedef char HASHHEX[HASHHEXLEN+1];
 
+// Security limits
+constexpr int64_t MAX_CONTENT_LENGTH = 10LL * 1024 * 1024 * 1024; // 10GB max
+constexpr int64_t MAX_CHUNK_LENGTH = 100 * 1024 * 1024; // 100MB max chunk
+constexpr int MAX_HEADER_SIZE = 8 * 1024 * 1024; // 8MB max headers
+constexpr int MAX_PORT_NUMBER = 65535;
+
 constexpr int BUFFER_READ_SIZE = 16384;  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", LONG(code), GetErrorMsg(code)); }
+template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", int(code), GetErrorMsg(code)); }
+
+static void secure_clear_memory(void* ptr, size_t len) {
+   // Use volatile to prevent compiler optimization
+   volatile char *p = (volatile char *)ptr;
+   for (size_t i = 0; i < len; i++) p[i] = 0;
+   for (size_t i = 0; i < len; i++) p[i] = 0xff;
+   for (size_t i = 0; i < len; i++) p[i] = 0;
+}
+
+// Enhanced URL validation function
+
+static bool is_valid_url_char(char c, bool allow_reserved = false) {
+   // RFC 3986 unreserved characters
+   if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or
+       (c >= '0' and c <= '9') or c IS '-' or c IS '.' or c IS '_' or c IS '~') {
+      return true;
+   }
+
+   // RFC 3986 reserved characters (when explicitly allowed)
+   if (allow_reserved and (c IS ':' or c IS '/' or c IS '?' or c IS '#' or
+       c IS '[' or c IS ']' or c IS '@' or c IS '!' or c IS '$' or
+       c IS '&' or c IS '\'' or c IS '(' or c IS ')' or c IS '*' or
+       c IS '+' or c IS ',' or c IS ';' or c IS '=')) {
+      return true;
+   }
+
+   return false;
+}
+
+// Enhanced URL encoding with validation
+static std::string encode_url_path(const char* input) {
+   if (!input) return std::string();
+
+   std::string result;
+   result.reserve(strlen(input) * 3); // Worst case: every char becomes %XX
+
+   for (const char* p = input; *p; p++) {
+      if (is_valid_url_char(*p, true)) {
+         result += *p;
+      }
+      else if (*p IS ' ') {
+         result += "%20";
+      }
+      else if (static_cast<unsigned char>(*p) < 32 or static_cast<unsigned char>(*p) > 126) {
+         // Encode control characters and non-ASCII
+         char encoded[4];
+         snprintf(encoded, sizeof(encoded), "%%%02X", static_cast<unsigned char>(*p));
+         result += encoded;
+      }
+      else {
+         // Other characters that need encoding
+         char encoded[4];
+         snprintf(encoded, sizeof(encoded), "%%%02X", static_cast<unsigned char>(*p));
+         result += encoded;
+      }
+   }
+
+   return result;
+}
 
 static ERR create_http_class(void);
 
@@ -126,7 +194,7 @@ static OBJECTPTR clHTTP = nullptr;
 static objProxy *glProxy = nullptr;
 
 extern "C" uint8_t glAuthScript[];
-static LONG glAuthScriptLength;
+static int glAuthScriptLength;
 
 class extHTTP : public objHTTP {
    public:
@@ -134,8 +202,8 @@ class extHTTP : public objHTTP {
    FUNCTION Outgoing;
    FUNCTION AuthCallback;
    FUNCTION StateChanged;
-   std::unordered_map<std::string, std::string> Args;
-   std::unordered_map<std::string, std::string> Headers;
+   ankerl::unordered_dense::map<std::string, std::string> Args;
+   ankerl::unordered_dense::map<std::string, std::string> Headers;
    std::string Response;   // Response header buffer
    std::string URI;        // Temporary string, used only when the user reads the URI
    std::string Username;
@@ -165,8 +233,8 @@ class extHTTP : public objHTTP {
    int64_t  LastReceipt;      // Last time (microseconds) at which data was received
    int64_t  TotalSent;        // Total number of bytes sent - exists for assisting debugging only
    OBJECTID DialogWindow;
-   LONG     ResponseIndex;    // Next element to write to in 'Buffer'
-   LONG     SearchIndex;      // Current position of the CRLFCRLF search.
+   int      ResponseIndex;    // Next element to write to in 'Buffer'
+   int      SearchIndex;      // Current position of the CRLFCRLF search.
    WORD     InputPos;         // File name parsing position in InputFile
    uint8_t  RedirectCount;
    uint8_t  AuthRetries;
@@ -241,20 +309,20 @@ static const FieldDef clStatus[] = {
 //********************************************************************************************************************
 
 static ERR  check_incoming_end(extHTTP *);
-static ERR  parse_file(extHTTP *, STRING, LONG);
+static ERR  parse_file(extHTTP *, STRING, int);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
-static ERR  process_data(extHTTP *, APTR, LONG);
-static LONG extract_value(std::string_view, std::string &);
+static ERR  process_data(extHTTP *, APTR, int);
+static int extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERR  write_socket(extHTTP *, CPTR, LONG, LONG *);
+static ERR  write_socket(extHTTP *, CPTR, int, int *);
 static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
 static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
-static void socket_feedback(objNetSocket *, objClientSocket *, NTC);
+static void socket_feedback(objNetSocket *, NTC, APTR);
 static ERR  socket_incoming(objNetSocket *);
 static ERR  socket_outgoing(objNetSocket *);
 
@@ -272,9 +340,9 @@ static ERR  socket_outgoing(objNetSocket *);
 
 //********************************************************************************************************************
 
-INLINE CSTRING GETSTATUS(LONG Code) __attribute__((unused));
+INLINE CSTRING GETSTATUS(int Code) __attribute__((unused));
 
-INLINE CSTRING GETSTATUS(LONG Code)
+INLINE CSTRING GETSTATUS(int Code)
 {
    for (WORD i=0; clStatus[i].Name; i++) {
       if (clStatus[i].Value IS Code) return clStatus[i].Name;
@@ -363,7 +431,7 @@ HostNotFound: DNS resolution of the domain name in the URI failed.
 static ERR HTTP_Activate(extHTTP *Self)
 {
    pf::Log log;
-   LONG i;
+   int i;
 
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
@@ -378,14 +446,14 @@ static ERR HTTP_Activate(extHTTP *Self)
    Self->CurrentState  = HGS::NIL;
    Self->Status        = HTS::NIL;
    Self->TotalSent     = 0;
-   Self->Tunneling     = FALSE;
+   Self->Tunneling     = false;
    Self->Flags        &= ~(HTF::MOVED|HTF::REDIRECTED);
 
    if ((Self->Socket) and (Self->Socket->State IS NTC::DISCONNECTED)) {
       Self->Socket->set(FID_Feedback, (APTR)nullptr);
       FreeResource(Self->Socket);
       Self->Socket = nullptr;
-      Self->SecurePath = TRUE;
+      Self->SecurePath = true;
    }
 
    Self->Response.clear();
@@ -408,7 +476,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       cmd << "Proxy-Connection: keep-alive" << CRLF;
       cmd << "Connection: keep-alive" << CRLF;
 
-      Self->Tunneling = TRUE;
+      Self->Tunneling = true;
 
       //set auth "Proxy-Authorization: Basic [base64::encode $opts(proxyUser):$opts(proxyPass)]"
    }
@@ -469,7 +537,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       else if ((Self->Method IS HTM::POST) or (Self->Method IS HTM::PUT)) {
          log.trace("POST/PUT request being processed.");
 
-         Self->Chunked = FALSE;
+         Self->Chunked = false;
 
          if (((Self->Flags & HTF::NO_HEAD) IS HTF::NIL) and ((Self->SecurePath) or (Self->CurrentState IS HGS::AUTHENTICATING))) {
             log.trace("Executing HEAD statement for authentication.");
@@ -542,7 +610,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
                if ((Self->Flags & HTF::RAW) IS HTF::NIL) {
                   cmd << "Transfer-Encoding: chunked" << CRLF;
-                  Self->Chunked = TRUE;
+                  Self->Chunked = true;
                }
             }
 
@@ -560,7 +628,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
       }
       else {
-         log.warning("HTTP method no. %d not understood.", LONG(Self->Method));
+         log.warning("HTTP method no. %d not understood.", int(Self->Method));
          SET_ERROR(log, Self, ERR::Failed);
          return Self->Error;
       }
@@ -627,12 +695,18 @@ static ERR HTTP_Activate(extHTTP *Self)
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
 
-      auto flags = (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) ? NSF::SSL : NSF::NIL;
+      auto flags = NSF::NIL;
+      if (((Self->Flags & HTF::SSL) != HTF::NIL) and (!Self->Tunneling)) {
+         flags |= NSF::SSL;
+         if ((Self->Flags & HTF::DISABLE_SERVER_VERIFY) != HTF::NIL) {
+            flags |= NSF::DISABLE_SERVER_VERIFY;
+         }
+      }
 
       if (!(Self->Socket = objNetSocket::create::local(
             fl::ClientData(Self),
-            fl::Incoming((CPTR)socket_incoming),
-            fl::Feedback((CPTR)socket_feedback),
+            fl::Incoming(C_FUNCTION(socket_incoming)),
+            fl::Feedback(C_FUNCTION(socket_feedback)),
             fl::Flags(flags)))) {
          SET_ERROR(log, Self, ERR::CreateObject);
          return log.warning(Self->Error);
@@ -703,7 +777,7 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 {
    pf::Log log;
 
-   log.branch("Closing connection to server & signalling children.");
+   log.branch("Closing connection to server & signaling children.");
 
    if (Self->CurrentState < HGS::COMPLETED) Self->setCurrentState(HGS::TERMINATED);
 
@@ -727,7 +801,7 @@ static ERR HTTP_Deactivate(extHTTP *Self)
          Self->Socket->set(FID_Feedback, (APTR)nullptr);
          FreeResource(Self->Socket);
          Self->Socket = nullptr;
-         Self->SecurePath = TRUE;
+         Self->SecurePath = true;
       }
    }
 
@@ -738,11 +812,16 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 
 static ERR HTTP_Free(extHTTP *Self)
 {
-   if (Self->Socket)     {
+   if (Self->Socket) {
       Self->Socket->set(FID_Feedback, (APTR)nullptr);
       FreeResource(Self->Socket);
       Self->Socket = nullptr;
    }
+
+   if (Self->AuthCallback.isScript()) UnsubscribeAction(Self->AuthCallback.Context, AC::Free);
+   if (Self->Incoming.isScript())     UnsubscribeAction(Self->Incoming.Context, AC::Free);
+   if (Self->StateChanged.isScript()) UnsubscribeAction(Self->StateChanged.Context, AC::Free);
+   if (Self->Outgoing.isScript())     UnsubscribeAction(Self->Outgoing.Context, AC::Free);
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
@@ -757,7 +836,9 @@ static ERR HTTP_Free(extHTTP *Self)
    if (Self->UserAgent)   { FreeResource(Self->UserAgent);   Self->UserAgent = nullptr; }
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
 
-   for (LONG i=0; i < std::ssize(Self->Password); i++) Self->Password[i] = char(0xff);
+   if (!Self->Password.empty()) {
+      secure_clear_memory(const_cast<char*>(Self->Password.data()), Self->Password.size());
+   }
 
    Self->~extHTTP();
    return ERR::Okay;
@@ -847,7 +928,7 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
    if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
 
    if ((Self->WriteBuffer) and (Self->WriteSize > 0)) {
-      LONG len = Args->Length;
+      int len = Args->Length;
       if (Self->WriteOffset + len > Self->WriteSize) {
          len = Self->WriteSize - Self->WriteOffset;
       }
@@ -907,7 +988,7 @@ Note that the actual buffer size may not reflect the exact size that you set her
 
 *********************************************************************************************************************/
 
-static ERR SET_BufferSize(extHTTP *Self, LONG Value)
+static ERR SET_BufferSize(extHTTP *Self, int Value)
 {
    if (Value < 2 * 1024) Value = 2 * 1024;
    Self->BufferSize = Value;
@@ -973,9 +1054,9 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
 {
    pf::Log log;
 
-   if ((LONG(Value) < 0) or (LONG(Value) >= LONG(HGS::END))) return log.warning(ERR::OutOfRange);
+   if ((int(Value) < 0) or (int(Value) >= int(HGS::END))) return log.warning(ERR::OutOfRange);
 
-   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[LONG(Value)].Name, clHTTPCurrentState[LONG(Self->CurrentState)].Name);
+   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[int(Value)].Name, clHTTPCurrentState[int(Self->CurrentState)].Name);
 
    if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
       Self->CurrentState = Value;
@@ -992,7 +1073,7 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
       else if (Self->StateChanged.isScript()) {
          if (sc::Call(Self->StateChanged, std::to_array<ScriptArg>({
             { "HTTP", Self->UID, FD_OBJECTID },
-            { "State", LONG(Self->CurrentState) }
+            { "State", int(Self->CurrentState) }
          }), error) != ERR::Okay) error = ERR::Terminate;
       }
       else error = ERR::Okay;
@@ -1070,7 +1151,7 @@ static ERR SET_Host(extHTTP *Self, CSTRING Value)
 Incoming: A callback routine can be defined here for incoming data.
 
 Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the
-callback routine is `ERR Function(*HTTP, APTR Data, LONG Length)`.
+callback routine is `ERR Function(*HTTP, APTR Data, int Length)`.
 
 If an error code of `ERR::Terminate` is returned by the callback routine, the currently executing HTTP request will be
 cancelled.
@@ -1130,21 +1211,21 @@ static ERR SET_InputFile(extHTTP *Self, CSTRING Value)
 
    if (Self->InputFile) { FreeResource(Self->InputFile);  Self->InputFile = nullptr; }
 
-   Self->MultipleInput = FALSE;
+   Self->MultipleInput = false;
    Self->InputPos = 0;
    if ((Value) and (*Value)) {
       Self->InputFile = pf::strclone(Value);
 
       // Check if the path contains multiple inputs, separated by the pipe symbol.
 
-      for (LONG i=0; Self->InputFile[i]; i++) {
+      for (int i=0; Self->InputFile[i]; i++) {
          if (Self->InputFile[i] IS '"') {
             i++;
             while ((Self->InputFile[i]) and (Self->InputFile[i] != '"')) i++;
             if (!Self->InputFile[i]) break;
          }
          else if (Self->InputFile[i] IS '|') {
-            Self->MultipleInput = TRUE;
+            Self->MultipleInput = true;
             break;
          }
       }
@@ -1228,7 +1309,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    // Parse host name
 
-   LONG len;
+   int len;
    for (len=0; (str[len]) and (str[len] != ':') and (str[len] != '/'); len++);
 
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Host) != ERR::Okay) {
@@ -1244,9 +1325,15 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 
    if (*str IS ':') {
       str++;
-      if (auto i = strtol(str, nullptr, 0)) {
-         Self->Port = i;
+      long port_long = strtol(str, nullptr, 0);
+      if (port_long > 0 and port_long <= MAX_PORT_NUMBER) {
+         Self->Port = int(port_long);
          if (Self->Port IS 443) Self->Flags |= HTF::SSL;
+      }
+      else {
+         pf::Log log;
+         log.warning("Invalid port number %ld, using default 80", port_long);
+         Self->Port = 80;
       }
    }
 
@@ -1291,7 +1378,7 @@ object.
 Outgoing: Outgoing data can be managed using a function callback if this field is set.
 
 Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype
-for the callback routine is `ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)`.  For Fluid use
+for the callback routine is `ERR Function(*HTTP, APTR Buffer, int BufferSize, int *Result)`.  For Fluid use
 `function(HTTP, Buffer, BufferSize)`.
 
 Outgoing content is placed in the `Buffer` address and must not exceed the indicated `BufferSize`.  The total number of
@@ -1368,7 +1455,7 @@ A `401` status code is returned in the event of an authorisation failure.
 static ERR SET_Password(extHTTP *Self, CSTRING Value)
 {
    Self->Password.assign(Value);
-   Self->AuthPreset = TRUE;
+   Self->AuthPreset = true;
    return ERR::Okay;
 }
 
@@ -1395,28 +1482,15 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
 
    while (*Value IS '/') Value++; // Skip '/' prefix
 
-   LONG len = 0;
-   for (LONG i=0; Value[i]; i++) { // Compute the length with consideration to escape codes
-      if (Value[i] IS ' ') len += 3; // '%20'
-      else len++;
-   }
+   std::string encoded_path = encode_url_path(Value);
 
-   if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
-      LONG len = 0;
-      for (LONG i=0; Value[i]; i++) {
-         if (Value[i] IS ' ') {
-            Self->Path[len++] = '%';
-            Self->Path[len++] = '2';
-            Self->Path[len++] = '0';
-         }
-         else Self->Path[len++] = Value[i];
-      }
-      Self->Path[len] = 0;
+   if (AllocMemory(encoded_path.length() + 1, MEM::STRING|MEM::NO_CLEAR, &Self->Path) IS ERR::Okay) {
+      pf::strcopy(encoded_path, Self->Path, encoded_path.length() + 1);
 
       // Check if this path has been authenticated against the server yet by comparing it to AuthPath.  We need to
       // do this if a PUT instruction is executed against the path and we're not authenticated yet.
 
-      auto pview = std::string_view(Self->Path, len);
+      auto pview = std::string_view(Self->Path, encoded_path.length());
       auto folder_len = pview.find_last_of('/');
       if (folder_len IS std::string::npos) folder_len = 0;
 
@@ -1462,7 +1536,7 @@ static ERR SET_ProxyServer(extHTTP *Self, CSTRING Value)
 {
    if (Self->ProxyServer) { FreeResource(Self->ProxyServer); Self->ProxyServer = nullptr; }
    if ((Value) and (Value[0])) Self->ProxyServer = pf::strclone(Value);
-   Self->ProxyDefined = TRUE;
+   Self->ProxyDefined = true;
    return ERR::Okay;
 }
 
@@ -1503,7 +1577,7 @@ The buffer is null-terminated if you wish to use it as a string.
 
 *********************************************************************************************************************/
 
-static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, LONG *Elements)
+static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, int *Elements)
 {
    *Value = (uint8_t *)Self->RecvBuffer.data();
    *Elements = Self->RecvBuffer.size();

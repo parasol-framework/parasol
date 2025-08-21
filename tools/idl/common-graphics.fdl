@@ -115,8 +115,8 @@ struct("FRGB", { comment="32-bit floating point RGB colour components." }, [[
   float Alpha # Alpha component value
 ]],
 [[
-   FRGB() { };
-   FRGB(float R, float G, float B, float A = 1.0) : Red(R), Green(G), Blue(B), Alpha(A) { };
+   constexpr FRGB() noexcept = default;
+   constexpr FRGB(float R, float G, float B, float A = 1.0) noexcept : Red(R), Green(G), Blue(B), Alpha(A) { };
 ]])
 
 struct("RGB8", { type="RGB8", comment="8-bit RGB colour value." }, [[
@@ -124,6 +124,11 @@ struct("RGB8", { type="RGB8", comment="8-bit RGB colour value." }, [[
   uchar Green  # Green component value
   uchar Blue   # Blue component value
   uchar Alpha  # Alpha component value
+]],
+[[
+   constexpr RGB8() noexcept = default;
+   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept 
+      : Red(r), Green(g), Blue(b), Alpha(a) { }
 ]])
 
 struct("RGB16", { comment="16-bit RGB colour value." }, [[
@@ -167,19 +172,19 @@ struct("ClipRectangle", { comment="Generic structure for rectangular clipping." 
   int Right    # Right-most coordinate
   int Bottom   # Bottom coordinate
 ]],
-[[
-   ClipRectangle() { }
-   ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
-   ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
-   inline int width() const { return Right - Left; }
-   inline int height() const { return Bottom - Top; }
-   inline void translate(int pX, int pY) {
-      Left   += pX;
-      Top    += pY;
-      Right  += pX;
-      Bottom += pY;
-   }
-]])
+"\
+   constexpr ClipRectangle() noexcept = default;\
+   constexpr ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }\
+   constexpr ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }\
+   [[nodiscard]] constexpr int width() const { return Right - Left; }\
+   [[nodiscard]] constexpr int height() const { return Bottom - Top; }\
+   constexpr void translate(int pX, int pY) {\
+      Left   += pX;\
+      Top    += pY;\
+      Right  += pX;\
+      Bottom += pY;\
+   }\
+")
 
 struct("Edges", { comment="Generic structure for declaring edge coordinates." }, [[
   int Left     # Left-most coordinate

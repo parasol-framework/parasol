@@ -215,6 +215,47 @@ static int processing_get(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Call a function on the next message processing cycle.
+//
+// Usage: processing.delayedCall(function() ... end)
+
+static MsgHandler *delayed_call_handle;
+
+static ERR msg_handler(APTR Meta, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+{
+   if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
+
+   auto lua = (lua_State *)Meta;
+   auto prv = (prvFluid *)lua->Script->ChildPrivate;
+   int ref = *(int *)Message;
+   lua_rawgeti(lua, LUA_REGISTRYINDEX, ref); // Get the function from the registry
+   luaL_unref(lua, LUA_REGISTRYINDEX, ref); // Remove it
+   if (lua_pcall(prv->Lua, 0, 0, 0)) {
+      process_error(lua->Script, "delayedCall()");
+   }
+   return ERR::Okay;
+}
+
+static int processing_delayed_call(lua_State *Lua)
+{
+   static MSGID msgid = MSGID::NIL;
+   if (msgid IS MSGID::NIL) {
+      msgid = MSGID(AllocateID(IDTYPE::MESSAGE));
+      auto func = C_FUNCTION(msg_handler, Lua);
+      if (AddMsgHandler(msgid, &func, &delayed_call_handle) != ERR::Okay) {
+         luaL_error(Lua, "Failed to register handler for delayedCall().");
+      }
+   }
+
+   if (lua_type(Lua, 1) IS LUA_TFUNCTION) {
+      int ref = luaL_ref(Lua, LUA_REGISTRYINDEX);
+      SendMessage(msgid, MSF::NIL, &ref, sizeof(ref));
+   }
+   else luaL_error(Lua, "Expected a function to register as a message hook.");
+   return 0;
+}
+
+//********************************************************************************************************************
 // Garbage collector.
 
 static int processing_destruct(lua_State *Lua)
@@ -228,10 +269,11 @@ static int processing_destruct(lua_State *Lua)
 // Register the processing interface.
 
 static const luaL_Reg processinglib_functions[] = {
-   { "new",    processing_new },
-   { "sleep",  processing_sleep },
-   { "signal", processing_signal },
-   { "task",   processing_task },
+   { "new",     processing_new },
+   { "sleep",   processing_sleep },
+   { "signal",  processing_signal },
+   { "task",    processing_task },
+   { "delayedCall", processing_delayed_call },
    { NULL, NULL }
 };
 

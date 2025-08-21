@@ -1,11 +1,5 @@
 
-struct CaseInsensitiveMap {
-   bool operator() (const std::string &lhs, const std::string &rhs) const {
-      return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-   }
-};
-
-static std::map<std::string, std::string, CaseInsensitiveMap> glOfficial = {
+static ankerl::unordered_dense::map<std::string, std::string> glOfficial = {
    { "amp",  "&" },
    { "lt",   "<" },
    { "gt",   ">" },
@@ -13,7 +7,7 @@ static std::map<std::string, std::string, CaseInsensitiveMap> glOfficial = {
    { "quot", "\"" }
 };
 
-static std::map<std::string, UWORD, CaseInsensitiveMap> glHTML = {
+static ankerl::unordered_dense::map<std::string, UWORD> glHTML = {
    { "AElig",   0xc6 },
    { "Aacute",  0xC1 },
    { "Acirc",   0xC2 },

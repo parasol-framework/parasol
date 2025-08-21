@@ -27,7 +27,7 @@ function readFileContent(path)
    local file = obj.new('file', { path=path, flags='READ' })
    if not file then return nil end
 
-   local buffer = string.rep(' ', 4096)
+   local buffer = string.alloc(4096)
    local err, bytes = file.acRead(buffer)
    if err == ERR_Okay and bytes > 0 then
       return buffer:sub(1, bytes)

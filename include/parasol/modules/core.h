@@ -20,6 +20,9 @@
 #include <array>
 #include <charconv>
 #include <sstream>
+#include <cmath>
+#include <type_traits>
+#include "ankerl/unordered_dense.h"
 #endif
 
 #if defined(_DEBUG)
@@ -28,8 +31,9 @@
  #endif
 #endif
 
-template <class T> concept pcPointer = std::is_pointer_v<T>;
-template <class T> concept pcObject = std::is_base_of_v<Object, T>;
+// For use in requires statements
+template <typename T> concept pcPointer = std::is_pointer_v<T>;
+template <typename T> concept pcObject = std::is_base_of_v<Object, T>;
 
 #ifndef DEFINE_ENUM_FLAG_OPERATORS
 template <size_t S> struct _ENUM_FLAG_INTEGER_FOR_SIZE;
@@ -41,13 +45,20 @@ template <> struct _ENUM_FLAG_INTEGER_FOR_SIZE<8> { typedef int64_t type; };
 template <class T> struct _ENUM_FLAG_SIZED_INTEGER { typedef typename _ENUM_FLAG_INTEGER_FOR_SIZE<sizeof(T)>::type type; };
 
 #define DEFINE_ENUM_FLAG_OPERATORS(ENUMTYPE) \
-inline ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE operator ~ (ENUMTYPE a) { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
-inline ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
-inline ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
+constexpr ENUMTYPE operator | (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) | ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE operator & (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) & ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE operator ~ (ENUMTYPE a) noexcept { return ENUMTYPE(~((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a)); } \
+constexpr ENUMTYPE operator ^ (ENUMTYPE a, ENUMTYPE b) noexcept { return ENUMTYPE(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)a) ^ ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE &operator |= (ENUMTYPE &a, ENUMTYPE b) noexcept { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) |= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); } \
+constexpr ENUMTYPE &operator &= (ENUMTYPE &a, ENUMTYPE b) noexcept { return (ENUMTYPE &)(((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type &)a) &= ((_ENUM_FLAG_SIZED_INTEGER<ENUMTYPE>::type)b)); }
 #endif
+
+template<typename T>
+constexpr bool defined(T flags, T test_flag) noexcept {
+   static_assert(std::is_enum_v<T>, "Type must be an enum");
+   using underlying = std::underlying_type_t<T>;
+   return (static_cast<underlying>(flags) & static_cast<underlying>(test_flag)) != 0;
+}
 class objMetaClass;
 class objStorageDevice;
 class objFile;
@@ -1360,8 +1371,8 @@ struct FRGB {
    float Green;  // Green component value
    float Blue;   // Blue component value
    float Alpha;  // Alpha component value
-   FRGB() { };
-   FRGB(float R, float G, float B, float A = 1.0) : Red(R), Green(G), Blue(B), Alpha(A) { };
+   constexpr FRGB() noexcept = default;
+   constexpr FRGB(float R, float G, float B, float A = 1.0) noexcept : Red(R), Green(G), Blue(B), Alpha(A) { };
 };
 
 typedef struct RGB8 {
@@ -1369,6 +1380,9 @@ typedef struct RGB8 {
    uint8_t Green;  // Green component value
    uint8_t Blue;   // Blue component value
    uint8_t Alpha;  // Alpha component value
+   constexpr RGB8() noexcept = default;
+   constexpr RGB8(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) noexcept 
+      : Red(r), Green(g), Blue(b), Alpha(a) { }
 } RGB8;
 
 struct RGB16 {
@@ -1411,12 +1425,13 @@ struct ClipRectangle {
    int Top;     // Top coordinate
    int Right;   // Right-most coordinate
    int Bottom;  // Bottom coordinate
-   ClipRectangle() { }
-   ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
-   ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
-   inline int width() const { return Right - Left; }
-   inline int height() const { return Bottom - Top; }
-   inline void translate(int pX, int pY) {
+
+   constexpr ClipRectangle() noexcept = default;
+   constexpr ClipRectangle(int Value) : Left(Value), Top(Value), Right(Value), Bottom(Value) { }
+   constexpr ClipRectangle(int pLeft, int pTop, int pRight, int pBottom) : Left(pLeft), Top(pTop), Right(pRight), Bottom(pBottom) { }
+   [[nodiscard]] constexpr int width() const { return Right - Left; }
+   [[nodiscard]] constexpr int height() const { return Bottom - Top; }
+   constexpr void translate(int pX, int pY) {
       Left   += pX;
       Top    += pY;
       Right  += pX;
@@ -1508,9 +1523,9 @@ __export struct ModHeader ModHeader;
 
 #ifdef MOD_NAME
 #ifdef PARASOL_STATIC
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) static struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #else
-#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME));
+#define PARASOL_MOD(init,close,open,expunge,IDL,Structures) struct ModHeader ModHeader(init, close, open, expunge, IDL, Structures, TOSTRING(MOD_NAME), TOSTRING(MOD_NAMESPACE));
 #endif
 #define MOD_PATH ("modules:" TOSTRING(MOD_NAME))
 #else
@@ -1550,7 +1565,10 @@ template <class T> T roundup(T Num, int Alignment) {
 
 #if defined(__GNUC__) && defined(__x86__)
 
-inline int F2I(double val) {
+constexpr int F2I(double val) noexcept {
+   if (std::is_constant_evaluated()) {
+      return (int)std::round(val);
+   }
    // This will round if the CPU is kept in its default rounding mode
    int ret;
    asm ("fistpl %0" : "=m" (ret) : "t" (val) : "st");
@@ -1566,7 +1584,7 @@ inline int F2I(double val) {
 
 #endif
 
-inline int F2T(double val) // For numbers no larger than 16 bit, standard (int) is faster than F2T().
+constexpr int F2T(double val) noexcept // For numbers no larger than 16 bit, standard (int) is faster than F2T().
 {
    if ((val > 32767.0) or (val < -32767.0)) return((int)val);
    else {
@@ -1725,13 +1743,14 @@ struct FieldValue {
 
 class FloatRect {
    public:
-   double X;      // Left-most coordinate
-   double Y;      // Top coordinate
-   double Width;  // Right-most coordinate
-   double Height; // Bottom coordinate
-   FloatRect() { }
-   FloatRect(double Value) : X(Value), Y(Value), Width(Value), Height(Value) { }
-   FloatRect(double pX, double pY, double pWidth, double pHeight) : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
+   double X, Y, Width, Height;
+   constexpr FloatRect() noexcept = default;
+   constexpr FloatRect(double Value) noexcept : X(Value), Y(Value), Width(Value), Height(Value) { }
+   constexpr FloatRect(double pX, double pY, double pWidth, double pHeight) noexcept : X(pX), Y(pY), Width(pWidth), Height(pHeight) { }
+   constexpr double left() const noexcept { return X; }
+   constexpr double top() const noexcept { return Y; }
+   constexpr double right() const noexcept { return X + Width; }
+   constexpr double bottom() const noexcept { return Y + Height; }
 };
 
 }
@@ -1801,6 +1820,7 @@ struct ModHeader {
    ERR (*Open)(OBJECTPTR);                        // A function that will be called each time the module is opened.
    ERR (*Expunge)(void);                          // Reference to an expunge function to terminate the module.
    CSTRING Name;                                  // Name of the module
+   CSTRING Namespace;                             // A reserved system-wide namespace for function names.
    STRUCTS *StructDefs;
    class RootModule *Root;
    ModHeader(ERR (*pInit)(OBJECTPTR, struct CoreBase *),
@@ -1809,7 +1829,8 @@ struct ModHeader {
       ERR (*pExpunge)(void),
       CSTRING pDef,
       STRUCTS *pStructs,
-      CSTRING pName) {
+      CSTRING pName,
+      CSTRING pNamespace) {
       Flags         = MHF::DEFAULT;
       Definitions   = pDef;
       StructDefs    = pStructs;
@@ -1818,6 +1839,7 @@ struct ModHeader {
       Open          = pOpen;
       Expunge       = pExpunge;
       Name          = pName;
+      Namespace     = pNamespace;
       Root          = NULL;
    }
 };
@@ -1848,12 +1870,12 @@ struct SystemState {
 struct Unit {
    double   Value;  // The unit value.
    uint32_t Type;   // Additional type information
-   Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
-   Unit() : Value(0), Type(0) { }
-   Unit(std::string_view String) { read(String); }
-   operator double() const { return Value; }
-   inline void set(const double pValue) { Value = pValue; }
-   inline bool scaled() { return (Type & FD_SCALED) ? true : false; }
+   constexpr Unit(double pValue, int pType = FD_DOUBLE) : Value(pValue), Type(pType) { }
+   constexpr Unit() : Value(0), Type(0) { }
+   explicit Unit(std::string_view String) { read(String); }
+   constexpr operator double() const { return Value; }
+   constexpr void set(const double pValue) { Value = pValue; }
+   bool scaled() { return (Type & FD_SCALED) ? true : false; }
    inline void read(std::string_view String) {
       const auto start = String.find_first_not_of(" \n\r\t");
       if (start != std::string::npos) String.remove_prefix(start);
@@ -1913,11 +1935,10 @@ typedef struct MemInfo {
 } MEMINFO;
 
 struct MsgHandler {
-   struct MsgHandler * Prev;    // Previous message handler in the chain
-   struct MsgHandler * Next;    // Next message handler in the chain
-   APTR     Custom;             // Custom pointer to send to the message handler
-   FUNCTION Function;           // Call this function
-   MSGID    MsgType;            // Type of message being filtered
+   struct MsgHandler * Prev;    // Previous message handler in the chain.
+   struct MsgHandler * Next;    // Next message handler in the chain.
+   FUNCTION Function;           // Call this function to handle the message.
+   MSGID    MsgType;            // Type of message being filtered.
 };
 
 struct CacheFile {
@@ -1964,7 +1985,7 @@ struct CompressedItem {
    FL      Flags;                   // FL flags
    struct DateTime Created;         // Date and time of the file's creation.
    struct DateTime Modified;        // Date and time last modified.
-    std::unordered_map<std::string, std::string> *Tags;
+    ankerl::unordered_dense::map<std::string, std::string> *Tags;
 };
 
 struct FileInfo {
@@ -1978,7 +1999,7 @@ struct FileInfo {
    int     GroupID;           // Group ID (Unix systems only).
    struct DateTime Created;   // The date/time of the file's creation.
    struct DateTime Modified;  // The date/time of the last file modification.
-    std::unordered_map<std::string, std::string> *Tags;
+    ankerl::unordered_dense::map<std::string, std::string> *Tags;
 };
 
 struct DirInfo {
@@ -2122,7 +2143,7 @@ struct CoreBase {
    ERR (*_DeleteVolume)(CSTRING Name);
    ERR (*_MoveFile)(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
    ERR (*_UpdateMessage)(int Message, MSGID Type, APTR Data, int Size);
-   ERR (*_AddMsgHandler)(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
+   ERR (*_AddMsgHandler)(MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
    ERR (*_QueueAction)(AC Action, OBJECTID Object, APTR Args);
    int64_t (*_PreciseTime)(void);
    ERR (*_OpenDir)(CSTRING Path, RDF Flags, struct DirInfo **Info);
@@ -2216,7 +2237,7 @@ inline ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CS
 inline ERR DeleteVolume(CSTRING Name) { return CoreBase->_DeleteVolume(Name); }
 inline ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback) { return CoreBase->_MoveFile(Source,Dest,Callback); }
 inline ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size) { return CoreBase->_UpdateMessage(Message,Type,Data,Size); }
-inline ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(Custom,MsgType,Routine,Handle); }
+inline ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle) { return CoreBase->_AddMsgHandler(MsgType,Routine,Handle); }
 inline ERR QueueAction(AC Action, OBJECTID Object, APTR Args) { return CoreBase->_QueueAction(Action,Object,Args); }
 inline int64_t PreciseTime(void) { return CoreBase->_PreciseTime(); }
 inline ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info) { return CoreBase->_OpenDir(Path,Flags,Info); }
@@ -2304,7 +2325,7 @@ extern "C" ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label
 extern "C" ERR DeleteVolume(CSTRING Name);
 extern "C" ERR MoveFile(CSTRING Source, CSTRING Dest, FUNCTION *Callback);
 extern "C" ERR UpdateMessage(int Message, MSGID Type, APTR Data, int Size);
-extern "C" ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
+extern "C" ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, struct MsgHandler **Handle);
 extern "C" ERR QueueAction(AC Action, OBJECTID Object, APTR Args);
 extern "C" int64_t PreciseTime(void);
 extern "C" ERR OpenDir(CSTRING Path, RDF Flags, struct DirInfo **Info);
@@ -2650,6 +2671,23 @@ struct Object { // Must be 64-bit aligned
    std::atomic_int ThreadID;     // Managed by locking functions.  Atomic due to volatility.
    char Name[MAX_NAME_LEN];      // The name of the object.  NOTE: This value can be adjusted to ensure that the struct is always 8-bit aligned.
 
+   // NB: This constructor is called by NewObject(), no need to call it manually from client code.
+
+   Object() : NotifyFlags(0), ThreadPending(0), Queue(0), SleepQueue(0), ThreadID(0) {
+      Class = nullptr;
+      ChildPrivate = nullptr;
+      CreatorMeta = nullptr;
+      Owner = nullptr;
+      NotifyFlags = 0;
+      ThreadPending = 0;
+      Queue = 0;
+      SleepQueue = 0;
+      ActionDepth = 0;
+      UID = 0;
+      Flags = NF::NIL;
+      Name[0] = '\0';
+   }
+
    inline bool initialised() { return (Flags & NF::INITIALISED) != NF::NIL; }
    inline bool defined(NF pFlags) { return (Flags & pFlags) != NF::NIL; }
    inline bool isSubClass();
@@ -2686,6 +2724,10 @@ struct Object { // Must be 64-bit aligned
       // Prefer to use ReleaseObject() if there are threads that need to be woken
       if ((SleepQueue > 0) or defined(NF::FREE_ON_UNLOCK)) ReleaseObject(this);
       else --Queue;
+   }
+
+   inline bool locked() {
+      return Queue > 0;
    }
 
    inline bool hasOwner(OBJECTID ID) { // Return true if ID has ownership.
@@ -2743,7 +2785,7 @@ struct Object { // Must be 64-bit aligned
       }
       else return ERR::UnsupportedField;
    }
-   
+
    inline ERR set(FIELD FieldID, const FRGB &Value) {
       Object *target;
       if (auto field = FindField(this, FieldID, &target)) {
@@ -3329,7 +3371,7 @@ inline ScopedObjectAccess::~ScopedObjectAccess() {
 inline void ScopedObjectAccess::release() {
    if (error IS ERR::Okay) {
       obj->unlock();
-      error = ERR::NotLocked;
+      error = ERR::ResourceNotLocked;
    }
 }
 

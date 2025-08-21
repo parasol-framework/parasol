@@ -34,12 +34,14 @@ ExternalProject_Add(libffi-3.3
 if (MSVC)
    set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
 
+   # NOTE: Binaries are built amongst the source files when building with MSVC
+
    ExternalProject_Add(
       luajit
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE TRUE
-      BUILD_ALWAYS FALSE
+      BUILD_ALWAYS TRUE
       BUILD_COMMAND "msvcbuild.bat" "static"
       BUILD_BYPRODUCTS ${LUAJIT_LINK}
       INSTALL_COMMAND ""
@@ -50,7 +52,7 @@ else ()
       luajit
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
-      BUILD_ALWAYS FALSE
+      BUILD_ALWAYS TRUE
       BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
       INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
       BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
@@ -65,7 +67,7 @@ endif ()
 
 add_library (${MOD})
 
-set_module_defaults (${MOD})
+set_module_defaults (${MOD} "Fl")
 
 add_dependencies (${MOD} libffi-3.3 luajit)
 
@@ -92,3 +94,5 @@ flute_test(fluid_processing "${CMAKE_CURRENT_SOURCE_DIR}/tests/processing.fluid"
 flute_test(fluid_struct "${CMAKE_CURRENT_SOURCE_DIR}/tests/struct.fluid")
 flute_test(fluid_threads "${CMAKE_CURRENT_SOURCE_DIR}/tests/action_threads.fluid")
 flute_test(fluid_xml "${CMAKE_CURRENT_SOURCE_DIR}/tests/to_xml.fluid")
+flute_test(fluid_strings "${CMAKE_CURRENT_SOURCE_DIR}/tests/strings.fluid")
+flute_test(fluid_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/math.fluid")

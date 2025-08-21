@@ -70,7 +70,7 @@ ERR named_struct_to_table(lua_State *Lua, std::string_view StructName, CPTR Addr
    }
    else if (StructName.starts_with("KeyValue")) {
       // A struct name of 'KeyValue' allows the KEYVALUE type to be used for building structures dynamically.
-      // std::map<std::string, std::string>
+      // ankerl::unordered_dense::map<std::string, std::string>
 
       return keyvalue_to_table(Lua, (const KEYVALUE *)Address);
    }
