@@ -1,16 +1,21 @@
 --[[
 Simple HTTP server for serving static files from a folder.
 
-Usage: parasol.exe http_server.fluid folder=path/to/files port=8080
+Usage: parasol.exe http_server.fluid folder=path/to/files port=8080 [options...]
 
 If a config file is stored at user:config/http_server_cfg.fluid then it will be loaded automatically.  Options
-can still be overrided via the command-line, or you can refer to another file via the config
+can still be overridden via the command-line, or you can refer to another file via the config parameter.
 
 Parameters:
 
-  config - Refers to a Fluid config file with the options assigned to a glOptions table.
-  folder - The folder containing HTML pages and static files to serve
-  port   - The port number to listen on (default: 8080)
+  config    - Refers to a Fluid config file with the options assigned to a glOptions table.
+  folder    - The folder containing HTML pages and static files to serve
+  port      - The port number to listen on (default: 8080)
+  verbose   - Enable verbose logging (true/false, default: false)
+  timeout   - Request timeout in seconds (default: 30)
+  autoindex - Enable automatic directory listing (true/false, default: true)
+
+Index files (checked in order): index.html, index.htm, default.html, default.htm
 
 --]]
 
@@ -22,10 +27,35 @@ glPath = glSelf.workingPath
 local glConfigFile = arg('config')
 local glServer = nil
 
+----------------------------------------------------------------------------------------------------------------------
+
+function validatePort(port)
+   local portNum = tonumber(port)
+   if not portNum or portNum < 1 or portNum > 65535 then
+      return false
+   end
+   return true
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
 glOptions = {
-   port   = 8080,
-   folder = '.'
+   port            = 8080,
+   folder          = '.',
+   maxRequestSize  = 65536,  -- 64KB max request size
+   fileChunkSize   = 65536,  -- 64KB chunks for file streaming
+   timeout         = 30,     -- 30 second timeout
+   verbose         = false,  -- Enable verbose logging
+   indexFiles      = {'index.html', 'index.htm', 'default.html', 'default.htm'}, -- Default index files to serve
+   autoIndex       = true,   -- Enable automatic directory listing if no index file found
+   rateLimit       = 100,    -- Max requests per minute per IP
+   rateLimitWindow = 60,     -- Rate limit window in seconds
+   enableCSP       = true    -- Enable Content-Security-Policy headers
 }
+
+-- Rate limiting storage
+glRateLimits = {}
+glLastCleanup = 0
 
    if not glConfigFile then glConfigFile = 'user:config/http_server_cfg.fluid' end
 
@@ -35,8 +65,102 @@ glOptions = {
       end
    end
 
-   if arg('port') then glOptions.port = arg('port') end
-   if arg('folder') then glOptions.folder = arg('folder') end
+   if arg('port') then
+      if validatePort(arg('port')) then
+         glOptions.port = tonumber(arg('port'))
+      else
+         error('Invalid port number: ' .. arg('port') .. '. Port must be between 1 and 65535.')
+      end
+   end
+
+   if arg('folder') then 
+      -- Validate folder input
+      local folder = arg('folder')
+      if folder:find('%.%.') or folder:find('^~') then
+         error('Invalid folder path: security violation')
+      end
+      glOptions.folder = folder
+   end
+   
+   if arg('verbose') then 
+      local verbose = arg('verbose'):lower()
+      glOptions.verbose = (verbose == 'true' or verbose == '1')
+   end
+   
+   if arg('timeout') then 
+      local timeout = tonumber(arg('timeout'))
+      if timeout and (timeout > 0) and (timeout <= 300) then
+         glOptions.timeout = timeout
+      else
+         error('Invalid timeout: must be between 1 and 300 seconds')
+      end
+   end
+   
+   if arg('autoindex') then 
+      local autoindex = arg('autoindex'):lower()
+      glOptions.autoIndex = (autoindex == 'true' or autoindex == '1')
+   end
+   
+   if arg('ratelimit') then
+      local limit = tonumber(arg('ratelimit'))
+      if limit and (limit >= 0) and (limit <= 1000) then
+         glOptions.rateLimit = limit
+      end
+   end
+
+----------------------------------------------------------------------------------------------------------------------
+
+-- Canonicalize path to prevent directory traversal attacks
+function canonicalizePath(path)
+   if not path then return nil end
+   
+   -- Remove any null bytes
+   path = path:gsub('%z', '')
+   
+   -- Decode URL encoding first
+   path = urlDecode(path)
+   
+   -- Remove query parameters and fragments
+   path = path:match("([^?#]*)")
+   
+   -- Normalize slashes
+   path = path:gsub('\\', '/')
+   path = path:gsub('/+', '/')
+   
+   -- Split into components
+   local components = {}
+   for component in path:gmatch('[^/]+') do
+      if component == '..' then
+         -- Attempt to go up - block this
+         logMessage('Security: Blocked directory traversal attempt with ..')
+         return nil
+      elseif component != '.' and component != '' then
+         table.insert(components, component)
+      end
+   end
+   
+   -- Rebuild clean path
+   local cleanPath = '/' .. table.concat(components, '/')
+   if path:sub(-1) == '/' and cleanPath != '/' then
+      cleanPath = cleanPath .. '/'
+   end
+   
+   return cleanPath
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function urlDecode(str)
+   -- Decode percent-encoded characters in URLs
+   if not str then return str end
+
+   str = str:gsub('+', ' ') -- Replace + with space
+   str = str:gsub('%%(%x%x)', function(hex)
+      return string.char(tonumber(hex, 16))
+   end)
+
+   return str
+end
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -49,23 +173,111 @@ function getMimeType(filename)
    extension = extension:lower()
 
    local mimeTypes = {
+      -- Text
       html = 'text/html',
       htm = 'text/html',
       css = 'text/css',
       js = 'application/javascript',
+      mjs = 'application/javascript',
       json = 'application/json',
       xml = 'application/xml',
       txt = 'text/plain',
+      md = 'text/markdown',
+      csv = 'text/csv',
+
+      -- Images
       png = 'image/png',
       jpg = 'image/jpeg',
       jpeg = 'image/jpeg',
       gif = 'image/gif',
       svg = 'image/svg+xml',
       ico = 'image/x-icon',
-      pdf = 'application/pdf'
+      webp = 'image/webp',
+      bmp = 'image/bmp',
+      tiff = 'image/tiff',
+
+      -- Documents
+      pdf = 'application/pdf',
+      doc = 'application/msword',
+      docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+
+      -- Fonts
+      woff = 'font/woff',
+      woff2 = 'font/woff2',
+      ttf = 'font/ttf',
+      otf = 'font/otf',
+
+      -- Audio/Video
+      mp3 = 'audio/mpeg',
+      wav = 'audio/wav',
+      ogg = 'audio/ogg',
+      mp4 = 'video/mp4',
+      webm = 'video/webm',
+      avi = 'video/x-msvideo',
+
+      -- Archives
+      zip = 'application/zip',
+      tar = 'application/x-tar',
+      gz = 'application/gzip'
    }
 
    return mimeTypes[extension] or 'application/octet-stream'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function logMessage(message)
+   if glOptions.verbose then
+      print('[' .. timestamp() .. '] ' .. message)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function readRequestWithTimeout(client, maxSize, timeoutSeconds)
+   local buffer = string.alloc(1024) -- Start with 1KB buffer
+   local requestData = ''
+   local totalRead = 0
+   local startTime = mSys.PreciseTime()
+
+   while totalRead < maxSize do
+      local err, bytesRead = client.acRead(buffer, 1024)
+
+      if err != ERR_Okay then
+         if err == ERR_TimeOut then
+            logMessage('Request timeout after ' .. (mSys.PreciseTime() - startTime)/1000000 .. ' seconds')
+            return nil, 'timeout'
+         else
+            logMessage('Failed to read request: ' .. mSys.GetErrorMsg(err))
+            return nil, 'read_error'
+         end
+      end
+
+      if bytesRead == 0 then
+         break -- No more data
+      end
+
+      requestData = requestData .. buffer:sub(1, bytesRead)
+      totalRead = totalRead + bytesRead
+
+      -- Check for end of HTTP headers (\r\n\r\n)
+      if requestData:find('\r\n\r\n') then
+         break
+      end
+
+      -- Check timeout
+      if (mSys.PreciseTime() - startTime)/1000000 > timeoutSeconds then
+         logMessage('Request timeout exceeded')
+         return nil, 'timeout'
+      end
+   end
+
+   if totalRead >= maxSize then
+      logMessage('Request too large: ' .. totalRead .. ' bytes')
+      return nil, 'too_large'
+   end
+
+   return requestData, nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -100,7 +312,8 @@ function parseHttpRequest(requestData)
       method = method,
       path = path,
       version = version,
-      headers = headers
+      headers = headers,
+      range = headers['range'] -- Store range header for partial content
    }
 end
 
@@ -115,6 +328,22 @@ function sendHttpResponse(client, statusCode, statusText, headers, body)
 
    if not headers['connection'] then
       headers['connection'] = 'close'
+   end
+   
+   -- Add security headers
+   if glOptions.enableCSP then
+      if not headers['content-security-policy'] then
+         headers['content-security-policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      end
+      if not headers['x-content-type-options'] then
+         headers['x-content-type-options'] = 'nosniff'
+      end
+      if not headers['x-frame-options'] then
+         headers['x-frame-options'] = 'SAMEORIGIN'
+      end
+      if not headers['referrer-policy'] then
+         headers['referrer-policy'] = 'strict-origin-when-cross-origin'
+      end
    end
 
    for name, value in pairs(headers) do
@@ -135,13 +364,38 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function serveFile(client, filePath)
+function createErrorPage(statusCode, statusText, message, details)
+   local html = '<!DOCTYPE html>\n<html>\n<head>\n'
+   html = html .. '<meta charset="utf-8">\n'
+   html = html .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
+   html = html .. '<style>\n'
+   html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n'
+   html = html .. '.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n'
+   html = html .. 'h1 { color: #d32f2f; margin-top: 0; }\n'
+   html = html .. 'p { color: #666; line-height: 1.6; }\n'
+   html = html .. '.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }\n'
+   html = html .. '</style>\n'
+   html = html .. '</head>\n<body>\n'
+   html = html .. '<div class="error-container">\n'
+   html = html .. '<h1>' .. statusCode .. ' ' .. statusText .. '</h1>\n'
+   html = html .. '<p>' .. message .. '</p>\n'
+   if details then
+      html = html .. '<div class="details">' .. details .. '</div>\n'
+   end
+   html = html .. '<p><a href="/">Return to home</a></p>\n'
+   html = html .. '</div>\n</body>\n</html>\n'
+   return html
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+function serveFile(client, filePath, request)
    local file
    catch(function()
       file = obj.new('file', { path = filePath, flags = 'READ' })
    end)
    if not file then
-      local errorBody = "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>"
+      local errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. filePath)
       sendHttpResponse(client, 404, "Not Found", {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -149,22 +403,68 @@ function serveFile(client, filePath)
    end
 
    local fileSize = file.size
-   local buffer = string.alloc(fileSize)
-   local err, bytesRead = file.acRead(buffer)
-   file.free()
-
-   if err != ERR_Okay or bytesRead != fileSize then
-      local errorBody = "<html><body><h1>500 Internal Server Error</h1><p>Error reading file.</p></body></html>"
-      sendHttpResponse(client, 500, "Internal Server Error", {
-         ['content-type'] = 'text/html'
-      }, errorBody)
-      return
+   
+   -- Stream large files in chunks
+   if fileSize > glOptions.fileChunkSize then
+      local mimeType = getMimeType(filePath)
+      sendHttpResponse(client, 200, "OK", {
+         ['content-type'] = mimeType,
+         ['content-length'] = tostring(fileSize),
+         ['accept-ranges'] = 'bytes'
+      })
+      
+      local buffer = string.alloc(glOptions.fileChunkSize)
+      local totalSent = 0
+      
+      while totalSent < fileSize do
+         local toRead = math.min(glOptions.fileChunkSize, fileSize - totalSent)
+         local err, bytesRead = file.acRead(buffer, toRead)
+         
+         if err != ERR_Okay then
+            logMessage('Error streaming file: ' .. mSys.GetErrorMsg(err))
+            file.free()
+            return
+         end
+         
+         if bytesRead > 0 then
+            err = client.acWrite(buffer:sub(1, bytesRead))
+            if err != ERR_Okay then
+               logMessage('Error writing to client: ' .. mSys.GetErrorMsg(err))
+               file.free()
+               return
+            end
+            totalSent = totalSent + bytesRead
+         else
+            break
+         end
+      end
+      
+      file.free()
+   else
+      -- Small files: read all at once
+      local buffer = string.alloc(fileSize)
+      local err, bytesRead = file.acRead(buffer)
+      
+      if err != ERR_Okay then
+         file.free()
+         local errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
+         sendHttpResponse(client, 500, "Internal Server Error", {
+            ['content-type'] = 'text/html'
+         }, errorBody)
+         return
+      end
+      
+      file.free()
+      
+      if bytesRead < fileSize then
+         logMessage('Warning: Read ' .. bytesRead .. ' bytes, expected ' .. fileSize)
+      end
+      
+      local mimeType = getMimeType(filePath)
+      sendHttpResponse(client, 200, "OK", {
+         ['content-type'] = mimeType
+      }, buffer:sub(1, bytesRead))
    end
-
-   local mimeType = getMimeType(filePath)
-   sendHttpResponse(client, 200, "OK", {
-      ['content-type'] = mimeType
-   }, buffer:sub(1, bytesRead))
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -191,9 +491,22 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function generateDirectoryListing(dirPath, urlPath)
+   -- HTML escape function for security
+   local function escapeHtml(str)
+      if not str then return '' end
+      str = tostring(str)
+      str = str:gsub('&', '&amp;')
+      str = str:gsub('<', '&lt;')
+      str = str:gsub('>', '&gt;')
+      str = str:gsub('"', '&quot;')
+      str = str:gsub("'", '&#39;')
+      return str
+   end
+   
+   local safeUrlPath = escapeHtml(urlPath)
    local html = '<!DOCTYPE html>\n<html>\n<head>\n'
    html = html .. '<meta charset="utf-8">\n'
-   html = html .. '<title>Directory listing for ' .. urlPath .. '</title>\n'
+   html = html .. '<title>Directory listing for ' .. safeUrlPath .. '</title>\n'
    html = html .. '<style>\n'
    html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; }\n'
    html = html .. 'h1 { color: #333; }\n'
@@ -207,7 +520,7 @@ function generateDirectoryListing(dirPath, urlPath)
    html = html .. '.size { text-align: right; }\n'
    html = html .. '</style>\n'
    html = html .. '</head>\n<body>\n'
-   html = html .. '<h1>Directory listing for ' .. urlPath .. '</h1>\n'
+   html = html .. '<h1>Directory listing for ' .. safeUrlPath .. '</h1>\n'
    html = html .. '<table>\n'
    html = html .. '<thead>\n<tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>\n</thead>\n'
    html = html .. '<tbody>\n'
@@ -224,25 +537,35 @@ function generateDirectoryListing(dirPath, urlPath)
    local err, dir = mSys.OpenDir(dirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
    if err == ERR_Okay then
       local count = 0
-      while mSys.ScanDir(dir) == ERR_Okay do
+      local maxEntries = 1000 -- Limit directory entries to prevent DoS
+      while mSys.ScanDir(dir) == ERR_Okay and count < maxEntries do
          local info = dir.info
          local name = info.Name
-         local isFolder = bit.band(info.flags, RDF_FOLDER) != 0
-         local size = isFolder and '-' or formatFileSize(info.size)
-         local modTime = printableTime(info.modified)
+         
+         -- Skip hidden files and system files for security
+         if name:sub(1,1) != '.' then
+            local isFolder = bit.band(info.flags, RDF_FOLDER) != 0
+            local size = isFolder and '-' or formatFileSize(info.size)
+            local modTime = printableTime(info.modified)
 
-         local href = urlPath
-         href = href .. name
-         if isFolder then href = href .. '/' end
+            local href = urlPath
+            href = href .. name
+            if isFolder then href = href .. '/' end
 
-         local displayName = name
+         local displayName = escapeHtml(name)
          if isFolder then displayName = displayName .. '/' end
 
+         local safeHref = escapeHtml(href)
          local cssClass = isFolder and ' class="dir"' or ''
-         html = html .. '<tr><td><a href="' .. href .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
-         html = html .. '<td class="size">' .. size .. '</td>'
-         html = html .. '<td>' .. modTime .. '</td></tr>\n'
-         count = count + 1
+         html = html .. '<tr><td><a href="' .. safeHref .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
+            html = html .. '<td class="size">' .. escapeHtml(size) .. '</td>'
+            html = html .. '<td>' .. escapeHtml(modTime) .. '</td></tr>\n'
+            count = count + 1
+         end
+      end
+      
+      if count >= maxEntries then
+         html = html .. '<tr><td colspan="3"><em>Directory listing truncated at ' .. maxEntries .. ' entries</em></td></tr>\n'
       end
    else
       print('Failed to open folder ' .. nz(dirPath,'NIL'))
@@ -256,20 +579,32 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function serveDirectory(client, dirPath, urlPath)
-   local indexPath = dirPath .. 'index.html'
-
-   local err, type = mSys.AnalysePath(indexPath)
-   if type == LOC_FILE then
-      serveFile(client, indexPath)
-      return
+function serveDirectory(client, dirPath, urlPath, request)
+   -- Check for configured index files in order
+   for _, indexFile in ipairs(glOptions.indexFiles) do
+      local indexPath = dirPath .. indexFile
+      local err, type = mSys.AnalysePath(indexPath)
+      if type == LOC_FILE then
+         logMessage('Serving index file: ' .. indexFile)
+         serveFile(client, indexPath, request)
+         return
+      end
    end
 
-   -- Generate directory listing
-   local html = generateDirectoryListing(dirPath, urlPath)
-   sendHttpResponse(client, 200, 'OK', {
-      ['content-type'] = 'text/html; charset=utf-8'
-   }, html)
+   -- If no index file found and auto-indexing is enabled, generate directory listing
+   if glOptions.autoIndex then
+      logMessage('No index file found, generating directory listing for: ' .. urlPath)
+      local html = generateDirectoryListing(dirPath, urlPath)
+      sendHttpResponse(client, 200, 'OK', {
+         ['content-type'] = 'text/html; charset=utf-8'
+      }, html)
+   else
+      -- Auto-indexing disabled, return 403 Forbidden
+      local errorBody = createErrorPage(403, 'Forbidden', 'Directory listing is disabled.', 'Path: ' .. urlPath)
+      sendHttpResponse(client, 403, 'Forbidden', {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+   end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -282,20 +617,103 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-function handleRequest(client)
-   local buffer = string.alloc(4096)
-   local err, bytesRead = client.acRead(buffer)
+-- Check rate limiting for client IP
+function checkRateLimit(clientIP)
+   if not glOptions.rateLimit or glOptions.rateLimit <= 0 then
+      return true -- Rate limiting disabled
+   end
+   
+   local currentTime = mSys.PreciseTime() / 1000000 -- Convert to seconds
+   
+   -- Clean up old entries every minute
+   if currentTime - glLastCleanup > 60 then
+      local cutoff = currentTime - glOptions.rateLimitWindow
+      for ip, data in pairs(glRateLimits) do
+         local newRequests = {}
+         for _, timestamp in ipairs(data.requests) do
+            if timestamp > cutoff then
+               table.insert(newRequests, timestamp)
+            end
+         end
+         if #newRequests == 0 then
+            glRateLimits[ip] = nil
+         else
+            data.requests = newRequests
+         end
+      end
+      glLastCleanup = currentTime
+   end
+   
+   -- Check this client's rate
+   if not glRateLimits[clientIP] then
+      glRateLimits[clientIP] = { requests = {} }
+   end
+   
+   local clientData = glRateLimits[clientIP]
+   local cutoff = currentTime - glOptions.rateLimitWindow
+   
+   -- Count recent requests
+   local recentRequests = {}
+   for _, timestamp in ipairs(clientData.requests) do
+      if timestamp > cutoff then
+         table.insert(recentRequests, timestamp)
+      end
+   end
+   
+   if #recentRequests >= glOptions.rateLimit then
+      logMessage('Rate limit exceeded for ' .. clientIP)
+      return false
+   end
+   
+   -- Add current request
+   table.insert(recentRequests, currentTime)
+   clientData.requests = recentRequests
+   
+   return true
+end
 
-   if err != ERR_Okay then
-      print('Failed to read request: ' .. mSys.GetErrorMsg(err))
+----------------------------------------------------------------------------------------------------------------------
+
+function handleRequest(client)
+   -- Get client IP for rate limiting (simplified - in production would need proper IP extraction)
+   local clientIP = tostring(client)
+   
+   -- Check rate limit
+   if not checkRateLimit(clientIP) then
+      local errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. glOptions.rateLimit .. ' requests per ' .. glOptions.rateLimitWindow .. ' seconds')
+      sendHttpResponse(client, 429, "Too Many Requests", {
+         ['content-type'] = 'text/html',
+         ['retry-after'] = tostring(glOptions.rateLimitWindow)
+      }, errorBody)
+      return
+   end
+   -- Read request with size limits and timeout
+   local requestData, error = readRequestWithTimeout(client, glOptions.maxRequestSize, glOptions.timeout)
+
+   if not requestData then
+      local errorMsg, details
+      if error == 'timeout' then
+         errorMsg = 'Request timeout - the server did not receive a complete request within the timeout period.'
+         details = 'Timeout: ' .. glOptions.timeout .. ' seconds'
+      elseif error == 'too_large' then
+         errorMsg = 'Request too large - the request exceeds the maximum allowed size.'
+         details = 'Maximum size: ' .. glOptions.maxRequestSize .. ' bytes'
+      else
+         errorMsg = 'Error reading request from client.'
+         details = 'Error type: ' .. (error or 'unknown')
+      end
+
+      local errorBody = createErrorPage(400, 'Bad Request', errorMsg, details)
+      sendHttpResponse(client, 400, "Bad Request", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
       return
    end
 
-   local requestData = buffer:sub(1, bytesRead)
    local request = parseHttpRequest(requestData)
 
    if not request then
-      local errorBody = "<html><body><h1>400 Bad Request</h1><p>Invalid HTTP request.</p></body></html>"
+      local errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
       sendHttpResponse(client, 400, "Bad Request", {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -303,37 +721,56 @@ function handleRequest(client)
    end
 
    print('[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path)
+   logMessage('Request from client: ' .. request.method .. ' ' .. request.path)
 
-   -- Only handle GET requests
-   if request.method != 'GET' then
-      local errorBody = "<html><body><h1>405 Method Not Allowed</h1><p>Only GET requests are supported.</p></body></html>"
+   -- Handle GET and HEAD requests
+   if request.method != 'GET' and request.method != 'HEAD' then
+      local errorBody = createErrorPage(405, 'Method Not Allowed', 'Only GET and HEAD requests are supported.', 'Requested method: ' .. request.method)
       sendHttpResponse(client, 405, "Method Not Allowed", {
          ['content-type'] = 'text/html',
-         ['allow'] = 'GET'
+         ['allow'] = 'GET, HEAD'
       }, errorBody)
       return
    end
 
-   -- Remove query parameters and decode URL
-   local urlPath = request.path:match("([^?]*)")
-
-   -- Security: prevent directory traversal
-   if urlPath:find("%.%.") then
-      local errorBody = "<html><body><h1>403 Forbidden</h1><p>Access denied.</p></body></html>"
-      sendHttpResponse(client, 403, "Forbidden", {
+   -- Canonicalize and validate path
+   local urlPath = canonicalizePath(request.path)
+   if not urlPath then
+      local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
+      logMessage('Security: Invalid path blocked: ' .. request.path)
+      sendHttpResponse(client, 400, "Bad Request", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
    end
+   
+   -- Validate path doesn't contain dangerous patterns
+   local dangerous = {
+      '%.%./', '%.%.\\', -- Directory traversal
+      '^%.', '/%.', -- Hidden files
+      '%.exe$', '%.bat$', '%.cmd$', '%.ps1$', -- Executables
+      '%.dll$', '%.so$', -- Libraries
+      '%.ini$', '%.conf$', '%.config$', -- Config files
+   }
+   
+   for _, pattern in ipairs(dangerous) do
+      if urlPath:find(pattern) then
+         local errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. urlPath)
+         logMessage('Security: Blocked access to dangerous path: ' .. urlPath)
+         sendHttpResponse(client, 403, "Forbidden", {
+            ['content-type'] = 'text/html'
+         }, errorBody)
+         return
+      end
+   end
 
    local filePath = glOptions.folder .. urlPath
-   filePath = filePath:gsub('//', '/')
 
    -- Check if path exists and determine if it's a file or directory
 
    local err, fileType = mSys.AnalysePath(filePath)
    if err != ERR_Okay then
-      local errorBody = "<html><body><h1>404 Not Found</h1><p>The requested resource was not found.</p></body></html>"
+      local errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. urlPath .. '\nResolved to: ' .. filePath)
       sendHttpResponse(client, 404, "Not Found", {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -348,18 +785,18 @@ function handleRequest(client)
          })
          return
       end
-      serveDirectory(client, filePath, urlPath)
+      serveDirectory(client, filePath, urlPath, request)
    else
-      serveFile(client, filePath)
+      serveFile(client, filePath, request)
    end
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
 function startServer()
-   print('Starting HTTP server on port ' .. glOptions.port)
+   print('\nStarting HTTP server on port ' .. glOptions.port)
    print('Serving files from: ' .. glOptions.folder)
-   print('Press Ctrl+C to stop the server')
+   print('Press Ctrl+C to stop the server\n')
 
    glServer = obj.new('netsocket', {
       port = glOptions.port,
@@ -390,13 +827,31 @@ end
 
    if not glOptions.folder then
       print('Error: folder parameter is required')
-      print('Usage: parasol.exe http_server.fluid folder=path/to/files port=8080')
+      print('Usage: parasol.exe http_server.fluid folder=path/to/files port=8080 [verbose=true] [timeout=30]')
       return
+   end
+
+   -- Convert to absolute path
+   local err, resolvedPath = mSys.ResolvePath(glOptions.folder)
+   if err == ERR_Okay and resolvedPath then
+      glOptions.folder = resolvedPath
    end
 
    local err, filetype = mSys.AnalysePath(glOptions.folder)
    if filetype != LOC_FOLDER then
       error('Error: folder "' .. nz(glOptions.folder,'NIL') .. '" does not exist')
    end
+
+   print('Configuration:')
+   print('  Port: ' .. glOptions.port)
+   print('  Folder: ' .. glOptions.folder)
+   print('  Max request size: ' .. glOptions.maxRequestSize .. ' bytes')
+   print('  File chunk size: ' .. glOptions.fileChunkSize .. ' bytes')
+   print('  Timeout: ' .. glOptions.timeout .. ' seconds')
+   print('  Verbose logging: ' .. (glOptions.verbose and 'enabled' or 'disabled'))
+   print('  Index files: ' .. table.concat(glOptions.indexFiles, ', '))
+   print('  Auto-indexing: ' .. (glOptions.autoIndex and 'enabled' or 'disabled'))
+   print('  Rate limit: ' .. (glOptions.rateLimit > 0 and (glOptions.rateLimit .. ' requests per ' .. glOptions.rateLimitWindow .. ' seconds') or 'disabled'))
+   print('  Security headers: ' .. (glOptions.enableCSP and 'enabled' or 'disabled'))
 
    startServer()
