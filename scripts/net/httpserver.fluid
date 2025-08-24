@@ -1,10 +1,11 @@
 --[[
 The HTTPServer interface will run an HTTP service in the background of the calling application.
 
-In its current implementation, no run-time adjustment of the server settings is possible once it is launched.
+In its current implementation, no run-time adjustment of the server settings is possible once the server is launched.
 
    local server = net.httpServer({
-      port = 7070
+      port = 7070,
+      folder = 'parasol:docs/html/'
    })
 
    server.start()
