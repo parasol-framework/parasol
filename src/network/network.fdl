@@ -114,7 +114,7 @@ typedef int SOCKET_HANDLE;
     { id=4, name="DisconnectSocket" },
   })
 
-  class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
+  class("NetSocket", { src={ "netsocket/netsocket.cpp", "netsocket/netsocket_fields.cpp" }, output="netsocket/netsocket_def.c" }, [[
     obj(NetClient) Clients # ServerMode - Attached clients
     ptr ClientData    # Pointer to user data that can be used during events
     str Address       # Server: bind to this local address, Client: connect to this remote address

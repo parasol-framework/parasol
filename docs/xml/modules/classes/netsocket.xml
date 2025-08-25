@@ -41,6 +41,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <p>If no custom certificate is specified, the framework will automatically use a localhost self-signed certificate for development purposes.  For production use, always specify a proper certificate signed by a trusted CA.</p></description>
     <source>
       <file path="netsocket/">netsocket.cpp</file>
+      <file path="netsocket/">netsocket_fields.cpp</file>
     </source>
   </info>
 
