@@ -29,6 +29,7 @@ function testClientServer()
 
    local sockServer = obj.new('netsocket', {
       name = 'Server',
+      address = '127.0.0.1',
       feedback = function(Socket, Client, State)
          if (State == NTC_CONNECTED) then
             print('[Server] Connection established to new client.')

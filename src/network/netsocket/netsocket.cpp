@@ -653,16 +653,23 @@ static ERR parse_bind_address(const char *Address, bool IPv6, void *AddrOut)
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!Address) or (!AddrOut)) return ERR::NullArgs;
+   if ((!Address) or (!AddrOut)) return log.warning(ERR::NullArgs);
 
    // Handle special cases
-   if (pf::iequals(Address, "localhost") or pf::iequals(Address, "127.0.0.1") or pf::iequals(Address, "::1")) {
-      // Bind to localhost only
+   if (pf::iequals(Address, "localhost") or pf::iequals(Address, "127.0.0.1")) {
+      // Bind to IPv4 localhost (127.0.0.1), use IPv4-mapped IPv6 for dual-stack compatibility
       if (IPv6) {
          auto addr = (struct sockaddr_in6 *)AddrOut;
          pf::clearmem(addr, sizeof(struct sockaddr_in6));
          addr->sin6_family = AF_INET6;
-         addr->sin6_addr.s6_addr[15] = 1; // Set to ::1 (IPv6 loopback)
+         // Create IPv4-mapped IPv6 address (::ffff:127.0.0.1)
+         pf::clearmem(&addr->sin6_addr, sizeof(addr->sin6_addr));
+         addr->sin6_addr.s6_addr[10] = 0xff;
+         addr->sin6_addr.s6_addr[11] = 0xff;
+         addr->sin6_addr.s6_addr[12] = 127;
+         addr->sin6_addr.s6_addr[13] = 0;
+         addr->sin6_addr.s6_addr[14] = 0;
+         addr->sin6_addr.s6_addr[15] = 1;
       }
       else {
          auto addr = (struct sockaddr_in *)AddrOut;
@@ -671,6 +678,17 @@ static ERR parse_bind_address(const char *Address, bool IPv6, void *AddrOut)
          addr->sin_addr.s_addr = htonl(0x7f000001); // 127.0.0.1
       }
       return ERR::Okay;
+   }
+   else if (pf::iequals(Address, "::1")) {
+      // Bind to IPv6 localhost only
+      if (IPv6) {
+         auto addr = (struct sockaddr_in6 *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in6));
+         addr->sin6_family = AF_INET6;
+         addr->sin6_addr.s6_addr[15] = 1; // Set to ::1 (IPv6 loopback)
+         return ERR::Okay;
+      }
+      else return log.warning(ERR::InvalidValue); // Cannot bind IPv6 address to IPv4 socket
    }
    else if (pf::iequals(Address, "0.0.0.0") or pf::iequals(Address, "::") or pf::iequals(Address, "*") or pf::iequals(Address, "")) {
       // Bind to all interfaces
@@ -800,8 +818,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
             if (Self->Address) {
-               if (parse_bind_address(Self->Address, true, &addr) != ERR::Okay) {
-                  return log.warning(ERR::Args);
+               if (auto error = parse_bind_address(Self->Address, true, &addr); error != ERR::Okay) {
+                  return error;
                }
                addr.sin6_port = net::HostToShort(Self->Port);
             }
@@ -829,8 +847,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
             // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
             if (Self->Address) {
-               if (parse_bind_address(Self->Address, true, &addr) != ERR::Okay) {
-                  return log.warning(ERR::Args);
+               if (auto error = parse_bind_address(Self->Address, true, &addr); error != ERR::Okay) {
+                  return error;
                }
                addr.sin6_port = net::HostToShort(Self->Port);
             }
@@ -864,8 +882,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
          // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
          if (Self->Address) {
-            if (parse_bind_address(Self->Address, false, &addr) != ERR::Okay) {
-               return log.warning(ERR::Args);
+            if (auto error = parse_bind_address(Self->Address, false, &addr); error != ERR::Okay) {
+               return error;
             }
             addr.sin_port = net::HostToShort(Self->Port);
          }
