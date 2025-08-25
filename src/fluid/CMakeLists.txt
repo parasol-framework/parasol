@@ -72,7 +72,7 @@ set_module_defaults (${MOD} "Fl")
 add_dependencies (${MOD} libffi-3.3 luajit)
 
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
-   "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_io.cpp"
+   "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp" "fluid_io.cpp"
    "fluid_class.cpp")
 
 target_include_directories (${MOD} PRIVATE
@@ -86,13 +86,15 @@ target_link_libraries (${MOD} PRIVATE
 
 add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
 
-flute_test(fluid_catch "${CMAKE_CURRENT_SOURCE_DIR}/tests/catch.fluid")
-flute_test(fluid_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/io.fluid")
-flute_test(fluid_nz "${CMAKE_CURRENT_SOURCE_DIR}/tests/nz.fluid")
-flute_test(fluid_object "${CMAKE_CURRENT_SOURCE_DIR}/tests/object.fluid")
-flute_test(fluid_processing "${CMAKE_CURRENT_SOURCE_DIR}/tests/processing.fluid")
-flute_test(fluid_struct "${CMAKE_CURRENT_SOURCE_DIR}/tests/struct.fluid")
-flute_test(fluid_threads "${CMAKE_CURRENT_SOURCE_DIR}/tests/action_threads.fluid")
-flute_test(fluid_xml "${CMAKE_CURRENT_SOURCE_DIR}/tests/to_xml.fluid")
-flute_test(fluid_strings "${CMAKE_CURRENT_SOURCE_DIR}/tests/strings.fluid")
-flute_test(fluid_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/math.fluid")
+flute_test(fluid_catch "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catch.fluid")
+flute_test(fluid_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_io.fluid")
+flute_test(fluid_nz "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_nz.fluid")
+flute_test(fluid_object "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_object.fluid")
+flute_test(fluid_processing "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_processing.fluid")
+flute_test(fluid_regex "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_regex.fluid")
+flute_test(fluid_struct "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_struct.fluid")
+flute_test(fluid_threads "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_action_threads.fluid")
+flute_test(fluid_xml "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_to_xml.fluid")
+flute_test(fluid_strings "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_strings.fluid")
+flute_test(fluid_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_math.fluid")
+flute_test(fluid_array_concat "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_array_concat.fluid")

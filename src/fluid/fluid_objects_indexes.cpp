@@ -583,7 +583,7 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      LONG total;
+      int total;
       APTR *list;
       if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
          if (total <= 0) lua_pushnil(Lua);

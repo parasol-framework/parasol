@@ -43,6 +43,7 @@ extern "C" {
 #include "defs.h"
 
 static int array_copy(lua_State *);
+static int array_concat(lua_State *);
 
 /*********************************************************************************************************************
 ** If List is NULL and Total > 0, the list will be allocated.
@@ -57,7 +58,7 @@ static int array_copy(lua_State *);
 ** Cache      - Set to TRUE if the array should be cached (important if the List is temporary data).
 */
 
-void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, LONG Total, bool Cache)
+void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, int Total, bool Cache)
 {
    pf::Log log(__FUNCTION__);
    auto Self = Lua->Script;
@@ -87,13 +88,13 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       }
    }
 
-   LONG type_size = 0;
-   if (FieldType & FD_INT)        type_size = sizeof(LONG);
-   else if (FieldType & FD_WORD)   type_size = sizeof(WORD);
-   else if (FieldType & FD_BYTE)   type_size = sizeof(BYTE);
+   int type_size = 0;
+   if (FieldType & FD_INT)        type_size = sizeof(int);
+   else if (FieldType & FD_WORD)   type_size = sizeof(int16_t);
+   else if (FieldType & FD_BYTE)   type_size = sizeof(int8_t);
    else if (FieldType & FD_FLOAT)  type_size = sizeof(FLOAT);
-   else if (FieldType & FD_DOUBLE) type_size = sizeof(DOUBLE);
-   else if (FieldType & FD_INT64)  type_size = sizeof(LARGE);
+   else if (FieldType & FD_DOUBLE) type_size = sizeof(double);
+   else if (FieldType & FD_INT64)  type_size = sizeof(int64_t);
    else if (FieldType & FD_STRING) {
       if (FieldType & FD_CPP) type_size = sizeof(std::string);
       else type_size = sizeof(APTR);
@@ -108,12 +109,12 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    // Calculate the array length if the total is unspecified.
 
    if ((List) and (Total < 0)) {
-      if (FieldType & FD_INT)        for (Total=0; ((LONG *)List)[Total]; Total++);
-      else if (FieldType & FD_WORD)   for (Total=0; ((WORD *)List)[Total]; Total++);
-      else if (FieldType & FD_BYTE)   for (Total=0; ((BYTE *)List)[Total]; Total++);
+      if (FieldType & FD_INT)        for (Total=0; ((int *)List)[Total]; Total++);
+      else if (FieldType & FD_WORD)   for (Total=0; ((int16_t *)List)[Total]; Total++);
+      else if (FieldType & FD_BYTE)   for (Total=0; ((int8_t *)List)[Total]; Total++);
       else if (FieldType & FD_FLOAT)  for (Total=0; ((FLOAT *)List)[Total]; Total++);
-      else if (FieldType & FD_DOUBLE) for (Total=0; ((DOUBLE *)List)[Total]; Total++);
-      else if (FieldType & FD_INT64)  for (Total=0; ((LARGE *)List)[Total]; Total++);
+      else if (FieldType & FD_DOUBLE) for (Total=0; ((double *)List)[Total]; Total++);
+      else if (FieldType & FD_INT64)  for (Total=0; ((int64_t *)List)[Total]; Total++);
       else if (FieldType & FD_STRING) {
          if (FieldType & FD_CPP) { // Null-terminated std::string lists aren't permitted.
             lua_pushnil(Lua);
@@ -125,8 +126,8 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
       else if (FieldType & FD_STRUCT) Total = -1; // The length of sequential structs cannot be calculated.
    }
 
-   LONG array_size = 0;  // Size of the array in bytes, not including any cached content.
-   LONG cache_size = 0;  // Size of the array in bytes, plus additional cached content.
+   int array_size = 0;  // Size of the array in bytes, not including any cached content.
+   int cache_size = 0;  // Size of the array in bytes, plus additional cached content.
 
    bool alloc = false;
    if (Total > 0) {
@@ -148,13 +149,13 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
    if ((Cache) and (List) and (Total > 0)) {
       if (FieldType & FD_STRING) {
          if (FieldType & FD_CPP) {
-            for (LONG i=0; i < Total; i++) cache_size += ((std::string *)List)[i].size() + 1;
+            for (int i=0; i < Total; i++) cache_size += ((std::string *)List)[i].size() + 1;
          }
-         else for (LONG i=0; i < Total; i++) cache_size += strlen((CSTRING)List[i]) + 1;
+         else for (int i=0; i < Total; i++) cache_size += strlen((CSTRING)List[i]) + 1;
       }
    }
 
-   LONG struct_nsize = 0;
+   int struct_nsize = 0;
    if (StructName) struct_nsize = strlen(StructName) + 1;
 
    if (auto a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + cache_size + struct_nsize)) {
@@ -172,14 +173,14 @@ void make_array(lua_State *Lua, LONG FieldType, CSTRING StructName, APTR *List, 
          if (FieldType & FD_STRING) {
             if (FieldType & FD_CPP) {
                auto str = (STRING)(a->ptrString + Total);
-               for (LONG i=0; i < Total; i++) {
+               for (int i=0; i < Total; i++) {
                   a->ptrString[i] = str;
                   str += strcopy(((std::string *)List)[i].c_str(), str) + 1;
                }
             }
             else {
                auto str = (STRING)(a->ptrString + Total);
-               for (LONG i=0; i < Total; i++) {
+               for (int i=0; i < Total; i++) {
                   a->ptrString[i] = str;
                   str += strcopy((CSTRING)List[i], str) + 1;
                }
@@ -246,7 +247,7 @@ static int array_new(lua_State *Lua)
          else luaL_argerror(Lua, 1, "A string must be provided if using the 'bytestring' array type.");
       }
       else if (auto total = lua_tointeger(Lua, 1)) {
-         LONG fieldtype;
+         int fieldtype;
          CSTRING s_name = NULL;
          switch (strihash(type)) {
             case HASH_LONG:
@@ -276,7 +277,7 @@ static int array_new(lua_State *Lua)
          make_array(Lua, fieldtype, s_name, NULL, total, true);
          return 1;
       }
-      else luaL_argerror(Lua, 1, "Array type required.");
+      else luaL_argerror(Lua, 1, "Array size > 0 required.");
    }
    else luaL_argerror(Lua, 2, "Array value type requird.");
 
@@ -302,7 +303,7 @@ static int array_getstring(lua_State *Lua)
       return 0;
    }
 
-   LONG len, start;
+   int len, start;
    if (lua_isnil(Lua, 1)) start = 0;
    else {
       start = lua_tointeger(Lua, 1);
@@ -334,9 +335,8 @@ static int array_get(lua_State *Lua)
 {
    if (auto a = (struct array *)luaL_checkudata(Lua, 1, "Fluid.array")) {
       pf::Log log(__FUNCTION__);
-      CSTRING field;
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array reference discovered, e.g. myarray[18]
-         LONG index = lua_tointeger(Lua, 2);
+         int index = lua_tointeger(Lua, 2);
 
          if ((index < 1) or (index > a->Total)) {
             luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
@@ -371,7 +371,7 @@ static int array_get(lua_State *Lua)
 
          return 1;
       }
-      else if ((field = luaL_checkstring(Lua, 2))) {
+      else if (auto field = luaL_checkstringview(Lua, 2); !field.empty()) {
          log.trace("Field: %s", field);
 
          if (std::string_view("table") == field) { // Convert the array to a standard Lua table.
@@ -379,37 +379,42 @@ static int array_get(lua_State *Lua)
             switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRUCT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
                case FD_STRUCT:  {
                   std::vector<lua_ref> ref;
-                  for (LONG i=0; i < a->Total; i++) {
+                  for (int i=0; i < a->Total; i++) {
                      lua_pushinteger(Lua, i);
                      if (struct_to_table(Lua, ref, a->StructDef[0], a->ptrPointer[i]) != ERR::Okay) lua_pushnil(Lua);
                      lua_settable(Lua, -3);
                   }
                   break;
                }
-               case FD_STRING:  for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushstring(Lua, a->ptrString[i]); lua_settable(Lua, -3); } break;
-               case FD_POINTER: for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, a->ptrPointer[i]); lua_settable(Lua, -3); } break;
-               case FD_FLOAT:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrFloat[i]); lua_settable(Lua, -3); } break;
-               case FD_DOUBLE:  for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrDouble[i]); lua_settable(Lua, -3); } break;
-               case FD_INT64:   for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrLarge[i]); lua_settable(Lua, -3); } break;
-               case FD_INT:     for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrLong[i]); lua_settable(Lua, -3); } break;
-               case FD_WORD:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrWord[i]); lua_settable(Lua, -3); } break;
-               case FD_BYTE:    for (LONG i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrByte[i]); lua_settable(Lua, -3); } break;
+               case FD_STRING:  for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushstring(Lua, a->ptrString[i]); lua_settable(Lua, -3); } break;
+               case FD_POINTER: for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushlightuserdata(Lua, a->ptrPointer[i]); lua_settable(Lua, -3); } break;
+               case FD_FLOAT:   for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrFloat[i]); lua_settable(Lua, -3); } break;
+               case FD_DOUBLE:  for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrDouble[i]); lua_settable(Lua, -3); } break;
+               case FD_INT64:   for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushnumber(Lua, a->ptrLarge[i]); lua_settable(Lua, -3); } break;
+               case FD_INT:     for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrLong[i]); lua_settable(Lua, -3); } break;
+               case FD_WORD:    for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrWord[i]); lua_settable(Lua, -3); } break;
+               case FD_BYTE:    for (int i=0; i < a->Total; i++) { lua_pushinteger(Lua, i); lua_pushinteger(Lua, a->ptrByte[i]); lua_settable(Lua, -3); } break;
             }
 
             return 1;
          }
-         else if (std::string_view("getstring") == field) {
+         else if ("getstring" == field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_getstring, 1);
             return 1;
          }
-         else if (std::string_view("copy") == field) {
+         else if ("copy" == field) {
             lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
             lua_pushcclosure(Lua, array_copy, 1);
             return 1;
          }
+         else if ("concat" == field) {
+            lua_pushvalue(Lua, 1); // Arg1: Duplicate the object reference
+            lua_pushcclosure(Lua, array_concat, 1);
+            return 1;
+         }
 
-         luaL_error(Lua, "Reference to %s not recognised.", field);
+         luaL_error(Lua, "Reference to %.*s not recognised.", int(field.size()), field.data());
       }
       else luaL_error(Lua, "No field reference provided");
    }
@@ -428,7 +433,7 @@ static int array_set(lua_State *Lua)
       if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
       if (lua_type(Lua, 2) IS LUA_TNUMBER) { // Array index
-         LONG index = lua_tointeger(Lua, 2);
+         int index = lua_tointeger(Lua, 2);
          if ((index < 1) or (index > a->Total)) {
             luaL_error(Lua, "Invalid array index: 1 < %d <= %d", index, a->Total);
             return 0;
@@ -484,8 +489,8 @@ static int array_copy(lua_State *Lua)
 
    if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
-   LONG to_index = 1;
-   if (!lua_isnumber(Lua, 2)) {
+   int to_index = 1;
+   if (lua_isnumber(Lua, 2)) {
       to_index = lua_tointeger(Lua, 2);
       if (to_index < 1) {
          luaL_argerror(Lua, 2, "Invalid destination index.");
@@ -493,16 +498,16 @@ static int array_copy(lua_State *Lua)
       }
    }
 
-   LONG req_total = -1;
+   int req_total = -1;
    if (lua_isnumber(Lua, 3)) {
       req_total = lua_tointeger(Lua, 3);
       if (req_total < 1) { luaL_argerror(Lua, 3, "Invalid total."); return 0; }
    }
 
    size_t src_total;
-   BYTE *src;
-   LONG src_typesize;
-   if ((src = (BYTE *)luaL_checklstring(Lua, 1, &src_total))) {
+   int8_t *src;
+   int src_typesize;
+   if ((src = (int8_t *)luaL_checklstring(Lua, 1, &src_total))) {
       src_typesize = 1;
       if ((size_t)req_total > src_total) {
          luaL_argerror(Lua, 3, "Invalid total.");
@@ -529,21 +534,21 @@ static int array_copy(lua_State *Lua)
       copymem(src, a->ptrPointer + (to_index * src_typesize), req_total * src_typesize);
    }
    else {
-      for (LONG i=0; i < req_total; i++) {
-         LARGE s;
+      for (int i=0; i < req_total; i++) {
+         int64_t s;
          switch (src_typesize) {
-            case 1: s = ((BYTE *)src)[0]; break;
-            case 2: s = ((WORD *)src)[0]; break;
-            case 4: s = ((LONG *)src)[0]; break;
-            case 8: s = ((LARGE *)src)[0]; break;
+            case 1: s = ((int8_t *)src)[0]; break;
+            case 2: s = ((int16_t *)src)[0]; break;
+            case 4: s = ((int *)src)[0]; break;
+            case 8: s = ((int64_t *)src)[0]; break;
             default: s = 0; break;
          }
 
          switch (a->TypeSize) {
-            case 1: ((BYTE *)src)[0]  = s; break;
-            case 2: ((WORD *)src)[0]  = s; break;
-            case 4: ((LONG *)src)[0]  = s; break;
-            case 8: ((LARGE *)src)[0] = s; break;
+            case 1: ((int8_t *)src)[0]  = s; break;
+            case 2: ((int16_t *)src)[0]  = s; break;
+            case 4: ((int *)src)[0]  = s; break;
+            case 8: ((int64_t *)src)[0] = s; break;
          }
 
          src += src_typesize;
@@ -551,6 +556,119 @@ static int array_copy(lua_State *Lua)
    }
 
    return 0;
+}
+
+//********************************************************************************************************************
+// Usage: array.concat(StringFormat, JoinString)
+//
+// Concatenates array elements into a string using the specified format and join string.
+// StringFormat specifies how each element should be formatted (e.g., "%d", "%f", "%s").
+// JoinString is placed between each concatenated element.
+
+static int array_concat(lua_State *Lua)
+{
+   auto a = (struct array *)get_meta(Lua, lua_upvalueindex(1), "Fluid.array");
+   if (!a) {
+      luaL_error(Lua, "Expected array.");
+      return 0;
+   }
+
+   if (a->Total < 1) {
+      lua_pushstring(Lua, "");
+      return 1;
+   }
+
+   CSTRING format = luaL_checkstring(Lua, 1);
+   CSTRING join_str = luaL_optstring(Lua, 2, "");
+
+   // Validate format string - ensure exactly one format specifier
+   int format_count = 0;
+   bool in_format = false;
+   for (CSTRING p = format; *p; p++) {
+      if (*p == '%') {
+         if (*(p+1) == '%') {
+            p++; // Skip escaped %
+            continue;
+         }
+         if (in_format) {
+            luaL_error(Lua, "Invalid format string: multiple format specifiers not allowed");
+            return 0;
+         }
+         in_format = true;
+      }
+      else if (in_format) {
+         // Check for end of format specifier
+         if (*p IS 'd' or *p IS 'i' or *p IS 'o' or *p IS 'x' or *p IS 'X' or
+             *p IS 'u' or *p IS 'c' or *p IS 's' or *p IS 'p' or
+             *p IS 'f' or *p IS 'F' or *p IS 'e' or *p IS 'E' or
+             *p IS 'g' or *p IS 'G') {
+            format_count++;
+            in_format = false;
+         }
+         // Allow format modifiers and flags
+         else if (!(*p IS '-' or *p IS '+' or *p IS ' ' or *p IS '#' or *p IS '0' or
+                    (*p >= '1' and *p <= '9') or *p IS '.' or *p IS 'l' or *p IS 'h')) {
+            luaL_error(Lua, "Invalid character '%c' in format string", *p);
+            return 0;
+         }
+      }
+   }
+
+   if (in_format) {
+      luaL_error(Lua, "Incomplete format specifier");
+      return 0;
+   }
+
+   if (format_count != 1) {
+      luaL_error(Lua, "Format string must contain exactly one format specifier, found %d", format_count);
+      return 0;
+   }
+
+   std::string result;
+   result.reserve(a->Total * 16);
+   char buffer[256];
+
+   for (int i = 0; i < a->Total; i++) {
+      if (i > 0) result += join_str;
+
+      switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
+         case FD_STRING:
+            snprintf(buffer, sizeof(buffer), format, a->ptrString[i]);
+            break;
+         case FD_POINTER:
+            snprintf(buffer, sizeof(buffer), format, a->ptrPointer[i]);
+            break;
+         case FD_FLOAT:
+            snprintf(buffer, sizeof(buffer), format, a->ptrFloat[i]);
+            break;
+         case FD_DOUBLE:
+            snprintf(buffer, sizeof(buffer), format, a->ptrDouble[i]);
+            break;
+         case FD_INT64:
+            snprintf(buffer, sizeof(buffer), format, (long long)a->ptrLarge[i]);
+            break;
+         case FD_INT:
+            snprintf(buffer, sizeof(buffer), format, a->ptrLong[i]);
+            break;
+         case FD_WORD:
+            snprintf(buffer, sizeof(buffer), format, a->ptrWord[i]);
+            break;
+         case FD_BYTE:
+            snprintf(buffer, sizeof(buffer), format, a->ptrByte[i]);
+            break;
+         case FD_STRUCT:
+            luaL_error(Lua, "concat() does not support struct arrays.");
+            return 0;
+         default:
+            luaL_error(Lua, "Unsupported array type $%.8x", a->Type);
+            return 0;
+      }
+
+      result += buffer;
+   }
+
+   lua_pushstring(Lua, result.c_str());
+   return 1;
 }
 
 //********************************************************************************************************************

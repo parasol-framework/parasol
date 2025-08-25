@@ -164,7 +164,6 @@ function declareErrors()
     "Deactivated",             -- The object must be activated with the Activate action
     "LockRequired",            -- A lock is required before accessing this functionality
     "AlreadyLocked|Locked",    -- Object or resource has already been locked
-    "CardReaderUnknown",       -- Requested smart card reader not found from the available list of readers
     "NoMediaInserted",         -- No media is inserted in the device
     "CardReaderUnavailable",   -- The requested smart card reader is in use
     "ProxySSLTunnel",          -- Failed to establish an SSL connection with the proxy server

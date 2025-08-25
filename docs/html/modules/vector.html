@@ -86,7 +86,7 @@
 </tbody></table></div></div>
 <p>Use GenerateEllipse() to create an elliptical path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <a href="core.html?page=FreeResource">FreeResource()</a> once it is no longer required.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="GeneratePath"><h2>GeneratePath()</h2><p class="lead">Generates a path from an SVG path command sequence, or an empty path for custom configuration.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GeneratePath(CSTRING Sequence, APTR * Path)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Sequence</td><td>The command sequence to process.  If no sequence is specified then the path will be empty.</td></tr>
@@ -109,7 +109,7 @@ Z: Close Path
 <p>The use of lower case characters will indicate that the provided coordinates are relative (based on the coordinate of the previous command).</p>
 <p>If the <code>Sequence</code> is <code>NULL</code> then an empty path resource will be generated.  This path will be suitable for passing to path modifying functions such as <a href="?page=MoveTo">MoveTo()</a> and <a href="?page=LineTo">LineTo()</a> for custom path generation.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="GenerateRectangle"><h2>GenerateRectangle()</h2><p class="lead">Generate a rectangular path at (x,y) with size (width,height).</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GenerateRectangle(DOUBLE X, DOUBLE Y, DOUBLE Width, DOUBLE Height, APTR * Path)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>X</td><td>The horizontal position of the rectangle.</td></tr>
@@ -120,7 +120,7 @@ Z: Close Path
 </tbody></table></div></div>
 <p>Use GenerateRectangle() to create a rectangular path suitable for passing to vector functions that receive a Path parameter.  The path must be manually deallocated with <a href="core.html?page=FreeResource">FreeResource()</a> once it is no longer required.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Vector module documentation © Paul Manias © 2010-2025</div></div>
 <div class="docs-content" style="display:none;" id="GetFontHandle"><h2>GetFontHandle()</h2><p class="lead">Returns a handle for a given font family.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR vec::GetFontHandle(CSTRING Family, CSTRING Style, INT Weight, INT Size, APTR * Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Family</td><td>The name of the font family to access.</td></tr>

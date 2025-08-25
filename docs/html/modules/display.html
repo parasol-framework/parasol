@@ -215,7 +215,7 @@ Alpha  = CFUnpackAlpha(Format,Colour)
 <p>The GetDisplayInfo() function returns information about a display, which includes information such as its size and bit depth.  If the system is running on a hosted display (e.g. Windows or X11) then GetDisplayInfo() can also be used to retrieve information about the default monitor by using a Display of zero.</p>
 <p>The resulting <code>DISPLAYINFO</code> structure values remain good until the next call to this function, at which point they will be overwritten.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Display module documentation © Paul Manias 2003-2025</div></div>
 <div class="docs-content" style="display:none;" id="GetDisplayType"><h2>GetDisplayType()</h2><p class="lead">Returns the type of display supported.</p><div class="card card-info mb-3"><div class="card-header"><samp>DT gfx::GetDisplayType()</samp></div></div>

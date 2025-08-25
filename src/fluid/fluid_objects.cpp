@@ -112,6 +112,25 @@ static int stack_object_subscribe(lua_State *Lua, const obj_read &Handle, object
 static int stack_object_unsubscribe(lua_State *Lua, const obj_read &Handle, object *def) { SET_CONTEXT(Lua, (APTR)object_unsubscribe); return 1; }
 
 //********************************************************************************************************************
+// Hash designed to handle cases like `UID` -> `uid` and `RGBValue` -> `rgbValue`
+
+static uint32_t field_hash(CSTRING Name) {
+   uint32_t hash = 5381;
+   int k = 0;
+   while (Name[k] and std::isupper(Name[k])) {
+      hash = char_hash(std::tolower(Name[k]), hash);
+      if (!Name[++k]) break;
+      if ((!Name[k+1]) or (std::isupper(Name[k+1]))) continue;
+      else break;
+   }
+   while (Name[k]) {
+      hash = char_hash(Name[k], hash);
+      k++;
+   }
+   return hash;
+}
+
+//********************************************************************************************************************
 
 static int obj_jump_method(lua_State *Lua, const obj_read &Handle, object *def)
 {
@@ -163,9 +182,7 @@ inline void build_read_table(object *Def)
       for (LONG i=0; i < total_dict; i++) {
          if (!(dict[i].Flags & FDF_R)) continue;
 
-         char ch[2] = { dict[i].Name[0], 0 };
-         if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
-         auto hash = simple_hash(dict[i].Name+1, simple_hash(ch));
+         auto hash = field_hash(dict[i].Name);
 
          if (dict[i].Flags & FD_ARRAY) {
             if (dict[i].Flags & FD_RGB) jmp.insert(obj_read(hash, object_get_rgb, &dict[i]));
@@ -185,6 +202,7 @@ inline void build_read_table(object *Def)
             if (dict[i].Flags & FD_UNSIGNED) jmp.insert(obj_read(hash, object_get_ulong, &dict[i]));
             else jmp.insert(obj_read(hash, object_get_long, &dict[i]));
          }
+         else pf::Log().warning("Unable to support field %s.%s for reading", Def->Class->Name, dict[i].Name);
       }
    }
 
@@ -275,7 +293,7 @@ static int object_index(lua_State *Lua)
       build_read_table(def);
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
-         luaL_error(Lua, "Unable to read field %s", keyname);
+         luaL_error(Lua, "Object dereferenced, unable to read field %s", keyname);
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = ERR::DoesNotExist;
          return 0;
@@ -285,8 +303,7 @@ static int object_index(lua_State *Lua)
          return func->Call(Lua, *func, def);
       }
       else {
-         pf::Log log(__FUNCTION__);
-         log.warning("Unable to read %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
+         pf::Log(__FUNCTION__).warning("Field does not exist or is unreadable: %s.%s", def->Class ? def->Class->ClassName: "?", keyname);
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = ERR::NoSupport;
          //if (prv->ThrowErrors) luaL_error(Lua, GetErrorMsg);

@@ -59,6 +59,7 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
              <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
              <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
 
@@ -510,17 +511,32 @@ ErrorCode: Optional description of error code.
 <h3 id="links">Links</h3>
 <h4 id="referencing-classes">Referencing Classes</h4>
 <p>Use <code>@ClassName</code> to refer to another class. For example, <code>@VectorRectangle</code> will generate the word <code>VectorRectangle</code> and provide a hyperlink that takes the user directly to the class document. Indexing is possible by appending a <code>.</code> suffix with the name of a supported field, action or method. For instance, <code>@VectorRectangle.RX</code> or <code>@VectorRectangle.Init()</code>.</p>
-<h4 id="internal-references">Internal References</h4>
-<p>Within the same document, use <code>#Name()</code> to refer to any API function, class action or method. Use <code>#Name</code> for field references.</p>
-<h4 id="external-function-references">External Function References</h4>
-<p>Use <code>~Module.Function()</code> to refer to the function of an external module.</p>
-<h4 id="constant-references">Constant References</h4>
+<h4 id="local-references">Local References</h4>
+<p>The <code>#</code> symbol can be used to link to attributes of a class. For instance, a class can refer to refer to its own actions and methods with <code>#Name()</code>, e.g. <code>#Activate()</code>.
+References to fields can be achieved with <code>#FieldName</code>, e.g. <code>#Src</code>.</p>
+<h4 id="function-references">Function References</h4>
+<p>The <code>~</code> symbol is used to link to the functions exported by a module. E.g. <code>~AllocMemory()</code>.
+When documenting a class, or when a module needs to reference the function of another, use the format <code>~ModuleName.Function()</code> ,
+e.g. <code>~Core.AllocMemory()</code>.</p>
+<h3 id="constant-references">Constant References</h3>
 <p>Use <code>&amp;Name</code> to link to constants and struct definitions declared in the module&#39;s FDL file.</p>
 <p>There is a special usage in which <code>&amp;Name</code> can be declared on a single line with no other content. This results in the entire definition being pulled into the document and represented in a table.</p>
-<h4 id="backticks">Backticks</h4>
+<h3 id="backticks">Backticks</h3>
 <p>Embedded backticks are supported for writing text with a monotype font. This is suitable for declaring code, constants, numeric values and so forth.</p>
-<h4 id="code">Code</h4>
+<h3 id="code">Code</h3>
 <p>To write multiple lines of preformatted code, use <code>&lt;pre&gt;</code> on one line, follow this with the code, then end with <code>&lt;/pre&gt;</code> on its own line.</p>
+<h3 id="headings">Headings</h3>
+<p>Headings can be written inside a <code>&lt;header&gt;</code> tag on a single line, e.g. <code>&lt;header&gt;Technical Notes&lt;/header&gt;</code></p>
+<h3 id="lookup-injection">Lookup Injection</h3>
+<p>To insert tabulated documentation for a registered struct, enum or flag, use the <code>!</code> character followed by the name of the type, for example <code>!AudioLoop</code>, <code>!LOOP</code> or <code>!LTYPE</code>. The parser expects this feature to be invoked on a single line, on which the reference is the only token.</p>
+<h3 id="lists">Lists</h3>
+<p>Ordered lists can be written by starting a line with <code>&lt;list type=&quot;ordered&quot;&gt;</code>, followed by a series of <code>&lt;li&gt;</code> tags, one per line. For example:</p>
+<pre><code>&lt;list type=&quot;ordered&quot;&gt;
+&lt;li&gt;The new owner&#39;s class will receive notification via the #NewChild() action.  If the owner rejects the object by sending back an error, SetOwner() will fail immediately.&lt;/li&gt;
+&lt;li&gt;The object&#39;s class will then receive notification via the #NewOwner() action.&lt;/li&gt;
+&lt;li&gt;The resource tracking of the new owner will be modified so that the object is accepted as its child.  This means that if and when the owning object is destroyed, the new child object will be destroyed with it.&lt;/li&gt;
+&lt;/list&gt;</code></pre>
+<p>Bullet points can be invoked if the list <code>type</code> is set to <code>bullet</code>.</p>
 <hr>
 <h1 id="document-processing-tools">Document Processing Tools</h1>
 <p>The primary tool that we use to produce user documentation is bundled with Parasol as <code>idl-doc.fluid</code> and can be found in the <code>scripts\dev\idl\</code> folder.</p>
