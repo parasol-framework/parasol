@@ -86,10 +86,10 @@ static int regex_new(lua_State *Lua)
       auto reg_flags = std::regex_constants::ECMAScript; // Default syntax
       if (flags & REGEX_ICASE) reg_flags |= std::regex_constants::icase;
       if (flags & REGEX_EXTENDED) {
-#ifdef __MINGW32__
-         // NB: MinGW isn't an officially supported build environment, so we don't
-         // need to go out of our way in doing anything about this problem.
-         log.warning("2025-08-25 REGEX_EXTENDED flag disabled on unstable MinGW builds.");
+#ifdef __GNUC__
+         // NB: GCC's std::regex implementation has known bugs when combining
+         // icase and extended flags, causing crashes in some versions.
+         log.warning("2025-08-25 REGEX_EXTENDED flag disabled on GCC builds due to std::regex implementation bugs.");
 #else
          reg_flags |= std::regex_constants::extended;
 #endif
