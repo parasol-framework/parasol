@@ -271,7 +271,7 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="OutOfRange">A value is outside of the valid range.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
@@ -292,7 +292,7 @@
       <result>
         <error code="Okay">Operation successful.</error>
         <error code="NoData">No data is available for use.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="OutOfRange">A value is outside of the valid range.</error>
         <error code="CreateObject">A call to CreateObject() failed.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -372,7 +372,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="OutOfRange">A value is outside of the valid range.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>

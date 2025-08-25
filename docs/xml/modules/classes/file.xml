@@ -159,7 +159,7 @@
       <result>
         <error code="Okay">The file content was successfully buffered.</error>
         <error code="Read">Failed to read the file content.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       </result>
     </method>
 
@@ -183,7 +183,7 @@
         <error code="Read">Data could not be read from the source path.</error>
         <error code="Write">Data could not be written to the destination path.</error>
         <error code="FieldNotSet">The <fl>Path</fl> field has not been set in the file object.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
         <error code="Loop">Performing the copy would cause infinite recursion.</error>
         <error code="ResolvePath">A volume could not be resolved.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>

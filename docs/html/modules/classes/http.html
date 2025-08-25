@@ -135,6 +135,7 @@ http.acActivate()
                            
                           <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">Flags</th><td class="col-md-1"><span class="text-nowrap">HTF</span></td><td>Optional flags.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Flags" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th class="col-md-1">HTF::DEBUG_SOCKET</th><td>Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.</td></tr>
+<tr><th class="col-md-1">HTF::DISABLE_SERVER_VERIFY</th><td>Disable SSL server certificate verification (use with caution).</td></tr>
 <tr><th class="col-md-1">HTF::LOG_ALL</th><td>Print extra log messages during HTTP processing.</td></tr>
 <tr><th class="col-md-1">HTF::MESSAGE</th><td>When activating child objects, send delayed messages to postpone execution rather than making direct calls.</td></tr>
 <tr><th class="col-md-1">HTF::MOVED</th><td>Read-only.  Indicates that the HTTP source was moved (<code>HTS::MOVED_PERMANENTLY</code>).</td></tr>
@@ -157,7 +158,7 @@ http.acActivate()
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Incoming" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Incoming"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Incoming</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>A callback routine can be defined here for incoming data.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Incoming" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, LONG Length)</code>.</p>
+<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, int Length)</code>.</p>
 <p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       
 </div></div></td></tr>
@@ -231,7 +232,7 @@ http.acActivate()
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Outgoing" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Outgoing"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Outgoing</th><td class="col-md-1"><span class="text-nowrap">FUNCTION</span></td><td>Outgoing data can be managed using a function callback if this field is set.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Outgoing" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
+<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERR Function(*HTTP, APTR Buffer, int BufferSize, int *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
 <p>Outgoing content is placed in the <code>Buffer</code> address and must not exceed the indicated <code>BufferSize</code>.  The total number of bytes placed in the <code>Buffer</code> must be indicated in the Result parameter before the callback routine returns.</p>
 <p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR::TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR::Okay</code> indicate failure.</p>
       
@@ -409,6 +410,7 @@ http.acActivate()
 <tr><th>HOM::READ_WRITE</th><td>Use the Write() action to send data to the targeted object.</td></tr>
 </tbody></table><div class="footer copyright text-right">HTTP module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="HTF"><h1>HTF Type</h1><p class="lead">HTTP flags</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>HTF::DEBUG_SOCKET</th><td>Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.</td></tr>
+<tr><th>HTF::DISABLE_SERVER_VERIFY</th><td>Disable SSL server certificate verification (use with caution).</td></tr>
 <tr><th>HTF::LOG_ALL</th><td>Print extra log messages during HTTP processing.</td></tr>
 <tr><th>HTF::MESSAGE</th><td>When activating child objects, send delayed messages to postpone execution rather than making direct calls.</td></tr>
 <tr><th>HTF::MOVED</th><td>Read-only.  Indicates that the HTTP source was moved (<code>HTS::MOVED_PERMANENTLY</code>).</td></tr>

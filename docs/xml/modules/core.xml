@@ -200,7 +200,7 @@ struct FunctionField argsResize[] = {
     </description>
     <result type="ERR">
       <error code="Okay">Message handler successfully processed.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -316,9 +316,9 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="Init">Error in Init()ialising an object.</error>
-      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
+      <error code="IllegalMethodID">Illegal method ID (outside of valid range).</error>
       <error code="MissingClass">The class could not be found in the system.</error>
-      <error code="NewObject">A call to NewObject() failed to produce a new object.</error>
+      <error code="NewObject">NewObject() failed to produce a new object.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -827,7 +827,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
       <error code="Search">A suitable class could not be found for the data source.</error>
       <error code="FileNotFound">File not found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="Read">Error reading data from file.</error>
+      <error code="Read">Error reading data.</error>
     </result>
   </function>
 
@@ -892,7 +892,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
     <result type="ERR">
       <error code="Okay">The file was cached successfully.</error>
       <error code="Search">If <code>CHECK_EXISTS</code> is specified, this failure indicates that the file is not cached.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1028,7 +1028,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
       <error code="MissingClass">The <code>ClassID</code> is invalid or refers to a class that is not installed.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1081,7 +1081,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="DirEmpty">The folder is empty.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1149,7 +1149,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="Failed">General failure.</error>
       <error code="OutOfRange">The <code>Action</code> ID is invalid.</error>
-      <error code="IllegalMethodID">Illegal method ID (number outside of valid range).</error>
+      <error code="IllegalMethodID">Illegal method ID (outside of valid range).</error>
       <error code="MissingClass">The class could not be found in the system.</error>
       <error code="NoMatchingObject">No matching object was found for the given object ID.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1175,7 +1175,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="File">File error, e.g. file not found.</error>
       <error code="Args">Invalid arguments passed to function.</error>
-      <error code="Read">Error reading data from file.</error>
+      <error code="Read">Error reading data.</error>
       <error code="InvalidPath">Invalid file or folder path detected.</error>
       <error code="OpenFile">The file could not be opened.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
@@ -1221,7 +1221,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">Operation successful.</error>
       <error code="Args">Invalid arguments passed to function.</error>
       <error code="Memory">The memory block to be re-allocated is invalid.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
@@ -1667,7 +1667,7 @@ FreeResource(memory);  // Reference is no longer valid
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>

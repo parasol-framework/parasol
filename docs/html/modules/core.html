@@ -223,19 +223,18 @@ struct FunctionField argsResize[] = {
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="AddMsgHandler"><h2>AddMsgHandler()</h2><p class="lead">Adds a new message handler for processing incoming messages.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR AddMsgHandler(APTR Custom, MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Custom</td><td>A custom pointer that will be passed to the message handler when messages are received.</td></tr>
-<tr><td><a onclick="showPage('MSGID');">MsgType</a></td><td>The message type that the handler will intercept.  If zero, all incoming messages are passed to the handler.</td></tr>
+<div class="docs-content" style="display:none;" id="AddMsgHandler"><h2>AddMsgHandler()</h2><p class="lead">Adds a new message handler for processing incoming messages.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR AddMsgHandler(MSGID MsgType, FUNCTION * Routine, struct MsgHandler ** Handle)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td><a onclick="showPage('MSGID');">MsgType</a></td><td>The message type that the handler will intercept.  If zero, all incoming messages are passed to the handler.</td></tr>
 <tr><td>Routine</td><td>Refers to the function that will handle incoming messages.</td></tr>
 <tr><td>Handle</td><td>The resulting handle of the new message handler - retain for <a href="?page=FreeResource">FreeResource()</a>.</td></tr>
 </tbody></table></div></div>
 <p>This function allows handlers to be added for the interception of incoming messages.  Message handling works as follows:</p>
 <p>During a call to <a href="?page=ProcessMessages">ProcessMessages()</a>, each incoming message will be scanned to determine if a message handler is able to process that message.  All handlers that accept the message type will be called with a copy of the message structure and any additional data.  The message is then removed from the message queue.</p>
-<p>When calling AddMsgHandler(), you can provide an optional <code>Custom</code> pointer that will have meaning to the handler.  The <code>MsgType</code> acts as a filter so that only messages with the same type identifier will be passed to the handler.  The <code>Routine</code> parameter must point to the function handler, which will follow this definition:</p>
-<pre>ERR handler(APTR Custom, MSGID MsgID, INT MsgType, APTR Message, INT MsgSize)</pre>
+<p>When calling AddMsgHandler(), the <code>MsgType</code> acts as a filter so that only messages with the same type identifier will be passed to the handler.  The <code>Routine</code> parameter must point to the function handler, which will follow this definition:</p>
+<pre>ERR handler(APTR Meta, MSGID MsgID, INT MsgType, APTR Message, INT MsgSize)</pre>
 <p>The handler must return <code>ERR::Okay</code> if the message was handled.  This means that the message will not be passed to message handlers that are yet to receive the message.  Throw <code>ERR::NothingDone</code> if the message has been ignored or <code>ERR::Continue</code> if the message was processed but may be analysed by other handlers.  Throw <code>ERR::Terminate</code> to break the current <a href="?page=ProcessMessages">ProcessMessages()</a> loop.  When using Fluid, this is best achieved by writing <code>check(errorcode)</code> in the handler.</p>
 <p>The handler will be identified by a unique pointer returned in the Handle parameter.  This handle will be garbage collected or can be passed to <a href="?page=FreeResource">FreeResource()</a> once it is no longer required.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Message handler successfully processed.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="AdjustLogLevel"><h2>AdjustLogLevel()</h2><p class="lead">Adjusts the base-line of all log messages.</p><div class="card card-info mb-3"><div class="card-header"><samp>INT AdjustLogLevel(INT Delta)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Delta</td><td>The level of adjustment to make to new log messages.  Zero is no change.  The maximum level is +/- 6.</td></tr>
@@ -317,9 +316,9 @@ if (AllocMemory(1000, MEM::DATA, &amp;address, nullptr) == ERR::Okay) {
 <p>Please note that there is some overhead involved when safely initialising and executing a new thread.  This function is at its most effective when used to perform lengthy processes such as the loading and parsing of data.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Init</th><td>Error in Init()ialising an object.</td></tr>
-<tr><th class="col-md-1">IllegalMethodID</th><td>Illegal method ID (number outside of valid range).</td></tr>
+<tr><th class="col-md-1">IllegalMethodID</th><td>Illegal method ID (outside of valid range).</td></tr>
 <tr><th class="col-md-1">MissingClass</th><td>The class could not be found in the system.</td></tr>
-<tr><th class="col-md-1">NewObject</th><td>A call to NewObject() failed to produce a new object.</td></tr>
+<tr><th class="col-md-1">NewObject</th><td>NewObject() failed to produce a new object.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="BroadcastEvent"><h2>BroadcastEvent()</h2><p class="lead">Broadcast an event to all event listeners in the system.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR BroadcastEvent(APTR Event, INT EventSize)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Event</td><td>Pointer to an event structure.</td></tr>
@@ -566,7 +565,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <tr><th class="col-md-1">Search</th><td>A suitable class could not be found for the data source.</td></tr>
 <tr><th class="col-md-1">FileNotFound</th><td>File not found.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">Read</th><td>Error reading data from file.</td></tr>
+<tr><th class="col-md-1">Read</th><td>Error reading data.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="InitObject"><h2>InitObject()</h2><p class="lead">Initialises an object so that it is ready for use.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR InitObject(OBJECTPTR Object)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>The object to initialise.</td></tr>
 </tbody></table></div></div>
@@ -598,7 +597,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <p>Calls to LoadFile() must be matched with a call to <a href="?page=UnloadFile">UnloadFile()</a> to decrement the cache counter. When the counter returns to zero, the file can be unloaded from the cache during the next resource collection phase.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The file was cached successfully.</td></tr>
 <tr><th class="col-md-1">Search</th><td>If <code>CHECK_EXISTS</code> is specified, this failure indicates that the file is not cached.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="LockObject"><h2>LockObject()</h2><p class="lead">Lock an object to prevent contention between threads.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR LockObject(OBJECTPTR Object, INT MilliSeconds)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>The address of the object to lock.</td></tr>
@@ -679,7 +678,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>To destroy an object, call <a href="?page=FreeResource">FreeResource()</a>.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">MissingClass</th><td>The <code>ClassID</code> is invalid or refers to a class that is not installed.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="NotifySubscribers"><h2>NotifySubscribers()</h2><p class="lead">Send a notification event to action subscribers.</p><div class="card card-info mb-3"><div class="card-header"><samp>void NotifySubscribers(OBJECTPTR Object, AC Action, APTR Args, ERR Error)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Object</td><td>Pointer to the object that is to receive the notification message.</td></tr>
@@ -712,7 +711,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">DirEmpty</th><td>The folder is empty.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="ParentContext"><h2>ParentContext()</h2><p class="lead">Returns the context of the client.</p><div class="card card-info mb-3"><div class="card-header"><samp>OBJECTPTR ParentContext()</samp></div></div>
@@ -742,7 +741,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
 <tr><th class="col-md-1">OutOfRange</th><td>The <code>Action</code> ID is invalid.</td></tr>
-<tr><th class="col-md-1">IllegalMethodID</th><td>Illegal method ID (number outside of valid range).</td></tr>
+<tr><th class="col-md-1">IllegalMethodID</th><td>Illegal method ID (outside of valid range).</td></tr>
 <tr><th class="col-md-1">MissingClass</th><td>The class could not be found in the system.</td></tr>
 <tr><th class="col-md-1">NoMatchingObject</th><td>No matching object was found for the given object ID.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
@@ -757,7 +756,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">File</th><td>File error, e.g. file not found.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">Read</th><td>Error reading data from file.</td></tr>
+<tr><th class="col-md-1">Read</th><td>Error reading data.</td></tr>
 <tr><th class="col-md-1">InvalidPath</th><td>Invalid file or folder path detected.</td></tr>
 <tr><th class="col-md-1">OpenFile</th><td>The file could not be opened.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
@@ -781,7 +780,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
 <tr><th class="col-md-1">Memory</th><td>The memory block to be re-allocated is invalid.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="RegisterFD"><h2>RegisterFD()</h2><p class="lead">Registers a file descriptor for monitoring when the task is asleep.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR RegisterFD(HOSTHANDLE FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR) , APTR Data)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>FD</td><td>The file descriptor that is to be watched.</td></tr>
@@ -878,7 +877,7 @@ if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
 </tbody></table></div></div>
 <p>Use the ScanMessages() function to scan the local message queue for information without affecting the state of the queue.  To use this function effectively, make repeated calls to ScanMessages() to analyse the queue until it returns an error code other than <code>ERR::Okay</code>.</p>
 <p>The following example illustrates a scan for <code>MSGID::QUIT</code> messages:</p>
-<pre>while (!ScanMessages(&amp;handle, MSGID::QUIT, NULL, NULL)) {
+<pre>while (!ScanMessages(&amp;handle, MSGID::QUIT, nullptr, nullptr)) {
    ...
 }
 </pre>
@@ -1026,7 +1025,7 @@ FreeResource(memory);  // Reference is no longer valid
 <p>An event handle will be returned in the <code>Handle</code> parameter to identify the subscription.  This must be retained to later unsubscribe from the event with the <a href="?page=UnsubscribeEvent">UnsubscribeEvent()</a> function.</p>
 <p>The prototype for the <code>Callback</code> function is <code>Function(APTR Event, LONG Size, APTR CallbackMeta)</code>, where <code>Event</code> is the event structure that matches to the subscribed EventID.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>A call to AllocMemory() failed to create a new memory block.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="SubscribeTimer"><h2>SubscribeTimer()</h2><p class="lead">Subscribes an object or function to the timer service.</p><div class="card card-info mb-3"><div class="card-header"><samp>ERR SubscribeTimer(DOUBLE Interval, FUNCTION * Callback, APTR * Subscription)</samp></div><div class="card-body" style="padding:0px"><table class="table mb-3 thead-light"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Interval</td><td>The total number of seconds to wait between timer calls.</td></tr>

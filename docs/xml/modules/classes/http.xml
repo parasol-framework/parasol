@@ -250,7 +250,7 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, LONG Length)</code>.</p>
+<p>Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the callback routine is <code>ERR Function(*HTTP, APTR Data, int Length)</code>.</p>
 <p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, the currently executing HTTP request will be cancelled.</p>
       </description>
     </field>
@@ -326,7 +326,7 @@ http.acActivate()
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERR Function(*HTTP, APTR Buffer, LONG BufferSize, LONG *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
+<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERR Function(*HTTP, APTR Buffer, int BufferSize, int *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
 <p>Outgoing content is placed in the <code>Buffer</code> address and must not exceed the indicated <code>BufferSize</code>.  The total number of bytes placed in the <code>Buffer</code> must be indicated in the Result parameter before the callback routine returns.</p>
 <p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR::TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR::Okay</code> indicate failure.</p>
       </description>
@@ -498,6 +498,7 @@ http.acActivate()
 
     <constants lookup="HTF" comment="HTTP flags">
       <const name="DEBUG_SOCKET">Log all HTTP headers and data that goes out through the socket.  This should only be used when sending plain-text data.</const>
+      <const name="DISABLE_SERVER_VERIFY">Disable SSL server certificate verification (use with caution).</const>
       <const name="LOG_ALL">Print extra log messages during HTTP processing.</const>
       <const name="MESSAGE">When activating child objects, send delayed messages to postpone execution rather than making direct calls.</const>
       <const name="MOVED">Read-only.  Indicates that the HTTP source was moved (<code>HTS::MOVED_PERMANENTLY</code>).</const>

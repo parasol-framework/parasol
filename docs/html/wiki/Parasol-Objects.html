@@ -59,6 +59,7 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
              <li class="api-ref"><a class="rounded" href="Parasol-Objects.html">Parasol Objects</a></li>
              <li class="api-ref"><a class="rounded" href="Parasol-In-Depth.html">Parasol In Depth</a></li>
+             <li class="api-ref"><a class="rounded" href="Coding-With-AI.html">Coding With AI</a></li>
            </ul>
          </div></li>
 
@@ -288,7 +289,7 @@ auto error = NewObject(ID_AUDIO, NF::NIL, &amp;audio);</code></pre>
 if (file.ok()) {
    ...
 }</code></pre>
-<p>Note the use of the <code>ok()</code> call to confirm that object was initialised successfully. An <code>error</code> field is also provided that will be set to a value other than <code>ERR::Okay</code> if a problem occurred.</p>
+<p>Note the use of the <code>ok()</code> call to confirm that object was initialised successfully. An <code>error</code> field is also provided that will be set to a value other than <code>ERR::Okay</code> if a problem occurred. The object will be collected when it goes out of scope.</p>
 <p>Parasol classes in C++ also implement alternative means of creation that are more concise, with the addition of <code>global()</code>, <code>local()</code> and <code>untracked()</code> variants:</p>
 <pre><code>objFile *file = objFile::create { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
@@ -297,7 +298,7 @@ extFile *file = extFile::create::global(fl::Path(path));
 extVectorScene *scene = extVectorScene::create::local(fl::PageWidth(1024), fl::PageHeight(768));
 
 extbitmap *bmp = extBitmap::create::untracked(fl::Width(1024), fl::Height(768));</code></pre>
-<p>Note that these variations return a direct pointer to the object or <code>nullptr</code> if an error occurs. The original error code is discarded when these interfaces are used.</p>
+<p>Note that these variations will return a direct pointer to the object if successful, or <code>nullptr</code> if an error occurs. The original <code>ERR</code> code is irretrievable when these simpler interfaces are used.</p>
 <h2 id="object-identity">Object Identity</h2>
 <p>All objects are given a unique ID on creation, which is directly readable from the <code>UID</code> field. A useful benefit of UIDs is that they can be stored as object references instead of pointers. UID&#39;s have a safety advantage over pointers because they need to be resolved with <code>GetObjectPtr()</code> or <code>AccessObject()</code> prior to use. Successful resolution guarantees that the object exists. A pointer on the other hand can carry the risk of the object being collected, leaving a now invalid pointer reference. Always give consideration to this risk when storing naked pointers.</p>
 <p>Objects can also be given a name identifier on their creation by the client. Named objects are easier to track in debug logs and can be searched for by <code>FindObject()</code>. The name of an object can be read from its <code>Name</code> field.</p>
@@ -489,15 +490,19 @@ public variables and methods is helpful in accelerating development for new user
 <tbody>
 <tr>
 <td style="text-align: left;"><code>ERR set(FIELD UID, T Value)</code></td>
-<td style="text-align: left;">Set a field of type T. All primitive types are supported, while special types include <code>std::arrray</code>, <code>std::vector</code>, <code>FRGB</code>, <code>FUNCTION</code>, <code>std::string</code> and <code>Unit</code>.</td>
+<td style="text-align: left;">Set a field of type T. All primitive types are supported, while special types include <code>FRGB</code>, <code>FUNCTION</code>, <code>std::string</code> and <code>Unit</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>ERR setFields(Args&amp;&amp;... pFields)</code></td>
 <td style="text-align: left;">Set one or more field values using field initialisers (same technique as <code>create()</code>).</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>ERR setScale(FIELD UID, DOUBLE Value)</code></td>
-<td style="text-align: left;">Set a field with <code>Value</code> and apply the <code>SCALE</code> indicator.</td>
+<td style="text-align: left;"><code>ERR set(FIELD UID, T *Value, size_t Elements, int Type [Optional])</code></td>
+<td style="text-align: left;">Set an array of type T, pointed to by Value and consisting of total Elements.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ERR set(FIELD UID, ARRAY &amp;Value, int Type [Optional])</code></td>
+<td style="text-align: left;">Set an array of any type, where ARRAY can be a std::array<T>, std::vector<T> or pf::vector<T>. An FD descriptor can be defined in Type if the array type cannot be discerned at compile time.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>ERR get(FIELD UID, T *Value)</code></td>

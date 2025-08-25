@@ -299,7 +299,7 @@
       <result>
         <error code="Okay">The statement was added successfully.</error>
         <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="OutOfRange">A value is outside of the valid range.</error>
         <error code="ReadOnly">Changes to the XML data are not permitted.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -362,7 +362,7 @@
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">A specified number is outside of the valid range.</error>
+        <error code="OutOfRange">A value is outside of the valid range.</error>
         <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
@@ -451,7 +451,7 @@
       <result>
         <error code="Okay">The XML object was successfully sorted.</error>
         <error code="Search">The provided <code>XPath</code> failed to locate a tag.</error>
-        <error code="AllocMemory">A call to AllocMemory() failed to create a new memory block.</error>
+        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
         <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
