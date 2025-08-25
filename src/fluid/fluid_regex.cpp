@@ -85,99 +85,84 @@ static int regex_new(lua_State *Lua)
 
       auto reg_flags = std::regex_constants::ECMAScript; // Default syntax
       if (flags & REGEX_ICASE) reg_flags |= std::regex_constants::icase;
-      if (flags & REGEX_EXTENDED) reg_flags |= std::regex_constants::extended;
+      if (flags & REGEX_EXTENDED) {
+#ifdef __MINGW32__
+         // NB: MinGW isn't an officially supported build environment, so we don't
+         // need to go out of our way in doing anything about this problem.
+         log.warning("2025-08-25 REGEX_EXTENDED flag disabled on unstable MinGW builds.");
+#else
+         reg_flags |= std::regex_constants::extended;
+#endif
+      }
 
-      r->regex_obj = new (std::nothrow) std::regex();
+      // Simple pattern validation - check for basic regex syntax errors
+      bool has_error = false;
+      std::string error_msg;
 
-      if (r->regex_obj) {
-         // Simple pattern validation - check for basic regex syntax errors
-         bool has_error = false;
-         std::string error_msg;
+      int paren_count   = 0;
+      int bracket_count = 0;
+      int brace_count   = 0;
+      bool in_bracket   = false;
 
-         // Basic validation checks
-         int paren_count   = 0;
-         int bracket_count = 0;
-         int brace_count   = 0;
-         bool in_bracket   = false;
-
-         for (const char *p = pattern; *p; p++) {
-            switch (*p) {
-               case '(':
-                  if (!in_bracket) paren_count++;
-                  break;
-               case ')':
-                  if (!in_bracket) paren_count--;
-                  if (paren_count < 0) {
-                     has_error = true;
-                     error_msg = "Unmatched closing parenthesis";
-                  }
-                  break;
-               case '[':
-                  if (!in_bracket) {
-                     in_bracket = true;
-                     bracket_count++;
-                  }
-                  break;
-               case ']':
-                  if (in_bracket) {
-                     in_bracket = false;
-                     bracket_count--;
-                  }
-                  break;
-               case '{':
-                  if (!in_bracket) brace_count++;
-                  break;
-               case '}':
-                  if (!in_bracket) brace_count--;
-                  if (brace_count < 0) {
-                     has_error = true;
-                     error_msg = "Unmatched closing brace";
-                  }
-                  break;
-            }
-            if (has_error) break;
+      for (const char *p = pattern; *p; p++) {
+         switch (*p) {
+            case '(':
+               if (!in_bracket) paren_count++;
+               break;
+            case ')':
+               if (!in_bracket) paren_count--;
+               if (paren_count < 0) {
+                  has_error = true;
+                  error_msg = "Unmatched closing parenthesis";
+               }
+               break;
+            case '[':
+               if (!in_bracket) {
+                  in_bracket = true;
+                  bracket_count++;
+               }
+               break;
+            case ']':
+               if (in_bracket) {
+                  in_bracket = false;
+                  bracket_count--;
+               }
+               break;
+            case '{':
+               if (!in_bracket) brace_count++;
+               break;
+            case '}':
+               if (!in_bracket) brace_count--;
+               if (brace_count < 0) {
+                  has_error = true;
+                  error_msg = "Unmatched closing brace";
+               }
+               break;
          }
+         if (has_error) break;
+      }
 
-         if (!has_error) {
-            if (paren_count != 0) {
-               has_error = true;
-               error_msg = "Unmatched parentheses";
-            }
-            else if (in_bracket or bracket_count != 0) {
-               has_error = true;
-               error_msg = "Unmatched brackets";
-            }
-            else if (brace_count != 0) {
-               has_error = true;
-               error_msg = "Unmatched braces";
-            }
+      if (!has_error) {
+         if (paren_count != 0) {
+            has_error = true;
+            error_msg = "Unmatched parentheses";
          }
-
-         if (has_error) {
-            r->error_msg = "Invalid regex pattern: " + error_msg;
-            r->valid = false;
-            log.warning("Regex validation failed: %s", r->error_msg.c_str());
+         else if (in_bracket or bracket_count != 0) {
+            has_error = true;
+            error_msg = "Unmatched brackets";
          }
-         else {
-            // Create new regex with pattern - avoid potential exception
-            delete r->regex_obj;
-            r->regex_obj = new (std::nothrow) std::regex(pattern, reg_flags);
-
-            if (r->regex_obj) {
-               r->valid = true;
-               log.trace("Regex compiled successfully");
-            }
-            else {
-               r->error_msg = "Failed to compile regex pattern";
-               r->valid = false;
-               log.warning("Regex compilation failed");
-            }
+         else if (brace_count != 0) {
+            has_error = true;
+            error_msg = "Unmatched braces";
          }
       }
+
+      if (has_error) {
+         luaL_error(Lua, "Regex validation failed: %s", error_msg.c_str());
+      }
       else {
-         r->error_msg = "Memory allocation failed for regex";
-         r->valid = false;
-         log.warning("Failed to allocate regex object");
+         r->regex_obj = new (std::nothrow) std::regex(pattern, reg_flags);
+         if (!r->regex_obj) luaL_error(Lua, "Regex compilation failed");
       }
 
       luaL_getmetatable(Lua, "Fluid.regex");
@@ -191,17 +176,11 @@ static int regex_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex:test(text) -> boolean
+// Method: regex.test(text) -> boolean
 
 static int regex_test(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
-
-   if (!r->valid) {
-      luaL_error(Lua, "Invalid regex: %s", r->error_msg.c_str());
-      return 0;
-   }
-
    const char *text = luaL_checkstring(Lua, 1);
 
    bool matches = std::regex_search(text, *r->regex_obj);
@@ -210,17 +189,11 @@ static int regex_test(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex:match(text) -> table|nil
+// Method: regex.match(text) -> table|nil
 
 static int regex_match(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
-
-   if (!r->valid) {
-      luaL_error(Lua, "Invalid regex: %s", r->error_msg.c_str());
-      return 0;
-   }
-
    const char *text = luaL_checkstring(Lua, 1);
 
    std::smatch matches;
@@ -236,16 +209,11 @@ static int regex_match(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex:matchAll(text) -> table
+// Method: regex.matchAll(text) -> table
 
 static int regex_matchAll(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
-
-   if (!r->valid) {
-      luaL_error(Lua, "Invalid regex: %s", r->error_msg.c_str());
-      return 0;
-   }
 
    const char *text = luaL_checkstring(Lua, 1);
 
@@ -279,16 +247,11 @@ static int regex_matchAll(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex:replace(text, replacement) -> string
+// Method: regex.replace(text, replacement) -> string
 
 static int regex_replace(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
-
-   if (!r->valid) {
-      luaL_error(Lua, "Invalid regex: %s", r->error_msg.c_str());
-      return 0;
-   }
 
    const char *text = luaL_checkstring(Lua, 1);
    const char *replacement = luaL_checkstring(Lua, 2);
@@ -314,16 +277,11 @@ static int regex_replace(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex:replaceAll(text, replacement) -> string
+// Method: regex.replaceAll(text, replacement) -> string
 
 static int regex_replaceAll(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
-
-   if (!r->valid) {
-      luaL_error(Lua, "Invalid regex: %s", r->error_msg.c_str());
-      return 0;
-   }
 
    const char *text = luaL_checkstring(Lua, 1);
    const char *replacement = luaL_checkstring(Lua, 2);
@@ -339,16 +297,11 @@ static int regex_replaceAll(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex:split(text) -> table
+// Method: regex.split(text) -> table
 
 static int regex_split(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
-
-   if (!r->valid) {
-      luaL_error(Lua, "Invalid regex: %s", r->error_msg.c_str());
-      return 0;
-   }
 
    const char *text = luaL_checkstring(Lua, 1);
 
@@ -394,7 +347,6 @@ static int regex_get(lua_State *Lua)
          switch(hash) {
             case HASH_pattern: lua_pushstring(Lua, r->pattern.c_str()); return 1;
             case HASH_flags: lua_pushinteger(Lua, r->flags); return 1;
-            case HASH_valid: lua_pushboolean(Lua, r->valid); return 1;
             case HASH_error:
                if (r->error_msg.empty()) lua_pushnil(Lua);
                else lua_pushstring(Lua, r->error_msg.c_str());

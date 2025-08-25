@@ -33,6 +33,9 @@ To convert the C array values to a Lua table:
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
+#include <sstream>
+#include <format>
+#include <string_view>
 
 extern "C" {
  #include "lauxlib.h"
@@ -624,36 +627,37 @@ static int array_concat(lua_State *Lua)
       return 0;
    }
 
-   std::string result;
-   char buffer[256];
+   std::ostringstream result;
    
    for (int i = 0; i < a->Total; i++) {
-      if (i > 0) result += join_str;
+      if (i > 0) result << join_str;
       
       switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-         case FD_STRING:  
-            snprintf(buffer, sizeof(buffer), format, a->ptrString[i]); 
+         case FD_STRING:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrString[i]));
             break;
-         case FD_POINTER: 
-            snprintf(buffer, sizeof(buffer), format, a->ptrPointer[i]); 
+         case FD_POINTER:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrPointer[i]));
             break;
-         case FD_FLOAT:   
-            snprintf(buffer, sizeof(buffer), format, a->ptrFloat[i]); 
+         case FD_FLOAT:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrFloat[i]));
             break;
-         case FD_DOUBLE:  
-            snprintf(buffer, sizeof(buffer), format, a->ptrDouble[i]); 
+         case FD_DOUBLE:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrDouble[i]));
             break;
-         case FD_INT64:   
-            snprintf(buffer, sizeof(buffer), format, (long long)a->ptrLarge[i]); 
+         case FD_INT64: {
+            auto value = (long long)a->ptrLarge[i];
+            result << std::vformat(std::string_view(format), std::make_format_args(value));
             break;
-         case FD_INT:     
-            snprintf(buffer, sizeof(buffer), format, a->ptrLong[i]); 
+         }
+         case FD_INT:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrLong[i]));
             break;
-         case FD_WORD:    
-            snprintf(buffer, sizeof(buffer), format, a->ptrWord[i]); 
+         case FD_WORD:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrWord[i]));
             break;
-         case FD_BYTE:    
-            snprintf(buffer, sizeof(buffer), format, a->ptrByte[i]); 
+         case FD_BYTE:
+            result << std::vformat(std::string_view(format), std::make_format_args(a->ptrByte[i]));
             break;
          case FD_STRUCT:
             luaL_error(Lua, "concat() does not support struct arrays.");
@@ -662,11 +666,9 @@ static int array_concat(lua_State *Lua)
             luaL_error(Lua, "Unsupported array type $%.8x", a->Type);
             return 0;
       }
-      
-      result += buffer;
    }
 
-   lua_pushstring(Lua, result.c_str());
+   lua_pushstring(Lua, result.str().c_str());
    return 1;
 }
 
