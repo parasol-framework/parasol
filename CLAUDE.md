@@ -20,9 +20,9 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 
 **Testing:**
 - **ALWAYS** install your latest build before running `ctest`.
-- Run all integration tests: `ctest -C Release test`
-- Run single integration test: `ctest -C Release test -L TEST_LABEL`
-- **ALWAYS** write tests using Flute unless instructed otherwise (see Flute Testing section below)
+- Run all integration tests: `ctest --build-config Release --test-dir build/claude`
+- Run single integration test: `ctest --build-config Release --test-dir build/claude -L TEST_LABEL`
+- **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
 
 ### CMake Configuration Options
 
@@ -78,7 +78,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 
 **CRITICAL: Fluid scripts execute top-to-bottom with NO entry point function**
 - Always study existing `.fluid` files (like `docs/generate.fluid`, `examples/*.fluid`) to understand patterns
-- API documentation in `docs/html` can be utilised to understand class and module interfaces in detail.
+- API documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
 
 #### Fluid Coding Patterns
 
@@ -105,19 +105,27 @@ Tests are written in Fluid and executed with the Flute test runner:
 - You can append `--log-api` to the runner to see log messages
 
 **Proper Flute Test Command Format:**
+
+**For Windows (use relative paths to avoid path separator issues):**
+```bash
+cd src/network/tests && ../../../install/claude/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test-bind-address.fluid --gfx-driver=headless
+```
+
+**For Linux:**
 ```bash
 cd "path/to/module/directory" && /path/to/parasol.exe /path/to/tools/flute.fluid file=/absolute/path/to/test.fluid --gfx-driver=headless
 ```
 
 **Example - Running SVG tests:**
 ```bash
-cd "src/svg/tests" && ../../../local-claude/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test-svg.fluid --gfx-driver=headless
+cd "src/svg/tests" && ../../../install/claude/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test-svg.fluid --gfx-driver=headless
 ```
 
 **Key Requirements for Flute Tests:**
 - Must `cd` to the directory containing the test file
-- Use absolute paths for both `parasol.exe` and `flute.fluid`
-- Use absolute path for the test file parameter (`file=...`)
+- **Windows:** Use relative paths for executables (e.g., `../../../install/claude/parasol.exe`) to avoid Windows path separator issues in Bash
+- **Linux:** Use absolute paths for executables
+- Use absolute path for the test file parameter (`file=...`) - this works cross-platform
 - This ensures proper variable initialization (e.g., `glSVGFolder` for SVG tests)
 
 ### Code Generation
@@ -134,6 +142,11 @@ The build system heavily uses code generation:
 - Platform-specific code is in subdirectories (`win32/`, `x11/`, etc.)
 - Build system auto-detects platform capabilities (X11, SSL, etc.)
 - Windows builds support both MSVC and MinGW toolchains
+
+**Windows-Specific Notes:**
+- Use forward slashes `/` in CMake paths and absolute file paths
+- In Bash commands, quote paths with spaces: `"path with spaces"`
+- For Flute tests, use relative paths for executables to avoid path separator issues
 
 ## Working with Vector Graphics
 
@@ -251,11 +264,13 @@ Key dependencies between modules:
 
 ### Key Examples for Learning
 
-- **`widgets.fluid`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
-- **`vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
-- **`gradients.fluid`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
+- **`examples/widgets.fluid`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
+- **`examples/vue.fluid`** - File viewer supporting SVG, RIPL, JPEG, PNG - shows document and graphics integration
+- **`examples/gradients.fluid`** - Interactive gradient editor demonstrating real-time vector graphics manipulation
+- **`tools/http_server.fluid`** - HTTP server implementation with NetSocket usage patterns
 - **`tools/idl/idl-c.fluid`** - Extensive file I/O and general API usage
 
 ## Agentic Behaviour
 
-- Always give an honest, balanced opinion in your responses.
+- Always give an honest, balanced opinion in your responses
+- Always use the fluid-code-expert agent for Fluid coding

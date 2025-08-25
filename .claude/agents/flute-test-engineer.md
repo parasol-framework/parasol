@@ -28,6 +28,7 @@ Your primary responsibilities:
    - Include comprehensive assertions and error checking
    - Handle cleanup and resource management properly
    - Document test purpose and expected outcomes
+   - When raising conditional errors, use `assert()` rather than `error()`
 
 4. **Apply Parasol-Specific Testing Knowledge**:
    - Understand module dependencies and initialization requirements
