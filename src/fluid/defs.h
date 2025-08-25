@@ -289,7 +289,6 @@ public:
    std::string pattern;     // Original pattern string
    std::string error_msg;   // Error message if compilation failed
    int flags;               // Compilation flags
-   bool valid = false;      // Compilation success flag
    fregex(std::string_view Pattern, int Flags) : pattern(Pattern), flags(Flags) { }
 };
 

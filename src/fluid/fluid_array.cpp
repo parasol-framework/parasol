@@ -490,7 +490,7 @@ static int array_copy(lua_State *Lua)
    if (a->ReadOnly) { luaL_error(Lua, "Array is read-only."); return 0; }
 
    int to_index = 1;
-   if (!lua_isnumber(Lua, 2)) {
+   if (lua_isnumber(Lua, 2)) {
       to_index = lua_tointeger(Lua, 2);
       if (to_index < 1) {
          luaL_argerror(Lua, 2, "Invalid destination index.");
@@ -598,9 +598,9 @@ static int array_concat(lua_State *Lua)
       }
       else if (in_format) {
          // Check for end of format specifier
-         if (*p IS 'd' or *p IS 'i' or *p IS 'o' or *p IS 'x' or *p IS 'X' or 
-             *p IS 'u' or *p IS 'c' or *p IS 's' or *p IS 'p' or 
-             *p IS 'f' or *p IS 'F' or *p IS 'e' or *p IS 'E' or 
+         if (*p IS 'd' or *p IS 'i' or *p IS 'o' or *p IS 'x' or *p IS 'X' or
+             *p IS 'u' or *p IS 'c' or *p IS 's' or *p IS 'p' or
+             *p IS 'f' or *p IS 'F' or *p IS 'e' or *p IS 'E' or
              *p IS 'g' or *p IS 'G') {
             format_count++;
             in_format = false;
@@ -613,47 +613,48 @@ static int array_concat(lua_State *Lua)
          }
       }
    }
-   
+
    if (in_format) {
       luaL_error(Lua, "Incomplete format specifier");
       return 0;
    }
-   
+
    if (format_count != 1) {
       luaL_error(Lua, "Format string must contain exactly one format specifier, found %d", format_count);
       return 0;
    }
 
    std::string result;
+   result.reserve(a->Total * 16);
    char buffer[256];
-   
+
    for (int i = 0; i < a->Total; i++) {
       if (i > 0) result += join_str;
-      
+
       switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-         case FD_STRING:  
-            snprintf(buffer, sizeof(buffer), format, a->ptrString[i]); 
+         case FD_STRING:
+            snprintf(buffer, sizeof(buffer), format, a->ptrString[i]);
             break;
-         case FD_POINTER: 
-            snprintf(buffer, sizeof(buffer), format, a->ptrPointer[i]); 
+         case FD_POINTER:
+            snprintf(buffer, sizeof(buffer), format, a->ptrPointer[i]);
             break;
-         case FD_FLOAT:   
-            snprintf(buffer, sizeof(buffer), format, a->ptrFloat[i]); 
+         case FD_FLOAT:
+            snprintf(buffer, sizeof(buffer), format, a->ptrFloat[i]);
             break;
-         case FD_DOUBLE:  
-            snprintf(buffer, sizeof(buffer), format, a->ptrDouble[i]); 
+         case FD_DOUBLE:
+            snprintf(buffer, sizeof(buffer), format, a->ptrDouble[i]);
             break;
-         case FD_INT64:   
-            snprintf(buffer, sizeof(buffer), format, (long long)a->ptrLarge[i]); 
+         case FD_INT64:
+            snprintf(buffer, sizeof(buffer), format, (long long)a->ptrLarge[i]);
             break;
-         case FD_INT:     
-            snprintf(buffer, sizeof(buffer), format, a->ptrLong[i]); 
+         case FD_INT:
+            snprintf(buffer, sizeof(buffer), format, a->ptrLong[i]);
             break;
-         case FD_WORD:    
-            snprintf(buffer, sizeof(buffer), format, a->ptrWord[i]); 
+         case FD_WORD:
+            snprintf(buffer, sizeof(buffer), format, a->ptrWord[i]);
             break;
-         case FD_BYTE:    
-            snprintf(buffer, sizeof(buffer), format, a->ptrByte[i]); 
+         case FD_BYTE:
+            snprintf(buffer, sizeof(buffer), format, a->ptrByte[i]);
             break;
          case FD_STRUCT:
             luaL_error(Lua, "concat() does not support struct arrays.");
@@ -662,7 +663,7 @@ static int array_concat(lua_State *Lua)
             luaL_error(Lua, "Unsupported array type $%.8x", a->Type);
             return 0;
       }
-      
+
       result += buffer;
    }
 
