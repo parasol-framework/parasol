@@ -3,6 +3,8 @@ The HTTPServer interface will run an HTTP service in the background of the calli
 
 In its current implementation, no run-time adjustment of the server settings is possible once the server is launched.
 
+   require 'net/httpserver'
+
    local server = net.httpServer({
       port = 7070,
       folder = 'parasol:docs/html/'
