@@ -106,12 +106,11 @@ static const struct {
 
 //********************************************************************************************************************
 
-static ERR convert_error(int error)
+static ERR convert_error(int error = 0)
 {
    if (!error) error = WSAGetLastError();
 
-   int i;
-   for (i=0; glErrors[i].WinError; i++) {
+   for (int i=0; glErrors[i].WinError; i++) {
       if (glErrors[i].WinError IS error) return glErrors[i].PanError;
    }
    return ERR::SystemCall;
@@ -289,7 +288,7 @@ void win_socket_reference(WSW_SOCKET SocketHandle, void *Reference)
 
 ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 {
-   if (::bind(SocketHandle, Name, NameLen) == SOCKET_ERROR) return convert_error(0);
+   if (::bind(SocketHandle, Name, NameLen) == SOCKET_ERROR) return convert_error();
    else return ERR::Okay;
 }
 
@@ -361,7 +360,7 @@ ERR win_connect(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLe
 {
    if (connect(SocketHandle, Name, NameLen) IS SOCKET_ERROR) {
       if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay; // connect() will always 'fail' for non-blocking sockets (however it will continue to connect/succeed...!)
-      return convert_error(0);
+      return convert_error();
    }
    else return ERR::Okay;
 }
@@ -410,7 +409,7 @@ char * win_inet_ntoa(unsigned long Addr)
 
 ERR win_listen(WSW_SOCKET SocketHandle, int BackLog)
 {
-   if (listen(SocketHandle, BackLog) IS SOCKET_ERROR) return convert_error(0);
+   if (listen(SocketHandle, BackLog) IS SOCKET_ERROR) return convert_error();
    else return ERR::Okay;
 }
 
@@ -427,7 +426,7 @@ ERR WIN_RECEIVE(WSW_SOCKET SocketHandle, void *Buffer, size_t Len, size_t *Resul
    }
    else if (result IS 0) return ERR::Disconnected;
    else if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay;
-   else return convert_error(0);
+   else return convert_error();
 }
 
 // This variant makes it easier to append data to buffers.
@@ -448,7 +447,7 @@ template <class T> ERR WIN_APPEND(WSW_SOCKET SocketHandle, std::vector<uint8_t> 
       return ERR::Disconnected;
    }
    else if (WSAGetLastError() IS WSAEWOULDBLOCK) return ERR::Okay;
-   else return convert_error(0);
+   else return convert_error();
 }
 
 // Explicit template instantiations
@@ -471,7 +470,7 @@ ERR WIN_SEND(WSW_SOCKET Socket, const void *Buffer, size_t *Length, int Flags)
          case WSAEINPROGRESS:
             return ERR::Busy;
          default:
-            return convert_error(0);
+            return convert_error();
       }
    }
 }

@@ -61,7 +61,7 @@ if(MKCERT_EXECUTABLE AND OPENSSL_EXECUTABLE)
       COMMAND ${CMAKE_COMMAND} -E chdir "${SSL_DATA_DIR}" "${MKCERT_EXECUTABLE}" localhost 127.0.0.1 ::1
       COMMAND ${CMAKE_COMMAND} -E rename "${MKCERT_PEM}" "${LOCALHOST_PEM}"
       COMMAND ${CMAKE_COMMAND} -E rename "${MKCERT_KEY_PEM}" "${LOCALHOST_KEY_PEM}"
-      COMMAND "${OPENSSL_EXECUTABLE}" pkcs12 -export -out "${LOCALHOST_P12}" 
+      COMMAND "${OPENSSL_EXECUTABLE}" pkcs12 -export -out "${LOCALHOST_P12}"
               -inkey "${LOCALHOST_KEY_PEM}" -in "${LOCALHOST_PEM}" -passout pass:
       COMMAND ${CMAKE_COMMAND} -E remove -f "${LOCALHOST_KEY_PEM}"
       COMMENT "Generating SSL certificates for localhost testing"
@@ -73,7 +73,7 @@ if(MKCERT_EXECUTABLE AND OPENSSL_EXECUTABLE)
 
    # Make the network module depend on certificate generation
    add_dependencies(${MOD} generate_ssl_certificates)
-   
+
    message(STATUS "SSL certificate generation enabled (mkcert and openssl found)")
 else()
    if(NOT MKCERT_EXECUTABLE)
@@ -85,10 +85,11 @@ else()
    endif()
 endif()
 
-flute_test (network_dns "${CMAKE_CURRENT_SOURCE_DIR}/tests/dns-parallel.fluid")
-flute_test (network_server_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/server-io.fluid")
-flute_test (network_client_server "${CMAKE_CURRENT_SOURCE_DIR}/tests/client-server.fluid")
-flute_test (network_error_handling "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-error-handling.fluid")
-flute_test (network_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-ipv6.fluid")
-flute_test (network_concurrency "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-concurrency.fluid")
-flute_test (network_ssl "${CMAKE_CURRENT_SOURCE_DIR}/tests/test-ssl.fluid")
+flute_test (network_bind "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bind_address.fluid")
+flute_test (network_dns "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_dns_parallel.fluid")
+flute_test (network_server_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_server_io.fluid")
+flute_test (network_client_server "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_client_server.fluid")
+flute_test (network_error_handling "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_error_handling.fluid")
+flute_test (network_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ipv6.fluid")
+flute_test (network_concurrency "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concurrency.fluid")
+flute_test (network_ssl "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ssl.fluid")

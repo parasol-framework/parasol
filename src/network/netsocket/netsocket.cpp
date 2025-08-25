@@ -165,7 +165,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
    if (!Self->Handle) return log.warning(ERR::NotInitialised);
 
    if (Self->State != NTC::DISCONNECTED) {
-      log.warning("Attempt to connect when socket is not in disconnected state");
+      log.warning("Attempt to connect when socket is in state %s", netsocket_state(Self->State));
       return ERR::InvalidState;
    }
 
@@ -647,6 +647,105 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 }
 
 //********************************************************************************************************************
+// Parse a bind address string and convert it to the appropriate sockaddr structure
+
+static ERR parse_bind_address(const char *Address, bool IPv6, void *AddrOut)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((!Address) or (!AddrOut)) return log.warning(ERR::NullArgs);
+
+   // Handle special cases
+   if (pf::iequals(Address, "localhost") or pf::iequals(Address, "127.0.0.1")) {
+      // Bind to IPv4 localhost (127.0.0.1), use IPv4-mapped IPv6 for dual-stack compatibility
+      if (IPv6) {
+         auto addr = (struct sockaddr_in6 *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in6));
+         addr->sin6_family = AF_INET6;
+         // Create IPv4-mapped IPv6 address (::ffff:127.0.0.1)
+         pf::clearmem(&addr->sin6_addr, sizeof(addr->sin6_addr));
+         addr->sin6_addr.s6_addr[10] = 0xff;
+         addr->sin6_addr.s6_addr[11] = 0xff;
+         addr->sin6_addr.s6_addr[12] = 127;
+         addr->sin6_addr.s6_addr[13] = 0;
+         addr->sin6_addr.s6_addr[14] = 0;
+         addr->sin6_addr.s6_addr[15] = 1;
+      }
+      else {
+         auto addr = (struct sockaddr_in *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in));
+         addr->sin_family = AF_INET;
+         addr->sin_addr.s_addr = htonl(0x7f000001); // 127.0.0.1
+      }
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Address, "::1")) {
+      // Bind to IPv6 localhost only
+      if (IPv6) {
+         auto addr = (struct sockaddr_in6 *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in6));
+         addr->sin6_family = AF_INET6;
+         addr->sin6_addr.s6_addr[15] = 1; // Set to ::1 (IPv6 loopback)
+         return ERR::Okay;
+      }
+      else return log.warning(ERR::InvalidValue); // Cannot bind IPv6 address to IPv4 socket
+   }
+   else if (pf::iequals(Address, "0.0.0.0") or pf::iequals(Address, "::") or pf::iequals(Address, "*") or pf::iequals(Address, "")) {
+      // Bind to all interfaces
+      if (IPv6) {
+         auto addr = (struct sockaddr_in6 *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in6));
+         addr->sin6_family = AF_INET6;
+         addr->sin6_addr = in6addr_any;
+      }
+      else {
+         auto addr = (struct sockaddr_in *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in));
+         addr->sin_family = AF_INET;
+         addr->sin_addr.s_addr = INADDR_ANY;
+      }
+      return ERR::Okay;
+   }
+
+   // Try to parse as an IP address
+   IPAddress ip;
+   if (net::StrToAddress(Address, &ip) IS ERR::Okay) {
+      if (IPv6) {
+         auto addr = (struct sockaddr_in6 *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in6));
+         addr->sin6_family = AF_INET6;
+
+         if (ip.Type IS IPADDR::V4) { // Convert IPv4 to IPv4-mapped IPv6 address
+            pf::clearmem(&addr->sin6_addr, sizeof(addr->sin6_addr));
+            addr->sin6_addr.s6_addr[10] = 0xff;
+            addr->sin6_addr.s6_addr[11] = 0xff;
+            pf::copymem(ip.Data, &addr->sin6_addr.s6_addr[12], 4);
+         }
+         else { // Native IPv6 address
+            pf::copymem(ip.Data, &addr->sin6_addr, 16);
+         }
+      }
+      else {
+         if (ip.Type IS IPADDR::V6) {
+            log.warning("Cannot bind IPv6 address to IPv4 socket: %s", Address);
+            return ERR::Mismatch;
+         }
+         auto addr = (struct sockaddr_in *)AddrOut;
+         pf::clearmem(addr, sizeof(struct sockaddr_in));
+         addr->sin_family = AF_INET;
+         pf::copymem(ip.Data, &addr->sin_addr.s_addr, 4);
+      }
+      return ERR::Okay;
+   }
+   else {
+      // If not an IP address, could be a hostname - however we leave it up to the user to perform the
+      // name resolution in that case.
+      log.warning("Bind address '%s' is not an IP address.", Address);
+      return ERR::InvalidValue;
+   }
+}
+
+//********************************************************************************************************************
 
 static ERR NETSOCKET_Init(extNetSocket *Self)
 {
@@ -702,12 +801,10 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 
 #elif _WIN32
 
-   // Try IPv6 dual-stack socket first, then fall back to IPv4
    bool is_ipv6;
    Self->Handle = win_socket_ipv6(Self, true, false, is_ipv6);
    if (Self->Handle IS NOHANDLE) return ERR::SystemCall;
    Self->IPV6 = is_ipv6;
-   log.msg("Created socket on Windows (handle: %d) IPV6: %d", Self->Handle, int(is_ipv6));
 
 #endif
 
@@ -719,10 +816,19 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          #ifdef __linux__
             struct sockaddr_in6 addr;
 
-            pf::clearmem(&addr, sizeof(addr));
-            addr.sin6_family = AF_INET6;
-            addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
-            addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
+            // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
+            if (Self->Address) {
+               if (auto error = parse_bind_address(Self->Address, true, &addr); error != ERR::Okay) {
+                  return error;
+               }
+               addr.sin6_port = net::HostToShort(Self->Port);
+            }
+            else {
+               pf::clearmem(&addr, sizeof(addr));
+               addr.sin6_family = AF_INET6;
+               addr.sin6_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
+               addr.sin6_addr   = in6addr_any;   // Must be passed in in network byte order
+            }
 
             int result;
             int value = 1;
@@ -738,10 +844,20 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          #elif _WIN32
             // Windows IPv6 dual-stack server binding
             struct sockaddr_in6 addr;
-            pf::clearmem(&addr, sizeof(addr));
-            addr.sin6_family = AF_INET6;
-            addr.sin6_port   = net::HostToShort(Self->Port);
-            addr.sin6_addr   = in6addr_any;
+
+            // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
+            if (Self->Address) {
+               if (auto error = parse_bind_address(Self->Address, true, &addr); error != ERR::Okay) {
+                  return error;
+               }
+               addr.sin6_port = net::HostToShort(Self->Port);
+            }
+            else {
+               pf::clearmem(&addr, sizeof(addr));
+               addr.sin6_family = AF_INET6;
+               addr.sin6_port   = net::HostToShort(Self->Port);
+               addr.sin6_addr   = in6addr_any;
+            }
 
             if ((error = win_bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) IS ERR::Okay) {
                if ((error = win_listen(Self->Handle, Self->Backlog)) IS ERR::Okay) {
@@ -763,10 +879,20 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       else {
          // IPV4
          struct sockaddr_in addr;
-         pf::clearmem(&addr, sizeof(addr));
-         addr.sin_family = AF_INET;
-         addr.sin_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
-         addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
+
+         // Use parse_bind_address if Address is specified, otherwise bind to all interfaces
+         if (Self->Address) {
+            if (auto error = parse_bind_address(Self->Address, false, &addr); error != ERR::Okay) {
+               return error;
+            }
+            addr.sin_port = net::HostToShort(Self->Port);
+         }
+         else {
+            pf::clearmem(&addr, sizeof(addr));
+            addr.sin_family = AF_INET;
+            addr.sin_port   = net::HostToShort(Self->Port); // Must be passed in in network byte order
+            addr.sin_addr.s_addr   = INADDR_ANY;   // Must be passed in in network byte order
+         }
 
          #ifdef __linux__
             int result;
