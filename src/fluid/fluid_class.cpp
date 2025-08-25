@@ -1085,6 +1085,7 @@ static ERR register_interfaces(objScript *Self)
    register_io_class(prv->Lua);
    register_object_class(prv->Lua);
    register_module_class(prv->Lua);
+   register_regex_class(prv->Lua);
    register_struct_class(prv->Lua);
    register_thread_class(prv->Lua);
    register_input_class(prv->Lua);
