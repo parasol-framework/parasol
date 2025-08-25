@@ -97,7 +97,7 @@ scripts/*.fluid           # APIs
 ### Flute Testing
 
 Tests are written in Fluid and executed with the Flute test runner:
-- Test files are typically named `test-*.fluid` in module directories.
+- Test files are typically named `test_*.fluid` in module directories.
 - Read at least 3 Flute test files to learn the patterns before writing your first test file.
 - Use `flute_test()` CMake function to register tests
 - Tests run post-install against the installed framework
@@ -108,7 +108,7 @@ Tests are written in Fluid and executed with the Flute test runner:
 
 **For Windows (use relative paths to avoid path separator issues):**
 ```bash
-cd src/network/tests && ../../../install/claude/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test-bind-address.fluid --gfx-driver=headless
+cd src/network/tests && ../../../install/claude/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test_bind_address.fluid --gfx-driver=headless
 ```
 
 **For Linux:**
@@ -118,7 +118,7 @@ cd "path/to/module/directory" && /path/to/parasol.exe /path/to/tools/flute.fluid
 
 **Example - Running SVG tests:**
 ```bash
-cd "src/svg/tests" && ../../../install/claude/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test-svg.fluid --gfx-driver=headless
+cd "src/svg/tests" && ../../../install/claude/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test_svg.fluid --gfx-driver=headless
 ```
 
 **Key Requirements for Flute Tests:**
