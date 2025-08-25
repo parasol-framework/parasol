@@ -7,73 +7,73 @@ module({ name="Font", copyright="Paul Manias © 1998-2025", version=1.0, timesta
 
   c_include("<parasol/modules/display.h>")
 
-  flags("FTF", { comment="Font flags" },
-    "HEAVY_LINE: Underline the font with a double-sized line, using the colour defined in #Underline.",
-    "BASE_LINE: The Font's #Y coordinate is the base line.",
-    { ITALIC   = "0x40000000: Font is described as using italics (read only)." },
-    { BOLD     = "0x20000000: Font is described as having a bold weight (read only)." }
+  flags("FTF", { comment="Font flags for controlling rendering behaviour and style detection" },
+    "HEAVY_LINE: Draw an underline with double thickness using the colour specified in the #Underline field. This creates a more prominent underline effect than standard underlining.",
+    "BASE_LINE: Interpret the Font's #Y coordinate as the baseline position rather than the top of the character. This is useful for precise typographical positioning.",
+    { ITALIC   = "0x40000000: Indicates that the font has italic styling (read-only flag). This flag is automatically set when an italic font face is loaded." },
+    { BOLD     = "0x20000000: Indicates that the font has bold weight styling (read-only flag). This flag is automatically set when a bold font face is loaded." }
   )
 
-  flags("FMETA", { comment="Result flags for the SelectFont() function." },
-    "SCALED: The font is scalable (assume fixed otherwise).",
-    "VARIABLE: This is a scalable font featuring variable metrics.",
-    "HINT_NORMAL: The hinting information provided by the font should be given preference.",
-    "HINT_LIGHT: The light version of the Freetype hinter should be used.",
-    "HINT_INTERNAL: The Freetype hinter should be used.",
-    "HIDDEN: The font should not appear in any named list shown to the user."
+  flags("FMETA", { comment="Result flags returned by the SelectFont() function, providing metadata about font capabilities" },
+    "SCALED: The font is scalable to any size (vector-based). If not set, assume the font is a fixed-size bitmap font with limited size options.",
+    "VARIABLE: The font supports variable metrics and axes, allowing for dynamic adjustment of weight, width, slant, and other design parameters.",
+    "HINT_NORMAL: Font rendering should prioritise the hinting information embedded in the font file for optimal character display.",
+    "HINT_LIGHT: Font rendering should use the lighter version of the FreeType hinter, which provides gentler adjustments to character shapes.",
+    "HINT_INTERNAL: Font rendering should use the internal FreeType hinter, which may provide stronger grid-fitting for improved clarity.",
+    "HIDDEN: The font should be excluded from user-visible font lists and selection interfaces, typically used for system or internal fonts."
   )
 
-  enum("HINT", { type="char", start=1, comment="Force hinting options for a font." },
-     "NORMAL: The hinting information provided by the font will be given preference.",
-     "INTERNAL: The Freetype hinter will be forcibly imposed.",
-     "LIGHT: The light version of the Freetype hinter will be forcibly imposed.")
+  enum("HINT", { type="char", start=1, comment="Font hinting options that control character shape adjustment for improved screen display" },
+     "NORMAL: Use the hinting information embedded within the font file. This typically provides the best balance between accuracy and screen clarity as intended by the font designer.",
+     "INTERNAL: Force the use of FreeType's internal auto-hinter, which analyses character shapes and applies mathematical grid-fitting. Useful for fonts with poor or missing hinting data.",
+     "LIGHT: Apply FreeType's light hinting algorithm, which makes minimal adjustments to preserve the original character shapes while improving alignment to pixel boundaries.")
 
-  struct("FontList", { comment="For GetList(), describes a system font." }, [[
-    struct(*FontList) Next  # Pointer to the next entry in the list.
-    str   Name              # The name of the font face.
-    str   Alias             # Reference to another font Name if this is an alias.
-    array(int,0) Points     # Pointer to an array of fixed point sizes supported by the font.
-    str   Styles            # Supported styles are listed here in CSV format.
-    str   Axes              # For variable fonts, lists all supported axis codes in CSV format
-    char  Scalable          # `TRUE` if the font is scalable.
-    char  Variable          # `TRUE` if the font has variable metrics.
-    char(HINT) Hinting      # Hinting options
-    char  Hidden            # `TRUE` if the font should be hidden from user font lists.
+  struct("FontList", { comment="Font metadata structure returned by GetList() function, describing system font capabilities and properties" }, [[
+    struct(*FontList) Next  # Pointer to the next entry in the linked list. NULL indicates the end of the list.
+    str   Name              # The canonical name of the font face (e.g., 'Arial', 'Times New Roman'). Used for font selection and identification.
+    str   Alias             # Alternative name reference to another font Name if this entry represents an alias. NULL if this is the primary font entry.
+    array(int,0) Points     # Array of available point sizes for bitmap fonts. For scalable fonts, this may contain recommended sizes or be empty.
+    str   Styles            # Comma-separated list of available font styles (e.g., 'Regular,Bold,Italic,Bold Italic'). Indicates which variations are installed.
+    str   Axes              # For variable fonts, contains comma-separated list of axis codes (e.g., 'wght,wdth,ital') that can be dynamically adjusted.
+    char  Scalable          # TRUE if the font can be rendered at any size, FALSE if limited to specific bitmap sizes.
+    char  Variable          # TRUE if the font supports variable metrics allowing real-time adjustment of weight, width, and other design parameters.
+    char(HINT) Hinting      # Recommended hinting method for optimal rendering: HINT::NORMAL, HINT::LIGHT, or HINT::INTERNAL.
+    char  Hidden            # TRUE if the font should be excluded from user interface font lists, typically reserved for system or special-purpose fonts.
   ]])
 
-  const("FSS", { comment="Options for the StringSize() function." }, {
-    ALL  = "-1: Process all characters.",
-    LINE = "-2: Terminate operation at the first line feed or word-wrap."
+  const("FSS", { comment="String processing options for the StringSize() function, controlling how text measurement is performed" }, {
+    ALL  = "-1: Process and measure all characters in the string, including line breaks and formatting codes. Use this for complete string width calculation.",
+    LINE = "-2: Stop processing at the first line feed character or word-wrap boundary. Use this to measure only the first line of multi-line text."
   })
 
   class("Font", { version=1, src="class_font.cpp", output="class_font_def.c", references={ 'ALIGN', 'RGB8' } }, [[
-   double Point           # The Point/Height of the font (arbitrary size, non-exact)
-   double GlyphSpacing    # Amount of spacing between characters (additional to normal horizontal spacing)
-   obj(Bitmap) Bitmap     # Pointer to destination @Bitmap
-   str   String           # String for drawing etc
-   str   Path             # The location of the font file as derived from the name of the face.
-   str   Style            # The font style (Regular, Bold, Italic, Condensed, Light etc)
-   str   Face             # The face of the font
-   struct(RGB8) Outline   # Outline colour
-   struct(RGB8) Underline # Underline colour
-   struct(RGB8) Colour    # Fill colour
-   int(FTF) Flags         # Optional flags
-   int   Gutter           # "External leading" in pixels
-   int   LineSpacing      # Vertical spacing between lines
-   int   X                # X Coordinate
-   int   Y                # Y Coordinate
-   int   TabSize          # Tab column interval
-   int   WrapEdge         # Point at which word-wrap is encountered
-   int   FixedWidth       # Force a fixed pixel width
-   int   Height           # The point size of the font (vertical bearing), expressed in pixels.  Does not include leading.
-   int   Leading          # "Internal leading" in pixels
-   int   MaxHeight        # Maximum possible pixel height per character, covering the entire character set at the chosen point size
-   int(ALIGN) Align       # Alignment options when drawing the font.
-   int   AlignWidth       # Width to use for right alignment
-   int   AlignHeight      # Height to use for bottom alignment
-   int   Ascent           # The total number of pixels above the baseline, including leading
-   int   EndX             # Finished horizontal coordinate after drawing
-   int   EndY             # Finished vertical coordinate after drawing
+   double Point           # The point size of the font, defined at a ratio of 1:72 DPI. For bitmap fonts, the closest matching size will be selected.
+   double GlyphSpacing    # Additional spacing between characters in pixels, added to normal horizontal spacing. Default is 1.0.
+   obj(Bitmap) Bitmap     # Reference to the destination @Bitmap object where the font will be drawn.
+   str   String           # The UTF-8 text string to be drawn. Line feeds are supported for multi-line text.
+   str   Path             # The filesystem path to the font file. Automatically determined during initialisation from the face name.
+   str   Style            # The font style name such as 'Regular', 'Bold', 'Italic', 'Bold Italic', 'Condensed', or 'Light'.
+   str   Face             # The name of the font face to load. Can include extended parameters in format 'face:pointsize:style:colour'.
+   struct(RGB8) Outline   # Outline colour for drawing a border around characters. Set alpha to 0 to disable outlining.
+   struct(RGB8) Underline # Underline colour for drawing lines beneath text. Set alpha to 0 to disable underlining.
+   struct(RGB8) Colour    # The primary font colour in RGB format with alpha channel for transparency.
+   int(FTF) Flags         # Optional font flags such as FTF::BOLD, FTF::ITALIC, FTF::BASE_LINE, and FTF::HEAVY_LINE.
+   int   Gutter           # External leading space in pixels below the baseline for descenders like 'g' and 'y'.
+   int   LineSpacing      # Vertical spacing between lines in pixels. Automatically set during initialisation but can be adjusted.
+   int   X                # Horizontal coordinate for text positioning. Used with #Y to define the drawing start point.
+   int   Y                # Vertical coordinate for text positioning. Used with #X to define the drawing start point.
+   int   TabSize          # Tab stop interval measured in character positions. Default is 8 characters.
+   int   WrapEdge         # Horizontal boundary in pixels where word wrapping occurs. Set to 0 to disable wrapping.
+   int   FixedWidth       # Forces all characters to use this pixel width instead of their natural spacing. Useful for monospaced layouts.
+   int   Height           # The vertical bearing (point size) of the font in pixels, excluding leading space.
+   int   Leading          # Internal leading space in pixels at the top of characters, included in the font height calculation.
+   int   MaxHeight        # Maximum pixel height of any character in the font set at the current point size.
+   int(ALIGN) Align       # Text alignment options for positioning within the target area (e.g., ALIGN::CENTER, ALIGN::RIGHT).
+   int   AlignWidth       # Width dimension used for horizontal alignment calculations when using ALIGN::RIGHT or ALIGN::HORIZONTAL.
+   int   AlignHeight      # Height dimension used for vertical alignment calculations when using ALIGN::BOTTOM or ALIGN::VERTICAL.
+   int   Ascent           # Total pixels above the baseline, including both character height and internal leading.
+   int   EndX             # Final horizontal coordinate after the last drawn character, updated after each draw operation.
+   int   EndY             # Final vertical coordinate after the last drawn character, updated after each draw operation.
   ]])
 
   functionNames("fnt",
