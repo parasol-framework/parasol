@@ -117,7 +117,7 @@ typedef int SOCKET_HANDLE;
   class("NetSocket", { src="netsocket/netsocket.cpp", output="netsocket/netsocket_def.c" }, [[
     obj(NetClient) Clients # ServerMode - Attached clients
     ptr ClientData    # Pointer to user data that can be used during events
-    str Address       # Connect the socket to this remote address (if client)
+    str Address       # Server: bind to this local address, Client: connect to this remote address
     str SSLCertificate # Path to SSL certificate file (PEM/P12 format, for SSL servers)
     str SSLPrivateKey  # Path to SSL private key file (PEM format, optional if using P12)
     str SSLKeyPassword # Optional password for encrypted private keys

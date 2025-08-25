@@ -3,7 +3,7 @@ Client-Server Network Communications test.  Creates a server socket and then sta
 --]]
 
    include 'network'
-   
+
    glTestSteps = 0
    glExpectedSteps = 6
    glServerData = nil
@@ -118,7 +118,7 @@ function testBasicCommunication()
          local buffer = string.alloc(2048)
          local err, read_len = Client.acRead(buffer)
          if (err != ERR_Okay) then
-            if (err == ERR_Disconnected) then 
+            if (err == ERR_Disconnected) then
                if not read_msg_sent then print('[Server] Client disconnected on Read()') end
                read_msg_sent = true
                return
@@ -274,9 +274,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 
-         'testClientServer', 
-         'testBasicCommunication', 
+      tests = {
+         'testClientServer',
+         'testBasicCommunication',
          'testConnectionStates'
       }
    }
