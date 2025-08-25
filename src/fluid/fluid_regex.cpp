@@ -362,11 +362,10 @@ static int regex_split(lua_State *Lua)
 
    for (; iter != end; ++iter) {
       std::string token = iter->str();
-      if (!token.empty()) { // Skip empty strings
-         lua_pushinteger(Lua, part_index++);
-         lua_pushlstring(Lua, token.c_str(), token.length());
-         lua_settable(Lua, -3);
-      }
+      lua_pushinteger(Lua, part_index++);
+      if (token.empty()) lua_pushstring(Lua, "");
+      else lua_pushlstring(Lua, token.c_str(), token.length());
+      lua_settable(Lua, -3);
    }
 
    return 1;
