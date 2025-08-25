@@ -7,8 +7,10 @@
 #include <unordered_set>
 #include <set>
 #include <array>
+#include <regex>
 #include <parasol/strings.hpp>
 #include <thread>
+#include <string_view>
 
 using namespace pf;
 
@@ -43,6 +45,19 @@ extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
 extern OBJECTPTR clFluid;
 extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
+
+//********************************************************************************************************************
+// Helper: build a std::string_view from a Lua string argument.
+// Raises a Lua error if the argument at 'idx' is not a string (delegates to luaL_checklstring).
+
+static inline std::string_view luaL_checkstringview(lua_State *L, int idx) noexcept
+{
+   size_t len = 0;
+   if (const char *s = luaL_checklstring(L, idx, &len)) {
+      return std::string_view{s, len};
+   }
+   else return std::string_view{};
+}
 
 //********************************************************************************************************************
 // Standard hash computation, but stops when it encounters a character outside of A-Za-z0-9 range
@@ -268,6 +283,16 @@ struct fprocessing {
    std::list<ObjectSignal> *Signals;
 };
 
+class fregex {
+public:
+   std::regex *regex_obj = nullptr;  // Compiled regex object
+   std::string pattern;     // Original pattern string
+   std::string error_msg;   // Error message if compilation failed
+   int flags;               // Compilation flags
+   bool valid = false;      // Compilation success flag
+   fregex(std::string_view Pattern, int Flags) : pattern(Pattern), flags(Flags) { }
+};
+
 struct metafield {
    uint32_t ID;
    int GetFunction;
@@ -313,8 +338,13 @@ struct module {
    }
 };
 
-inline uint32_t simple_hash(CSTRING String, uint32_t Hash = 5381) {
+constexpr uint32_t simple_hash(CSTRING String, uint32_t Hash = 5381) {
    while (auto c = *String++) Hash = ((Hash<<5) + Hash) + c;
+   return Hash;
+}
+
+constexpr uint32_t char_hash(char Char, uint32_t Hash = 5381) {
+   Hash = ((Hash<<5) + Hash) + Char;
    return Hash;
 }
 
@@ -420,6 +450,7 @@ extern void register_object_class(lua_State *);
 extern void register_module_class(lua_State *);
 extern void register_number_class(lua_State *);
 extern void register_processing_class(lua_State *);
+extern void register_regex_class(lua_State *);
 extern void register_struct_class(lua_State *);
 extern void register_thread_class(lua_State *);
 //static void register_widget_class(lua_State *);

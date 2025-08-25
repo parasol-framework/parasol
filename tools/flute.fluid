@@ -1,6 +1,20 @@
 -- $FLUID
 --
 -- Flute (FLUid TEst) provides a standard framework for the execution of unit tests in Fluid.
+--
+-- TODO: Support for JSON output of test results.
+--       Support for parameterized tests.
+--       Support for test retries on failure.
+--       Support for test timeouts (mark as a fail after N seconds is exceeded).
+--       Support for test filtering by tags or categories (dependent on annotations)
+
+glHelp = [[
+Flute provides a standard framework for the execution of unit tests in Fluid.
+
+Example usage:
+
+   parasol flute.fluid file=[file]
+]]
 
    require 'common'
 
@@ -89,12 +103,7 @@ end
    mSys = mod.load("core")
 
    if not nz(glFile) then
-      print("Flute provides a standard framework for the execution of unit tests in Fluid.")
-      print("")
-      print("Example usage:")
-      print("")
-      print("   parasol flute.fluid file=[file]")
-      print("")
+      print(glHelp)
       return
    end
 
