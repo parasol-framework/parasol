@@ -1,29 +1,4 @@
---[[
-The HTTPServer interface will run an HTTP service in the background of the calling application.
-
-In its current implementation, no run-time adjustment of the server settings is possible once the server is launched.
-
-   require 'net/httpserver'
-
-   local server = net.httpServer({
-      port = 7070,
-      folder = 'parasol:docs/html/'
-   })
-
-   server.start()
-
-Valid options to use:
-
-  folder    - REQUIRED.  The folder containing HTML pages and static files to serve
-  port      - The port number to listen on (default: 8080)
-  bind      - Bind to specific IP address (default: all interfaces, e.g., '127.0.0.1' for localhost only)
-  verbose   - Enable verbose logging (true/false, default: false)
-  timeout   - Request timeout in seconds (default: 30)
-  autoindex - Enable automatic directory listing (true/false, default: true)
-
-Index files (checked in order): index.html, index.htm, default.html, default.htm
-
---]]
+-- Refer to the Wiki for usage.
 
    include 'network'
 

@@ -31,10 +31,10 @@ int fcmd_check(lua_State *Lua)
 {
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERR error = ERR(lua_tointeger(Lua, 1));
-      if (LONG(error) >= LONG(ERR::ExceptionThreshold)) {
+      if (int(error) >= int(ERR::ExceptionThreshold)) {
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->CaughtError = error;
-         luaL_error(prv->Lua, GetErrorMsg(error));
+         luaL_error(Lua, GetErrorMsg(error));
       }
    }
    return 0;
@@ -50,7 +50,7 @@ int fcmd_raise(lua_State *Lua)
       ERR error = ERR(lua_tointeger(Lua, 1));
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       prv->CaughtError = error;
-      luaL_error(prv->Lua, GetErrorMsg(error));
+      luaL_error(Lua, GetErrorMsg(error));
    }
    return 0;
 }
@@ -115,10 +115,10 @@ int fcmd_catch(lua_State *Lua)
    if (lua_gettop(Lua) >= 2) {
       auto type = lua_type(Lua, 1);
       if (type IS LUA_TFUNCTION) {
-         LONG catch_filter = 0;
+         int catch_filter = 0;
          type = lua_type(Lua, 2);
 
-         LONG a = 2;
+         int a = 2;
          if (type IS LUA_TTABLE) {
             // First argument is a list of error codes to filter on, second argument is the exception handler.
             lua_pushvalue(Lua, a++);
@@ -132,7 +132,7 @@ int fcmd_catch(lua_State *Lua)
             prv->CaughtError = ERR::Okay;
             lua_pushcfunction(Lua, fcmd_catch_handler);
             lua_pushvalue(Lua, 1); // Parameter #1 is the function to call.
-            LONG result_top = lua_gettop(Lua);
+            int result_top = lua_gettop(Lua);
             if (lua_pcall(Lua, 0, LUA_MULTRET, -2)) { // An exception was raised!
                prv->Catch--;
 
@@ -141,7 +141,7 @@ int fcmd_catch(lua_State *Lua)
                   lua_pushnil(Lua);  // First key
                   while ((!caught_by_filter) and (lua_next(Lua, -2) != 0)) { // Iterate over each table key
                      // -1 is the value and -2 is the key.
-                     if (lua_tointeger(Lua, -1) IS LONG(prv->CaughtError)) {
+                     if (lua_tointeger(Lua, -1) IS int(prv->CaughtError)) {
                         caught_by_filter = TRUE;
                         lua_pop(Lua, 1); // Pop the key because we're going to break the loop early.
                      }
@@ -160,7 +160,7 @@ int fcmd_catch(lua_State *Lua)
 
                   lua_newtable(Lua);
                   lua_pushstring(Lua, "code");
-                  if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, LONG(prv->CaughtError));
+                  if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, int(prv->CaughtError));
                   else lua_pushnil(Lua);
                   lua_settable(Lua, -3);
 
@@ -182,14 +182,14 @@ int fcmd_catch(lua_State *Lua)
                }
                else luaL_error(Lua, lua_tostring(Lua, -1)); // Rethrow the message
 
-               lua_pushinteger(Lua, prv->CaughtError != ERR::Okay ? LONG(prv->CaughtError) : LONG(ERR::Exception));
+               lua_pushinteger(Lua, prv->CaughtError != ERR::Okay ? int(prv->CaughtError) : int(ERR::Exception));
                return 1;
             }
             else { // pcall() was successful
                prv->Catch--;
                if (catch_filter) luaL_unref(Lua, LUA_REGISTRYINDEX, catch_filter);
-               lua_pushinteger(Lua, LONG(ERR::Okay));
-               LONG result_count = lua_gettop(Lua) - result_top + 1;
+               lua_pushinteger(Lua, int(ERR::Okay));
+               int result_count = lua_gettop(Lua) - result_top + 1;
                lua_insert(Lua, -result_count); // Push the error code in front of any other results
                return result_count;
             }
@@ -224,7 +224,7 @@ int fcmd_catch(lua_State *Lua)
 
             lua_newtable(Lua); // +1 stack
             lua_pushstring(Lua, "code");
-            if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, LONG(prv->CaughtError));
+            if (prv->CaughtError >= ERR::ExceptionThreshold) lua_pushinteger(Lua, int(prv->CaughtError));
             else lua_pushnil(Lua); // Distinguish Lua exceptions by setting the code to nil.
             lua_settable(Lua, -3);
 
@@ -261,14 +261,14 @@ int fcmd_catch(lua_State *Lua)
 // Where Args is a named array containing the event parameters.  If the event is not known to Fluid, then no Args will
 // be provided.
 
-static void receive_event(pf::Event *Info, LONG InfoSize, APTR CallbackMeta)
+static void receive_event(pf::Event *Info, int InfoSize, APTR CallbackMeta)
 {
    auto Script = (objScript *)CurrentContext();
    auto prv = (prvFluid *)Script->ChildPrivate;
    if (!prv) return;
 
    pf::Log log(__FUNCTION__);
-   log.trace("Received event $%.8x%.8x", (LONG)((Info->EventID>>32) & 0xffffffff), (LONG)(Info->EventID & 0xffffffff));
+   log.trace("Received event $%.8x%.8x", (int)((Info->EventID>>32) & 0xffffffff), (int)(Info->EventID & 0xffffffff));
 
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, intptr_t(CallbackMeta));
 
@@ -329,19 +329,19 @@ int fcmd_subscribe_event(lua_State *Lua)
    // Generate the event ID
 
    char group[60];
-   ULONG group_hash = 0, subgroup_hash = 0;
-   for (LONG i=0; event[i]; i++) {
+   uint32_t group_hash = 0, subgroup_hash = 0;
+   for (int i=0; event[i]; i++) {
       if (event[i] IS '.') {
-         LONG j;
+         int j;
          if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
          for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
          group[j] = 0;
          group_hash = strihash(group);
          event += i + 1;
 
-         for (LONG i=0; event[i]; i++) {
+         for (int i=0; event[i]; i++) {
             if (event[i] IS '.') {
-               LONG j;
+               int j;
                if ((size_t)i >= sizeof(group)) luaL_error(Lua, "Buffer overflow.");
                for (j=0; (j < i) and ((size_t)j < sizeof(group)-1); j++) group[j] = event[j];
                group[j] = 0;
@@ -381,7 +381,7 @@ int fcmd_subscribe_event(lua_State *Lua)
 
    if (!event_id) {
       luaL_argerror(Lua, 1, "Failed to build event ID.");
-      lua_pushinteger(Lua, LONG(ERR::Failed));
+      lua_pushinteger(Lua, int(ERR::Failed));
       return 1;
    }
    else {
@@ -392,11 +392,11 @@ int fcmd_subscribe_event(lua_State *Lua)
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
          prv->EventList.emplace_back(client_function, event_id, handle);
          lua_pushlightuserdata(Lua, handle); // 1: Handle
-         lua_pushinteger(Lua, LONG(error)); // 2: Error code
+         lua_pushinteger(Lua, int(error)); // 2: Error code
       }
       else {
          lua_pushnil(Lua); // Handle
-         lua_pushinteger(Lua, LONG(error)); // Error code
+         lua_pushinteger(Lua, int(error)); // Error code
       }
       return 2;
    }
@@ -410,7 +410,7 @@ int fcmd_msg(lua_State *Lua)
 {
    int n = lua_gettop(Lua);  // number of arguments
    lua_getglobal(Lua, "tostring");
-   for (LONG i=1; i <= n; i++) {
+   for (int i=1; i <= n; i++) {
       lua_pushvalue(Lua, -1);  // function to be called (tostring)
       lua_pushvalue(Lua, i);   // value to pass to tostring
       lua_call(Lua, 1, 1);
@@ -435,7 +435,7 @@ int fcmd_print(lua_State *Lua)
 {
    int n = lua_gettop(Lua);  // number of arguments
    lua_getglobal(Lua, "tostring");
-   for (LONG i=1; i <= n; i++) {
+   for (int i=1; i <= n; i++) {
       lua_pushvalue(Lua, -1);  // function to be called
       lua_pushvalue(Lua, i);   // value to print
       lua_call(Lua, 1, 1);
@@ -467,8 +467,8 @@ int fcmd_include(lua_State *Lua)
       return 0;
    }
 
-   LONG top = lua_gettop(Lua);
-   for (LONG n=1; n <= top; n++) {
+   int top = lua_gettop(Lua);
+   for (int n=1; n <= top; n++) {
       CSTRING include = lua_tostring(Lua, n);
       if (auto error = load_include(Lua->Script, include); error != ERR::Okay) {
          if (error IS ERR::FileNotFound) luaL_error(Lua, "Requested include file '%s' does not exist.", include);
@@ -481,7 +481,7 @@ int fcmd_include(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: require "Module"
+// Usage: require 'Module'
 //
 // Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
 // prevents multiple executions, and the volume restriction improves security.
@@ -495,8 +495,8 @@ int fcmd_require(lua_State *Lua)
    if ((module = lua_tostring(Lua, 1))) {
       // For security purposes, check the validity of the module name.
 
-      LONG i;
-      LONG slash_count = 0;
+      int i;
+      int slash_count = 0;
       for (i=0; module[i]; i++) {
          if ((module[i] >= 'a') and (module[i] <= 'z')) continue;
          if ((module[i] >= 'A') and (module[i] <= 'Z')) continue;
@@ -577,7 +577,7 @@ int fcmd_loadfile(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    CSTRING error_msg = NULL;
-   LONG results = 0;
+   int results = 0;
    ERR error = ERR::Okay;
 
    if (auto path = lua_tostring(Lua, 1)) {
@@ -589,7 +589,7 @@ int fcmd_loadfile(lua_State *Lua)
       CSTRING src = path;
 
       #if 0
-      LONG pathlen = strlen(path);
+      int pathlen = strlen(path);
       char fbpath[pathlen+6];
       if (iequals(".fluid", path + pathlen - 6)) {
          // File is a .fluid.  Let's check if a .fb exists and is date-stamped for the same date as the .fluid version.
@@ -632,7 +632,7 @@ int fcmd_loadfile(lua_State *Lua)
             // Check for the presence of a compiled header and skip it if present
 
             {
-               LONG len, i;
+               int len, i;
                char header[256];
                if (file->read(header, sizeof(header), &len) IS ERR::Okay) {
                   if (pf::startswith(LUA_COMPILED, std::string_view(header, sizeof(header)))) {
@@ -648,7 +648,7 @@ int fcmd_loadfile(lua_State *Lua)
                file->setPosition(i);
             }
 
-            LONG i;
+            int i;
             for (i=strlen(path); i > 0; i--) { // Get the file name from the path
                if ((path[i-1] IS '\\') or (path[i-1] IS '/') or (path[i-1] IS ':')) break;
             }
@@ -675,14 +675,14 @@ int fcmd_loadfile(lua_State *Lua)
                }
              */
 
-               LONG result_top = lua_gettop(prv->Lua);
+               int result_top = lua_gettop(Lua);
 
                if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
-                  results = lua_gettop(prv->Lua) - result_top + 1;
+                  results = lua_gettop(Lua) - result_top + 1;
                }
-               else error_msg = lua_tostring(prv->Lua, -1);
+               else error_msg = lua_tostring(Lua, -1);
             }
-            else error_msg = lua_tostring(prv->Lua, -1);
+            else error_msg = lua_tostring(Lua, -1);
 
             FreeResource(buffer);
          }
@@ -703,8 +703,8 @@ int fcmd_loadfile(lua_State *Lua)
 
 struct luaReader {
    CSTRING String;
-   LONG Index;
-   LONG Size;
+   int Index;
+   int Size;
 };
 
 static const char * code_reader_buffer(lua_State *, void *, size_t *);
@@ -713,7 +713,7 @@ int fcmd_exec(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   LONG results = 0;
+   int results = 0;
 
    size_t len;
    if (auto statement = lua_tolstring(Lua, 1, &len)) {
@@ -732,15 +732,15 @@ int fcmd_exec(lua_State *Lua)
             len -= (i + 1);
          }
 
-         struct luaReader lr = { statement, 0, LONG(len) };
+         struct luaReader lr = { statement, 0, int(len) };
          if (!lua_load(Lua, &code_reader_buffer, &lr, "exec")) {
-            LONG result_top = lua_gettop(prv->Lua);
+            int result_top = lua_gettop(Lua);
             if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) {
-               results = lua_gettop(prv->Lua) - result_top + 1;
+               results = lua_gettop(Lua) - result_top + 1;
             }
-            else error_msg = lua_tostring(prv->Lua, -1);
+            else error_msg = lua_tostring(Lua, -1);
          }
-         else error_msg = lua_tostring(prv->Lua, -1);
+         else error_msg = lua_tostring(Lua, -1);
       }
 
       if (error_msg) luaL_error(Lua, error_msg);
@@ -769,7 +769,7 @@ int fcmd_arg(lua_State *Lua)
 {
    objScript *Self = Lua->Script;
 
-   LONG args = lua_gettop(Lua);
+   int args = lua_gettop(Lua);
 
    auto key = lua_tostring(Lua, 1);
    auto it = Self->Vars.find(key);
@@ -799,14 +799,14 @@ int fcmd_arg(lua_State *Lua)
 
 int fcmd_nz(lua_State *Lua)
 {
-   LONG args = lua_gettop(Lua);
+   int args = lua_gettop(Lua);
    if ((args != 2) and (args != 1)) {
       luaL_error(Lua, "Expected 1 or 2 arguments, not %d.", args);
       return 0;
    }
 
    BYTE isnull = FALSE;
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       if (lua_tonumber(Lua, 1)) isnull = FALSE;
       else isnull = TRUE;

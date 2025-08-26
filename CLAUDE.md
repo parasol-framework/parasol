@@ -274,3 +274,4 @@ Key dependencies between modules:
 
 - Always give an honest, balanced opinion in your responses
 - Always use the fluid-code-expert agent for Fluid coding
+- Underscores are the preferred word seperator in file names.
