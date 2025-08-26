@@ -830,9 +830,9 @@ end
 
 local function addRoute(serverInstance, method, pattern, callback)
    if not serverInstance._routes then serverInstance._routes = {} end
-   
+
    if not serverInstance._routes[method] then serverInstance._routes[method] = {} end
-   
+
    table.insert(serverInstance._routes[method], {
       pattern = pattern,
       callback = callback,
@@ -846,20 +846,20 @@ end
 
 local function extractParams(pattern, matchResults)
    local params = {}
-   
+
    -- Extract parameter names from the original pattern
    local paramNames = {}
    for paramName in pattern:gmatch(':([%w_]+)') do
       table.insert(paramNames, paramName)
    end
-   
+
    -- Map parameter names to captured group values (skip index 1 which is full match)
    for i, name in ipairs(paramNames) do
       if matchResults[i + 1] then
          params[name] = urlDecode(matchResults[i + 1])
       end
    end
-   
+
    return params
 end
 
@@ -867,22 +867,22 @@ end
 
 local function matchRoute(serverInstance, method, path)
    if not serverInstance._routes then return nil end
-   
+
    local methodRoutes = serverInstance._routes[method]
    if not methodRoutes then return nil end
-     
+
    for i, route in ipairs(methodRoutes) do
       local pattern = route.pattern
-      
+
       if not route.compiledRegex then
          -- Convert route pattern to proper regex pattern
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
          local regexPattern = pattern
          regexPattern = regexPattern:gsub('([%.%+%-%*%?%[%]%(%)])', '\\%1') -- Escape regex chars
-         regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)  
+         regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
          regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
          regexPattern = '^' .. regexPattern .. '$'
-         
+
          catch(function()
             route.compiledRegex = regex.new(regexPattern)
          end,
@@ -890,12 +890,12 @@ local function matchRoute(serverInstance, method, path)
             print('matchRoute: Failed to compile regex: ' .. Exception.message)
          end)
       end
-      
+
       -- Test if path matches this route (skip invalid regex patterns)
 
       if route.compiledRegex then
          local testResult = route.compiledRegex.test(path)
-         
+
          if testResult then -- Get capture groups for parameter extraction
             local matchResults = route.compiledRegex.match(path)
             local params = extractParams(pattern, matchResults)
@@ -903,7 +903,7 @@ local function matchRoute(serverInstance, method, path)
          end
       end
    end
-   
+
    return nil
 end
 
@@ -1106,12 +1106,12 @@ local function handleRequest(self, ClientSocket)
       -- Populate request params and create response object
       request.params = params
       local response = createResponseObject(self, ClientSocket)
-      
+
       -- Execute the route callback
       local success, result = pcall(function()
          return matchedRoute.callback(request, response)
       end)
-      
+
       if not success then
          -- Route callback failed, send 500 error
          logMessage(self, 'Route handler error: ' .. tostring(result))
@@ -1129,7 +1129,7 @@ local function handleRequest(self, ClientSocket)
             ['content-type'] = 'text/html'
          }, errorBody)
       end
-      
+
       return -- Route was handled, don't continue to static file serving
    end
 
@@ -1293,7 +1293,7 @@ httpServer.start = function(Options)
                local method = tostring(route.method):upper()
                local pattern = tostring(route.pattern)
                local handler = route.handler
-               
+
                if type(handler) == 'function' then
                   addRoute(self, method, pattern, handler)
                   routeCount = routeCount + 1
