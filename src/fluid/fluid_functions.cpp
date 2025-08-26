@@ -493,7 +493,7 @@ int fcmd_require(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   CSTRING module, error_msg = NULL;
+   CSTRING module, error_msg = nullptr;
    ERR error = ERR::Okay;
    if ((module = lua_tostring(Lua, 1))) {
       // For security purposes, check the validity of the module name.
@@ -601,9 +601,7 @@ int fcmd_get_execution_state(lua_State *Lua)
 
 int fcmd_loadfile(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-
-   CSTRING error_msg = NULL;
+   CSTRING error_msg = nullptr;
    int results = 0;
    ERR error = ERR::Okay;
 
@@ -738,13 +736,11 @@ static const char * code_reader_buffer(lua_State *, void *, size_t *);
 
 int fcmd_exec(lua_State *Lua)
 {
-   auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-
    int results = 0;
 
    size_t len;
    if (auto statement = lua_tolstring(Lua, 1, &len)) {
-      CSTRING error_msg = NULL;
+      CSTRING error_msg = nullptr;
 
       {
          pf::Log log("exec");
