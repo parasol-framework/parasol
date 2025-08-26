@@ -721,7 +721,7 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
 
    -- If no index file found and auto-indexing is enabled, generate directory listing
    if self.autoIndex then
-      logMessage('No index file found, generating directory listing for: ' .. URIPath)
+      logMessage(self, 'No index file found, generating directory listing for: ' .. URIPath)
       local html = generateDirectoryListing(DirPath, URIPath)
       sendHttpResponse(self, Client, 200, 'OK', {
          ['content-type'] = 'text/html; charset=utf-8'
