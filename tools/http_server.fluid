@@ -1,5 +1,6 @@
 
-   require 'net/httpserver'
+   local httplib = require 'net/httpserver'
+
    include 'network'
 
    glHelp = [[
@@ -24,10 +25,7 @@ Parameters:
 Index files (checked in order): index.html, index.htm, default.html, default.htm
 ]]
 
-   glSelf = obj.find('self')
-   glPath = glSelf.workingPath
    glConfigFile = arg('config')
-   glServer = nil
 
    glOptions = { }
 
@@ -108,8 +106,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
       error('Error: folder "' .. nz(glOptions.folder,'NIL') .. '" does not exist')
    end
 
-   glServer = net.httpServer(glOptions)
-   glServer.start()
+   glServer = httplib.start(glOptions)
 
    processing.sleep()
 
