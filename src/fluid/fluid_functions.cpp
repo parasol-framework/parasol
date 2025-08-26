@@ -543,8 +543,9 @@ int fcmd_require(lua_State *Lua)
                   // If an interface table is returned, store it with the modkey for future require calls.
                   int rtype = lua_type(Lua, -1);
                   if (rtype == LUA_TTABLE) {
-                     lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Pops table
-                     lua_getfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Get the value back
+                     lua_pushvalue(Lua, -1); // Duplicate table on stack
+                     lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Store & pop one copy
+                     // Original table remains on stack for return
                      prv->RequireCounter--;
                      return 1;
                   }
