@@ -192,6 +192,51 @@ local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Read request body based on Content-Length header
+
+local function readRequestBody(client, contentLength, maxSize, timeoutSeconds)
+   if not contentLength or contentLength <= 0 then
+      return '', nil
+   end
+
+   if contentLength > maxSize then
+      return nil, 'body_too_large'
+   end
+
+   local buffer = string.alloc(contentLength)
+   local body = ''
+   local totalRead = 0
+   local startTime = mSys.PreciseTime()
+
+   while totalRead < contentLength do
+      local toRead = math.min(1024, contentLength - totalRead)
+      local err, bytesRead = client.acRead(buffer, toRead)
+
+      if err != ERR_Okay then
+         if err == ERR_TimeOut then
+            return nil, 'timeout'
+         else
+            return nil, 'read_error'
+         end
+      end
+
+      if bytesRead == 0 then
+         break -- No more data available
+      end
+
+      body = body .. buffer:sub(1, bytesRead)
+      totalRead = totalRead + bytesRead
+
+      -- Check timeout
+      if (mSys.PreciseTime() - startTime)/1000000 > timeoutSeconds then
+         return nil, 'timeout'
+      end
+   end
+
+   return body, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- Parse query string into key-value pairs
 
 local function parseQueryString(queryString)
@@ -221,6 +266,63 @@ local function parseQueryString(queryString)
    end
 
    return query
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse JSON body
+
+local function parseJsonBody(body)
+   if not body or body == '' then
+      return {}
+   end
+
+   -- Simple JSON parsing for basic structures
+   -- This is a basic implementation - in production you'd want a proper JSON parser
+   local success, result = pcall(function()
+      -- Remove whitespace
+      body = body:gsub('^%s*', ''):gsub('%s*$', '')
+      
+      if body:sub(1,1) == '{' and body:sub(-1) == '}' then
+         -- Simple object parsing
+         local obj = {}
+         local content = body:sub(2, -2) -- Remove braces
+         
+         for pair in content:gmatch('[^,]+') do
+            local key, value = pair:match('%s*"([^"]+)"%s*:%s*"([^"]*)"')
+            if key and value then
+               obj[key] = value
+            else
+               -- Try number values
+               key, value = pair:match('%s*"([^"]+)"%s*:%s*([%d%.%-]+)')
+               if key and value then
+                  obj[key] = tonumber(value)
+               else
+                  -- Try boolean values
+                  key, value = pair:match('%s*"([^"]+)"%s*:%s*(true|false)')
+                  if key and value then
+                     obj[key] = (value == 'true')
+                  end
+               end
+            end
+         end
+         return obj
+      end
+      
+      return {}
+   end)
+   
+   if success then
+      return result
+   else
+      return {}
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse form-encoded body (application/x-www-form-urlencoded)
+
+local function parseFormBody(body)
+   return parseQueryString(body) -- Same parsing logic as query strings
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -295,7 +397,8 @@ local function parseHttpRequest(Req)
       query = query,
       cookies = cookies,
       params = {}, -- Will be populated by route matching
-      body = nil, -- Will be populated when body parsing is implemented
+      body = nil, -- Raw body string
+      parsedBody = {}, -- Will be populated with parsed body data
       range = headers['range'] -- Store range header for partial content
    }
 end
@@ -524,7 +627,10 @@ local function serveFile(self, client, filePath, Request)
       file = obj.new('file', { path = filePath, flags = 'READ' })
    end)
    if not file then
-      local errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. filePath)
+      local errorBody
+      if Request.method != 'HEAD' then
+         errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. filePath)
+      end
       sendHttpResponse(self, client, 404, "Not Found", {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -532,10 +638,21 @@ local function serveFile(self, client, filePath, Request)
    end
 
    local fileSize = file.size
+   local mimeType = getMimeType(filePath)
+
+   -- For HEAD requests, only send headers without body
+   if Request.method == 'HEAD' then
+      file.free()
+      sendHttpResponse(self, client, 200, "OK", {
+         ['content-type'] = mimeType,
+         ['content-length'] = tostring(fileSize),
+         ['accept-ranges'] = 'bytes'
+      })
+      return
+   end
 
    -- Stream large files in chunks
    if fileSize > self.fileChunkSize then
-      local mimeType = getMimeType(filePath)
       sendHttpResponse(self, client, 200, "OK", {
          ['content-type'] = mimeType,
          ['content-length'] = tostring(fileSize),
@@ -589,7 +706,6 @@ local function serveFile(self, client, filePath, Request)
          logMessage('Warning: Read ' .. bytesRead .. ' bytes, expected ' .. fileSize)
       end
 
-      local mimeType = getMimeType(filePath)
       sendHttpResponse(self, client, 200, "OK", {
          ['content-type'] = mimeType
       }, buffer:sub(1, bytesRead))
@@ -674,7 +790,12 @@ local function generateDirectoryListing(self, DirPath, URIPath)
          -- Skip hidden files and system files for security
          if name:sub(1,1) != '.' then
             local isFolder = bit.band(info.flags, RDF_FOLDER) != 0
-            local size = isFolder and '-' or formatFileSize(info.size)
+            local size
+            if isFolder then
+               size = '-'
+            else
+               size = formatFileSize(info.size)
+            end
             local modTime = printableTime(info.modified)
 
             local href = URIPath
@@ -685,7 +806,10 @@ local function generateDirectoryListing(self, DirPath, URIPath)
          if isFolder then displayName = displayName .. '/' end
 
          local safeHref = escapeHtml(href)
-         local cssClass = isFolder and ' class="dir"' or ''
+         local cssClass = ''
+         if isFolder then
+            cssClass = ' class="dir"'
+         end
          html = html .. '<tr><td><a href="' .. safeHref .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
             html = html .. '<td class="size">' .. escapeHtml(size) .. '</td>'
             html = html .. '<td>' .. escapeHtml(modTime) .. '</td></tr>\n'
@@ -715,7 +839,7 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
       local err, type = mSys.AnalysePath(indexPath)
       if type == LOC_FILE then
          logMessage('Serving index file: ' .. indexFile)
-         serveFile(Client, indexPath, Request)
+         serveFile(self, Client, indexPath, Request)
          return
       end
    end
@@ -723,13 +847,19 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
    -- If no index file found and auto-indexing is enabled, generate directory listing
    if self.autoIndex then
       logMessage(self, 'No index file found, generating directory listing for: ' .. URIPath)
-      local html = generateDirectoryListing(DirPath, URIPath)
+      local html
+      if Request.method != 'HEAD' then
+         html = generateDirectoryListing(DirPath, URIPath)
+      end
       sendHttpResponse(self, Client, 200, 'OK', {
          ['content-type'] = 'text/html; charset=utf-8'
       }, html)
    else
       -- Auto-indexing disabled, return 403 Forbidden
-      local errorBody = createErrorPage(403, 'Forbidden', 'Directory listing is disabled.', 'Path: ' .. URIPath)
+      local errorBody
+      if Request.method != 'HEAD' then
+         errorBody = createErrorPage(403, 'Forbidden', 'Directory listing is disabled.', 'Path: ' .. URIPath)
+      end
       sendHttpResponse(self, Client, 403, 'Forbidden', {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -854,13 +984,73 @@ local function handleRequest(self, ClientSocket)
    print('[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path)
    logMessage('Request from client: ' .. request.method .. ' ' .. request.path)
 
-   -- Handle GET and HEAD requests
-   if request.method != 'GET' and request.method != 'HEAD' then
-      local errorBody = createErrorPage(405, 'Method Not Allowed', 'Only GET and HEAD requests are supported.', 'Requested method: ' .. request.method)
+   -- Handle supported HTTP methods
+   local supportedMethods = { 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS' }
+   local methodSupported = false
+   for _, method in ipairs(supportedMethods) do
+      if request.method == method then
+         methodSupported = true
+         break
+      end
+   end
+   
+   if not methodSupported then
+      local errorBody = createErrorPage(405, 'Method Not Allowed', 'HTTP method not supported.', 'Requested method: ' .. request.method)
       sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
          ['content-type'] = 'text/html',
-         ['allow'] = 'GET, HEAD'
+         ['allow'] = 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS'
       }, errorBody)
+      return
+   end
+
+   -- Read request body for methods that can have bodies
+   if request.method == 'POST' or request.method == 'PUT' or request.method == 'PATCH' then
+      local contentLength = tonumber(request.headers['content-length'])
+      if contentLength and contentLength > 0 then
+         local body, bodyError = readRequestBody(ClientSocket, contentLength, self.maxRequestSize, self.timeout)
+         if body then
+            request.body = body
+            
+            -- Parse body based on Content-Type
+            local contentType = request.headers['content-type'] or ''
+            if contentType:find('application/json') then
+               request.parsedBody = parseJsonBody(body)
+            elseif contentType:find('application/x%-www%-form%-urlencoded') then
+               request.parsedBody = parseFormBody(body)
+            else
+               -- Keep raw body for other content types
+               request.parsedBody = { _raw = body }
+            end
+         else
+            local errorMsg, details
+            if bodyError == 'timeout' then
+               errorMsg = 'Request body timeout'
+               details = 'Timeout: ' .. self.timeout .. ' seconds'
+            elseif bodyError == 'body_too_large' then
+               errorMsg = 'Request body too large'
+               details = 'Maximum size: ' .. self.maxRequestSize .. ' bytes'
+            else
+               errorMsg = 'Error reading request body'
+               details = 'Error: ' .. (bodyError or 'unknown')
+            end
+            
+            local errorBody = createErrorPage(400, 'Bad Request', errorMsg, details)
+            sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
+               ['content-type'] = 'text/html'
+            }, errorBody)
+            return
+         end
+      end
+   end
+
+   -- Handle OPTIONS requests for CORS
+   if request.method == 'OPTIONS' then
+      sendHttpResponse(self, ClientSocket, 200, "OK", {
+         ['access-control-allow-origin'] = '*',
+         ['access-control-allow-methods'] = 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS',
+         ['access-control-allow-headers'] = 'Content-Type, Authorization',
+         ['access-control-max-age'] = '86400'
+      })
       return
    end
 
@@ -904,6 +1094,19 @@ local function handleRequest(self, ClientSocket)
       local errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. URIPath .. '\nResolved to: ' .. filePath)
       sendHttpResponse(self, ClientSocket, 404, "Not Found", {
          ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   -- For now, only GET and HEAD requests can access static files
+   -- POST/PUT/DELETE will need routing system (Phase 3) to be handled
+   if request.method != 'GET' and request.method != 'HEAD' then
+      local errorBody = createErrorPage(405, 'Method Not Allowed', 
+         'This method is not allowed for static file serving. Use routing system for API endpoints.', 
+         'Method: ' .. request.method .. ', Path: ' .. URIPath)
+      sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
+         ['content-type'] = 'text/html',
+         ['allow'] = 'GET, HEAD'
       }, errorBody)
       return
    end
@@ -1004,7 +1207,10 @@ httpServer.start = function(Options)
       self.bind = Options.bind
    end
 
-   local bindMsg = self.bind and (' bound to ' .. self.bind) or ''
+   local bindMsg = ''
+   if self.bind then
+      bindMsg = ' bound to ' .. self.bind
+   end
    msg('\nStarting HTTP server on port ' .. self.port .. bindMsg)
    msg('Serving files from: ' .. self.folder)
    msg('Configuration:')

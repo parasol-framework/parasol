@@ -1,9 +1,5 @@
 
-   local httplib = require 'net/httpserver'
-
-   include 'network'
-
-   glHelp = [[
+glHelp = [[
 This straight-forward implementation of an HTTP server supports the serving of static files from a folder.
 
 Usage: parasol.exe http_server.fluid folder=path/to/files port=8080 [options...]
@@ -24,6 +20,8 @@ Parameters:
 
 Index files (checked in order): index.html, index.htm, default.html, default.htm
 ]]
+
+   local httplib = require 'net/httpserver'
 
    glConfigFile = arg('config')
 
