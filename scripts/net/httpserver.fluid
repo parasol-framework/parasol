@@ -42,7 +42,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Canonicalize path to prevent directory traversal attacks
 
-local function canonicalizePath(path)
+local function canonicalizePath(self, path)
    if not path then return nil end
 
    path = path:gsub('[%c]', '')   -- Remove any null bytes
@@ -137,6 +137,12 @@ local function getMimeType(filename)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+
+local function timestamp()
+   local tm = obj.new('time')
+   tm.acQuery()
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
+end
 
 local function logMessage(self, message)
    if self.verbose then
@@ -818,11 +824,87 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- ROUTING SYSTEM
 
-local function timestamp()
-   local tm = obj.new('time')
-   tm.acQuery()
-   return string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
+-- Add a route with method, pattern, and callback to a server instance
+
+local function addRoute(serverInstance, method, pattern, callback)
+   if not serverInstance._routes then serverInstance._routes = {} end
+
+   if not serverInstance._routes[method] then serverInstance._routes[method] = {} end
+
+   table.insert(serverInstance._routes[method], {
+      pattern = pattern,
+      callback = callback,
+      compiledRegex = nil -- Will be set when first used
+   })
+
+   msg('Route registered: ' .. method .. ' ' .. pattern)
+end
+
+-- Extract parameters from a matched path using route pattern and regex match results
+
+local function extractParams(pattern, matchResults)
+   local params = {}
+
+   -- Extract parameter names from the original pattern
+   local paramNames = {}
+   for paramName in pattern:gmatch(':([%w_]+)') do
+      table.insert(paramNames, paramName)
+   end
+
+   -- Map parameter names to captured group values (skip index 1 which is full match)
+   for i, name in ipairs(paramNames) do
+      if matchResults[i + 1] then
+         params[name] = urlDecode(matchResults[i + 1])
+      end
+   end
+
+   return params
+end
+
+-- Find matching route for a request from a server instance
+
+local function matchRoute(serverInstance, method, path)
+   if not serverInstance._routes then return nil end
+
+   local methodRoutes = serverInstance._routes[method]
+   if not methodRoutes then return nil end
+
+   for i, route in ipairs(methodRoutes) do
+      local pattern = route.pattern
+
+      if not route.compiledRegex then
+         -- Convert route pattern to proper regex pattern
+         -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
+         local regexPattern = pattern
+         regexPattern = regexPattern:gsub('([%.%+%-%*%?%[%]%(%)])', '\\%1') -- Escape regex chars
+         regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
+         regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
+         regexPattern = '^' .. regexPattern .. '$'
+
+         catch(function()
+            route.compiledRegex = regex.new(regexPattern)
+         end,
+         function(Exception)
+            error('matchRoute: Failed to compile regex: ' .. Exception.message)
+         end)
+      end
+
+      -- Test if path matches this route (skip invalid regex patterns)
+
+      if route.compiledRegex then
+         local testResult = route.compiledRegex.test(path)
+
+         if testResult then -- Get capture groups for parameter extraction
+            local matchResults = route.compiledRegex.match(path)
+            local params = extractParams(pattern, matchResults)
+            return route, params
+         end
+      end
+   end
+
+   return nil
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -1006,7 +1088,7 @@ local function handleRequest(self, ClientSocket)
    end
 
    -- Canonicalize and validate path
-   local URIPath = canonicalizePath(request.path)
+   local URIPath = canonicalizePath(self, request.path)
    if not URIPath then
       local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
       logMessage(self, 'Security: Invalid path blocked: ' .. request.path)
@@ -1014,6 +1096,41 @@ local function handleRequest(self, ClientSocket)
          ['content-type'] = 'text/html'
       }, errorBody)
       return
+   end
+
+   -- Try to match against registered routes first
+
+   local matchedRoute, params = matchRoute(self, request.method, URIPath)
+   if matchedRoute then
+      msg('Found matching route: ' .. matchedRoute.pattern)
+      -- Populate request params and create response object
+      request.params = params
+      local response = createResponseObject(self, ClientSocket)
+
+      -- Execute the route callback
+      local success, result = pcall(function()
+         return matchedRoute.callback(request, response)
+      end)
+
+      if not success then
+         -- Route callback failed, send 500 error
+         logMessage(self, 'Route handler error: ' .. tostring(result))
+         if not response._sent then
+            local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. tostring(result))
+            sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
+               ['content-type'] = 'text/html'
+            }, errorBody)
+         end
+      elseif not response._sent then
+         -- Route executed successfully but didn't send a response
+         logMessage(self, 'Warning: Route handler completed without sending response')
+         local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
+         sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
+            ['content-type'] = 'text/html'
+         }, errorBody)
+      end
+
+      return -- Route was handled, don't continue to static file serving
    end
 
    -- Validate path doesn't contain dangerous patterns
@@ -1129,8 +1246,12 @@ httpServer.start = function(Options)
    end
 
    if Options.verbose then
-      local verbose = Options.verbose:lower()
-      self.verbose = (verbose == 'true' or verbose == '1')
+      if type(Options.verbose) == 'boolean' then
+         self.verbose = Options.verbose
+      else
+         local verbose = tostring(Options.verbose):lower()
+         self.verbose = (verbose == 'true' or verbose == '1')
+      end
    end
 
    if Options.timeout then
@@ -1143,8 +1264,12 @@ httpServer.start = function(Options)
    end
 
    if Options.autoIndex then
-      local autoindex = Options.autoIndex:lower()
-      self.autoIndex = (autoindex == 'true' or autoindex == '1')
+      if type(Options.autoIndex) == 'boolean' then
+         self.autoIndex = Options.autoIndex
+      else
+         local autoindex = tostring(Options.autoIndex):lower()
+         self.autoIndex = (autoindex == 'true' or autoindex == '1')
+      end
    end
 
    if Options.rateLimit then
@@ -1156,6 +1281,33 @@ httpServer.start = function(Options)
 
    if Options.bind then
       self.bind = Options.bind
+   end
+
+   -- Process routes configuration
+   local routeCount = 0
+   if Options.routes then
+      if type(Options.routes) == 'table' then
+         for i, route in ipairs(Options.routes) do
+            if (type(route) == 'table') and route.pattern and route.method and route.handler then
+               -- Validate route configuration
+               local method = tostring(route.method):upper()
+               local pattern = tostring(route.pattern)
+               local handler = route.handler
+
+               if type(handler) == 'function' then
+                  addRoute(self, method, pattern, handler)
+                  routeCount = routeCount + 1
+                  logMessage(self, 'Route configured: ' .. method .. ' ' .. pattern)
+               else
+                  error('Invalid handler for route ' .. method .. ' ' .. pattern .. ' - must be a function')
+               end
+            else
+               error('Invalid route configuration at index ' .. i .. ' - missing pattern, method, or handler')
+            end
+         end
+      else
+         error('routes option must be a table')
+      end
    end
 
    local bindMsg = ''
@@ -1176,6 +1328,7 @@ httpServer.start = function(Options)
    msg('  Auto-indexing: ' .. (self.autoIndex and 'enabled' or 'disabled'))
    msg('  Rate limit: ' .. (self.rateLimit > 0 and (self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds') or 'disabled'))
    msg('  Security headers: ' .. (self.enableCSP and 'enabled' or 'disabled'))
+   msg('  Routes configured: ' .. routeCount)
 
    local cfg = {
       port = self.port,
@@ -1205,6 +1358,11 @@ httpServer.start = function(Options)
          self._socket = nil
          collectgarbage()
       end
+   end
+
+   -- Generic route registration
+   self.newRoute = function(method, pattern, callback)
+      addRoute(self, method:upper(), pattern, callback)
    end
 
    return self
