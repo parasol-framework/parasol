@@ -42,7 +42,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Canonicalize path to prevent directory traversal attacks
 
-local function canonicalizePath(path)
+local function canonicalizePath(self, path)
    if not path then return nil end
 
    path = path:gsub('[%c]', '')   -- Remove any null bytes
@@ -887,7 +887,7 @@ local function matchRoute(serverInstance, method, path)
             route.compiledRegex = regex.new(regexPattern)
          end,
          function(Exception)
-            print('matchRoute: Failed to compile regex: ' .. Exception.message)
+            error('matchRoute: Failed to compile regex: ' .. Exception.message)
          end)
       end
 
@@ -1088,7 +1088,7 @@ local function handleRequest(self, ClientSocket)
    end
 
    -- Canonicalize and validate path
-   local URIPath = canonicalizePath(request.path)
+   local URIPath = canonicalizePath(self, request.path)
    if not URIPath then
       local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
       logMessage(self, 'Security: Invalid path blocked: ' .. request.path)
@@ -1102,7 +1102,7 @@ local function handleRequest(self, ClientSocket)
 
    local matchedRoute, params = matchRoute(self, request.method, URIPath)
    if matchedRoute then
-      msg(self, 'Found matching route: ' .. matchedRoute.pattern)
+      msg('Found matching route: ' .. matchedRoute.pattern)
       -- Populate request params and create response object
       request.params = params
       local response = createResponseObject(self, ClientSocket)
