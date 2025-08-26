@@ -41,7 +41,7 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
    end
 
    if arg('port') then glOptions.port = tonumber(arg('port'))end
-   if arg('folder') then glOptions.folder = folder end
+   if arg('folder') then glOptions.folder = arg('folder') end
 
    if arg('verbose') then
       local verbose = arg('verbose'):lower()
