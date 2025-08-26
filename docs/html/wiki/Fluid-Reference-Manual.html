@@ -70,7 +70,10 @@
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
             <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
            </ul>
@@ -289,6 +292,28 @@
 <p>A non-zero value detection function, <code>nz()</code>, is included to simplify the handling of nil and zero values (such as a zero length string). Using <code>nz()</code> simplifies program flow where variables must have a value, for example:</p>
 <p><code>myvalue = nz(var.shoppinglist, &#39;Empty Basket&#39;)</code></p>
 <p>The first parameter is checked if it is empty. If so, the function&#39;s second parameter is returned if provided. Otherwise a value of <code>true</code> is returned.</p>
+<h2 id="string-api-additions">String API Additions</h2>
+<h3 id="stringalloc">string.alloc()</h3>
+<p><code>string.alloc(Size)</code></p>
+<p>Return a string of <code>Size</code> bytes that is uninitialised. Useful for creating buffers that can be passed to Parasol functions.</p>
+<h3 id="stringtrim">string.trim()</h3>
+<p><code>str:trim()</code></p>
+<p>Trims whitespace from the left and right sides of a string.</p>
+<h3 id="stringrtrim">string.rtrim()</h3>
+<p><code>str:rtrim()</code></p>
+<p>Trims whitespace from the right side of a string.</p>
+<h3 id="stringsplit">string.split()</h3>
+<p><code>str:split([Sep])</code></p>
+<p>Split a string using <code>Sep</code> to identify the space between each word. If <code>Sep</code> is not specified, it defaults to all whitespace characters. Multiple characters can be specified in <code>Sep</code> if required.</p>
+<h3 id="stringstartswith">string.startsWith()</h3>
+<p><code>str:startsWith(Cmp)</code></p>
+<p>Returns <code>true</code> if the string starts with <code>Cmp</code>.</p>
+<h3 id="stringendswith">string.endsWith()</h3>
+<p><code>str:endsWith(Cmp)</code></p>
+<p>Returns <code>true</code> if the string ends with <code>Cmp</code>.</p>
+<h3 id="stringjoin">string.join()</h3>
+<p><code>str:join({ Values }, Sep)</code></p>
+<p>Join all <code>Values</code> into a single returned string, separated by <code>Sep</code>.</p>
 <hr>
 <h2 id="script-management">Script Management</h2>
 <h3 id="include">include</h3>
@@ -515,6 +540,52 @@ end)</code></pre>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">task</span> <span class="cf">then</span></span>
 <span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">task</span><span class="op">.</span>set<span class="op">(</span><span class="st">&#39;Priority&#39;</span><span class="op">,</span> <span class="dv">15</span><span class="op">)</span>  <span class="co">-- Set high priority for time-critical operations</span></span>
 <span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<h3 id="delayedcall">delayedCall()</h3>
+<p>Use <code>delayedCall()</code> to call a function on the next message processing cycle inside <code>processing.sleep()</code>. This is useful in situations where calling a function is necessary, but to do so immediately would cause logistical issues with the order of execution.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="va">processing</span><span class="op">.</span>delayedCall<span class="op">(</span><span class="kw">function</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;This message is appearing after being delayed.&#39;</span><span class="op">)</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code></pre></div>
+<hr>
+<h2 id="math-interface">Math Interface</h2>
+<h3 id="mathround">math.round()</h3>
+<p><code>math.round(Num, [DecimalPlaces])</code></p>
+<p>Round floating point <code>Num</code> to the nearest integer. If <code>DecimalPlaces</code> is specified then the function will round to the place indicated. For example <code>math.round(8.2468,2)</code> rounds to <code>8.25</code>.</p>
+<hr>
+<h2 id="strings-interface">Strings Interface</h2>
+<p>The Lua strings interface is extended with a number of useful functions that are commonly required in programming. The following functions are included:</p>
+<h3 id="stringalloc-1">string.alloc()</h3>
+<p><code>str = string.alloc(Size)</code></p>
+<p>Create a string of a given size in bytes. This feature is intended for creating sized data buffers that can be passed to Parasol interfaces.</p>
+<h3 id="stringcap">string.cap()</h3>
+<p><code>str:cap()</code></p>
+<p>Recreate a string with the first character in upper case.</p>
+<h3 id="stringdecap">string.decap()</h3>
+<p><code>str:decap()</code></p>
+<p>Recreate a string with the first character in lower case.</p>
+<h3 id="stringescxml">string.escXML()</h3>
+<p><code>str:escXML()</code></p>
+<p>Escape <code>str</code> for an XML attribute value or content.</p>
+<h3 id="stringhash">string.hash()</h3>
+<p><code>hash = str:hash([CaseSensitive])</code></p>
+<p>Return a hash value for the string. The <code>CaseSensitive</code> parameter is optional and defaults to <code>false</code>.</p>
+<h3 id="stringjoin-1">string.join()</h3>
+<p><code>str:join(Table, Separator)</code></p>
+<p>Join the contents of <code>Table</code> into a single string, using <code>Separator</code> between each item. If <code>Separator</code> is not specified, the items are joined consecutively.</p>
+<h3 id="stringtrim-1">string.trim()</h3>
+<p><code>str:trim()</code></p>
+<p>Trims whitespace from the left and right sides of a string.</p>
+<h3 id="stringrtrim-1">string.rtrim()</h3>
+<p><code>str:rtrim()</code></p>
+<p>Trims whitespace from the right side of a string.</p>
+<h3 id="stringsplit-1">string.split()</h3>
+<p><code>str:split([Pattern])</code></p>
+<p>Split a string using <code>Pattern</code> to identify each valid word. If Pattern is not specified, it defaults to <code>%s</code>.</p>
+<h3 id="stringstartswith-1">string.startsWith()</h3>
+<p><code>str:startsWith(Cmp)</code></p>
+<p>Returns <code>true</code> if the string starts with <code>Cmp</code>.</p>
+<h3 id="stringendswith-1">string.endsWith()</h3>
+<p><code>str:endsWith(Cmp)</code></p>
+<p>Returns <code>true</code> if the string ends with <code>Cmp</code>.</p>
 <hr>
 <h2 id="thread-interface">Thread Interface</h2>
 <p>Fluid supports a simplified threading model so as to minimise the potential problems occurring from their use. The functionality is as follows:</p>
@@ -561,17 +632,17 @@ processing.sleep()</code></pre>
 <p>To get the total number of fields in the structure, use <code>#</code>, e.g. <code>#xmltag</code>.</p>
 <h3 id="custom-structures">Custom Structures</h3>
 <p>The <code>MAKESTRUCT()</code> function is used to build structure definitions. A structure definition is a single string that defines all fields in a structure, matched in the order in which they appear in the structure. Consider the following C structure:</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="va">struct</span> XMLTag <span class="op">{</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">LONG</span>   <span class="va">Index</span><span class="op">;</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">LONG</span>   <span class="cn">ID</span><span class="op">;</span></span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Child</span><span class="op">;</span></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Prev</span><span class="op">;</span></span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Next</span><span class="op">;</span></span>
-<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APTR</span>   <span class="va">Private</span><span class="op">;</span></span>
-<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLAttrib</span> <span class="op">*</span><span class="va">Attrib</span><span class="op">;</span></span>
-<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>   <span class="cn">WORD</span> <span class="va">TotalAttrib</span><span class="op">;</span></span>
-<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>   <span class="cn">UWORD</span> <span class="va">Nest</span><span class="op">;</span></span>
-<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="va">struct</span> XMLTag <span class="op">{</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>   <span class="cn">LONG</span>   <span class="va">Index</span><span class="op">;</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>   <span class="cn">LONG</span>   <span class="cn">ID</span><span class="op">;</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Child</span><span class="op">;</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Prev</span><span class="op">;</span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Next</span><span class="op">;</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APTR</span>   <span class="va">Private</span><span class="op">;</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">struct</span> <span class="va">XMLAttrib</span> <span class="op">*</span><span class="va">Attrib</span><span class="op">;</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>   <span class="cn">WORD</span> <span class="va">TotalAttrib</span><span class="op">;</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>   <span class="cn">UWORD</span> <span class="va">Nest</span><span class="op">;</span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>To define this structure in Fluid we would use the following code:</p>
 <p><code>MAKESTRUCT(&#39;XMLTag&#39;, &#39;lIndex,lID,pChild,pPrev:XMLTag,pNext:XMLTag,pPrivate,pAttrib,wTotalAttrib,uwNest&#39;)</code></p>
 <p>You will notice that each field name is defined using the same order and names as identified in the structure. Each name is prefixed with a lower-case character that indicates the field type. Using the correct field types is the most crucial part of the structure definition and each must be chosen from the following table:</p>
@@ -627,11 +698,117 @@ processing.sleep()</code></pre>
 </table>
 <p>Fixed arrays are also permitted in the structure definition if a field name is followed with enclosed square brackets that contain the array size, e.g. <code>[12]</code>.</p>
 <hr>
+<h2 id="regular-expression-interface">Regular Expression Interface</h2>
+<p>The regular expression interface provides compiled regex objects for high-performance pattern matching and text manipulation. Unlike Lua&#39;s basic pattern matching, the regex interface offers full PCRE-compatible regular expression support through compiled objects that can be created once and reused multiple times.</p>
+<h3 id="creating-a-regex">Creating a Regex</h3>
+<p>To create a compiled regex object, use the <code>new()</code> method with the following prototype:</p>
+<p><code>myregex = regex.new(Pattern, [Flags])</code></p>
+<p>The <code>Pattern</code> is a string containing the regular expression pattern to compile. The optional <code>Flags</code> parameter can be used to modify regex behavior using the flag constants described below.</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Simple pattern</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">digits</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d+&#39;</span><span class="op">)</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Case insensitive pattern</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">email</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">ICASE</span><span class="op">)</span></span></code></pre></div>
+<p>If the provided pattern is invalid, an error will be raised. For this reason it is advisable to use <code>catch()</code> when creating regex objects that use untested patterns, e.g. from user input.</p>
+<h3 id="flag-constants">Flag Constants</h3>
+<p>The following flags can be combined to modify regex compilation:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>regex.ICASE</td>
+<td>Case insensitive matching</td>
+</tr>
+<tr>
+<td>regex.MULTILINE</td>
+<td>^ and $ match line boundaries</td>
+</tr>
+<tr>
+<td>regex.DOTALL</td>
+<td>. matches newlines</td>
+</tr>
+<tr>
+<td>regex.EXTENDED</td>
+<td>Allow whitespace and comments in patterns</td>
+</tr>
+</tbody>
+</table>
+<p>Flags can be combined using addition: <code>regex.ICASE + regex.MULTILINE</code>.</p>
+<h3 id="pattern-testing">Pattern Testing</h3>
+<p>Use the <code>test()</code> method to perform boolean pattern matching:</p>
+<p><code>result = myregex:test(text)</code></p>
+<p>This returns <code>true</code> if the pattern matches anywhere in the text, <code>false</code> otherwise.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{4}&#39;</span><span class="op">)</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">phoneRegex</span><span class="op">.</span>test<span class="op">(</span><span class="va">userInput</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Valid phone number format&#39;</span><span class="op">)</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<h3 id="pattern-matching-with-capture-groups">Pattern Matching with Capture Groups</h3>
+<p>Use the <code>match()</code> method to find the first match and return capture groups:</p>
+<p><code>matches = myregex.match(text)</code></p>
+<p>Returns a table containing the full match and any capture groups, or <code>nil</code> if no match is found. Array indices start at 1 (full match), with capture groups at indices 2, 3, etc.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">urlRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(https?)://([^/]+)(.*)&#39;</span><span class="op">)</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">matches</span> <span class="op">=</span> <span class="va">urlRegex</span><span class="op">.</span>match<span class="op">(</span><span class="st">&#39;https://example.com/path&#39;</span><span class="op">)</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[1] = &#39;https://example.com/path&#39; (full match)</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[2] = &#39;https&#39; (first capture group)</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[3] = &#39;example.com&#39; (second capture group)</span></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[4] = &#39;/path&#39; (third capture group)</span></span></code></pre></div>
+<h3 id="global-matching">Global Matching</h3>
+<p>Use the <code>matchAll()</code> method to find all matches in the text:</p>
+<p><code>allMatches = myregex.matchAll(text)</code></p>
+<p>Returns a table where each element is a match table (as returned by <code>match()</code>).</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">w+)&#39;</span><span class="op">)</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">allWords</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>matchAll<span class="op">(</span><span class="st">&#39;hello world test&#39;</span><span class="op">)</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[1][1] = &#39;hello&#39;, allWords[1][2] = &#39;hello&#39;</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[2][1] = &#39;world&#39;, allWords[2][2] = &#39;world&#39;</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[3][1] = &#39;test&#39;, allWords[3][2] = &#39;test&#39;</span></span></code></pre></div>
+<h3 id="string-replacement">String Replacement</h3>
+<p>Use the <code>replace()</code> method to replace the first occurrence:</p>
+<p><code>result = myregex.replace(text, replacement)</code></p>
+<p>Use the <code>replaceAll()</code> method to replace all occurrences:</p>
+<p><code>result = myregex.replaceAll(text, replacement)</code></p>
+<p>Replacement strings support backreferences using <code>$1</code>, <code>$2</code>, etc., to reference capture groups.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{4})&#39;</span><span class="op">)</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">formatted</span> <span class="op">=</span> <span class="va">phoneRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;555-123-4567&#39;</span><span class="op">,</span> <span class="st">&#39;($1) $2-$3&#39;</span><span class="op">)</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;(555) 123-4567&#39;</span></span></code></pre></div>
+<h3 id="pattern-based-splitting">Pattern-Based Splitting</h3>
+<p>Use the <code>split()</code> method to split text using the regex pattern as a delimiter:</p>
+<p><code>parts = myregex.split(text)</code></p>
+<p>Returns a table containing the split parts (empty strings are excluded).</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">csvRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">s*,</span><span class="sc">\\</span><span class="st">s*&#39;</span><span class="op">)</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">fields</span> <span class="op">=</span> <span class="va">csvRegex</span><span class="op">.</span>split<span class="op">(</span><span class="st">&#39;apple, banana,  cherry&#39;</span><span class="op">)</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- fields[1] = &#39;apple&#39;, fields[2] = &#39;banana&#39;, fields[3] = &#39;cherry&#39;</span></span></code></pre></div>
+<h3 id="regex-properties">Regex Properties</h3>
+<p>Compiled regex objects provide the following read-only properties:</p>
+<ul>
+<li><code>pattern</code>: The original pattern string</li>
+<li><code>flags</code>: The compilation flags used</li>
+<li><code>valid</code>: Boolean indicating if compilation succeeded</li>
+<li><code>error</code>: Error message if compilation failed (or <code>nil</code> if valid)</li>
+</ul>
+<div class="sourceCode" id="cb27"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">regex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[invalid&#39;</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> <span class="va">regex</span><span class="op">.</span><span class="va">valid</span> <span class="cf">then</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Regex error: &#39;</span> <span class="op">..</span> <span class="va">regex</span><span class="op">.</span><span class="va">error</span><span class="op">)</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<h3 id="performance-considerations">Performance Considerations</h3>
+<p>Regex objects are compiled once and can be reused many times, making them significantly more efficient than traditional string matching for complex patterns. Store frequently used regex objects in variables rather than recreating them:</p>
+<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Efficient: compile once, use many times</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">email</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">emailList</span><span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">emailValidator</span><span class="op">.</span>test<span class="op">(</span><span class="va">email</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>      processEmail<span class="op">(</span><span class="va">email</span><span class="op">)</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<hr>
 <h2 id="array-interface">Array Interface</h2>
 <p>The array interface is used to manage the arrays that are returned by object fields, actions, methods and certain functions. Although Lua includes native support for arrays, their functionality is particular to the Lua environment. Arrays for use within the Parasol API must use the interface that we provide.</p>
 <p>To create an array, use the <code>new()</code> method with the following prototype:</p>
-<p><code>myarray = array.new(size, type)</code></p>
-<p>The size indicates the total number of entries in the array. The type is a string that declares the type to use for each element in the array. Supported types are <code>byte</code>, <code>word</code>, <code>long</code>, <code>large</code>, <code>string</code>, <code>ptr</code>, <code>float</code> and <code>double</code>.</p>
+<p><code>myarray = array.new(Size, Type)</code></p>
+<p>The <code>Size</code> indicates the total number of entries in the array. The <code>Type</code> is a string that declares the type to use for each element in the array. Supported types are <code>byte</code>, <code>word</code>, <code>long</code>, <code>large</code>, <code>string</code>, <code>ptr</code>, <code>float</code> and <code>double</code>.</p>
 <p>Strings can also be converted into an array of bytes using the special <code>bytestring</code> type, as in the following template:</p>
 <p><code>myarray = array.new(&#39;enter your string here&#39;, &#39;bytestring&#39;)</code></p>
 <h3 id="array-indexes">Array Indexes</h3>
@@ -652,6 +829,7 @@ processing.sleep()</code></pre>
 <p><code>msg()</code> accepts a single string parameter and prints it to the debug log. The log level must be set to <code>api</code> or higher in order to be visible.</p>
 <h3 id="print">print()</h3>
 <p><code>print()</code> accepts a single string parameter and prints it to <code>stderr</code>. If <code>stderr</code> is unavailable on a system like Android, the message is printed to the debug log instead.</p>
+<p><em>For more precise control over printing, use <code>io.write()</code> and target <code>stderr</code> or <code>stdout</code> instead of the <code>print()</code> function.</em></p>
 <hr>
 <h3 id="event-subsystem">Event Subsystem</h3>
 <p>Fluid programs can receive system-wide events whenever they are broadcast. Two functions are provided for the purpose of event management. The first is subscribeEvent(), which will connect a Fluid function to a specific event:</p>

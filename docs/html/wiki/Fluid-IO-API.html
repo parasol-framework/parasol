@@ -11,7 +11,7 @@
 <meta name="description" content="Parasol Framework documentation, machine generated from source">
 <meta name="author" content="Paul Manias">
 <link rel="icon" href="/favicon.ico">
-<title>Parasol Wiki - System Error Codes</title>
+<title>Parasol Wiki - Fluid IO API</title>
 <link href="../css/bootstrap.min.css" rel="stylesheet">
 <link href="../css/module-template.css" rel="stylesheet">
 <link href="../css/github-markdown.css" rel="stylesheet">
@@ -250,766 +250,111 @@
 
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
-<h1>System Error Codes</h1>
-<p>The following table lists all common error codes and their associated message.</p>
+<h1>Fluid IO API</h1>
+<p>The I/O APIs are stored in the <code>io</code> script folder and can be included selectively with the correct <code>require</code> statement.</p>
+<h2 id="file-search">File Search</h2>
+<p>The FileSearch interface simplifies the process of searching for files and folders within the file system. Support is provided for both wildcard filters and content searching.</p>
+<p>It can be loaded with the line:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span> <span class="st">&#39;io/filesearch&#39;</span></span></code></pre></div>
+<h2 id="functions">Functions</h2>
+<h3 id="filesearch">file.search()</h3>
+<p><code>file.search(Path, Options)</code></p>
+<p>This example searches for text files in the <code>documents:</code> folder that include the word <code>tennis</code>:</p>
+<pre><code>   require &#39;io/filesearch&#39;
+
+file.search(&#39;documents:&#39;, {
+   nameFilter    = &#39;*.txt&#39;,
+   nameWild      = true,
+   contentFilter = &#39;tennis&#39;,
+   matchFeedback = function(Path, FileName, File)
+      print(Path, &#39; &#39;, FileName)
+   end
+})</code></pre>
+<p>Valid options to use when defining the search table are as follows:</p>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Description</th>
+<th style="text-align: left;">Option</th>
+<th style="text-align: left;">Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Okay / True</td>
-<td>Operation successful.</td>
+<td style="text-align: left;">nameFilter</td>
+<td style="text-align: left;">Include file/folder names that match this filter.</td>
 </tr>
 <tr>
-<td>False</td>
-<td>The result is false.</td>
+<td style="text-align: left;">contentFilter</td>
+<td style="text-align: left;">Include files that contain this content.</td>
 </tr>
 <tr>
-<td>LimitedSuccess</td>
-<td>Limited success.</td>
+<td style="text-align: left;">nameWild</td>
+<td style="text-align: left;">Set to true to enable wildcard matching for file names, or &#39;lua&#39; for Lua expression matching.</td>
 </tr>
 <tr>
-<td>Cancelled</td>
-<td>Operation cancelled.</td>
+<td style="text-align: left;">contentWild</td>
+<td style="text-align: left;">Set to true to enable wildcard matching for content, or &#39;lua&#39; for Lua expression matching.</td>
 </tr>
 <tr>
-<td>NothingDone</td>
-<td>There is nothing to process.</td>
+<td style="text-align: left;">caseSensitive</td>
+<td style="text-align: left;">All comparisons are case sensitive.</td>
 </tr>
 <tr>
-<td>Continue</td>
-<td>Please continue processing.</td>
+<td style="text-align: left;">matchFeedback</td>
+<td style="text-align: left;">Call this function each time that a matched file is discovered. Returning <code>ERR_Terminate</code> will stop the search. Synopsis: <code>function(Path, File, Attributes)</code></td>
 </tr>
 <tr>
-<td>Skip</td>
-<td>Skip this operation.</td>
+<td style="text-align: left;">ignoreFeedback</td>
+<td style="text-align: left;">Call this function each time that a file fails to pass filter matches.</td>
 </tr>
 <tr>
-<td>Retry</td>
-<td>Retry the operation (could not succeed at this time).</td>
+<td style="text-align: left;">minSize</td>
+<td style="text-align: left;">Filter out files that do not meet or exceed this minimum size.</td>
 </tr>
 <tr>
-<td>DirEmpty</td>
-<td>The folder is empty.</td>
+<td style="text-align: left;">maxSize</td>
+<td style="text-align: left;">Filter out files that exceed this size.</td>
 </tr>
 <tr>
-<td>Terminate</td>
-<td>Please terminate future calls.</td>
+<td style="text-align: left;">minDate</td>
+<td style="text-align: left;">Filter out files with a modification time less than this timestamp.</td>
 </tr>
 <tr>
-<td>NoMemory</td>
-<td>Not enough memory available.</td>
+<td style="text-align: left;">maxDate</td>
+<td style="text-align: left;">Filter out files with a modification time exceeding this timestamp.</td>
 </tr>
 <tr>
-<td>NoPointer</td>
-<td>Required pointer not present.</td>
+<td style="text-align: left;">scanLinks</td>
+<td style="text-align: left;">Allows symbolically linked files and folders to be included in the file search.</td>
 </tr>
 <tr>
-<td>InUse</td>
-<td>Resource is in use.</td>
+<td style="text-align: left;">matchFolders</td>
+<td style="text-align: left;">Include matching folder names in the output of the search.</td>
 </tr>
 <tr>
-<td>Failed</td>
-<td>General failure.</td>
-</tr>
-<tr>
-<td>File</td>
-<td>File error, e.g. file not found.</td>
-</tr>
-<tr>
-<td>InvalidData</td>
-<td>There is an error in the provided data.</td>
-</tr>
-<tr>
-<td>Search / NotFound</td>
-<td>A search routine in this function failed.</td>
-</tr>
-<tr>
-<td>InitModule</td>
-<td>Trouble initialising/using a module.</td>
-</tr>
-<tr>
-<td>FileNotFound / FileDoesNotExist</td>
-<td>File not found.</td>
-</tr>
-<tr>
-<td>WrongVersion</td>
-<td>Wrong version, or version not supported.</td>
-</tr>
-<tr>
-<td>Args</td>
-<td>Invalid arguments passed to function.</td>
-</tr>
-<tr>
-<td>NoData</td>
-<td>No data is available for use.</td>
-</tr>
-<tr>
-<td>Read</td>
-<td>Error reading data from file.</td>
-</tr>
-<tr>
-<td>Write</td>
-<td>Error writing data to file.</td>
-</tr>
-<tr>
-<td>LockFailed / Lock</td>
-<td>Failed to lock a required resource.</td>
-</tr>
-<tr>
-<td>ExamineFailed</td>
-<td>Could not examine folder or file.</td>
-</tr>
-<tr>
-<td>LostClass</td>
-<td>The object has lost its class reference.</td>
-</tr>
-<tr>
-<td>NoAction</td>
-<td>The object does not support this operation.</td>
-</tr>
-<tr>
-<td>NoSupport</td>
-<td>This request is not supported.</td>
-</tr>
-<tr>
-<td>Memory</td>
-<td>General memory error.</td>
-</tr>
-<tr>
-<td>TimeOut</td>
-<td>Function timed-out before successful completion.</td>
-</tr>
-<tr>
-<td>NoStats</td>
-<td>This object has lost its stats structure.</td>
-</tr>
-<tr>
-<td>LowCapacity</td>
-<td>Array is at low capacity.</td>
-</tr>
-<tr>
-<td>Init</td>
-<td>Error in Init()ialising an object.</td>
-</tr>
-<tr>
-<td>NoPermission / Permissions / PermissionDenied</td>
-<td>General security violation.</td>
-</tr>
-<tr>
-<td>SystemCorrupt</td>
-<td>The operating system has been badly corrupted.</td>
-</tr>
-<tr>
-<td>NeedOwner</td>
-<td>I need a container to operate correctly.</td>
-</tr>
-<tr>
-<td>OwnerNeedsBitmap</td>
-<td>My container needs to have a Bitmap field.</td>
-</tr>
-<tr>
-<td>CoreVersion</td>
-<td>I need a newer version of the kernel.</td>
-</tr>
-<tr>
-<td>NeedWidthHeight</td>
-<td>The Width and/or Height field values need to be set.</td>
-</tr>
-<tr>
-<td>NegativeSubClassID</td>
-<td>The Object ID is negative.</td>
-</tr>
-<tr>
-<td>NegativeClassID</td>
-<td>The Class ID is negative</td>
-</tr>
-<tr>
-<td>MissingClassName</td>
-<td>You have not given the Class a name.</td>
-</tr>
-<tr>
-<td>OutOfRange</td>
-<td>A specified number is outside of the valid range.</td>
-</tr>
-<tr>
-<td>ObtainMethod</td>
-<td>A call to ObtainMethod() failed.</td>
-</tr>
-<tr>
-<td>ArrayFull</td>
-<td>Array has reached capacity and cannot be expanded.</td>
-</tr>
-<tr>
-<td>Query</td>
-<td>Attempt to Query() failed.</td>
-</tr>
-<tr>
-<td>LostOwner</td>
-<td>The object has lost its container.</td>
-</tr>
-<tr>
-<td>DoNotExpunge</td>
-<td>Please do not expunge me.</td>
-</tr>
-<tr>
-<td>MemoryCorrupt</td>
-<td>The memory block is corrupt.</td>
-</tr>
-<tr>
-<td>FieldSearch</td>
-<td>I could not find the field that you requested.</td>
-</tr>
-<tr>
-<td>InvalidPath</td>
-<td>Invalid file or folder path detected.</td>
-</tr>
-<tr>
-<td>SetField</td>
-<td>An unspecific error occurred during a SetField() operation.</td>
-</tr>
-<tr>
-<td>MarkedForDeletion</td>
-<td>A resource cannot be accessed as it is marked for deletion.</td>
-</tr>
-<tr>
-<td>IllegalMethodID</td>
-<td>Illegal method ID (number outside of valid range).</td>
-</tr>
-<tr>
-<td>IllegalActionID</td>
-<td>Illegal action ID (number outside of valid range).</td>
-</tr>
-<tr>
-<td>ModuleOpenFailed</td>
-<td>Module failed in its Open routine.</td>
-</tr>
-<tr>
-<td>IllegalActionAttempt</td>
-<td>Illegal attempt to execute an action on an object that belongs to another Task.</td>
-</tr>
-<tr>
-<td>EntryMissingHeader</td>
-<td>The ModEntry-&gt;Header is missing.</td>
-</tr>
-<tr>
-<td>ModuleMissingInit</td>
-<td>Module has not defined support for Init().</td>
-</tr>
-<tr>
-<td>ModuleInitFailed</td>
-<td>Module failed its Initialisation routine.</td>
-</tr>
-<tr>
-<td>MemoryDoesNotExist</td>
-<td>Memory block does not exist.</td>
-</tr>
-<tr>
-<td>DeadLock</td>
-<td>Dead-lock detected - procedure aborted.</td>
-</tr>
-<tr>
-<td>SystemLocked</td>
-<td>Part of the system is unreachable due to a persistent lock.</td>
-</tr>
-<tr>
-<td>ModuleMissingName</td>
-<td>Module has not declared an official name.</td>
-</tr>
-<tr>
-<td>AddClass</td>
-<td>An error occurred while creating a new class.</td>
-</tr>
-<tr>
-<td>Activate</td>
-<td>Error while Activate()ing an object.</td>
-</tr>
-<tr>
-<td>DoubleInit</td>
-<td>Warning - Attempt to initialise an object twice.</td>
-</tr>
-<tr>
-<td>UndefinedField / FieldNotSet</td>
-<td>A required field value is undefined.</td>
-</tr>
-<tr>
-<td>MissingClass</td>
-<td>The class could not be found in the system.</td>
-</tr>
-<tr>
-<td>FileReadFlag</td>
-<td>The File flag FL_READ was not set on initialisation.</td>
-</tr>
-<tr>
-<td>FileWriteFlag</td>
-<td>The File flag FL_WRITE was not set on initialisation.</td>
-</tr>
-<tr>
-<td>Draw</td>
-<td>An error occurred while drawing the object.</td>
-</tr>
-<tr>
-<td>NoMethods</td>
-<td>The class does not export any methods.</td>
-</tr>
-<tr>
-<td>NoMatchingObject</td>
-<td>No matching object was found for the given object ID.</td>
-</tr>
-<tr>
-<td>AccessMemory</td>
-<td>Access to a shared memory block was denied.</td>
-</tr>
-<tr>
-<td>MissingPath</td>
-<td>The object is missing a setting in the Path or Location field.</td>
-</tr>
-<tr>
-<td>NotLocked</td>
-<td>There is no exclusive lock on this object.</td>
-</tr>
-<tr>
-<td>NoSearchResult</td>
-<td>The search yielded no results.</td>
-</tr>
-<tr>
-<td>StatementUnsatisfied</td>
-<td>The tested statement was not satisfied.</td>
-</tr>
-<tr>
-<td>ObjectCorrupt</td>
-<td>The object structure is corrupt or has not been initialised.</td>
-</tr>
-<tr>
-<td>OwnerPassThrough</td>
-<td>Container pass through notification.</td>
-</tr>
-<tr>
-<td>UnsupportedOwner</td>
-<td>The owner is not supported by this object.</td>
-</tr>
-<tr>
-<td>ExclusiveDenied / AccessObject</td>
-<td>An attempt to gain exclusive access to a shared object failed.</td>
-</tr>
-<tr>
-<td>AllocMemory</td>
-<td>A call to AllocMemory() failed to create a new memory block.</td>
-</tr>
-<tr>
-<td>NewObject</td>
-<td>A call to NewObject() failed to produce a new object.</td>
-</tr>
-<tr>
-<td>GetField</td>
-<td>A call to GetField() failed to retrieve a field value.</td>
-</tr>
-<tr>
-<td>NoFieldAccess</td>
-<td>Access to a field was denied.</td>
-</tr>
-<tr>
-<td>VirtualVolume</td>
-<td>ResolvePath() failed to resolve the path because it is a virtual reference.</td>
-</tr>
-<tr>
-<td>InvalidDimension</td>
-<td>A dimension specification is invalid.</td>
-</tr>
-<tr>
-<td>FieldTypeMismatch</td>
-<td>Field type mismatch while getting or setting a field.</td>
-</tr>
-<tr>
-<td>UnrecognisedFieldType</td>
-<td>A field type ID (e.g. LONG, FLOAT) is not a recognised type of the system.</td>
-</tr>
-<tr>
-<td>BufferOverflow</td>
-<td>A buffer overflow has occurred.</td>
-</tr>
-<tr>
-<td>UnsupportedField</td>
-<td>The specified field is not supported by the object&#39;s class.</td>
-</tr>
-<tr>
-<td>Mismatch</td>
-<td>A mis-match has been detected that prevents further processing.</td>
-</tr>
-<tr>
-<td>OutOfBounds</td>
-<td>An out-of-bounds error has occurred.</td>
-</tr>
-<tr>
-<td>Seek</td>
-<td>An error occurred during a seek operation.</td>
-</tr>
-<tr>
-<td>ReallocMemory</td>
-<td>The reallocation of a memory block failed.</td>
-</tr>
-<tr>
-<td>Loop</td>
-<td>An infinite loop was detected.</td>
-</tr>
-<tr>
-<td>FileExists</td>
-<td>The destination file or folder already exists.</td>
-</tr>
-<tr>
-<td>ResolvePath</td>
-<td>A volume could not be resolved.</td>
-</tr>
-<tr>
-<td>CreateObject</td>
-<td>A call to CreateObject() failed.</td>
-</tr>
-<tr>
-<td>MemoryInfo</td>
-<td>Failed to obtain information on a memory block (MemoryInfo() failed).</td>
-</tr>
-<tr>
-<td>NotInitialised</td>
-<td>The object has not been initialised.</td>
-</tr>
-<tr>
-<td>ResourceExists</td>
-<td>A new resource could not be created because a matching resource exists.</td>
-</tr>
-<tr>
-<td>Refresh</td>
-<td>An attempt to Refresh() an object failed.</td>
-</tr>
-<tr>
-<td>ListChildren</td>
-<td>An error occurred in a call to ListChildren().</td>
-</tr>
-<tr>
-<td>SystemCall</td>
-<td>A call to the host system has failed.</td>
-</tr>
-<tr>
-<td>SmallMask</td>
-<td>The size of the mask is smaller than the source Bitmap&#39;s dimensions.</td>
-</tr>
-<tr>
-<td>EmptyString</td>
-<td>A required string value contains no characters.</td>
-</tr>
-<tr>
-<td>ObjectExists</td>
-<td>Object exists.</td>
-</tr>
-<tr>
-<td>ExpectedFile</td>
-<td>The operation expected a path to a file.</td>
-</tr>
-<tr>
-<td>Resize</td>
-<td>Failure during the resize of an object.</td>
-</tr>
-<tr>
-<td>Redimension</td>
-<td>Failure during the redimensioning of an object.</td>
-</tr>
-<tr>
-<td>CreateFile</td>
-<td>A new file could not be created.</td>
-</tr>
-<tr>
-<td>DeleteFile</td>
-<td>Deletion of a folder or file failed (e.g. permissions, read-only media).</td>
-</tr>
-<tr>
-<td>OpenFile</td>
-<td>The file could not be opened.</td>
-</tr>
-<tr>
-<td>ReadOnly</td>
-<td>A delete or write operation failed due to read-only status.</td>
-</tr>
-<tr>
-<td>DoesNotExist</td>
-<td>Resource does not exist.</td>
-</tr>
-<tr>
-<td>IdenticalPaths</td>
-<td>The destination path is the same as the source path.</td>
-</tr>
-<tr>
-<td>Exists</td>
-<td>Resource exists.</td>
-</tr>
-<tr>
-<td>SanityFailure</td>
-<td>A sanity check failed.</td>
-</tr>
-<tr>
-<td>OutOfSpace</td>
-<td>Out of space. There is no available room to complete the request.</td>
-</tr>
-<tr>
-<td>GetSurfaceInfo</td>
-<td>GetSurfaceInfo() failed.</td>
-</tr>
-<tr>
-<td>Finished / EndOfFile / OutOfData</td>
-<td>Operation finished.</td>
-</tr>
-<tr>
-<td>Syntax StringFormat</td>
-<td>Invalid syntax detected.</td>
-</tr>
-<tr>
-<td>InvalidState</td>
-<td>Object was in an incorrect state for the operation.</td>
-</tr>
-<tr>
-<td>HostNotFound</td>
-<td>The internet host name could not be resolved.</td>
-</tr>
-<tr>
-<td>InvalidURI</td>
-<td>Invalid Uniform Resource Identifier.</td>
-</tr>
-<tr>
-<td>ConnectionRefused</td>
-<td>The remote host refused the connection.</td>
-</tr>
-<tr>
-<td>NetworkUnreachable</td>
-<td>The network was unreachable.</td>
-</tr>
-<tr>
-<td>HostUnreachable</td>
-<td>No route to host.</td>
-</tr>
-<tr>
-<td>Disconnected</td>
-<td>The connection between client and server was terminated.</td>
-</tr>
-<tr>
-<td>TaskStillExists</td>
-<td>Task/Process still exists and is running.</td>
-</tr>
-<tr>
-<td>IntegrityViolation / ConstraintViolation</td>
-<td>Referential integrity / constraint violation.</td>
-</tr>
-<tr>
-<td>SchemaViolation</td>
-<td>Record changes would violate the DB schema.</td>
-</tr>
-<tr>
-<td>DataSize</td>
-<td>The size of a data chunk or buffer is incorrect.</td>
-</tr>
-<tr>
-<td>Busy</td>
-<td>Operation cannot complete because system is busy with an earlier operation.</td>
-</tr>
-<tr>
-<td>ConnectionAborted</td>
-<td>Attempt to connect to server aborted.</td>
-</tr>
-<tr>
-<td>NullArgs</td>
-<td>Function call missing argument value(s)</td>
-</tr>
-<tr>
-<td>InvalidObject / WrongObjectType / WrongClass</td>
-<td>An object is not of the required type.</td>
-</tr>
-<tr>
-<td>ExecViolation</td>
-<td>Execution violation - function must be called from the task that owns the object.</td>
-</tr>
-<tr>
-<td>Recursion</td>
-<td>Detected a recursive function call.</td>
-</tr>
-<tr>
-<td>IllegalAddress</td>
-<td>Address pointer is outside of the task&#39;s memory map.</td>
-</tr>
-<tr>
-<td>UnbalancedXML</td>
-<td>The XML tags do not balance.</td>
-</tr>
-<tr>
-<td>WouldBlock</td>
-<td>The requested operation would block if it were performed at this time.</td>
-</tr>
-<tr>
-<td>InputOutput</td>
-<td>A non-specific I/O error has occurred.</td>
-</tr>
-<tr>
-<td>LoadModule</td>
-<td>Failed to load a module binary.</td>
-</tr>
-<tr>
-<td>InvalidHandle</td>
-<td>A required handle is invalid.</td>
-</tr>
-<tr>
-<td>Security</td>
-<td>A non-specific security violation has occurred.</td>
-</tr>
-<tr>
-<td>InvalidValue</td>
-<td>A required value was not within expected constraints.</td>
-</tr>
-<tr>
-<td>ServiceUnavailable</td>
-<td>The required service is not available.</td>
-</tr>
-<tr>
-<td>Deactivated</td>
-<td>The object must be activated with the Activate action.</td>
-</tr>
-<tr>
-<td>LockRequired</td>
-<td>A lock is required before accessing this functionality.</td>
-</tr>
-<tr>
-<td>AlreadyLocked Locked</td>
-<td>Object or resource has already been locked.</td>
-</tr>
-<tr>
-<td>CardReaderUnknown</td>
-<td>The requested smart card reader was not found in the available list of card readers.</td>
-</tr>
-<tr>
-<td>NoMediaInserted</td>
-<td>No media is inserted in the device.</td>
-</tr>
-<tr>
-<td>CardReaderUnavailable</td>
-<td>The requested smart card reader is in use.</td>
-</tr>
-<tr>
-<td>ProxySSLTunnel</td>
-<td>Failed to establish an SSL connection with the proxy server.</td>
-</tr>
-<tr>
-<td>InvalidHTTPResponse</td>
-<td>A valid HTTP response was not received from the server.</td>
-</tr>
-<tr>
-<td>InvalidReference</td>
-<td>The reference is invalid.</td>
-</tr>
-<tr>
-<td>Exception</td>
-<td>An exception was caught.</td>
-</tr>
-<tr>
-<td>ThreadAlreadyActive</td>
-<td>Cannot execute a thread that is already running.</td>
-</tr>
-<tr>
-<td>OpenGL</td>
-<td>Failure has been reported from OpenGL.</td>
-</tr>
-<tr>
-<td>OutsideMainThread</td>
-<td>An operation has been attempted that is only possible from within the main thread.</td>
-</tr>
-<tr>
-<td>UseSubClass</td>
-<td>Requested to use a registered sub-class (not an error).</td>
-</tr>
-<tr>
-<td>WrongType</td>
-<td>The expected type was not provided.</td>
-</tr>
-<tr>
-<td>ThreadNotLocked</td>
-<td>Thread objects must be locked prior to activation.</td>
-</tr>
-<tr>
-<td>SetVolume</td>
-<td>A call to SetVolume() failed.</td>
-</tr>
-<tr>
-<td>Decompression</td>
-<td>Unspecified failure during decompression of a data stream.</td>
-</tr>
-<tr>
-<td>Compression</td>
-<td>Unspecified failure during compression of a data stream.</td>
-</tr>
-<tr>
-<td>ExpectedFolder</td>
-<td>The operation expected a folder path.</td>
-</tr>
-<tr>
-<td>Immutable</td>
-<td>This operation would violate the object&#39;s immutable status.</td>
-</tr>
-<tr>
-<td>ReadFileToBuffer</td>
-<td>A call to ReadFileToBuffer() failed.</td>
-</tr>
-<tr>
-<td>Obsolete</td>
-<td>This feature is no longer available (obsolete).</td>
-</tr>
-<tr>
-<td>CreateResource</td>
-<td>Failed to create a new resource.</td>
-</tr>
-<tr>
-<td>NotPossible</td>
-<td>It is not possible to perform the requested operation.</td>
-</tr>
-<tr>
-<td>ResolveSymbol</td>
-<td>Failed to resolve a linked library symbol.</td>
-</tr>
-<tr>
-<td>Function</td>
-<td>A function call failed.</td>
-</tr>
-<tr>
-<td>AlreadyDefined</td>
-<td>Re-definition is not permitted.</td>
-</tr>
-<tr>
-<td>SetValueNotNumeric</td>
-<td>Attempted to set a numeric field with an incompatible value.</td>
-</tr>
-<tr>
-<td>SetValueNotString</td>
-<td>Attempted to set a string field with an incompatible value.</td>
-</tr>
-<tr>
-<td>SetValueNotObject</td>
-<td>Attempted to set an object field with an incompatible value.</td>
-</tr>
-<tr>
-<td>SetValueNotFunction</td>
-<td>Attempted to set a function field with an incompatible value.</td>
-</tr>
-<tr>
-<td>SetValueNotPointer</td>
-<td>Attempted to set a pointer field with an incompatible value.</td>
-</tr>
-<tr>
-<td>SetValueNotArray</td>
-<td>Attempted to set an array field with an incompatible value.</td>
-</tr>
-<tr>
-<td>SetValueNotLookup</td>
-<td>Attempted to set a lookup field with an incompatible value.</td>
+<td style="text-align: left;">ignoreFiles</td>
+<td style="text-align: left;">Do not scan files (useful only in conjunction with <code>matchFolders</code>).</td>
 </tr>
 </tbody>
 </table>
+<p>When searching files for content, it is strongly recommended that a filter or size limit is applied so that only a limited number of files are opened for searching.</p>
+<h2 id="file-manager">File Manager</h2>
+<p>The File Manager API supports common file management needs such as mass file transfer and clipboard operations, and adds integrated UI support so that user interactions are managed in a consistent way across all Parasol applications.</p>
+<p>For example, copying a large number of files will pop-up a progress dialog to keep the user informed of progress. If an operation will overwrite an existing file, the user will be notified and given a choice of whether or not to continue.</p>
+<p>It can be loaded with the line:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span> <span class="st">&#39;io/filemgr&#39;</span></span></code></pre></div>
+<h2 id="functions-1">Functions</h2>
+<h3 id="fileuicopy">file.ui.copy()</h3>
+<p><code>error = file.ui.copy(Source, Dest, Move)</code></p>
+<p>Copy the <code>Source</code> path or paths (if provided as a list of strings) to the file or folder indicated by <code>Dest</code>.</p>
+<p>If <code>Move</code> is true then each file or folder copied from <code>Source</code> will be deleted when the copy is successful.</p>
+<p>Any errors that occur will be brought to the user&#39;s attention with a dialog box. Exceptions will only be thrown if there a catastrophic failure during the copy process. Otherwise, assume that the resulting <code>error</code> was handled and should only be used as an indicator of the final result. If the user cancels the operation then <code>ERR_Cancelled</code> is returned.</p>
+<h3 id="fileuipaste">file.ui.paste()</h3>
+<p><code>file.ui.paste(Dest)</code></p>
+<p>Paste files from the clipboard to the destination path. The same behavioural rules for <code>file.ui.copy</code> apply.</p>
+<h3 id="fileuidelete">file.ui.delete()</h3>
+<p><code>file.ui.delete(Paths)</code></p>
+<p>Delete the identified file or folder at <code>Paths</code>, which may be a string or list of strings. A progress window is opened if the operation takes longer than expected to run.</p>
 </div></div></div></div>
 
 <script src="../js/bootstrap.bundle.min.js"></script>

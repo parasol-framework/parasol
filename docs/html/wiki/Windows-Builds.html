@@ -70,7 +70,10 @@
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
             <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
            </ul>
@@ -276,9 +279,9 @@
 <li>Download the <a href="https://www.msys2.org/">MSYS2 archive</a> and install to <code>C:\msys64</code>.</li>
 <li>Launch MSYS2 and run <code>pacman -Syu</code>; relaunch MSYS2 and run <code>pacman -Syu</code> again.</li>
 <li>Install all necessary dev packages with <code>pacman -S base-devel gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain</code></li>
-<li>Install <a href="https://cmder.app/">Cmder</a></li>
-<li>Run Cmder, open Settings, then under Tasks add a new <code>MINGW64</code> shell with a command script of <code>set MSYSTEM=MINGW64 &amp; set &quot;PATH=/mingw64/bin;%PATH%&quot; &amp; C:\msys64\usr\bin\bash.exe --login -i</code></li>
-<li>Open a new console tab and you should see a bash shell. Enter <code>gcc --version</code> to ensure that the build environment&#39;s gcc executable is accessible.</li>
+<li>Install <a href="https://learn.microsoft.com/en-us/windows/terminal/">Windows Terminal</a></li>
+<li>In Windows Terminal settings (accessible by the down arrow) click &#39;Add a new profile&#39;. Apply a <code>Name</code> of <code>MSYS</code> and <code>Command line</code> of <code>C:\msys64\usr\bin\bash.exe --login -i</code>. Save and open an MSYS terminal. Enter <code>nano ~/.bashrc</code>. At the end of the file, insert <code>export MSYSTEM=MINGW64</code> and <code>export &quot;PATH=/mingw64/bin:$PATH$&quot;</code>. Save with <code>CTRL-O</code>, close the terminal and open a new one.</li>
+<li>Enter <code>gcc --version</code> to ensure that the build environment&#39;s gcc executable is accessible.</li>
 </ul>
 <p>From the Parasol Framework folder, the following will configure the build process, compile the framework and then install it:</p>
 <pre><code>cmake -S . -B release -DCMAKE_BUILD_TYPE=Release -G&quot;MinGW Makefiles&quot;

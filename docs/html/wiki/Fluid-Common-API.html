@@ -70,7 +70,10 @@
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
             <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
            </ul>
@@ -248,31 +251,9 @@
 <div class="col-sm-9" style="max-width: 1200px;">
 <div class="docs-content" id="default-page">
 <h1>Fluid Common API</h1>
-<p>The Common API provides a number of utility functions to enhance existing interfaces such as <code>table</code> and <code>string</code>. It also adds the <code>file</code> interface.</p>
+<p>The Common API provides a number of utility functions to enhance existing interfaces such as <code>table</code>. It also adds the <code>file</code> interface.</p>
 <p>The API can be loaded with the line:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">require</span> <span class="st">&#39;common&#39;</span></span></code></pre></div>
-<h2 id="string-enhancements">String Enhancements</h2>
-<h3 id="stringescxml">string.escXML()</h3>
-<p><code>str:escXML()</code></p>
-<p>Escape <code>str</code> for an XML attribute value or content.</p>
-<h3 id="stringcap">string.cap()</h3>
-<p><code>str:cap()</code></p>
-<p>Capitalise a string.</p>
-<h3 id="stringtrim">string.trim()</h3>
-<p><code>str:trim()</code></p>
-<p>Trims whitespace from the left and right sides of a string.</p>
-<h3 id="stringrtrim">string.rtrim()</h3>
-<p><code>str:rtrim()</code></p>
-<p>Trims whitespace from the right side of a string.</p>
-<h3 id="stringsplit">string.split()</h3>
-<p><code>str:split([Pattern])</code></p>
-<p>Split a string using <code>Pattern</code> to identify each valid word. If Pattern is not specified, it defaults to <code>%s</code>.</p>
-<h3 id="stringstartswith">string.startsWith()</h3>
-<p><code>str:startsWith(Cmp)</code></p>
-<p>Returns <code>true</code> if the string starts with <code>Cmp</code>.</p>
-<h3 id="stringendswith">string.endsWith()</h3>
-<p><code>str:endsWith(Cmp)</code></p>
-<p>Returns <code>true</code> if the string ends with <code>Cmp</code>.</p>
 <h2 id="table-enhancements">Table Enhancements</h2>
 <h3 id="tablesortbykeys">table.sortByKeys()</h3>
 <p><code>table.sortByKeys(Table)</code></p>
@@ -283,10 +264,6 @@ end</code></pre>
 <h3 id="tabletoxml">table.toXML()</h3>
 <p><code>String = table.toXML(Table)</code></p>
 <p>Parse the key-values of a table and produce an XML string.</p>
-<h2 id="math-enhancements">Math Enhancements</h2>
-<h3 id="mathround">math.round()</h3>
-<p><code>math.round(Num, [DecimalPlaces])</code></p>
-<p>Round floating point <code>Num</code> to the nearest integer. If <code>DecimalPlaces</code> is specified then the function will round to the place indicated. For example <code>math.round(8.2468,2)</code> rounds to <code>8.25</code>.</p>
 <h2 id="file-interface">File Interface</h2>
 <h3 id="filereadall">file.readAll()</h3>
 <p><code>content = file.readAll(Path)</code></p>
