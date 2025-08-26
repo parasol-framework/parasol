@@ -485,6 +485,9 @@ int fcmd_include(lua_State *Lua)
 //
 // Loads a Fluid language file from "scripts:" and executes it.  Differs from loadFile() in that registration
 // prevents multiple executions, and the volume restriction improves security.
+//
+// The module can opt to return a table that represents the interface.  This allows the user to avoid namespace
+// conflicts that could occur if the interface would otherwise be accessed as a global.
 
 int fcmd_require(lua_State *Lua)
 {
@@ -513,12 +516,16 @@ int fcmd_require(lua_State *Lua)
 
       // Check if the module is already loaded.
 
-      auto req = std::string("require.") + module;
+      auto modkey = std::string("require.") + module;
 
-      lua_getfield(prv->Lua, LUA_REGISTRYINDEX, req.c_str());
-      BYTE loaded = lua_toboolean(prv->Lua, -1);
-      lua_pop(prv->Lua, 1);
-      if (loaded) return 0;
+      lua_getfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
+      auto mod_value = lua_type(Lua, -1);
+      if (mod_value IS LUA_TTABLE) return 1; // Return the interface originally returned by the module
+      else {
+         auto loaded = lua_toboolean(Lua, -1);
+         lua_pop(Lua, 1);
+         if (loaded) return 0;
+      }
 
       auto path = std::string("scripts:") + module + ".fluid";
 
@@ -529,9 +536,28 @@ int fcmd_require(lua_State *Lua)
          struct code_reader_handle handle = { *file, buffer.get() };
          if (!lua_load(Lua, &code_reader, &handle, module)) {
             prv->RequireCounter++; // Used by getExecutionState()
-            if (!lua_pcall(Lua, 0, 0, 0)) { // Success, mark the module as loaded.
-               lua_pushboolean(prv->Lua, 1);
-               lua_setfield(prv->Lua, LUA_REGISTRYINDEX, req.c_str());
+            auto result_top = lua_gettop(Lua);
+            if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) { // Success, mark the module as loaded.
+               auto results = lua_gettop(Lua) - result_top + 1;
+               if (results > 0) {
+                  // If an interface table is returned, store it with the modkey for future require calls.
+                  int rtype = lua_type(Lua, -1);
+                  if (rtype == LUA_TTABLE) {
+                     lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Pops table
+                     lua_getfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Get the value back
+                     prv->RequireCounter--;
+                     return 1;
+                  }
+                  else { // Discard non-table result, mark module as loaded
+                     lua_pop(Lua, 1);
+                     lua_pushboolean(Lua, 1);
+                     lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
+                  }
+               }
+               else { // No return value; just mark as loaded
+                  lua_pushboolean(Lua, 1);
+                  lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
+               }
             }
             else error_msg = lua_tostring(Lua, -1);
             prv->RequireCounter--;
@@ -666,8 +692,8 @@ int fcmd_loadfile(lua_State *Lua)
                   if (cachefile.ok()) {
                      const Proto *f;
                      struct DateTime *date;
-                     f = clvalue(prv->Lua->top + (-1))->l.p;
-                     luaU_dump(prv->Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
+                     f = clvalue(Lua->top + (-1))->l.p;
+                     luaU_dump(Lua, f, &code_writer, cachefile, (Self->Flags & SCF_DEBUG) ? 0 : 1);
                      if (!file.obj->getPtr(FID_Date, &date)) {
                         cachefile->setDate(date);
                      }
