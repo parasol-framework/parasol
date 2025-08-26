@@ -42,7 +42,7 @@ function testConnectionFailures()
    print('[Test 1] Testing connection to invalid IP address...')
    local client1 = obj.new('netsocket', {
       name = 'InvalidIPClient',
-      feedback = function(Socket, Client, State)
+      feedback = function(Socket, State)
          print('[Client1] State: ' .. State)
          if (State == NTC_DISCONNECTED) then
             table.insert(glTestResults, 'invalid_ip_handled')

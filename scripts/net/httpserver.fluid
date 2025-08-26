@@ -8,6 +8,14 @@
 
    local httpServer = { }
 
+   local statusTexts = {
+       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
+       [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
+       [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
+       [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
+       [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
+   }
+
 ----------------------------------------------------------------------------------------------------------------------
 
 local function validatePort(port)
@@ -360,13 +368,6 @@ local function createResponseObject(self, client)
          res._statusText = text
       else
          -- Set default status text based on common codes
-         local statusTexts = {
-            [200] = 'OK', [201] = 'Created', [204] = 'No Content',
-            [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
-            [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
-            [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
-            [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
-         }
          res._statusText = statusTexts[code] or 'Unknown'
       end
       return res
