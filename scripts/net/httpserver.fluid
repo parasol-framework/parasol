@@ -1,10 +1,930 @@
 -- Refer to the Wiki for usage.
+--
+-- local hslib = require 'net/httpserver'
+-- local httpServer = hslib.start({ Options... })
+-- httpServer.stop()
 
    include 'network'
 
-   if not net then net = { } end
+   local httpServer = { }
 
-net.httpServer = function(Options)
+   local statusTexts = {
+       [200] = 'OK', [201] = 'Created', [204] = 'No Content',
+       [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
+       [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
+       [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
+       [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
+   }
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function validatePort(port)
+   local portNum = tonumber(port)
+   if not portNum or portNum < 1 or portNum > 65535 then
+      return false
+   end
+   return true
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Decode percent-encoded characters in URLs
+
+local function urlDecode(str)
+   if not str then return str end
+   str = str:gsub('+', ' ') -- Replace + with space
+   str = str:gsub('%%(%x%x)', function(hex)
+      return string.char(tonumber(hex, 16))
+   end)
+   return str
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Canonicalize path to prevent directory traversal attacks
+
+local function canonicalizePath(path)
+   if not path then return nil end
+
+   path = path:gsub('[%c]', '')   -- Remove any null bytes
+   path = urlDecode(path)         -- Decode URL encoding first
+   path = path:match("([^?#]*)")  -- Remove query parameters and fragments
+
+   -- Normalize slashes
+   path = path:gsub('\\', '/')
+   path = path:gsub('/+', '/')
+
+   -- Split into components
+   local components = {}
+   for component in path:gmatch('[^/]+') do
+      if component == '..' then
+         -- Attempt to go up - block this
+         logMessage('Security: Blocked directory traversal attempt with ..')
+         return nil
+      elseif component != '.' and component != '' then
+         table.insert(components, component)
+      end
+   end
+
+   -- Rebuild clean path
+   local cleanPath = '/' .. table.concat(components, '/')
+   if path:sub(-1) == '/' and cleanPath != '/' then
+      cleanPath = cleanPath .. '/'
+   end
+
+   return cleanPath
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function getMimeType(filename)
+   local extension = filename:match("%.([^%.]+)$")
+   if not extension then
+      return 'application/octet-stream'
+   end
+
+   extension = extension:lower()
+
+   local mimeTypes = {
+      -- Text
+      html = 'text/html',
+      htm = 'text/html',
+      css = 'text/css',
+      js = 'application/javascript',
+      mjs = 'application/javascript',
+      json = 'application/json',
+      xml = 'application/xml',
+      txt = 'text/plain',
+      md = 'text/markdown',
+      csv = 'text/csv',
+
+      -- Images
+      png = 'image/png',
+      jpg = 'image/jpeg',
+      jpeg = 'image/jpeg',
+      gif = 'image/gif',
+      svg = 'image/svg+xml',
+      ico = 'image/x-icon',
+      webp = 'image/webp',
+      bmp = 'image/bmp',
+      tiff = 'image/tiff',
+
+      -- Documents
+      pdf = 'application/pdf',
+      doc = 'application/msword',
+      docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+
+      -- Fonts
+      woff = 'font/woff',
+      woff2 = 'font/woff2',
+      ttf = 'font/ttf',
+      otf = 'font/otf',
+
+      -- Audio/Video
+      mp3 = 'audio/mpeg',
+      wav = 'audio/wav',
+      ogg = 'audio/ogg',
+      mp4 = 'video/mp4',
+      webm = 'video/webm',
+      avi = 'video/x-msvideo',
+
+      -- Archives
+      zip = 'application/zip',
+      tar = 'application/x-tar',
+      gz = 'application/gzip'
+   }
+
+   return mimeTypes[extension] or 'application/octet-stream'
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function logMessage(self, message)
+   if self.verbose then
+      print('[' .. timestamp() .. '] ' .. message)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
+   local buffer = string.alloc(1024) -- Start with 1KB buffer
+   local requestData = ''
+   local totalRead = 0
+   local startTime = mSys.PreciseTime()
+
+   while totalRead < maxSize do
+      local err, bytesRead = client.acRead(buffer, 1024)
+
+      if err != ERR_Okay then
+         if err == ERR_TimeOut then
+            logMessage('Request timeout after ' .. (mSys.PreciseTime() - startTime)/1000000 .. ' seconds')
+            return nil, 'timeout'
+         else
+            logMessage('Failed to read request: ' .. mSys.GetErrorMsg(err))
+            return nil, 'read_error'
+         end
+      end
+
+      if bytesRead == 0 then
+         break -- No more data
+      end
+
+      requestData = requestData .. buffer:sub(1, bytesRead)
+      totalRead = totalRead + bytesRead
+
+      -- Check for end of HTTP headers (\r\n\r\n)
+      if requestData:find('\r\n\r\n') then
+         break
+      end
+
+      -- Check timeout
+      if (mSys.PreciseTime() - startTime)/1000000 > timeoutSeconds then
+         logMessage('Request timeout exceeded')
+         return nil, 'timeout'
+      end
+   end
+
+   if totalRead >= maxSize then
+      logMessage('Request too large: ' .. totalRead .. ' bytes')
+      return nil, 'too_large'
+   end
+
+   return requestData, nil
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse query string into key-value pairs
+
+local function parseQueryString(queryString)
+   local query = {}
+   if not queryString or queryString == '' then
+      return query
+   end
+
+   for pair in queryString:gmatch('[^&]+') do
+      local key, value = pair:match('([^=]+)=(.+)')
+      if key and value then
+         key = urlDecode(key)
+         value = urlDecode(value)
+         if query[key] then
+            -- Handle multiple values for same key by converting to array
+            if type(query[key]) != 'table' then
+               query[key] = { query[key] }
+            end
+            table.insert(query[key], value)
+         else
+            query[key] = value
+         end
+      elseif key then
+         -- Handle keys without values (e.g., ?debug&verbose)
+         query[urlDecode(key)] = true
+      end
+   end
+
+   return query
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse cookies from Cookie header
+
+local function parseCookies(cookieHeader)
+   local cookies = {}
+   if not cookieHeader then
+      return cookies
+   end
+
+   for cookie in cookieHeader:gmatch('[^;]+') do
+      local name, value = cookie:match('%s*([^=]+)=(.+)')
+      if name and value then
+         -- Trim whitespace manually
+         name = name:match('^%s*(.-)%s*$')
+         value = value:match('^%s*(.-)%s*$')
+         cookies[name] = value
+      end
+   end
+
+   return cookies
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function parseHttpRequest(Req)
+   local lines = {}
+   for line in Req:gmatch("[^\r\n]+") do
+      table.insert(lines, line)
+   end
+
+   if #lines == 0 then
+      return nil
+   end
+
+   local requestLine = lines[1]
+   local method, fullPath, version = requestLine:match("(%S+)%s+(%S+)%s+(%S+)")
+
+   if not method or not fullPath then
+      return nil
+   end
+
+   -- Separate path from query string
+   local path, queryString = fullPath:match("([^?]*)%??(.*)")
+   if not path then
+      path = fullPath
+      queryString = ''
+   end
+
+   local headers = {}
+   for i = 2, #lines do
+      local line = lines[i]
+      local name, value = line:match("([^:]+):%s*(.+)")
+      if name and value then
+         headers[name:lower()] = value
+      end
+   end
+
+   -- Parse query parameters
+   local query = parseQueryString(queryString)
+
+   -- Parse cookies
+   local cookies = parseCookies(headers['cookie'])
+
+   return {
+      method = method,
+      path = path,
+      fullPath = fullPath,
+      version = version,
+      headers = headers,
+      query = query,
+      cookies = cookies,
+      params = {}, -- Will be populated by route matching
+      body = nil, -- Will be populated when body parsing is implemented
+      range = headers['range'] -- Store range header for partial content
+   }
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function sendHttpResponse(self, client, statusCode, statusText, headers, body)
+   local response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
+
+   if not headers['content-length'] and body then
+      headers['content-length'] = tostring(#body)
+   end
+
+   if not headers['connection'] then
+      headers['connection'] = 'close'
+   end
+
+   -- Add security headers
+   if self.enableCSP then
+      if not headers['content-security-policy'] then
+         headers['content-security-policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+      end
+      if not headers['x-content-type-options'] then
+         headers['x-content-type-options'] = 'nosniff'
+      end
+      if not headers['x-frame-options'] then
+         headers['x-frame-options'] = 'SAMEORIGIN'
+      end
+      if not headers['referrer-policy'] then
+         headers['referrer-policy'] = 'strict-origin-when-cross-origin'
+      end
+   end
+
+   for name, value in pairs(headers) do
+      response = response .. name .. ": " .. value .. "\r\n"
+   end
+
+   response = response .. "\r\n"
+
+   if body then
+      response = response .. body
+   end
+
+   local err = client.acWrite(response)
+   if err != ERR_Okay then
+      print('Failed to send response: ' .. mSys.GetErrorMsg(err))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Create enhanced response object with helper methods
+
+local function createResponseObject(self, client)
+   local res = {
+      _self = self,
+      _client = client,
+      _statusCode = 200,
+      _statusText = 'OK',
+      _headers = {},
+      _sent = false
+   }
+
+   -- Set status code and optional status text
+   res.status = function(code, text)
+      if res._sent then
+         error('Cannot set status after response sent')
+      end
+      res._statusCode = code
+      if text then
+         res._statusText = text
+      else
+         -- Set default status text based on common codes
+         res._statusText = statusTexts[code] or 'Unknown'
+      end
+      return res
+   end
+
+   -- Set response header
+   res.header = function(name, value)
+      if res._sent then
+         error('Cannot set headers after response sent')
+      end
+      res._headers[name:lower()] = value
+      return res
+   end
+
+   -- Set cookie
+   res.cookie = function(name, value, options)
+      if res._sent then
+         error('Cannot set cookies after response sent')
+      end
+      options = options or {}
+      local cookieStr = name .. '=' .. tostring(value)
+      
+      if options.maxAge then
+         cookieStr = cookieStr .. '; Max-Age=' .. tostring(options.maxAge)
+      end
+      if options.expires then
+         cookieStr = cookieStr .. '; Expires=' .. tostring(options.expires)
+      end
+      if options.path then
+         cookieStr = cookieStr .. '; Path=' .. tostring(options.path)
+      end
+      if options.domain then
+         cookieStr = cookieStr .. '; Domain=' .. tostring(options.domain)
+      end
+      if options.secure then
+         cookieStr = cookieStr .. '; Secure'
+      end
+      if options.httpOnly then
+         cookieStr = cookieStr .. '; HttpOnly'
+      end
+      if options.sameSite then
+         cookieStr = cookieStr .. '; SameSite=' .. tostring(options.sameSite)
+      end
+
+      -- Handle multiple cookies by making set-cookie an array
+      local existing = res._headers['set-cookie']
+      if existing then
+         if type(existing) != 'table' then
+            existing = { existing }
+         end
+         table.insert(existing, cookieStr)
+         res._headers['set-cookie'] = existing
+      else
+         res._headers['set-cookie'] = cookieStr
+      end
+      return res
+   end
+
+   -- Send JSON response
+   res.json = function(data)
+      if res._sent then
+         error('Response already sent')
+      end
+      local jsonStr
+      if type(data) == 'string' then
+         jsonStr = data
+      else
+         -- Simple JSON encoding for basic types
+         if type(data) == 'table' then
+            jsonStr = '{'
+            local first = true
+            for k, v in pairs(data) do
+               if not first then jsonStr = jsonStr .. ',' end
+               jsonStr = jsonStr .. '"' .. tostring(k) .. '":' 
+               if type(v) == 'string' then
+                  jsonStr = jsonStr .. '"' .. tostring(v):gsub('"', '\\"') .. '"'
+               elseif type(v) == 'number' or type(v) == 'boolean' then
+                  jsonStr = jsonStr .. tostring(v)
+               else
+                  jsonStr = jsonStr .. '"' .. tostring(v) .. '"'
+               end
+               first = false
+            end
+            jsonStr = jsonStr .. '}'
+         else
+            jsonStr = '"' .. tostring(data) .. '"'
+         end
+      end
+      
+      res._headers['content-type'] = 'application/json'
+      sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers, jsonStr)
+      res._sent = true
+      return res
+   end
+
+   -- Send redirect response
+   res.redirect = function(url, code)
+      if res._sent then
+         error('Response already sent')
+      end
+      code = code or 302
+      res._headers['location'] = url
+      res:status(code)
+      sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers)
+      res._sent = true
+      return res
+   end
+
+   -- Send text response
+   res.send = function(body, contentType)
+      if res._sent then
+         error('Response already sent')
+      end
+      contentType = contentType or 'text/html'
+      res._headers['content-type'] = contentType
+      sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers, tostring(body))
+      res._sent = true
+      return res
+   end
+
+   return res
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function createErrorPage(statusCode, statusText, message, details)
+   local html = '<!DOCTYPE html>\n<html>\n<head>\n'
+   html = html .. '<meta charset="utf-8">\n'
+   html = html .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
+   html = html .. '<style>\n'
+   html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n'
+   html = html .. '.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n'
+   html = html .. 'h1 { color: #d32f2f; margin-top: 0; }\n'
+   html = html .. 'p { color: #666; line-height: 1.6; }\n'
+   html = html .. '.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }\n'
+   html = html .. '</style>\n'
+   html = html .. '</head>\n<body>\n'
+   html = html .. '<div class="error-container">\n'
+   html = html .. '<h1>' .. statusCode .. ' ' .. statusText .. '</h1>\n'
+   html = html .. '<p>' .. message .. '</p>\n'
+   if details then
+      html = html .. '<div class="details">' .. details .. '</div>\n'
+   end
+   html = html .. '<p><a href="/">Return to home</a></p>\n'
+   html = html .. '</div>\n</body>\n</html>\n'
+   return html
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function serveFile(self, client, filePath, Request)
+   local file
+   catch(function()
+      file = obj.new('file', { path = filePath, flags = 'READ' })
+   end)
+   if not file then
+      local errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. filePath)
+      sendHttpResponse(self, client, 404, "Not Found", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   local fileSize = file.size
+
+   -- Stream large files in chunks
+   if fileSize > self.fileChunkSize then
+      local mimeType = getMimeType(filePath)
+      sendHttpResponse(self, client, 200, "OK", {
+         ['content-type'] = mimeType,
+         ['content-length'] = tostring(fileSize),
+         ['accept-ranges'] = 'bytes'
+      })
+
+      local buffer = string.alloc(self.fileChunkSize)
+      local totalSent = 0
+
+      while totalSent < fileSize do
+         local toRead = math.min(self.fileChunkSize, fileSize - totalSent)
+         local err, bytesRead = file.acRead(buffer, toRead)
+
+         if err != ERR_Okay then
+            logMessage('Error streaming file: ' .. mSys.GetErrorMsg(err))
+            file.free()
+            return
+         end
+
+         if bytesRead > 0 then
+            err = client.acWrite(buffer:sub(1, bytesRead))
+            if err != ERR_Okay then
+               logMessage('Error writing to client: ' .. mSys.GetErrorMsg(err))
+               file.free()
+               return
+            end
+            totalSent = totalSent + bytesRead
+         else
+            break
+         end
+      end
+
+      file.free()
+   else
+      -- Small files: read all at once
+      local buffer = string.alloc(fileSize)
+      local err, bytesRead = file.acRead(buffer)
+
+      if err != ERR_Okay then
+         file.free()
+         local errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
+         sendHttpResponse(self, client, 500, "Internal Server Error", {
+            ['content-type'] = 'text/html'
+         }, errorBody)
+         return
+      end
+
+      file.free()
+
+      if bytesRead < fileSize then
+         logMessage('Warning: Read ' .. bytesRead .. ' bytes, expected ' .. fileSize)
+      end
+
+      local mimeType = getMimeType(filePath)
+      sendHttpResponse(self, client, 200, "OK", {
+         ['content-type'] = mimeType
+      }, buffer:sub(1, bytesRead))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function formatFileSize(Bytes)
+   if Bytes < 1024 then
+      return tostring(Bytes) .. ' B'
+   elseif Bytes < 1024 * 1024 then
+      return string.format('%.1f KB', Bytes / 1024)
+   elseif Bytes < 1024 * 1024 * 1024 then
+      return string.format('%.1f MB', Bytes / (1024 * 1024))
+   else
+      return string.format('%.1f GB', Bytes / (1024 * 1024 * 1024))
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function printableTime(Time)
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d',
+      Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function generateDirectoryListing(self, DirPath, URIPath)
+   -- HTML escape function for security
+   local function escapeHtml(str)
+      if not str then return '' end
+      str = tostring(str)
+      str = str:gsub('&', '&amp;')
+      str = str:gsub('<', '&lt;')
+      str = str:gsub('>', '&gt;')
+      str = str:gsub('"', '&quot;')
+      str = str:gsub("'", '&#39;')
+      return str
+   end
+
+   local safeUrlPath = escapeHtml(URIPath)
+   local html = '<!DOCTYPE html>\n<html>\n<head>\n'
+   html = html .. '<meta charset="utf-8">\n'
+   html = html .. '<title>Directory listing for ' .. safeUrlPath .. '</title>\n'
+   html = html .. '<style>\n'
+   html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; }\n'
+   html = html .. 'h1 { color: #333; }\n'
+   html = html .. 'table { border-collapse: collapse; width: 100%; }\n'
+   html = html .. 'th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }\n'
+   html = html .. 'th { background-color: #f5f5f5; font-weight: bold; }\n'
+   html = html .. 'tr:hover { background-color: #f9f9f9; }\n'
+   html = html .. 'a { text-decoration: none; color: #0066cc; }\n'
+   html = html .. 'a:hover { text-decoration: underline; }\n'
+   html = html .. '.dir { font-weight: bold; }\n'
+   html = html .. '.size { text-align: right; }\n'
+   html = html .. '</style>\n'
+   html = html .. '</head>\n<body>\n'
+   html = html .. '<h1>Directory listing for ' .. safeUrlPath .. '</h1>\n'
+   html = html .. '<table>\n'
+   html = html .. '<thead>\n<tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>\n</thead>\n'
+   html = html .. '<tbody>\n'
+
+   -- Add parent directory link if not root
+   if URIPath != '/' then
+      local parentPath = URIPath:match('(.+)/.+/')
+      if not parentPath then parentPath = '/' end
+      html = html .. '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
+   end
+
+   -- List directory contents
+   print('Scanning folder ' .. DirPath)
+   local err, dir = mSys.OpenDir(DirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
+   if err == ERR_Okay then
+      local count = 0
+      local maxEntries = 1000 -- Limit directory entries to prevent DoS
+      while mSys.ScanDir(dir) == ERR_Okay and count < maxEntries do
+         local info = dir.info
+         local name = info.Name
+
+         -- Skip hidden files and system files for security
+         if name:sub(1,1) != '.' then
+            local isFolder = bit.band(info.flags, RDF_FOLDER) != 0
+            local size = isFolder and '-' or formatFileSize(info.size)
+            local modTime = printableTime(info.modified)
+
+            local href = URIPath
+            href = href .. name
+            if isFolder then href = href .. '/' end
+
+         local displayName = escapeHtml(name)
+         if isFolder then displayName = displayName .. '/' end
+
+         local safeHref = escapeHtml(href)
+         local cssClass = isFolder and ' class="dir"' or ''
+         html = html .. '<tr><td><a href="' .. safeHref .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
+            html = html .. '<td class="size">' .. escapeHtml(size) .. '</td>'
+            html = html .. '<td>' .. escapeHtml(modTime) .. '</td></tr>\n'
+            count = count + 1
+         end
+      end
+
+      if count >= maxEntries then
+         html = html .. '<tr><td colspan="3"><em>Directory listing truncated at ' .. maxEntries .. ' entries</em></td></tr>\n'
+      end
+   else
+      print('Failed to open folder ' .. nz(DirPath,'NIL'))
+   end
+
+   html = html .. '</tbody>\n</table>\n'
+   html = html .. '</body>\n</html>\n'
+
+   return html
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function serveDirectory(self, Client, DirPath, URIPath, Request)
+   -- Check for configured index files in order
+   for _, indexFile in ipairs(self.indexFiles) do
+      local indexPath = DirPath .. indexFile
+      local err, type = mSys.AnalysePath(indexPath)
+      if type == LOC_FILE then
+         logMessage('Serving index file: ' .. indexFile)
+         serveFile(Client, indexPath, Request)
+         return
+      end
+   end
+
+   -- If no index file found and auto-indexing is enabled, generate directory listing
+   if self.autoIndex then
+      logMessage(self, 'No index file found, generating directory listing for: ' .. URIPath)
+      local html = generateDirectoryListing(DirPath, URIPath)
+      sendHttpResponse(self, Client, 200, 'OK', {
+         ['content-type'] = 'text/html; charset=utf-8'
+      }, html)
+   else
+      -- Auto-indexing disabled, return 403 Forbidden
+      local errorBody = createErrorPage(403, 'Forbidden', 'Directory listing is disabled.', 'Path: ' .. URIPath)
+      sendHttpResponse(self, Client, 403, 'Forbidden', {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function timestamp()
+   local tm = obj.new('time')
+   tm.acQuery()
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Check rate limiting for client IP
+
+local function checkRateLimit(self, IP)
+   if not self.rateLimit or self.rateLimit <= 0 then
+      return true -- Rate limiting disabled
+   end
+
+   local currentTime = mSys.PreciseTime() / 1000000 -- Convert to seconds
+
+   -- Clean up old entries every minute
+   if currentTime - self._lastCleanup > 60 then
+      local cutoff = currentTime - self.rateLimitWindow
+      for ip, data in pairs(self._rateLimits) do
+         local newRequests = {}
+         for _, timestamp in ipairs(data.requests) do
+            if timestamp > cutoff then
+               table.insert(newRequests, timestamp)
+            end
+         end
+         if #newRequests == 0 then
+            self._rateLimits[ip] = nil
+         else
+            data.requests = newRequests
+         end
+      end
+      self._lastCleanup = currentTime
+   end
+
+   -- Check this client's rate
+   if not self._rateLimits[IP] then
+      self._rateLimits[IP] = { requests = {} }
+   end
+
+   local clientData = self._rateLimits[IP]
+   local cutoff = currentTime - self.rateLimitWindow
+
+   -- Count recent requests
+   local recentRequests = {}
+   for _, timestamp in ipairs(clientData.requests) do
+      if timestamp > cutoff then
+         table.insert(recentRequests, timestamp)
+      end
+   end
+
+   if #recentRequests >= self.rateLimit then
+      logMessage('Rate limit exceeded for ' .. IP)
+      return false
+   end
+
+   -- Add current request
+   table.insert(recentRequests, currentTime)
+   clientData.requests = recentRequests
+
+   return true
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+local function handleRequest(self, ClientSocket)
+   -- Get client IP for rate limiting
+   local ip_array = ClientSocket.client.ip
+   local ip = ip_array[1] .. '.' .. ip_array[2] .. '.' .. ip_array[3] .. '.' .. ip_array[4]
+
+   -- Check rate limit
+   if not checkRateLimit(self, ip) then
+      local errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds')
+      sendHttpResponse(self, ClientSocket, 429, "Too Many Requests", {
+         ['content-type'] = 'text/html',
+         ['retry-after'] = tostring(self.rateLimitWindow)
+      }, errorBody)
+      return
+   end
+
+   -- Read request with size limits and timeout
+   local requestData, error = readRequestWithTimeout(ClientSocket, self.maxRequestSize, self.timeout)
+
+   if not requestData then
+      local errorMsg, details
+      if error == 'timeout' then
+         errorMsg = 'Request timeout - the server did not receive a complete request within the timeout period.'
+         details = 'Timeout: ' .. self.timeout .. ' seconds'
+      elseif error == 'too_large' then
+         errorMsg = 'Request too large - the request exceeds the maximum allowed size.'
+         details = 'Maximum size: ' .. self.maxRequestSize .. ' bytes'
+      else
+         errorMsg = 'Error reading request from client.'
+         details = 'Error type: ' .. (error or 'unknown')
+      end
+
+      local errorBody = createErrorPage(400, 'Bad Request', errorMsg, details)
+      sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   local request = parseHttpRequest(requestData)
+
+   if not request then
+      local errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
+      sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   print('[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path)
+   logMessage('Request from client: ' .. request.method .. ' ' .. request.path)
+
+   -- Handle GET and HEAD requests
+   if request.method != 'GET' and request.method != 'HEAD' then
+      local errorBody = createErrorPage(405, 'Method Not Allowed', 'Only GET and HEAD requests are supported.', 'Requested method: ' .. request.method)
+      sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
+         ['content-type'] = 'text/html',
+         ['allow'] = 'GET, HEAD'
+      }, errorBody)
+      return
+   end
+
+   -- Canonicalize and validate path
+   local URIPath = canonicalizePath(request.path)
+   if not URIPath then
+      local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
+      logMessage('Security: Invalid path blocked: ' .. request.path)
+      sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   -- Validate path doesn't contain dangerous patterns
+   local dangerous = {
+      '%.%./', '%.%.\\', -- Directory traversal
+      '^%.', '/%.', -- Hidden files
+      '%.exe$', '%.bat$', '%.cmd$', '%.ps1$', -- Executables
+      '%.dll$', '%.so$', -- Libraries
+      '%.ini$', '%.conf$', '%.config$', -- Config files
+   }
+
+   for _, pattern in ipairs(dangerous) do
+      if URIPath:find(pattern) then
+         local errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
+         logMessage('Security: Blocked access to dangerous path: ' .. URIPath)
+         sendHttpResponse(self, ClientSocket, 403, "Forbidden", {
+            ['content-type'] = 'text/html'
+         }, errorBody)
+         return
+      end
+   end
+
+   local filePath = self.folder .. URIPath
+
+   -- Check if path exists and determine if it's a file or directory
+
+   local err, fileType = mSys.AnalysePath(filePath)
+   if err != ERR_Okay then
+      local errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. URIPath .. '\nResolved to: ' .. filePath)
+      sendHttpResponse(self, ClientSocket, 404, "Not Found", {
+         ['content-type'] = 'text/html'
+      }, errorBody)
+      return
+   end
+
+   if fileType == LOC_FOLDER then
+      -- Ensure directory URLs end with /
+      if not URIPath:match('/$') then
+         sendHttpResponse(self, ClientSocket, 301, 'Moved Permanently', {
+            ['location'] = URIPath .. '/'
+         })
+         return
+      end
+      serveDirectory(self, ClientSocket, filePath, URIPath, request)
+   else
+      serveFile(self, ClientSocket, filePath, request)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+
+httpServer.start = function(Options)
    local self = {
       port            = 8080,   -- Server port number
       folder          = nil,    -- Path from which to serve files
@@ -23,746 +943,6 @@ net.httpServer = function(Options)
       _lastCleanup = 0,
       _rateLimits = {}
    }
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function validatePort(port)
-      local portNum = tonumber(port)
-      if not portNum or portNum < 1 or portNum > 65535 then
-         return false
-      end
-      return true
-   end
-
-----------------------------------------------------------------------------------------------------------------------
--- Decode percent-encoded characters in URLs
-
-   local function urlDecode(str)
-      if not str then return str end
-      str = str:gsub('+', ' ') -- Replace + with space
-      str = str:gsub('%%(%x%x)', function(hex)
-         return string.char(tonumber(hex, 16))
-      end)
-      return str
-   end
-
-----------------------------------------------------------------------------------------------------------------------
--- Canonicalize path to prevent directory traversal attacks
-
-   local function canonicalizePath(path)
-      if not path then return nil end
-
-      path = path:gsub('[%c]', '')   -- Remove any null bytes
-      path = urlDecode(path)         -- Decode URL encoding first
-      path = path:match("([^?#]*)")  -- Remove query parameters and fragments
-
-      -- Normalize slashes
-      path = path:gsub('\\', '/')
-      path = path:gsub('/+', '/')
-
-      -- Split into components
-      local components = {}
-      for component in path:gmatch('[^/]+') do
-         if component == '..' then
-            -- Attempt to go up - block this
-            logMessage('Security: Blocked directory traversal attempt with ..')
-            return nil
-         elseif component != '.' and component != '' then
-            table.insert(components, component)
-         end
-      end
-
-      -- Rebuild clean path
-      local cleanPath = '/' .. table.concat(components, '/')
-      if path:sub(-1) == '/' and cleanPath != '/' then
-         cleanPath = cleanPath .. '/'
-      end
-
-      return cleanPath
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function getMimeType(filename)
-      local extension = filename:match("%.([^%.]+)$")
-      if not extension then
-         return 'application/octet-stream'
-      end
-
-      extension = extension:lower()
-
-      local mimeTypes = {
-         -- Text
-         html = 'text/html',
-         htm = 'text/html',
-         css = 'text/css',
-         js = 'application/javascript',
-         mjs = 'application/javascript',
-         json = 'application/json',
-         xml = 'application/xml',
-         txt = 'text/plain',
-         md = 'text/markdown',
-         csv = 'text/csv',
-
-         -- Images
-         png = 'image/png',
-         jpg = 'image/jpeg',
-         jpeg = 'image/jpeg',
-         gif = 'image/gif',
-         svg = 'image/svg+xml',
-         ico = 'image/x-icon',
-         webp = 'image/webp',
-         bmp = 'image/bmp',
-         tiff = 'image/tiff',
-
-         -- Documents
-         pdf = 'application/pdf',
-         doc = 'application/msword',
-         docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-
-         -- Fonts
-         woff = 'font/woff',
-         woff2 = 'font/woff2',
-         ttf = 'font/ttf',
-         otf = 'font/otf',
-
-         -- Audio/Video
-         mp3 = 'audio/mpeg',
-         wav = 'audio/wav',
-         ogg = 'audio/ogg',
-         mp4 = 'video/mp4',
-         webm = 'video/webm',
-         avi = 'video/x-msvideo',
-
-         -- Archives
-         zip = 'application/zip',
-         tar = 'application/x-tar',
-         gz = 'application/gzip'
-      }
-
-      return mimeTypes[extension] or 'application/octet-stream'
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function logMessage(message)
-      if self.verbose then
-         print('[' .. timestamp() .. '] ' .. message)
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
-      local buffer = string.alloc(1024) -- Start with 1KB buffer
-      local requestData = ''
-      local totalRead = 0
-      local startTime = mSys.PreciseTime()
-
-      while totalRead < maxSize do
-         local err, bytesRead = client.acRead(buffer, 1024)
-
-         if err != ERR_Okay then
-            if err == ERR_TimeOut then
-               logMessage('Request timeout after ' .. (mSys.PreciseTime() - startTime)/1000000 .. ' seconds')
-               return nil, 'timeout'
-            else
-               logMessage('Failed to read request: ' .. mSys.GetErrorMsg(err))
-               return nil, 'read_error'
-            end
-         end
-
-         if bytesRead == 0 then
-            break -- No more data
-         end
-
-         requestData = requestData .. buffer:sub(1, bytesRead)
-         totalRead = totalRead + bytesRead
-
-         -- Check for end of HTTP headers (\r\n\r\n)
-         if requestData:find('\r\n\r\n') then
-            break
-         end
-
-         -- Check timeout
-         if (mSys.PreciseTime() - startTime)/1000000 > timeoutSeconds then
-            logMessage('Request timeout exceeded')
-            return nil, 'timeout'
-         end
-      end
-
-      if totalRead >= maxSize then
-         logMessage('Request too large: ' .. totalRead .. ' bytes')
-         return nil, 'too_large'
-      end
-
-      return requestData, nil
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function parseHttpRequest(Req)
-      local lines = {}
-      for line in Req:gmatch("[^\r\n]+") do
-         table.insert(lines, line)
-      end
-
-      if #lines == 0 then
-         return nil
-      end
-
-      local requestLine = lines[1]
-      local method, path, version = requestLine:match("(%S+)%s+(%S+)%s+(%S+)")
-
-      if not method or not path then
-         return nil
-      end
-
-      local headers = {}
-      for i = 2, #lines do
-         local line = lines[i]
-         local name, value = line:match("([^:]+):%s*(.+)")
-         if name and value then
-            headers[name:lower()] = value
-         end
-      end
-
-      return {
-         method = method,
-         path = path,
-         version = version,
-         headers = headers,
-         range = headers['range'] -- Store range header for partial content
-      }
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function sendHttpResponse(client, statusCode, statusText, headers, body)
-      local response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
-
-      if not headers['content-length'] and body then
-         headers['content-length'] = tostring(#body)
-      end
-
-      if not headers['connection'] then
-         headers['connection'] = 'close'
-      end
-
-      -- Add security headers
-      if self.enableCSP then
-         if not headers['content-security-policy'] then
-            headers['content-security-policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
-         end
-         if not headers['x-content-type-options'] then
-            headers['x-content-type-options'] = 'nosniff'
-         end
-         if not headers['x-frame-options'] then
-            headers['x-frame-options'] = 'SAMEORIGIN'
-         end
-         if not headers['referrer-policy'] then
-            headers['referrer-policy'] = 'strict-origin-when-cross-origin'
-         end
-      end
-
-      for name, value in pairs(headers) do
-         response = response .. name .. ": " .. value .. "\r\n"
-      end
-
-      response = response .. "\r\n"
-
-      if body then
-         response = response .. body
-      end
-
-      local err = client.acWrite(response)
-      if err != ERR_Okay then
-         print('Failed to send response: ' .. mSys.GetErrorMsg(err))
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function createErrorPage(statusCode, statusText, message, details)
-      local html = '<!DOCTYPE html>\n<html>\n<head>\n'
-      html = html .. '<meta charset="utf-8">\n'
-      html = html .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
-      html = html .. '<style>\n'
-      html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n'
-      html = html .. '.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n'
-      html = html .. 'h1 { color: #d32f2f; margin-top: 0; }\n'
-      html = html .. 'p { color: #666; line-height: 1.6; }\n'
-      html = html .. '.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }\n'
-      html = html .. '</style>\n'
-      html = html .. '</head>\n<body>\n'
-      html = html .. '<div class="error-container">\n'
-      html = html .. '<h1>' .. statusCode .. ' ' .. statusText .. '</h1>\n'
-      html = html .. '<p>' .. message .. '</p>\n'
-      if details then
-         html = html .. '<div class="details">' .. details .. '</div>\n'
-      end
-      html = html .. '<p><a href="/">Return to home</a></p>\n'
-      html = html .. '</div>\n</body>\n</html>\n'
-      return html
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function serveFile(client, filePath, Request)
-      local file
-      catch(function()
-         file = obj.new('file', { path = filePath, flags = 'READ' })
-      end)
-      if not file then
-         local errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. filePath)
-         sendHttpResponse(client, 404, "Not Found", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
-         return
-      end
-
-      local fileSize = file.size
-
-      -- Stream large files in chunks
-      if fileSize > self.fileChunkSize then
-         local mimeType = getMimeType(filePath)
-         sendHttpResponse(client, 200, "OK", {
-            ['content-type'] = mimeType,
-            ['content-length'] = tostring(fileSize),
-            ['accept-ranges'] = 'bytes'
-         })
-
-         local buffer = string.alloc(self.fileChunkSize)
-         local totalSent = 0
-
-         while totalSent < fileSize do
-            local toRead = math.min(self.fileChunkSize, fileSize - totalSent)
-            local err, bytesRead = file.acRead(buffer, toRead)
-
-            if err != ERR_Okay then
-               logMessage('Error streaming file: ' .. mSys.GetErrorMsg(err))
-               file.free()
-               return
-            end
-
-            if bytesRead > 0 then
-               err = client.acWrite(buffer:sub(1, bytesRead))
-               if err != ERR_Okay then
-                  logMessage('Error writing to client: ' .. mSys.GetErrorMsg(err))
-                  file.free()
-                  return
-               end
-               totalSent = totalSent + bytesRead
-            else
-               break
-            end
-         end
-
-         file.free()
-      else
-         -- Small files: read all at once
-         local buffer = string.alloc(fileSize)
-         local err, bytesRead = file.acRead(buffer)
-
-         if err != ERR_Okay then
-            file.free()
-            local errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
-            sendHttpResponse(client, 500, "Internal Server Error", {
-               ['content-type'] = 'text/html'
-            }, errorBody)
-            return
-         end
-
-         file.free()
-
-         if bytesRead < fileSize then
-            logMessage('Warning: Read ' .. bytesRead .. ' bytes, expected ' .. fileSize)
-         end
-
-         local mimeType = getMimeType(filePath)
-         sendHttpResponse(client, 200, "OK", {
-            ['content-type'] = mimeType
-         }, buffer:sub(1, bytesRead))
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function formatFileSize(Bytes)
-      if Bytes < 1024 then
-         return tostring(Bytes) .. ' B'
-      elseif Bytes < 1024 * 1024 then
-         return string.format('%.1f KB', Bytes / 1024)
-      elseif Bytes < 1024 * 1024 * 1024 then
-         return string.format('%.1f MB', Bytes / (1024 * 1024))
-      else
-         return string.format('%.1f GB', Bytes / (1024 * 1024 * 1024))
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function printableTime(Time)
-      return string.format('%04d-%02d-%02d %02d:%02d:%02d',
-         Time.Year, Time.Month, Time.Day, Time.Hour, Time.Minute, Time.Second)
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function generateDirectoryListing(DirPath, URIPath)
-      -- HTML escape function for security
-      local function escapeHtml(str)
-         if not str then return '' end
-         str = tostring(str)
-         str = str:gsub('&', '&amp;')
-         str = str:gsub('<', '&lt;')
-         str = str:gsub('>', '&gt;')
-         str = str:gsub('"', '&quot;')
-         str = str:gsub("'", '&#39;')
-         return str
-      end
-
-      local safeUrlPath = escapeHtml(URIPath)
-      local html = '<!DOCTYPE html>\n<html>\n<head>\n'
-      html = html .. '<meta charset="utf-8">\n'
-      html = html .. '<title>Directory listing for ' .. safeUrlPath .. '</title>\n'
-      html = html .. '<style>\n'
-      html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; }\n'
-      html = html .. 'h1 { color: #333; }\n'
-      html = html .. 'table { border-collapse: collapse; width: 100%; }\n'
-      html = html .. 'th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }\n'
-      html = html .. 'th { background-color: #f5f5f5; font-weight: bold; }\n'
-      html = html .. 'tr:hover { background-color: #f9f9f9; }\n'
-      html = html .. 'a { text-decoration: none; color: #0066cc; }\n'
-      html = html .. 'a:hover { text-decoration: underline; }\n'
-      html = html .. '.dir { font-weight: bold; }\n'
-      html = html .. '.size { text-align: right; }\n'
-      html = html .. '</style>\n'
-      html = html .. '</head>\n<body>\n'
-      html = html .. '<h1>Directory listing for ' .. safeUrlPath .. '</h1>\n'
-      html = html .. '<table>\n'
-      html = html .. '<thead>\n<tr><th>Name</th><th>Size</th><th>Last Modified</th></tr>\n</thead>\n'
-      html = html .. '<tbody>\n'
-
-      -- Add parent directory link if not root
-      if URIPath != '/' then
-         local parentPath = URIPath:match('(.+)/.+/')
-         if not parentPath then parentPath = '/' end
-         html = html .. '<tr><td><a href="' .. parentPath .. '" class="dir">../</a></td><td>-</td><td>-</td></tr>\n'
-      end
-
-      -- List directory contents
-      print('Scanning folder ' .. DirPath)
-      local err, dir = mSys.OpenDir(DirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
-      if err == ERR_Okay then
-         local count = 0
-         local maxEntries = 1000 -- Limit directory entries to prevent DoS
-         while mSys.ScanDir(dir) == ERR_Okay and count < maxEntries do
-            local info = dir.info
-            local name = info.Name
-
-            -- Skip hidden files and system files for security
-            if name:sub(1,1) != '.' then
-               local isFolder = bit.band(info.flags, RDF_FOLDER) != 0
-               local size = isFolder and '-' or formatFileSize(info.size)
-               local modTime = printableTime(info.modified)
-
-               local href = URIPath
-               href = href .. name
-               if isFolder then href = href .. '/' end
-
-            local displayName = escapeHtml(name)
-            if isFolder then displayName = displayName .. '/' end
-
-            local safeHref = escapeHtml(href)
-            local cssClass = isFolder and ' class="dir"' or ''
-            html = html .. '<tr><td><a href="' .. safeHref .. '"' .. cssClass .. '>' .. displayName .. '</a></td>'
-               html = html .. '<td class="size">' .. escapeHtml(size) .. '</td>'
-               html = html .. '<td>' .. escapeHtml(modTime) .. '</td></tr>\n'
-               count = count + 1
-            end
-         end
-
-         if count >= maxEntries then
-            html = html .. '<tr><td colspan="3"><em>Directory listing truncated at ' .. maxEntries .. ' entries</em></td></tr>\n'
-         end
-      else
-         print('Failed to open folder ' .. nz(DirPath,'NIL'))
-      end
-
-      html = html .. '</tbody>\n</table>\n'
-      html = html .. '</body>\n</html>\n'
-
-      return html
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function serveDirectory(Client, DirPath, URIPath, Request)
-      -- Check for configured index files in order
-      for _, indexFile in ipairs(self.indexFiles) do
-         local indexPath = DirPath .. indexFile
-         local err, type = mSys.AnalysePath(indexPath)
-         if type == LOC_FILE then
-            logMessage('Serving index file: ' .. indexFile)
-            serveFile(Client, indexPath, Request)
-            return
-         end
-      end
-
-      -- If no index file found and auto-indexing is enabled, generate directory listing
-      if self.autoIndex then
-         logMessage('No index file found, generating directory listing for: ' .. URIPath)
-         local html = generateDirectoryListing(DirPath, URIPath)
-         sendHttpResponse(Client, 200, 'OK', {
-            ['content-type'] = 'text/html; charset=utf-8'
-         }, html)
-      else
-         -- Auto-indexing disabled, return 403 Forbidden
-         local errorBody = createErrorPage(403, 'Forbidden', 'Directory listing is disabled.', 'Path: ' .. URIPath)
-         sendHttpResponse(Client, 403, 'Forbidden', {
-            ['content-type'] = 'text/html'
-         }, errorBody)
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function timestamp()
-      local tm = obj.new('time')
-      tm.acQuery()
-      return string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
-   end
-
-----------------------------------------------------------------------------------------------------------------------
--- Check rate limiting for client IP
-
-   local function checkRateLimit(IP)
-      if not self.rateLimit or self.rateLimit <= 0 then
-         return true -- Rate limiting disabled
-      end
-
-      local currentTime = mSys.PreciseTime() / 1000000 -- Convert to seconds
-
-      -- Clean up old entries every minute
-      if currentTime - self._lastCleanup > 60 then
-         local cutoff = currentTime - self.rateLimitWindow
-         for ip, data in pairs(self._rateLimits) do
-            local newRequests = {}
-            for _, timestamp in ipairs(data.requests) do
-               if timestamp > cutoff then
-                  table.insert(newRequests, timestamp)
-               end
-            end
-            if #newRequests == 0 then
-               self._rateLimits[ip] = nil
-            else
-               data.requests = newRequests
-            end
-         end
-         self._lastCleanup = currentTime
-      end
-
-      -- Check this client's rate
-      if not self._rateLimits[IP] then
-         self._rateLimits[IP] = { requests = {} }
-      end
-
-      local clientData = self._rateLimits[IP]
-      local cutoff = currentTime - self.rateLimitWindow
-
-      -- Count recent requests
-      local recentRequests = {}
-      for _, timestamp in ipairs(clientData.requests) do
-         if timestamp > cutoff then
-            table.insert(recentRequests, timestamp)
-         end
-      end
-
-      if #recentRequests >= self.rateLimit then
-         logMessage('Rate limit exceeded for ' .. IP)
-         return false
-      end
-
-      -- Add current request
-      table.insert(recentRequests, currentTime)
-      clientData.requests = recentRequests
-
-      return true
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   local function handleRequest(ClientSocket)
-      -- Get client IP for rate limiting
-      local ip_array = ClientSocket.client.ip
-      local ip = ip_array[1] .. '.' .. ip_array[2] .. '.' .. ip_array[3] .. '.' .. ip_array[4]
-
-      -- Check rate limit
-      if not checkRateLimit(ip) then
-         local errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds')
-         sendHttpResponse(ClientSocket, 429, "Too Many Requests", {
-            ['content-type'] = 'text/html',
-            ['retry-after'] = tostring(self.rateLimitWindow)
-         }, errorBody)
-         return
-      end
-
-      -- Read request with size limits and timeout
-      local requestData, error = readRequestWithTimeout(ClientSocket, self.maxRequestSize, self.timeout)
-
-      if not requestData then
-         local errorMsg, details
-         if error == 'timeout' then
-            errorMsg = 'Request timeout - the server did not receive a complete request within the timeout period.'
-            details = 'Timeout: ' .. self.timeout .. ' seconds'
-         elseif error == 'too_large' then
-            errorMsg = 'Request too large - the request exceeds the maximum allowed size.'
-            details = 'Maximum size: ' .. self.maxRequestSize .. ' bytes'
-         else
-            errorMsg = 'Error reading request from client.'
-            details = 'Error type: ' .. (error or 'unknown')
-         end
-
-         local errorBody = createErrorPage(400, 'Bad Request', errorMsg, details)
-         sendHttpResponse(ClientSocket, 400, "Bad Request", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
-         return
-      end
-
-      local request = parseHttpRequest(requestData)
-
-      if not request then
-         local errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
-         sendHttpResponse(ClientSocket, 400, "Bad Request", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
-         return
-      end
-
-      print('[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path)
-      logMessage('Request from client: ' .. request.method .. ' ' .. request.path)
-
-      -- Handle GET and HEAD requests
-      if request.method != 'GET' and request.method != 'HEAD' then
-         local errorBody = createErrorPage(405, 'Method Not Allowed', 'Only GET and HEAD requests are supported.', 'Requested method: ' .. request.method)
-         sendHttpResponse(ClientSocket, 405, "Method Not Allowed", {
-            ['content-type'] = 'text/html',
-            ['allow'] = 'GET, HEAD'
-         }, errorBody)
-         return
-      end
-
-      -- Canonicalize and validate path
-      local URIPath = canonicalizePath(request.path)
-      if not URIPath then
-         local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
-         logMessage('Security: Invalid path blocked: ' .. request.path)
-         sendHttpResponse(ClientSocket, 400, "Bad Request", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
-         return
-      end
-
-      -- Validate path doesn't contain dangerous patterns
-      local dangerous = {
-         '%.%./', '%.%.\\', -- Directory traversal
-         '^%.', '/%.', -- Hidden files
-         '%.exe$', '%.bat$', '%.cmd$', '%.ps1$', -- Executables
-         '%.dll$', '%.so$', -- Libraries
-         '%.ini$', '%.conf$', '%.config$', -- Config files
-      }
-
-      for _, pattern in ipairs(dangerous) do
-         if URIPath:find(pattern) then
-            local errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
-            logMessage('Security: Blocked access to dangerous path: ' .. URIPath)
-            sendHttpResponse(ClientSocket, 403, "Forbidden", {
-               ['content-type'] = 'text/html'
-            }, errorBody)
-            return
-         end
-      end
-
-      local filePath = self.folder .. URIPath
-
-      -- Check if path exists and determine if it's a file or directory
-
-      local err, fileType = mSys.AnalysePath(filePath)
-      if err != ERR_Okay then
-         local errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. URIPath .. '\nResolved to: ' .. filePath)
-         sendHttpResponse(ClientSocket, 404, "Not Found", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
-         return
-      end
-
-      if fileType == LOC_FOLDER then
-         -- Ensure directory URLs end with /
-         if not URIPath:match('/$') then
-            sendHttpResponse(ClientSocket, 301, 'Moved Permanently', {
-               ['location'] = URIPath .. '/'
-            })
-            return
-         end
-         serveDirectory(ClientSocket, filePath, URIPath, request)
-      else
-         serveFile(ClientSocket, filePath, request)
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
-
-   self.start = function()
-      local bindMsg = self.bind and (' bound to ' .. self.bind) or ''
-      msg('\nStarting HTTP server on port ' .. self.port .. bindMsg)
-      msg('Serving files from: ' .. self.folder)
-      msg('Configuration:')
-      msg('  Port: ' .. self.port)
-      msg('  Bind address: ' .. (self.bind or 'all interfaces'))
-      msg('  Folder: ' .. self.folder)
-      msg('  Max request size: ' .. self.maxRequestSize .. ' bytes')
-      msg('  File chunk size: ' .. self.fileChunkSize .. ' bytes')
-      msg('  Timeout: ' .. self.timeout .. ' seconds')
-      msg('  Verbose logging: ' .. (self.verbose and 'enabled' or 'disabled'))
-      msg('  Index files: ' .. table.concat(self.indexFiles, ', '))
-      msg('  Auto-indexing: ' .. (self.autoIndex and 'enabled' or 'disabled'))
-      msg('  Rate limit: ' .. (self.rateLimit > 0 and (self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds') or 'disabled'))
-      msg('  Security headers: ' .. (self.enableCSP and 'enabled' or 'disabled'))
-
-      local cfg = {
-         port = self.port,
-         flags = 'SERVER|MULTI_CONNECT',
-         feedback = function(Server, ClientSocket, State)
-            if State == NTC_CONNECTED then
-            elseif State == NTC_DISCONNECTED then
-            end
-         end,
-         incoming = function(Server, ClientSocket)
-            handleRequest(ClientSocket)
-         end
-      }
-
-      if self.bind then
-         cfg.address = self.bind
-      end
-
-      self._socket = obj.new('netsocket', cfg)
-
-      if not self._socket then
-         error('Failed to create server socket')
-      end
-   end
-
-   self.stop = function()
-      if self._socket then
-         self._socket = nil
-         collectgarbage()
-      end
-   end
-
-----------------------------------------------------------------------------------------------------------------------
 
    if Options.port then
       if validatePort(Options.port) then
@@ -824,5 +1004,53 @@ net.httpServer = function(Options)
       self.bind = Options.bind
    end
 
+   local bindMsg = self.bind and (' bound to ' .. self.bind) or ''
+   msg('\nStarting HTTP server on port ' .. self.port .. bindMsg)
+   msg('Serving files from: ' .. self.folder)
+   msg('Configuration:')
+   msg('  Port: ' .. self.port)
+   msg('  Bind address: ' .. (self.bind or 'all interfaces'))
+   msg('  Folder: ' .. self.folder)
+   msg('  Max request size: ' .. self.maxRequestSize .. ' bytes')
+   msg('  File chunk size: ' .. self.fileChunkSize .. ' bytes')
+   msg('  Timeout: ' .. self.timeout .. ' seconds')
+   msg('  Verbose logging: ' .. (self.verbose and 'enabled' or 'disabled'))
+   msg('  Index files: ' .. table.concat(self.indexFiles, ', '))
+   msg('  Auto-indexing: ' .. (self.autoIndex and 'enabled' or 'disabled'))
+   msg('  Rate limit: ' .. (self.rateLimit > 0 and (self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds') or 'disabled'))
+   msg('  Security headers: ' .. (self.enableCSP and 'enabled' or 'disabled'))
+
+   local cfg = {
+      port = self.port,
+      flags = 'SERVER|MULTI_CONNECT',
+      feedback = function(Server, ClientSocket, State)
+         if State == NTC_CONNECTED then
+         elseif State == NTC_DISCONNECTED then
+         end
+      end,
+      incoming = function(Server, ClientSocket)
+         handleRequest(self, ClientSocket)
+      end
+   }
+
+   if self.bind then
+      cfg.address = self.bind
+   end
+
+   self._socket = obj.new('netsocket', cfg)
+
+   if not self._socket then
+      error('Failed to create server socket')
+   end
+
+   self.stop = function()
+      if self._socket then
+         self._socket = nil
+         collectgarbage()
+      end
+   end
+
    return self
 end
+
+   return httpServer

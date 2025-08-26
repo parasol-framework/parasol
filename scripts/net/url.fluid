@@ -4,9 +4,7 @@
 --   local urllib = require('net/url') -- Choose a name that avoids namespace conflicts
 --   local parts = urllib.parse('https://example.com/path?query=value')
 
-    local url
-    if url then return url end
-    url = { }
+    local url = { }
 
     local DEFAULT_PORTS = {
        http = 80,
