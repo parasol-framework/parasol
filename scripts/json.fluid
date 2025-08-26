@@ -1,4 +1,4 @@
---[[ json.lua
+--[[
 
 A compact pure-Lua JSON library originally written by @tylerneylon for the public domain.
 
@@ -38,7 +38,7 @@ If you have control over the data and are using Lua, I would recommend just avoi
 with.
 --]]
 
-json = {}
+   local json = { }
 
 do
    -- Internal functions.
@@ -183,3 +183,5 @@ do
       end
    end
 end
+
+   return json

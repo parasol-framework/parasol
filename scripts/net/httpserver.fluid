@@ -5,6 +5,7 @@
 -- httpServer.stop()
 
    include 'network'
+   local json = require('json')
 
    local httpServer = { }
 
@@ -57,7 +58,7 @@ local function canonicalizePath(path)
    for component in path:gmatch('[^/]+') do
       if component == '..' then
          -- Attempt to go up - block this
-         logMessage('Security: Blocked directory traversal attempt with ..')
+         logMessage(self, 'Security: Blocked directory traversal attempt with ..')
          return nil
       elseif component != '.' and component != '' then
          table.insert(components, component)
@@ -156,10 +157,10 @@ local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
 
       if err != ERR_Okay then
          if err == ERR_TimeOut then
-            logMessage('Request timeout after ' .. (mSys.PreciseTime() - startTime)/1000000 .. ' seconds')
+            logMessage(self, 'Request timeout after ' .. (mSys.PreciseTime() - startTime)/1000000 .. ' seconds')
             return nil, 'timeout'
          else
-            logMessage('Failed to read request: ' .. mSys.GetErrorMsg(err))
+            logMessage(self, 'Failed to read request: ' .. mSys.GetErrorMsg(err))
             return nil, 'read_error'
          end
       end
@@ -178,13 +179,13 @@ local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
 
       -- Check timeout
       if (mSys.PreciseTime() - startTime)/1000000 > timeoutSeconds then
-         logMessage('Request timeout exceeded')
+         logMessage(self, 'Request timeout exceeded')
          return nil, 'timeout'
       end
    end
 
    if totalRead >= maxSize then
-      logMessage('Request too large: ' .. totalRead .. ' bytes')
+      logMessage(self, 'Request too large: ' .. totalRead .. ' bytes')
       return nil, 'too_large'
    end
 
@@ -276,41 +277,10 @@ local function parseJsonBody(body)
       return {}
    end
 
-   -- Simple JSON parsing for basic structures
-   -- This is a basic implementation - in production you'd want a proper JSON parser
    local success, result = pcall(function()
-      -- Remove whitespace
-      body = body:gsub('^%s*', ''):gsub('%s*$', '')
-      
-      if body:sub(1,1) == '{' and body:sub(-1) == '}' then
-         -- Simple object parsing
-         local obj = {}
-         local content = body:sub(2, -2) -- Remove braces
-         
-         for pair in content:gmatch('[^,]+') do
-            local key, value = pair:match('%s*"([^"]+)"%s*:%s*"([^"]*)"')
-            if key and value then
-               obj[key] = value
-            else
-               -- Try number values
-               key, value = pair:match('%s*"([^"]+)"%s*:%s*([%d%.%-]+)')
-               if key and value then
-                  obj[key] = tonumber(value)
-               else
-                  -- Try boolean values
-                  key, value = pair:match('%s*"([^"]+)"%s*:%s*(true|false)')
-                  if key and value then
-                     obj[key] = (value == 'true')
-                  end
-               end
-            end
-         end
-         return obj
-      end
-      
-      return {}
+      return json.decode(body)
    end)
-   
+
    if success then
       return result
    else
@@ -492,7 +462,7 @@ local function createResponseObject(self, client)
       end
       options = options or {}
       local cookieStr = name .. '=' .. tostring(value)
-      
+
       if options.maxAge then
          cookieStr = cookieStr .. '; Max-Age=' .. tostring(options.maxAge)
       end
@@ -538,28 +508,9 @@ local function createResponseObject(self, client)
       if type(data) == 'string' then
          jsonStr = data
       else
-         -- Simple JSON encoding for basic types
-         if type(data) == 'table' then
-            jsonStr = '{'
-            local first = true
-            for k, v in pairs(data) do
-               if not first then jsonStr = jsonStr .. ',' end
-               jsonStr = jsonStr .. '"' .. tostring(k) .. '":' 
-               if type(v) == 'string' then
-                  jsonStr = jsonStr .. '"' .. tostring(v):gsub('"', '\\"') .. '"'
-               elseif type(v) == 'number' or type(v) == 'boolean' then
-                  jsonStr = jsonStr .. tostring(v)
-               else
-                  jsonStr = jsonStr .. '"' .. tostring(v) .. '"'
-               end
-               first = false
-            end
-            jsonStr = jsonStr .. '}'
-         else
-            jsonStr = '"' .. tostring(data) .. '"'
-         end
+         jsonStr = json.encode(data)
       end
-      
+
       res._headers['content-type'] = 'application/json'
       sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers, jsonStr)
       res._sent = true
@@ -667,7 +618,7 @@ local function serveFile(self, client, filePath, Request)
          local err, bytesRead = file.acRead(buffer, toRead)
 
          if err != ERR_Okay then
-            logMessage('Error streaming file: ' .. mSys.GetErrorMsg(err))
+            logMessage(self, 'Error streaming file: ' .. mSys.GetErrorMsg(err))
             file.free()
             return
          end
@@ -675,7 +626,7 @@ local function serveFile(self, client, filePath, Request)
          if bytesRead > 0 then
             err = client.acWrite(buffer:sub(1, bytesRead))
             if err != ERR_Okay then
-               logMessage('Error writing to client: ' .. mSys.GetErrorMsg(err))
+               logMessage(self, 'Error writing to client: ' .. mSys.GetErrorMsg(err))
                file.free()
                return
             end
@@ -703,7 +654,7 @@ local function serveFile(self, client, filePath, Request)
       file.free()
 
       if bytesRead < fileSize then
-         logMessage('Warning: Read ' .. bytesRead .. ' bytes, expected ' .. fileSize)
+         logMessage(self, 'Warning: Read ' .. bytesRead .. ' bytes, expected ' .. fileSize)
       end
 
       sendHttpResponse(self, client, 200, "OK", {
@@ -838,7 +789,7 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
       local indexPath = DirPath .. indexFile
       local err, type = mSys.AnalysePath(indexPath)
       if type == LOC_FILE then
-         logMessage('Serving index file: ' .. indexFile)
+         logMessage(self, 'Serving index file: ' .. indexFile)
          serveFile(self, Client, indexPath, Request)
          return
       end
@@ -849,7 +800,7 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
       logMessage(self, 'No index file found, generating directory listing for: ' .. URIPath)
       local html
       if Request.method != 'HEAD' then
-         html = generateDirectoryListing(DirPath, URIPath)
+         html = generateDirectoryListing(self, DirPath, URIPath)
       end
       sendHttpResponse(self, Client, 200, 'OK', {
          ['content-type'] = 'text/html; charset=utf-8'
@@ -920,7 +871,7 @@ local function checkRateLimit(self, IP)
    end
 
    if #recentRequests >= self.rateLimit then
-      logMessage('Rate limit exceeded for ' .. IP)
+      logMessage(self, 'Rate limit exceeded for ' .. IP)
       return false
    end
 
@@ -982,7 +933,7 @@ local function handleRequest(self, ClientSocket)
    end
 
    print('[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path)
-   logMessage('Request from client: ' .. request.method .. ' ' .. request.path)
+   logMessage(self, 'Request from client: ' .. request.method .. ' ' .. request.path)
 
    -- Handle supported HTTP methods
    local supportedMethods = { 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS' }
@@ -993,7 +944,7 @@ local function handleRequest(self, ClientSocket)
          break
       end
    end
-   
+
    if not methodSupported then
       local errorBody = createErrorPage(405, 'Method Not Allowed', 'HTTP method not supported.', 'Requested method: ' .. request.method)
       sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
@@ -1010,7 +961,7 @@ local function handleRequest(self, ClientSocket)
          local body, bodyError = readRequestBody(ClientSocket, contentLength, self.maxRequestSize, self.timeout)
          if body then
             request.body = body
-            
+
             -- Parse body based on Content-Type
             local contentType = request.headers['content-type'] or ''
             if contentType:find('application/json') then
@@ -1033,7 +984,7 @@ local function handleRequest(self, ClientSocket)
                errorMsg = 'Error reading request body'
                details = 'Error: ' .. (bodyError or 'unknown')
             end
-            
+
             local errorBody = createErrorPage(400, 'Bad Request', errorMsg, details)
             sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
                ['content-type'] = 'text/html'
@@ -1058,7 +1009,7 @@ local function handleRequest(self, ClientSocket)
    local URIPath = canonicalizePath(request.path)
    if not URIPath then
       local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
-      logMessage('Security: Invalid path blocked: ' .. request.path)
+      logMessage(self, 'Security: Invalid path blocked: ' .. request.path)
       sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
          ['content-type'] = 'text/html'
       }, errorBody)
@@ -1077,7 +1028,7 @@ local function handleRequest(self, ClientSocket)
    for _, pattern in ipairs(dangerous) do
       if URIPath:find(pattern) then
          local errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
-         logMessage('Security: Blocked access to dangerous path: ' .. URIPath)
+         logMessage(self, 'Security: Blocked access to dangerous path: ' .. URIPath)
          sendHttpResponse(self, ClientSocket, 403, "Forbidden", {
             ['content-type'] = 'text/html'
          }, errorBody)
@@ -1101,8 +1052,8 @@ local function handleRequest(self, ClientSocket)
    -- For now, only GET and HEAD requests can access static files
    -- POST/PUT/DELETE will need routing system (Phase 3) to be handled
    if request.method != 'GET' and request.method != 'HEAD' then
-      local errorBody = createErrorPage(405, 'Method Not Allowed', 
-         'This method is not allowed for static file serving. Use routing system for API endpoints.', 
+      local errorBody = createErrorPage(405, 'Method Not Allowed',
+         'This method is not allowed for static file serving. Use routing system for API endpoints.',
          'Method: ' .. request.method .. ', Path: ' .. URIPath)
       sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
          ['content-type'] = 'text/html',

@@ -40,52 +40,24 @@ Index files (checked in order): index.html, index.htm, default.html, default.htm
       return
    end
 
-   if arg('port') then
-      if validatePort(arg('port')) then
-         glOptions.port = tonumber(arg('port'))
-      else
-         error('Invalid port number: ' .. arg('port') .. '. Port must be between 1 and 65535.')
-      end
-   end
-
-   if arg('folder') then
-      -- Validate folder input
-      local folder = arg('folder')
-      if folder:find('%.%.') or folder:find('^~') then
-         error('Invalid folder path: security violation')
-      end
-      glOptions.folder = folder
-   end
+   if arg('port') then glOptions.port = tonumber(arg('port'))end
+   if arg('folder') then glOptions.folder = folder end
 
    if arg('verbose') then
       local verbose = arg('verbose'):lower()
       glOptions.verbose = (verbose == 'true' or verbose == '1')
    end
 
-   if arg('timeout') then
-      local timeout = tonumber(arg('timeout'))
-      if timeout and (timeout > 0) and (timeout <= 300) then
-         glOptions.timeout = timeout
-      else
-         error('Invalid timeout: must be between 1 and 300 seconds')
-      end
-   end
+   if arg('timeout') then glOptions.timeout = tonumber(arg('timeout')) end
 
    if arg('autoindex') then
       local autoindex = arg('autoindex'):lower()
       glOptions.autoIndex = (autoindex == 'true' or autoindex == '1')
    end
 
-   if arg('ratelimit') then
-      local limit = tonumber(arg('ratelimit'))
-      if limit and (limit >= 0) and (limit <= 1000) then
-         glOptions.rateLimit = limit
-      end
-   end
+   if arg('ratelimit') then glOptions.rateLimit = tonumber(arg('ratelimit')) end
 
-   if arg('bind') then
-      glOptions.bind = arg('bind')
-   end
+   if arg('bind') then glOptions.bind = arg('bind') end
 
    if not glOptions.folder then
       print('Error: folder parameter is required')
