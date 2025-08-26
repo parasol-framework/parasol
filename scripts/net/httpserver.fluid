@@ -9,12 +9,61 @@
 
    local httpServer = { }
 
-   local statusTexts = {
+   local glStatusTexts = {
        [200] = 'OK', [201] = 'Created', [204] = 'No Content',
        [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
        [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
        [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
        [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
+   }
+   
+   local glMimeTypes = {
+      -- Text
+      html = 'text/html',
+      htm = 'text/html',
+      css = 'text/css',
+      js = 'application/javascript',
+      mjs = 'application/javascript',
+      json = 'application/json',
+      xml = 'application/xml',
+      txt = 'text/plain',
+      md = 'text/markdown',
+      csv = 'text/csv',
+
+      -- Images
+      png = 'image/png',
+      jpg = 'image/jpeg',
+      jpeg = 'image/jpeg',
+      gif = 'image/gif',
+      svg = 'image/svg+xml',
+      ico = 'image/x-icon',
+      webp = 'image/webp',
+      bmp = 'image/bmp',
+      tiff = 'image/tiff',
+
+      -- Documents
+      pdf = 'application/pdf',
+      doc = 'application/msword',
+      docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+
+      -- Fonts
+      woff = 'font/woff',
+      woff2 = 'font/woff2',
+      ttf = 'font/ttf',
+      otf = 'font/otf',
+
+      -- Audio/Video
+      mp3 = 'audio/mpeg',
+      wav = 'audio/wav',
+      ogg = 'audio/ogg',
+      mp4 = 'video/mp4',
+      webm = 'video/webm',
+      avi = 'video/x-msvideo',
+
+      -- Archives
+      zip = 'application/zip',
+      tar = 'application/x-tar',
+      gz = 'application/gzip'
    }
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -84,56 +133,8 @@ local function getMimeType(filename)
 
    extension = extension:lower()
 
-   local mimeTypes = {
-      -- Text
-      html = 'text/html',
-      htm = 'text/html',
-      css = 'text/css',
-      js = 'application/javascript',
-      mjs = 'application/javascript',
-      json = 'application/json',
-      xml = 'application/xml',
-      txt = 'text/plain',
-      md = 'text/markdown',
-      csv = 'text/csv',
 
-      -- Images
-      png = 'image/png',
-      jpg = 'image/jpeg',
-      jpeg = 'image/jpeg',
-      gif = 'image/gif',
-      svg = 'image/svg+xml',
-      ico = 'image/x-icon',
-      webp = 'image/webp',
-      bmp = 'image/bmp',
-      tiff = 'image/tiff',
-
-      -- Documents
-      pdf = 'application/pdf',
-      doc = 'application/msword',
-      docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-
-      -- Fonts
-      woff = 'font/woff',
-      woff2 = 'font/woff2',
-      ttf = 'font/ttf',
-      otf = 'font/otf',
-
-      -- Audio/Video
-      mp3 = 'audio/mpeg',
-      wav = 'audio/wav',
-      ogg = 'audio/ogg',
-      mp4 = 'video/mp4',
-      webm = 'video/webm',
-      avi = 'video/x-msvideo',
-
-      -- Archives
-      zip = 'application/zip',
-      tar = 'application/x-tar',
-      gz = 'application/gzip'
-   }
-
-   return mimeTypes[extension] or 'application/octet-stream'
+   return glMimeTypes[extension] or 'application/octet-stream'
 end
 
 ----------------------------------------------------------------------------------------------------------------------
@@ -145,7 +146,7 @@ local function timestamp()
 end
 
 local function logMessage(self, message)
-   if self.verbose then
+   if not self or self.verbose then
       print('[' .. timestamp() .. '] ' .. message)
    end
 end
@@ -266,8 +267,7 @@ local function parseQueryString(queryString)
          else
             query[key] = value
          end
-      elseif key then
-         -- Handle keys without values (e.g., ?debug&verbose)
+      elseif key then -- Handle keys without values (e.g., ?debug&verbose)
          query[urlDecode(key)] = true
       end
    end
@@ -447,7 +447,7 @@ local function createResponseObject(self, client)
          res._statusText = text
       else
          -- Set default status text based on common codes
-         res._statusText = statusTexts[code] or 'Unknown'
+         res._statusText = glStatusTexts[code] or 'Unknown'
       end
       return res
    end
@@ -735,7 +735,7 @@ local function generateDirectoryListing(self, DirPath, URIPath)
    end
 
    -- List directory contents
-   print('Scanning folder ' .. DirPath)
+   logMessage(self, 'Scanning folder ' .. DirPath)
    local err, dir = mSys.OpenDir(DirPath, bit.bor(RDF_FOLDERS, RDF_FILES, RDF_PERMISSIONS, RDF_DATE, RDF_SIZE, RDF_TAGS))
    if err == ERR_Okay then
       local count = 0
@@ -778,7 +778,7 @@ local function generateDirectoryListing(self, DirPath, URIPath)
          html = html .. '<tr><td colspan="3"><em>Directory listing truncated at ' .. maxEntries .. ' entries</em></td></tr>\n'
       end
    else
-      print('Failed to open folder ' .. nz(DirPath,'NIL'))
+      logMessage(self, 'Failed to open folder ' .. nz(DirPath,'NIL'))
    end
 
    html = html .. '</tbody>\n</table>\n'
@@ -824,11 +824,144 @@ local function serveDirectory(self, Client, DirPath, URIPath, Request)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- MIDDLEWARE SYSTEM
+
+-- Execute middleware pipeline with next() chaining
+
+local function executeMiddleware(middlewareList, request, response, finalCallback)
+   local currentIndex = 1
+   
+   local function next(error)
+      if error then
+         if not response._sent then
+            local errorBody = createErrorPage(500, 'Internal Server Error', 'Middleware error.', 'Error: ' .. tostring(error))
+            sendHttpResponse(response._self, response._client, 500, "Internal Server Error", {
+               ['content-type'] = 'text/html'
+            }, errorBody)
+         end
+         return
+      end
+      
+      if currentIndex > #middlewareList then -- All middleware executed, call final callback
+         if finalCallback then finalCallback(request, response) end
+         return
+      end
+      
+      local middleware = middlewareList[currentIndex]
+      currentIndex = currentIndex + 1
+      
+      -- Execute middleware function safely
+      local success, result = pcall(function()
+         return middleware(request, response, next)
+      end)
+      
+      if not success then -- Middleware failed, pass error to next()
+         next(result)
+      end
+   end
+   
+   next()
+end
+
+-- Built-in CORS middleware
+
+local function corsMiddleware(request, response, next)
+   -- Set CORS headers
+   response.header('Access-Control-Allow-Origin', '*')
+   response.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS')
+   response.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
+   response.header('Access-Control-Max-Age', '86400')
+   
+   -- Handle preflight requests
+   if request.method == 'OPTIONS' then
+      response.status(200).send('')
+      return
+   end
+   
+   next()
+end
+
+-- Built-in request logging middleware
+
+local function loggingMiddleware(request, response, next)
+   local startTime = mSys.PreciseTime()
+   
+   logMessage(nil, '[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path .. ' from ' .. (request.ip or 'unknown'))
+   
+   -- Wrap response.send to log completion
+   local originalSend = response.send
+   local originalJson = response.json
+   local originalRedirect = response.redirect
+   
+   local function logResponse()
+      local duration = (mSys.PreciseTime() - startTime) / 1000 -- Convert to milliseconds
+      logMessage(nil, '[' .. timestamp() .. '] ' .. response._statusCode .. ' ' .. request.path .. ' (' .. string.format('%.2f', duration) .. 'ms)')
+   end
+   
+   response.send = function(...)
+      local result = originalSend(...)
+      logResponse()
+      return result
+   end
+   
+   response.json = function(...)
+      local result = originalJson(...)
+      logResponse()
+      return result
+   end
+   
+   response.redirect = function(...)
+      local result = originalRedirect(...)
+      logResponse()
+      return result
+   end
+   
+   next()
+end
+
+-- Built-in authentication middleware template
+
+local function authMiddleware(options)
+   options = options or {}
+   local tokenHeader = options.header or 'authorization'
+   local tokenPrefix = options.prefix or 'Bearer '
+   
+   return function(request, response, next)
+      local authHeader = request.headers[tokenHeader:lower()]
+      
+      if not authHeader then
+         response.status(401).json({ error = 'Missing authorization header' })
+         return
+      end
+      
+      local token = authHeader
+      if tokenPrefix and authHeader:find('^' .. tokenPrefix) then
+         token = authHeader:sub(#tokenPrefix + 1)
+      end
+      
+      if not token or token == '' then
+         response.status(401).json({ error = 'Invalid authorization token' })
+         return
+      end
+      
+      -- Add token to request for use in route handlers
+      request.auth = {
+         token = token,
+         user = nil -- Can be populated by custom validation logic
+      }
+      
+      -- In a real implementation, you would validate the token here
+      -- For now, just pass through
+      next()
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
 -- ROUTING SYSTEM
 
--- Add a route with method, pattern, and callback to a server instance
+-- Add a route with method, pattern, callback, and optional middleware to a server instance
 
-local function addRoute(serverInstance, method, pattern, callback)
+local function addRoute(serverInstance, method, pattern, callback, middleware)
    if not serverInstance._routes then serverInstance._routes = {} end
 
    if not serverInstance._routes[method] then serverInstance._routes[method] = {} end
@@ -836,6 +969,7 @@ local function addRoute(serverInstance, method, pattern, callback)
    table.insert(serverInstance._routes[method], {
       pattern = pattern,
       callback = callback,
+      middleware = middleware or {}, -- Route-specific middleware
       compiledRegex = nil -- Will be set when first used
    })
 
@@ -1098,8 +1232,10 @@ local function handleRequest(self, ClientSocket)
       return
    end
 
-   -- Try to match against registered routes first
+   -- Add client IP to request for middleware
+   request.ip = ip
 
+   -- Try to match against registered routes first
    local matchedRoute, params = matchRoute(self, request.method, URIPath)
    if matchedRoute then
       msg('Found matching route: ' .. matchedRoute.pattern)
@@ -1107,29 +1243,51 @@ local function handleRequest(self, ClientSocket)
       request.params = params
       local response = createResponseObject(self, ClientSocket)
 
-      -- Execute the route callback
-      local success, result = pcall(function()
-         return matchedRoute.callback(request, response)
-      end)
+      -- Combine global middleware with route-specific middleware
+      local middlewareChain = {}
+      
+      -- Add global middleware first
+      if self._middleware then
+         for _, middleware in ipairs(self._middleware) do
+            table.insert(middlewareChain, middleware)
+         end
+      end
+      
+      -- Add route-specific middleware
+      if matchedRoute.middleware then
+         for _, middleware in ipairs(matchedRoute.middleware) do
+            table.insert(middlewareChain, middleware)
+         end
+      end
+      
+      -- Execute middleware pipeline followed by route handler
+      local function routeHandler(req, res)
+         local success, result = pcall(function()
+            return matchedRoute.callback(req, res)
+         end)
 
-      if not success then
-         -- Route callback failed, send 500 error
-         logMessage(self, 'Route handler error: ' .. tostring(result))
-         if not response._sent then
-            local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. tostring(result))
+         if not success then
+            -- Route callback failed, send 500 error
+            logMessage(self, 'Route handler error: ' .. tostring(result))
+            if not res._sent then
+               local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler failed.', 'Error: ' .. tostring(result))
+               sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
+                  ['content-type'] = 'text/html'
+               }, errorBody)
+            end
+         elseif not res._sent then
+            -- Route executed successfully but didn't send a response
+            logMessage(self, 'Warning: Route handler completed without sending response')
+            local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
             sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
                ['content-type'] = 'text/html'
             }, errorBody)
          end
-      elseif not response._sent then
-         -- Route executed successfully but didn't send a response
-         logMessage(self, 'Warning: Route handler completed without sending response')
-         local errorBody = createErrorPage(500, 'Internal Server Error', 'Route handler did not send a response.', 'Path: ' .. URIPath)
-         sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
-            ['content-type'] = 'text/html'
-         }, errorBody)
       end
-
+      
+      -- Execute middleware chain
+      executeMiddleware(middlewareChain, request, response, routeHandler)
+      
       return -- Route was handled, don't continue to static file serving
    end
 
@@ -1283,6 +1441,25 @@ httpServer.start = function(Options)
       self.bind = Options.bind
    end
 
+   -- Process middleware configuration
+   local middlewareCount = 0
+   if Options.middleware then
+      if type(Options.middleware) == 'table' then
+         self._middleware = {}
+         for i, middleware in ipairs(Options.middleware) do
+            if type(middleware) == 'function' then
+               table.insert(self._middleware, middleware)
+               middlewareCount = middlewareCount + 1
+               logMessage(self, 'Global middleware configured at index ' .. i)
+            else
+               error('Invalid middleware at index ' .. i .. ' - must be a function')
+            end
+         end
+      else
+         error('middleware option must be a table')
+      end
+   end
+
    -- Process routes configuration
    local routeCount = 0
    if Options.routes then
@@ -1293,11 +1470,23 @@ httpServer.start = function(Options)
                local method = tostring(route.method):upper()
                local pattern = tostring(route.pattern)
                local handler = route.handler
+               local routeMiddleware = route.middleware or {}
 
                if type(handler) == 'function' then
-                  addRoute(self, method, pattern, handler)
+                  -- Validate route-specific middleware
+                  if type(routeMiddleware) == 'table' then
+                     for j, mw in ipairs(routeMiddleware) do
+                        if type(mw) != 'function' then
+                           error('Invalid middleware for route ' .. method .. ' ' .. pattern .. ' at index ' .. j .. ' - must be a function')
+                        end
+                     end
+                  else
+                     error('Route middleware for ' .. method .. ' ' .. pattern .. ' must be a table')
+                  end
+                  
+                  addRoute(self, method, pattern, handler, routeMiddleware)
                   routeCount = routeCount + 1
-                  logMessage(self, 'Route configured: ' .. method .. ' ' .. pattern)
+                  logMessage(self, 'Route configured: ' .. method .. ' ' .. pattern .. ' (with ' .. #routeMiddleware .. ' middleware)')
                else
                   error('Invalid handler for route ' .. method .. ' ' .. pattern .. ' - must be a function')
                end
@@ -1328,6 +1517,7 @@ httpServer.start = function(Options)
    msg('  Auto-indexing: ' .. (self.autoIndex and 'enabled' or 'disabled'))
    msg('  Rate limit: ' .. (self.rateLimit > 0 and (self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds') or 'disabled'))
    msg('  Security headers: ' .. (self.enableCSP and 'enabled' or 'disabled'))
+   msg('  Global middleware: ' .. middlewareCount)
    msg('  Routes configured: ' .. routeCount)
 
    local cfg = {
@@ -1360,10 +1550,58 @@ httpServer.start = function(Options)
       end
    end
 
-   -- Generic route registration
-   self.newRoute = function(method, pattern, callback)
-      addRoute(self, method:upper(), pattern, callback)
+   -- Generic route registration with optional middleware
+   self.newRoute = function(method, pattern, callback, middleware)
+      addRoute(self, method:upper(), pattern, callback, middleware or {})
    end
+   
+   -- Add global middleware
+   self.newMiddleware = function(middleware)
+      if not self._middleware then
+         self._middleware = {}
+      end
+      if type(middleware) == 'function' then
+         table.insert(self._middleware, middleware)
+         logMessage(self, 'Global middleware added')
+      else
+         error('Middleware must be a function')
+      end
+   end
+   
+   -- Built-in middleware factory functions
+   self.middleware = {
+      cors = function(options)
+         options = options or {}
+         return function(request, response, next)
+            -- Set CORS headers with custom options
+            response.header('Access-Control-Allow-Origin', options.origin or '*')
+            response.header('Access-Control-Allow-Methods', options.methods or 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS')
+            response.header('Access-Control-Allow-Headers', options.headers or 'Content-Type, Authorization, X-Requested-With')
+            response.header('Access-Control-Max-Age', tostring(options.maxAge or 86400))
+            
+            if options.credentials then
+               response.header('Access-Control-Allow-Credentials', 'true')
+            end
+            
+            -- Handle preflight requests
+            if request.method == 'OPTIONS' then
+               response.status(200).send('')
+               return
+            end
+            
+            next()
+         end
+      end,
+      
+      logging = function(options)
+         options = options or {}
+         return loggingMiddleware
+      end,
+      
+      auth = function(options)
+         return authMiddleware(options)
+      end
+   }
 
    return self
 end
