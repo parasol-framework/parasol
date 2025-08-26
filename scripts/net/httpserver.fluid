@@ -129,7 +129,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function logMessage(message)
+local function logMessage(self, message)
    if self.verbose then
       print('[' .. timestamp() .. '] ' .. message)
    end
@@ -184,6 +184,60 @@ local function readRequestWithTimeout(client, maxSize, timeoutSeconds)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Parse query string into key-value pairs
+
+local function parseQueryString(queryString)
+   local query = {}
+   if not queryString or queryString == '' then
+      return query
+   end
+
+   for pair in queryString:gmatch('[^&]+') do
+      local key, value = pair:match('([^=]+)=(.+)')
+      if key and value then
+         key = urlDecode(key)
+         value = urlDecode(value)
+         if query[key] then
+            -- Handle multiple values for same key by converting to array
+            if type(query[key]) != 'table' then
+               query[key] = { query[key] }
+            end
+            table.insert(query[key], value)
+         else
+            query[key] = value
+         end
+      elseif key then
+         -- Handle keys without values (e.g., ?debug&verbose)
+         query[urlDecode(key)] = true
+      end
+   end
+
+   return query
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Parse cookies from Cookie header
+
+local function parseCookies(cookieHeader)
+   local cookies = {}
+   if not cookieHeader then
+      return cookies
+   end
+
+   for cookie in cookieHeader:gmatch('[^;]+') do
+      local name, value = cookie:match('%s*([^=]+)=(.+)')
+      if name and value then
+         -- Trim whitespace manually
+         name = name:match('^%s*(.-)%s*$')
+         value = value:match('^%s*(.-)%s*$')
+         cookies[name] = value
+      end
+   end
+
+   return cookies
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 local function parseHttpRequest(Req)
    local lines = {}
@@ -196,10 +250,17 @@ local function parseHttpRequest(Req)
    end
 
    local requestLine = lines[1]
-   local method, path, version = requestLine:match("(%S+)%s+(%S+)%s+(%S+)")
+   local method, fullPath, version = requestLine:match("(%S+)%s+(%S+)%s+(%S+)")
 
-   if not method or not path then
+   if not method or not fullPath then
       return nil
+   end
+
+   -- Separate path from query string
+   local path, queryString = fullPath:match("([^?]*)%??(.*)")
+   if not path then
+      path = fullPath
+      queryString = ''
    end
 
    local headers = {}
@@ -211,18 +272,29 @@ local function parseHttpRequest(Req)
       end
    end
 
+   -- Parse query parameters
+   local query = parseQueryString(queryString)
+
+   -- Parse cookies
+   local cookies = parseCookies(headers['cookie'])
+
    return {
       method = method,
       path = path,
+      fullPath = fullPath,
       version = version,
       headers = headers,
+      query = query,
+      cookies = cookies,
+      params = {}, -- Will be populated by route matching
+      body = nil, -- Will be populated when body parsing is implemented
       range = headers['range'] -- Store range header for partial content
    }
 end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function sendHttpResponse(client, statusCode, statusText, headers, body)
+local function sendHttpResponse(self, client, statusCode, statusText, headers, body)
    local response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
 
    if not headers['content-length'] and body then
@@ -266,6 +338,159 @@ local function sendHttpResponse(client, statusCode, statusText, headers, body)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- Create enhanced response object with helper methods
+
+local function createResponseObject(self, client)
+   local res = {
+      _self = self,
+      _client = client,
+      _statusCode = 200,
+      _statusText = 'OK',
+      _headers = {},
+      _sent = false
+   }
+
+   -- Set status code and optional status text
+   res.status = function(code, text)
+      if res._sent then
+         error('Cannot set status after response sent')
+      end
+      res._statusCode = code
+      if text then
+         res._statusText = text
+      else
+         -- Set default status text based on common codes
+         local statusTexts = {
+            [200] = 'OK', [201] = 'Created', [204] = 'No Content',
+            [301] = 'Moved Permanently', [302] = 'Found', [304] = 'Not Modified',
+            [400] = 'Bad Request', [401] = 'Unauthorized', [403] = 'Forbidden',
+            [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
+            [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
+         }
+         res._statusText = statusTexts[code] or 'Unknown'
+      end
+      return res
+   end
+
+   -- Set response header
+   res.header = function(name, value)
+      if res._sent then
+         error('Cannot set headers after response sent')
+      end
+      res._headers[name:lower()] = value
+      return res
+   end
+
+   -- Set cookie
+   res.cookie = function(name, value, options)
+      if res._sent then
+         error('Cannot set cookies after response sent')
+      end
+      options = options or {}
+      local cookieStr = name .. '=' .. tostring(value)
+      
+      if options.maxAge then
+         cookieStr = cookieStr .. '; Max-Age=' .. tostring(options.maxAge)
+      end
+      if options.expires then
+         cookieStr = cookieStr .. '; Expires=' .. tostring(options.expires)
+      end
+      if options.path then
+         cookieStr = cookieStr .. '; Path=' .. tostring(options.path)
+      end
+      if options.domain then
+         cookieStr = cookieStr .. '; Domain=' .. tostring(options.domain)
+      end
+      if options.secure then
+         cookieStr = cookieStr .. '; Secure'
+      end
+      if options.httpOnly then
+         cookieStr = cookieStr .. '; HttpOnly'
+      end
+      if options.sameSite then
+         cookieStr = cookieStr .. '; SameSite=' .. tostring(options.sameSite)
+      end
+
+      -- Handle multiple cookies by making set-cookie an array
+      local existing = res._headers['set-cookie']
+      if existing then
+         if type(existing) != 'table' then
+            existing = { existing }
+         end
+         table.insert(existing, cookieStr)
+         res._headers['set-cookie'] = existing
+      else
+         res._headers['set-cookie'] = cookieStr
+      end
+      return res
+   end
+
+   -- Send JSON response
+   res.json = function(data)
+      if res._sent then
+         error('Response already sent')
+      end
+      local jsonStr
+      if type(data) == 'string' then
+         jsonStr = data
+      else
+         -- Simple JSON encoding for basic types
+         if type(data) == 'table' then
+            jsonStr = '{'
+            local first = true
+            for k, v in pairs(data) do
+               if not first then jsonStr = jsonStr .. ',' end
+               jsonStr = jsonStr .. '"' .. tostring(k) .. '":' 
+               if type(v) == 'string' then
+                  jsonStr = jsonStr .. '"' .. tostring(v):gsub('"', '\\"') .. '"'
+               elseif type(v) == 'number' or type(v) == 'boolean' then
+                  jsonStr = jsonStr .. tostring(v)
+               else
+                  jsonStr = jsonStr .. '"' .. tostring(v) .. '"'
+               end
+               first = false
+            end
+            jsonStr = jsonStr .. '}'
+         else
+            jsonStr = '"' .. tostring(data) .. '"'
+         end
+      end
+      
+      res._headers['content-type'] = 'application/json'
+      sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers, jsonStr)
+      res._sent = true
+      return res
+   end
+
+   -- Send redirect response
+   res.redirect = function(url, code)
+      if res._sent then
+         error('Response already sent')
+      end
+      code = code or 302
+      res._headers['location'] = url
+      res:status(code)
+      sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers)
+      res._sent = true
+      return res
+   end
+
+   -- Send text response
+   res.send = function(body, contentType)
+      if res._sent then
+         error('Response already sent')
+      end
+      contentType = contentType or 'text/html'
+      res._headers['content-type'] = contentType
+      sendHttpResponse(res._self, res._client, res._statusCode, res._statusText, res._headers, tostring(body))
+      res._sent = true
+      return res
+   end
+
+   return res
+end
+
+----------------------------------------------------------------------------------------------------------------------
 
 local function createErrorPage(statusCode, statusText, message, details)
    local html = '<!DOCTYPE html>\n<html>\n<head>\n'
@@ -292,14 +517,14 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function serveFile(client, filePath, Request)
+local function serveFile(self, client, filePath, Request)
    local file
    catch(function()
       file = obj.new('file', { path = filePath, flags = 'READ' })
    end)
    if not file then
       local errorBody = createErrorPage(404, 'Not Found', 'The requested file was not found.', 'Path: ' .. filePath)
-      sendHttpResponse(client, 404, "Not Found", {
+      sendHttpResponse(self, client, 404, "Not Found", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
@@ -310,7 +535,7 @@ local function serveFile(client, filePath, Request)
    -- Stream large files in chunks
    if fileSize > self.fileChunkSize then
       local mimeType = getMimeType(filePath)
-      sendHttpResponse(client, 200, "OK", {
+      sendHttpResponse(self, client, 200, "OK", {
          ['content-type'] = mimeType,
          ['content-length'] = tostring(fileSize),
          ['accept-ranges'] = 'bytes'
@@ -351,7 +576,7 @@ local function serveFile(client, filePath, Request)
       if err != ERR_Okay then
          file.free()
          local errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
-         sendHttpResponse(client, 500, "Internal Server Error", {
+         sendHttpResponse(self, client, 500, "Internal Server Error", {
             ['content-type'] = 'text/html'
          }, errorBody)
          return
@@ -364,7 +589,7 @@ local function serveFile(client, filePath, Request)
       end
 
       local mimeType = getMimeType(filePath)
-      sendHttpResponse(client, 200, "OK", {
+      sendHttpResponse(self, client, 200, "OK", {
          ['content-type'] = mimeType
       }, buffer:sub(1, bytesRead))
    end
@@ -393,7 +618,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function generateDirectoryListing(DirPath, URIPath)
+local function generateDirectoryListing(self, DirPath, URIPath)
    -- HTML escape function for security
    local function escapeHtml(str)
       if not str then return '' end
@@ -482,7 +707,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function serveDirectory(Client, DirPath, URIPath, Request)
+local function serveDirectory(self, Client, DirPath, URIPath, Request)
    -- Check for configured index files in order
    for _, indexFile in ipairs(self.indexFiles) do
       local indexPath = DirPath .. indexFile
@@ -498,13 +723,13 @@ local function serveDirectory(Client, DirPath, URIPath, Request)
    if self.autoIndex then
       logMessage('No index file found, generating directory listing for: ' .. URIPath)
       local html = generateDirectoryListing(DirPath, URIPath)
-      sendHttpResponse(Client, 200, 'OK', {
+      sendHttpResponse(self, Client, 200, 'OK', {
          ['content-type'] = 'text/html; charset=utf-8'
       }, html)
    else
       -- Auto-indexing disabled, return 403 Forbidden
       local errorBody = createErrorPage(403, 'Forbidden', 'Directory listing is disabled.', 'Path: ' .. URIPath)
-      sendHttpResponse(Client, 403, 'Forbidden', {
+      sendHttpResponse(self, Client, 403, 'Forbidden', {
          ['content-type'] = 'text/html'
       }, errorBody)
    end
@@ -521,7 +746,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 -- Check rate limiting for client IP
 
-local function checkRateLimit(IP)
+local function checkRateLimit(self, IP)
    if not self.rateLimit or self.rateLimit <= 0 then
       return true -- Rate limiting disabled
    end
@@ -577,15 +802,15 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-local function handleRequest(ClientSocket)
+local function handleRequest(self, ClientSocket)
    -- Get client IP for rate limiting
    local ip_array = ClientSocket.client.ip
    local ip = ip_array[1] .. '.' .. ip_array[2] .. '.' .. ip_array[3] .. '.' .. ip_array[4]
 
    -- Check rate limit
-   if not checkRateLimit(ip) then
+   if not checkRateLimit(self, ip) then
       local errorBody = createErrorPage(429, 'Too Many Requests', 'Rate limit exceeded. Please try again later.', 'Limit: ' .. self.rateLimit .. ' requests per ' .. self.rateLimitWindow .. ' seconds')
-      sendHttpResponse(ClientSocket, 429, "Too Many Requests", {
+      sendHttpResponse(self, ClientSocket, 429, "Too Many Requests", {
          ['content-type'] = 'text/html',
          ['retry-after'] = tostring(self.rateLimitWindow)
       }, errorBody)
@@ -609,7 +834,7 @@ local function handleRequest(ClientSocket)
       end
 
       local errorBody = createErrorPage(400, 'Bad Request', errorMsg, details)
-      sendHttpResponse(ClientSocket, 400, "Bad Request", {
+      sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
@@ -619,7 +844,7 @@ local function handleRequest(ClientSocket)
 
    if not request then
       local errorBody = createErrorPage(400, 'Bad Request', 'Invalid HTTP request format.', 'The request could not be parsed as valid HTTP.')
-      sendHttpResponse(ClientSocket, 400, "Bad Request", {
+      sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
@@ -631,7 +856,7 @@ local function handleRequest(ClientSocket)
    -- Handle GET and HEAD requests
    if request.method != 'GET' and request.method != 'HEAD' then
       local errorBody = createErrorPage(405, 'Method Not Allowed', 'Only GET and HEAD requests are supported.', 'Requested method: ' .. request.method)
-      sendHttpResponse(ClientSocket, 405, "Method Not Allowed", {
+      sendHttpResponse(self, ClientSocket, 405, "Method Not Allowed", {
          ['content-type'] = 'text/html',
          ['allow'] = 'GET, HEAD'
       }, errorBody)
@@ -643,7 +868,7 @@ local function handleRequest(ClientSocket)
    if not URIPath then
       local errorBody = createErrorPage(400, 'Bad Request', 'Invalid path in request.', 'Original path: ' .. request.path)
       logMessage('Security: Invalid path blocked: ' .. request.path)
-      sendHttpResponse(ClientSocket, 400, "Bad Request", {
+      sendHttpResponse(self, ClientSocket, 400, "Bad Request", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
@@ -662,7 +887,7 @@ local function handleRequest(ClientSocket)
       if URIPath:find(pattern) then
          local errorBody = createErrorPage(403, 'Forbidden', 'Access to this file type is forbidden.', 'Path: ' .. URIPath)
          logMessage('Security: Blocked access to dangerous path: ' .. URIPath)
-         sendHttpResponse(ClientSocket, 403, "Forbidden", {
+         sendHttpResponse(self, ClientSocket, 403, "Forbidden", {
             ['content-type'] = 'text/html'
          }, errorBody)
          return
@@ -676,7 +901,7 @@ local function handleRequest(ClientSocket)
    local err, fileType = mSys.AnalysePath(filePath)
    if err != ERR_Okay then
       local errorBody = createErrorPage(404, 'Not Found', 'The requested resource was not found.', 'Path: ' .. URIPath .. '\nResolved to: ' .. filePath)
-      sendHttpResponse(ClientSocket, 404, "Not Found", {
+      sendHttpResponse(self, ClientSocket, 404, "Not Found", {
          ['content-type'] = 'text/html'
       }, errorBody)
       return
@@ -685,14 +910,14 @@ local function handleRequest(ClientSocket)
    if fileType == LOC_FOLDER then
       -- Ensure directory URLs end with /
       if not URIPath:match('/$') then
-         sendHttpResponse(ClientSocket, 301, 'Moved Permanently', {
+         sendHttpResponse(self, ClientSocket, 301, 'Moved Permanently', {
             ['location'] = URIPath .. '/'
          })
          return
       end
-      serveDirectory(ClientSocket, filePath, URIPath, request)
+      serveDirectory(self, ClientSocket, filePath, URIPath, request)
    else
-      serveFile(ClientSocket, filePath, request)
+      serveFile(self, ClientSocket, filePath, request)
    end
 end
 
@@ -803,7 +1028,7 @@ httpServer.start = function(Options)
          end
       end,
       incoming = function(Server, ClientSocket)
-         handleRequest(ClientSocket)
+         handleRequest(self, ClientSocket)
       end
    }
 
