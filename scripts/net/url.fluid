@@ -4,9 +4,7 @@
 --   local urllib = require('net/url') -- Choose a name that avoids namespace conflicts
 --   local parts = urllib.parse('https://example.com/path?query=value')
 
-    local url
-    if url then return url end
-    url = { }
+    local url = { }
 
     local DEFAULT_PORTS = {
        http = 80,
@@ -113,7 +111,7 @@ function url.parseQuery(queryString)
          value = url.decodePlus(value)
          if params[key] then
             -- Handle multiple values for same key
-            if type(params[key]) != 'table' then
+            if type(params[key]) ~= 'table' then
                params[key] = { params[key] }
             end
             table.insert(params[key], value)
@@ -256,7 +254,7 @@ function url.parse(urlString)
       if ipv6Match then
          components.host = ipv6Match
          local portStr = authority:match('^%[[^%]]+%]:(%d+)$')
-         if portStr and portStr != '' then
+         if portStr and portStr ~= '' then
             components.port = tonumber(portStr)
          end
       else
@@ -265,7 +263,7 @@ function url.parse(urlString)
          if colonPos then
             components.host = authority:sub(1, colonPos - 1)
             local portStr = authority:sub(colonPos + 1)
-            if portStr != '' then
+            if portStr ~= '' then
                components.port = tonumber(portStr)
             end
          else
@@ -274,7 +272,7 @@ function url.parse(urlString)
       end
    end
 
-   if remaining != '' then
+   if remaining ~= '' then
       components.path = remaining
    elseif components.host then
       components.path = '/'
@@ -427,7 +425,7 @@ function url.join(baseUrl, relativeUrl)
 
    -- Handle relative path
    local basePath = base.path or '/'
-   if basePath:sub(-1) != '/' then
+   if basePath:sub(-1) ~= '/' then
       basePath = basePath:match('(.*/)') or '/'
    end
 
@@ -447,12 +445,12 @@ function url.normalize(path)
 
    for segment in path:gmatch('[^/]+') do
       if segment == '..' then
-         if #segments > 0 and segments[#segments] != '..' then
+         if #segments > 0 and segments[#segments] ~= '..' then
             table.remove(segments)
          elseif not isAbsolute then
             table.insert(segments, '..')
          end
-      elseif segment != '.' and segment != '' then
+      elseif segment ~= '.' and segment ~= '' then
          table.insert(segments, segment)
       end
    end
@@ -461,7 +459,7 @@ function url.normalize(path)
    if isAbsolute then result = '/' .. result end
 
    -- Preserve trailing slash
-   if path:sub(-1) == '/' and result:sub(-1) != '/' and result != '' then
+   if path:sub(-1) == '/' and result:sub(-1) ~= '/' and result ~= '' then
       result = result .. '/'
    end
 
@@ -475,7 +473,7 @@ end
 
 function url.isAbsolute(urlString)
    if not urlString then return false end
-   return urlString:match('^[%w+.-]+:') != nil
+   return urlString:match('^[%w+.-]+:') ~= nil
 end
 
 -- Check if URL is relative
