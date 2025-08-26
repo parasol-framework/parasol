@@ -329,7 +329,6 @@ static int regex_split(lua_State *Lua)
 
 constexpr auto HASH_pattern     = pf::strihash("pattern");
 constexpr auto HASH_flags       = pf::strihash("flags");
-constexpr auto HASH_valid       = pf::strihash("valid");
 constexpr auto HASH_error       = pf::strihash("error");
 constexpr auto HASH_test        = pf::strihash("test");
 constexpr auto HASH_match       = pf::strihash("match");
