@@ -676,8 +676,10 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    if (not glWFOList.empty()) { // Clean up if there are dangling subscriptions
       for (auto &ref : glWFOList) {
          pf::ScopedObjectLock lock(ref.second.Object); // For thread safety
-         UnsubscribeAction(ref.second.Object, AC::Free);
-         UnsubscribeAction(ref.second.Object, AC::Signal);
+         if (lock.granted()) {
+            UnsubscribeAction(ref.second.Object, AC::Free);
+            UnsubscribeAction(ref.second.Object, AC::Signal);
+         }
       }
       glWFOList.clear();
    }
