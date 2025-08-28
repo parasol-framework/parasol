@@ -18,7 +18,7 @@ The wiki contains practical, community-oriented documentation covering:
 
 ### Build and Setup
 - **`Linux-Builds.md`** - Linux compilation instructions
-- **`Windows-Builds.md`** - Windows compilation instructions  
+- **`Windows-Builds.md`** - Windows compilation instructions
 - **`Customising-Your-Build.md`** - Build configuration options
 
 ### Core Concepts
@@ -74,9 +74,6 @@ The HTML documentation provides a fully browsable website experience:
 
 ### Gallery Assets
 - **`gallery/`** - Screenshots and demonstrations
-  - Application screenshots (`widgets.png`, `vue.png`, etc.)
-  - Vector graphics examples (`supershapes.svg`, `wave.svg`, etc.)
-  - Interactive demos and transitions
 
 ### Web Infrastructure
 - **`css/`** - Bootstrap-based styling
@@ -175,7 +172,7 @@ Key scripts:
 - Follow patterns established in wiki tutorials
 
 ### When Debugging Issues
-- Consult error codes in `System-Error-Codes.md`
+- Consult error codes in `docs/wiki/System-Error-Codes.md`
 - Review action documentation for correct usage patterns
 - Check class field documentation for property requirements
 
