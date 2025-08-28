@@ -33,7 +33,7 @@ template<class... Args> void RMSG(Args...) {
    //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
 }
 
-static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_key, OJH_getKey;
+static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_getKey;
 static ULONG OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
 
 static int object_action_call_args(lua_State *);
@@ -215,7 +215,6 @@ inline void build_read_table(object *Def)
    jmp.emplace(OJH_new, stack_object_newchild);
    jmp.emplace(OJH_state, stack_object_state);
    jmp.emplace(OJH_state_dep, stack_object_state_dep);
-   jmp.emplace(OJH_key, stack_object_getKey);
    jmp.emplace(OJH_getKey, stack_object_getKey);
    jmp.emplace(OJH_set, stack_object_set);
    jmp.emplace(OJH_setKey, stack_object_setKey);
@@ -356,13 +355,13 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
 ** Usage: object = obj.new("Display", { field1 = value1, field2 = value2, ...})
 **
 ** If fields are provided in the second argument, the object will be initialised automatically.  If no field list is
-** provided, InitObject() must be used to initialise the object.
+** provided, object.init() must be used to initialise the object.
 **
 ** Variable fields can be denoted with an underscore prefix.
 **
 ** Also see object_newchild() for creating objects from a parent.
 **
-** Errors are immediately thrown.
+** Never returns nil, errors are immediately thrown.
 */
 
 static int object_new(lua_State *Lua)
@@ -988,14 +987,10 @@ static int object_unsubscribe(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: obj.delayCall()
-//
-// Delays the next action or method call that is taken against this object.
 
 static int object_delaycall(lua_State *Lua)
 {
-   if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) def->DelayCall = true;
-   else luaL_argerror(Lua, 1, "Expected object.");
+   luaL_error(Lua, "DEPRECATED: Use processing.delayedCall()");
    return 0;
 }
 
@@ -1042,12 +1037,13 @@ static int object_free(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Does not throw in normal operation, the error code of the initialisation is returned.
 
 static int object_init(lua_State *Lua)
 {
    if (auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj")) {
       if (auto obj = access_object(def)) {
-         lua_pushinteger(Lua, LONG(InitObject(obj)));
+         lua_pushinteger(Lua, int(InitObject(obj)));
          release_object(def);
          return 1;
       }
@@ -1057,8 +1053,8 @@ static int object_init(lua_State *Lua)
       }
    }
    else {
-      lua_pushinteger(Lua, LONG(ERR::SystemCorrupt));
-      return 1;
+      luaL_error(Lua, GetErrorMsg(ERR::SystemCorrupt));
+      return 0;
    }
 }
 
@@ -1197,7 +1193,6 @@ void register_object_class(lua_State *Lua)
    OJH_new         = simple_hash("new");
    OJH_state_dep   = simple_hash("state"); // Deprecated, use _state
    OJH_state       = simple_hash("_state");
-   OJH_key         = simple_hash("key");
    OJH_getKey      = simple_hash("getKey");
    OJH_set         = simple_hash("set");
    OJH_setKey      = simple_hash("setKey");

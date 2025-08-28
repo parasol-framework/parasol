@@ -68,8 +68,9 @@ int fcmd_raise(lua_State *Lua)
 //
 // catch() is most useful for creating small code segments that limit any failures to their own scope.
 //
-//   err = catch(function()
+//   err, result = catch(function()
 //      // Code to execute
+//      return 'success'
 //   end,
 //   function(Exception)
 //      // Exception handler
@@ -78,8 +79,9 @@ int fcmd_raise(lua_State *Lua)
 //
 // As above, but the handler is only called if certain codes are raised.  Any mismatched errors will throw to the parent code.
 //
-//   err = catch(function()
+//   err, result = catch(function()
 //      // Code to execute
+//      return 'success'
 //   end,
 //   { ERR::Failed, ERR::Terminate }, // Errors to filter for
 //   fuction(Exception) // Exception handler for the filtered errors
@@ -87,8 +89,9 @@ int fcmd_raise(lua_State *Lua)
 //
 // To silently ignore exceptions, or to receive the thrown exception details as a table result:
 //
-//   local exception = catch(function()
+//   local exception, result, ... = catch(function()
 //      // Code to execute
+//      return result, ...
 //   end)
 //
 // Errors that are NOT treated as exceptions are Okay, False, LimitedSuccess, Cancelled, NothingDone, Continue, Skip,

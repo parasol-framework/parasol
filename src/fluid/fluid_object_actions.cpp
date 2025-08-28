@@ -20,11 +20,7 @@ static int action_activate(lua_State *Lua)
    ERR error = ERR::Okay;
    bool release = false;
 
-   if (object->DelayCall) {
-      error = QueueAction(AC::Activate, object->UID, NULL);
-      object->DelayCall = false;
-   }
-   else if (object->ObjectPtr) error = Action(AC::Activate, object->ObjectPtr, NULL);
+   if (object->ObjectPtr) error = Action(AC::Activate, object->ObjectPtr, NULL);
    else if (auto obj = access_object(object)) {
       error = Action(AC::Activate, obj, NULL);
       release = true;
@@ -49,11 +45,7 @@ static int action_draw(lua_State *Lua)
    }
 
    bool release = false;
-   if (object->DelayCall) {
-      error = QueueAction(AC::Draw, object->UID, argbuffer);
-      object->DelayCall = false;
-   }
-   else if (object->ObjectPtr) error = Action(AC::Draw, object->ObjectPtr, argbuffer);
+   if (object->ObjectPtr) error = Action(AC::Draw, object->ObjectPtr, argbuffer);
    else if (auto obj = access_object(object)) {
       error = Action(AC::Draw, obj, argbuffer);
       release = true;

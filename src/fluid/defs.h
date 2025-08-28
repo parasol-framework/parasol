@@ -407,7 +407,6 @@ struct object {
    uint16_t AccessCount;     // Controlled by access_object() and release_object()
    bool  Detached;        // True if the object is an external reference or is not to be garbage collected
    bool  Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
-   bool  DelayCall;       // If true, the next action/method call is to be delayed.
 };
 
 struct lua_ref {
