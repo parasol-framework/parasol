@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://parasol.ws/ai-docs" xmlns="http://parasol.ws/ai-docs" elementFormDefault="qualified">
+
+  <!-- AI-Optimized XML Schema for Parasol Framework Documentation -->
+  <!-- Designed for maximum compression while preserving essential API information -->
+
+  <xs:element name="api-docs" type="ApiDocsType"/>
+
+  <xs:complexType name="ApiDocsType">
+    <xs:sequence>
+      <xs:element name="modules" type="ModulesType"/>
+      <xs:element name="classes" type="ClassesType"/>
+    </xs:sequence>
+    <xs:attribute name="version" type="xs:string" use="required"/>
+    <xs:attribute name="generated" type="xs:dateTime" use="required"/>
+  </xs:complexType>
+
+  <!-- MODULE DEFINITIONS -->
+  <xs:complexType name="ModulesType">
+    <xs:sequence>
+      <xs:element name="m" type="ModuleType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ModuleType">
+    <xs:sequence>
+      <xs:element name="f" type="FunctionType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="c" type="ConstantsGroupType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="s" type="StructType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="p" type="xs:string"/> <!-- prefix -->
+    <xs:attribute name="v" type="xs:string"/> <!-- version -->
+    <xs:attribute name="st" type="xs:string"/> <!-- status -->
+    <xs:attribute name="cl" type="xs:string"/> <!-- classes (comma-separated) -->
+  </xs:complexType>
+
+  <xs:complexType name="FunctionType">
+    <xs:sequence>
+      <xs:element name="i" type="ParameterType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="e" type="ErrorType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+    <xs:attribute name="p" type="xs:string"/> <!-- prototype -->
+    <xs:attribute name="r" type="xs:string"/> <!-- return type -->
+  </xs:complexType>
+
+  <!-- CLASS DEFINITIONS -->
+  <xs:complexType name="ClassesType">
+    <xs:sequence>
+      <xs:element name="cl" type="ClassType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ClassType">
+    <xs:sequence>
+      <xs:element name="a" type="ActionType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="m" type="MethodType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="f" type="FieldType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="mod" type="xs:string"/> <!-- module -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+    <xs:attribute name="cat" type="xs:string"/> <!-- category -->
+    <xs:attribute name="id" type="xs:string"/> <!-- id -->
+    <xs:attribute name="v" type="xs:string"/> <!-- version -->
+  </xs:complexType>
+
+  <xs:complexType name="ActionType">
+    <xs:sequence>
+      <xs:element name="i" type="ParameterType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="e" type="ErrorType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+    <xs:attribute name="p" type="xs:string"/> <!-- prototype -->
+  </xs:complexType>
+
+  <xs:complexType name="MethodType">
+    <xs:sequence>
+      <xs:element name="i" type="ParameterType" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="e" type="ErrorType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+    <xs:attribute name="p" type="xs:string"/> <!-- prototype -->
+  </xs:complexType>
+
+  <xs:complexType name="FieldType">
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+    <xs:attribute name="t" type="xs:string"/> <!-- type -->
+    <xs:attribute name="a" type="xs:string"/> <!-- access (R/W/G) -->
+    <xs:attribute name="l" type="xs:string"/> <!-- lookup -->
+  </xs:complexType>
+
+  <!-- COMMON TYPES -->
+  <xs:complexType name="ParameterType">
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="t" type="xs:string"/> <!-- type -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+  </xs:complexType>
+
+  <xs:complexType name="ErrorType">
+    <xs:attribute name="c" type="xs:string" use="required"/> <!-- code -->
+    <xs:attribute name="d" type="xs:string"/> <!-- description -->
+  </xs:complexType>
+
+  <xs:complexType name="ConstantsGroupType">
+    <xs:sequence>
+      <xs:element name="k" type="ConstantType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="l" type="xs:string" use="required"/> <!-- lookup -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+  </xs:complexType>
+
+  <xs:complexType name="ConstantType">
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="v" type="xs:string"/> <!-- value -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+  </xs:complexType>
+
+  <xs:complexType name="StructType">
+    <xs:sequence>
+      <xs:element name="f" type="StructFieldType" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+  </xs:complexType>
+
+  <xs:complexType name="StructFieldType">
+    <xs:attribute name="n" type="xs:string" use="required"/> <!-- name -->
+    <xs:attribute name="t" type="xs:string"/> <!-- type -->
+    <xs:attribute name="s" type="xs:string"/> <!-- size -->
+    <xs:attribute name="c" type="xs:string"/> <!-- comment -->
+  </xs:complexType>
+</xs:schema>

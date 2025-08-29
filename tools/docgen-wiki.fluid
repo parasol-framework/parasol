@@ -5,15 +5,54 @@
 --
 --   src: Source folder for markdown documents
 
-   require 'filesearch'
+   require 'io/filesearch'
 
    glSelf = obj.find('self')
+   
+-----------------------------------------------------------------------------------------------------------------------
+-- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
-   local pandoc = 'c:Program Files/Pandoc/pandoc'
-   local md_folder = arg('src', glSelf.workingPath .. 'wiki/')
+function resolveSDKPath(Path)
+   local sdk_path
+   local err = ERR_Failed
+   local search_list = { }
+   if not Path then
+      local search_path = 'CMakeLists.txt'
+      local limit = 5
+      while (err != ERR_Okay) and (limit > 0) do
+         table.insert(search_list, search_path)
+         err, sdk_path = mSys.ResolvePath(search_path)
+         search_path = '../' .. search_path
+         limit = limit - 1
+      end
+   else
+      table.insert(search_list, Path .. '/CMakeLists.txt')
+      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+   end
 
-   local header = file.readAll(glSelf.workingPath .. 'wiki-header.html')
-   local footer = file.readAll(glSelf.workingPath .. 'wiki-footer.html')
+   if (err == ERR_Okay) then
+      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+   else
+      local msg = ''
+      for _, path in ipairs(search_list) do
+         msg = msg .. path .. '\n'
+      end
+      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      error('A path to the Parasol SDK could not be determined.')
+   end
+
+   mSys.SetVolume('sdk', sdk_path)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   resolveSDKPath(arg('sdk'))
+
+   local pandoc = arg('pandoc', 'c:Program Files/Pandoc/pandoc')
+   local md_folder = arg('wiki', 'sdk:docs/wiki/')
+
+   local header = file.readAll(md_folder .. 'wiki-header.html')
+   local footer = file.readAll(md_folder .. 'wiki-footer.html')
 
    local err, temp_output = mSys.ResolvePath('temp:markdown.html', RSF_NO_FILE_CHECK)
 

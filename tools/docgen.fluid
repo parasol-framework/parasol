@@ -7,7 +7,7 @@
 --   filter: Filter for XML source files, defaults to "*.xml".
 --   src:    Source folder for XML documents, defaults to "sdk:docs/xml/"
 
-   require 'filesearch'
+   require 'io/filesearch'
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.

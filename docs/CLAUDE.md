@@ -122,23 +122,55 @@ Each XML file contains:
 - Structured data suitable for programmatic processing
 - Used to generate the HTML documentation
 
+## 🤖 AI-Optimized Documentation System
+
+**Location:** `docs/xml/ai/` files and `tools/docgen-ai.fluid`
+
+For Claude Code sessions, a specialized condensed documentation format is available:
+
+### AI Documentation Files
+- **`ai-condensed.xsd`** - XML Schema for the condensed format
+- **`ai-condense.xsl`** - XSLT transformation from full XML to condensed format
+- **`../tools/docgen-ai.fluid`** - Build script for AI documentation
+
+### Condensed Format Features
+The AI documentation system creates ultra-compact XML files optimized for AI processing:
+
+- **95%+ size reduction** from original XML files
+- **Complete API coverage** - all modules, classes, methods, fields
+- **Essential information preserved** - signatures, types, constants, errors
+- **Abbreviated element names** - `<m>` for modules, `<cl>` for classes, etc.
+- **Short comments only** - verbose descriptions removed
+- **Machine-readable structure** - consistent XML format
+
+### Generation and Usage
+```bash
+# Generate AI-optimized documentation
+parasol tools/docgen-ai.fluid
+
+# Custom output location
+parasol tools/docgen-ai.fluid output=my-docs.xml
+```
+
+The generated files in `docs/xml/ai/modules/` and `docs/xml/ai/classes/` provide comprehensive API reference for AI assistants while consuming minimal context window space.
+
 ## 📖 How to Use This Documentation Effectively
 
 ### For Understanding APIs
 1. **Start with wiki guides** for conceptual understanding
-2. **Use HTML class pages** for detailed API reference
-3. **Check XML files** for precise technical specifications
+4. **Load AI documentation** for comprehensive API coverage in AI context
+3. **Check XML files** for extended commentary and examples
 
 ### For Fluid Scripting
 1. **`Fluid-Reference-Manual.md`** for language fundamentals
 2. **`Fluid-GUI-API.md`** for user interface development
-3. **HTML class pages** for specific object APIs
+3. **XML class pages** for specific object APIs
 4. **Examples in `examples/`** for practical patterns
 
 ### For C++ Development
 1. **`Parasol-Objects.md`** for object system concepts
 2. **XML class documentation** for precise API specifications
-3. **`FDL-Reference-Manual.md`** for interface definitions
+3. **`FDL-Reference-Manual.md`** for how to write FDL interface definitions
 4. **Source code in `src/`** for implementation details
 
 ### For Testing and Build
@@ -152,24 +184,29 @@ The documentation follows this generation pipeline:
 
 1. **C++ Source** → **XML** (via FDL parsing)
 2. **XML** → **HTML** (via XSLT transformation)
-3. **Markdown** → **HTML** (via documentation generator)
+3. **XML** → **AI-optimized XML** (via condensed transformation)
+4. **Markdown** → **HTML** (via documentation generator)
 
 Key scripts:
-- **`docs/generate.fluid`** - Main documentation generator
-- **`docs/generate-wiki.fluid`** - Wiki-specific processing
-- **Saxon XSLT processor** in `docs/saxon/` for XML→HTML transformation
+
+- **`tools/docgen.fluid`** - Main documentation generator
+- **`tools/docgen-wiki.fluid`** - Wiki-specific processing
+- **`tools/docgen-ai.fluid`** - AI documentation generator
 
 ## 💡 Best Practices for Claude Sessions
 
 ### When Researching Framework Concepts
 - Start with relevant wiki pages for conceptual understanding
-- Use HTML documentation for comprehensive API browsing
-- Reference XML for precise technical specifications
+- Load AI documentation for complete API coverage
+- Reference XML for detailed technical specifications
+- **NEVER** read documentation from `docs/html` when writing code, use the XML documentation instead.
 
 ### When Writing Code
 - Check existing examples in `examples/` directory first
 - Use API documentation to understand object interfaces
 - Follow patterns established in wiki tutorials
+- Reference condensed AI docs for quick API lookup
+- If there are discrepencies between documentation and code, bring it to the user's attention
 
 ### When Debugging Issues
 - Consult error codes in `docs/wiki/System-Error-Codes.md`
@@ -179,6 +216,14 @@ Key scripts:
 ### When Working with Fluid Scripts
 - Always study existing `.fluid` files for patterns
 - Use GUI API documentation for interface constants
-- Reference class HTML pages for object method signatures
+- Reference class XML pages for object method signatures
+- Use AI documentation for complete method/field reference
 
-This documentation ecosystem provides comprehensive coverage from high-level concepts to low-level implementation details, enabling effective development with the Parasol framework.
+### For AI Documentation Maintenance
+The AI documentation should be regenerated when:
+- New classes or modules are added to the framework
+- API signatures change in existing code
+- Field definitions or access patterns are modified
+- Constants or enumerations are updated
+
+This documentation ecosystem provides comprehensive coverage from high-level concepts to low-level implementation details, with specialized AI-optimized formats for efficient context usage, enabling effective development with the Parasol framework.
