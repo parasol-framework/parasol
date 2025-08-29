@@ -90,27 +90,27 @@ file.search = function(Path, Options)
       end
    end
 
-   local function dateLessThan(DateA, DateB) -- struct DateTime
-      if a.Year < b.Year then return true
-      elseif a.Year > b.Year then return false end
+   local function dateLessThan(A, B) -- struct DateTime
+      if A.Year < B.Year then return true
+      elseif A.Year > B.Year then return false end
 
       -- else years are equal, so test months
-      if a.Month < b.Month then return true
-      elseif a.Month > b.Month then return false end
+      if A.Month < B.Month then return true
+      elseif A.Month > B.Month then return false end
 
-      if a.Day < b.Day then return true
-      elseif a.Day > b.Day then return false end
+      if A.Day < B.Day then return true
+      elseif A.Day > B.Day then return false end
 
-      if a.Hour < b.Hour then return true
-      elseif a.Hour > b.Hour then return false end
+      if A.Hour < B.Hour then return true
+      elseif A.Hour > B.Hour then return false end
 
-      if a.Minute < b.Minute then return true
-      elseif a.Minute > b.Minute then return false end
+      if A.Minute < B.Minute then return true
+      elseif A.Minute > B.Minute then return false end
 
-      if a.Second < b.Second then return true
-      elseif a.Second > b.Second then return false end
+      if A.Second < B.Second then return true
+      elseif A.Second > B.Second then return false end
 
-      return false -- files are exactly equal
+      return false -- Dates are exactly equal
    end
 
    local function scanPath(Path, currentDepth)
