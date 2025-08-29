@@ -3,7 +3,7 @@
 -- path:   The folder to be searched.
 -- filter: A wildcard string to filter for desired filenames.
 
-   require 'filesearch'
+   require 'io/filesearch'
 
    local time        = mSys.preciseTime()
    local glPath      = obj.find('self').workingPath
