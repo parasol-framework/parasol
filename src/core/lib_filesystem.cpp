@@ -677,7 +677,7 @@ failures are ignored, although an error will be returned if the top-level folder
 This function does not allow for the approximation of file names.  To approximate a file location, open it as a @File
 object or use ~ResolvePath() first.
 
-The `Callback` parameter can be set with a function that matches the prototype `LONG Callback(struct FileFeedback *)`.
+The `Callback` parameter can be set with a function that matches the prototype `INT Callback(*FileFeedback)`.
 
 Prior to the deletion of any file, a !FileFeedback structure is passed that describes the file's location.  The
 callback must return a constant value that can potentially affect file processing.  Valid values are `FFR::Okay` (delete
@@ -991,7 +991,7 @@ file.
 
 The `Callback` parameter can be set with a function that matches this prototype:
 
-`LONG Callback(struct FileFeedback *)`
+`INT Callback(*FileFeedback)`
 
 For each file that is processed during the move operation, a !FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.

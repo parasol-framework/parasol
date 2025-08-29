@@ -266,6 +266,7 @@ file.search(&#39;documents:&#39;, {
    nameFilter    = &#39;*.txt&#39;,
    nameWild      = true,
    contentFilter = &#39;tennis&#39;,
+   maxDepth      = 2,  -- Only search 2 levels deep
    matchFeedback = function(Path, FileName, File)
       print(Path, &#39; &#39;, FileName)
    end
@@ -281,7 +282,7 @@ file.search(&#39;documents:&#39;, {
 <tbody>
 <tr>
 <td style="text-align: left;">nameFilter</td>
-<td style="text-align: left;">Include file/folder names that match this filter.</td>
+<td style="text-align: left;">Include file/folder names that match this filter string or compiled regex object.</td>
 </tr>
 <tr>
 <td style="text-align: left;">contentFilter</td>
@@ -289,15 +290,15 @@ file.search(&#39;documents:&#39;, {
 </tr>
 <tr>
 <td style="text-align: left;">nameWild</td>
-<td style="text-align: left;">Set to true to enable wildcard matching for file names, or &#39;lua&#39; for Lua expression matching.</td>
+<td style="text-align: left;">Set to <code>true</code> to enable Lua pattern matching on <code>nameFilter</code>. Ignored if <code>nameFilter</code> is a regex object.</td>
 </tr>
 <tr>
 <td style="text-align: left;">contentWild</td>
-<td style="text-align: left;">Set to true to enable wildcard matching for content, or &#39;lua&#39; for Lua expression matching.</td>
+<td style="text-align: left;">Set to <code>true</code> to enable Lua pattern matching for <code>contentFilter</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">caseSensitive</td>
-<td style="text-align: left;">All comparisons are case sensitive.</td>
+<td style="text-align: left;">Enforces case-sensitive name comparisons if <code>true</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">matchFeedback</td>
@@ -334,6 +335,10 @@ file.search(&#39;documents:&#39;, {
 <tr>
 <td style="text-align: left;">ignoreFiles</td>
 <td style="text-align: left;">Do not scan files (useful only in conjunction with <code>matchFolders</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;">maxDepth</td>
+<td style="text-align: left;">Maximum depth to recurse into subdirectories (0 = current directory only, 1 = one level deep, etc.).</td>
 </tr>
 </tbody>
 </table>

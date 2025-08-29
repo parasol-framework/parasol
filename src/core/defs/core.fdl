@@ -1027,7 +1027,7 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
    CompressionFeedback(FDB pFeedback, int pIndex, CSTRING pPath, CSTRING pDest) :
       FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest),
       Progress(0), OriginalSize(0), CompressedSize(0),
-      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
+      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { } 
   ]])
 
   struct("CompressedItem", { }, [[

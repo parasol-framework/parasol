@@ -911,7 +911,7 @@ DirEmpty: The index has reached the end of the file list.
 
 *********************************************************************************************************************/
 
-static ERR FILE_NextFile(extFile *Self, struct fl::Next *Args)
+static ERR FILE_NextFile(extFile* Self, struct fl::Next* Args) // Not to be confused with acNext()
 {
    pf::Log log;
 
@@ -2665,24 +2665,24 @@ static const FieldDef PermissionFlags[] = {
 #include "class_file_def.c"
 
 static const FieldArray FileFields[] = {
-   { "Position", FDF_INT64|FDF_RW, nullptr, SET_Position },
-   { "Flags",    FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clFileFlags },
-   { "Static",   FDF_INT|FDF_RI },
-   { "Target",   FDF_OBJECTID|FDF_RW, nullptr, nullptr, CLASSID::SURFACE },
-   { "Buffer",   FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
+   { "Position",     FDF_INT64|FDF_RW, nullptr, SET_Position },
+   { "Flags",        FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clFileFlags },
+   { "Static",       FDF_INT|FDF_RI },
+   { "Target",       FDF_OBJECTID|FDF_RW, nullptr, nullptr, CLASSID::SURFACE },
+   { "Buffer",       FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
    // Virtual fields
    { "Date",         FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Date, SET_Date, "DateTime" },
    { "Created",      FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Created, nullptr, "DateTime" },
-   { "Handle",       FDF_INT64|FDF_R, GET_Handle },
-   { "Icon",         FDF_STRING|FDF_R, GET_Icon },
-   { "Path",         FDF_STRING|FDF_RI, GET_Path, SET_Path },
+   { "Handle",       FDF_INT64|FDF_R,     GET_Handle },
+   { "Icon",         FDF_STRING|FDF_R,    GET_Icon },
+   { "Path",         FDF_STRING|FDF_RI,   GET_Path, SET_Path },
    { "Permissions",  FDF_INTFLAGS|FDF_RW, GET_Permissions, SET_Permissions, &PermissionFlags },
-   { "ResolvedPath", FDF_STRING|FDF_R, GET_ResolvedPath },
-   { "Size",         FDF_INT64|FDF_RW, GET_Size, SET_Size },
-   { "TimeStamp",    FDF_INT64|FDF_R, GET_TimeStamp },
-   { "Link",         FDF_STRING|FDF_RW, GET_Link, SET_Link },
-   { "User",         FDF_INT|FDF_RW, GET_User, SET_User },
-   { "Group",        FDF_INT|FDF_RW, GET_Group, SET_Group },
+   { "ResolvedPath", FDF_STRING|FDF_R,    GET_ResolvedPath },
+   { "Size",         FDF_INT64|FDF_RW,    GET_Size, SET_Size },
+   { "TimeStamp",    FDF_INT64|FDF_R,     GET_TimeStamp },
+   { "Link",         FDF_STRING|FDF_RW,   GET_Link, SET_Link },
+   { "User",         FDF_INT|FDF_RW,      GET_User, SET_User },
+   { "Group",        FDF_INT|FDF_RW,      GET_Group, SET_Group },
    // Synonyms
    { "Src",      FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },
    { "Location", FDF_STRING|FDF_SYNONYM|FDF_RI, GET_Path, SET_Path },

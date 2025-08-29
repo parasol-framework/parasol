@@ -8,7 +8,7 @@
    require 'io/filesearch'
 
    glSelf = obj.find('self')
-   
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
 
@@ -51,8 +51,8 @@ end
    local pandoc = arg('pandoc', 'c:Program Files/Pandoc/pandoc')
    local md_folder = arg('wiki', 'sdk:docs/wiki/')
 
-   local header = file.readAll(md_folder .. 'wiki-header.html')
-   local footer = file.readAll(md_folder .. 'wiki-footer.html')
+   local header = file.readAll('sdk:docs/wiki-header.html')
+   local footer = file.readAll('sdk:docs/wiki-footer.html')
 
    local err, temp_output = mSys.ResolvePath('temp:markdown.html', RSF_NO_FILE_CHECK)
 

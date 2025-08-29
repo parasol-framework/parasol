@@ -342,23 +342,30 @@
 <h4 id="catch">catch()</h4>
 <p>Use <code>catch()</code> to switch on exception handling for functions that return <code>ERR</code> codes, as well as regular exceptions that would otherwise be caught by <code>pcall()</code>. Affected code includes: <code>obj.new()</code>; any module function that returns an <code>ERR</code> type; and any method or action call.</p>
 <p><code>catch()</code> is typically called with two parameters - the first being a custom function that will be executed, and the second a function handler that will be activated if an exception is raised. The handler will receive an Exception parameter that contains fields that describe what happened. The fields are <code>code</code> for the <code>ERR</code> code (if any); <code>message</code> describes the exception; <code>line</code> is the line number that raised the fault.</p>
-<pre><code>catch(function()
+<pre><code>err, result = catch(function()
     -- Code to execute
+    return &#39;success&#39;
 end,
 function(Exception)
     print(&#39;Code: &#39; .. nz(Exception.code,&#39;LUA&#39;) .. &#39;, Message: &#39; .. Exception.message)
 end)</code></pre>
 <p>Sometimes it can be convenient to catch only specific error codes of interest, which can be achieved by listing them just prior to the handler reference:</p>
-<pre><code>catch(function()
+<pre><code>err, result = catch(function()
     -- Code to execute
+    return &#39;success&#39;
 end,
 { ERR_Failed, ERR_Terminate }, -- Errors to catch
 fuction(Exception)
 end)</code></pre>
-<p>Calling <code>catch()</code> without an exception handler will ignore raised exceptions, instead returning the Exception table for further inspection:</p>
-<pre><code>local exception = catch(function()
+<p>Calling <code>catch()</code> without an exception handler will handle the exception silently and return the Exception table for further inspection, or <code>nil</code> if the calls was successful:</p>
+<pre><code>local exception, result = catch(function()
     -- Code to execute
-end)</code></pre>
+    return &#39;success&#39;
+end)
+
+if exception then
+    print(&#39;Code: &#39; .. nz(exception.code,&#39;NIL&#39;) .. &#39;, Message: &#39; .. exception.message)
+end</code></pre>
 <p>In all other cases the <code>ERR</code> code is returned by default.</p>
 <p>Be aware that the scope of catch runs deep, and extends into any functions that are called. Using <code>catch()</code> over a broad section of code is considered mis-use, and can lead to unexpected confusion. Consider using <code>xpcall()</code> instead when broad exception handling is desired.</p>
 <p>The following <code>ERR</code> codes are <em>not</em> treated as exceptions:</p>
@@ -434,17 +441,19 @@ end)</code></pre>
 <p>The object interface provides the necessary functionality to create and manage objects. It allows you to read and manipulate object fields, call methods and actions, manage subscriptions and connect to existing named objects.</p>
 <h3 id="object-creation">Object Creation</h3>
 <p>To create a new object, use the object interface&#39;s <code>new()</code> method with the name of the class that will be instantiated. Here&#39;s an example that creates an object, sets necessary field values and initialises it:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">,</span> <span class="va">err</span>  <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;file&#39;</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb7"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;file&#39;</span><span class="op">)</span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">.</span><span class="va">path</span>  <span class="op">=</span> <span class="st">&#39;readme.md&#39;</span></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">.</span><span class="va">flags</span> <span class="op">=</span> <span class="st">&#39;!READ&#39;</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="va">err</span> <span class="op">=</span> <span class="va">file</span><span class="op">.</span>acInit<span class="op">()</span></span></code></pre></div>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="va">err</span> <span class="op">=</span> <span class="va">file</span><span class="op">.</span>init<span class="op">()</span></span></code></pre></div>
 <p>The first result from <code>new()</code> is the created object&#39;s interface and the second result is an <code>ERR</code> code if creation fails. Take note that an object must always be initialised before any real interaction occurs (anything beyond setting field values).</p>
-<p>The above example can be greatly simplified by providing a field list immediately after the class name:</p>
+<p>The above example can be simplified by providing a field list immediately after the class name:</p>
 <p><code>file = obj.new(&#39;File&#39;, { path=&#39;readme.md&#39;, flags=&#39;!READ&#39; } )</code></p>
 <p>In this case the <code>path</code> and <code>flags</code> values will be set on our new object and then initialised automatically (it is assumed <em>all</em> field settings are being defined up-front). The field values may be of any type and Fluid will use best efforts to convert them to the correct field type.</p>
-<p>In the event of an error, <code>new()</code> will return <code>nil</code> as the first result and does not throw an exception. We advise guarding against problems by testing the result or by using <code>catch()</code>.</p>
+<p>In the event of an error, <code>new()</code> will throw an exception. It <em>never</em> returns nil. We advise guarding against problems with <code>pcall()</code> or <code>catch()</code>, particularly if using classes like <code>File</code> where error management is good practice.</p>
+<h4 id="objectinit">object.init()</h4>
+<p>Initialises the object if not already done so with <code>obj.new()</code>. Useful if you need to set field values after creation but before initialisation. Does not throw in normal operation, instead an <code>ERR</code> code is returned to indicate success or failure.</p>
 <h3 id="object-relationships">Object Relationships</h3>
-<p>Parasol includes an integrated OO feature that allows objects to be attached to each other so that they form parent, child and sibling relationships. By default, all objects created by <code>obj.new()</code> are owned by the Fluid script (which exists as a runtime object).</p>
+<p>Parasol enforces OO relationships so that an object will always have a parent, and consequently it may have siblings and its own children. By default, all objects created by <code>obj.new()</code> are owned by the Fluid script (which exists as a runtime object).</p>
 <p>Sometimes a new object will need to be declared as the child of an existing object. Imagine for instance, that we have a window open and we want to draw a rectangle to it. This can be achieved with something like:</p>
 <pre><code>viewport = glWindow:clientViewport({ aspectRatio = ARF_MEET })
 viewport.new(&#39;VectorRectangle&#39;, { x=0, y=0, width=&#39;100%&#39;, height=&#39;100%&#39;, fill=&#39;rgb(255,0,0)&#39; })</code></pre>
@@ -468,7 +477,11 @@ end)</code></pre>
 <div class="sourceCode" id="cb11"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;File&#39;</span><span class="op">)</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="kw">nil</span></span></code></pre></div>
-<p>In some cases you may wish to create an object that remains after the script has executed and is not removed by scope rules. To do this, use the <code>detach()</code> method to unlink the object from the garbage collector. The object can still be destroyed manually via a call to its <code>free()</code> method.</p>
+<h4 id="objectdetach">object.detach()</h4>
+<p>Sometimes you may need to create an object that remains after the script has executed and is not removed by falling out of scope. Calling <code>detach()</code> will unlink the object from the garbage collector.</p>
+<h4 id="objectfree">object.free()</h4>
+<p>Call <code>free()</code> to terminate an object resource immediately without removing the interface. If the object is detached then <code>free()</code> is the most practical means of removal.</p>
+<p>Calling <code>free()</code> is however not recommended for most other cases - it is preferable to set object references to <code>nil</code> and either wait for garbage collection or call <code>collectgarbage()</code>.</p>
 <h3 id="action-and-method-calls">Action and Method Calls</h3>
 <p>After successfully initialising an object interface, interaction with it is possible through actions, methods and fields. The following example illustrates how we could change the size of the VectorRectangle we created earlier:</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="va">rect</span><span class="op">.</span>acRedimension<span class="op">(</span><span class="dv">20</span><span class="op">,</span> <span class="dv">20</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span></span></code></pre></div>
@@ -477,9 +490,12 @@ end)</code></pre>
 <h3 id="field-interface">Field Interface</h3>
 <p>Object fields are accessible by conventional means, i.e. <code>thing = my_object.field_name</code> and <code>my_object.field_name = thing</code> for get and set respectively. There are <code>get()</code> and <code>set()</code> methods that are equivalent to these, and they can be useful in special circumstances such as retrieving a value from an array-based field without first retrieving the entire array:</p>
 <p><code>item = view.get(&#39;item(10)&#39;)</code></p>
-<p>Some classes support the concept of variable fields, which are unrestricted custom key values that can be added to an object by the client. The <code>getVar()</code> and <code>setVar()</code> methods have been provided to support this feature. For instance:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="va">script</span><span class="op">.</span>setVar<span class="op">(</span><span class="st">&#39;apple&#39;</span><span class="op">,</span> <span class="st">&#39;banana&#39;</span><span class="op">)</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="va">banana</span> <span class="op">=</span> <span class="va">script</span><span class="op">.</span>getVar<span class="op">(</span><span class="st">&#39;apple&#39;</span><span class="op">)</span></span></code></pre></div>
+<h4 id="objectgetkey-objectsetkey">object.getKey(), object.setKey()</h4>
+<p>Some classes support key-value pairs in cases where custom string names need to be associated with an object. The <code>getKey()</code> and <code>setKey()</code> methods are provided to manage these fields. For example:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="va">surface</span><span class="op">.</span>setKey<span class="op">(</span><span class="st">&#39;Title&#39;</span><span class="op">,</span> <span class="st">&#39;My Window&#39;</span><span class="op">)</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="va">title</span> <span class="op">=</span> <span class="va">surface</span><span class="op">.</span>getKey<span class="op">(</span><span class="st">&#39;Title&#39;</span><span class="op">,</span> <span class="st">&#39;UNDEFINED&#39;</span><span class="op">)</span></span></code></pre></div>
+<h4 id="object_state">object._state()</h4>
+<p>The <code>_state()</code> method is a special accessor that attaches a Lua table to the object and returns it. This allows you to store custom data with the object that is not part of its defined fields. The table will be automatically removed when the object is destroyed.</p>
 <h3 id="bit-fields">Bit Fields</h3>
 <p>To test for the presence of a bit in a flag-based field, the following template supported by <code>get()</code> can be used:</p>
 <p><code>state = object.get(&#39;flagfield.flagname&#39;)</code></p>

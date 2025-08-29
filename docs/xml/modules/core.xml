@@ -540,7 +540,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <description>
 <p>This function will delete a file or folder when given a valid file location.  The current user must have delete access to the given file. When deleting folders, all content will be scanned and deleted recursively. Individual deletion failures are ignored, although an error will be returned if the top-level folder still contains content on its deletion.</p>
 <p>This function does not allow for the approximation of file names.  To approximate a file location, open it as a <class name="File">File</class> object or use <function>ResolvePath</function> first.</p>
-<p>The <code>Callback</code> parameter can be set with a function that matches the prototype <code>LONG Callback(struct FileFeedback *)</code>.</p>
+<p>The <code>Callback</code> parameter can be set with a function that matches the prototype <code>INT Callback(*FileFeedback)</code>.</p>
 <p>Prior to the deletion of any file, a <st>FileFeedback</st> structure is passed that describes the file's location.  The callback must return a constant value that can potentially affect file processing.  Valid values are <code>FFR::Okay</code> (delete the file), <code>FFR::Skip</code> (do not delete the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
@@ -999,7 +999,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>The <code>Source</code> argument should always clarify the type of location that is being copied - e.g. if you are copying a folder, you must specify a forward slash at the end of the string or the function will assume that you are moving a file.</p>
 <p>The <code>Callback</code> parameter can be set with a function that matches this prototype:</p>
 <p>
-<code>LONG Callback(struct FileFeedback *)</code></p>
+<code>INT Callback(*FileFeedback)</code></p>
 <p>For each file that is processed during the move operation, a <st>FileFeedback</st> structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (move the file), <code>FFR::Skip</code> (do not move the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">
