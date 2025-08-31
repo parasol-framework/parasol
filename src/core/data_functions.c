@@ -91,7 +91,7 @@ FDEF argsUpdateTimer[] = { { "Error", FD_INT|FD_ERROR }, { "Subscription", FD_PT
 FDEF argsVLogF[] = { { "Void", FD_VOID }, { "Flags", FD_INT }, { "Header", FD_STR }, { "Message", FD_STR }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsVirtualVolume[] = { { "Error", FD_INT|FD_ERROR }, { "Name", FD_STR }, { "Tags", FD_TAGS }, { 0, 0 } };
 FDEF argsWaitForObjects[] = { { "Error", FD_INT|FD_ERROR }, { "Flags", FD_INT }, { "TimeOut", FD_INT }, { "ObjectSignal:ObjectSignals", FD_PTR|FD_STRUCT }, { 0, 0 } };
-FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_INT }, { "MicroSeconds", FD_INT }, { 0, 0 } };
+FDEF argsWaitTime[] = { { "Void", FD_VOID }, { "Seconds", FD_DOUBLE }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)AccessMemory, "AccessMemory", argsAccessMemory },

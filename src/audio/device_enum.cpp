@@ -149,7 +149,7 @@ ERR ALSADeviceEnumerator::wait_for_devices(LONG timeout_ms)
          return ERR::Okay;
       }
 
-      WaitTime(0, -100000); // Wait 0.1 seconds
+      WaitTime(-0.1); // Wait 0.1 seconds without processing messages
    }
 
    log.msg("No sound drivers were started in the allotted time period.");

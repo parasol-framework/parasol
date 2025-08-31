@@ -2129,7 +2129,7 @@ struct CoreBase {
    ERR (*_UnsubscribeAction)(OBJECTPTR Object, AC Action);
    void (*_UnsubscribeEvent)(APTR Handle);
    ERR (*_BroadcastEvent)(APTR Event, int EventSize);
-   void (*_WaitTime)(int Seconds, int MicroSeconds);
+   void (*_WaitTime)(double Seconds);
    int64_t (*_GetEventID)(EVG Group, CSTRING SubGroup, CSTRING Event);
    uint32_t (*_GenCRC32)(uint32_t CRC, APTR Data, uint32_t Length);
    int64_t (*_GetResource)(RES Resource);
@@ -2223,7 +2223,7 @@ inline ERR UpdateTimer(APTR Subscription, double Interval) { return CoreBase->_U
 inline ERR UnsubscribeAction(OBJECTPTR Object, AC Action) { return CoreBase->_UnsubscribeAction(Object,Action); }
 inline void UnsubscribeEvent(APTR Handle) { return CoreBase->_UnsubscribeEvent(Handle); }
 inline ERR BroadcastEvent(APTR Event, int EventSize) { return CoreBase->_BroadcastEvent(Event,EventSize); }
-inline void WaitTime(int Seconds, int MicroSeconds) { return CoreBase->_WaitTime(Seconds,MicroSeconds); }
+inline void WaitTime(double Seconds) { return CoreBase->_WaitTime(Seconds); }
 inline int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event) { return CoreBase->_GetEventID(Group,SubGroup,Event); }
 inline uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) { return CoreBase->_GenCRC32(CRC,Data,Length); }
 inline int64_t GetResource(RES Resource) { return CoreBase->_GetResource(Resource); }
@@ -2311,7 +2311,7 @@ extern "C" ERR UpdateTimer(APTR Subscription, double Interval);
 extern "C" ERR UnsubscribeAction(OBJECTPTR Object, AC Action);
 extern "C" void UnsubscribeEvent(APTR Handle);
 extern "C" ERR BroadcastEvent(APTR Event, int EventSize);
-extern "C" void WaitTime(int Seconds, int MicroSeconds);
+extern "C" void WaitTime(double Seconds);
 extern "C" int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event);
 extern "C" uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length);
 extern "C" int64_t GetResource(RES Resource);

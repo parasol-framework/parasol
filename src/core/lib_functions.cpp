@@ -841,9 +841,9 @@ ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
 /*********************************************************************************************************************
 
 -FUNCTION-
-WaitTime: Waits for a specified amount of seconds and/or microseconds.
+WaitTime: Waits for a specified amount of seconds.
 
-This function waits for a period of time as specified by the `Seconds` and `MicroSeconds` parameters.  While waiting,
+This function waits for a period of time as specified by the `Seconds` parameter.  While waiting,
 your process will continue to process incoming messages in order to prevent the process' message queue from
 developing a back-log.
 
@@ -851,29 +851,23 @@ WaitTime() can return earlier than the indicated timeout if a message handler re
 `MSGID::QUIT` message is sent to the task's message queue.
 
 -INPUT-
-int Seconds:      The number of seconds to wait for.
-int MicroSeconds: The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - `1/1000000`.  The value cannot exceed `999999`.
+double Seconds: The number of seconds to wait for.  Fractional values are supported for sub-second precision.
 
 -END-
 
 *********************************************************************************************************************/
 
-void WaitTime(int Seconds, int MicroSeconds)
+void WaitTime(double Seconds)
 {
-   // Normalize negative values and determine message processing mode
-   bool process_msg = tlMainThread and (Seconds >= 0) and (MicroSeconds >= 0);
+   // Determine message processing mode (negative seconds disable message processing)
+   bool process_msg = tlMainThread and (Seconds >= 0.0);
    
-   if (Seconds < 0) Seconds = -Seconds;
-   if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
+   if (Seconds < 0.0) Seconds = -Seconds;
 
-   // Normalize microseconds overflow using division/modulo instead of loop
-   if (MicroSeconds >= 1000000) {
-      Seconds += MicroSeconds / 1000000;
-      MicroSeconds %= 1000000;
-   }
-
-   // Calculate total duration in microseconds once
-   auto total_microseconds = int64_t(Seconds) * 1000000LL + MicroSeconds;
+   // Convert to microseconds with high precision
+   auto total_microseconds = int64_t(Seconds * 1000000.0);
+   
+   if (total_microseconds <= 0) return; // Nothing to wait for
 
    if (process_msg) {
       auto end_time = PreciseTime() + total_microseconds;

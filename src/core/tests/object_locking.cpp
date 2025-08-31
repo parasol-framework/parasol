@@ -52,7 +52,7 @@ static void * thread_entry(void *Arg)
       #endif
          glConfig->ActionDepth++;
          log.msg("%d.%d: Object acquired.", info->index, i);
-         WaitTime(0, 2000);
+         WaitTime(0.002); // Wait 2 milliseconds
          if (glConfig->ActionDepth > 1) log.error("--- MAJOR ERROR: More than one thread has access to this object!");
          glConfig->ActionDepth--;
 
@@ -80,7 +80,7 @@ static void * thread_entry(void *Arg)
          #ifdef __unix__
             sched_yield();
          #endif
-         if (glAccessGap > 0) WaitTime(0, glAccessGap);
+         if (glAccessGap > 0) WaitTime(glAccessGap / 1000000.0); // Convert microseconds to seconds
       }
       else log.msg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
    }
