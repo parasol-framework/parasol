@@ -1815,14 +1815,13 @@ FreeResource(memory);  // Reference is no longer valid
   <function>
     <name>WaitTime</name>
     <category>System</category>
-    <comment>Waits for a specified amount of seconds and/or microseconds.</comment>
-    <prototype>void WaitTime(INT Seconds, INT MicroSeconds)</prototype>
+    <comment>Waits for a specified amount of seconds.</comment>
+    <prototype>void WaitTime(DOUBLE Seconds)</prototype>
     <input>
-      <param type="INT" name="Seconds">The number of seconds to wait for.</param>
-      <param type="INT" name="MicroSeconds">The number of microseconds to wait for.  Please note that a microsecond is one-millionth of a second - <code>1/1000000</code>.  The value cannot exceed <code>999999</code>.</param>
+      <param type="DOUBLE" name="Seconds">The number of seconds to wait for.  Fractional values are supported for sub-second precision.</param>
     </input>
     <description>
-<p>This function waits for a period of time as specified by the <code>Seconds</code> and <code>MicroSeconds</code> parameters.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
+<p>This function waits for a period of time as specified by the <code>Seconds</code> parameter.  While waiting, your process will continue to process incoming messages in order to prevent the process' message queue from developing a back-log.</p>
 <p>WaitTime() can return earlier than the indicated timeout if a message handler returns <code>ERR::Terminate</code>, or if a <code>MSGID::QUIT</code> message is sent to the task's message queue.</p>
     </description>
   </function>

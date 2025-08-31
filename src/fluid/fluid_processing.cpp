@@ -160,7 +160,7 @@ static int processing_sleep(lua_State *Lua)
    }
    else {
       std::scoped_lock lock(recursion);
-      WaitTime(timeout / 1000, (timeout % 1000) * 1000);
+      WaitTime(timeout / 1000.0); // Convert milliseconds to seconds
       error = ERR::Okay;
    }
 

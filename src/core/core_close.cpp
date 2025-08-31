@@ -119,7 +119,7 @@ void CloseCore(void)
                SendMessage(MSGID::QUIT, MSF::NIL, nullptr, 0);
             #endif
 
-            WaitTime(0, -100000);
+            WaitTime(-0.1); // Wait 0.1 seconds without processing messages
          }
       #endif
    }
@@ -144,7 +144,7 @@ void CloseCore(void)
          it++;
       }
 
-      WaitTime(0, -100000);
+      WaitTime(-0.1); // Wait 0.1 seconds without processing messages
    }
 
    // If the time-to-die has elapsed and sub-tasks are still in the system, send kill messages to force them out.
@@ -157,7 +157,7 @@ void CloseCore(void)
                kill(task.ProcessID, SIGTERM);
             }
          }
-         WaitTime(0, -200000);
+         WaitTime(-0.2); // Wait 0.2 seconds without processing messages
          glTasks.clear();
       }
    #endif

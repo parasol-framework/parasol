@@ -46,7 +46,7 @@ static void * test_locking(void *Arg)
       if (auto error = AccessMemory(glMemoryID, MEM::READ_WRITE, 30000, (APTR *)&memory); error IS ERR::Okay) {
          memory[0]++;
          log.msg("%d.%d: Memory acquired.", info->index, i);
-         WaitTime(0, 2000);
+         WaitTime(0.002); // Wait 2 milliseconds
          if (memory[0] > 1) log.warning("--- MAJOR ERROR %d: More than one thread has access to this memory!", info->index);
          memory[0]--;
 
@@ -68,7 +68,7 @@ static void * test_locking(void *Arg)
          #ifdef __unix__
             sched_yield();
          #endif
-         if (glAccessGap > 0) WaitTime(0, glAccessGap);
+         if (glAccessGap > 0) WaitTime(glAccessGap / 1000000.0); // Convert microseconds to seconds
       }
       else log.msg("Attempt %d.%d: Failed to acquire a lock, error: %s", info->index, i, GetErrorMsg(error));
    }
