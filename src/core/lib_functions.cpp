@@ -860,43 +860,35 @@ int MicroSeconds: The number of microseconds to wait for.  Please note that a mi
 
 void WaitTime(int Seconds, int MicroSeconds)
 {
-   bool process_msg;
+   // Normalize negative values and determine message processing mode
+   bool process_msg = tlMainThread and (Seconds >= 0) and (MicroSeconds >= 0);
+   
+   if (Seconds < 0) Seconds = -Seconds;
+   if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
 
-   if (!tlMainThread) {
-      process_msg = false; // Child threads never process messages.
-      if (Seconds < 0) Seconds = -Seconds;
-      if (MicroSeconds < 0) MicroSeconds = -MicroSeconds;
-    }
-   else {
-      // If the Seconds or MicroSeconds arguments are negative, turn off the ProcessMessages() support.
-      process_msg = true;
-      if (Seconds < 0) { Seconds = -Seconds; process_msg = false; }
-      if (MicroSeconds < 0) { MicroSeconds = -MicroSeconds; process_msg = false; }
+   // Normalize microseconds overflow using division/modulo instead of loop
+   if (MicroSeconds >= 1000000) {
+      Seconds += MicroSeconds / 1000000;
+      MicroSeconds %= 1000000;
    }
 
-   while (MicroSeconds >= 1000000) {
-      MicroSeconds -= 1000000;
-      Seconds++;
-   }
+   // Calculate total duration in microseconds once
+   auto total_microseconds = int64_t(Seconds) * 1000000LL + MicroSeconds;
 
    if (process_msg) {
-      int64_t current = PreciseTime() / 1000LL;
-      int64_t end = current + (Seconds * 1000) + (MicroSeconds / 1000);
+      auto end_time = PreciseTime() + total_microseconds;
+      int64_t current_time;
+      
       do {
-         if (ProcessMessages(PMF::NIL, end - current) IS ERR::Terminate) break;
-         current = (PreciseTime() / 1000LL);
-      } while (current < end);
+         current_time = PreciseTime();
+         if (current_time >= end_time) break;
+         
+         // Convert remaining time to milliseconds for ProcessMessages
+         auto remaining_ms = (end_time - current_time) / 1000LL;
+         if (ProcessMessages(PMF::NIL, remaining_ms) IS ERR::Terminate) break;
+      } while (true);
    }
    else {
-      #ifdef __unix__
-         struct timespec nano;
-         nano.tv_sec  = Seconds;
-         nano.tv_nsec = MicroSeconds * 100;
-         while (nanosleep(&nano, &nano) == -1) continue;
-      #elif _WIN32
-         winSleep((Seconds * 1000) + (MicroSeconds / 1000));
-      #else
-         #warn Platform needs support for WaitTime()
-      #endif
+      std::this_thread::sleep_for(std::chrono::microseconds(total_microseconds));
    }
 }

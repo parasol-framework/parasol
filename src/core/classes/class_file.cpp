@@ -127,14 +127,14 @@ static ERR FILE_Activate(extFile *Self)
    // default.  Extra flags can be set through the Permissions field.  If the user wishes to turn off his access to
    // the created file then he must do so after initialisation.
 
-   LONG openflags = 0;
+   int openflags = 0;
    if ((Self->Flags & FL::NEW) != FL::NIL) openflags |= O_CREAT|O_TRUNC;
 
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) != ERR::Okay) return ERR::ResolvePath;
 
 #ifdef __unix__
-   LONG secureflags = S_IRUSR|S_IWUSR|convert_permissions(Self->Permissions);
+   int secureflags = S_IRUSR|S_IWUSR|convert_permissions(Self->Permissions);
 
    // Opening /dev/ files from Parasol is disallowed because it can cause problems
 
@@ -146,7 +146,7 @@ static ERR FILE_Activate(extFile *Self)
       return ERR::NoPermission;
    }
 #else
-   LONG secureflags = S_IRUSR|S_IWUSR;
+   int secureflags = S_IRUSR|S_IWUSR;
 #endif
 
    if ((Self->Flags & (FL::READ|FL::WRITE)) IS (FL::READ|FL::WRITE)) {
@@ -179,7 +179,7 @@ static ERR FILE_Activate(extFile *Self)
    #endif
 
    if ((Self->Handle = open(path, openflags|WIN32OPEN|O_LARGEFILE, secureflags)) IS -1) {
-      LONG err = errno;
+      int err = errno;
 
       if ((Self->Flags & FL::NEW) != FL::NIL) {
          // Attempt to create the necessary directories that might be required for this new file.
@@ -270,7 +270,7 @@ Read: Failed to read the file content.
 static ERR FILE_BufferContent(extFile *Self)
 {
    pf::Log log;
-   LONG len;
+   int len;
 
    if (Self->Buffer) return ERR::Okay;
 
@@ -284,7 +284,7 @@ static ERR FILE_BufferContent(extFile *Self)
          Self->Flags |= FL::STREAM;
          // Allocate a 1 MB memory block, read the stream into it, then reallocate the block to the correct size.
 
-         UBYTE *buffer;
+         uint8_t *buffer;
          if (AllocMemory(1024 * 1024, MEM::NO_CLEAR, (APTR *)&buffer, nullptr) IS ERR::Okay) {
             acSeekStart(Self, 0);
             acRead(Self, buffer, 1024 * 1024, &len);
@@ -656,7 +656,7 @@ static ERR FILE_Init(extFile *Self)
 #ifdef __unix__
          Self->Permissions |= get_parent_permissions(Self->Path, nullptr, nullptr) & (PERMIT::ALL_READ|PERMIT::ALL_WRITE);
          if (Self->Permissions IS PERMIT::NIL) Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
-         else log.msg("Inherited permissions: $%.8x", LONG(Self->Permissions));
+         else log.msg("Inherited permissions: $%.8x", int(Self->Permissions));
 #else
          Self->Permissions = PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
 #endif
@@ -760,7 +760,7 @@ retrydir:
       #endif
 
       if ((Self->Flags & FL::NEW) != FL::NIL) {
-         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath.c_str(), LONG(Self->Permissions));
+         log.msg("Making dir \"%s\", Permissions: $%.8x", Self->prvResolvedPath.c_str(), int(Self->Permissions));
          if (CreateFolder(Self->prvResolvedPath.c_str(), Self->Permissions) IS ERR::Okay) {
             #ifdef __unix__
                if (!(Self->Stream = opendir(Self->prvResolvedPath.c_str()))) {
@@ -1006,9 +1006,10 @@ static ERR FILE_Read(extFile *Self, struct acRead *Args)
          // position marker.
 
          auto dest = (BYTE *)Args->Buffer;
-         LONG len;
-         for (LONG readlen=Args->Length; readlen > 0; readlen -= len) {
-            len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
+         int len;
+         for (int readlen=Args->Length; readlen > 0; readlen -= len) {
+            if (Self->Size) len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
+            else len = 0; // Avoid division by zero if the file size is zero.
             if (len > readlen) len = readlen; // Restrict the length of the read operation to the length of the destination.
 
             copymem(Self->Buffer + (Self->Position % Self->Size), dest, len);
@@ -1039,7 +1040,7 @@ static ERR FILE_Read(extFile *Self, struct acRead *Args)
 
    if (Self->Handle IS -1) return ERR::NotInitialised;
 
-   Args->Result = read(Self->Handle, Args->Buffer, (LONG)Args->Length);
+   Args->Result = read(Self->Handle, Args->Buffer, (int)Args->Length);
 
    if (Args->Result != Args->Length) {
       if (Args->Result IS -1) {
@@ -1439,7 +1440,7 @@ are supported as targets.
 The optional !MFF Flags are used to filter events to those that are desired for monitoring.
 
 The client must provide a `Callback` that will be triggered when a monitored event is triggered.  The `Callback` must
-follow the format `ERR Routine(*File, STRING Path, INT64 Custom, LONG Flags)`
+follow the format `ERR Routine(*File, STRING Path, INT64 Custom, INT Flags)`
 
 Each event will be delivered in the sequence that they are originally raised.  The `Flags` parameter will reflect the
 specific event that has occurred.  The `Custom` parameter is identical to the `Custom` argument originally passed to this
@@ -1464,7 +1465,7 @@ static ERR FILE_Watch(extFile *Self, struct fl::Watch *Args)
 {
    pf::Log log;
 
-   log.branch("%s, Flags: $%.8x", Self->Path.c_str(), (Args) ? LONG(Args->Flags) : 0);
+   log.branch("%s, Flags: $%.8x", Self->Path.c_str(), (Args) ? int(Args->Flags) : 0);
 
    // Drop any previously configured watch.
 
@@ -1556,8 +1557,8 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
          // position marker.
 
          CSTRING src = (CSTRING)Args->Buffer;
-         LONG len;
-         for (LONG writelen=Args->Length; writelen > 0; writelen -= len) {
+         int len;
+         for (int writelen=Args->Length; writelen > 0; writelen -= len) {
             len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
             if (len > writelen) len = writelen; // Restrict the length to the requested amount to write.
 
@@ -1605,10 +1606,10 @@ static ERR FILE_Write(extFile *Self, struct acWrite *Args)
    // If no buffer was supplied then we will write out null values to a limit indicated by the Length field.
 
    if (!Args->Buffer) {
-      UBYTE nullbyte = 0;
+      uint8_t nullbyte = 0;
       Args->Result = 0;
-      for (LONG i=0; i < Args->Length; i++) {
-         LONG result = write(Self->Handle, &nullbyte, 1);
+      for (int i=0; i < Args->Length; i++) {
+         int result = write(Self->Handle, &nullbyte, 1);
          if (result IS -1) break;
          else {
             Self->Position += result;
@@ -1646,7 +1647,7 @@ the address of that buffer.  The size of the buffer will match the #Size field.
 
 *********************************************************************************************************************/
 
-static ERR GET_Buffer(extFile *Self, APTR *Value, LONG *Elements)
+static ERR GET_Buffer(extFile *Self, APTR *Value, int *Elements)
 {
    *Value = Self->Buffer;
    *Elements = Self->Size;
@@ -1698,7 +1699,7 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
       ERR error;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          char buffer[512];
-         LONG len = strcopy(path, buffer, sizeof(buffer));
+         int len = strcopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
@@ -1776,7 +1777,7 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
       ERR error;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
          char buffer[512];
-         LONG len = strcopy(path, buffer, sizeof(buffer));
+         int len = strcopy(path, buffer, sizeof(buffer));
          if ((buffer[len-1] IS '/') or (buffer[len-1] IS '\\')) buffer[len-1] = 0;
 
          struct stat64 stats;
@@ -1876,7 +1877,7 @@ If the file system does not support group ID's, `ERR::NoSupport` is returned.
 
 *********************************************************************************************************************/
 
-static ERR GET_Group(extFile *Self, LONG *Value)
+static ERR GET_Group(extFile *Self, int *Value)
 {
 #ifdef __unix__
    struct stat64 info;
@@ -1888,7 +1889,7 @@ static ERR GET_Group(extFile *Self, LONG *Value)
 #endif
 }
 
-static ERR SET_Group(extFile *Self, LONG Value)
+static ERR SET_Group(extFile *Self, int Value)
 {
 #ifdef __unix__
    pf::Log log;
@@ -2056,7 +2057,7 @@ static ERR GET_Link(extFile *Self, STRING *Value)
    if ((Self->Flags & FL::LINK) != FL::NIL) {
       if (ResolvePath(Self->Path, RSF::NIL, &path) IS ERR::Okay) {
          if (path.ends_with('/')) path.pop_back();
-         LONG i;
+         int i;
          char buffer[512];
          if (((i = readlink(path.c_str(), buffer, sizeof(buffer)-1)) > 0) and ((size_t)i < sizeof(buffer)-1)) {
             Self->prvLink.assign(buffer, 0, i);
@@ -2133,7 +2134,7 @@ static ERR SET_Path(extFile *Self, CSTRING Value)
    if ((Value) and (*Value)) {
       std::string_view val;
       if (pf::startswith("string:", Value)) {
-         LONG len;
+         int len;
          for (len=0; (Value[len]) and (Value[len] != '|'); len++);
          Self->Path.assign(Value, 0, len);
       }
@@ -2190,7 +2191,7 @@ static ERR GET_Permissions(extFile *Self, PERMIT *Value)
 
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-      LONG i = strlen(path);
+      int i = strlen(path);
       while ((i >= 0) and (path[i] != '/') and (path[i] != ':') and (path[i] != '\\')) i--;
       if (path[i+1] IS '.') Self->Permissions = PERMIT::HIDDEN;
       else Self->Permissions = PERMIT::NIL;
@@ -2217,7 +2218,7 @@ static ERR GET_Permissions(extFile *Self, PERMIT *Value)
 
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-      winGetAttrib(path, (LONG *)(Value)); // Supports PERMIT::HIDDEN/ARCHIVE/OFFLINE/READ/WRITE
+      winGetAttrib(path, (int *)(Value)); // Supports PERMIT::HIDDEN/ARCHIVE/OFFLINE/READ/WRITE
       return ERR::Okay;
    }
    else return ERR::ResolvePath;
@@ -2244,7 +2245,7 @@ static ERR set_permissions(extFile *Self, PERMIT Permissions)
 #ifdef __unix__
 
    if (Self->Handle != -1) {
-      LONG flags = 0;
+      int flags = 0;
       if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
       if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
       if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)  flags |= S_IXUSR;
@@ -2257,7 +2258,7 @@ static ERR set_permissions(extFile *Self, PERMIT Permissions)
       if ((Permissions & PERMIT::OTHERS_WRITE) != PERMIT::NIL) flags |= S_IWOTH;
       if ((Permissions & PERMIT::OTHERS_EXEC) != PERMIT::NIL)  flags |= S_IXOTH;
 
-      LONG err = fchmod(Self->Handle, flags);
+      int err = fchmod(Self->Handle, flags);
 
       // Note that you need to be root to set the UID/GID flags, so we do it in this subsequent fchmod() call.
 
@@ -2278,7 +2279,7 @@ static ERR set_permissions(extFile *Self, PERMIT Permissions)
 
       CSTRING path;
       if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
-         LONG flags = 0;
+         int flags = 0;
          if ((Permissions & PERMIT::READ) != PERMIT::NIL)  flags |= S_IRUSR;
          if ((Permissions & PERMIT::WRITE) != PERMIT::NIL) flags |= S_IWUSR;
          if ((Permissions & PERMIT::EXEC) != PERMIT::NIL)  flags |= S_IXUSR;
@@ -2306,12 +2307,12 @@ static ERR set_permissions(extFile *Self, PERMIT Permissions)
 
 #elif _WIN32
 
-   log.branch("$%.8x", LONG(Permissions));
+   log.branch("$%.8x", int(Permissions));
 
    CSTRING path;
    if (GET_ResolvedPath(Self, &path) IS ERR::Okay) {
       ERR error;
-      if (winSetAttrib(path, LONG(Permissions))) error = log.warning(ERR::SystemCall);
+      if (winSetAttrib(path, int(Permissions))) error = log.warning(ERR::SystemCall);
       else error = ERR::Okay;
       return error;
    }
@@ -2601,7 +2602,7 @@ If the filesystem does not support user ID's, `ERR::NoSupport` is returned.
 -END-
 *********************************************************************************************************************/
 
-static ERR GET_User(extFile *Self, LONG *Value)
+static ERR GET_User(extFile *Self, int *Value)
 {
 #ifdef __unix__
    struct stat64 info;
@@ -2615,7 +2616,7 @@ static ERR GET_User(extFile *Self, LONG *Value)
 #endif
 }
 
-static ERR SET_User(extFile *Self, LONG Value)
+static ERR SET_User(extFile *Self, int Value)
 {
 #ifdef __unix__
    pf::Log log;
