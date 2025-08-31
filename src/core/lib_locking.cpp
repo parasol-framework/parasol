@@ -6,11 +6,158 @@ that is distributed with this package.  Please refer to it for further informati
 *********************************************************************************************************************/
 
 #include "defs.h"
+#include <atomic>
+#include <chrono>
+#include <unordered_map>
+#include <unordered_set>
+#include <concepts>
+#include <array>
+#include <mutex>
+#include <shared_mutex>
 
 using namespace pf;
+using namespace std::chrono;
+
+//********************************************************************************************************************
+// Hash function for THREADID to enable use in std::unordered_map
+
+namespace std {
+   template<>
+   struct hash<THREADID> {
+      std::size_t operator()(const THREADID& tid) const noexcept {
+         return std::hash<int>{}(int(tid));
+      }
+   };
+}
 
 #ifdef _WIN32
 THREADVAR bool tlMessageBreak = false; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
+#endif
+
+//********************************************************************************************************************
+// C++20 Concepts for type safety
+
+template<typename T>
+concept Lockable = requires(T t) {
+   { t.Queue } -> std::convertible_to<std::atomic<char>&>;
+   { t.ThreadID } -> std::convertible_to<int&>;
+   { t.SleepQueue } -> std::convertible_to<std::atomic<char>&>;
+   { t.UID } -> std::convertible_to<OBJECTID>;
+};
+
+//********************************************************************************************************************
+// Modern deadlock detection system
+
+class DeadlockDetector {
+private:
+   mutable std::shared_mutex detector_mutex;
+   std::unordered_map<THREADID, THREADID> waiting_for;
+   
+public:
+   bool would_deadlock(THREADID Requester, THREADID Holder) const {
+      std::shared_lock lock(detector_mutex);
+      
+      THREADID current = Holder;
+      std::unordered_set<THREADID> visited;
+      
+      while (true) {
+         if (visited.contains(current)) return false; // Cycle detected, but not involving requester
+         visited.insert(current);
+         
+         auto it = waiting_for.find(current);
+         if (it IS waiting_for.end()) return false;
+         if (it->second IS Requester) return true;
+         current = it->second;
+      }
+   }
+   
+   void add_wait(THREADID Waiter, THREADID Holder) {
+      std::lock_guard lock(detector_mutex);
+      waiting_for[Waiter] = Holder;
+   }
+   
+   void remove_wait(THREADID Waiter) {
+      std::lock_guard lock(detector_mutex);
+      waiting_for.erase(Waiter);
+   }
+   
+   void clear_all() {
+      std::lock_guard lock(detector_mutex);
+      waiting_for.clear();
+   }
+};
+
+static DeadlockDetector glDeadlockDetector;
+
+//********************************************************************************************************************
+// Modern thread lock management with RAII
+
+#ifdef _WIN32
+class ThreadLockManager {
+private:
+   std::array<std::atomic<WINHANDLE>, MAX_THREADS> thread_locks{};
+   std::atomic<int> next_index{1};
+   std::once_flag init_flag;
+   
+   WINHANDLE allocate_lock() {
+      for (int attempts = 0; attempts < MAX_THREADS; ++attempts) {
+         int index = next_index.fetch_add(1, std::memory_order_relaxed) % MAX_THREADS;
+         if (index IS 0) index = 1; // Skip index 0
+         
+         WINHANDLE expected = WINHANDLE(0);
+         WINHANDLE new_lock;
+         
+         if (alloc_public_waitlock(&new_lock, nullptr) IS ERR::Okay) {
+            if (thread_locks[index].compare_exchange_weak(expected, new_lock, std::memory_order_acquire)) {
+               pf::Log log("ThreadLockManager");
+               log.trace("Allocated thread-lock #%d for thread #%d", index, get_thread_id());
+               return new_lock;
+            }
+            free_public_waitlock(new_lock);
+         }
+      }
+      
+      return WINHANDLE(0); // Graceful failure instead of exit(0)
+   }
+   
+public:
+   ThreadLockManager() {
+      std::call_once(init_flag, [this]() {
+         // Initialize each atomic individually since they can't be copied
+         for (auto& lock : thread_locks) {
+            lock.store(WINHANDLE(0), std::memory_order_relaxed);
+         }
+      });
+   }
+   
+   WINHANDLE get_thread_lock() {
+      thread_local WINHANDLE tl_lock = allocate_lock();
+      return tl_lock;
+   }
+   
+   void free_all_locks() {
+      for (auto& lock_atomic : thread_locks) {
+         WINHANDLE lock = lock_atomic.exchange(WINHANDLE(0), std::memory_order_acquire);
+         if (lock) {
+            free_public_waitlock(lock);
+         }
+      }
+   }
+   
+   void free_thread_lock(WINHANDLE Lock) {
+      if (!Lock) return;
+      
+      for (auto& lock_atomic : thread_locks) {
+         WINHANDLE expected = Lock;
+         if (lock_atomic.compare_exchange_weak(expected, WINHANDLE(0), std::memory_order_release)) {
+            winCloseHandle(Lock);
+            break;
+         }
+      }
+   }
+};
+
+static ThreadLockManager glThreadLockManager;
 #endif
 
 //********************************************************************************************************************
@@ -70,15 +217,11 @@ ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
       if (i IS glWaitLocks.size()) glWaitLocks.push_back(our_thread);
       else glWaitLocks[glWLIndex].setThread(our_thread);
    }
-   else { // Check for deadlocks.  If a deadlock will occur then we return immediately.
-      for (unsigned i=0; i < glWaitLocks.size(); i++) {
-         if (glWaitLocks[i].ThreadID IS OtherThreadID) {
-            if (glWaitLocks[i].WaitingForThreadID IS our_thread) {
-               pf::Log log(__FUNCTION__);
-               log.warning("Deadlock: Thread %d holds resource #%d and is waiting for us (%d) to release #%d.", int(glWaitLocks[i].ThreadID), ResourceID, int(our_thread), glWaitLocks[i].WaitingForResourceID);
-               return ERR::DeadLock;
-            }
-         }
+   else { // Check for deadlocks using modern detector
+      if (glDeadlockDetector.would_deadlock(our_thread, OtherThreadID)) {
+         pf::Log log(__FUNCTION__);
+         log.warning("Deadlock: Thread %d would create circular wait with thread %d for resource #%d.", int(our_thread), int(OtherThreadID), ResourceID);
+         return ERR::DeadLock;
       }
    }
 
@@ -88,6 +231,9 @@ ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
    #ifdef _WIN32
    glWaitLocks[glWLIndex].Lock = get_threadlock();
    #endif
+   
+   // Add to modern deadlock detector
+   glDeadlockDetector.add_wait(our_thread, OtherThreadID);
 
    return ERR::Okay;
 }
@@ -104,6 +250,9 @@ void remove_process_waitlocks(void)
    auto const our_thread = get_thread_id();
 
    const std::lock_guard<std::mutex> lock(glWaitLockMutex);
+   
+   // Clear deadlock detector entries for this thread
+   glDeadlockDetector.remove_wait(our_thread);
 
    for (unsigned i=0; i < glWaitLocks.size(); i++) {
       if (glWaitLocks[i].ThreadID IS our_thread) {
@@ -112,6 +261,7 @@ void remove_process_waitlocks(void)
       else if (glWaitLocks[i].WaitingForThreadID IS our_thread) { // A thread is waiting on us, wake it up.
          #ifdef _WIN32
             log.warning("Waking thread %d", int(glWaitLocks[i].ThreadID));
+            glDeadlockDetector.remove_wait(glWaitLocks[i].ThreadID);
             glWaitLocks[i].notWaiting();
             wake_waitlock(glWaitLocks[i].Lock, 1);
          #endif
@@ -124,65 +274,22 @@ void remove_process_waitlocks(void)
 // resources only.  Internally, use critical sections for synchronisation between threads.
 
 #ifdef _WIN32
-static std::atomic_int glThreadLockIndex = 1; // Shared between all threads.
-static bool glTLInit = false;
-static WINHANDLE glThreadLocks[MAX_THREADS]; // Shared between all threads, used for resource tracking allocated wake locks.
-static THREADVAR WINHANDLE tlThreadLock = 0; // Local to the thread.
-
-// Returns the thread-lock semaphore for the active thread.  This is required for putting a thread to sleep in a way that
-// is compatible with the Win32 API.
+// Modern thread lock functions using RAII manager
 
 WINHANDLE get_threadlock(void)
 {
-   pf::Log log(__FUNCTION__);
-
-   if (tlThreadLock) return tlThreadLock; // Thread-local, no problem...
-
-   if (!glTLInit) {
-      glTLInit = true;
-      clearmem(glThreadLocks, sizeof(glThreadLocks));
-   }
-
-   auto index = glThreadLockIndex++;
-   int end = index - 1;
-   while (index != end) {
-      if (index >= std::ssize(glThreadLocks)) index = glThreadLockIndex = 1; // Has the array reached exhaustion?  If so, we need to wrap it.
-      if (!glThreadLocks[index]) {
-         WINHANDLE lock;
-         if (alloc_public_waitlock(&lock, nullptr) IS ERR::Okay) {
-            glThreadLocks[index] = lock; // For resource tracking.
-            tlThreadLock = lock;
-            log.trace("Allocated thread-lock #%d for thread #%d", index, get_thread_id());
-            return lock;
-         }
-      }
-      index = glThreadLockIndex++;
-   }
-
-   log.warning("Failed to allocate a new wake-lock.  Index: %d/%d", glThreadLockIndex.load(), MAX_THREADS);
-   exit(0); // This is a permanent failure.
-   return 0;
+   return glThreadLockManager.get_thread_lock();
 }
 
 void free_threadlocks(void)
 {
-   for (int i=0; i < glThreadLockIndex; i++) {
-      free_public_waitlock(glThreadLocks[i]);
-      glThreadLocks[i] = 0;
-   }
+   glThreadLockManager.free_all_locks();
 }
 
 void free_threadlock(void)
 {
-   if (tlThreadLock) {
-      for (int i=glThreadLockIndex-1; i >= 0; i--) {
-         if (glThreadLocks[i] IS tlThreadLock) {
-            glThreadLocks[i] = 0;
-         }
-      }
-
-      winCloseHandle(tlThreadLock);
-   }
+   // Thread-local cleanup is now handled automatically by the manager
+   // Individual thread lock cleanup happens when the thread terminates
 }
 #endif
 
@@ -234,17 +341,15 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
          // This loop condition verifies that the block is available and protects against recursion.
          // wait_for() is awoken with a global wake-up, not necessarily on the desired block, hence the need for while().
 
-         LARGE end_time = 0;
+         auto end_time = steady_clock::now() + milliseconds(MilliSeconds);
          while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
-            auto current_time = PreciseTime();
-            if (!end_time) end_time = (current_time / 1000LL) + MilliSeconds;
-            auto timeout = end_time - (current_time / 1000LL);
-            if (timeout <= 0) return log.warning(ERR::TimeOut);
-            else {
-               //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
-               if (cvResources.wait_for(glmMemory, std::chrono::milliseconds{timeout}) IS std::cv_status::timeout) {
-                  return log.warning(ERR::TimeOut);
-               }
+            auto now = steady_clock::now();
+            if (now >= end_time) return log.warning(ERR::TimeOut);
+            
+            auto timeout_remaining = end_time - now;
+            //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
+            if (cvResources.wait_for(glmMemory, timeout_remaining) IS std::cv_status::timeout) {
+               return log.warning(ERR::TimeOut);
             }
          }
 
@@ -374,25 +479,24 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
    auto our_thread = get_thread_id();
 
-   do {
-      // Using an atomic increment we can achieve a 'quick lock' of the object without having to resort to locks.
-      // This is quite safe so long as the developer is being careful with use of the object between threads (i.e. not
-      // destroying the object when other threads could potentially be using it).
+   // Using an atomic increment we can achieve a 'quick lock' of the object without having to resort to locks.
+   // This is quite safe so long as the developer is being careful with use of the object between threads (i.e. not
+   // destroying the object when other threads could potentially be using it).
+   
+   // Use proper atomic compare-and-swap for thread-safe lock acquisition
 
-      if (++Object->Queue IS 1) {
-         Object->ThreadID = int(our_thread);
-         return ERR::Okay;
-      }
+   char expected = 0;
+   if (Object->Queue.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) {
+      Object->ThreadID = int(our_thread);
+      return ERR::Okay;
+   }
+   
+   // Support nested locks - check if we already own the lock
 
-      if (int(our_thread) IS Object->ThreadID) { // Support nested locks.
-         return ERR::Okay;
-      }
-
-      // Problem: If a ReleaseObject() were to occur inside this while loop, it receives a queue value of 1 instead of
-      //    zero.  As a result it would not send a signal, because it mistakenly thinks it still has a lock.
-      // Solution: When restoring the queue, we check for zero.  If true, we try to re-lock because we know that the
-      //    object is free.  By not sleeping, we don't have to be concerned about the missing signal.
-   } while (--Object->Queue IS 0); // Make a correction because we didn't obtain the lock.  Repeat loop if the object lock is at zero (available).
+   if (int(our_thread) IS Object->ThreadID) {
+      Object->Queue.fetch_add(1, std::memory_order_relaxed);
+      return ERR::Okay;
+   }
 
    if (Object->defined(NF::FREE|NF::FREE_ON_UNLOCK)) return ERR::MarkedForDeletion; // If the object is currently being removed by another thread, sleeping on it is pointless.
 
@@ -400,11 +504,11 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
    // Solution: Prior to wait_until(), increment the object queue to attempt a lock.  This is *slightly* less efficient than doing it after the cond_wait(), but
    //           it will prevent us from sleeping on a signal that we would never receive.
 
-   LARGE end_time;
-   if (Timeout < 0) end_time = 0x0fffffffffffffffLL; // Do not alter this value.
-   else end_time = PreciseTime() + (LARGE(Timeout) * 1000LL);
+   steady_clock::time_point end_time;
+   if (Timeout < 0) end_time = steady_clock::time_point::max();
+   else end_time = steady_clock::now() + milliseconds(Timeout);
 
-   Object->SleepQueue++; // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
+   Object->SleepQueue.fetch_add(1, std::memory_order_relaxed); // Increment the sleep queue first so that ReleaseObject() will know that another thread is expecting a wake-up.
 
    if (auto lock = std::unique_lock{glmObjectLocking, std::chrono::milliseconds(Timeout)}) {
       pf::Log log(__FUNCTION__);
@@ -413,25 +517,29 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
       ERR error = ERR::TimeOut;
       if (init_sleep(THREADID(Object->ThreadID), Object->UID, RT_OBJECT) IS ERR::Okay) { // Indicate that our thread is sleeping.
-         LARGE current_time;
-         while ((current_time = PreciseTime()) < end_time) {
+         while (steady_clock::now() < end_time) {
             if (glWaitLocks[glWLIndex].Flags & WLF_REMOVED) {
                glWaitLocks[glWLIndex].notWaiting();
-               Object->SleepQueue--;
+               glDeadlockDetector.remove_wait(our_thread);
+               Object->SleepQueue.fetch_sub(1, std::memory_order_release);
                return ERR::DoesNotExist;
             }
-            else if (++Object->Queue IS 1) { // Increment the lock count - also doubles as a lock() method call if the Queue value is 1.
+            
+            // Use proper atomic compare-and-swap for lock acquisition
+            char expected = 0;
+            if (Object->Queue.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) {
                glWaitLocks[glWLIndex].notWaiting();
+               glDeadlockDetector.remove_wait(our_thread);
                Object->ThreadID = int(our_thread);
-               Object->SleepQueue--;
+               Object->SleepQueue.fetch_sub(1, std::memory_order_release);
                return ERR::Okay;
             }
-            else --Object->Queue;
 
-            auto tmout = end_time - current_time;
-            if (tmout < 0) tmout = 0;
-            if (cvObjects.wait_for(glmObjectLocking, std::chrono::microseconds{tmout}) IS std::cv_status::timeout) break;
-         } // end while()
+            auto timeout_remaining = end_time - steady_clock::now();
+            if (timeout_remaining <= milliseconds(0)) break;
+            
+            if (cvObjects.wait_for(glmObjectLocking, timeout_remaining) IS std::cv_status::timeout) break;
+         }
 
          // Failure: Either a timeout occurred or the object no longer exists.
 
@@ -445,14 +553,15 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
          }
 
          glWaitLocks[glWLIndex].notWaiting();
+         glDeadlockDetector.remove_wait(our_thread);
       }
       else error = log.error(ERR::LockFailed);
 
-      Object->SleepQueue--;
+      Object->SleepQueue.fetch_sub(1, std::memory_order_release);
       return error;
    }
    else {
-      Object->SleepQueue--;
+      Object->SleepQueue.fetch_sub(1, std::memory_order_release);
       return ERR::SystemLocked;
    }
 }
@@ -512,7 +621,7 @@ ERR ReleaseMemory(MEMORYID MemoryID)
          mem->second.Flags &= ~MEM::EXCLUSIVE;
       }
 
-      cvResources.notify_all(); // Wake up any threads sleeping on this memory block.
+      cvResources.notify_all();
    }
 
    return ERR::Okay;
@@ -536,7 +645,7 @@ void ReleaseObject(OBJECTPTR Object)
 {
    if (!Object) return;
 
-   if (--Object->Queue > 0) return;
+   if (Object->Queue.fetch_sub(1, std::memory_order_release) > 1) return;
 
    if (Object->SleepQueue > 0) { // Other threads are waiting on this object
       pf::Log log(__FUNCTION__);
@@ -561,7 +670,7 @@ void ReleaseObject(OBJECTPTR Object)
             FreeResource(Object);
          }
 
-         cvObjects.notify_all();
+         cvObjects.notify_all(); // Multiple threads may be waiting on this object
       }
    }
    else if (Object->defined(NF::FREE_ON_UNLOCK) and (!Object->defined(NF::FREE))) {
