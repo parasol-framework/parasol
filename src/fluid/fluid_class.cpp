@@ -1120,7 +1120,7 @@ ERR create_fluid(void)
    clFluid = objMetaClass::create::global(
       fl::BaseClassID(CLASSID::SCRIPT),
       fl::ClassID(CLASSID::FLUID),
-      fl::ClassVersion(VER_FLUID),
+      fl::ClassVersion(1.0),
       fl::Name("Fluid"),
       fl::Category(CCF::DATA),
       fl::FileExtension("*.fluid|*.fb|*.lua"),

@@ -415,16 +415,9 @@ large: Returns the system time in microseconds.  Could return zero in the extrem
 
 int64_t PreciseTime(void)
 {
-#ifdef __unix__
-   struct timespec time;
-
-   if (!clock_gettime(CLOCK_MONOTONIC, &time)) {
-      return ((int64_t)time.tv_sec * 1000000LL) + ((int64_t)time.tv_nsec / 1000LL);
-   }
-   else return 0;
-#else
-   return winGetTickCount(); // NB: This timer does start from the boot time, but can be adjusted - therefore is not 100% on monotonic status
-#endif
+   auto now = std::chrono::steady_clock::now();
+   auto duration = now.time_since_epoch();
+   return std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
 }
 
 /*********************************************************************************************************************
