@@ -152,7 +152,10 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
    }
 
    for (i=1; i < len; ++i) {
-      if ((Value[i] & 0xc0) != 0x80) code = -1;
+      if (!Value[i] or ((Value[i] & 0xc0) != 0x80)) {
+         code = -1;
+         break;
+      }
       code <<= 6;
       code |= Value[i] & 0x3f;
    }
@@ -588,7 +591,7 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
 
          LONG advance;
          if (Font->FixedWidth > 0) advance = Font->FixedWidth;
-         else if ((unicode < 256) and (font->prvChar[unicode].Advance)) {
+         else if ((unicode < 256) and (font->prvChar) and (font->prvChar[unicode].Advance)) {
             advance = font->prvChar[unicode].Advance;
          }
          else advance = font->prvChar[(LONG)font->prvDefaultChar].Advance;
@@ -1160,7 +1163,8 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
                file->seekStart(fonts[0].Offset + Header->face_name_offset);
 
                for (i=0; (size_t)i < sizeof(face)-1; i++) {
-                  if ((file->read(face+i, 1) != ERR::Okay) or (!face[i])) break;
+                  ERR result = file->read(face+i, 1);
+                  if ((result != ERR::Okay) or (!face[i])) break;
                }
                face[i] = 0;
                FaceName = face;

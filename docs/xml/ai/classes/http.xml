@@ -40,8 +40,8 @@
   <ai:f n="InputObject" c="Allows data to be sent from an object on execution of a POST command." t="OBJECTID" a="RW"/>
   <ai:f n="Location" c="A valid HTTP URI must be specified here." t="STRING" a="GS"/>
   <ai:f n="Method" c="The HTTP instruction to execute is defined here (defaults to GET)." t="HTM" a="RS"/>
-  <ai:f n="ObjectMode" c="The access mode used when passing data to a targeted object." t="HOM" a="RW"/>
-  <ai:f n="Outgoing" c="Outgoing data can be managed using a function callback if this field is set." t="FUNCTION" a="GS"/>
+  <ai:f n="ObjectMode" c="The transfer mode used when passing data to a targeted object." t="HOM" a="RW"/>
+  <ai:f n="Outgoing" c="Outgoing data can be sent procedurally using this callback." t="FUNCTION" a="GS"/>
   <ai:f n="OutputFile" c="To download HTTP content to a file, set a file path here." t="STRING" a="RS"/>
   <ai:f n="OutputObject" c="Incoming data can be sent to the object referenced in this field." t="OBJECTID" a="RW"/>
   <ai:f n="Password" c="The password to use when authenticating access to the server." t="STRING" a="S"/>

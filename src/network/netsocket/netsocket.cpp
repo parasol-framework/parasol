@@ -35,7 +35,7 @@ To accept incoming client connections, create a NetSocket object with the `SERVE
 on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the
 `MULTI_CONNECT` flag.
 
-When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, LONG State)`
+When a new connection is detected, the #Feedback function will be called as `Feedback(*NetSocket, *ClientSocket, NTC State)`
 
 The NetSocket parameter refers to the original NetSocket object, @ClientSocket applies if a client connection is
 involved and the State value will be set to `NTC::CONNECTED`.  If a client disconnects, the #Feedback function will be

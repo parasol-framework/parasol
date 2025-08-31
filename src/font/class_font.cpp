@@ -90,7 +90,7 @@ static ERR FONT_Free(extFont *Self)
       }
    }
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->~extFont();
    return ERR::Okay;
 }
@@ -110,7 +110,7 @@ static ERR FONT_Init(extFont *Self)
    if (!Self->Point) Self->Point = global_point_size();
 
    if (!Self->Path) {
-      CSTRING path = NULL;
+      CSTRING path = nullptr;
       if (fnt::SelectFont(Self->prvFace, Self->prvStyle, &path, &meta) IS ERR::Okay) {
          Self->set(FID_Path, path);
          FreeResource(path);
@@ -272,7 +272,7 @@ static ERR FONT_Init(extFont *Self)
 
    // Remove the location string to reduce resource usage
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    log.detail("Family: %s, Style: %s, Point: %.2f, Height: %d", Self->prvFace, Self->prvStyle, Self->Point, Self->Height);
    return ERR::Okay;
@@ -549,7 +549,7 @@ This feature is ideal for use when distributing custom fonts with an application
 static ERR SET_Path(extFont *Self, CSTRING Value)
 {
    if (!Self->initialised()) {
-      if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+      if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
       if (Value) Self->Path = strclone(Value);
       return ERR::Okay;
    }
@@ -855,13 +855,15 @@ static ERR draw_bitmap_font(extFont *Self)
       }
       else if (*str IS '\t') {
          WORD tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
-         dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
+         if (tabwidth) dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
       }
       else {
          charlen = getutf8(str, &unicode);
 
-         if ((unicode > 255) or (!Self->prvChar[unicode].Advance)) unicode = Self->prvDefaultChar;
+         if ((unicode > 255) or (!Self->prvChar) or (!Self->prvChar[unicode].Advance)) {
+            unicode = Self->prvDefaultChar;
+         }
 
          if (Self->FixedWidth > 0) charwidth = Self->FixedWidth;
          else charwidth = Self->prvChar[unicode].Advance;

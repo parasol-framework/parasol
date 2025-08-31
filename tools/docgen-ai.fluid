@@ -16,7 +16,7 @@ function resolveSDKPath(Path)
    local err = ERR_Failed
    local search_list = { }
    if not Path then
-      local search_path = 'CMakeLists.txt'
+      local search_path = '.git'
       local limit = 5
       while (err != ERR_Okay) and (limit > 0) do
          table.insert(search_list, search_path)
@@ -25,18 +25,18 @@ function resolveSDKPath(Path)
          limit = limit - 1
       end
    else
-      table.insert(search_list, Path .. '/CMakeLists.txt')
-      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+      table.insert(search_list, Path .. '/.git')
+      err, sdk_path = mSys.ResolvePath(Path .. '/.git')
    end
 
    if (err == ERR_Okay) then
-      sdk_path = sdk_path:match('(.+)CMakeLists%.txt')
+      sdk_path = sdk_path:match('(.+)%.git')
    else
       local msg = ''
       for _, path in ipairs(search_list) do
          msg = msg .. path .. '\n'
       end
-      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      print('Unable to find .git folder after searching the following paths:\n' .. msg)
       error('A path to the Parasol SDK could not be determined.')
    end
 
