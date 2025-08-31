@@ -1083,13 +1083,6 @@ extern "C" int winWaitForObjects(int Total, HANDLE *Handles, int Time, BYTE WinM
 }
 
 //********************************************************************************************************************
-
-extern "C" void winSleep(int Time)
-{
-   Sleep(Time);
-}
-
-//********************************************************************************************************************
 // Designed for reading from pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child process is dead.
 
 extern "C" int winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)

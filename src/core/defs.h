@@ -1133,7 +1133,6 @@ extern "C" void winSelect(WINHANDLE FD, char *Read, char *Write);
 extern "C" void winSetEnv(CSTRING, CSTRING);
 extern "C" void winSetUnhandledExceptionFilter(int (*Function)(int, APTR, int, int *));
 extern "C" void winShutdown(void);
-extern "C" void winSleep(int);
 extern "C" int winTerminateApp(int dwPID, int dwTimeout);
 extern "C" void winTerminateThread(WINHANDLE);
 extern "C" int winTryEnterCriticalSection(APTR);
