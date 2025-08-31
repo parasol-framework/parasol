@@ -124,7 +124,7 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2025", version=1.0, timesta
    int Port               # Socket port number, usually port 80
    int(HOM) ObjectMode    # Either DataFeed or Write mode
    int(HTF) Flags         # Optional flags
-   int(HTS) Status        # Status code recieved in the HTML response header
+   int(HTS) Status        # Status code received in the HTTP response header
    error Error            # Result of the operation
    int(DATA) Datatype     # Datatype to use when sending HTTP data to a target object
    int(HGS) CurrentState  # Current state of the http get operation

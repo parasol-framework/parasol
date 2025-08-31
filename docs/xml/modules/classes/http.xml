@@ -44,8 +44,8 @@ http.acActivate()
 http = obj.new('http', {
    src        = 'http://www.parasol.ws/index.html',
    method     = 'get',
-   dataFeed   = 'text'
-   objectMode = 'datafeed'
+   datatype   = 'text',
+   objectMode = 'DATA_FEED',
    outputObject = doc
 })
 http.acActivate()
@@ -75,7 +75,7 @@ http.acActivate()
       <result>
         <error code="Okay">The HTTP get operation was successfully started.</error>
         <error code="Failed">The HTTP get operation failed immediately for an unspecified reason.</error>
-        <error code="File">Failed to create a target file if the File field was set.</error>
+        <error code="File">Failed to create a target file if the OutputFile field was set.</error>
         <error code="Write">Failed to write data to the HTTP <class name="NetSocket">NetSocket</class>.</error>
         <error code="CreateObject">Failed to create a <class name="NetSocket">NetSocket</class> object.</error>
         <error code="HostNotFound">DNS resolution of the domain name in the URI failed.</error>
@@ -220,7 +220,7 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>ERR</type>
       <description>
-<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (<code>ERR::Okay</code>). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content.  For genuine HTML error codes, see the <fl>Status</fl> field.</p>
+<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (<code>ERR::Okay</code>). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content.  For genuine HTTP error codes, see the <fl>Status</fl> field.</p>
       </description>
     </field>
 
@@ -275,6 +275,7 @@ http.acActivate()
       <description>
 <p>HTTP content can be streamed from a source file when a <code>POST</code> command is executed. To do so, set the InputFile field to the file path that contains the source data.  The path is not opened or checked for validity until the <code>POST</code> command is executed by the HTTP object.</p>
 <p>An alternative is to set the <fl>InputObject</fl> for abstracting the data source.</p>
+<p>Multiple files can be specified in the InputFile field by separating each file path with a pipe symbol <code>|</code>.</p>
       </description>
     </field>
 
@@ -311,24 +312,26 @@ http.acActivate()
 
     <field>
       <name>ObjectMode</name>
-      <comment>The access mode used when passing data to a targeted object.</comment>
+      <comment>The transfer mode used when passing data to a targeted object.</comment>
       <access read="R" write="W">Read/Write</access>
       <type lookup="HOM">HOM</type>
       <description>
-<p>This field is relevant when the <fl>OutputObject</fl> field has been set for receiving incoming data. The method of communication used against the target object can be defined through the ObjectMode. The default setting is <code>DATA::FEED</code>, which passes data through the data feed system (see also the <fl>Datatype</fl> to define the type of data being sent to the object).  The alternative method is <code>READ_WRITE</code>, which uses the Write action to send data to the targeted object.</p>
+<p>ObjectMode defines the data transfer mode when <fl>OutputObject</fl> field has been set for receiving incoming data. The default setting is <code>DATA::FEED</code>, which passes data through the data feed system (see also the <fl>Datatype</fl> to define the type of data being sent to the object).  The alternative method is <code>READ_WRITE</code>, which uses the Write action to send data to the targeted object.</p>
 <types lookup="HOM"/>
       </description>
     </field>
 
     <field>
       <name>Outgoing</name>
-      <comment>Outgoing data can be managed using a function callback if this field is set.</comment>
+      <comment>Outgoing data can be sent procedurally using this callback.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>FUNCTION</type>
       <description>
-<p>Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype for the callback routine is <code>ERR Function(*HTTP, APTR Buffer, int BufferSize, int *Result)</code>.  For Fluid use <code>function(HTTP, Buffer, BufferSize)</code>.</p>
-<p>Outgoing content is placed in the <code>Buffer</code> address and must not exceed the indicated <code>BufferSize</code>.  The total number of bytes placed in the <code>Buffer</code> must be indicated in the Result parameter before the callback routine returns.</p>
+<p>Outgoing data can be sent procedurally by setting this field with a callback routine.</p>
+<p>In C++ the function prototype is <code>ERR Function(*HTTP, std::vector<uint8_t> &amp;Buffer, APTR Meta)</uint8_t>. Write content to the <code>Buffer</code> and the final size will determine the amount of data sent to the server. Alternatively use the Write() action, although this will be less efficient.</code>
+<p>For scripting languages like Fluid, the function prototype is <code>function(HTTP)</code>.  Use the Write() action to send data to the server.</p>
 <p>If an error code of <code>ERR::Terminate</code> is returned by the callback routine, any remaining data will be sent and the transfer will be treated as having completed successfully.  Use <code>ERR::TimeOut</code> if data cannot be returned in a reasonable time frame.  All other error codes apart from <code>ERR::Okay</code> indicate failure.</p>
+</p>
       </description>
     </field>
 
