@@ -1,7 +1,6 @@
 
 #define LUA_COMPILED "-- $FLUID:compiled"
-#define VER_FLUID 1.0
-#define SIZE_READ 1024
+constexpr int SIZE_READ = 1024;
 
 #include <list>
 #include <unordered_set>
@@ -14,8 +13,8 @@
 
 using namespace pf;
 
-#define ALIGN64(a) (((a) + 7) & (~7))
-#define ALIGN32(a) (((a) + 3) & (~3))
+template <class T> T ALIGN64(T a) { return (((a) + 7) & (~7)); }
+template <class T> T ALIGN32(T a) { return (((a) + 3) & (~3)); }
 
 //********************************************************************************************************************
 
@@ -298,8 +297,8 @@ struct metafield {
    int SetFunction;
 };
 
-#define FIM_KEYBOARD 1
-#define FIM_DEVICE 2
+constexpr int FIM_KEYBOARD = 1;
+constexpr int FIM_DEVICE   = 2;
 
 struct finput {
    objScript *Script;
@@ -323,7 +322,7 @@ struct fnumber { // TODO: Use std::variant
       int64_t i64;
       int     i32;
       int16_t i16;
-      BYTE    i8;
+      int8_t  i8;
    };
 };
 
