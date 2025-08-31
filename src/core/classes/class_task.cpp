@@ -159,7 +159,13 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
    else error = ERR::Finished;
 #endif
 
-   buffer[bytes_read] = 0;
+   if ((bytes_read > 0) and (unsigned(bytes_read) < sizeof(buffer))) {
+      buffer[bytes_read] = 0;
+   }
+   else {
+      bytes_read = 0;
+      buffer[0] = 0;
+   }
 
    if (Self->InputCallback.isC()) {
       auto routine = (void (*)(extTask *, APTR, int, ERR, APTR))Self->InputCallback.Routine;
@@ -205,7 +211,7 @@ static void check_incoming(extTask *Self)
 #ifdef __unix__
 static void task_stdout(HOSTHANDLE FD, APTR Task)
 {
-   static UBYTE recursive = 0;
+   thread_local UBYTE recursive = 0;
 
    if (recursive) return;
 
@@ -236,7 +242,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 {
    char buffer[2048];
    int len;
-   static UBYTE recursive = 0;
+   thread_local UBYTE recursive = 0;
 
    if (recursive) return;
 
@@ -284,7 +290,7 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, int 
 static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 {
    pf::Log log(__FUNCTION__);
-   static UBYTE recursive = 0;
+   thread_local UBYTE recursive = 0;
 
    if (recursive) return;
    if (!Task->Platform) return;
@@ -306,7 +312,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 {
    pf::Log log(__FUNCTION__);
-   static UBYTE recursive = 0;
+   thread_local UBYTE recursive = 0;
 
    if (recursive) return;
    if (!Task->Platform) return;
@@ -868,6 +874,7 @@ static ERR TASK_Activate(extTask *Self)
          log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
+         if (in_fd != -1)    close(in_fd);
          return ERR::ProcessCreation;
       }
    }
@@ -887,6 +894,7 @@ static ERR TASK_Activate(extTask *Self)
          log.warning("Failed to create pipe: %s", strerror(errno));
          if (input_fd != -1) close(input_fd);
          if (out_fd != -1)   close(out_fd);
+         if (in_fd != -1)    close(in_fd);
          return ERR::ProcessCreation;
       }
    }
@@ -1219,19 +1227,23 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
                switch(type) {
                   case REG_DWORD:
-                     snprintf(Self->Env, ENV_SIZE, "%d", ((int *)Self->Env)[0]);
+                     if (unsigned(envlen) >= sizeof(int)) {
+                        snprintf(Self->Env, ENV_SIZE, "%d", ((int *)Self->Env)[0]);
+                     }
                      break;
                   case REG_DWORD_BIG_ENDIAN: {
-                     if constexpr (std::endian::native == std::endian::little) {
-                        strcopy(std::to_string(reverse_long(((int *)Self->Env)[0])), Self->Env, ENV_SIZE);
-                     }
-                     else {
-                        strcopy(std::to_string(((int *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     if (unsigned(envlen) >= sizeof(int)) {
+                        if constexpr (std::endian::native == std::endian::little) {
+                           strcopy(std::to_string(reverse_long(((int *)Self->Env)[0])), Self->Env, ENV_SIZE);
+                        }
+                        else strcopy(std::to_string(((int *)Self->Env)[0]), Self->Env, ENV_SIZE);
                      }
                      break;
                   }
                   case REG_QWORD:
-                     strcopy(std::to_string(((LARGE *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     if (unsigned(envlen) >= sizeof(LARGE)) {
+                        strcopy(std::to_string(((LARGE *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     }
                      break;
                }
 

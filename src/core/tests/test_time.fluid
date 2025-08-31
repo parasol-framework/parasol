@@ -1,12 +1,4 @@
 -- Time Class Test Suite
---
--- This test verifies the Time class functionality including:
--- - Basic time querying and field access
--- - Time object creation and initialization
--- - SystemTime and TimeStamp calculations
--- - Day of week calculations
--- - Field validation and bounds checking
--- - SetTime method functionality
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test basic time object creation and Query action
@@ -115,7 +107,6 @@ function testConsistentQueries()
    local time_diff = math.abs(time1.systemTime - time2.systemTime)
    assert(time_diff < 10000000, 'Time difference too large between consecutive queries: ' .. tostring(time_diff) .. ' microseconds')
 
-   -- Years should definitely match
    assert(time1.year == time2.year, 'Years should match between consecutive queries')
    assert(time1.month == time2.month, 'Months should match between consecutive queries')
    assert(time1.day == time2.day, 'Days should match between consecutive queries')
@@ -227,12 +218,11 @@ function testSetTimeMethod()
    -- On Windows: needs SE_SYSTEMTIME_NAME privilege or admin rights
    -- On Unix: needs root access
    -- This test verifies the method exists and handles errors gracefully
-   local result = catch(function()
+   local ex, err = catch(function()
       return time_obj.mtSetTime()
    end)
 
-   if result then
-      print('SetTime method executed (may have failed due to insufficient privileges)')
+   if err == ERR_Okay then
       -- Restore original time if setting succeeded
       time_obj.year = original_time.year
       time_obj.month = original_time.month
