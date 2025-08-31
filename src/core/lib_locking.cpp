@@ -489,7 +489,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
    // Use proper atomic compare-and-swap for thread-safe lock acquisition
 
    char expected = 0;
-   if (Object->Queue.compare_exchange_weak(expected, char(1), std::memory_order_acquire, std::memory_order_relaxed)) {
+   if (Object->Queue.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) {
       Object->ThreadID = int(our_thread);
       return ERR::Okay;
    }
@@ -530,7 +530,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
             
             // Use proper atomic compare-and-swap for lock acquisition
             char expected = 0;
-            if (Object->Queue.compare_exchange_weak(expected, char(1), std::memory_order_acquire, std::memory_order_relaxed)) {
+            if (Object->Queue.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) {
                glWaitLocks[glWLIndex].notWaiting();
                glDeadlockDetector.remove_wait(our_thread);
                Object->ThreadID = int(our_thread);
@@ -624,8 +624,7 @@ ERR ReleaseMemory(MEMORYID MemoryID)
          mem->second.Flags &= ~MEM::EXCLUSIVE;
       }
 
-      // Only notify if there might be waiting threads (more efficient than notify_all)
-      cvResources.notify_one(); // Wake up one thread waiting on this memory block.
+      cvResources.notify_all();
    }
 
    return ERR::Okay;
