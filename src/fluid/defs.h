@@ -223,6 +223,16 @@ struct struct_hash {
 
 //********************************************************************************************************************
 
+struct breakpoint {
+   std::string filename;
+   int line;
+
+   bool operator<(const breakpoint& other) const {
+      if (filename != other.filename) return filename < other.filename;
+      return line < other.line;
+   }
+};
+
 struct prvFluid {
    lua_State *Lua;                        // Lua instance
    std::vector<actionmonitor> ActionList; // Action subscriptions managed by subscribe()
@@ -244,6 +254,18 @@ struct prvFluid {
    uint16_t Catch;                     // Operating within a catch() block if > 0
    uint16_t RequireCounter;
    int      ErrorLine;                 // Line at which the last error was thrown.
+   uint16_t Catch;                    // Operating within a catch() block if > 0
+   uint16_t RequireCounter;
+   int      ErrorLine;                // Line at which the last error was thrown.
+   bool     DebugStep;                // True if debug stepping mode is enabled
+   bool     DebugBroken;              // True when execution is paused at a breakpoint
+   bool     DebugContinue;            // True when debugger should continue execution
+   bool     BreakpointsEnabled;       // True if breakpoint checking is enabled
+
+   prvFluid() : Lua(nullptr), InputList(nullptr), FocusEventHandle(nullptr),
+                CaughtError(ERR::Okay), CachePermissions(PERMIT::NIL), LoadedSize(0),
+                Recurse(0), SaveCompiled(false), Catch(0), RequireCounter(0), ErrorLine(0),
+                DebugStep(false), DebugBroken(false), DebugContinue(false), BreakpointsEnabled(false) {}
 };
 
 struct array {

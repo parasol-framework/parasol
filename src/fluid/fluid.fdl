@@ -6,7 +6,7 @@ module({
   version=1.0,
   prefix="fl",
   status="beta",
-  comment="Fluid is a customised scripting language for the Script class."
+  comment="Fluid is a LuaJIT based scripting language for the Script class."
 },
 function()
   restrict(function()
@@ -15,4 +15,12 @@ function()
 
   functionNames("fl",
     "SetVariable")
+    
+  methods("Fluid", "Sc", {
+    { id=20, name="Step" },
+    { id=21, name="ClearBreakpoint" },
+    { id=22, name="SetBreakpoint" },
+  })
+  class("Fluid", { base='Script', src="fluid_class.cpp", output="fluid_def.c", comment="Fluid support class." })
+
 end)
