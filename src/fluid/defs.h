@@ -1,7 +1,6 @@
 
 #define LUA_COMPILED "-- $FLUID:compiled"
-#define VER_FLUID 1.0
-#define SIZE_READ 1024
+constexpr int SIZE_READ = 1024;
 
 #include <list>
 #include <unordered_set>
