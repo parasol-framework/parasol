@@ -236,10 +236,10 @@ static ERR socket_outgoing(objNetSocket *Socket)
          // then the data, then another CRLF.
          int csize;
          int len = Self->WriteBuffer.size() - CHUNK_LENGTH_OFFSET;
-         if (len & 0xf000)      { csize = 0; snprintf((char *)Self->WriteBuffer.data(), 5, "%.4x\r\n", len); }
-         else if (len & 0x0f00) { csize = 1; snprintf((char *)Self->WriteBuffer.data()+1, 4, "%.3x\r\n", len); }
-         else if (len & 0x00f0) { csize = 2; snprintf((char *)Self->WriteBuffer.data()+2, 3, "%.2x\r\n", len); }
-         else { csize = 3; snprintf((char *)Self->WriteBuffer.data()+3, 2, "%.1x\r\n", len); }
+         if (len & 0xf000)      { csize = 0; snprintf((char *)Self->WriteBuffer.data(), 7, "%.4x\r\n", len); }
+         else if (len & 0x0f00) { csize = 1; snprintf((char *)Self->WriteBuffer.data()+1, 6, "%.3x\r\n", len); }
+         else if (len & 0x00f0) { csize = 2; snprintf((char *)Self->WriteBuffer.data()+2, 5, "%.2x\r\n", len); }
+         else { csize = 3; snprintf((char *)Self->WriteBuffer.data()+3, 4, "%.1x\r\n", len); }
          
          Self->WriteBuffer.push_back('\n');
          Self->WriteBuffer.push_back('\r');
@@ -253,7 +253,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       }
       else {
          writeerror = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_written);
-         if (Self->WriteBuffer.size() != unsigned(bytes_written)) log.warning("Only sent %" PF64 " of %d bytes.", Self->WriteBuffer.size(), bytes_written);
+         if (Self->WriteBuffer.size() != unsigned(bytes_written)) log.warning("Only sent %" PF64 " of %d bytes.", (long long)Self->WriteBuffer.size(), bytes_written);
       }
 
       if (writeerror IS ERR::Okay) {

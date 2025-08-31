@@ -702,7 +702,7 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
 
 static BYTE datatype(std::string_view String)
 {
-   int i = 0;
+   size_t i = 0;
    while ((i < String.size()) and (String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
 
    if ((i < String.size()) and (String[i] IS '0') and (i+1 < String.size()) and (String[i+1] IS 'x')) {
