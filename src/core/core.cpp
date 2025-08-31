@@ -225,15 +225,10 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #endif
 
    // Randomise the internal random variables
-
-   #ifdef __unix__
-      gettimeofday(&tmday, &tz);
-      srand(tmday.tv_sec + tmday.tv_usec);
-   #elif _WIN32
-      srand(winGetTickCount());
-   #else
-      #error Platform needs randomisation support.
-   #endif
+   
+   auto now = std::chrono::steady_clock::now();
+   auto duration = now.time_since_epoch();
+   srand(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
 
    // Get the ID of the current process
 

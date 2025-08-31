@@ -64,6 +64,7 @@ constexpr int MAX_ENV_VALUE = 512;
 
 #include <string>
 #include <array>
+#include <chrono>
 
 #define WAITLOCK_EVENTS 1 // Use events instead of semaphores for waitlocks (recommended)
 
@@ -96,7 +97,6 @@ WINBASEAPI VOID WINAPI WakeConditionVariable(PCONDITION_VARIABLE ConditionVariab
 
 extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, int InitialValue);
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore);
-extern "C" long long winGetTickCount(void);
 
 static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 
@@ -264,7 +264,7 @@ extern std::string winFormatMessage(int Error = GetLastError());
 extern std::string winFormatMessage(int Error)
 {
    std::string Buffer(MAX_ERROR_MSG, '\0');
-   
+
    auto i = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, Error, 0, Buffer.data(), Buffer.size(), nullptr);
    while ((i > 0) and (Buffer[i-1] <= 0x20)) i--; // Windows puts whitespace at the end of error strings for some reason
    Buffer.resize(i);
@@ -327,7 +327,7 @@ extern "C" void activate_console(BYTE AllowOpenConsole)
          freopen("CON", "w", stderr);
       }
       else return;
-      
+
       // Set console mode to handle UTF-8 properly
 
       SetConsoleOutputCP(CP_UTF8);
@@ -484,7 +484,7 @@ extern "C" ERR winInitialise(unsigned int *PathHash, BREAK_HANDLER BreakHandler)
 
    InitializeCriticalSection(&csHandleBank);
    InitializeCriticalSection(&csJob);
-   
+
    // Initialize global access critical section
    if (!csGlobalInitialized) {
       InitializeCriticalSection(&csGlobalAccess);
@@ -532,9 +532,9 @@ extern "C" ERR plAllocPrivateSemaphore(HANDLE *Semaphore, int InitialValue)
 
 extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
 {
-   if (Semaphore and *Semaphore) { 
-      CloseHandle(*Semaphore); 
-      *Semaphore = nullptr; 
+   if (Semaphore and *Semaphore) {
+      CloseHandle(*Semaphore);
+      *Semaphore = nullptr;
    }
 }
 
@@ -545,7 +545,7 @@ extern "C" void plFreePrivateSemaphore(HANDLE *Semaphore)
 extern "C" void winDeathBringer(int Status)
 {
    static int last_status = -1;
-   
+
    if (csGlobalInitialized) {
       EnterCriticalSection(&csGlobalAccess);
       if (Status > last_status) {
@@ -590,7 +590,7 @@ extern "C" void winShutdown(void)
 
    DeleteCriticalSection(&csHandleBank);
    DeleteCriticalSection(&csJob);
-   
+
    // Cleanup global access critical section
    if (csGlobalInitialized) {
       DeleteCriticalSection(&csGlobalAccess);
@@ -644,7 +644,7 @@ static HANDLE handle_cache(int OtherProcess, HANDLE OtherHandle, BYTE *Free)
 extern "C" ERR alloc_public_waitlock(HANDLE *Lock, const char *Name)
 {
    if (!Lock) return ERR::NullArgs;
-   
+
 #ifdef WAITLOCK_EVENTS
    HANDLE event = nullptr;
 
@@ -727,7 +727,7 @@ static int strnicmp(const char *s1, const char *s2, size_t n)
 extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 {
    if (!String or Length < 4) return 0; // Need at least "C:\\" + null terminator
-   
+
    int len, i;
    WCHAR **list;
 
@@ -812,12 +812,13 @@ extern "C" DWORD winGetExeDirectory(DWORD Length, LPSTR String)
 extern "C" void winProcessMessages(void)
 {
    MSG msg;
-   long long time = winGetTickCount() + PROCESS_MESSAGE_TIMEOUT_US;
+   auto start_time = std::chrono::steady_clock::now();
+   auto timeout = std::chrono::microseconds(PROCESS_MESSAGE_TIMEOUT_US);
    ZeroMemory(&msg, sizeof(msg));
    while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
-      if (winGetTickCount() > time) break; // This timer-break prevents any chance of infinite looping
+      if (std::chrono::steady_clock::now() - start_time > timeout) break; // This timer-break prevents any chance of infinite looping
    }
 }
 
@@ -854,7 +855,7 @@ extern "C" int winGetProcessPriority(void) noexcept
    // Get current process priority class and map to Parasol priority values
    const DWORD priorityClass = GetPriorityClass(GetCurrentProcess());
    if (priorityClass IS 0) return -1; // Error occurred
-   
+
    // Map Windows priority classes to Parasol values
    switch (priorityClass) {
       case IDLE_PRIORITY_CLASS:         return -20;  // Lowest priority
@@ -871,7 +872,7 @@ extern "C" int64_t winGetProcessAffinityMask(void) noexcept
 {
    DWORD_PTR processAffinityMask = 0;
    DWORD_PTR systemAffinityMask = 0;
-   
+
    // Get current process affinity mask
    if (GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
       return (int64_t)processAffinityMask;
@@ -886,23 +887,23 @@ extern "C" int winSetProcessAffinityMask(int64_t AffinityMask) noexcept
    // Set CPU affinity mask for the current process
    // AffinityMask is a bitmask where each bit represents a CPU core
    // Bit 0 = Core 0, Bit 1 = Core 1, etc.
-   
+
    if (AffinityMask IS 0) return ERROR_INVALID_PARAMETER; // Invalid mask
-   
+
    DWORD_PTR processAffinityMask = (DWORD_PTR)AffinityMask;
    DWORD_PTR systemAffinityMask;
-   
+
    // Get system affinity mask to validate our request
    if (not GetProcessAffinityMask(GetCurrentProcess(), &processAffinityMask, &systemAffinityMask)) {
       return GetLastError();
    }
-   
+
    // Ensure requested mask is valid for this system
    DWORD_PTR requestedMask = (DWORD_PTR)AffinityMask;
    if ((requestedMask & systemAffinityMask) != requestedMask) {
       return ERROR_INVALID_PARAMETER; // Requested cores not available
    }
-   
+
    // Set the process affinity mask
    if (SetProcessAffinityMask(GetCurrentProcess(), requestedMask)) return 0; // Success
    else return GetLastError();
@@ -1089,48 +1090,6 @@ extern "C" void winSleep(int Time)
 }
 
 //********************************************************************************************************************
-// Retrieve the 'counts per second' value if this hardware supports a high frequency timer.  Otherwise use
-// GetTickCount().
-
-extern "C" long long winGetTickCount(void)
-{
-   static LARGE_INTEGER freq;
-   static BYTE init = 0;
-   static long long start = 0;
-   static CRITICAL_SECTION csTickCount;
-   static bool csTickCountInit = false;
-
-   if (!init) {
-      // Initialize critical section for thread safety
-      if (!csTickCountInit) {
-         InitializeCriticalSection(&csTickCount);
-         csTickCountInit = true;
-      }
-      
-      EnterCriticalSection(&csTickCount);
-      if (!init) { // Double-check after acquiring lock
-         int r = QueryPerformanceFrequency(&freq);
-         if (r) {
-            init = 1;
-            // Record a base-line so that we know we're starting from zero and not some arbitrarily large number.
-            LARGE_INTEGER time;
-            QueryPerformanceCounter(&time);
-            start = time.QuadPart;
-         }
-         else init = -1; // Hardware does not support this feature.
-      }
-      LeaveCriticalSection(&csTickCount);
-   }
-
-   if (init IS 1) {
-      LARGE_INTEGER time;
-      QueryPerformanceCounter(&time); // Get tick count
-      return (time.QuadPart - start) * 1000000LL / freq.QuadPart; // Convert ticks to microseconds, then divide by 'frequency counts per second'
-   }
-   else return GetTickCount() * 1000LL;
-}
-
-//********************************************************************************************************************
 // Designed for reading from pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child process is dead.
 
 extern "C" int winReadPipe(HANDLE FD, APTR Buffer, DWORD *Size)
@@ -1233,17 +1192,17 @@ HANDLE glMemoryPool;
 extern "C" int winCreateSharedMemory(char *Name, int mapsize, int initial_size, HANDLE *ControlID, void **Address)
 {
    if (!ControlID or !Address or initial_size <= 0) return -3; // Invalid arguments
-   
+
    *ControlID = nullptr;
    *Address = nullptr;
-   
+
    // Create the shared memory area with proper security attributes
    SECURITY_ATTRIBUTES sa = {
       .nLength = sizeof(SECURITY_ATTRIBUTES),
       .lpSecurityDescriptor = nullptr,
       .bInheritHandle = false
    };
-   
+
    if ((*ControlID = CreateFileMapping((HANDLE)-1, &sa, PAGE_READWRITE, 0, initial_size, Name))) {
       glMemoryPool = *ControlID;
       int init = (GetLastError() != ERROR_ALREADY_EXISTS) ? 1 : 0;
@@ -1271,7 +1230,7 @@ extern "C" int winDeleteFile(const char *Path)
 extern "C" int winGetEnv(const char *Name, char *Buffer, int Size)
 {
    if (!Name or !Buffer or Size <= 0) return 0;
-   
+
    int result = GetEnvironmentVariable(Name, Buffer, Size);
    if (result >= Size) {
       // Buffer too small, ensure null termination
@@ -1834,7 +1793,7 @@ extern "C" int winGetUserName(STRING Buffer, int Length)
 {
    if (!Buffer or Length <= 0) return 0;
    if (Length > MAX_USERNAME) Length = MAX_USERNAME;
-   
+
    DWORD len = Length;
    auto result = GetUserName(Buffer, &len);
    if (result and (int(len) < Length)) Buffer[len] = 0;
@@ -2040,7 +1999,7 @@ static ERR delete_file_helper(const std::string &FilePath)
          SetFileAttributes(FilePath.c_str(), attrib);
       }
    }
-   
+
    if (unlink(FilePath.c_str()) IS 0) return ERR::Okay;
    else {
       #ifdef __CYGWIN__
@@ -2063,7 +2022,7 @@ static ERR delete_directory_helper(const std::string &DirPath)
          SetFileAttributes(DirPath.c_str(), attrib);
       }
    }
-   
+
    if (RemoveDirectory(DirPath.c_str())) return ERR::Okay;
    else return ERR::SystemCall;
 }
@@ -2193,7 +2152,7 @@ extern "C" HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
 ** Used by fs_scandir()
 */
 
-extern "C" int winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct DateTime *CreateTime, 
+extern "C" int winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct DateTime *CreateTime,
    struct DateTime *WriteTime, BYTE *Dir, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive)
 {
    WIN32_FIND_DATA find;
@@ -2385,5 +2344,33 @@ extern "C" int winCheckDirectoryExists(CSTRING Path)
       //else printerror();
 
       return 0;
+   }
+}
+
+//********************************************************************************************************************
+// Set system time on Windows - requires administrator privileges
+
+extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second)
+{
+   SYSTEMTIME st;
+   ZeroMemory(&st, sizeof(st));
+   
+   st.wYear         = Year;
+   st.wMonth        = Month;
+   st.wDay          = Day;
+   st.wHour         = Hour;
+   st.wMinute       = Minute;
+   st.wSecond       = Second;
+   st.wMilliseconds = 0;
+   
+   // Set the system time - requires SE_SYSTEMTIME_NAME privilege
+   if (SetSystemTime(&st)) {
+      return 1; // Success
+   }
+   else {
+      // Common error codes:
+      // ERROR_PRIVILEGE_NOT_HELD (1314) - Process lacks required privilege
+      // ERROR_INVALID_PARAMETER (87) - Invalid time values
+      return 0; // Failure
    }
 }

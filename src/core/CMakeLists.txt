@@ -160,6 +160,7 @@ flute_test (core_filesystem "tests/filesystem.fluid")
 flute_test (core_misc "tests/misc.fluid")
 flute_test (core_compression "tests/compression.fluid")
 flute_test (core_config "tests/config.fluid")
+flute_test (core_time "tests/test_time.fluid")
 
 if (INSTALL_TESTS)
    add_executable (test_objlocking "tests/object_locking.cpp")

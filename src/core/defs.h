@@ -1111,7 +1111,6 @@ extern "C" size_t winGetFileSize(STRING);
 extern "C" size_t winGetProcessMemoryUsage(int ProcessID);
 extern "C" APTR winGetProcAddress(WINHANDLE, CSTRING);
 extern "C" WINHANDLE winGetStdInput(void);
-extern "C" int64_t winGetTickCount(void);
 extern "C" void winInitialise(int *, void *);
 extern "C" void winInitializeCriticalSection(APTR Lock);
 extern "C" int winIsDebuggerPresent(void);
@@ -1177,6 +1176,7 @@ extern "C" int winSetFileTime(CSTRING, bool, int16_t Year, int16_t Month, int16_
 extern "C" int winResetDate(STRING);
 extern "C" void winSetDllDirectory(CSTRING);
 extern "C" void winEnumSpecialFolders(void (*callback)(CSTRING, CSTRING, CSTRING, CSTRING, int8_t));
+extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second);
 
 #endif
 
