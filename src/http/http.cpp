@@ -921,8 +921,6 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
 {
    if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
 
-   if (Self->WriteBuffer.empty()) return ERR::InvalidState;
-      
    if (auto len = Args->Length; len > 0) {
       auto offset = Self->WriteBuffer.size();
       Self->WriteBuffer.resize(Self->WriteBuffer.size() + len);
@@ -1368,7 +1366,7 @@ Outgoing: Outgoing data can be sent procedurally using this callback.
 
 Outgoing data can be sent procedurally by setting this field with a callback routine.  
 
-In C++ the function prototype is `ERR Function(*HTTP, std::vector<uint8_t> &Buffer, APTR Meta)`.
+In C++ the function prototype is `ERR Function(*HTTP, std::vector&lt;uint8_t&gt; &amp;Buffer, APTR Meta)`.
 Write content to the `Buffer` and the final size will determine the amount of data sent to the server.
 Alternatively use the Write() action, although this will be less efficient.
 
