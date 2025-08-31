@@ -979,7 +979,7 @@ Note that the actual buffer size may not reflect the exact size that you set her
 static ERR SET_BufferSize(extHTTP *Self, int Value)
 {
    if (Value < 2 * 1024) Value = 2 * 1024;
-   Self->BufferSize = std::clamp(Value, BUFFER_WRITE_SIZE, 0xffff);;
+   Self->BufferSize = std::clamp(Value, BUFFER_WRITE_SIZE, 0xffff);
    return ERR::Okay;
 }
 
