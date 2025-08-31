@@ -229,8 +229,10 @@ static ERR get_banked_bitmap(extVectorFilter *Self, objBitmap **BitmapResult)
 // Returns a rendered bitmap that represents the source.  Where possible, if a bitmap is being referenced then that
 // reference will be returned.  Otherwise a new bitmap is allocated and rendered with the effect.  The bitmap must
 // not be freed as they are permanently maintained until the VectorFilter is destroyed.
+//
+// The result will have transforms applied, but the area will be bound to the path.
 
-static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VSF SourceType, objFilterEffect *Effect, bool Premultiply)
+static ERR get_source_bitmap(extVectorFilter *Self, objBitmap **BitmapResult, VSF SourceType, objFilterEffect *Effect, bool Premultiply) //, bool ApplyTransforms)
 {
    pf::Log log(__FUNCTION__);
 
@@ -386,7 +388,14 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    }
 
    auto const save_child = Self->SourceScene->Viewport->Child;
+   auto const save_parent = Self->ClientVector->ParentView;
+   Self->ClientVector->ParentView = (extVectorViewport *)Self->SourceScene->Viewport;
+   Self->ClientVector->Parent = Self->SourceScene->Viewport;
    Self->SourceScene->Viewport->Child = Self->ClientVector;
+
+   Self->ClientVector->Transform.reset(); // Reset the transform to ensure that the source graphic is rendered without transforms.
+   mark_dirty(Self->ClientVector, RC::TRANSFORM);
+
    Self->SourceGraphic->Clip = { Self->VectorClip.left, Self->VectorClip.top, Self->VectorClip.right, Self->VectorClip.bottom };
 
    if (Self->SourceGraphic->Clip.Top < 0)  Self->SourceGraphic->Clip.Top = 0;
@@ -407,8 +416,11 @@ objBitmap * get_source_graphic(extVectorFilter *Self)
    acDraw(Self->SourceScene);
 
    Self->Disabled = false;
+   Self->ClientVector->Parent = save_parent;
+   Self->ClientVector->ParentView = save_parent;
    Self->ClientVector->Next = save_vector;
    Self->SourceScene->Viewport->Child = save_child;
+   mark_dirty(Self->ClientVector, RC::TRANSFORM);
 
    Self->Rendered = true;
    return Self->SourceGraphic;
