@@ -256,9 +256,6 @@ void remove_process_waitlocks(void)
 
    for (unsigned i=0; i < glWaitLocks.size(); i++) {
       if (glWaitLocks[i].ThreadID IS our_thread) {
-         if (glWaitLocks[i].WaitingForThreadID.defined()) {
-            glDeadlockDetector.remove_wait(our_thread);
-         }
          glWaitLocks[i].notWaiting();
       }
       else if (glWaitLocks[i].WaitingForThreadID IS our_thread) { // A thread is waiting on us, wake it up.
@@ -673,7 +670,6 @@ void ReleaseObject(OBJECTPTR Object)
             FreeResource(Object);
          }
 
-         // Use targeted notification - we know there are sleeping threads
          cvObjects.notify_all(); // Multiple threads may be waiting on this object
       }
    }
