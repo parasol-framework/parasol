@@ -55,8 +55,8 @@ doc = obj.new('scintilla')
 http = obj.new('http', {
    src        = 'http://www.parasol.ws/index.html',
    method     = 'get',
-   dataFeed   = 'text'
-   objectMode = 'datafeed'
+   datatype   = 'text',
+   objectMode = 'DATA_FEED',
    outputObject = doc
 })
 http.acActivate()
@@ -126,28 +126,28 @@ constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written 
 
 template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", int(code), GetErrorMsg(code)); }
 
-static void secure_clear_memory(void* ptr, size_t len) {
+static void secure_clear_memory(void* Ptr, size_t Len) {
    // Use volatile to prevent compiler optimization
-   volatile char *p = (volatile char *)ptr;
-   for (size_t i = 0; i < len; i++) p[i] = 0;
-   for (size_t i = 0; i < len; i++) p[i] = 0xff;
-   for (size_t i = 0; i < len; i++) p[i] = 0;
+   volatile char *p = (volatile char *)Ptr;
+   for (size_t i = 0; i < Len; i++) p[i] = 0;
+   for (size_t i = 0; i < Len; i++) p[i] = 0xff;
+   for (size_t i = 0; i < Len; i++) p[i] = 0;
 }
 
 // Enhanced URL validation function
 
-static bool is_valid_url_char(char c, bool allow_reserved = false) {
+static bool is_valid_url_char(char C, bool AllowReserved = false) {
    // RFC 3986 unreserved characters
-   if ((c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z') or
-       (c >= '0' and c <= '9') or c IS '-' or c IS '.' or c IS '_' or c IS '~') {
+   if ((C >= 'A' and C <= 'Z') or (C >= 'a' and C <= 'z') or
+       (C >= '0' and C <= '9') or C IS '-' or C IS '.' or C IS '_' or C IS '~') {
       return true;
    }
 
    // RFC 3986 reserved characters (when explicitly allowed)
-   if (allow_reserved and (c IS ':' or c IS '/' or c IS '?' or c IS '#' or
-       c IS '[' or c IS ']' or c IS '@' or c IS '!' or c IS '$' or
-       c IS '&' or c IS '\'' or c IS '(' or c IS ')' or c IS '*' or
-       c IS '+' or c IS ',' or c IS ';' or c IS '=')) {
+   if (AllowReserved and (C IS ':' or C IS '/' or C IS '?' or C IS '#' or
+       C IS '[' or C IS ']' or C IS '@' or C IS '!' or C IS '$' or
+       C IS '&' or C IS '\'' or C IS '(' or C IS ')' or C IS '*' or
+       C IS '+' or C IS ',' or C IS ';' or C IS '=')) {
       return true;
    }
 
@@ -155,29 +155,29 @@ static bool is_valid_url_char(char c, bool allow_reserved = false) {
 }
 
 // Enhanced URL encoding with validation
-static std::string encode_url_path(const char* input) {
-   if (!input) return std::string();
+static std::string encode_url_path(const char* Input) {
+   if (!Input) return std::string();
 
    std::string result;
-   result.reserve(strlen(input) * 3); // Worst case: every char becomes %XX
+   result.reserve(strlen(Input) * 3); // Worst case: every char becomes %XX
 
-   for (const char* p = input; *p; p++) {
+   for (const char* p = Input; *p; p++) {
       if (is_valid_url_char(*p, true)) {
          result += *p;
       }
       else if (*p IS ' ') {
          result += "%20";
       }
-      else if (static_cast<unsigned char>(*p) < 32 or static_cast<unsigned char>(*p) > 126) {
+      else if ((unsigned char)(*p) < 32 or (unsigned char)(*p) > 126) {
          // Encode control characters and non-ASCII
          char encoded[4];
-         snprintf(encoded, sizeof(encoded), "%%%02X", static_cast<unsigned char>(*p));
+         snprintf(encoded, sizeof(encoded), "%%%02X", (unsigned char)(*p));
          result += encoded;
       }
       else {
          // Other characters that need encoding
          char encoded[4];
-         snprintf(encoded, sizeof(encoded), "%%%02X", static_cast<unsigned char>(*p));
+         snprintf(encoded, sizeof(encoded), "%%%02X", (unsigned char)(*p));
          result += encoded;
       }
    }
@@ -217,14 +217,11 @@ class extHTTP : public objHTTP {
    std::string AuthAlgorithm;
    std::string AuthCNonce;
    std::vector<char> RecvBuffer; // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
-   uint8_t  *WriteBuffer;
-   APTR     Buffer;           // Temporary buffer for storing outgoing data
+   std::vector<uint8_t> WriteBuffer;
    objFile  *flOutput;
    objFile  *flInput;
-   objNetSocket *Socket;    // Socket over which the communication is taking place
+   objNetSocket *Socket;      // Socket over which the communication is taking place
    uint8_t  *Chunk;           // Chunk buffer
-   int      WriteSize;
-   int      WriteOffset;
    int      ChunkSize;        // Size of the chunk buffer
    int      ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
    int      ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
@@ -235,7 +232,7 @@ class extHTTP : public objHTTP {
    OBJECTID DialogWindow;
    int      ResponseIndex;    // Next element to write to in 'Buffer'
    int      SearchIndex;      // Current position of the CRLFCRLF search.
-   WORD     InputPos;         // File name parsing position in InputFile
+   int16_t  InputPos;         // File name parsing position in InputFile
    uint8_t  RedirectCount;
    uint8_t  AuthRetries;
    uint16_t Connecting:1;
@@ -309,7 +306,7 @@ static const FieldDef clStatus[] = {
 //********************************************************************************************************************
 
 static ERR  check_incoming_end(extHTTP *);
-static ERR  parse_file(extHTTP *, STRING, int);
+static ERR  parse_file(extHTTP *, std::string &);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
 static ERR  process_data(extHTTP *, APTR, int);
@@ -420,7 +417,7 @@ On completion of an HTTP request, the #Deactivate() action is called, regardless
 -ERRORS-
 Okay:   The HTTP get operation was successfully started.
 Failed: The HTTP get operation failed immediately for an unspecified reason.
-File:   Failed to create a target file if the File field was set.
+File:   Failed to create a target file if the OutputFile field was set.
 Write:  Failed to write data to the HTTP @NetSocket.
 CreateObject: Failed to create a @NetSocket object.
 HostNotFound: DNS resolution of the domain name in the URI failed.
@@ -468,7 +465,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       // SSL tunnelling is required.  Send a CONNECT request to the proxy and
       // then we will follow this up with the actual HTTP requests.
 
-      log.trace("SSL tunnelling is required.");
+      log.trace("SSL tunneling is required.");
 
       cmd << "CONNECT " << Self->Host << ":" << Self->Port << " HTTP/1.1" << CRLF;
       cmd << "Host: " << Self->Host << CRLF;
@@ -786,9 +783,7 @@ static ERR HTTP_Deactivate(extHTTP *Self)
    if (Self->flInput) { FreeResource(Self->flInput); Self->flInput = nullptr; }
    if (Self->flOutput) { FreeResource(Self->flOutput); Self->flOutput = nullptr; }
 
-   // Free up the outgoing buffer since it is only needed during transfers and will be reallocated as necessary.
-
-   if (Self->Buffer) { FreeResource(Self->Buffer); Self->Buffer = nullptr; }
+   Self->WriteBuffer.resize(0);
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
    if (Self->Socket) {
@@ -827,7 +822,6 @@ static ERR HTTP_Free(extHTTP *Self)
 
    if (Self->flInput)     { FreeResource(Self->flInput);     Self->flInput = nullptr; }
    if (Self->flOutput)    { FreeResource(Self->flOutput);    Self->flOutput = nullptr; }
-   if (Self->Buffer)      { FreeResource(Self->Buffer);      Self->Buffer = nullptr; }
    if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = nullptr; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = nullptr; }
    if (Self->InputFile)   { FreeResource(Self->InputFile);   Self->InputFile = nullptr; }
@@ -927,25 +921,17 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
 {
    if ((!Args) or (!Args->Buffer)) return ERR::NullArgs;
 
-   if ((Self->WriteBuffer) and (Self->WriteSize > 0)) {
-      int len = Args->Length;
-      if (Self->WriteOffset + len > Self->WriteSize) {
-         len = Self->WriteSize - Self->WriteOffset;
-      }
-
-      if (len > 0) {
-         pf::copymem(Args->Buffer, Self->WriteBuffer + Self->WriteOffset, len);
-         Self->WriteOffset += len;
-         Args->Result = len;
-         if (Args->Result != Args->Length) return ERR::LimitedSuccess;
-         else return ERR::Okay;
-      }
-      else {
-         Args->Result = 0;
-         return ERR::BufferOverflow;
-      }
+   if (auto len = Args->Length; len > 0) {
+      auto offset = Self->WriteBuffer.size();
+      Self->WriteBuffer.resize(Self->WriteBuffer.size() + len);
+      pf::copymem(Args->Buffer, Self->WriteBuffer.data() + offset, len);
+      Args->Result = len;
+      return ERR::Okay;
    }
-   else return ERR::InvalidState;
+   else {
+      Args->Result = 0;
+      return ERR::Args;
+   }
 }
 
 /*********************************************************************************************************************
@@ -991,7 +977,7 @@ Note that the actual buffer size may not reflect the exact size that you set her
 static ERR SET_BufferSize(extHTTP *Self, int Value)
 {
    if (Value < 2 * 1024) Value = 2 * 1024;
-   Self->BufferSize = Value;
+   Self->BufferSize = std::clamp(Value, BUFFER_WRITE_SIZE, 0xffff);
    return ERR::Okay;
 }
 
@@ -1124,7 +1110,7 @@ Error: The error code received for the most recently executed HTTP command.
 
 On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful
 then the value will be zero (`ERR::Okay`). It should be noted that certain error codes may not necessarily indicate
-failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content.  For genuine HTML
+failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content.  For genuine HTTP
 error codes, see the #Status field.
 
 -FIELD-
@@ -1200,6 +1186,8 @@ field to the file path that contains the source data.  The path is not opened or
 `POST` command is executed by the HTTP object.
 
 An alternative is to set the #InputObject for abstracting the data source.
+
+Multiple files can be specified in the InputFile field by separating each file path with a pipe symbol `|`.
 
 *********************************************************************************************************************/
 
@@ -1366,23 +1354,24 @@ static ERR SET_Method(extHTTP *Self, HTM Value)
 /*********************************************************************************************************************
 
 -FIELD-
-ObjectMode: The access mode used when passing data to a targeted object.
+ObjectMode: The transfer mode used when passing data to a targeted object.
 
-This field is relevant when the #OutputObject field has been set for receiving incoming data. The method of
-communication used against the target object can be defined through the ObjectMode. The default setting is
-`DATA::FEED`, which passes data through the data feed system (see also the #Datatype to define the type of data being
-sent to the object).  The alternative method is `READ_WRITE`, which uses the Write action to send data to the targeted
-object.
+ObjectMode defines the data transfer mode when #OutputObject field has been set for receiving incoming data.
+The default setting is `DATA::FEED`, which passes data through the data feed system (see also the #Datatype to define 
+the type of data being sent to the object).  The alternative method is `READ_WRITE`, which uses the Write action to 
+send data to the targeted object.
 
 -FIELD-
-Outgoing: Outgoing data can be managed using a function callback if this field is set.
+Outgoing: Outgoing data can be sent procedurally using this callback.
 
-Outgoing data can be managed manually by providing the HTTP object with an outgoing callback routine.  The C prototype
-for the callback routine is `ERR Function(*HTTP, APTR Buffer, int BufferSize, int *Result)`.  For Fluid use
-`function(HTTP, Buffer, BufferSize)`.
+Outgoing data can be sent procedurally by setting this field with a callback routine.  
 
-Outgoing content is placed in the `Buffer` address and must not exceed the indicated `BufferSize`.  The total number of
-bytes placed in the `Buffer` must be indicated in the Result parameter before the callback routine returns.
+In C++ the function prototype is `ERR Function(*HTTP, std::vector&lt;uint8_t&gt; &amp;Buffer, APTR Meta)`.
+Write content to the `Buffer` and the final size will determine the amount of data sent to the server.
+Alternatively use the Write() action, although this will be less efficient.
+
+For scripting languages like Fluid, the function prototype is `function(HTTP)`.  Use the Write() action to send data
+to the server.
 
 If an error code of `ERR::Terminate` is returned by the callback routine, any remaining data will be sent and the transfer
 will be treated as having completed successfully.  Use `ERR::TimeOut` if data cannot be returned in a reasonable time
@@ -1498,7 +1487,7 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
       if (!Self->AuthPath.empty()) {
          if (Self->AuthPath.size() IS folder_len) {
             pview.remove_suffix(pview.size() - folder_len);
-            if (pview == Self->AuthPath) { // No change to the current path
+            if (pview IS Self->AuthPath) { // No change to the current path
                Self->SecurePath = false;
             }
          }

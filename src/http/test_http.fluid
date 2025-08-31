@@ -8,18 +8,24 @@ collected too early.
 --]]
 
    require 'common'
+   local hslib = require 'net/httpserver'
    include 'http'
 
    local glOutFile = 'temp:http-output.txt'
    local glSelf = obj.find('self')
+   local glPath = glSelf.workingPath
+   local SERVER_PORT = 18942
+
+----------------------------------------------------------------------------------------------------------------------
+-- Test GET, outputFile and stateChanged callback
 
 function testGet()
    local content
    local proc = processing.new({ timeout = 10.0 })
 
    local http = obj.new('http', {
-      src        = 'http://www.parasol.ws/index.html',
-      method     = 'get',
+      src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/test_http.fluid',
+      method     = 'GET',
       outputFile = glOutFile,
       connectTimeout = 10,
       stateChanged = function(HTTP, State)
@@ -43,7 +49,7 @@ function testGet()
    assert(content, 'No content received.')
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- curl -v -X POST http://httpbin.org/post -d "fname=smith&lname=jones"
 
 function testPostString()
@@ -81,7 +87,7 @@ function testPostString()
    if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function testPostStringFile()
    local proc = processing.new({ timeout = 5.0 })
@@ -133,7 +139,7 @@ function testSSLProxy()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function testHTTPS()
    local content
@@ -163,7 +169,7 @@ function testHTTPS()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Making an HTTPS request to google.co.uk should cause a redirect to google.com, which should
 -- all be handled in the background.
 
@@ -195,7 +201,7 @@ function testRedirectedHTTPS()
    assert(content, 'No content received.')
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
 function testPHPPost()
    local proc = processing.new({ timeout = 5.0 })
@@ -331,7 +337,7 @@ function testMultiPart()
    if (err == ERR_TimeOut) then error('Test timed-out.') end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- ipv6.google.com test-ipv6.com ipv6.he.net ipv6.cloudflare.com
 
 function testIPV6()
@@ -372,15 +378,44 @@ function testIPV6()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 
    return {
       tests = {
-        'testPostString', 'testGet', 'testPostStringFile',
-        'testHTTPS', 'testRedirectedHTTPS', 'testIPV6'
+        'testPostString', 
+        'testGet', 
+        'testPostStringFile',
+        'testHTTPS', 
+        'testRedirectedHTTPS', 
+        'testIPV6'
       },
       init = function(Path)
          glPath = Path
+
+         glServer = hslib.start({
+            port    = SERVER_PORT,
+            folder  = glPath,
+            verbose = false,
+            routes = {
+              { pattern = '/api/test',
+                method = 'GET',
+                handler = function(req, res)
+                   res.json({ message = 'GET route works!' })
+                end
+              },
+              { pattern = '/api/users/:id',
+                method = 'POST',
+                handler = function(req, res)
+                   local userId = req.params.id
+                   res.json({
+                      message = 'User route works!',
+                      userId = userId,
+                      method = req.method
+                   })
+                end
+               }
+            }
+         })
       end,
       cleanup = function()
       end

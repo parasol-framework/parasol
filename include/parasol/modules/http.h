@@ -159,7 +159,7 @@ class objHTTP : public Object {
    OBJECTID OutputObjectID;  // Incoming data can be sent to the object referenced in this field.
    HTM      Method;          // The HTTP instruction to execute is defined here (defaults to GET).
    int      Port;            // The HTTP port to use when targeting a server.
-   HOM      ObjectMode;      // The access mode used when passing data to a targeted object.
+   HOM      ObjectMode;      // The transfer mode used when passing data to a targeted object.
    HTF      Flags;           // Optional flags.
    HTS      Status;          // Indicates the HTTP status code returned on completion of an HTTP request.
    ERR      Error;           // The error code received for the most recently executed HTTP command.

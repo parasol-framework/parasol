@@ -25,4 +25,4 @@ target_link_libraries (${MOD} PUBLIC base64)
 set_module_defaults (${MOD} "Http")
 target_sources (${MOD} PRIVATE "${MOD}.cpp" "auth.c")
 
-flute_test (http "test-http.fluid")
+flute_test (http "test_http.fluid")

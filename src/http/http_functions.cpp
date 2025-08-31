@@ -17,7 +17,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
       else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
-      Self->Connecting = TRUE;
+      Self->Connecting = true;
    }
    else if (State IS NTC::CONNECTED) {
       // The GET request has been pre-written to the socket on its creation, so we don't need to do anything further
@@ -25,25 +25,25 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
 
       log.msg("Connection confirmed.");
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
-      Self->Connecting = FALSE;
+      Self->Connecting = false;
    }
    else if (State IS NTC::DISCONNECTED) {
       // Socket disconnected.  The HTTP state must change to either COMPLETED (completed naturally) or TERMINATED
       // (abnormal termination) to correctly inform the user as to what has happened.
 
-      log.msg("Disconnected from socket while in state %s.", clHTTPCurrentState[LONG(Self->CurrentState)].Name);
+      log.msg("Disconnected from socket while in state %s.", clHTTPCurrentState[int(Self->CurrentState)].Name);
 
       if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
       if (Self->Connecting) {
-         Self->Connecting = FALSE;
+         Self->Connecting = false;
 
          SET_ERROR(log, Self, Socket->Error);
          log.branch("Deactivating (connect failure message received).");
          Self->setCurrentState(HGS::TERMINATED);
          return;
       }
-      else Self->Connecting = FALSE;
+      else Self->Connecting = false;
 
       if (Self->CurrentState >= HGS::COMPLETED) {
          return;
@@ -126,7 +126,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
             Self->Socket->set(FID_Feedback, (APTR)nullptr);
             FreeResource(Socket);
             Self->Socket = nullptr;
-            Self->SecurePath = TRUE;
+            Self->SecurePath = true;
             return;
          }
 
@@ -148,76 +148,57 @@ static ERR socket_outgoing(objNetSocket *Socket)
 {
    pf::Log log("http_outgoing");
 
-   static const int CHUNK_LENGTH_OFFSET = 16;
-   static const int CHUNK_TAIL = 2; // CRLF
+   constexpr int CHUNK_LENGTH_OFFSET = 16;
 
    auto Self = (extHTTP *)CurrentContext();
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
 
-   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, LONG(Self->CurrentState));
+   log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, int(Self->CurrentState));
 
    int total_out = 0;
 
-   if (!Self->Buffer) {
-      if (Self->BufferSize < BUFFER_WRITE_SIZE) Self->BufferSize = BUFFER_WRITE_SIZE;
-      if (Self->BufferSize > 0xffff) Self->BufferSize = 0xffff;
-
-      if (AllocMemory(Self->BufferSize, MEM::DATA|MEM::NO_CLEAR, &Self->Buffer) != ERR::Okay) {
-         return ERR::AllocMemory;
-      }
-   }
-
    ERR error = ERR::Okay;
-redo_upload:
-   Self->WriteBuffer = (UBYTE *)Self->Buffer;
-   Self->WriteSize   = Self->BufferSize;
-   if (Self->Chunked) {
-      Self->WriteBuffer += CHUNK_LENGTH_OFFSET;
-      Self->WriteSize   -= CHUNK_LENGTH_OFFSET + CHUNK_TAIL;
-   }
+
+   if (Self->Chunked) Self->WriteBuffer.resize(CHUNK_LENGTH_OFFSET);
+   else Self->WriteBuffer.resize(0);
 
    if (Self->CurrentState != HGS::SENDING_CONTENT) {
       Self->setCurrentState(HGS::SENDING_CONTENT);
    }
 
-   int len = 0;
    if (Self->Outgoing.defined()) {
       if (Self->Outgoing.isC()) {
-         auto routine = (ERR (*)(extHTTP *, APTR, LONG, int *, APTR))Self->Outgoing.Routine;
-         error = routine(Self, Self->WriteBuffer, Self->WriteSize, &len, Self->Outgoing.Meta);
+         auto routine = (ERR (*)(extHTTP *, std::vector<uint8_t> &, APTR))Self->Outgoing.Routine;
+         error = routine(Self, Self->WriteBuffer, Self->Outgoing.Meta);
       }
       else if (Self->Outgoing.isScript()) {
          // For a script to write to the buffer, it needs to make a call to the Write() action.
          if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({
-               { "HTTP",       Self, FD_OBJECTPTR },
-               { "BufferSize", Self->WriteSize }
+               { "HTTP", Self, FD_OBJECTPTR },
             }), error) != ERR::Okay) error = ERR::Failed;
          if (error > ERR::ExceptionThreshold) {
             log.warning("Procedure %" PF64 " failed, aborting HTTP call.", (long long)Self->Outgoing.ProcedureID);
          }
-         else len = Self->WriteOffset;
       }
       else error = ERR::InvalidValue;
 
-      if (len > Self->WriteSize) { // Sanity check, this should never happen if the client uses valid code.
-         log.warning("Returned length exceeds buffer size!  %d > %d", len, Self->WriteSize);
-         len = Self->WriteSize;
-         error = ERR::BufferOverflow;
-      }
-      else if (error > ERR::ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
+      if (error > ERR::ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
    }
    else if (Self->flInput) {
       if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from an Input file.");
 
-      error = acRead(Self->flInput, Self->WriteBuffer, Self->WriteSize, &len);
+      int len;
+      int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
+      Self->WriteBuffer.resize(Self->BufferSize + offset);
+      error = acRead(Self->flInput, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &len);
+      Self->WriteBuffer.resize(len + offset);
 
       if (error != ERR::Okay) log.warning("Input file read error: %s", GetErrorMsg(error));
 
-      int64_t size;
-      Self->flInput->get(FID_Size, size);
+      int64_t size = Self->flInput->get<int64_t>(FID_Size);
 
       if ((Self->flInput->Position IS size) or (len IS 0)) {
-         log.trace("All file content read (%d bytes) - freeing file.", (LONG)size);
+         log.trace("All file content read (%d bytes) - freeing file.", (int)size);
          FreeResource(Self->flInput);
          Self->flInput = nullptr;
          if (error IS ERR::Okay) error = ERR::Terminate;
@@ -227,7 +208,13 @@ redo_upload:
       if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       pf::ScopedObjectLock object(Self->InputObjectID, 100);
-      if (object.granted()) error = acRead(*object, Self->WriteBuffer, Self->WriteSize, &len);
+      if (object.granted()) {      
+         int len;
+         int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
+         Self->WriteBuffer.resize(Self->BufferSize + offset);
+         error = acRead(*object, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &len);
+         Self->WriteBuffer.resize(len + offset);
+      }
 
       if (error != ERR::Okay) log.warning("Input object read error: %s", GetErrorMsg(error));
    }
@@ -235,47 +222,46 @@ redo_upload:
       if (Self->MultipleInput) error = ERR::NoData;
       else error = ERR::Terminate;
 
-      log.warning("Method %d: No input fields are defined for me to send data to the server.", LONG(Self->Method));
+      log.warning("Method %d: No input fields are defined for me to send data to the server.", int(Self->Method));
    }
 
-   if (((error IS ERR::Okay) or (error IS ERR::Terminate)) and (len)) {
-      int result, csize;
+   if (((error IS ERR::Okay) or (error IS ERR::Terminate)) and (!Self->WriteBuffer.empty())) {
+      int bytes_written;
       ERR writeerror;
 
-      log.trace("Writing %d bytes (of expected %" PF64 ") to socket.  Chunked: %d", len, (long long)Self->ContentLength, Self->Chunked);
+      log.trace("Writing %" PF64 " bytes (of expected %" PF64 ") to socket.  Chunked: %d", Self->WriteBuffer.size(), (long long)Self->ContentLength, Self->Chunked);
 
       if (Self->Chunked) {
-         if (len & 0xf000)      { csize = 4+2; snprintf((char *)Self->WriteBuffer-6, 5, "%.4x", len); }
-         else if (len & 0x0f00) { csize = 3+2; snprintf((char *)Self->WriteBuffer-5, 4, "%.3x", len); }
-         else if (len & 0x00f0) { csize = 2+2; snprintf((char *)Self->WriteBuffer-4, 3, "%.2x", len); }
-         else { csize = 1+2; snprintf((char *)Self->WriteBuffer-3, 2, "%.1x", len); }
-
-         Self->WriteBuffer[-1] = '\n';
-         Self->WriteBuffer[-2] = '\r';
-
-         Self->WriteBuffer[len] = '\r';
-         Self->WriteBuffer[len+1] = '\n';
+         // Chunked encoding requires the length of each chunk to be sent in hexadecimal format followed by CRLF,
+         // then the data, then another CRLF.
+         int csize;
+         int len = Self->WriteBuffer.size() - CHUNK_LENGTH_OFFSET;
+         if (len & 0xf000)      { csize = 0; snprintf((char *)Self->WriteBuffer.data(), 5, "%.4x\r\n", len); }
+         else if (len & 0x0f00) { csize = 1; snprintf((char *)Self->WriteBuffer.data()+1, 4, "%.3x\r\n", len); }
+         else if (len & 0x00f0) { csize = 2; snprintf((char *)Self->WriteBuffer.data()+2, 3, "%.2x\r\n", len); }
+         else { csize = 3; snprintf((char *)Self->WriteBuffer.data()+3, 2, "%.1x\r\n", len); }
+         
+         Self->WriteBuffer.push_back('\n');
+         Self->WriteBuffer.push_back('\r');
 
          // Note: If the result were to come back as less than the length we intended to write,
          // it would screw up the entire sending process when using chunks.  However we don't
          // have to worry as the NetSocket will buffer up to 1 MB of data at a time - so we're
          // safe so long as we're only sending data when the outgoing socket is empty.
 
-         writeerror = write_socket(Self, Self->WriteBuffer-csize, csize + len + CHUNK_TAIL, &result);
-         len = result - csize - CHUNK_TAIL;
+         writeerror = write_socket(Self, Self->WriteBuffer.data() + csize, Self->WriteBuffer.size() - csize, &bytes_written);
       }
       else {
-         writeerror = write_socket(Self, Self->WriteBuffer, len, &result);
-         if (len != result) log.warning("Only sent %d of %d bytes.", len, result);
-         len = result;
+         writeerror = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_written);
+         if (Self->WriteBuffer.size() != unsigned(bytes_written)) log.warning("Only sent %" PF64 " of %d bytes.", Self->WriteBuffer.size(), bytes_written);
       }
 
-      total_out += result;
-      Self->TotalSent += result;
-
-      Self->setIndex(Self->Index + len);
-
-      if (writeerror != ERR::Okay) {
+      if (writeerror IS ERR::Okay) {
+         Self->setIndex(Self->Index + bytes_written); // Update the index by the amount of actual data sent, not including chunk headers/footers
+         total_out += bytes_written;
+         Self->TotalSent += bytes_written;
+      }
+      else {
          log.warning("write_socket() failed: %s", GetErrorMsg(writeerror));
          error = writeerror;
       }
@@ -293,17 +279,15 @@ redo_upload:
       // ERR::TimeOut: The upload process may continue
    }
    else {
-      // Check for multiple input files
+      // Check for multiple input files, open the next one if necessary
 
       if ((Self->MultipleInput) and (!Self->flInput)) {
          /*if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
 
-         // Open the next file
-
-         if (parse_file(Self, (STRING)Self->Buffer, Self->BufferSize) IS ERR::Okay) {
-            if ((Self->flInput = objFile::create::local(fl::Path((CSTRING)Self->Buffer), fl::Flags(FL::READ)))) {
-               if (total_out < Self->BufferSize) goto redo_upload; // Upload as much as possible in each pass
-               else goto continue_upload;
+         std::string filepath;
+         if (parse_file(Self, filepath) IS ERR::Okay) {
+            if ((Self->flInput = objFile::create::local(fl::Path(filepath), fl::Flags(FL::READ)))) {
+               goto continue_upload;
             }
          }
       }
@@ -318,7 +302,7 @@ redo_upload:
       if (((Self->ContentLength > 0) and (Self->Index >= Self->ContentLength)) or (error IS ERR::Terminate)) {
          int result;
 
-         if (Self->Chunked) write_socket(Self, (UBYTE *)"0\r\n\r\n", 5, &result);
+         if (Self->Chunked) write_socket(Self, (uint8_t *)"0\r\n\r\n", 5, &result);
 
          if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", (long long)Self->TotalSent);
          Self->setCurrentState(HGS::SEND_COMPLETE);
@@ -333,13 +317,12 @@ redo_upload:
 continue_upload:
    Self->LastReceipt = PreciseTime();
 
-   DOUBLE time_limit = (Self->DataTimeout > 30) ? Self->DataTimeout : 30;
+   double time_limit = (Self->DataTimeout > 30) ? Self->DataTimeout : 30;
 
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, time_limit);
    else SubscribeTimer(time_limit, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
-   Self->WriteBuffer = nullptr;
-   Self->WriteSize = 0;
+   Self->WriteBuffer.resize(0);
 
    if (Self->Error != ERR::Okay) return ERR::Terminate;
    return ERR::Okay;
@@ -618,15 +601,15 @@ static ERR socket_incoming(objNetSocket *Socket)
                // Note that status check comes after processing of content, as it is legal for content to be attached
                // with bad status codes (e.g. SOAP does this).
 
-               if ((LONG(Self->Status) < 200) or (LONG(Self->Status) >= 300)) {
+               if ((int(Self->Status) < 200) or (int(Self->Status) >= 300)) {
                   if (Self->CurrentState != HGS::READING_CONTENT) {
                      if (Self->Status IS HTS::UNAUTHORISED) log.warning("Exhausted maximum number of retries.");
-                     else log.warning("Status code %d != 2xx", LONG(Self->Status));
+                     else log.warning("Status code %d != 2xx", int(Self->Status));
 
                      SET_ERROR(log, Self, ERR::Failed);
                      return ERR::Terminate;
                   }
-                  else log.warning("Status code %d != 2xx.  Receiving content...", LONG(Self->Status));
+                  else log.warning("Status code %d != 2xx.  Receiving content...", int(Self->Status));
                }
 
                return ERR::Okay;
@@ -682,7 +665,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   return ERR::Terminate;
                }
                else if (Self->Error != ERR::Okay) {
-                  log.warning("Read() returned error %d whilst reading content.", LONG(Self->Error));
+                  log.warning("Read() returned error %d whilst reading content.", int(Self->Error));
                   Self->setCurrentState(HGS::COMPLETED);
                   return ERR::Terminate;
                }
@@ -801,7 +784,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   return ERR::Terminate;
                }
                else {
-                  log.warning("Read() returned error %d whilst reading content.", LONG(Self->Error));
+                  log.warning("Read() returned error %d whilst reading content.", int(Self->Error));
                   return ERR::Terminate;
                }
             }
@@ -858,12 +841,12 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       return ERR::InvalidHTTPResponse;
    }
 
-   //LONG majorv = StrToInt(str); // Currently unused
+   //int majorv = StrToInt(str); // Currently unused
    auto b = Response.find_first_of('.');
    if (b IS std::string::npos) return ERR::InvalidHTTPResponse;
    b++;
 
-   //LONG minorv = StrToInt(str); // Currently unused
+   //int minorv = StrToInt(str); // Currently unused
    while ((b < Response.size()) and (Response[b] > 0x20)) b++;
    while ((b < Response.size()) and (Response[b] <= 0x20)) b++;
 
@@ -973,7 +956,7 @@ static ERR process_data(extHTTP *Self, APTR Buffer, int Length)
 
       ERR error;
       if (Self->Incoming.isC()) {
-         auto routine = (ERR (*)(extHTTP *, APTR, LONG, APTR))Self->Incoming.Routine;
+         auto routine = (ERR (*)(extHTTP *, APTR, int, APTR))Self->Incoming.Routine;
          error = routine(Self, Buffer, Length, Self->Incoming.Meta);
       }
       else if (Self->Incoming.isScript()) {
@@ -1056,8 +1039,8 @@ static int extract_value(std::string_view String, std::string &Result)
 
 static void writehex(HASH Bin, HASHHEX Hex)
 {
-   for (ULONG i=0; i < HASHLEN; i++) {
-      UBYTE j = (Bin[i] >> 4) & 0xf;
+   for (uint32_t i=0; i < HASHLEN; i++) {
+      uint8_t j = (Bin[i] >> 4) & 0xf;
 
       if (j <= 9) Hex[i<<1] = (j + '0');
       else Hex[i*2] = (j + 'a' - 10);
@@ -1075,31 +1058,31 @@ static void writehex(HASH Bin, HASHHEX Hex)
 
 static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 {
-   MD5_CTX md5;
+   MD5Context md5;
    HASH HA1;
 
    MD5Init(&md5);
 
-   if (!Self->Username.empty()) MD5Update(&md5, (UBYTE *)Self->Username.c_str(), Self->Username.size());
+   if (!Self->Username.empty()) MD5Update(&md5, (uint8_t *)Self->Username.c_str(), Self->Username.size());
 
-   MD5Update(&md5, (UBYTE *)":", 1);
+   MD5Update(&md5, (uint8_t *)":", 1);
 
-   if (!Self->Realm.empty()) MD5Update(&md5, (UBYTE *)Self->Realm.c_str(), Self->Realm.size());
+   if (!Self->Realm.empty()) MD5Update(&md5, (uint8_t *)Self->Realm.c_str(), Self->Realm.size());
 
-   MD5Update(&md5, (UBYTE *)":", 1);
+   MD5Update(&md5, (uint8_t *)":", 1);
 
-   if (!Self->Password.empty()) MD5Update(&md5, (UBYTE *)Self->Password.c_str(), Self->Password.size());
+   if (!Self->Password.empty()) MD5Update(&md5, (uint8_t *)Self->Password.c_str(), Self->Password.size());
 
-   MD5Final((UBYTE *)HA1, &md5);
+   MD5Final((uint8_t *)HA1, &md5);
 
    if (pf::iequals(Self->AuthAlgorithm, "md5-sess")) {
       MD5Init(&md5);
-      MD5Update(&md5, (UBYTE *)HA1, HASHLEN);
-      MD5Update(&md5, (UBYTE *)":", 1);
-      if (!Self->AuthNonce.empty()) MD5Update(&md5, (UBYTE *)Self->AuthNonce.c_str(), Self->AuthNonce.size());
-      MD5Update(&md5, (UBYTE *)":", 1);
-      MD5Update(&md5, (UBYTE *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
-      MD5Final((UBYTE *)HA1, &md5);
+      MD5Update(&md5, (uint8_t *)HA1, HASHLEN);
+      MD5Update(&md5, (uint8_t *)":", 1);
+      if (!Self->AuthNonce.empty()) MD5Update(&md5, (uint8_t *)Self->AuthNonce.c_str(), Self->AuthNonce.size());
+      MD5Update(&md5, (uint8_t *)":", 1);
+      MD5Update(&md5, (uint8_t *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
+      MD5Final((uint8_t *)HA1, &md5);
    }
 
    writehex(HA1, SessionKey);
@@ -1111,10 +1094,9 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING NonceCount, HASHHEX HA1, HASHHEX HEntity, HASHHEX Response)
 {
    pf::Log log;
-   MD5_CTX md5;
-   HASH HA2;
-   HASH RespHash;
-   HASHHEX HA2Hex;
+   MD5Context md5;
+   HASH ha2, response_hash;
+   HASHHEX ha2_hex;
    int i;
 
    // Calculate H(A2)
@@ -1123,45 +1105,45 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
 
    auto req = Request.c_str();
    for (i=0; req[i] > 0x20; i++);
-   MD5Update(&md5, (UBYTE *)req, i); // Compute MD5 from the name of the HTTP method that we are calling
+   MD5Update(&md5, (uint8_t *)req, i); // Compute MD5 from the name of the HTTP method that we are calling
    while ((req[i]) and (req[i] <= 0x20)) i++; // Skip whitespace
 
-   MD5Update(&md5, (UBYTE *)":", 1);
+   MD5Update(&md5, (uint8_t *)":", 1);
 
    req += i;
    for (i=0; req[i] > 0x20; i++);
-   MD5Update(&md5, (UBYTE *)req, i); // Compute MD5 from the path of the HTTP method that we are calling
+   MD5Update(&md5, (uint8_t *)req, i); // Compute MD5 from the path of the HTTP method that we are calling
 
    if (pf::iequals(Self->AuthQOP, "auth-int")) {
-      MD5Update(&md5, (UBYTE *)":", 1);
-      MD5Update(&md5, (UBYTE *)HEntity, HASHHEXLEN);
+      MD5Update(&md5, (uint8_t *)":", 1);
+      MD5Update(&md5, (uint8_t *)HEntity, HASHHEXLEN);
    }
 
-   MD5Final((UBYTE *)HA2, &md5);
-   writehex(HA2, HA2Hex);
+   MD5Final((uint8_t *)ha2, &md5);
+   writehex(ha2, ha2_hex);
 
    // Calculate response:  HA1Hex:Nonce:NonceCount:CNonce:auth:HA2Hex
 
    MD5Init(&md5);
-   MD5Update(&md5, (UBYTE *)HA1, HASHHEXLEN);
-   MD5Update(&md5, (UBYTE *)":", 1);
-   MD5Update(&md5, (UBYTE *)Self->AuthNonce.c_str(), Self->AuthNonce.size());
-   MD5Update(&md5, (UBYTE *)":", 1);
+   MD5Update(&md5, (uint8_t *)HA1, HASHHEXLEN);
+   MD5Update(&md5, (uint8_t *)":", 1);
+   MD5Update(&md5, (uint8_t *)Self->AuthNonce.c_str(), Self->AuthNonce.size());
+   MD5Update(&md5, (uint8_t *)":", 1);
 
    if (!Self->AuthQOP.empty()) {
-      MD5Update(&md5, (UBYTE *)NonceCount, strlen((CSTRING)NonceCount));
-      MD5Update(&md5, (UBYTE *)":", 1);
-      MD5Update(&md5, (UBYTE *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
-      MD5Update(&md5, (UBYTE *)":", 1);
-      MD5Update(&md5, (UBYTE *)Self->AuthQOP.c_str(), Self->AuthQOP.size());
-      MD5Update(&md5, (UBYTE *)":", 1);
+      MD5Update(&md5, (uint8_t *)NonceCount, strlen((CSTRING)NonceCount));
+      MD5Update(&md5, (uint8_t *)":", 1);
+      MD5Update(&md5, (uint8_t *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
+      MD5Update(&md5, (uint8_t *)":", 1);
+      MD5Update(&md5, (uint8_t *)Self->AuthQOP.c_str(), Self->AuthQOP.size());
+      MD5Update(&md5, (uint8_t *)":", 1);
    }
 
-   MD5Update(&md5, (UBYTE *)HA2Hex, HASHHEXLEN);
-   MD5Final((UBYTE *)RespHash, &md5);
-   writehex(RespHash, Response);
+   MD5Update(&md5, (uint8_t *)ha2_hex, HASHHEXLEN);
+   MD5Final((uint8_t *)response_hash, &md5);
+   writehex(response_hash, Response);
 
-   log.trace("%s:%s:%s:%s:%s:%s", HA1, Self->AuthNonce.c_str(), NonceCount, Self->AuthCNonce.c_str(), Self->AuthQOP.c_str(), HA2Hex);
+   log.trace("%s:%s:%s:%s:%s:%s", HA1, Self->AuthNonce.c_str(), NonceCount, Self->AuthCNonce.c_str(), Self->AuthQOP.c_str(), ha2_hex);
 }
 
 //********************************************************************************************************************
@@ -1175,7 +1157,7 @@ static ERR write_socket(extHTTP *Self, CPTR Buffer, int Length, int *Result)
 
       if ((Self->Flags & HTF::DEBUG_SOCKET) != HTF::NIL) {
          log.msg("SOCKET-OUTGOING: LEN: %d", Length);
-         for (LONG i=0; i < Length; i++) if ((((UBYTE *)Buffer)[i] < 128) and (((UBYTE *)Buffer)[i] >= 10)) {
+         for (int i=0; i < Length; i++) if ((((uint8_t *)Buffer)[i] < 128) and (((uint8_t *)Buffer)[i] >= 10)) {
             printf("%c", ((STRING)Buffer)[i]);
          }
          else printf("?");
@@ -1247,38 +1229,39 @@ static void set_http_method(extHTTP *Self, CSTRING Method, std::ostringstream &C
 
 //********************************************************************************************************************
 
-static ERR parse_file(extHTTP *Self, STRING Buffer, int Size)
-{
-   int i;
-   int pos = Self->InputPos;
-   for (i=0; (i < Size-1) and (Self->InputFile[pos]);) {
-      if (Self->InputFile[pos] IS '"') {
-         pos++;
-         while ((i < Size-1) and (Self->InputFile[pos]) and (Self->InputFile[pos] != '"')) {
-            Buffer[i++] = Self->InputFile[pos++];
-         }
-         if (Self->InputFile[pos] IS '"') pos++;
-      }
-      else if (Self->InputFile[pos] IS '|') {
-         pos++;
-         while ((Self->InputFile[pos]) and (Self->InputFile[pos] <= 0x20)) pos++;
-         break;
-      }
-      else Buffer[i++] = Self->InputFile[pos++];
-   }
-   Buffer[i] = 0;
-   Self->InputPos = pos;
+  static ERR parse_file(extHTTP *Self, std::string &Buffer)
+  {
+     const char *file = Self->InputFile;
+     auto pos = Self->InputPos;
+     while (char ch = file[pos]) {
+        if (ch IS '"') {
+           ++pos;
+           auto start = file + pos;
+           while (file[pos] and file[pos] != '"') ++pos;
+           Buffer.append(start, file + pos);
+           if (file[pos] IS '"') ++pos;
+        }
+        else if (ch IS '|') {
+           ++pos;
+           while (file[pos] and file[pos] <= 0x20) ++pos;
+           break;
+        }
+        else { // Find end of non-special characters
+           auto start = file + pos;
+           while (file[pos] and (file[pos] != '"') and (file[pos] != '|')) ++pos;
+           Buffer.append(start, file + pos);
+        }
+     }
 
-   if (i >= Size-1) return ERR::BufferOverflow;
-   if (!i) return ERR::EmptyString;
-   return ERR::Okay;
-}
+     Self->InputPos = pos;
+     return ERR::Okay;
+  }
 
 //********************************************************************************************************************
 
 static void parse_file(extHTTP *Self, std::ostringstream &Cmd)
 {
-   int pos = Self->InputPos;
+   auto pos = Self->InputPos;
    while (Self->InputFile[pos]) {
       if (Self->InputFile[pos] IS '"') {
          pos++;
