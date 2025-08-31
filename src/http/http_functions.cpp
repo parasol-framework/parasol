@@ -236,10 +236,10 @@ static ERR socket_outgoing(objNetSocket *Socket)
          // then the data, then another CRLF.
          int csize;
          int len = Self->WriteBuffer.size() - CHUNK_LENGTH_OFFSET;
-         if (len & 0xf000)      { csize = 0; snprintf((char *)Self->WriteBuffer.data(), 5, "%.4x\n\r", len); }
-         else if (len & 0x0f00) { csize = 1; snprintf((char *)Self->WriteBuffer.data()+1, 4, "%.3x\n\r", len); }
-         else if (len & 0x00f0) { csize = 2; snprintf((char *)Self->WriteBuffer.data()+2, 3, "%.2x\n\r", len); }
-         else { csize = 3; snprintf((char *)Self->WriteBuffer.data()+3, 2, "%.1x\n\r", len); }
+         if (len & 0xf000)      { csize = 0; snprintf((char *)Self->WriteBuffer.data(), 5, "%.4x\r\n", len); }
+         else if (len & 0x0f00) { csize = 1; snprintf((char *)Self->WriteBuffer.data()+1, 4, "%.3x\r\n", len); }
+         else if (len & 0x00f0) { csize = 2; snprintf((char *)Self->WriteBuffer.data()+2, 3, "%.2x\r\n", len); }
+         else { csize = 3; snprintf((char *)Self->WriteBuffer.data()+3, 2, "%.1x\r\n", len); }
          
          Self->WriteBuffer.push_back('\n');
          Self->WriteBuffer.push_back('\r');
