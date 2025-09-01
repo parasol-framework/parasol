@@ -1,11 +1,5 @@
 --[[
 UDP IPv6 Communication Test
-
-This test verifies UDP socket functionality with IPv6 including:
-- IPv6 UDP socket creation and binding
-- IPv6 address parsing and validation
-- Dual-stack IPv4/IPv6 communication
-- IPv6 loopback and multicast addresses
 --]]
 
    require 'common'
@@ -22,14 +16,13 @@ function testUDPIPv6Basic()
    local proc = processing.new({ timeout = glTestTimeout })
    local messageReceived = false
 
-   print('Creating IPv6 UDP server socket')
    local server = obj.new('netsocket', {
-      port = serverPort,
+      port    = serverPort,
       address = '::1',  -- IPv6 loopback
-      flags = 'SERVER|UDP',
+      flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
          assert(err == ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
@@ -42,10 +35,7 @@ function testUDPIPv6Basic()
       end
    })
 
-   print('Creating IPv6 UDP client socket')
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    -- Client sends message to IPv6 loopback
    local message = 'Hello IPv6 UDP Server'
@@ -57,8 +47,6 @@ function testUDPIPv6Basic()
    proc.sleep()
 
    assert(messageReceived, 'Server did not receive IPv6 message')
-
-   print('UDP IPv6 basic test completed successfully')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -70,14 +58,13 @@ function testUDPDualStack()
    local ipv4Received = false
    local ipv6Received = false
 
-   print('Creating dual-stack UDP server (IPv6 with IPv4 mapped)')
    local server = obj.new('netsocket', {
       port = serverPort,
       address = '::',  -- Bind to all interfaces (dual-stack)
       flags = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
          assert(err == ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
@@ -97,9 +84,7 @@ function testUDPDualStack()
       end
    })
 
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    -- Send IPv4 message
    local ipv4Message = 'Hello from IPv4'
@@ -119,19 +104,13 @@ function testUDPDualStack()
 
    assert(ipv4Received, 'Server did not receive IPv4 message')
    assert(ipv6Received, 'Server did not receive IPv6 message')
-
-   print('UDP dual-stack test completed successfully')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 address validation and error handling
 
 function testUDPIPv6ErrorHandling()
-   print('Testing UDP IPv6 error handling')
-
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    -- Test invalid IPv6 addresses
    local invalidAddresses = {
@@ -150,8 +129,8 @@ function testUDPIPv6ErrorHandling()
 
    -- Test valid IPv6 addresses (should not fail due to address parsing)
    local validAddresses = {
-      '::1',                    -- Loopback
-      '::',                     -- Any address
+      '::1',                   -- Loopback
+      '::',                    -- Any address
       '2001:db8::1',           -- Documentation prefix
       'fe80::1',               -- Link-local
       '::ffff:127.0.0.1',      -- IPv4-mapped IPv6
@@ -162,35 +141,20 @@ function testUDPIPv6ErrorHandling()
       -- Note: May still fail due to network unreachable, but should not fail due to address parsing
       print('Address parsing accepted valid IPv6 address: ' .. addr .. ' (err: ' .. mSys.GetErrorMsg(err) .. ')')
    end
-
-   print('UDP IPv6 error handling test completed successfully')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 specific socket properties
 
 function testUDPIPv6Properties()
-   print('Testing UDP IPv6 socket properties')
+   local ipv6Socket = obj.new('netsocket', { address = '::1', flags = 'UDP', multicastTTL = 5 })
 
-   -- Create IPv6 UDP socket
-   local ipv6Socket = obj.new('netsocket', {
-      address = '::1',
-      flags = 'UDP'
-   })
-
-   -- Verify socket properties
    assert(bit.band(ipv6Socket.flags, NSF_UDP) != 0, 'UDP flag not set on IPv6 socket')
    assert(ipv6Socket.state == NTC_CONNECTED, 'IPv6 UDP socket should be in CONNECTED state')
-
-   -- Test multicast TTL setting (IPv6 uses hops instead of TTL)
-   ipv6Socket.multicastTTL = 5
    assert(ipv6Socket.multicastTTL == 5, 'IPv6 multicast TTL (hops) not set correctly')
-
-   print('UDP IPv6 properties test completed successfully')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
--- Run all UDP IPv6 tests
 
    return {
       tests = {

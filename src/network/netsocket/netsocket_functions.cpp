@@ -546,9 +546,11 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 
    pf::SwitchContext context(Self); // Set context & lock
 
-   if ((Self->Flags & NSF::SERVER) != NSF::NIL) { // Sanity check
-      log.warning("Invalid call from server socket.");
-      return;
+   if ((Self->Flags & NSF::UDP) IS NSF::NIL) {
+      if ((Self->Flags & NSF::SERVER) != NSF::NIL) { // Sanity check
+         log.warning("Invalid call from server socket.");
+         return;
+      }
    }
 
    if (Self->Terminating) { // Set by FreeWarning()

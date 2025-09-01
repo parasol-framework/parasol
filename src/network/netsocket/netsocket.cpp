@@ -824,41 +824,40 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
 #endif
 
    // Configure UDP-specific socket options
+
    if ((Self->Flags & NSF::UDP) != NSF::NIL) {
       if ((Self->Flags & NSF::BROADCAST) != NSF::NIL) {
-#ifdef __linux__
-         int broadcast = 1;
-         if (setsockopt(Self->Handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) != 0) {
-            log.warning("Failed to enable broadcast: %s", strerror(errno));
-         }
-#elif _WIN32
-         // Use winsock wrapper - will be added to winsockwrappers.cpp
-         if (win_enable_broadcast(Self->Handle) != ERR::Okay) {
-            log.warning("Failed to enable broadcast");
-         }
-#endif
+         #ifdef __linux__
+            int broadcast = 1;
+            if (setsockopt(Self->Handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) != 0) {
+               log.warning("Failed to enable broadcast: %s", strerror(errno));
+            }
+         #elif _WIN32
+            // Use winsock wrapper - will be added to winsockwrappers.cpp
+            if (win_enable_broadcast(Self->Handle) != ERR::Okay) {
+               log.warning("Failed to enable broadcast");
+            }
+         #endif
       }
 
-      // Set multicast TTL if specified
       if (Self->MulticastTTL > 0) {
-#ifdef __linux__
-         int ttl = Self->MulticastTTL;
-         if (Self->IPV6) {
-            if (setsockopt(Self->Handle, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl)) != 0) {
-               log.warning("Failed to set multicast TTL: %s", strerror(errno));
+         #ifdef __linux__
+            int ttl = Self->MulticastTTL;
+            if (Self->IPV6) {
+               if (setsockopt(Self->Handle, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl)) != 0) {
+                  log.warning("Failed to set multicast TTL: %s", strerror(errno));
+               }
             }
-         }
-         else {
-            if (setsockopt(Self->Handle, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) != 0) {
-               log.warning("Failed to set multicast TTL: %s", strerror(errno));
+            else {
+               if (setsockopt(Self->Handle, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) != 0) {
+                  log.warning("Failed to set multicast TTL: %s", strerror(errno));
+               }
             }
-         }
-#elif _WIN32
-         // Use winsock wrapper - will be added to winsockwrappers.cpp
-         if (win_set_multicast_ttl(Self->Handle, Self->MulticastTTL, Self->IPV6) != ERR::Okay) {
-            log.warning("Failed to set multicast TTL");
-         }
-#endif
+         #elif _WIN32
+            if (win_set_multicast_ttl(Self->Handle, Self->MulticastTTL, Self->IPV6) != ERR::Okay) {
+               log.warning("Failed to set multicast TTL");
+            }
+         #endif
       }
    }
 
@@ -1428,8 +1427,8 @@ bufsize Length: Number of bytes to send from the data buffer.
 -ERRORS-
 Okay: The packet was sent successfully.
 BufferOverflow: The network buffer is full, retry later.
-Args: Invalid arguments provided.
-NoSupport: Socket is not configured for UDP mode.
+NullArgs: Invalid arguments provided.
+InvalidState: Socket is not configured for UDP mode.
 NetworkUnreachable: The destination network is unreachable.
 -END-
 
@@ -1439,42 +1438,84 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
 {
    pf::Log log;
 
-   if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
-   if ((!Args->Address) or (!Args->Data) or (!Args->Length)) return ERR::Args;
+   if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::InvalidState);
+   if ((!Args->Address) or (!Args->Data) or (!Args->Length)) return log.warning(ERR::NullArgs);
+   if (Args->Length <= 0) return log.warning(ERR::Args);
+   if (Args->Port <= 0 or Args->Port > 65535) return log.warning(ERR::Args);
 
-   log.branch("SendTo: %s:%d, %d bytes", Args->Address, Args->Port, Args->Length);
+   // Enforce max packet size (optional safety)
+   if (Self->MaxPacketSize and Args->Length > Self->MaxPacketSize) {
+      log.warning("Packet length %d exceeds MaxPacketSize %d", Args->Length, Self->MaxPacketSize);
+      return ERR::DataSize;
+   }
+
+   log.branch("SendTo: %s:%d, %d bytes, data=%p", Args->Address, Args->Port, Args->Length, Args->Data);
 
    Args->BytesSent = 0;
 
-   // Parse the destination address
    struct sockaddr_storage dest_addr;
-   int addr_len;
+   memset(&dest_addr, 0, sizeof(dest_addr));
+   int addr_len = 0;
 
-   // Try IPv6 first, then IPv4
-   struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&dest_addr;
-   struct sockaddr_in *addr4 = (struct sockaddr_in *)&dest_addr;
+   auto addr6 = (struct sockaddr_in6 *)&dest_addr;
+   auto addr4 = (struct sockaddr_in *)&dest_addr;
 
-#ifdef __linux__
-   if (inet_pton(AF_INET6, Args->Address, &addr6->sin6_addr) IS 1) {
+#if defined(__linux__)
+   // Try IPv4
+   unsigned char tmp4[sizeof(struct in_addr)];
+   if (inet_pton(AF_INET, Args->Address, tmp4) IS 1) {
+      if (Self->IPV6) {
+         // Build IPv4-mapped IPv6 address
+         addr6->sin6_family = AF_INET6;
+         addr6->sin6_port   = htons(Args->Port);
+         memset(&addr6->sin6_addr, 0, sizeof(addr6->sin6_addr));
+         addr6->sin6_addr.s6_addr[10] = 0xff;
+         addr6->sin6_addr.s6_addr[11] = 0xff;
+         memcpy(&addr6->sin6_addr.s6_addr[12], tmp4, 4);
+         addr_len = sizeof(struct sockaddr_in6);
+      }
+      else {
+         addr4->sin_family = AF_INET;
+         addr4->sin_port   = htons(Args->Port);
+         memcpy(&addr4->sin_addr, tmp4, 4);
+         memset(&addr4->sin_zero, 0, sizeof(addr4->sin_zero));
+         addr_len = sizeof(struct sockaddr_in);
+      }
+   }
+   else if (inet_pton(AF_INET6, Args->Address, &addr6->sin6_addr) IS 1) {
       addr6->sin6_family = AF_INET6;
-      addr6->sin6_port = htons(Args->Port);
+      addr6->sin6_port   = htons(Args->Port);
+      addr6->sin6_flowinfo = 0;
+      addr6->sin6_scope_id = 0;
       addr_len = sizeof(struct sockaddr_in6);
    }
-   else if (inet_pton(AF_INET, Args->Address, &addr4->sin_addr) IS 1) {
-      addr4->sin_family = AF_INET;
-      addr4->sin_port = htons(Args->Port);
-      addr_len = sizeof(struct sockaddr_in);
+#elif defined(_WIN32)
+   unsigned char tmp4[sizeof(struct in_addr)];
+   if (win_inet_pton(AF_INET, Args->Address, tmp4) IS 1) {
+      if (Self->IPV6) {
+         // IPv4-mapped IPv6
+         addr6->sin6_family = AF_INET6;
+         addr6->sin6_port   = htons(Args->Port);
+         memset(&addr6->sin6_addr, 0, sizeof(addr6->sin6_addr));
+         addr6->sin6_addr.s6_addr[10] = 0xff;
+         addr6->sin6_addr.s6_addr[11] = 0xff;
+         memcpy(&addr6->sin6_addr.s6_addr[12], tmp4, 4);
+         addr_len = sizeof(sockaddr_in6);
+      }
+      else {
+         addr4->sin_family = AF_INET;
+         addr4->sin_port   = htons(Args->Port);
+         memcpy(&addr4->sin_addr, tmp4, 4);
+         memset(addr4->sin_zero, 0, sizeof(addr4->sin_zero));
+         addr_len = sizeof(sockaddr_in);
+      }
    }
-#elif _WIN32
-   if (win_inet_pton(AF_INET6, Args->Address, &addr6->sin6_addr) IS 1) {
+   else if (win_inet_pton(AF_INET6, Args->Address, &addr6->sin6_addr) IS 1) {
       addr6->sin6_family = AF_INET6;
-      addr6->sin6_port = htons(Args->Port);
-      addr_len = sizeof(struct sockaddr_in6);
-   }
-   else if (win_inet_pton(AF_INET, Args->Address, &addr4->sin_addr) IS 1) {
-      addr4->sin_family = AF_INET;
-      addr4->sin_port = htons(Args->Port);
-      addr_len = sizeof(struct sockaddr_in);
+      addr6->sin6_port   = htons(Args->Port);
+      addr6->sin6_flowinfo = 0;
+      addr6->sin6_scope_id = 0;
+      addr_len = sizeof(sockaddr_in6);
    }
 #endif
    else {
@@ -1484,29 +1525,26 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
 
    size_t bytes_to_send = Args->Length;
 
-#ifdef __linux__
-   auto result = sendto(Self->Handle, Args->Data, bytes_to_send, MSG_DONTWAIT, (struct sockaddr *)&dest_addr, addr_len);
+#if defined(__linux__)
+   auto result = sendto(Self->Handle, Args->Data, bytes_to_send, MSG_DONTWAIT,
+                        (struct sockaddr *)&dest_addr, addr_len);
    if (result >= 0) {
-      Args->BytesSent = result;
+      Args->BytesSent = (int)result;
       return ERR::Okay;
    }
-   else {
-      switch (errno) {
-         case EAGAIN:
-         case EWOULDBLOCK:
-            return ERR::BufferOverflow;
-         case ENETUNREACH:
-            return ERR::NetworkUnreachable;
-         case EINVAL:
-            return ERR::Args;
-         default:
-            log.warning("sendto() failed: %s", strerror(errno));
-            return ERR::SystemCall;
-      }
+   switch (errno) {
+      case EAGAIN:
+      case EWOULDBLOCK: return ERR::BufferOverflow;
+      case ENETUNREACH: return ERR::NetworkUnreachable;
+      case EINVAL:      return ERR::Args;
+      default:
+         log.warning("sendto() failed: %s", strerror(errno));
+         return ERR::SystemCall;
    }
-#elif _WIN32
-   auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send, (struct sockaddr *)&dest_addr, addr_len);
-   if (error IS ERR::Okay) Args->BytesSent = bytes_to_send;
+#elif defined(_WIN32)
+   auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send,
+                           (struct sockaddr *)&dest_addr, addr_len);
+   if (error IS ERR::Okay) Args->BytesSent = (int)bytes_to_send;
    return error;
 #endif
 }
@@ -1549,6 +1587,8 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
    if ((!Args->Buffer) or (!Args->BufferSize)) return ERR::Args;
+   
+   Self->ReadCalled = true;
 
    Args->BytesRead = 0;
    Args->SourceAddress = nullptr;

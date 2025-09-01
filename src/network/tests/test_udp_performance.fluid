@@ -1,12 +1,5 @@
 --[[
 UDP Performance and Stress Test
-
-This test verifies UDP performance characteristics and stress conditions including:
-- High-frequency message sending
-- Large packet transmission
-- Concurrent UDP communication
-- Buffer overflow handling
-- Performance benchmarking
 --]]
 
    require 'common'
@@ -19,7 +12,8 @@ local glTestTimeout = 5.0
 -- Test high-frequency UDP messaging
 
 function testUDPHighFrequency()
-   local serverPort = glBasePort + 1
+   glBasePort = glBasePort + 1
+   local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local messagesReceived = 0
    local targetMessages = 100
@@ -27,12 +21,12 @@ function testUDPHighFrequency()
    print('Testing high-frequency UDP messaging (' .. targetMessages .. ' messages)')
 
    local server = obj.new('netsocket', {
-      port = serverPort,
+      port    = serverPort,
       address = '127.0.0.1',
-      flags = 'SERVER|UDP',
+      flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
          if (err == ERR_Okay and bytesRead > 0) then
             messagesReceived = messagesReceived + 1
             if (messagesReceived >= targetMessages) then
@@ -44,15 +38,13 @@ function testUDPHighFrequency()
       end
    })
 
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    -- Send messages rapidly
    local startTime = mSys.PreciseTime()
    for i = 1, targetMessages do
       local message = 'Message #' .. i
-      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message, string.len(message))
+      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message)
       assert(err == ERR_Okay, 'Failed to send message #' .. i .. ': ' .. mSys.GetErrorMsg(err))
 
       -- Small delay to prevent overwhelming the system
@@ -78,21 +70,20 @@ end
 -- Test large UDP packet transmission
 
 function testUDPLargePackets()
-   local serverPort = glBasePort + 2
+   glBasePort = glBasePort + 1
+   local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local largePacketReceived = false
    local receivedSize = 0
 
-   print('Testing large UDP packet transmission')
-
    local server = obj.new('netsocket', {
-      port = serverPort,
+      port    = serverPort,
       address = '127.0.0.1',
-      flags = 'SERVER|UDP',
+      flags   = 'SERVER|UDP',
       maxPacketSize = 65507,  -- Maximum UDP payload size
       incoming = function(Socket)
          local buffer = string.alloc(65600)  -- Slightly larger buffer
-         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 65600)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 65600)
          if (err == ERR_Okay and bytesRead > 0) then
             print('[Large Packet Server] Received packet of size: ' .. bytesRead)
             receivedSize = bytesRead
@@ -102,9 +93,7 @@ function testUDPLargePackets()
       end
    })
 
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    -- Test different large packet sizes
    local packetSizes = { 1024, 8192, 32768, 65507 }  -- Up to maximum UDP size
@@ -112,7 +101,7 @@ function testUDPLargePackets()
    for i, size in ipairs(packetSizes) do
       print('Sending packet of size: ' .. size)
       local largeMessage = string.rep('X', size)
-      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, largeMessage, size)
+      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, largeMessage)
 
       if (err == ERR_Okay) then
          assert(bytesSent == size, 'Not all bytes sent for size ' .. size .. ' (sent: ' .. bytesSent .. ')')
@@ -125,7 +114,7 @@ function testUDPLargePackets()
          end
       end
 
-      proc.sleep(0.1)  -- Brief pause between packets
+      processing.sleep(0.1)  -- Brief pause between packets
    end
 
    proc.sleep()
@@ -138,7 +127,8 @@ end
 -- Test UDP concurrent connections
 
 function testUDPConcurrency()
-   local serverPort = glBasePort + 3
+   glBasePort = glBasePort + 1
+   local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local clientsConnected = 0
    local targetClients = 5
@@ -148,12 +138,12 @@ function testUDPConcurrency()
    print('Testing UDP concurrency with ' .. targetClients .. ' concurrent clients')
 
    local server = obj.new('netsocket', {
-      port = serverPort,
+      port    = serverPort,
       address = '127.0.0.1',
-      flags = 'SERVER|UDP',
+      flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
          if (err == ERR_Okay and bytesRead > 0) then
             totalReceived = totalReceived + 1
             local msg = buffer:sub(1, bytesRead)
@@ -181,7 +171,7 @@ function testUDPConcurrency()
    for clientId = 1, targetClients do
       for msgId = 1, messagesPerClient do
          local message = 'Client' .. clientId .. '_Msg' .. msgId
-         local err, bytesSent = clients[clientId].mtSendTo('127.0.0.1', serverPort, message, string.len(message))
+         local err, bytesSent = clients[clientId].mtSendTo('127.0.0.1', serverPort, message)
          assert(err == ERR_Okay, 'Client ' .. clientId .. ' failed to send message ' .. msgId)
       end
       print('Client ' .. clientId .. ' sent all ' .. messagesPerClient .. ' messages')
@@ -200,11 +190,9 @@ end
 -- Test buffer overflow handling
 
 function testUDPBufferHandling()
-   print('Testing UDP buffer overflow handling')
+   glBasePort = glBasePort
 
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    -- Test sending when network buffer might be full
    local rapidMessages = 1000
@@ -215,7 +203,7 @@ function testUDPBufferHandling()
 
    for i = 1, rapidMessages do
       local message = 'Rapid message #' .. i
-      local err, bytesSent = client.mtSendTo('127.0.0.1', 12345, message, string.len(message))  -- Non-existent server
+      local err, bytesSent = client.mtSendTo('127.0.0.1', 12345, message)  -- Non-existent server
 
       if (err == ERR_Okay) then
          successCount = successCount + 1
@@ -230,15 +218,14 @@ function testUDPBufferHandling()
 
    -- We expect some buffer overflows when sending rapidly
    assert(successCount > 0, 'No messages sent successfully')
-
-   print('UDP buffer handling test completed successfully')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP performance benchmarks
 
 function testUDPPerformanceBenchmark()
-   local serverPort = glBasePort + 4
+   glBasePort = glBasePort + 1
+   local serverPort = glBasePort
    local proc = processing.new({ timeout = 10.0 })  -- Longer timeout for benchmark
    local benchmarkDuration = 2.0  -- 2 seconds
    local messagesSent = 0
@@ -252,34 +239,30 @@ function testUDPPerformanceBenchmark()
       address = '127.0.0.1',
       flags = 'SERVER|UDP',
       incoming = function(Socket)
-         if (benchmarkActive) then
-            local buffer = string.alloc(1024)
-            local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
-            if (err == ERR_Okay and bytesRead > 0) then
-               messagesReceived = messagesReceived + 1
-            end
+         local buffer = string.alloc(1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
+         if (err == ERR_Okay and bytesRead > 0) then
+             messagesReceived = messagesReceived + 1
          end
       end
    })
 
-   local client = obj.new('netsocket', {
-      flags = 'UDP'
-   })
+   local client = obj.new('netsocket', { flags = 'UDP' })
 
    local startTime = mSys.PreciseTime()
-   local endTime = startTime + benchmarkDuration
+   local endTime = startTime + (benchmarkDuration * 1000000)
 
    -- Send messages continuously for the benchmark duration
    while (mSys.PreciseTime() < endTime) do
       local message = 'Benchmark message ' .. messagesSent
-      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message, string.len(message))
+      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message)
       if (err == ERR_Okay) then
          messagesSent = messagesSent + 1
       end
 
       -- Brief processing break every 100 messages
       if (messagesSent % 100 == 0) then
-         proc.sleep(0.001)
+         proc.sleep(0.1)
       end
    end
 
@@ -293,19 +276,16 @@ function testUDPPerformanceBenchmark()
    print('Performance Results:')
    print('  Messages sent: ' .. messagesSent)
    print('  Messages received: ' .. messagesReceived)
-   print('  Duration: ' .. string.format('%.2f', actualDuration) .. ' seconds')
+   print('  Duration: ' .. string.format('%.2f', actualDuration/1000000) .. ' seconds')
    print('  Send rate: ' .. string.format('%.0f', sendRate) .. ' messages/second')
    print('  Receive rate: ' .. string.format('%.0f', receiveRate) .. ' messages/second')
    print('  Success rate: ' .. string.format('%.1f', (messagesReceived / messagesSent) * 100) .. '%')
 
    assert(messagesSent > 100, 'Too few messages sent for meaningful benchmark')
    assert(messagesReceived > messagesSent * 0.8, 'Too many messages lost')
-
-   print('UDP performance benchmark completed successfully')
 end
 
 ------------------------------------------------------------------------------------------------------------------------
--- Run all performance tests
 
    return {
       tests = {

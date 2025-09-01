@@ -19,12 +19,12 @@ function testMulticastGroups()
    -- Test joining IPv4 multicast group
    local ipv4Group = '224.1.1.1'  -- Test multicast address
    print('Testing join IPv4 multicast group: ' .. ipv4Group)
-   local err = multicastSocket.joinMulticastGroup(ipv4Group)
+   local err = multicastSocket.mtJoinMulticastGroup(ipv4Group)
    if (err == ERR_Okay) then
       print('Successfully joined IPv4 multicast group')
 
       -- Test leaving the group
-      err = multicastSocket.leaveMulticastGroup(ipv4Group)
+      err = multicastSocket.mtLeaveMulticastGroup(ipv4Group)
       assert(err == ERR_Okay, 'Failed to leave IPv4 multicast group: ' .. mSys.GetErrorMsg(err))
    else
       print('IPv4 multicast join failed (may be expected in some environments): ' .. mSys.GetErrorMsg(err))
@@ -32,10 +32,10 @@ function testMulticastGroups()
 
    -- Test joining IPv6 multicast group
    local ipv6Group = 'ff02::1'  -- All-nodes multicast
-   err = multicastSocket.joinMulticastGroup(ipv6Group)
+   err = multicastSocket.mtJoinMulticastGroup(ipv6Group)
    if (err == ERR_Okay) then
       -- Test leaving the group
-      err = multicastSocket.leaveMulticastGroup(ipv6Group)
+      err = multicastSocket.mtLeaveMulticastGroup(ipv6Group)
       assert(err == ERR_Okay, 'Failed to leave IPv6 multicast group: ' .. mSys.GetErrorMsg(err))
    else
       print('IPv6 multicast join failed (may be expected in some environments): ' .. mSys.GetErrorMsg(err))
@@ -58,16 +58,16 @@ function testMulticastErrorHandling()
    }
 
    for i, group in ipairs(invalidGroups) do
-      local err = udpSocket.joinMulticastGroup(group)
+      local err = udpSocket.mtJoinMulticastGroup(group)
       assert(err != ERR_Okay, 'JoinMulticastGroup should fail with invalid address: ' .. group)
    end
 
    -- Test TCP socket (should not support multicast)
    local tcpSocket = obj.new('netsocket', {
-      flags = 'SERVER'  -- TCP socket
+      flags = 'SERVER', port = 58234  -- TCP socket
    })
 
-   local err = tcpSocket.joinMulticastGroup('224.1.1.1')
+   local err = tcpSocket.mtJoinMulticastGroup('224.1.1.1')
    assert(err == ERR_NoSupport, 'Multicast should not be supported on TCP sockets')
 end
 
@@ -105,7 +105,7 @@ function testBroadcastLoopback()
       flags = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
          if (err == ERR_Okay and bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
             print('[Broadcast Server] Received: "' .. msg .. '" from ' .. sourceAddr .. ':' .. sourcePort)
@@ -124,7 +124,7 @@ function testBroadcastLoopback()
    -- Send to loopback (not true broadcast, but tests the broadcast socket option)
    local message = 'Broadcast Test Message'
    print('[Broadcast Client] Sending message to 127.0.0.1:' .. serverPort)
-   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message, string.len(message))
+   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message)
    assert(err == ERR_Okay, 'Failed to send broadcast message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()

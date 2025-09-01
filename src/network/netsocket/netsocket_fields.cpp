@@ -141,6 +141,43 @@ static ERR SET_Incoming(extNetSocket *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+MaxPacketSize: Maximum UDP packet size for sending and receiving data.
+
+This field sets the maximum size in bytes for UDP packets when sending or receiving data.  It only applies to UDP
+sockets and is ignored for TCP connections.  The default value is 65507 bytes, which is the maximum payload size
+for UDP packets (65535 - 8 bytes UDP header - 20 bytes IP header).
+
+If you attempt to send a packet larger than MaxPacketSize, a warning will be logged and the operation may fail.
+When receiving data, packets larger than this size will be truncated.
+
+-FIELD-
+MsgLimit: Limits the size of incoming and outgoing data packets.
+
+This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned
+to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow
+the queue results in the connection being terminated with an error.
+
+The default setting is 1 megabyte.
+
+-FIELD-
+MulticastTTL: Time-to-live (hop limit) for multicast packets.
+
+This field sets the time-to-live (TTL) value for multicast packets sent from UDP sockets.  The TTL determines how
+many network hops (routers) a multicast packet can traverse before being discarded.  This helps prevent multicast
+traffic from flooding the network indefinitely.
+
+The default TTL is 1, which restricts multicast to the local network segment.  Higher values allow multicast packets
+to traverse more network boundaries:
+
+<list type="bullet">
+<li>1: Local network segment only</li>
+<li>32: Within the local site</li>
+<li>64: Within the local region</li>
+<li>128: Within the local continent</li>
+<li>255: Unrestricted (global)</li>
+</list>
+
+-FIELD-
 Outgoing: Callback that is triggered when a socket is ready to send data.
 
 The Outgoing field can be set with a custom function that will be called whenever the socket is ready to send data.
@@ -188,15 +225,6 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-MsgLimit: Limits the size of incoming and outgoing data packets.
-
-This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned
-to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow
-the queue results in the connection being terminated with an error.
-
-The default setting is 1 megabyte.
-
--FIELD-
 OutQueueSize: The number of bytes on the socket's outgoing queue.
 
 *********************************************************************************************************************/
@@ -210,7 +238,7 @@ static ERR GET_OutQueueSize(extNetSocket *Self, int *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Port: The port number to use for initiating a connection.
+Port: The port number to use for connections.
 
 -FIELD-
 Handle: Platform specific reference to the network socket handle.
