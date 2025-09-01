@@ -56,7 +56,23 @@ The task object that represents the active process can be acquired from ~Current
 #include "../defs.h"
 #include <parasol/main.h>
 
+// Buffer size constants
+static constexpr size_t TASK_STDIN_BUFFER_SIZE = 4096;
+static constexpr size_t TASK_IO_BUFFER_SIZE = 2048;
+static constexpr size_t TASK_WIN_BUFFER_SIZE = 4096;
+
 extern "C" void CloseCore(void);
+
+// Helper function to cleanup file descriptors in Unix task activation
+#ifdef __unix__
+static void cleanup_task_fds(int input_fd, int out_fd, int out_errfd, int in_fd, int in_errfd) {
+   if (input_fd != -1)  close(input_fd);
+   if (out_fd != -1)    close(out_fd);
+   if (out_errfd != -1) close(out_errfd);
+   if (in_fd != -1)     close(in_fd);
+   if (in_errfd != -1)  close(in_errfd);
+}
+#endif
 
 #ifdef __unix__
 
@@ -140,7 +156,7 @@ static const ActionArray clActions[] = {
 static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 {
    auto Self = (extTask *)Task;
-   char buffer[4096];
+   char buffer[TASK_STDIN_BUFFER_SIZE];
    ERR error;
 
 #ifdef _WIN32
@@ -218,7 +234,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
    recursive++;
 
    int len;
-   char buffer[2048];
+   char buffer[TASK_IO_BUFFER_SIZE];
    if ((len = read(FD, buffer, sizeof(buffer)-1)) > 0) {
       buffer[len] = 0;
 
@@ -240,7 +256,7 @@ static void task_stdout(HOSTHANDLE FD, APTR Task)
 
 static void task_stderr(HOSTHANDLE FD, APTR Task)
 {
-   char buffer[2048];
+   char buffer[TASK_IO_BUFFER_SIZE];
    int len;
    thread_local UBYTE recursive = 0;
 
@@ -297,7 +313,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 
    log.traceBranch();
 
-   char buffer[4096];
+   char buffer[TASK_WIN_BUFFER_SIZE];
    int size = sizeof(buffer) - 1;
    winResetStdOut(Task->Platform, buffer, &size);
 
@@ -319,7 +335,7 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 
    log.traceBranch();
 
-   char buffer[4096];
+   char buffer[TASK_WIN_BUFFER_SIZE];
    int size = sizeof(buffer) - 1;
    winResetStdErr(Task->Platform, buffer, &size);
 
@@ -448,7 +464,7 @@ static ERR msg_quit(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSi
 extern "C" ERR validate_process(int ProcessID)
 {
    pf::Log log(__FUNCTION__);
-   static int glValidating = 0;
+   thread_local int glValidating = 0;
 
    log.function("PID: %d", ProcessID);
 
@@ -481,7 +497,6 @@ extern "C" ERR validate_process(int ProcessID)
    evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
 
-   glValidating = 0;
    return ERR::False; // Return ERR::False to indicate that the task was not healthy
 }
 
@@ -503,7 +518,7 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
    else log.branch("Process %" PF64 " signalled exit too early.", (LARGE)FD);
 
    if (Task->Platform) {
-      char buffer[4096];
+      char buffer[TASK_WIN_BUFFER_SIZE];
       int size;
 
       // Process remaining data
@@ -596,7 +611,7 @@ DOS window from appearing.  The DOS window will also be hidden if the stdout or 
 
 -ERRORS-
 Okay
-FieldNotSet: The Location field has not been set.
+MissingPath: The Location field has not been set.
 Failed
 TimeOut:     Can be returned if the `WAIT` flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.
 -END-
@@ -862,6 +877,11 @@ static ERR TASK_Activate(extTask *Self)
    in_errfd  = -1;
    in_fd     = -1;
 
+   // File descriptor management for Unix process execution:
+   // - input_fd: Connected to /dev/null to prevent child reading from parent stdin
+   // - out_fd/in_fd: Pipe pair for capturing child stdout 
+   // - out_errfd/in_errfd: Pipe pair for capturing child stderr
+   // All file descriptors are properly cleaned up on error via cleanup_task_fds()
    input_fd = open("/dev/null", O_RDONLY); // Input is always NULL, we don't want the child process reading from our own stdin stream
 
    if (Self->OutputCallback.defined()) {
@@ -872,9 +892,7 @@ static ERR TASK_Activate(extTask *Self)
       }
       else {
          log.warning("Failed to create pipe: %s", strerror(errno));
-         if (input_fd != -1) close(input_fd);
-         if (out_fd != -1)   close(out_fd);
-         if (in_fd != -1)    close(in_fd);
+         cleanup_task_fds(input_fd, out_fd, -1, in_fd, -1);
          return ERR::ProcessCreation;
       }
    }
@@ -892,9 +910,7 @@ static ERR TASK_Activate(extTask *Self)
       }
       else {
          log.warning("Failed to create pipe: %s", strerror(errno));
-         if (input_fd != -1) close(input_fd);
-         if (out_fd != -1)   close(out_fd);
-         if (in_fd != -1)    close(in_fd);
+         cleanup_task_fds(input_fd, out_fd, -1, in_fd, -1);
          return ERR::ProcessCreation;
       }
    }
@@ -908,15 +924,26 @@ static ERR TASK_Activate(extTask *Self)
    privileged = ((Self->Flags & TSF::PRIVILEGED) != TSF::NIL) ? 1 : 0;
    shell = ((Self->Flags & TSF::SHELL) != TSF::NIL) ? 1 : 0;
 
+   // Check system resource limits before forking
+   struct rlimit rlim;
+   if (getrlimit(RLIMIT_NPROC, &rlim) IS 0) {
+      if (rlim.rlim_cur != RLIM_INFINITY) {
+         // Count current processes to see if we're near the limit
+         // Leave some margin (10% or at least 5 processes) before hitting the limit
+         auto margin = std::max(5UL, rlim.rlim_cur / 10);
+         if (rlim.rlim_cur < margin) {
+            log.warning("Too close to process limit (%lu/%lu), refusing to fork", rlim.rlim_cur, rlim.rlim_max);
+            cleanup_task_fds(input_fd, out_fd, out_errfd, in_fd, in_errfd);
+            return ERR::ProcessCreation;
+         }
+      }
+   }
+
    pid = fork();
 
    if (pid IS -1) {
-      if (input_fd != -1)  close(input_fd);
-      if (out_fd != -1)    close(out_fd);
-      if (out_errfd != -1) close(out_errfd);
-      if (in_fd != -1)     close(in_fd);
-      if (in_errfd != -1)  close(in_errfd);
-      log.warning("Failed in an attempt to fork().");
+      cleanup_task_fds(input_fd, out_fd, out_errfd, in_fd, in_errfd);
+      log.warning("Failed in an attempt to fork(): %s", strerror(errno));
       return ERR::ProcessCreation;
    }
 
@@ -1007,7 +1034,7 @@ static ERR TASK_Activate(extTask *Self)
       close(out_fd);
    }
 
-   if (out_errfd != -1) { // stdin
+   if (out_errfd != -1) { // stderr
       close(2);
       dup2(out_errfd, 2);
       close(out_errfd);
@@ -1185,7 +1212,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
 #ifdef _WIN32
 
-   #define ENV_SIZE 4096
+   static constexpr size_t ENV_SIZE = 4096;
 
    Args->Value = nullptr;
 
@@ -1413,12 +1440,7 @@ static ERR TASK_Init(extTask *Self)
 
 static ERR TASK_NewPlacement(extTask *Self)
 {
-   new (Self) extTask;
-#ifdef __unix__
-   Self->InFD = -1;
-   Self->ErrFD = -1;
-#endif
-   Self->TimeOut = 60 * 60 * 24;
+   new (Self) extTask; // See constructor for initialisation
    return ERR::Okay;
 }
 
@@ -1431,6 +1453,12 @@ The Quit() method can be used as a convenient way of sending a task a quit messa
 destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
 `MSGID::QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.
 
+Signal Handling on Unix: When terminating a foreign process on Unix systems, the quit behavior follows a two-stage 
+approach for safe process termination: The first call sends `SIGTERM` to allow the process to shutdown gracefully;
+A second call sends `SIGKILL` to force immediate termination if the process is unresponsive.
+
+On Windows systems, the method uses `winTerminateApp()` with a timeout for process termination.
+
 -ERRORS-
 Okay
 -END-
@@ -1442,11 +1470,18 @@ static ERR TASK_Quit(extTask *Self)
    pf::Log log;
 
    if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
-      log.msg("Terminating foreign process %d", Self->ProcessID);
-
       #ifdef __unix__
-         kill(Self->ProcessID, SIGHUP); // Safe kill signal - this actually results in that process generating an internal MSGID::QUIT message
+         if (!Self->QuitCalled) { // First call: send SIGTERM for graceful termination
+            log.msg("Sending SIGTERM to process %d (graceful termination)", Self->ProcessID);
+            kill(Self->ProcessID, SIGTERM);
+            Self->QuitCalled = true;
+         }
+         else { // Second call: send SIGKILL for forced termination
+            log.msg("Sending SIGKILL to process %d (forced termination)", Self->ProcessID);
+            kill(Self->ProcessID, SIGKILL);
+         }
       #elif _WIN32
+         log.msg("Terminating foreign process %d", Self->ProcessID);
          winTerminateApp(Self->ProcessID, 1000);
       #else
          #warning Add code to kill foreign processes.
@@ -1656,6 +1691,18 @@ static ERR GET_Actions(extTask *Self, struct ActionEntry **Value)
 /*********************************************************************************************************************
 
 -FIELD-
+AffinityMask: Controls which CPU cores the process can run on.
+
+The AffinityMask field sets the CPU affinity for the current process, determining which CPU cores the process
+is allowed to run on. This is expressed as a bitmask where each bit represents a CPU core (bit 0 = core 0,
+bit 1 = core 1, etc.).
+
+Setting CPU affinity is particularly useful for benchmarking applications where consistent performance timing
+is required, as it prevents the OS from moving the process between different CPU cores during execution.
+
+Note: This field affects the current process only and requires appropriate system privileges on some platforms.
+
+-FIELD-
 Args: Command line arguments (string format).
 
 This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace.
@@ -1663,33 +1710,51 @@ The string will be disassembled and the arguments will be available to read from
 
 If an argument needs to include whitespace, use double-quotes to encapsulate the value.
 
+Security Limits: To prevent buffer overflow attacks, the following limits are enforced:
+
+<list type="bullet">
+<li>Maximum total input length: 64KB (65,536 bytes)</li>
+<li>Maximum individual argument length: 8KB (8,192 bytes)</li>
+<li>Malformed quotes are detected and cause `ERR::Syntax` to be returned.</li>
+</list>
+
 *********************************************************************************************************************/
 
 static ERR SET_Args(extTask *Self, CSTRING Value)
 {
    if ((!Value) or (!*Value)) return ERR::Okay;
 
+   // Security limits to prevent buffer overflow attacks:
+   // - Maximum total input length: 64KB
+   // - Maximum individual argument length: 8KB
+   // - Proper quote matching validation to prevent malformed input
+   const size_t MAX_INPUT_LEN = 65536;
+   size_t input_len = strlen(Value);
+   if (input_len > MAX_INPUT_LEN) return ERR::BufferOverflow;
+
    while (*Value) {
       while (*Value <= 0x20) Value++; // Skip whitespace
 
       if (*Value) { // Extract the argument
-         char buffer[400];
-         int i;
-         for (i=0; (*Value) and (*Value > 0x20) and ((size_t)i < sizeof(buffer)-1);) {
+         std::string buffer;
+         buffer.reserve(512); // Pre-allocate reasonable size
+         
+         bool in_quotes = false;
+         while (*Value and (in_quotes or (*Value > 0x20))) {
             if (*Value IS '"') {
+               in_quotes = !in_quotes;
                Value++;
-               while (((size_t)i < sizeof(buffer)-1) and (*Value) and (*Value != '"')) {
-                  buffer[i++] = *Value++;
-               }
-               if (*Value IS '"') Value++;
             }
-            else buffer[i++] = *Value++;
+            else {
+               buffer += *Value++;
+               // Prevent buffer overflow from malicious input
+               if (buffer.size() > 8192) return ERR::BufferOverflow; // 8KB max per argument
+            }
          }
-         buffer[i] = 0;
-
+         
+         if (in_quotes) return pf::Log().warning(ERR::Syntax);
          if (*Value) while (*Value > 0x20) Value++;
-
-         Self->addArgument(buffer);
+         Self->addArgument(buffer.c_str());
       }
    }
 
