@@ -464,11 +464,9 @@ static ERR msg_quit(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSi
 extern "C" ERR validate_process(int ProcessID)
 {
    pf::Log log(__FUNCTION__);
-   thread_local int glValidating = 0;
 
    log.function("PID: %d", ProcessID);
 
-   if (glValidating) return ERR::Okay;
    if (glValidateProcessID IS ProcessID) glValidateProcessID = 0;
    if ((ProcessID IS glProcessID) or (!ProcessID)) return ERR::Okay;
 
@@ -931,7 +929,7 @@ static ERR TASK_Activate(extTask *Self)
          // Count current processes to see if we're near the limit
          // Leave some margin (10% or at least 5 processes) before hitting the limit
          auto margin = std::max(5UL, rlim.rlim_cur / 10);
-         if (rlim.rlim_cur < margin) {
+         if ((rlim.rlim_cur + margin) >= rlim.rlim_max) {
             log.warning("Too close to process limit (%lu/%lu), refusing to fork", rlim.rlim_cur, rlim.rlim_max);
             cleanup_task_fds(input_fd, out_fd, out_errfd, in_fd, in_errfd);
             return ERR::ProcessCreation;

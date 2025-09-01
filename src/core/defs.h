@@ -715,7 +715,7 @@ extern const int glTotalMessages;
 extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern int glStdErrFlags; // Read only
-extern int glValidateProcessID; // Not a threading concern
+extern int glValidateProcessID; // Used by core thread only.
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
