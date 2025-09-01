@@ -293,13 +293,6 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    return 1;
 }
 
-//********************************************************************************************************************
-// ID3v2 is located at the start of the file.  This can be followed by a Xing VBR header.
-
-static void parse_id3v2(objSound *Self)
-{
-
-}
 
 //********************************************************************************************************************
 

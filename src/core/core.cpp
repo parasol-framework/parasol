@@ -161,8 +161,6 @@ void _init(void)
 ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 {
    #ifdef __unix__
-      struct timeval tmday;
-      struct timezone tz;
       #ifndef __ANDROID__
          bool hold_priority;
       #endif

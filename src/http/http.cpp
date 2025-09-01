@@ -97,7 +97,7 @@ For information about the HTTP protocol, please refer to the official protocol w
 #include <charconv>
 #include <limits>
 #include <algorithm>
-
+#include <format>
 
 #include <parasol/main.h>
 #include <parasol/modules/http.h>
