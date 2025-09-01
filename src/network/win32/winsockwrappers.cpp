@@ -455,6 +455,141 @@ template ERR WIN_APPEND<size_t>(WSW_SOCKET, std::vector<uint8_t> &, size_t, size
 
 //********************************************************************************************************************
 
+ERR WIN_SENDTO(WSW_SOCKET Socket, const void *Buffer, size_t *Length, const struct sockaddr *To, int ToLen)
+{
+   if (!*Length) return ERR::Okay;
+   auto result = sendto(Socket, reinterpret_cast<const char *>(Buffer), *Length, 0, To, ToLen);
+   if (result >= 0) {
+      *Length = result;
+      return ERR::Okay;
+   }
+   else {
+      *Length = 0;
+      switch (WSAGetLastError()) {
+         case WSAEWOULDBLOCK:
+         case WSAEALREADY:
+            return ERR::BufferOverflow;
+         case WSAEINPROGRESS:
+            return ERR::Busy;
+         default:
+            return convert_error();
+      }
+   }
+}
+
+//********************************************************************************************************************
+
+ERR WIN_RECVFROM(WSW_SOCKET Socket, void *Buffer, size_t BufferSize, size_t *BytesRead, struct sockaddr *From, int *FromLen)
+{
+   *BytesRead = 0;
+   if (!BufferSize) return ERR::Okay;
+   
+   auto result = recvfrom(Socket, reinterpret_cast<char *>(Buffer), BufferSize, 0, From, FromLen);
+   if (result > 0) {
+      *BytesRead = result;
+      return ERR::Okay;
+   }
+   else if (result IS 0) {
+      return ERR::Disconnected;
+   }
+   else if (WSAGetLastError() IS WSAEWOULDBLOCK) {
+      return ERR::Okay;
+   }
+   else {
+      return convert_error();
+   }
+}
+
+//********************************************************************************************************************
+
+ERR win_enable_broadcast(WSW_SOCKET Socket)
+{
+   BOOL broadcast = TRUE;
+   if (setsockopt(Socket, SOL_SOCKET, SO_BROADCAST, (char*)&broadcast, sizeof(broadcast)) != 0) {
+      return convert_error();
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR win_set_multicast_ttl(WSW_SOCKET Socket, int TTL, bool IPv6)
+{
+   if (IPv6) {
+      DWORD ttl = TTL;
+      if (setsockopt(Socket, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, (char*)&ttl, sizeof(ttl)) != 0) {
+         return convert_error();
+      }
+   }
+   else {
+      DWORD ttl = TTL;
+      if (setsockopt(Socket, IPPROTO_IP, IP_MULTICAST_TTL, (char*)&ttl, sizeof(ttl)) != 0) {
+         return convert_error();
+      }
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR win_join_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
+{
+   if (IPv6) {
+      struct ipv6_mreq mreq6;
+      if (win_inet_pton(AF_INET6, Group, &mreq6.ipv6mr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq6.ipv6mr_interface = 0; // Use default interface
+      
+      if (setsockopt(Socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
+         return convert_error();
+      }
+   }
+   else {
+      struct ip_mreq mreq;
+      if (win_inet_pton(AF_INET, Group, &mreq.imr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
+      
+      if (setsockopt(Socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
+         return convert_error();
+      }
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
+ERR win_leave_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
+{
+   if (IPv6) {
+      struct ipv6_mreq mreq6;
+      if (win_inet_pton(AF_INET6, Group, &mreq6.ipv6mr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq6.ipv6mr_interface = 0; // Use default interface
+      
+      if (setsockopt(Socket, IPPROTO_IPV6, IPV6_LEAVE_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
+         return convert_error();
+      }
+   }
+   else {
+      struct ip_mreq mreq;
+      if (win_inet_pton(AF_INET, Group, &mreq.imr_multiaddr) != 1) {
+         return ERR::Args;
+      }
+      mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
+      
+      if (setsockopt(Socket, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
+         return convert_error();
+      }
+   }
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+
 ERR WIN_SEND(WSW_SOCKET Socket, const void *Buffer, size_t *Length, int Flags)
 {
    if (!*Length) return ERR::Okay;
@@ -599,11 +734,14 @@ int ShutdownWinsock()
 //********************************************************************************************************************
 // IPv6 wrapper functions for Windows with fall-back to IPv4 if IPv6 is not supported or fails.
 
-WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
+WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6, bool UDP)
 {
    IPV6 = false;
+   int socket_type = UDP ? SOCK_DGRAM : SOCK_STREAM;
+   int protocol = UDP ? IPPROTO_UDP : IPPROTO_TCP;
+   
    // Try to create IPv6 dual-stack socket first
-   auto handle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+   auto handle = socket(AF_INET6, socket_type, protocol);
    if (handle != INVALID_SOCKET) {
       // Set dual-stack mode (disable IPv6-only mode to accept IPv4 connections)
       DWORD v6only = 0;
@@ -611,14 +749,17 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
          // Log warning but continue - some systems may not support dual-stack
       }
 
-      // Enable TCP_NODELAY by default for better responsiveness
-      DWORD nodelay = 1;
-      setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+      // Enable TCP_NODELAY by default for better responsiveness (TCP only)
+      if (!UDP) {
+         DWORD nodelay = 1;
+         setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+      }
 
       u_long non_blocking = 1;
       ioctlsocket(handle, FIONBIO, &non_blocking);
 
-      int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+      int flags = FD_CLOSE;
+      if (!UDP) flags |= FD_ACCEPT|FD_CONNECT;
       if (Read) flags |= FD_READ;
       if (Write) flags |= FD_WRITE;
       if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);
@@ -630,14 +771,17 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6)
       return sock;
    }
    else { // Fall back to IPv4-only socket
-      if (auto handle = socket(PF_INET, SOCK_STREAM, 0); handle != INVALID_SOCKET) {
-         // Enable TCP_NODELAY by default for better responsiveness
-         DWORD nodelay = 1;
-         setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+      if (auto handle = socket(PF_INET, socket_type, protocol); handle != INVALID_SOCKET) {
+         // Enable TCP_NODELAY by default for better responsiveness (TCP only)
+         if (!UDP) {
+            DWORD nodelay = 1;
+            setsockopt(handle, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+         }
 
          u_long non_blocking = 1;
          ioctlsocket(handle, FIONBIO, &non_blocking);
-         int flags = FD_CLOSE|FD_ACCEPT|FD_CONNECT;
+         int flags = FD_CLOSE;
+         if (!UDP) flags |= FD_ACCEPT|FD_CONNECT;
          if (Read) flags |= FD_READ;
          if (Write) flags |= FD_WRITE;
          if (!glSocketsDisabled) WSAAsyncSelect(handle, glNetWindow, WM_NETWORK, flags);

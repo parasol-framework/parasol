@@ -93,3 +93,10 @@ flute_test (network_error_handling "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_error
 flute_test (network_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ipv6.fluid")
 flute_test (network_concurrency "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concurrency.fluid")
 flute_test (network_ssl "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_ssl.fluid")
+# UDP Tests
+flute_test (network_udp_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_basic.fluid")
+flute_test (network_udp_ipv6 "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_ipv6.fluid")
+flute_test (network_udp_broadcast_multicast "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_broadcast_multicast.fluid")
+flute_test (network_udp_tcp_coexistence "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_tcp_coexistence.fluid")
+# Performance test (may take a while)
+#flute_test (network_udp_performance "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_udp_performance.fluid")

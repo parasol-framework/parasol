@@ -22,8 +22,14 @@ char *win_inet_ntoa(unsigned long);//struct in_addr);
 ERR win_listen(WSW_SOCKET, int);
 ERR win_socketstate(WSW_SOCKET, std::optional<bool>, std::optional<bool>);
 ERR WIN_SEND(WSW_SOCKET, const void *, size_t *, int);
+ERR WIN_SENDTO(WSW_SOCKET, const void *, size_t *, const struct sockaddr *, int);
+ERR WIN_RECVFROM(WSW_SOCKET, void *, size_t, size_t *, struct sockaddr *, int *);
+ERR win_enable_broadcast(WSW_SOCKET);
+ERR win_set_multicast_ttl(WSW_SOCKET, int, bool);
+ERR win_join_multicast_group(WSW_SOCKET, const char *, bool);
+ERR win_leave_multicast_group(WSW_SOCKET, const char *, bool);
 int win_shutdown(WSW_SOCKET, int);
-WSW_SOCKET win_socket_ipv6(void *, char, char, bool &);/*creates IPv6 dual-stack socket */
+WSW_SOCKET win_socket_ipv6(void *, char, char, bool &, bool = false);/*creates IPv6 dual-stack socket */
 ERR WIN_RECEIVE(WSW_SOCKET, void *, size_t, size_t *);
 template <class T> ERR WIN_APPEND(WSW_SOCKET, std::vector<uint8_t> &, size_t, T &);
 void winCloseResolveHandle(void *);
