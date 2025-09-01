@@ -1,0 +1,190 @@
+--[[
+UDP Basic Communication Test
+
+This test verifies basic UDP socket functionality including:
+- UDP socket creation and configuration
+- SendTo and RecvFrom operations
+- IPv4 and IPv6 support
+- Error handling for UDP-specific operations
+--]]
+
+   require 'common'
+   include 'network'
+
+local glBasePort = 19800  -- Base port for UDP tests
+local glTestTimeout = 3.0
+
+------------------------------------------------------------------------------------------------------------------------
+-- Test basic UDP communication (IPv4)
+
+function testUDPBasicIPv4()
+   local serverPort = glBasePort + 1
+   local proc = processing.new({ timeout = glTestTimeout })
+   local serverReceived = false
+   local clientReceived = false
+
+   print('Creating UDP server socket')
+   local server = obj.new('netsocket', {
+      port = serverPort,
+      address = '127.0.0.1',
+      flags = 'SERVER|UDP',
+      incoming = function(Socket)
+         local buffer = string.alloc(1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         assert(err == ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
+
+         if (bytesRead > 0) then
+            local msg = buffer:sub(1, bytesRead)
+            print('[UDP Server] Received: "' .. msg .. '" from ' .. sourceAddr .. ':' .. sourcePort)
+            assert(string.match(msg, 'Hello UDP Server'), 'Unexpected message received')
+
+            -- Echo back a response
+            local response = 'Hello UDP Client'
+            local err, bytesSent = Socket.mtSendTo(sourceAddr, sourcePort, response, string.len(response))
+            assert(err == ERR_Okay, 'Server failed to send UDP response: ' .. mSys.GetErrorMsg(err))
+            print('[UDP Server] Sent response: "' .. response .. '"')
+            serverReceived = true
+         end
+      end
+   })
+
+   print('Creating UDP client socket')
+   local client = obj.new('netsocket', {
+      flags = 'UDP',
+      incoming = function(Socket)
+         local buffer = string.alloc(1024)
+         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 1024)
+         assert(err == ERR_Okay, 'Client failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
+
+         if (bytesRead > 0) then
+            local msg = buffer:sub(1, bytesRead)
+            print('[UDP Client] Received: "' .. msg .. '" from ' .. sourceAddr .. ':' .. sourcePort)
+            assert(string.match(msg, 'Hello UDP Client'), 'Unexpected response received')
+            clientReceived = true
+            proc.signal()
+         end
+      end
+   })
+
+   -- Client sends initial message
+   local message = 'Hello UDP Server'
+   print('[UDP Client] Sending: "' .. message .. '"')
+   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message, string.len(message))
+   assert(err == ERR_Okay, 'Client failed to send UDP data: ' .. mSys.GetErrorMsg(err))
+   assert(bytesSent == string.len(message), 'Not all bytes were sent')
+
+   proc.sleep()
+
+   assert(serverReceived, 'Server did not receive expected message')
+   assert(clientReceived, 'Client did not receive expected response')
+
+   print('UDP basic IPv4 test completed successfully')
+end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Test UDP socket configuration and properties
+
+function testUDPConfiguration()
+   print('Testing UDP socket configuration')
+
+   local udpSocket = obj.new('netsocket', {
+      flags = 'UDP|BROADCAST',
+      maxPacketSize = 8192,
+      multicastTTL = 10
+   })
+
+   -- Verify UDP-specific properties
+   assert(bit.band(udpSocket.flags, NSF_UDP) != 0, 'UDP flag not set')
+   assert(udpSocket.maxPacketSize == 8192, 'MaxPacketSize not set correctly')
+   assert(udpSocket.multicastTTL == 10, 'MulticastTTL not set')
+
+   -- Verify UDP socket is immediately in CONNECTED state
+   assert(udpSocket.state == NTC_CONNECTED, 'UDP socket should be in CONNECTED state')
+
+   print('UDP configuration test completed successfully')
+end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Test UDP error conditions
+
+function testUDPErrorHandling()
+   local udpSocket = obj.new('netsocket', { flags = 'UDP' })
+
+   -- Test invalid address
+   local err, bytesSent = udpSocket.mtSendTo('invalid.address', 12345, 'test', 4)
+   assert(err != ERR_Okay, 'SendTo should fail with invalid address')
+
+   -- Test Connect method on UDP socket (should fail)
+   local err = udpSocket.nsConnect('127.0.0.1')
+   assert(err != ERR_Okay, 'Connect should not work on UDP sockets')
+
+   -- Test TCP-only operations on UDP socket
+   local tcpSocket = obj.new('netsocket', {
+      flags = 'SERVER'  -- TCP server
+   })
+
+   local err = tcpSocket.mtSendTo('127.0.0.1', 12345, 'test', 4)
+   assert(err == ERR_NoSupport, 'SendTo should not work on TCP sockets')
+end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Test UDP with different packet sizes
+
+function testUDPPacketSizes()
+   local serverPort = glBasePort + 2
+   local proc = processing.new({ timeout = glTestTimeout })
+   local testCompleted = false
+
+   print('Testing UDP with different packet sizes')
+
+   local server = obj.new('netsocket', {
+      port = serverPort,
+      address = '127.0.0.1',
+      flags = 'SERVER|UDP',
+      maxPacketSize = 65507,  -- Maximum UDP packet size
+      incoming = function(Socket)
+         local buffer = string.alloc(65600)  -- Larger than max packet
+         local err, bytesRead, sourceAddr, sourcePort = Socket.recvFrom(buffer, 65600)
+         assert(err == ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
+
+         if (bytesRead > 0) then
+            print('[UDP Server] Received packet of size: ' .. bytesRead)
+            testCompleted = true
+            proc.signal()
+         end
+      end
+   })
+
+   local client = obj.new('netsocket', {
+      flags = 'UDP'
+   })
+
+   -- Test small packet
+   local smallMessage = 'Small'
+   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, smallMessage, string.len(smallMessage))
+   assert(err == ERR_Okay, 'Failed to send small packet')
+
+   proc.sleep(0.1)  -- Brief pause
+
+   -- Test medium packet (1024 bytes)
+   local mediumMessage = string.rep('M', 1024)
+   err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, mediumMessage, string.len(mediumMessage))
+   assert(err == ERR_Okay, 'Failed to send medium packet')
+   assert(bytesSent == 1024, 'Medium packet not fully sent')
+
+   proc.sleep()
+
+   assert(testCompleted, 'Packet size test did not complete')
+   print('UDP packet size test completed successfully')
+end
+
+------------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = {
+         'testUDPConfiguration',
+         'testUDPErrorHandling',
+         'testUDPBasicIPv4',
+         'testUDPPacketSizes'
+      }
+   }

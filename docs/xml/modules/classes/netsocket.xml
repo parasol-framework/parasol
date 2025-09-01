@@ -25,7 +25,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <p>It is possible to write to a NetSocket object before the connection to a server is established.  Doing so will buffer the data in the socket until the connection with the server has been initiated, at which point the data will be immediately sent.</p>
 <header>Server-Client Connections</header>
 <p>To accept incoming client connections, create a NetSocket object with the <code>SERVER</code> flag set and define the <fl>Port</fl> value on which to listen for new clients.  If multiple connections from a single client IP address are allowed, set the <code>MULTI_CONNECT</code> flag.</p>
-<p>When a new connection is detected, the <fl>Feedback</fl> function will be called as <code>Feedback(*NetSocket, *ClientSocket, LONG State)</code></p>
+<p>When a new connection is detected, the <fl>Feedback</fl> function will be called as <code>Feedback(*NetSocket, *ClientSocket, NTC State)</code></p>
 <p>The NetSocket parameter refers to the original NetSocket object, <class name="ClientSocket">ClientSocket</class> applies if a client connection is involved and the State value will be set to <code>NTC::CONNECTED</code>.  If a client disconnects, the <fl>Feedback</fl> function will be called in the same manner but with a State value of <code>NTC::DISCONNECTED</code>.</p>
 <p>Information on all active connections can be read from the <fl>Clients</fl> field.  This contains a linked list of IP addresses and their connections to the server port.</p>
 <p>To send data to a client, write it to the target <class name="ClientSocket">ClientSocket</class>.</p>
@@ -172,6 +172,93 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <error code="Okay">Operation successful.</error>
         <error code="Failed">General failure.</error>
         <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
+      <name>JoinMulticastGroup</name>
+      <comment>Join a multicast group for receiving multicast packets (UDP only).</comment>
+      <prototype>ERR ns::JoinMulticastGroup(OBJECTPTR Object, CSTRING Group)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The multicast group address to join (e.g. <code>224.1.1.1</code>).</param>
+      </input>
+      <description>
+<p>This method joins a multicast group, allowing the socket to receive packets sent to the specified multicast address. This is only available for UDP sockets.</p>
+<p>The socket must be bound to a local address before joining a multicast group.</p>
+      </description>
+      <result>
+        <error code="Okay">Successfully joined the multicast group.</error>
+        <error code="Failed">Failed to join multicast group.</error>
+        <error code="Args">Invalid multicast address.</error>
+        <error code="NoSupport">Socket is not configured for UDP mode.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>LeaveMulticastGroup</name>
+      <comment>Leave a multicast group (UDP only).</comment>
+      <prototype>ERR ns::LeaveMulticastGroup(OBJECTPTR Object, CSTRING Group)</prototype>
+      <input>
+        <param type="CSTRING" name="Group">The multicast group address to leave.</param>
+      </input>
+      <description>
+<p>This method leaves a previously joined multicast group, stopping the reception of packets sent to the specified multicast address.</p>
+      </description>
+      <result>
+        <error code="Okay">Successfully left the multicast group.</error>
+        <error code="Failed">Failed to leave multicast group.</error>
+        <error code="Args">Invalid multicast address.</error>
+        <error code="NoSupport">Socket is not configured for UDP mode.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>RecvFrom</name>
+      <comment>Receive a datagram packet from any address (UDP only).</comment>
+      <prototype>ERR ns::RecvFrom(OBJECTPTR Object, APTR Buffer, INT BufferSize, INT * BytesRead, STRING * SourceAddress, INT * SourcePort)</prototype>
+      <input>
+        <param type="APTR" name="Buffer">Pointer to the buffer where received data will be stored.</param>
+        <param type="INT" name="BufferSize">Size of the receive buffer in bytes.</param>
+        <param type="INT *" name="BytesRead">Number of bytes actually received.</param>
+        <param type="STRING *" name="SourceAddress">Source IP address of the received packet (must be freed by caller).</param>
+        <param type="INT *" name="SourcePort">Source port number of the received packet.</param>
+      </input>
+      <description>
+<p>This method receives a datagram packet from any source address.  It is only available for sockets configured with the UDP flag.  Unlike TCP connections, UDP is connectionless so packets can be received from any source without establishing a connection first.</p>
+<p>The method is non-blocking and will return immediately.  If no data is available, <code>ERR::Okay</code> will be returned with <code>BytesRead</code> set to zero.</p>
+<p>The source address and port of the received packet will be provided in the output parameters.</p>
+<p>For TCP sockets, use the standard Read action instead.</p>
+      </description>
+      <result>
+        <error code="Okay">Data was received successfully, or no data available.</error>
+        <error code="Args">Invalid arguments provided.</error>
+        <error code="NoSupport">Socket is not configured for UDP mode.</error>
+        <error code="BufferOverflow">Receive buffer is too small for the incoming packet.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SendTo</name>
+      <comment>Send a datagram packet to a specific address (UDP only).</comment>
+      <prototype>ERR ns::SendTo(OBJECTPTR Object, CSTRING Address, INT Port, APTR Data, INT Length, INT * BytesSent)</prototype>
+      <input>
+        <param type="CSTRING" name="Address">The destination IP address (IPv4 or IPv6).</param>
+        <param type="INT" name="Port">The destination port number.</param>
+        <param type="APTR" name="Data">Pointer to the data buffer to send.</param>
+        <param type="INT" name="Length">Number of bytes to send from the data buffer.</param>
+        <param type="INT *" name="BytesSent">Number of bytes actually sent.</param>
+      </input>
+      <description>
+<p>This method sends a datagram packet to a specified IP address and port.  It is only available for sockets configured with the UDP flag.  Unlike TCP connections, UDP is connectionless so packets can be sent to any address without establishing a connection first.</p>
+<p>The method is non-blocking and will return immediately.  If the network buffer is full, an <code>ERR::BufferOverflow</code> error will be returned and the client should retry the operation later.</p>
+<p>For TCP sockets, use the standard Write action instead.</p>
+      </description>
+      <result>
+        <error code="Okay">The packet was sent successfully.</error>
+        <error code="Args">Invalid arguments provided.</error>
+        <error code="NoSupport">Socket is not configured for UDP mode.</error>
+        <error code="BufferOverflow">The network buffer is full, retry later.</error>
+        <error code="NetworkUnreachable">The destination network is unreachable.</error>
       </result>
     </method>
 
@@ -376,12 +463,14 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   </fields>
   <types>
     <constants lookup="NSF">
+      <const name="BROADCAST">Enable broadcast (UDP only).</const>
       <const name="DISABLE_SERVER_VERIFY">Disable SSL certificate verification (for testing only).</const>
       <const name="LOG_ALL">Print extra log messages.</const>
       <const name="MULTI_CONNECT">Allow multiple connections from the same IP when in server mode.</const>
       <const name="SERVER">Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</const>
       <const name="SSL">Use Secure Sockets Layer for all communication.</const>
       <const name="SYNCHRONOUS">Use synchronous (blocking) network calls.</const>
+      <const name="UDP">Use UDP (connectionless datagram protocol) instead of TCP.</const>
     </constants>
 
     <constants lookup="NTC" comment="NetSocket states">

@@ -36,6 +36,8 @@ enum class NSF : uint32_t {
    MULTI_CONNECT = 0x00000008,
    SYNCHRONOUS = 0x00000010,
    LOG_ALL = 0x00000020,
+   BROADCAST = 0x00000040,
+   UDP = 0x00000080,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(NSF)
@@ -412,6 +414,10 @@ struct Connect { CSTRING Address; int Port; static const AC id = AC(-1); ERR cal
 struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectClient { objNetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SendTo { CSTRING Address; int Port; APTR Data; int Length; int BytesSent; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RecvFrom { APTR Buffer; int BufferSize; int BytesRead; STRING SourceAddress; int SourcePort; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct JoinMulticastGroup { CSTRING Group; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct LeaveMulticastGroup { CSTRING Group; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -437,6 +443,8 @@ class objNetSocket : public Object {
    int    ClientLimit;        // The maximum number of clients (unique IP addresses) that can be connected to a server socket.
    int    SocketLimit;        // Limits the number of connected sockets per client IP address.
    int    MsgLimit;           // Limits the size of incoming and outgoing data packets.
+   int    MaxPacketSize;      // Maximum size for UDP packets (default 65507 bytes)
+   int    MulticastTTL;       // Time-to-live for multicast packets (UDP only)
 
    // Action stubs
 
@@ -506,6 +514,28 @@ class objNetSocket : public Object {
       struct ns::DisconnectSocket args = { Socket };
       return(Action(AC(-4), this, &args));
    }
+   inline ERR sendTo(CSTRING Address, int Port, APTR Data, int Length, int * BytesSent) noexcept {
+      struct ns::SendTo args = { Address, Port, Data, Length, (int)0 };
+      ERR error = Action(AC(-5), this, &args);
+      if (BytesSent) *BytesSent = args.BytesSent;
+      return(error);
+   }
+   inline ERR recvFrom(APTR Buffer, int BufferSize, int * BytesRead, STRING * SourceAddress, int * SourcePort) noexcept {
+      struct ns::RecvFrom args = { Buffer, BufferSize, (int)0, (STRING)0, (int)0 };
+      ERR error = Action(AC(-6), this, &args);
+      if (BytesRead) *BytesRead = args.BytesRead;
+      if (SourceAddress) *SourceAddress = args.SourceAddress;
+      if (SourcePort) *SourcePort = args.SourcePort;
+      return(error);
+   }
+   inline ERR joinMulticastGroup(CSTRING Group) noexcept {
+      struct ns::JoinMulticastGroup args = { Group };
+      return(Action(AC(-7), this, &args));
+   }
+   inline ERR leaveMulticastGroup(CSTRING Group) noexcept {
+      struct ns::LeaveMulticastGroup args = { Group };
+      return(Action(AC(-8), this, &args));
+   }
 
    // Customised field setting
 
@@ -522,19 +552,19 @@ class objNetSocket : public Object {
 
    template <class T> inline ERR setSSLCertificate(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[16];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLPrivateKey(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSSLKeyPassword(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[23];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
@@ -577,6 +607,18 @@ class objNetSocket : public Object {
       return ERR::Okay;
    }
 
+   inline ERR setMaxPacketSize(const int Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
+      this->MaxPacketSize = Value;
+      return ERR::Okay;
+   }
+
+   inline ERR setMulticastTTL(const int Value) noexcept {
+      if (this->initialised()) return ERR::NoFieldAccess;
+      this->MulticastTTL = Value;
+      return ERR::Okay;
+   }
+
    inline ERR setHandle(APTR Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[0];
@@ -585,13 +627,13 @@ class objNetSocket : public Object {
 
    inline ERR setFeedback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[24];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[13];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
