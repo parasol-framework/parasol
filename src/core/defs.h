@@ -451,6 +451,7 @@ class extTask : public objTask {
    STRING   Location;         // Where to load the task from (string)
    char     Name[32];         // Name of the task, if specified (string)
    bool     ReturnCodeSet;    // TRUE if the ReturnCode has been set
+   bool     QuitCalled;       // TRUE if TASK_Quit has been called before
    FUNCTION ErrorCallback;
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
@@ -465,14 +466,18 @@ class extTask : public objTask {
    struct MsgHandler *MsgThreadAction;
 
    #ifdef __unix__
-      int InFD;             // stdin FD for receiving output from launched task
-      int ErrFD;            // stderr FD for receiving output from launched task
+      int InFD = -1;       // stdin FD for receiving output from launched task
+      int ErrFD = -1;      // stderr FD for receiving output from launched task
    #endif
    #ifdef _WIN32
       STRING Env;
       APTR Platform;
    #endif
    struct ActionEntry Actions[int(AC::END)]; // Action routines to be intercepted by the program
+
+   extTask() {
+      TimeOut = 60 * 60 * 24;
+   }
 };
 
 //********************************************************************************************************************
@@ -710,7 +715,7 @@ extern const int glTotalMessages;
 extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern int glStdErrFlags; // Read only
-extern int glValidateProcessID; // Not a threading concern
+extern int glValidateProcessID; // Used by core thread only.
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
