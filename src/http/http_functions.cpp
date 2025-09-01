@@ -241,8 +241,8 @@ static ERR socket_outgoing(objNetSocket *Socket)
          else if (len & 0x00f0) { csize = 2; std::format_to(Self->WriteBuffer.begin()+2, "{:02x}\r\n", len); }
          else { csize = 3; std::format_to(Self->WriteBuffer.begin()+3, "{:01x}\r\n", len); }
          
-         Self->WriteBuffer.push_back('\n');
          Self->WriteBuffer.push_back('\r');
+         Self->WriteBuffer.push_back('\n');
 
          // Note: If the result were to come back as less than the length we intended to write,
          // it would screw up the entire sending process when using chunks.  However we don't
