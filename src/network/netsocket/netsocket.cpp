@@ -1005,6 +1005,13 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
       else return ERR::Okay;
    }
+   else if ((Self->Flags & NSF::UDP) != NSF::NIL) {
+      // UDP client sockets need to be registered for incoming data on Linux
+      #ifdef __linux__
+      RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+      #endif
+      return ERR::Okay;
+   }
    else return ERR::Okay;
 }
 
@@ -1533,8 +1540,12 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
       return ERR::Okay;
    }
    switch (errno) {
+#if EAGAIN == EWOULDBLOCK
+      case EAGAIN: return ERR::BufferOverflow;
+#else
       case EAGAIN:
       case EWOULDBLOCK: return ERR::BufferOverflow;
+#endif
       case ENETUNREACH: return ERR::NetworkUnreachable;
       case EINVAL:      return ERR::Args;
       default:
@@ -1606,9 +1617,14 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
    }
    else {
       switch (errno) {
+#if EAGAIN == EWOULDBLOCK
+         case EAGAIN:
+            return ERR::Okay; // No data available
+#else
          case EAGAIN:
          case EWOULDBLOCK:
             return ERR::Okay; // No data available
+#endif
          case EMSGSIZE:
             return ERR::BufferOverflow;
          default:
