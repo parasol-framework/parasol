@@ -255,10 +255,10 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </description>
       <result>
         <error code="Okay">The packet was sent successfully.</error>
-        <error code="Args">Invalid arguments provided.</error>
-        <error code="NoSupport">Socket is not configured for UDP mode.</error>
         <error code="BufferOverflow">The network buffer is full, retry later.</error>
+        <error code="InvalidState">Socket is not configured for UDP mode.</error>
         <error code="NetworkUnreachable">The destination network is unreachable.</error>
+        <error code="NullArgs">Invalid arguments provided.</error>
       </result>
     </method>
 
@@ -375,6 +375,17 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     </field>
 
     <field>
+      <name>MaxPacketSize</name>
+      <comment>Maximum UDP packet size for sending and receiving data.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field sets the maximum size in bytes for UDP packets when sending or receiving data.  It only applies to UDP sockets and is ignored for TCP connections.  The default value is 65507 bytes, which is the maximum payload size for UDP packets (65535 - 8 bytes UDP header - 20 bytes IP header).</p>
+<p>If you attempt to send a packet larger than MaxPacketSize, a warning will be logged and the operation may fail. When receiving data, packets larger than this size will be truncated.</p>
+      </description>
+    </field>
+
+    <field>
       <name>MsgLimit</name>
       <comment>Limits the size of incoming and outgoing data packets.</comment>
       <access read="R" write="I">Read/Init</access>
@@ -382,6 +393,24 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       <description>
 <p>This field limits the size of incoming and outgoing message queues (each socket connection receives two queues assigned to both incoming and outgoing messages).  The size is defined in bytes.  Sending or receiving messages that overflow the queue results in the connection being terminated with an error.</p>
 <p>The default setting is 1 megabyte.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>MulticastTTL</name>
+      <comment>Time-to-live (hop limit) for multicast packets.</comment>
+      <access read="R" write="I">Read/Init</access>
+      <type>INT</type>
+      <description>
+<p>This field sets the time-to-live (TTL) value for multicast packets sent from UDP sockets.  The TTL determines how many network hops (routers) a multicast packet can traverse before being discarded.  This helps prevent multicast traffic from flooding the network indefinitely.</p>
+<p>The default TTL is 1, which restricts multicast to the local network segment.  Higher values allow multicast packets to traverse more network boundaries:</p>
+<list type="bullet">
+<li>1: Local network segment only</li>
+<li>32: Within the local site</li>
+<li>64: Within the local region</li>
+<li>128: Within the local continent</li>
+<li>255: Unrestricted (global)</li>
+</list>
       </description>
     </field>
 
@@ -405,7 +434,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 
     <field>
       <name>Port</name>
-      <comment>The port number to use for initiating a connection.</comment>
+      <comment>The port number to use for connections.</comment>
       <access read="R" write="I">Read/Init</access>
       <type>INT</type>
     </field>

@@ -436,15 +436,15 @@ class objNetSocket : public Object {
    STRING SSLKeyPassword;     // SSL private key password.
    NTC    State;              // The current connection state of the NetSocket object.
    ERR    Error;              // Information about the last error that occurred during a NetSocket operation
-   int    Port;               // The port number to use for initiating a connection.
+   int    Port;               // The port number to use for connections.
    NSF    Flags;              // Optional flags.
    int    TotalClients;       // Indicates the total number of clients currently connected to the socket (if in server mode).
    int    Backlog;            // The maximum number of connections that can be queued against the socket.
    int    ClientLimit;        // The maximum number of clients (unique IP addresses) that can be connected to a server socket.
    int    SocketLimit;        // Limits the number of connected sockets per client IP address.
    int    MsgLimit;           // Limits the size of incoming and outgoing data packets.
-   int    MaxPacketSize;      // Maximum size for UDP packets (default 65507 bytes)
-   int    MulticastTTL;       // Time-to-live for multicast packets (UDP only)
+   int    MaxPacketSize;      // Maximum UDP packet size for sending and receiving data.
+   int    MulticastTTL;       // Time-to-live (hop limit) for multicast packets.
 
    // Action stubs
 

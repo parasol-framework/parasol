@@ -40,7 +40,7 @@ function testUDPIPv6Basic()
    -- Client sends message to IPv6 loopback
    local message = 'Hello IPv6 UDP Server'
    print('[IPv6 UDP Client] Sending: "' .. message .. '" to ::1:' .. serverPort)
-   local err, bytesSent = client.mtSendTo('::1', serverPort, message, string.len(message))
+   local err, bytesSent = client.mtSendTo('::1', serverPort, message)
    assert(err == ERR_Okay, 'Client failed to send IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
    assert(bytesSent == string.len(message), 'Not all bytes were sent')
 
@@ -89,7 +89,7 @@ function testUDPDualStack()
    -- Send IPv4 message
    local ipv4Message = 'Hello from IPv4'
    print('[Dual-Stack Client] Sending IPv4 message to 127.0.0.1:' .. serverPort)
-   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, ipv4Message, string.len(ipv4Message))
+   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, ipv4Message)
    assert(err == ERR_Okay, 'Failed to send IPv4 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep(0.1)  -- Brief pause between messages
@@ -97,7 +97,7 @@ function testUDPDualStack()
    -- Send IPv6 message
    local ipv6Message = 'Hello from IPv6'
    print('[Dual-Stack Client] Sending IPv6 message to ::1:' .. serverPort)
-   err, bytesSent = client.mtSendTo('::1', serverPort, ipv6Message, string.len(ipv6Message))
+   err, bytesSent = client.mtSendTo('::1', serverPort, ipv6Message)
    assert(err == ERR_Okay, 'Failed to send IPv6 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()

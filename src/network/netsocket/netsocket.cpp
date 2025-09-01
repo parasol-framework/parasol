@@ -1449,7 +1449,7 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
       return ERR::DataSize;
    }
 
-   log.branch("SendTo: %s:%d, %d bytes, data=%p", Args->Address, Args->Port, Args->Length, Args->Data);
+   log.branch("%s:%d, %d bytes", Args->Address, Args->Port, Args->Length);
 
    Args->BytesSent = 0;
 
@@ -1542,8 +1542,7 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
          return ERR::SystemCall;
    }
 #elif defined(_WIN32)
-   auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send,
-                           (struct sockaddr *)&dest_addr, addr_len);
+   auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send, (struct sockaddr *)&dest_addr, addr_len);
    if (error IS ERR::Okay) Args->BytesSent = (int)bytes_to_send;
    return error;
 #endif
