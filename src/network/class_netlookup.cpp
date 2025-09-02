@@ -25,10 +25,10 @@ struct resolve_buffer {
    IPAddress IP;
    std::string Address;
 
-   resolve_buffer(OBJECTID pNLID, IPAddress pIP, std::string_view pAddress) : 
+   resolve_buffer(OBJECTID pNLID, IPAddress pIP, std::string_view pAddress) :
       NetLookupID(pNLID), IP(pIP), Address(pAddress) { }
-   
-   resolve_buffer(OBJECTID pNLID, std::string_view pAddress) : 
+
+   resolve_buffer(OBJECTID pNLID, std::string_view pAddress) :
       NetLookupID(pNLID), Address(pAddress) { }
 
    std::vector<int8_t> serialise() {
@@ -75,12 +75,12 @@ static void resolve_callback(extNetLookup *, ERR, const std::string & = "", std:
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize)
 {
    pf::Log log(__FUNCTION__);
-   
+
    resolve_buffer r((int8_t *)Message);
 
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s", int(MsgID), int(MsgType), r.Address.c_str());
 
-   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {     
+   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
       if (auto it = glHosts.find(r.Address); it != glHosts.end()) {
          nl->Info = it->second;
          resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
@@ -100,7 +100,7 @@ static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Mes
 
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s", int(MsgID), MsgType, r.Address.c_str());
 
-   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {    
+   if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
       if (auto it = glAddresses.find(r.Address); it != glAddresses.end()) {
          nl->Info = it->second;
          resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
@@ -336,7 +336,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
          return ERR::Okay;
       }
    }
-   
+
    resolve_buffer rb(Self->UID, Args->HostName);
    Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([Self](resolve_buffer rb) {
       DNSEntry *dummy;
@@ -344,7 +344,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
       auto ser = rb.serialise();
       SendMessage(glResolveNameMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_name_receiver()
    }, std::move(rb))));
-   
+
    return ERR::Okay;
 }
 
@@ -590,7 +590,7 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo
       else if (scan->ai_family IS AF_INET6) {
          auto addr = (struct sockaddr_in6 *)scan->ai_addr;
          cache.Addresses.push_back({
-            ((uint32_t *)&addr->sin6_addr.s6_addr)[0], ((uint32_t *)&addr->sin6_addr.s6_addr)[1], 
+            ((uint32_t *)&addr->sin6_addr.s6_addr)[0], ((uint32_t *)&addr->sin6_addr.s6_addr)[1],
             ((uint32_t *)&addr->sin6_addr.s6_addr)[2], ((uint32_t *)&addr->sin6_addr.s6_addr)[3], IPADDR::V6
          });
       }
@@ -608,7 +608,7 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo
 static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 {
    // Use the cache if available.
-   
+
    if (auto it = glHosts.find(HostName); it != glHosts.end()) {
       *Info = &it->second;
       return ERR::Okay;
@@ -625,7 +625,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
    hints.ai_socktype = SOCK_STREAM;
    hints.ai_flags    = AI_CANONNAME;
    auto result = getaddrinfo(HostName, nullptr, &hints, &servinfo);
-   
+
    log.detail("getaddrinfo returned: %d", result);
 
    switch (result) {

@@ -12,7 +12,7 @@ conjunction with the @Vector module.  This means that the output is compatible w
 detail with our existing vector API.  Consequently, document formatting is closely integrated with SVG concepts
 and seamlessly inherits SVG functionality such as filling and stroking commands.
 
-The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other 
+The native document format in Parasol is RIPL.  Documentation for RIPL is available in the Parasol Wiki.  Other
 document formats may be supported as sub-classes, but bear in mind that document parsing is a one-way trip and
 stateful information such as the HTML DOM is not supported.
 
@@ -110,8 +110,8 @@ restart:
 
 //********************************************************************************************************************
 // Receiver for events from Self->View, primarily path changes.
-// 
-// Bear in mind that the XOffset and YOffset of the document's View must be zero initially, and will be controlled by 
+//
+// Bear in mind that the XOffset and YOffset of the document's View must be zero initially, and will be controlled by
 // the scrollbar.  For that reason we don't need to do much here other than update the layout of the page.
 
 static ERR feedback_view(objVectorViewport *View, FM Event)
@@ -130,7 +130,7 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
 
    Self->VPWidth = width;
    Self->VPHeight = height;
-   
+
    // The resize event is triggered just prior to the layout of the document.  The recipient
    // function can resize elements on the page in advance of the new layout.
 
@@ -650,7 +650,7 @@ GetKey: Retrieves global variables and URI parameters.
 Use GetKey() to access the global variables and URI parameters of a document.  Priority is given to global
 variables if there is a name clash.
 
-The current value of each document widget is also available as a global variable accessible from GetKey().  The 
+The current value of each document widget is also available as a global variable accessible from GetKey().  The
 key-value will be given the same name as that specified in the widget's element.
 
 -END-
@@ -811,7 +811,7 @@ static ERR DOCUMENT_Init(extDocument *Self)
    //else return ERR::CreateObject;
 
    Self->Scene = Self->Viewport->Scene;
-   
+
    // Note: Initially the view is set to match the size of its container and the document will automatically
    // adjust the page width if the container is resized.  If the client wants to maintain a fixed size
    // document, e.g. for scaling, the the Width and Height of the View can be overridden at any time -

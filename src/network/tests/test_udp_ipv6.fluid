@@ -42,7 +42,7 @@ function testUDPIPv6Basic()
 
    -- Client sends message to IPv6 loopback
    local message = 'Hello IPv6 UDP Server'
-   
+
    local dest = struct.new('IPAddress')
    check(mNet.StrToAddress('::1', dest))
    dest.port = server.port
@@ -98,7 +98,7 @@ function testUDPDualStack()
 
    -- Send IPv4 message
    local ipv4Message = 'Hello from IPv4'
-   
+
    local dest = struct.new('IPAddress')
    check(mNet.StrToAddress('127.0.0.1', dest))
    dest.port = server.port

@@ -72,7 +72,7 @@ inline void extAudio::finish(AudioChannel &Channel, bool Notify) {
 }
 
 //********************************************************************************************************************
-// The individual mixing functions and function pointer arrays have been replaced by the 
+// The individual mixing functions and function pointer arrays have been replaced by the
 // consolidated AudioMixer::dispatch_mix() function in mixer_dispatch.cpp
 
 /*********************************************************************************************************************

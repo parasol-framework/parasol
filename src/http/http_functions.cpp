@@ -208,7 +208,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
 
       pf::ScopedObjectLock object(Self->InputObjectID, 100);
-      if (object.granted()) {      
+      if (object.granted()) {
          int len;
          int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
          Self->WriteBuffer.resize(Self->BufferSize + offset);
@@ -240,7 +240,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
          else if (len & 0x0f00) { csize = 1; std::format_to(Self->WriteBuffer.begin()+1, "{:03x}\r\n", len); }
          else if (len & 0x00f0) { csize = 2; std::format_to(Self->WriteBuffer.begin()+2, "{:02x}\r\n", len); }
          else { csize = 3; std::format_to(Self->WriteBuffer.begin()+3, "{:01x}\r\n", len); }
-         
+
          Self->WriteBuffer.push_back('\r');
          Self->WriteBuffer.push_back('\n');
 

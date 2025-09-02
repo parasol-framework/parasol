@@ -18,7 +18,7 @@ template<typename... tArgs>
 static ERR add_command(objAudio* Audio, CMD Command, int Handle, tArgs&&... pArgs) {
    auto ea = (extAudio *)(Audio);
    int index = Handle >> 16;
-   
+
    pf::Log log(__FUNCTION__);
    if ((index < 1) or (index >= int(ea->Sets.size()))) return log.warning(ERR::OutOfRange);
    if (ea->Sets[index].Commands.capacity() == 0) return log.warning(ERR::OutOfRange);

@@ -8,9 +8,9 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 BlurFX: Applies a Gaussian blur effect to an input source.
 
-The BlurFX class performs a Gaussian blur, or approximation thereof, on the input source.  The Gaussian blur kernel 
-is an approximation of the normalized convolution `G(x,y) = H(x)I(y)` where `H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)` 
-and `I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)` with 's' being the standard deviation in the x direction and 't' being 
+The BlurFX class performs a Gaussian blur, or approximation thereof, on the input source.  The Gaussian blur kernel
+is an approximation of the normalized convolution `G(x,y) = H(x)I(y)` where `H(x) = exp(-x2/ (2s2)) / sqrt(2* pi*s2)`
+and `I(y) = exp(-y2/ (2t2)) / sqrt(2* pi*t2)` with 's' being the standard deviation in the x direction and 't' being
 the standard deviation in the y direction, as specified by #SX and #SY.
 
 At least one of #SX or #SY should be greater than 0, otherwise no rendering is performed.
@@ -93,10 +93,10 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 {
    auto outBmp = Self->Target;
    if (outBmp->BytesPerPixel != 4) return ERR::Failed;
-   
+
    DOUBLE scale = 1.0;
    if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
-   
+
    LONG rx, ry;
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (Self->Filter->AspectRatio IS VFA::NONE) {
@@ -115,22 +115,22 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
       rx = F2T(Self->SX * 2 * scale);
       ry = F2T(Self->SY * 2 * scale);
    }
-   
+
    objBitmap *inBmp;
-   
+
    if ((rx < 1) and (ry < 1)) {
       if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
       BAF copy_flags = (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) ? BAF::LINEAR : BAF::NIL;
       gfx::CopyArea(inBmp, outBmp, copy_flags, 0, 0, inBmp->Width, inBmp->Height, 0, 0);
       return ERR::Okay;
    }
-   
+
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
-   
+
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) inBmp->convertToLinear();
 
    inBmp->premultiply();
-   
+
    UBYTE *dst_pix_ptr;
    agg::rgba8 *stack_pix_ptr;
 
@@ -156,7 +156,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    ULONG div;
    ULONG mul_sum;
    ULONG shr_sum;
-   
+
    std::vector<agg::rgba8> stack;
 
    if (rx > 0) {
@@ -168,7 +168,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 
       for (y=0; y < h; y++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
-         
+
          const UBYTE * src_pix_ptr = in_data + (outBmp->LineWidth * y);
          for (LONG i=0; i <= rx; i++) {
              stack_pix_ptr    = &stack[i];
@@ -373,12 +373,12 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          }
       }
    }
-   
+
    //bmpDemultiply(inBmp);
 
    outBmp->Flags |= BMF::PREMUL; // Need to tell the bitmap it has premultiplied output before Demultiply()
    outBmp->demultiply();
-   
+
    if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
       outBmp->ColourSpace = CS::LINEAR_RGB;
       outBmp->convertToRGB();

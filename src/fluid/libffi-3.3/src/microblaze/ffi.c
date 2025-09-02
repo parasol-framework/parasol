@@ -78,7 +78,7 @@ void ffi_prep_args(void* stack, extended_cif* ecif)
 
 		/* force word alignment on the stack */
 		stack_args_p += aligned_size;
-		
+
 		switch (type)
 		{
 			case FFI_TYPE_UINT8:
@@ -102,7 +102,7 @@ void ffi_prep_args(void* stack, extended_cif* ecif)
 				 * <branch to callee>
 				 * ...
 				 * bslli r5, r5, 8 (callee)
-				 * 
+				 *
 				 * For structs like "struct a { uint8_t a[3]; };", when passed
 				 * by value.
 				 *

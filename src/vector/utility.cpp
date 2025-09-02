@@ -126,10 +126,10 @@ static void update_dpi(void)
 //********************************************************************************************************************
 // Read a string-based series of vector commands and add them to Path.
 //
-// SVG position on error handling: Unrecognized contents within a path data stream (i.e., contents that are not part 
-// of the path data grammar) is an error.  The general rule for error handling in path data is that the SVG user agent 
-// shall render a ‘path’ element up to (but not including) the path command containing the first error in the path 
-// data specification. This will provide a visual clue to the user or developer about where the error might be in the 
+// SVG position on error handling: Unrecognized contents within a path data stream (i.e., contents that are not part
+// of the path data grammar) is an error.  The general rule for error handling in path data is that the SVG user agent
+// shall render a ‘path’ element up to (but not including) the path command containing the first error in the path
+// data specification. This will provide a visual clue to the user or developer about where the error might be in the
 // path data specification.
 
 ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)

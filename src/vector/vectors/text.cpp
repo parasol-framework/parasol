@@ -2095,7 +2095,7 @@ static const FieldArray clTextFields[] = {
 static ERR init_text(void)
 {
    FID_FreetypeFace = strihash("FreetypeFace");
-   
+
    OBJECTID id;
    if (FindObject("cfgSystemFonts", CLASSID::CONFIG, FOF::NIL, &id) IS ERR::Okay) {
       glFontConfig = (objConfig *)GetObjectPtr(id);

@@ -145,7 +145,7 @@ static ERR add_file_to_host(objClipboard *Self, const std::vector<ClipItem> &Ite
             int len = UTF8CharLength(src);
             if (len IS 1) codepoint = *src;
             else codepoint = UTF8ReadValue(src, nullptr);
-            
+
             if (codepoint < 0x10000) {
                dest.push_back(static_cast<char16_t>(codepoint));
             }
@@ -765,21 +765,21 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
 
    std::vector<ClipItem> items;
    if (WideChar) { // Widechar -> UTF-8
-      auto sdata = reinterpret_cast<const char16_t*>(Data);  
-      while (*sdata) {  
+      auto sdata = reinterpret_cast<const char16_t*>(Data);
+      while (*sdata) {
          // Convert UTF-16 to UTF-8 manually
          std::string utf8_path;
          const char16_t *src = sdata;
          while (*src) {
             uint32_t codepoint = *src++;
-            
+
             // Handle surrogate pairs
             if (codepoint >= 0xD800 and codepoint <= 0xDBFF) {
                if (*src >= 0xDC00 and *src <= 0xDFFF) {
                   codepoint = 0x10000 + ((codepoint & 0x3FF) << 10) + (*src++ & 0x3FF);
                }
             }
-            
+
             // Convert to UTF-8
             if (codepoint < 0x80) {
                utf8_path.push_back(static_cast<char>(codepoint));
@@ -801,7 +801,7 @@ extern "C" void report_windows_hdrop(const char *Data, int CutOperation, char Wi
             }
          }
          items.emplace_back(utf8_path);
-         sdata += std::char_traits<char16_t>::length(sdata) + 1; // Next file path  
+         sdata += std::char_traits<char16_t>::length(sdata) + 1; // Next file path
       }
    }
    else { // UTF-8

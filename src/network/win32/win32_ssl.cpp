@@ -51,7 +51,7 @@ static ERR sslSetup(extNetSocket *Self)
    if (Self->SSLHandle = ssl_create_context(validate_cert, server_mode); !Self->SSLHandle) {
       return ERR::Failed;
    }
-   
+
    // Load custom certificate if specified for server mode
    if (server_mode) {
       if (Self->SSLCertificate) {
@@ -84,7 +84,7 @@ static ERR sslSetup(extNetSocket *Self)
          }
       }
    }
-   
+
    return ERR::Okay;
 }
 

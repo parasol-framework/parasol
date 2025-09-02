@@ -1106,7 +1106,7 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
 AppendPath: Experimental.  Append the path of the referenced vector during path generation.
 
 The path of a vector object can be appended to another vector in real-time by making a reference to the former
-vector here.  The operation is completed immediately after the generation of the client vector's base path, prior 
+vector here.  The operation is completed immediately after the generation of the client vector's base path, prior
 to any transforms.
 
 It is strongly recommended that the appended vector has its #Visibility set to `HIDDEN`.  Any direct transform that

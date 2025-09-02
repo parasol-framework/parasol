@@ -16,7 +16,7 @@
        [404] = 'Not Found', [405] = 'Method Not Allowed', [429] = 'Too Many Requests',
        [500] = 'Internal Server Error', [501] = 'Not Implemented', [502] = 'Bad Gateway'
    }
-   
+
    local glMimeTypes = {
       -- Text
       html = 'text/html',
@@ -830,7 +830,7 @@ end
 
 local function executeMiddleware(middlewareList, request, response, finalCallback)
    local currentIndex = 1
-   
+
    local function next(error)
       if error then
          if not response._sent then
@@ -841,25 +841,25 @@ local function executeMiddleware(middlewareList, request, response, finalCallbac
          end
          return
       end
-      
+
       if currentIndex > #middlewareList then -- All middleware executed, call final callback
          if finalCallback then finalCallback(request, response) end
          return
       end
-      
+
       local middleware = middlewareList[currentIndex]
       currentIndex = currentIndex + 1
-      
+
       -- Execute middleware function safely
       local success, result = pcall(function()
          return middleware(request, response, next)
       end)
-      
+
       if not success then -- Middleware failed, pass error to next()
          next(result)
       end
    end
-   
+
    next()
 end
 
@@ -871,13 +871,13 @@ local function corsMiddleware(request, response, next)
    response.header('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS')
    response.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
    response.header('Access-Control-Max-Age', '86400')
-   
+
    -- Handle preflight requests
    if request.method == 'OPTIONS' then
       response.status(200).send('')
       return
    end
-   
+
    next()
 end
 
@@ -885,37 +885,37 @@ end
 
 local function loggingMiddleware(request, response, next)
    local startTime = mSys.PreciseTime()
-   
+
    logMessage(nil, '[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path .. ' from ' .. (request.ip or 'unknown'))
-   
+
    -- Wrap response.send to log completion
    local originalSend = response.send
    local originalJson = response.json
    local originalRedirect = response.redirect
-   
+
    local function logResponse()
       local duration = (mSys.PreciseTime() - startTime) / 1000 -- Convert to milliseconds
       logMessage(nil, '[' .. timestamp() .. '] ' .. response._statusCode .. ' ' .. request.path .. ' (' .. string.format('%.2f', duration) .. 'ms)')
    end
-   
+
    response.send = function(...)
       local result = originalSend(...)
       logResponse()
       return result
    end
-   
+
    response.json = function(...)
       local result = originalJson(...)
       logResponse()
       return result
    end
-   
+
    response.redirect = function(...)
       local result = originalRedirect(...)
       logResponse()
       return result
    end
-   
+
    next()
 end
 
@@ -925,31 +925,31 @@ local function authMiddleware(options)
    options = options or {}
    local tokenHeader = options.header or 'authorization'
    local tokenPrefix = options.prefix or 'Bearer '
-   
+
    return function(request, response, next)
       local authHeader = request.headers[tokenHeader:lower()]
-      
+
       if not authHeader then
          response.status(401).json({ error = 'Missing authorization header' })
          return
       end
-      
+
       local token = authHeader
       if tokenPrefix and authHeader:find('^' .. tokenPrefix) then
          token = authHeader:sub(#tokenPrefix + 1)
       end
-      
+
       if not token or token == '' then
          response.status(401).json({ error = 'Invalid authorization token' })
          return
       end
-      
+
       -- Add token to request for use in route handlers
       request.auth = {
          token = token,
          user = nil -- Can be populated by custom validation logic
       }
-      
+
       -- In a real implementation, you would validate the token here
       -- For now, just pass through
       next()
@@ -1245,21 +1245,21 @@ local function handleRequest(self, ClientSocket)
 
       -- Combine global middleware with route-specific middleware
       local middlewareChain = {}
-      
+
       -- Add global middleware first
       if self._middleware then
          for _, middleware in ipairs(self._middleware) do
             table.insert(middlewareChain, middleware)
          end
       end
-      
+
       -- Add route-specific middleware
       if matchedRoute.middleware then
          for _, middleware in ipairs(matchedRoute.middleware) do
             table.insert(middlewareChain, middleware)
          end
       end
-      
+
       -- Execute middleware pipeline followed by route handler
       local function routeHandler(req, res)
          local success, result = pcall(function()
@@ -1284,10 +1284,10 @@ local function handleRequest(self, ClientSocket)
             }, errorBody)
          end
       end
-      
+
       -- Execute middleware chain
       executeMiddleware(middlewareChain, request, response, routeHandler)
-      
+
       return -- Route was handled, don't continue to static file serving
    end
 
@@ -1483,7 +1483,7 @@ httpServer.start = function(Options)
                   else
                      error('Route middleware for ' .. method .. ' ' .. pattern .. ' must be a table')
                   end
-                  
+
                   addRoute(self, method, pattern, handler, routeMiddleware)
                   routeCount = routeCount + 1
                   logMessage(self, 'Route configured: ' .. method .. ' ' .. pattern .. ' (with ' .. #routeMiddleware .. ' middleware)')
@@ -1554,7 +1554,7 @@ httpServer.start = function(Options)
    self.newRoute = function(method, pattern, callback, middleware)
       addRoute(self, method:upper(), pattern, callback, middleware or {})
    end
-   
+
    -- Add global middleware
    self.newMiddleware = function(middleware)
       if not self._middleware then
@@ -1567,7 +1567,7 @@ httpServer.start = function(Options)
          error('Middleware must be a function')
       end
    end
-   
+
    -- Built-in middleware factory functions
    self.middleware = {
       cors = function(options)
@@ -1578,26 +1578,26 @@ httpServer.start = function(Options)
             response.header('Access-Control-Allow-Methods', options.methods or 'GET, HEAD, POST, PUT, DELETE, PATCH, OPTIONS')
             response.header('Access-Control-Allow-Headers', options.headers or 'Content-Type, Authorization, X-Requested-With')
             response.header('Access-Control-Max-Age', tostring(options.maxAge or 86400))
-            
+
             if options.credentials then
                response.header('Access-Control-Allow-Credentials', 'true')
             end
-            
+
             -- Handle preflight requests
             if request.method == 'OPTIONS' then
                response.status(200).send('')
                return
             end
-            
+
             next()
          end
       end,
-      
+
       logging = function(options)
          options = options or {}
          return loggingMiddleware
       end,
-      
+
       auth = function(options)
          return authMiddleware(options)
       end

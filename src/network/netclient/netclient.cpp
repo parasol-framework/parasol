@@ -8,8 +8,8 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 NetClient: Represents a single client IP address.
 
-When a connection is opened between a client IP and a @NetSocket object, a new NetClient object will be created for 
-the client's IP address if one does not already exist.  All @ClientSocket connections to that IP address are then 
+When a connection is opened between a client IP and a @NetSocket object, a new NetClient object will be created for
+the client's IP address if one does not already exist.  All @ClientSocket connections to that IP address are then
 tracked under the single NetClient object.
 
 NetClient objects are intended to be created from the network interfacing code exclusively.

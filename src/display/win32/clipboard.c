@@ -715,7 +715,7 @@ int winAddClip(int Datatype, const void *Data, int Size, int Cut)
       int error;
 
       EmptyClipboard();
-      
+
       HGLOBAL hdata;
       if ((hdata = GlobalAlloc(GMEM_FIXED, Size))) {
          char * pdata;
@@ -762,7 +762,7 @@ int winAddFileClip(const unsigned short *Path, int Size, int Cut)
             df->fWide = 1;
             memcpy(pdata+sizeof(DROPFILES), Path, Size);
             GlobalUnlock(hdata);
-            
+
             EmptyClipboard();
             glIgnoreClip = GetTickCount();
 

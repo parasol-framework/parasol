@@ -583,7 +583,7 @@ static void fill_pattern(VectorState &State, const TClipRectangle<double> &Bound
 
    transform *= Transform;
    transform.invert();
-   
+
    if (SampleMethod IS VSM::AUTO) {
       // Using anything more sophisticated than bicubic sampling for tiling is a CPU killer.
       // If the client requires a different method, they will need to set it explicitly.

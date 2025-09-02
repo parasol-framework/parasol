@@ -726,7 +726,7 @@ SampleMethod: The sampling method to use when interpolating images and patterns.
 
 The SampleMethod controls the sampling algorithm that is used when images and patterns in the vector definition are affected
 by rotate, skew and scale transforms.  The choice of method will have a significant impact on the speed and quality of
-the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing 
+the images that are displayed in the rendered scene.  The recommended default is `AUTO`, which allows the drawing
 algorithms to choose the best quality option dynamically.
 
 *********************************************************************************************************************/

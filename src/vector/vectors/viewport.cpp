@@ -112,13 +112,13 @@ static ERR VECTORVIEWPORT_Free(extVectorViewport *Self)
       Self->subscribeInput(JTYPE::NIL, C_FUNCTION(drag_callback));
    }
 
-   if (Self->vpBuffer) { 
+   if (Self->vpBuffer) {
       if (Self->vpBufferData) {
          FreeResource(Self->vpBufferData);
          Self->vpBufferData = nullptr;
       }
-      FreeResource(Self->vpBuffer); 
-      Self->vpBuffer = nullptr; 
+      FreeResource(Self->vpBuffer);
+      Self->vpBuffer = nullptr;
       if (Self->Scene) ((extVectorScene *)Self->Scene)->BufferCount--;
    }
 
@@ -322,12 +322,12 @@ Buffered: Set to true if the viewport should buffer its content.
 Viewport buffering is enabled by setting this field to `true` prior to initialisation.  A @Bitmap buffer will be
 created at the first drawing operation, and is available for the client to read from the #Buffer field.
 
-Potential reasons for enabling viewport buffering include: 1. Allows the client to read the rendered graphics 
+Potential reasons for enabling viewport buffering include: 1. Allows the client to read the rendered graphics
 directly from the #Buffer; 2. Overall rendering will be faster if the content of the viewport rarely changes; 3. The
 use of multiple buffers can improve threaded rendering.
 
 Buffering comes at a cost of using extra memory, and rendering may be less efficient if the buffered content
-changes frequently (e.g. is animated).  Buffering also enforces overflow (clipping) restrictions, equivalent to 
+changes frequently (e.g. is animated).  Buffering also enforces overflow (clipping) restrictions, equivalent to
 #Overflow being permanently set to `HIDDEN`.
 
 *********************************************************************************************************************/

@@ -656,7 +656,7 @@ static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
    pf::Log log(__FUNCTION__);
 
    if ((!Address) or (!AddrOut)) return log.warning(ERR::NullArgs);
-   
+
    IPAddress ip;
    if (net::StrToAddress(Address, &ip) IS ERR::Okay) {
       if (ip.Type IS IPADDR::V4) {
@@ -1381,7 +1381,7 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
 
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::NoSupport);
    if ((!Args->Buffer) or (!Args->BufferSize) or (!Args->Source)) return log.warning(ERR::NullArgs);
-   
+
    Self->ReadCalled = true;
 
    Args->BytesRead = 0;

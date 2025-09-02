@@ -432,7 +432,7 @@ Clearing a bitmap wipes away its graphical contents by drawing a blank area over
 the blank area is determined by the #BkgdIndex field.  To clear a bitmap to a different colour, use the #DrawRectangle()
 method instead.
 
-If the bitmap supports alpha blending and a transparent result is desired, setting #BkgdIndex to zero is 
+If the bitmap supports alpha blending and a transparent result is desired, setting #BkgdIndex to zero is
 an efficient way to achieve this outcome.
 
 *********************************************************************************************************************/

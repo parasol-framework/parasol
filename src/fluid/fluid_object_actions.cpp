@@ -150,5 +150,5 @@ static std::array<obj_read::JUMP *, LONG(AC::END)> glJumpActions = {
    obj_jump_setfield,
    obj_jump_clipboard,
    obj_jump_refresh,
-   obj_jump_disable   
+   obj_jump_disable
 };

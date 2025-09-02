@@ -98,7 +98,7 @@ ERR RenameVolume(CSTRING Volume, CSTRING Name)
 -FUNCTION-
 SetVolume: Create or modify a filesystem volume.
 
-SetVolume() is used to create or modify a volume that is associated with one or more paths.  If the named volume 
+SetVolume() is used to create or modify a volume that is associated with one or more paths.  If the named volume
 already exists, it possible to append more paths or replace them entirely.  Volume changes that are made with this
 function will only apply to the current process, and are lost after the program closes.
 

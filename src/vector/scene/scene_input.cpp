@@ -357,7 +357,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                      pf::ScopedObjectLock<extVector> lock(Self->ActiveVector);
                      if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
                   }
-               
+
                   Self->ActiveVector  = vector->UID;
                   Self->ActiveVectorX = tx;
                   Self->ActiveVectorY = ty;

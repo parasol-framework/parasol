@@ -584,7 +584,7 @@ Resolution: Affects the rate of change for colours in the gradient.
 By default, the colours generated for a gradient will be spaced for a smooth transition between stops that maximise
 resolution.  The resolution can be reduced by setting the Resolution value to a fraction between 0 and 1.0.
 
-This results in the colour values being averaged to a single value for every block of n colours, where n is the value 
+This results in the colour values being averaged to a single value for every block of n colours, where n is the value
 `1 / (1 - Resolution)`.
 
 Resolution is at its maximum when this value is set to 1 (the default).
@@ -694,7 +694,7 @@ static ERR VECTORGRADIENT_SET_Transform(extVectorGradient *Self, CSTRING Command
    pf::Log log;
 
    if (!Commands) return log.warning(ERR::InvalidValue);
-   
+
    Self->modified();
 
    if (!Self->Matrices) {
@@ -748,11 +748,11 @@ references it.  The alternative is `USERSPACE`, which positions the gradient sca
 -FIELD-
 X1: Initial X coordinate for the gradient.
 
-For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The 
+For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The
 gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be expressed as units that are
 scaled to the target space.
 
-For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
+For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.
 `X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 10`.
 
 *********************************************************************************************************************/
@@ -777,11 +777,11 @@ static ERR VECTORGRADIENT_SET_X1(extVectorGradient *Self, Unit &Value)
 -FIELD-
 X2: Final X coordinate for the gradient.
 
-For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The 
+For linear gradients, the `(X1, Y1)` field values define the starting coordinate for mapping linear gradients.  The
 gradient will be drawn from `(X1, Y1)` to `(X2, Y2)`.  Coordinate values can be expressed as units that are
 scaled to the target space.
 
-For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.  
+For contour gradients, `X1` is used as the floor for the gradient colour values and `X2` acts as a multiplier.
 `X1` has a range of `0 < X1 < X2` and `X2` has a range of `.01 < X2 < 10`.
 
 *********************************************************************************************************************/

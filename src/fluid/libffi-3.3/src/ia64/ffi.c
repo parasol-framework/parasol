@@ -2,8 +2,8 @@
    ffi.c - Copyright (c) 1998, 2007, 2008, 2012 Red Hat, Inc.
 	   Copyright (c) 2000 Hewlett Packard Company
 	   Copyright (c) 2011 Anthony Green
-   
-   IA64 Foreign Function Interface 
+
+   IA64 Foreign Function Interface
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -36,7 +36,7 @@
 #include "ia64_flags.h"
 
 /* A 64-bit pointer value.  In LP64 mode, this is effectively a plain
-   pointer.  In ILP32 mode, it's a pointer that's been extended to 
+   pointer.  In ILP32 mode, it's a pointer that's been extended to
    64 bits by "addp4".  */
 typedef void *PTR64 __attribute__((mode(DI)));
 
@@ -301,7 +301,7 @@ ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
   /* If we have no spot for a return value, make one.  */
   if (rvalue == NULL && cif->rtype->type != FFI_TYPE_VOID)
     rvalue = alloca (cif->rtype->size);
-    
+
   /* Allocate the stack frame.  */
   stack = alloca (cif->bytes);
 
@@ -428,7 +428,7 @@ ffi_prep_closure_loc (ffi_closure* closure,
 		      void *user_data,
 		      void *codeloc)
 {
-  /* The layout of a function descriptor.  A C function pointer really 
+  /* The layout of a function descriptor.  A C function pointer really
      points to one of these.  */
   struct ia64_fd
   {

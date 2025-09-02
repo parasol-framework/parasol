@@ -1,7 +1,7 @@
 -- AI Documentation Generator for Parasol Framework
 --
--- This script processes the full XML documentation and generates a highly condensed XML format optimized for AI 
--- processing. The output removes verbose descriptions, formatting, and examples while preserving essential API 
+-- This script processes the full XML documentation and generates a highly condensed XML format optimized for AI
+-- processing. The output removes verbose descriptions, formatting, and examples while preserving essential API
 -- information.
 --
 -- Usage: parasol docgen-ai.fluid [output=folder]
@@ -103,17 +103,17 @@ end
       matchFeedback = function(Path, FileName, File)
          local src_path = Path .. FileName
          local output_file = output_folder .. 'classes/' .. FileName
-         
+
          local err, res_src_path = mSys.ResolvePath(src_path)
          assert(err == ERR_Okay, 'Failed to resolve: ' .. src_path)
 
          local err, res_output = mSys.ResolvePath(output_file, RSF_NO_FILE_CHECK)
          assert(err == ERR_Okay, 'Failed to resolve output: ' .. output_file)
-         
+
          local parameters = '-o ' .. res_output .. ' ' .. resolved_xsl .. ' ' .. res_src_path
          msg('xsltproc ' .. parameters)
          local task = obj.new('task', { src = 'xsltproc', args  = parameters, flags = 'WAIT', timeout = 10 })
-         
+
          if task.acActivate() != ERR_Okay then
             print('Failed to run xsltproc for ' .. FileName)
          end

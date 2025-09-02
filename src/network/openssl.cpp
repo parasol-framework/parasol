@@ -96,7 +96,7 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
    std::string cp(Self->SSLCertificate);
    std::string ext = cp.substr(cp.find_last_of(".") + 1);
    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-   
+
    std::string cert_path, key_path;
    if (ResolvePath(Self->SSLCertificate, RSF::NIL, &cert_path) IS ERR::Okay) {
       auto opt_password = std::make_optional<const std::string>();
@@ -117,7 +117,7 @@ static ERR loadCustomCertificateOpenSSL(extNetSocket *Self, SSL_CTX *ctx)
       }
       else return log.warning(ERR::InvalidData);
    }
-   
+
    return ERR::Okay;
 }
 

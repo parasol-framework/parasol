@@ -39,7 +39,7 @@ constexpr size_t CACHE_LINE_SIZE = 64;
 -FUNCTION-
 AllocMemory: Allocates a managed memory block on the heap.
 
-AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and 
+AllocMemory() provides comprehensive memory allocation with automatic ownership tracking, resource management, and
 debugging features. The function allocates a new block of memory and associates it with the current execution context,
 allowing it to be automatically cleaned up when the context is destroyed.
 
@@ -57,14 +57,14 @@ Memory allocation behavior is controlled through MEM flags:
 
 <types lookup="MEM"/>
 
-The function can return both a memory address pointer and a unique memory identifier. For most applications, 
-retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is 
+The function can return both a memory address pointer and a unique memory identifier. For most applications,
+retrieving only the address pointer is sufficient. When both parameters are requested, the memory block is
 automatically locked, requiring an explicit call to ReleaseMemory() before freeing.
 
-The resulting memory block is zero-initialized unless the `MEM::NO_CLEAR` flag is specified. For large 
+The resulting memory block is zero-initialized unless the `MEM::NO_CLEAR` flag is specified. For large
 allocations where initialization overhead is a concern, utilising `MEM::NO_CLEAR` is recommended.
 
-Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when 
+Memory blocks are automatically associated with their owning object context, enabling automatic cleanup when
 the owner is destroyed. This prevents memory leaks in object-oriented code.
 
 -INPUT-
@@ -119,7 +119,7 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    #else
       if (posix_memalign(&start_mem, CACHE_LINE_SIZE, full_size) != 0) start_mem = nullptr;
    #endif
-      
+
    if (!start_mem) {
       log.warning("Failed to allocate %d bytes.", Size);
       return ERR::AllocMemory;
@@ -193,7 +193,7 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 -FUNCTION-
 CheckMemoryExists: Verifies the existence of a memory block.
 
-CheckMemoryExists() validates whether a memory block with the specified identifier still exists in the system's 
+CheckMemoryExists() validates whether a memory block with the specified identifier still exists in the system's
 memory tracking structures. This function is useful for defensive programming when working with memory identifiers
 that may have been freed by other code paths.
 
@@ -223,11 +223,11 @@ FreeResource: Safely deallocates memory blocks allocated by AllocMemory().
 FreeResource() provides safe deallocation of memory blocks with comprehensive validation and cleanup. The function
 accepts memory identifiers for optimal safety, though C++ headers also provide pointer-based variants for convenience.
 
-The deallocation process includes boundary validation to detect buffer overruns, lock-aware deallocation that respects 
-access counting, resource manager integration for managed memory blocks, and automatic cleanup of ownership tracking 
+The deallocation process includes boundary validation to detect buffer overruns, lock-aware deallocation that respects
+access counting, resource manager integration for managed memory blocks, and automatic cleanup of ownership tracking
 structures.
 
-When a memory block is currently locked (AccessCount > 0), it is marked for delayed collection rather than 
+When a memory block is currently locked (AccessCount > 0), it is marked for delayed collection rather than
 immediate deallocation. This prevents use-after-free errors while ensuring eventual cleanup when all references
 are released.
 
@@ -380,8 +380,8 @@ ERR MemoryIDInfo(MEMORYID MemoryID, MemInfo *MemInfo, int Size)
 -FUNCTION-
 MemoryPtrInfo: Returns information on memory addresses.
 
-This function returns the attributes of a memory block.  Information includes the start address, parent object, 
-memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates 
+This function returns the attributes of a memory block.  Information includes the start address, parent object,
+memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates
 correct use of this function:
 
 <pre>

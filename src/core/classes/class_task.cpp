@@ -878,7 +878,7 @@ static ERR TASK_Activate(extTask *Self)
 
    // File descriptor management for Unix process execution:
    // - input_fd: Connected to /dev/null to prevent child reading from parent stdin
-   // - out_fd/in_fd: Pipe pair for capturing child stdout 
+   // - out_fd/in_fd: Pipe pair for capturing child stdout
    // - out_errfd/in_errfd: Pipe pair for capturing child stderr
    // All file descriptors are properly cleaned up on error via cleanup_task_fds()
    input_fd = open("/dev/null", O_RDONLY); // Input is always NULL, we don't want the child process reading from our own stdin stream
@@ -1256,7 +1256,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
                         else Self->Env = std::to_string(((int *)buffer)[0]);
                      }
                      break;
-                  
+
                   case REG_QWORD:
                      if (unsigned(envlen) >= sizeof(int64_t)) {
                         Self->Env = std::to_string(((int64_t *)buffer)[0]);
@@ -1452,7 +1452,7 @@ The Quit() method can be used as a convenient way of sending a task a quit messa
 destruction of the task, so long as it is still functioning correctly and has been coded to respond to the
 `MSGID::QUIT` message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.
 
-Signal Handling on Unix: When terminating a foreign process on Unix systems, the quit behavior follows a two-stage 
+Signal Handling on Unix: When terminating a foreign process on Unix systems, the quit behavior follows a two-stage
 approach for safe process termination: The first call sends `SIGTERM` to allow the process to shutdown gracefully;
 A second call sends `SIGKILL` to force immediate termination if the process is unresponsive.
 
@@ -1737,7 +1737,7 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
       if (*Value) { // Extract the argument
          std::string buffer;
          buffer.reserve(512); // Pre-allocate reasonable size
-         
+
          bool in_quotes = false;
          while (*Value and (in_quotes or (*Value > 0x20))) {
             if (*Value IS '"') {
@@ -1750,7 +1750,7 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
                if (buffer.size() > 8192) return ERR::BufferOverflow; // 8KB max per argument
             }
          }
-         
+
          if (in_quotes) return pf::Log().warning(ERR::Syntax);
          if (*Value) while (*Value > 0x20) Value++;
          Self->addArgument(buffer.c_str());

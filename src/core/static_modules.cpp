@@ -26,7 +26,7 @@ static void register_static_modules(void)
    #ifdef INC_MOD_AUDIO
    glStaticModules["audio"] = register_audio_module();
    #endif
-   
+
    #ifdef INC_MOD_BACKSTAGE
    glStaticModules["backstage"] = register_backstage_module();
    #endif

@@ -15,7 +15,7 @@ static float ABI_ATTR many(float f1, float f2, float f3, float f4, float f5, flo
 {
 #if 0
   printf("%f %f %f %f %f %f %f %f %f %f %f %f %f\n",
-	 (double) f1, (double) f2, (double) f3, (double) f4, (double) f5, 
+	 (double) f1, (double) f2, (double) f3, (double) f4, (double) f5,
 	 (double) f6, (double) f7, (double) f8, (double) f9, (double) f10,
 	 (double) f11, (double) f12, (double) f13);
 #endif

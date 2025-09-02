@@ -3,8 +3,8 @@
 -CLASS-
 CompositeFX: Composite two sources together with a mixing algorithm.
 
-This filter combines the @FilterEffect.Input and @FilterEffect.Mix sources using either one of the Porter-Duff 
-compositing operations, or a colour blending algorithm.  The Input has priority and will be placed in the foreground 
+This filter combines the @FilterEffect.Input and @FilterEffect.Mix sources using either one of the Porter-Duff
+compositing operations, or a colour blending algorithm.  The Input has priority and will be placed in the foreground
 for ordered operations such as `ATOP` and `OVER`.
 
 -END-

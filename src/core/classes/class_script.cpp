@@ -75,11 +75,11 @@ static ERR SCRIPT_DataFeed(objScript *Self, struct acDataFeed *Args)
 -METHOD-
 DerefProcedure: Dereferences an acquired procedure.
 
-This method will release a procedure reference that has been acquired through #GetProcedureID().  It is only necessary 
-to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such 
+This method will release a procedure reference that has been acquired through #GetProcedureID().  It is only necessary
+to make this call if the scripting language is managing function references as a keyed resource.  Fluid is one such
 language.  Languages that do not manage functions as a resource will ignore calls to this method.
 
-Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in 
+Note that acquiring a procedure reference and then failing to release it can result in the reference remaining in
 memory until the Script is terminated.  There may also be unforeseen consequences in the garbage collection process.
 
 -INPUT-
@@ -256,7 +256,7 @@ static ERR SCRIPT_Free(objScript *Self)
 -METHOD-
 GetProcedureID: Converts a procedure name to an ID.
 
-This method will convert a procedure name to a unique reference within the script, if such a procedure exists.  The 
+This method will convert a procedure name to a unique reference within the script, if such a procedure exists.  The
 ID can be used by the client to create new `FUNCTION` definitions, for example:
 
 <pre>
@@ -366,7 +366,7 @@ static ERR SCRIPT_SetKey(objScript *Self, struct acSetKey *Args)
 
    if ((!Args) or (!Args->Key) or (!Args->Value)) return ERR::NullArgs;
    if (!Args->Key[0]) return ERR::NullArgs;
-   
+
    pf::Log log;
    log.trace("%s = %s", Args->Key, Args->Value);
 

@@ -2343,7 +2343,7 @@ extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_
 {
    SYSTEMTIME st;
    ZeroMemory(&st, sizeof(st));
-   
+
    st.wYear         = Year;
    st.wMonth        = Month;
    st.wDay          = Day;
@@ -2351,7 +2351,7 @@ extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_
    st.wMinute       = Minute;
    st.wSecond       = Second;
    st.wMilliseconds = 0;
-   
+
    // Set the system time - requires SE_SYSTEMTIME_NAME privilege
    if (SetSystemTime(&st)) {
       return 1; // Success

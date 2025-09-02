@@ -370,7 +370,7 @@ ffi_call_int (ffi_cif *cif, void (*fn)(void), void *rvalue,
 	     cases.  */
 	  if (t == FFI_TYPE_STRUCT && ty->alignment >= 16)
 	    align = 16;
-	    
+
 	  if (dir < 0)
 	    {
 	      /* ??? These reverse argument ABIs are probably too old
