@@ -114,9 +114,9 @@ typedef int SOCKET_HANDLE;
 #error "No support for this platform"
 #endif
 struct IPAddress {
-   uint32_t Data[4];    // 128-bit array for supporting both V4 and V6 IP addresses.
+   uint32_t Data[4];    // 128-bit array for supporting both V4 (32-bit host order) and V6 (8-bit byte order) IP addresses.
    IPADDR   Type;       // Identifies the address Data value as a V4 or V6 address type.
-   int      Pad;        // Unused padding for 64-bit alignment
+   int      Port;       // For UDP packets, identifies the client port number in host byte order.
 };
 
 // NetClient class definition
@@ -414,8 +414,8 @@ struct Connect { CSTRING Address; int Port; static const AC id = AC(-1); ERR cal
 struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectClient { objNetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SendTo { CSTRING Address; int Port; APTR Data; int Length; int BytesSent; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RecvFrom { APTR Buffer; int BufferSize; int BytesRead; STRING SourceAddress; int SourcePort; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SendTo { struct IPAddress * Dest; APTR Data; int Length; int BytesSent; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RecvFrom { APTR Buffer; int BufferSize; struct IPAddress * Source; int BytesRead; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct JoinMulticastGroup { CSTRING Group; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct LeaveMulticastGroup { CSTRING Group; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -514,18 +514,16 @@ class objNetSocket : public Object {
       struct ns::DisconnectSocket args = { Socket };
       return(Action(AC(-4), this, &args));
    }
-   inline ERR sendTo(CSTRING Address, int Port, APTR Data, int Length, int * BytesSent) noexcept {
-      struct ns::SendTo args = { Address, Port, Data, Length, (int)0 };
+   inline ERR sendTo(struct IPAddress * Dest, APTR Data, int Length, int * BytesSent) noexcept {
+      struct ns::SendTo args = { Dest, Data, Length, (int)0 };
       ERR error = Action(AC(-5), this, &args);
       if (BytesSent) *BytesSent = args.BytesSent;
       return(error);
    }
-   inline ERR recvFrom(APTR Buffer, int BufferSize, int * BytesRead, STRING * SourceAddress, int * SourcePort) noexcept {
-      struct ns::RecvFrom args = { Buffer, BufferSize, (int)0, (STRING)0, (int)0 };
+   inline ERR recvFrom(APTR Buffer, int BufferSize, struct IPAddress * Source, int * BytesRead) noexcept {
+      struct ns::RecvFrom args = { Buffer, BufferSize, Source, (int)0 };
       ERR error = Action(AC(-6), this, &args);
       if (BytesRead) *BytesRead = args.BytesRead;
-      if (SourceAddress) *SourceAddress = args.SourceAddress;
-      if (SourcePort) *SourcePort = args.SourcePort;
       return(error);
    }
    inline ERR joinMulticastGroup(CSTRING Group) noexcept {

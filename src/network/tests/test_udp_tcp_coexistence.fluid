@@ -8,11 +8,11 @@ This test verifies that UDP and TCP sockets can coexist and operate independentl
 - Resource sharing validation
 --]]
 
-   require 'common'
    include 'network'
+   if not mNet then mNet = mod.load('network') end
 
-local glBasePort = 19840  -- Base port for coexistence tests
-local glTestTimeout = 4.0
+   local glBasePort = 19840  -- Base port for coexistence tests
+   local glTestTimeout = 4.0
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test UDP and TCP servers running simultaneously
@@ -32,14 +32,15 @@ function testUDPTCPCoexistence()
       flags = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
+         local source = struct.new('IPAddress')
+         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, source)
          if (err == ERR_Okay) and (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
             print('[UDP Server] Received: "' .. msg .. '"')
             if (string.match(msg, 'UDP Test')) then
                udpReceived = true
                -- Send UDP response
-               Socket.mtSendTo(sourceAddr, sourcePort, 'UDP Response')
+               Socket.mtSendTo(source, 'UDP Response')
             end
          end
       end
@@ -81,8 +82,9 @@ function testUDPTCPCoexistence()
       flags = 'UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
-         if (err == ERR_Okay and bytesRead > 0) then
+         local source = struct.new('IPAddress')
+         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, source)
+         if (err == ERR_Okay) and (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
             print('[UDP Client] Received response: "' .. msg .. '"')
          end
@@ -112,9 +114,14 @@ function testUDPTCPCoexistence()
    })
 
    -- Send UDP message
+
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = udpServer.port
+
    local udpMessage = 'UDP Test Message'
    print('[UDP Client] Sending: "' .. udpMessage .. '"')
-   local err, bytesSent = udpClient.mtSendTo('127.0.0.1', udpPort, udpMessage)
+   local err, bytesSent = udpClient.mtSendTo(dest, udpMessage)
    assert(err == ERR_Okay, 'UDP client failed to send message')
 
    proc.sleep()
@@ -140,7 +147,8 @@ function testMixedProtocolPatterns()
          flags = 'SERVER|UDP',
          incoming = function(Socket)
             local buffer = string.alloc(256)
-            local err, bytesRead = Socket.mtRecvFrom(buffer, 256)
+            local source = struct.new('IPAddress')
+            local err, bytesRead = Socket.mtRecvFrom(buffer, 256, source)
             if (err == ERR_Okay and bytesRead > 0) then
                results.udp1 = true
                print('UDP Server 1 received message')
@@ -167,7 +175,8 @@ function testMixedProtocolPatterns()
          multicastTTL = 2,
          incoming = function(Socket)
             local buffer = string.alloc(256)
-            local err, bytesRead = Socket.mtRecvFrom(buffer, 256)
+            local source = struct.new('IPAddress')
+            local err, bytesRead = Socket.mtRecvFrom(buffer, 256, source)
             if (err == ERR_Okay and bytesRead > 0) then
                results.udp2 = true
                print('UDP Server 2 (with broadcast) received message')
@@ -184,12 +193,17 @@ function testMixedProtocolPatterns()
       tcp1 = obj.new('netsocket', { address = '127.0.0.1', port = basePort + 2 }),
       udp2 = obj.new('netsocket', { flags = 'UDP' })
    }
+   
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
 
    -- Send to UDP server 1
-   clients.udp1.mtSendTo('127.0.0.1', basePort + 1, 'test1')
+   dest.port = servers.udp1.port
+   clients.udp1.mtSendTo(dest, 'test1')
 
    -- Send to UDP server 2 with broadcast enabled
-   clients.udp2.mtSendTo('127.0.0.1', basePort + 3, 'test2')
+   dest.port = servers.udp2.port
+   clients.udp2.mtSendTo(dest, 'test2')
 
    proc.sleep(1.0)  -- Allow time for all operations
 

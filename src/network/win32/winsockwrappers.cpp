@@ -13,7 +13,8 @@ struct IPAddress {
       char Data[16];  // Bytes 0-3 are IPv4 bytes.  In host byte order
       unsigned int Data32[4];
    };
-   int Type;     // IPADDR_V4 or IPADDR_V6
+   int Type;  // IPADDR_V4 or IPADDR_V6
+   int Port;  // Port number in host byte order (UDP only)
 };
 
 #define IPADDR_V4 0
@@ -390,7 +391,7 @@ int win_getsockname(WSW_SOCKET S, struct sockaddr *Name, int *NameLen)
 
 //********************************************************************************************************************
 
-unsigned long win_inet_addr(const char *Str)
+uint32_t win_inet_addr(const char *Str)
 {
    return inet_addr(Str);
 }
@@ -398,7 +399,7 @@ unsigned long win_inet_addr(const char *Str)
 //********************************************************************************************************************
 // IPv4
 
-char * win_inet_ntoa(unsigned long Addr)
+char * win_inet_ntoa(uint32_t Addr)
 {
    struct in_addr addr;
    addr.s_addr = Addr;
@@ -648,12 +649,12 @@ int GetSockOptError(WSW_SOCKET S, char *Result, int *OptLen)
 
 //********************************************************************************************************************
 
-unsigned long win_htonl(unsigned long X)
+uint32_t win_htonl(uint32_t X)
 {
    return htonl(X);
 }
 
-unsigned long win_ntohl(unsigned long X)
+uint32_t win_ntohl(uint32_t X)
 {
    return ntohl(X);
 }
@@ -796,42 +797,14 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6, b
 }
 
 //********************************************************************************************************************
-// Use Windows Winsock2 inet_pton if available (Windows Vista+)
-// For older systems, provide basic IPv6 parsing
 
 int win_inet_pton(int af, const char *src, void *dst)
 {
    if (af IS AF_INET6) {
-      // Basic IPv6 parsing for common formats
-      if (strcmp(src, "::1") IS 0) { // IPv6 loopback
-         memset(dst, 0, 16);
-         ((unsigned char*)dst)[15] = 1;
-         return 1;
-      }
-      else if (strcmp(src, "::") IS 0) { // IPv6 any address
-         memset(dst, 0, 16);
-         return 1;
-      }
-      else if (strncmp(src, "::ffff:", 7) IS 0) { // IPv4-mapped IPv6 address
-         memset(dst, 0, 10);
-         ((unsigned char*)dst)[10] = 0xff;
-         ((unsigned char*)dst)[11] = 0xff;
-
-         // Parse the IPv4 part
-         unsigned long ipv4 = inet_addr(src + 7);
-         if (ipv4 != INADDR_NONE) {
-            memcpy(((unsigned char*)dst) + 12, &ipv4, 4);
-            return 1;
-         }
-      }
-      else { // Try to use Windows inet_pton if available
-         static auto inet_pton_func = (int (WINAPI*)(int, const char*, void*))GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
-         if (inet_pton_func) return inet_pton_func(af, src, dst);
-         return 0;
-      }
+      return inet_pton(af, src, dst);
    }
    else if (af IS AF_INET) { // Use standard IPv4 parsing
-      unsigned long result = inet_addr(src);
+      uint32_t result = inet_addr(src);
       if (result != INADDR_NONE) {
          memcpy(dst, &result, 4);
          return 1;
@@ -847,43 +820,7 @@ const char *win_inet_ntop(int af, const void *src, char *dst, size_t size)
 {
    if (af IS AF_INET6) {
       if (size < 46) return nullptr; // Need at least 46 bytes for full IPv6 address
-
-      const unsigned char *bytes = (const unsigned char*)src;
-
-      // Check for special addresses
-      static unsigned char loopback[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1};
-      static unsigned char any[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-      if (memcmp(src, loopback, 16) IS 0) {
-         strcpy(dst, "::1");
-         return dst;
-      }
-      else if (memcmp(src, any, 16) IS 0) {
-         strcpy(dst, "::");
-         return dst;
-      }
-      else if (bytes[10] IS 0xff and bytes[11] IS 0xff) {
-         // IPv4-mapped IPv6
-         struct in_addr ipv4_addr;
-         memcpy(&ipv4_addr, bytes + 12, 4);
-         _snprintf(dst, size, "::ffff:%s", inet_ntoa(ipv4_addr));
-         return dst;
-      }
-      else {
-         // Try to use Windows inet_ntop if available
-         static auto inet_ntop_func = (const char* (WINAPI*)(int, const void*, char*, size_t))
-            GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
-         if (inet_ntop_func) {
-            return inet_ntop_func(af, src, dst, size);
-         }
-
-         // Fallback: format as full hex representation
-         _snprintf(dst, size,
-            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
-         return dst;
-      }
+      return inet_ntop(af, src, dst, size);
    }
    else if (af IS AF_INET) {
       if (size < 16) return nullptr; // Need at least 16 bytes for IPv4

@@ -2,7 +2,6 @@
 UDP Performance and Stress Test
 --]]
 
-   require 'common'
    include 'network'
 
 local glBasePort = 19830  -- Base port for performance tests

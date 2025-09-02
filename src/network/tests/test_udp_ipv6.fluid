@@ -2,8 +2,8 @@
 UDP IPv6 Communication Test
 --]]
 
-   require 'common'
    include 'network'
+   if not mNet then mNet = mod.load('network') end
 
 local glBasePort = 19810  -- Base port for IPv6 UDP tests
 local glTestTimeout = 3.0
@@ -12,22 +12,25 @@ local glTestTimeout = 3.0
 -- Test basic UDP communication with IPv6
 
 function testUDPIPv6Basic()
-   local serverPort = glBasePort + 1
+   glBasePort = glBasePort + 1
+   local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local messageReceived = false
+   local sv_source = struct.new('IPAddress')
 
    local server = obj.new('netsocket', {
+      name    = 'UDPServer',
       port    = serverPort,
       address = '::1',  -- IPv6 loopback
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
+         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, sv_source)
          assert(err == ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
-            print('[IPv6 UDP Server] Received: "' .. msg .. '" from ' .. sourceAddr .. ':' .. sourcePort)
+            print('[IPv6 UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(sv_source) .. ':' .. sv_source.port)
             assert(string.match(msg, 'Hello IPv6'), 'Unexpected message received')
             messageReceived = true
             proc.signal()
@@ -39,8 +42,13 @@ function testUDPIPv6Basic()
 
    -- Client sends message to IPv6 loopback
    local message = 'Hello IPv6 UDP Server'
-   print('[IPv6 UDP Client] Sending: "' .. message .. '" to ::1:' .. serverPort)
-   local err, bytesSent = client.mtSendTo('::1', serverPort, message)
+   
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('::1', dest))
+   dest.port = server.port
+
+   print('[IPv6 UDP Client] Sending: "' .. message .. '" to ::1:' .. dest.port)
+   local err, bytesSent = client.mtSendTo(dest, message)
    assert(err == ERR_Okay, 'Client failed to send IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
    assert(bytesSent == string.len(message), 'Not all bytes were sent')
 
@@ -53,7 +61,8 @@ end
 -- Test dual-stack IPv4/IPv6 UDP communication
 
 function testUDPDualStack()
-   local serverPort = glBasePort + 2
+   glBasePort = glBasePort + 1
+   local serverPort = glBasePort
    local proc = processing.new({ timeout = glTestTimeout })
    local ipv4Received = false
    local ipv6Received = false
@@ -64,12 +73,13 @@ function testUDPDualStack()
       flags = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
+         local source = struct.new('IPAddress')
+         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, source)
          assert(err == ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
-            print('[Dual-Stack UDP Server] Received: "' .. msg .. '" from ' .. sourceAddr .. ':' .. sourcePort)
+            print('[Dual-Stack UDP Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
 
             if (string.match(msg, 'IPv4')) then
                ipv4Received = true
@@ -88,59 +98,27 @@ function testUDPDualStack()
 
    -- Send IPv4 message
    local ipv4Message = 'Hello from IPv4'
-   print('[Dual-Stack Client] Sending IPv4 message to 127.0.0.1:' .. serverPort)
-   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, ipv4Message)
+   
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = server.port
+
+   print('[Dual-Stack Client] Sending IPv4 message to 127.0.0.1:' .. dest.port)
+   local err, bytesSent = client.mtSendTo(dest, ipv4Message)
    assert(err == ERR_Okay, 'Failed to send IPv4 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep(0.1)  -- Brief pause between messages
 
    -- Send IPv6 message
-   local ipv6Message = 'Hello from IPv6'
-   print('[Dual-Stack Client] Sending IPv6 message to ::1:' .. serverPort)
-   err, bytesSent = client.mtSendTo('::1', serverPort, ipv6Message)
+   print('[Dual-Stack Client] Sending IPv6 message to ::1:' .. server.port)
+   check(mNet.StrToAddress('::1', dest))
+   err, bytesSent = client.mtSendTo(dest, 'Hello from IPv6')
    assert(err == ERR_Okay, 'Failed to send IPv6 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()
 
    assert(ipv4Received, 'Server did not receive IPv4 message')
    assert(ipv6Received, 'Server did not receive IPv6 message')
-end
-
-------------------------------------------------------------------------------------------------------------------------
--- Test IPv6 address validation and error handling
-
-function testUDPIPv6ErrorHandling()
-   local client = obj.new('netsocket', { flags = 'UDP' })
-
-   -- Test invalid IPv6 addresses
-   local invalidAddresses = {
-      'gggg::1',           -- Invalid hex digits
-      '1::2::3',           -- Double double-colon
-      '1:2:3:4:5:6:7:8:9', -- Too many groups
-      '',                  -- Empty address
-      'not.an.ipv6.address' -- Not an IP address at all
-   }
-
-   for i, addr in ipairs(invalidAddresses) do
-      local err, bytesSent = client.mtSendTo(addr, 12345, 'test', 4)
-      assert(err != ERR_Okay, 'SendTo should fail with invalid IPv6 address: ' .. addr)
-      print('Correctly rejected invalid IPv6 address: ' .. addr)
-   end
-
-   -- Test valid IPv6 addresses (should not fail due to address parsing)
-   local validAddresses = {
-      '::1',                   -- Loopback
-      '::',                    -- Any address
-      '2001:db8::1',           -- Documentation prefix
-      'fe80::1',               -- Link-local
-      '::ffff:127.0.0.1',      -- IPv4-mapped IPv6
-   }
-
-   for i, addr in ipairs(validAddresses) do
-      local err, bytesSent = client.mtSendTo(addr, 12345, 'test', 4)
-      -- Note: May still fail due to network unreachable, but should not fail due to address parsing
-      print('Address parsing accepted valid IPv6 address: ' .. addr .. ' (err: ' .. mSys.GetErrorMsg(err) .. ')')
-   end
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -159,7 +137,6 @@ end
    return {
       tests = {
          'testUDPIPv6Properties',
-         'testUDPIPv6ErrorHandling',
          'testUDPIPv6Basic',
          'testUDPDualStack'
       }
