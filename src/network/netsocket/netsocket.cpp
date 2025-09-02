@@ -267,7 +267,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
-         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         server_address6.sin6_port = htons(Socket->Port);
          pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
 
          if ((Socket->Error = win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6))) != ERR::Okay) {
@@ -290,8 +290,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
-         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
-         pf::copymem(&server_address6.sin6_addr.s6_addr, (void *)addr->Data, 16);
+         server_address6.sin6_port = htons(Socket->Port);
+         pf::copymem((void *)addr->Data, &server_address6.sin6_addr.s6_addr, 16);
 
          int result = connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
 
@@ -329,12 +329,12 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
-         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         server_address6.sin6_port = htons(Socket->Port);
 
          // Create IPv4-mapped IPv6 address (::ffff:x.x.x.x)
          server_address6.sin6_addr.s6_addr[10] = 0xff;
          server_address6.sin6_addr.s6_addr[11] = 0xff;
-         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
+         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = htonl(addr->Data[0]);
 
          int result = connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6));
 
@@ -367,12 +367,12 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
          struct sockaddr_in6 server_address6;
          pf::clearmem(&server_address6, sizeof(server_address6));
          server_address6.sin6_family = AF_INET6;
-         server_address6.sin6_port = net::HostToShort((UWORD)Socket->Port);
+         server_address6.sin6_port = htons(Socket->Port);
 
          // Create IPv4-mapped IPv6 address (::ffff:x.x.x.x)
          server_address6.sin6_addr.s6_addr[10] = 0xff;
          server_address6.sin6_addr.s6_addr[11] = 0xff;
-         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = net::HostToLong(addr->Data[0]);
+         *((uint32_t*)&server_address6.sin6_addr.s6_addr[12]) = htonl(addr->Data[0]);
 
          if (win_connect(Socket->Handle, (struct sockaddr *)&server_address6, sizeof(server_address6)) IS ERR::Okay) {
             log.trace("IPv4-mapped IPv6 connection initiated successfully");
@@ -390,8 +390,8 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
    // Pure IPv4 connection
    pf::clearmem(&server_address, sizeof(struct sockaddr_in));
    server_address.sin_family = AF_INET;
-   server_address.sin_port = net::HostToShort((UWORD)Socket->Port);
-   server_address.sin_addr.s_addr = net::HostToLong(addr->Data[0]);
+   server_address.sin_port = htons(Socket->Port);
+   server_address.sin_addr.s_addr = htonl(addr->Data[0]);
 
 #ifdef __linux__
    int result = connect(Socket->Handle, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -651,92 +651,44 @@ static ERR NETSOCKET_GetLocalIPAddress(extNetSocket *Self, struct ns::GetLocalIP
 //********************************************************************************************************************
 // Parse a bind address string and convert it to the appropriate sockaddr structure
 
-static ERR parse_bind_address(const char *Address, bool IPv6, void *AddrOut)
+static ERR parse_bind_address(CSTRING Address, bool IPv6, void *AddrOut)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!Address) or (!AddrOut)) return log.warning(ERR::NullArgs);
-
-   // Handle special cases
-   if (pf::iequals(Address, "localhost") or pf::iequals(Address, "127.0.0.1")) {
-      // Bind to IPv4 localhost (127.0.0.1), use IPv4-mapped IPv6 for dual-stack compatibility
-      if (IPv6) {
-         auto addr = (struct sockaddr_in6 *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in6));
-         addr->sin6_family = AF_INET6;
-         // Create IPv4-mapped IPv6 address (::ffff:127.0.0.1)
-         pf::clearmem(&addr->sin6_addr, sizeof(addr->sin6_addr));
-         addr->sin6_addr.s6_addr[10] = 0xff;
-         addr->sin6_addr.s6_addr[11] = 0xff;
-         addr->sin6_addr.s6_addr[12] = 127;
-         addr->sin6_addr.s6_addr[13] = 0;
-         addr->sin6_addr.s6_addr[14] = 0;
-         addr->sin6_addr.s6_addr[15] = 1;
-      }
-      else {
-         auto addr = (struct sockaddr_in *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in));
-         addr->sin_family = AF_INET;
-         addr->sin_addr.s_addr = htonl(0x7f000001); // 127.0.0.1
-      }
-      return ERR::Okay;
-   }
-   else if (pf::iequals(Address, "::1")) {
-      // Bind to IPv6 localhost only
-      if (IPv6) {
-         auto addr = (struct sockaddr_in6 *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in6));
-         addr->sin6_family = AF_INET6;
-         addr->sin6_addr.s6_addr[15] = 1; // Set to ::1 (IPv6 loopback)
-         return ERR::Okay;
-      }
-      else return log.warning(ERR::InvalidValue); // Cannot bind IPv6 address to IPv4 socket
-   }
-   else if (pf::iequals(Address, "0.0.0.0") or pf::iequals(Address, "::") or pf::iequals(Address, "*") or pf::iequals(Address, "")) {
-      // Bind to all interfaces
-      if (IPv6) {
-         auto addr = (struct sockaddr_in6 *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in6));
-         addr->sin6_family = AF_INET6;
-         addr->sin6_addr = in6addr_any;
-      }
-      else {
-         auto addr = (struct sockaddr_in *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in));
-         addr->sin_family = AF_INET;
-         addr->sin_addr.s_addr = INADDR_ANY;
-      }
-      return ERR::Okay;
-   }
-
-   // Try to parse as an IP address
+   
    IPAddress ip;
    if (net::StrToAddress(Address, &ip) IS ERR::Okay) {
-      if (IPv6) {
-         auto addr = (struct sockaddr_in6 *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in6));
-         addr->sin6_family = AF_INET6;
+      if (ip.Type IS IPADDR::V4) {
+         if (IPv6) { // IPv4 -> IPv6-mapped
+            auto out = (sockaddr_in6 *)AddrOut;
+            pf::clearmem(out, sizeof(sockaddr_in6));
+            out->sin6_family = AF_INET6;
+            out->sin6_addr.s6_addr[10] = 0xff;
+            out->sin6_addr.s6_addr[11] = 0xff;
+            *((uint32_t*)&out->sin6_addr.s6_addr[12]) = htonl(ip.Data[0]); // Convert to network byte order
+         }
+         else { // IPv4 -> IPv4
+            auto addr = (sockaddr_in *)AddrOut;
+            pf::clearmem(addr, sizeof(struct sockaddr_in));
+            addr->sin_family = AF_INET;
+            addr->sin_addr.s_addr = htonl(ip.Data[0]); // Convert from host to network byte order
+         }
+      }
+      else if (ip.Type IS IPADDR::V6) {
+         if (IPv6) { // IPv6 -> IPv6
+            auto out = (sockaddr_in6 *)AddrOut;
+            pf::clearmem(out, sizeof(struct sockaddr_in6));
+            out->sin6_family = AF_INET6;
+            pf::copymem(ip.Data, &out->sin6_addr, 16);
+         }
+         else {
+            log.warning("Address is IPv6 but socket is IPv4");
+            return ERR::InvalidValue;
+         }
+      }
+      else return log.warning(ERR::SanityCheckFailed); // Should never happen
 
-         if (ip.Type IS IPADDR::V4) { // Convert IPv4 to IPv4-mapped IPv6 address
-            pf::clearmem(&addr->sin6_addr, sizeof(addr->sin6_addr));
-            addr->sin6_addr.s6_addr[10] = 0xff;
-            addr->sin6_addr.s6_addr[11] = 0xff;
-            pf::copymem(ip.Data, &addr->sin6_addr.s6_addr[12], 4);
-         }
-         else { // Native IPv6 address
-            pf::copymem(ip.Data, &addr->sin6_addr, 16);
-         }
-      }
-      else {
-         if (ip.Type IS IPADDR::V6) {
-            log.warning("Cannot bind IPv6 address to IPv4 socket: %s", Address);
-            return ERR::Mismatch;
-         }
-         auto addr = (struct sockaddr_in *)AddrOut;
-         pf::clearmem(addr, sizeof(struct sockaddr_in));
-         addr->sin_family = AF_INET;
-         pf::copymem(ip.Data, &addr->sin_addr.s_addr, 4);
-      }
       return ERR::Okay;
    }
    else {
@@ -1357,7 +1309,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR::NullArgs;
+   if (!Args) return log.warning(ERR::NullArgs);
 
    Args->Result = 0;
 
@@ -1413,155 +1365,6 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-SendTo: Send a datagram packet to a specific address (UDP only).
-
-This method sends a datagram packet to a specified IP address and port.  It is only available for sockets configured
-with the UDP flag.  Unlike TCP connections, UDP is connectionless so packets can be sent to any address without
-establishing a connection first.
-
-The method is non-blocking and will return immediately.  If the network buffer is full, an `ERR::BufferOverflow`
-error will be returned and the client should retry the operation later.
-
-For TCP sockets, use the standard Write action instead.
-
--INPUT-
-cstr Address:   The destination IP address (IPv4 or IPv6).
-int Port:       The destination port number.
-buf(ptr) Data:  Pointer to the data buffer to send.
-bufsize Length: Number of bytes to send from the data buffer.
-&int BytesSent: Number of bytes actually sent.
-
--ERRORS-
-Okay: The packet was sent successfully.
-BufferOverflow: The network buffer is full, retry later.
-NullArgs: Invalid arguments provided.
-InvalidState: Socket is not configured for UDP mode.
-NetworkUnreachable: The destination network is unreachable.
--END-
-
-*********************************************************************************************************************/
-
-static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
-{
-   pf::Log log;
-
-   if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::InvalidState);
-   if ((!Args->Address) or (!Args->Data) or (!Args->Length)) return log.warning(ERR::NullArgs);
-   if (Args->Length <= 0) return log.warning(ERR::Args);
-   if (Args->Port <= 0 or Args->Port > 65535) return log.warning(ERR::Args);
-
-   // Enforce max packet size (optional safety)
-   if (Self->MaxPacketSize and Args->Length > Self->MaxPacketSize) {
-      log.warning("Packet length %d exceeds MaxPacketSize %d", Args->Length, Self->MaxPacketSize);
-      return ERR::DataSize;
-   }
-
-   log.branch("%s:%d, %d bytes", Args->Address, Args->Port, Args->Length);
-
-   Args->BytesSent = 0;
-
-   struct sockaddr_storage dest_addr;
-   memset(&dest_addr, 0, sizeof(dest_addr));
-   int addr_len = 0;
-
-   auto addr6 = (struct sockaddr_in6 *)&dest_addr;
-   auto addr4 = (struct sockaddr_in *)&dest_addr;
-
-#if defined(__linux__)
-   // Try IPv4
-   unsigned char tmp4[sizeof(struct in_addr)];
-   if (inet_pton(AF_INET, Args->Address, tmp4) IS 1) {
-      if (Self->IPV6) {
-         // Build IPv4-mapped IPv6 address
-         addr6->sin6_family = AF_INET6;
-         addr6->sin6_port   = htons(Args->Port);
-         memset(&addr6->sin6_addr, 0, sizeof(addr6->sin6_addr));
-         addr6->sin6_addr.s6_addr[10] = 0xff;
-         addr6->sin6_addr.s6_addr[11] = 0xff;
-         memcpy(&addr6->sin6_addr.s6_addr[12], tmp4, 4);
-         addr_len = sizeof(struct sockaddr_in6);
-      }
-      else {
-         addr4->sin_family = AF_INET;
-         addr4->sin_port   = htons(Args->Port);
-         memcpy(&addr4->sin_addr, tmp4, 4);
-         memset(&addr4->sin_zero, 0, sizeof(addr4->sin_zero));
-         addr_len = sizeof(struct sockaddr_in);
-      }
-   }
-   else if (inet_pton(AF_INET6, Args->Address, &addr6->sin6_addr) IS 1) {
-      addr6->sin6_family = AF_INET6;
-      addr6->sin6_port   = htons(Args->Port);
-      addr6->sin6_flowinfo = 0;
-      addr6->sin6_scope_id = 0;
-      addr_len = sizeof(struct sockaddr_in6);
-   }
-#elif defined(_WIN32)
-   unsigned char tmp4[sizeof(struct in_addr)];
-   if (win_inet_pton(AF_INET, Args->Address, tmp4) IS 1) {
-      if (Self->IPV6) {
-         // IPv4-mapped IPv6
-         addr6->sin6_family = AF_INET6;
-         addr6->sin6_port   = htons(Args->Port);
-         memset(&addr6->sin6_addr, 0, sizeof(addr6->sin6_addr));
-         addr6->sin6_addr.s6_addr[10] = 0xff;
-         addr6->sin6_addr.s6_addr[11] = 0xff;
-         memcpy(&addr6->sin6_addr.s6_addr[12], tmp4, 4);
-         addr_len = sizeof(sockaddr_in6);
-      }
-      else {
-         addr4->sin_family = AF_INET;
-         addr4->sin_port   = htons(Args->Port);
-         memcpy(&addr4->sin_addr, tmp4, 4);
-         memset(addr4->sin_zero, 0, sizeof(addr4->sin_zero));
-         addr_len = sizeof(sockaddr_in);
-      }
-   }
-   else if (win_inet_pton(AF_INET6, Args->Address, &addr6->sin6_addr) IS 1) {
-      addr6->sin6_family = AF_INET6;
-      addr6->sin6_port   = htons(Args->Port);
-      addr6->sin6_flowinfo = 0;
-      addr6->sin6_scope_id = 0;
-      addr_len = sizeof(sockaddr_in6);
-   }
-#endif
-   else {
-      log.warning("Invalid IP address: %s", Args->Address);
-      return ERR::Args;
-   }
-
-   size_t bytes_to_send = Args->Length;
-
-#if defined(__linux__)
-   auto result = sendto(Self->Handle, Args->Data, bytes_to_send, MSG_DONTWAIT,
-                        (struct sockaddr *)&dest_addr, addr_len);
-   if (result >= 0) {
-      Args->BytesSent = (int)result;
-      return ERR::Okay;
-   }
-   switch (errno) {
-#if EAGAIN == EWOULDBLOCK
-      case EAGAIN: return ERR::BufferOverflow;
-#else
-      case EAGAIN:
-      case EWOULDBLOCK: return ERR::BufferOverflow;
-#endif
-      case ENETUNREACH: return ERR::NetworkUnreachable;
-      case EINVAL:      return ERR::Args;
-      default:
-         log.warning("sendto() failed: %s", strerror(errno));
-         return ERR::SystemCall;
-   }
-#elif defined(_WIN32)
-   auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send, (struct sockaddr *)&dest_addr, addr_len);
-   if (error IS ERR::Okay) Args->BytesSent = (int)bytes_to_send;
-   return error;
-#endif
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 RecvFrom: Receive a datagram packet from any address (UDP only).
 
 This method receives a datagram packet from any source address.  It is only available for sockets configured with
@@ -1576,11 +1379,10 @@ The source address and port of the received packet will be provided in the outpu
 For TCP sockets, use the standard Read action instead.
 
 -INPUT-
-buf(ptr) Buffer:     Pointer to the buffer where received data will be stored.
-bufsize BufferSize:  Size of the receive buffer in bytes.
-&int BytesRead:      Number of bytes actually received.
-&!str SourceAddress: Source IP address of the received packet (must be freed by caller).
-&int SourcePort:     Source port number of the received packet.
+buf(ptr) Buffer:    Pointer to the buffer where received data will be stored.
+bufsize BufferSize: Size of the receive buffer in bytes.
+ptr(struct(IPAddress)) Source: Source IP address of the received packet.
+&int BytesRead:     Number of bytes actually received.
 
 -ERRORS-
 Okay: Data was received successfully, or no data available.
@@ -1595,14 +1397,12 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
 {
    pf::Log log;
 
-   if ((Self->Flags & NSF::UDP) IS NSF::NIL) return ERR::NoSupport;
-   if ((!Args->Buffer) or (!Args->BufferSize)) return ERR::Args;
+   if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::NoSupport);
+   if ((!Args->Buffer) or (!Args->BufferSize) or (!Args->Source)) return log.warning(ERR::NullArgs);
    
    Self->ReadCalled = true;
 
    Args->BytesRead = 0;
-   Args->SourceAddress = nullptr;
-   Args->SourcePort = 0;
 
    struct sockaddr_storage source_addr;
 
@@ -1641,42 +1441,132 @@ static ERR NETSOCKET_RecvFrom(extNetSocket *Self, struct ns::RecvFrom *Args)
 #endif
 
    if (Args->BytesRead > 0) {
-      // Extract source address and port
+      // Populate IPAddress structure with source address and port
       if (source_addr.ss_family IS AF_INET) {
-         struct sockaddr_in *addr4 = (struct sockaddr_in *)&source_addr;
-         Args->SourcePort = ntohs(addr4->sin_port);
-
-#ifdef __linux__
-         char addr_str[INET_ADDRSTRLEN];
-         if (inet_ntop(AF_INET, &addr4->sin_addr, addr_str, sizeof(addr_str))) {
-            Args->SourceAddress = pf::strclone(addr_str);
-         }
-#elif _WIN32
-         char addr_str[16]; // IPv4 max length
-         if (win_inet_ntop(AF_INET, &addr4->sin_addr, addr_str, sizeof(addr_str))) {
-            Args->SourceAddress = pf::strclone(addr_str);
-         }
-#endif
+         auto addr4 = (sockaddr_in *)&source_addr;
+         setIPV4(*Args->Source, ntohl(addr4->sin_addr.s_addr), ntohs(addr4->sin_port));
       }
       else if (source_addr.ss_family IS AF_INET6) {
-         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)&source_addr;
-         Args->SourcePort = ntohs(addr6->sin6_port);
-
-#ifdef __linux__
-         char addr_str[INET6_ADDRSTRLEN];
-         if (inet_ntop(AF_INET6, &addr6->sin6_addr, addr_str, sizeof(addr_str))) {
-            Args->SourceAddress = pf::strclone(addr_str);
-         }
-#elif _WIN32
-         char addr_str[46]; // IPv6 max length
-         if (win_inet_ntop(AF_INET6, &addr6->sin6_addr, addr_str, sizeof(addr_str))) {
-            Args->SourceAddress = pf::strclone(addr_str);
-         }
-#endif
+         auto addr6 = (sockaddr_in6 *)&source_addr;
+         setIPV6(*Args->Source, addr6->sin6_addr.s6_addr, ntohs(addr6->sin6_port));
       }
    }
 
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SendTo: Send a datagram packet to a specific address (UDP only).
+
+This method sends a datagram packet to a specified IP address and port.  It is only available for sockets configured
+with the UDP flag.  Unlike TCP connections, UDP is connectionless so packets can be sent to any address without
+establishing a connection first.
+
+The method is non-blocking and will return immediately.  If the network buffer is full, an `ERR::BufferOverflow`
+error will be returned and the client should retry the operation later.
+
+For TCP sockets, use the standard Write action instead.
+
+-INPUT-
+ptr(struct(IPAddress)) Dest: The destination IP address (IPv4 or IPv6) and port number.
+buf(ptr) Data:  Pointer to the data buffer to send.
+bufsize Length: Number of bytes to send from Data.
+&int BytesSent: Number of bytes actually sent.
+
+-ERRORS-
+Okay: The packet was sent successfully.
+BufferOverflow: The network buffer is full, retry later.
+NullArgs: Invalid arguments provided.
+InvalidState: Socket is not configured for UDP mode.
+NetworkUnreachable: The destination network is unreachable.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
+{
+   pf::Log log;
+
+   if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::InvalidState);
+   if ((!Args->Dest) or (!Args->Data) or (!Args->Length)) return log.warning(ERR::NullArgs);
+   if (Args->Length <= 0) return log.warning(ERR::Args);
+   if (Args->Dest->Port <= 0 or Args->Dest->Port > 65535) return log.warning(ERR::Args);
+
+   // Enforce max packet size (optional safety)
+   if (Self->MaxPacketSize and Args->Length > Self->MaxPacketSize) {
+      log.warning("Packet length %d exceeds MaxPacketSize %d", Args->Length, Self->MaxPacketSize);
+      return ERR::DataSize;
+   }
+
+   log.branch("%d bytes", Args->Length);
+
+   Args->BytesSent = 0;
+
+   struct sockaddr_storage dest_addr;
+   memset(&dest_addr, 0, sizeof(dest_addr));
+   int addr_len = 0;
+
+   if (Args->Dest->Type IS IPADDR::V4) {
+      if (Self->IPV6) { // IPv4-mapped IPv6
+         auto addr6 = (sockaddr_in6 *)&dest_addr;
+         addr6->sin6_family = AF_INET6;
+         addr6->sin6_port   = htons(Args->Dest->Port);
+         memset(&addr6->sin6_addr, 0, sizeof(addr6->sin6_addr));
+         addr6->sin6_addr.s6_addr[10] = 0xff;
+         addr6->sin6_addr.s6_addr[11] = 0xff;
+         uint32_t v4_net = htonl(Args->Dest->Data[0]);
+         memcpy(&addr6->sin6_addr.s6_addr[12], &v4_net, 4);
+         addr_len = sizeof(sockaddr_in6);
+
+      }
+      else { // Regular IPv4
+         auto addr4 = (sockaddr_in *)&dest_addr;
+         addr4->sin_family = AF_INET;
+         addr4->sin_port   = htons(Args->Dest->Port);
+         addr4->sin_addr.s_addr = htonl(Args->Dest->Data[0]);
+         memset(addr4->sin_zero, 0, sizeof(addr4->sin_zero));
+         addr_len = sizeof(sockaddr_in);
+      }
+   }
+   else if (Args->Dest->Type IS IPADDR::V6) { // Standard IPv6
+      auto addr6 = (sockaddr_in6 *)&dest_addr;
+      addr6->sin6_family = AF_INET6;
+      addr6->sin6_port   = htons(Args->Dest->Port);
+      addr6->sin6_flowinfo = 0;
+      addr6->sin6_scope_id = 0;
+      memcpy(&addr6->sin6_addr, Args->Dest->Data, 16);
+      addr_len = sizeof(sockaddr_in6);
+   }
+   else return log.warning(ERR::Args);
+
+   size_t bytes_to_send = Args->Length;
+
+#if defined(__linux__)
+   auto result = sendto(Self->Handle, Args->Data, bytes_to_send, MSG_DONTWAIT, (sockaddr *)&dest_addr, addr_len);
+   if (result >= 0) {
+      Args->BytesSent = (int)result;
+      return ERR::Okay;
+   }
+   switch (errno) {
+#if EAGAIN == EWOULDBLOCK
+      case EAGAIN: return ERR::BufferOverflow;
+#else
+      case EAGAIN:
+      case EWOULDBLOCK: return ERR::BufferOverflow;
+#endif
+      case ENETUNREACH: return ERR::NetworkUnreachable;
+      case EINVAL:      return ERR::Args;
+      default:
+         log.warning("sendto() failed: %s", strerror(errno));
+         return ERR::SystemCall;
+   }
+#elif defined(_WIN32)
+   auto error = WIN_SENDTO(Self->Handle, Args->Data, &bytes_to_send, (sockaddr *)&dest_addr, addr_len);
+   if (error IS ERR::Okay) Args->BytesSent = (int)bytes_to_send;
+   return error;
+#endif
 }
 
 //********************************************************************************************************************

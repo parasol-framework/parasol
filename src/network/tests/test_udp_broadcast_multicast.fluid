@@ -4,9 +4,10 @@ UDP Broadcast and Multicast Test
 
    require 'common'
    include 'network'
+   if not mNet then mNet = mod.load('network') end
 
-local glBasePort = 19820  -- Base port for broadcast/multicast tests
-local glTestTimeout = 3.0
+   local glBasePort = 19820  -- Base port for broadcast/multicast tests
+   local glTestTimeout = 3.0
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test multicast group operations
@@ -64,7 +65,7 @@ function testMulticastErrorHandling()
 
    -- Test TCP socket (should not support multicast)
    local tcpSocket = obj.new('netsocket', {
-      flags = 'SERVER', port = 58234  -- TCP socket
+      flags = 'SERVER', port = 38134  -- TCP socket
    })
 
    local err = tcpSocket.mtJoinMulticastGroup('224.1.1.1')
@@ -105,10 +106,11 @@ function testBroadcastLoopback()
       flags = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
+         local source = struct.new('IPAddress')
+         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, source)
          if (err == ERR_Okay and bytesRead > 0) then
             local msg = buffer:sub(1, bytesRead)
-            print('[Broadcast Server] Received: "' .. msg .. '" from ' .. sourceAddr .. ':' .. sourcePort)
+            print('[Broadcast Server] Received: "' .. msg .. '" from ' .. mNet.AddressToStr(source) .. ':' .. source.port)
             if (string.match(msg, 'Broadcast Test')) then
                broadcastReceived = true
                proc.signal()
@@ -117,14 +119,14 @@ function testBroadcastLoopback()
       end
    })
 
-   proc.sleep(0.1)  -- Let server initialize
-
    local client = obj.new('netsocket', { flags = 'UDP|BROADCAST' })
 
    -- Send to loopback (not true broadcast, but tests the broadcast socket option)
-   local message = 'Broadcast Test Message'
    print('[Broadcast Client] Sending message to 127.0.0.1:' .. serverPort)
-   local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message)
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = server.port
+   local err, bytesSent = client.mtSendTo(dest, 'Broadcast Test Message')
    assert(err == ERR_Okay, 'Failed to send broadcast message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()

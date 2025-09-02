@@ -215,13 +215,12 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>RecvFrom</name>
       <comment>Receive a datagram packet from any address (UDP only).</comment>
-      <prototype>ERR ns::RecvFrom(OBJECTPTR Object, APTR Buffer, INT BufferSize, INT * BytesRead, STRING * SourceAddress, INT * SourcePort)</prototype>
+      <prototype>ERR ns::RecvFrom(OBJECTPTR Object, APTR Buffer, INT BufferSize, struct IPAddress * Source, INT * BytesRead)</prototype>
       <input>
         <param type="APTR" name="Buffer">Pointer to the buffer where received data will be stored.</param>
         <param type="INT" name="BufferSize">Size of the receive buffer in bytes.</param>
+        <param type="struct IPAddress *" name="Source">Source IP address of the received packet.</param>
         <param type="INT *" name="BytesRead">Number of bytes actually received.</param>
-        <param type="STRING *" name="SourceAddress">Source IP address of the received packet (must be freed by caller).</param>
-        <param type="INT *" name="SourcePort">Source port number of the received packet.</param>
       </input>
       <description>
 <p>This method receives a datagram packet from any source address.  It is only available for sockets configured with the UDP flag.  Unlike TCP connections, UDP is connectionless so packets can be received from any source without establishing a connection first.</p>
@@ -240,12 +239,11 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>SendTo</name>
       <comment>Send a datagram packet to a specific address (UDP only).</comment>
-      <prototype>ERR ns::SendTo(OBJECTPTR Object, CSTRING Address, INT Port, APTR Data, INT Length, INT * BytesSent)</prototype>
+      <prototype>ERR ns::SendTo(OBJECTPTR Object, struct IPAddress * Dest, APTR Data, INT Length, INT * BytesSent)</prototype>
       <input>
-        <param type="CSTRING" name="Address">The destination IP address (IPv4 or IPv6).</param>
-        <param type="INT" name="Port">The destination port number.</param>
+        <param type="struct IPAddress *" name="Dest">The destination IP address (IPv4 or IPv6) and port number.</param>
         <param type="APTR" name="Data">Pointer to the data buffer to send.</param>
-        <param type="INT" name="Length">Number of bytes to send from the data buffer.</param>
+        <param type="INT" name="Length">Number of bytes to send from Data.</param>
         <param type="INT *" name="BytesSent">Number of bytes actually sent.</param>
       </input>
       <description>
@@ -514,9 +512,9 @@ initially fill the internal write buffer, thereafter it will be called whenever 
   </types>
   <structs>
     <struct name="IPAddress">
-      <field name="Data" type="INT" size="4">128-bit array for supporting both V4 and V6 IP addresses.</field>
+      <field name="Data" type="INT" size="4">128-bit array for supporting both V4 (32-bit host order) and V6 (8-bit byte order) IP addresses.</field>
       <field name="Type" type="IPADDR" lookup="IPADDR">Identifies the address Data value as a V4 or V6 address type.</field>
-      <field name="Pad" type="INT">Unused padding for 64-bit alignment</field>
+      <field name="Port" type="INT">For UDP packets, identifies the client port number in host byte order.</field>
     </struct>
 
   </structs>

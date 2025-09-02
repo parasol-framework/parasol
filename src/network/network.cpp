@@ -104,8 +104,8 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    #define SOCK_DGRAM 2
 
    struct  hostent {
-      char	 *h_name;
-      char	 **h_aliases;
+      char	*h_name;
+      char	**h_aliases;
       short h_addrtype;
       short h_length;
       char  **h_addr_list;
@@ -115,7 +115,7 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    struct in_addr {
       union {
          struct { uint8_t s_b1,s_b2,s_b3,s_b4; } S_un_b;
-         struct { UWORD s_w1,s_w2; } S_un_w;
+         struct { uint16_t s_w1,s_w2; } S_un_w;
          uint32_t S_addr;
       } S_un;
    #define s_addr  S_un.S_addr
@@ -127,30 +127,30 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
    };
 
    struct sockaddr_in {
-      short  sin_family;
-      UWORD  sin_port;
+      short    sin_family;
+      uint16_t sin_port;
       struct in_addr sin_addr;
       char   sin_zero[8];
    };
 
    struct addrinfo {
-     int             ai_flags;
-     int             ai_family;
-     int             ai_socktype;
-     int             ai_protocol;
-     size_t          ai_addrlen;
-     char            *ai_canonname;
+     int    ai_flags;
+     int    ai_family;
+     int    ai_socktype;
+     int    ai_protocol;
+     size_t ai_addrlen;
+     char   *ai_canonname;
      struct sockaddr *ai_addr;
      struct addrinfo *ai_next;
    };
 
    struct in6_addr {
-      unsigned char   s6_addr[16];   // IPv6 address
+      uint8_t s6_addr[16];   // IPv6 address
    };
 
    struct sockaddr_in6 {
       short sin6_family;
-      UWORD sin6_port;
+      uint16_t sin6_port;
       uint32_t sin6_flowinfo;
       struct in6_addr sin6_addr;
       uint32_t sin6_scope_id;
@@ -396,6 +396,21 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 
 //********************************************************************************************************************
 
+inline void setIPV4(IPAddress &IP, uint32_t IPV4HostOrder, uint16_t Port) {
+   IP.Type = IPADDR::V4;
+   IP.Port = Port;
+   IP.Data[0] = IPV4HostOrder;
+   IP.Data[1] = IP.Data[2] = IP.Data[3] = 0;
+}
+
+inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
+   IP.Type = IPADDR::V6;
+   IP.Port = Port;
+   pf::copymem(Address, &IP.Data, 16);
+}
+
+//********************************************************************************************************************
+
 static OBJECTPTR clNetLookup = nullptr;
 static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
@@ -420,7 +435,7 @@ static std::string glCertPath;
 //********************************************************************************************************************
 
 static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
-static int8_t check_machine_name(CSTRING HostName) __attribute__((unused));
+static bool check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
@@ -585,7 +600,7 @@ CSTRING AddressToStr(IPAddress *Address)
          struct in6_addr addr;
          pf::copymem(Address->Data, &addr.s6_addr, 16);
 
-         if (inet_ntop(AF_INET6, &addr, ipv6_str, INET6_ADDRSTRLEN)) {
+         if (inet_ntop(AF_INET6, &addr, ipv6_str, INET6_ADDRSTRLEN)) { // String conversion
             return pf::strclone(ipv6_str);
          }
       #elif _WIN32
@@ -598,7 +613,7 @@ CSTRING AddressToStr(IPAddress *Address)
    }
    else if (Address->Type IS IPADDR::V4) {
       struct in_addr addr;
-      addr.s_addr = net::HostToLong(Address->Data[0]);
+      addr.s_addr = htonl(Address->Data[0]);
 
       STRING result;
       #ifdef __linux__
@@ -646,7 +661,35 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
 {
    if ((!Str) or (!Address)) return ERR::NullArgs;
 
-   pf::clearmem(Address, sizeof(IPAddress));
+   // Handle special cases
+   if (pf::iequals(Str, "localhost") or pf::iequals(Str, "127.0.0.1")) {
+      Address->Type = IPADDR::V4;
+      Address->Port = 0;
+      Address->Data[0] = 0x7f000001; // 127.0.0.1
+      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "::1")) {
+      Address->Type = IPADDR::V6;
+      Address->Port = 0;
+      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      ((uint8_t*)Address->Data)[15] = 1; // ::1 in byte format
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "::")) {
+      // Bind to all interfaces (IPv6)
+      Address->Type = IPADDR::V6;
+      Address->Port = 0;
+      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      return ERR::Okay;
+   }
+   else if (pf::iequals(Str, "0.0.0.0") or pf::iequals(Str, "*") or pf::iequals(Str, "")) {
+      // Bind to all interfaces     
+      Address->Type = IPADDR::V4;
+      Address->Port = 0;
+      pf::clearmem(&Address->Data, sizeof(Address->Data));
+      return ERR::Okay;
+   }
 
    // Try IPv6 first (contains colons)
    if (strchr(Str, ':')) {
@@ -677,13 +720,12 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    #endif
 
    if (result IS INADDR_NONE) return ERR::Failed;
-
-   Address->Data[0] = net::LongToHost(result);
+   
+   Address->Type = IPADDR::V4;
+   Address->Data[0] = ntohl(result);
    Address->Data[1] = 0;
    Address->Data[2] = 0;
    Address->Data[3] = 0;
-   Address->Type = IPADDR::V4;
-
    return ERR::Okay;
 }
 
@@ -704,7 +746,7 @@ uint: The word in network byte order
 
 uint32_t HostToShort(uint32_t Value)
 {
-   return (uint32_t)htons((UWORD)Value);
+   return (uint32_t)htons((uint16_t)Value);
 }
 
 /*********************************************************************************************************************
@@ -744,7 +786,7 @@ uint: The Value in host byte order
 
 uint32_t ShortToHost(uint32_t Value)
 {
-   return (uint32_t)ntohs((UWORD)Value);
+   return (uint32_t)ntohs((uint16_t)Value);
 }
 
 /*********************************************************************************************************************
@@ -942,12 +984,12 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 
 //********************************************************************************************************************
 
-static int8_t check_machine_name(CSTRING HostName)
+static bool check_machine_name(CSTRING HostName)
 {
-   for (LONG i=0; HostName[i]; i++) { // Check if it's a machine name
-      if (HostName[i] IS '.') return FALSE;
+   for (int i=0; HostName[i]; i++) { // Check if it's a machine name
+      if (HostName[i] IS '.') return false;
    }
-   return TRUE;
+   return true;
 }
 
 //********************************************************************************************************************
