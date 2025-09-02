@@ -1005,21 +1005,12 @@ static ERR NETSOCKET_JoinMulticastGroup(extNetSocket *Self, struct ns::JoinMulti
    auto addr4 = (struct sockaddr_in *)&mcast_addr;
    auto addr6 = (struct sockaddr_in6 *)&mcast_addr;
 
-#ifdef __linux__
-   if (inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
-   else if (inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
+   if (unified_inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
+   else if (unified_inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
    else {
       log.warning("Invalid multicast address: %s", Args->Group);
       return ERR::Args;
    }
-#elif _WIN32
-   if (win_inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
-   else if (win_inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
-   else {
-      log.warning("Invalid multicast address: %s", Args->Group);
-      return ERR::Args;
-   }
-#endif
 
    // Join the multicast group
 #ifdef __linux__
@@ -1086,21 +1077,12 @@ static ERR NETSOCKET_LeaveMulticastGroup(extNetSocket *Self, struct ns::LeaveMul
    auto addr4 = (struct sockaddr_in *)&mcast_addr;
    auto addr6 = (struct sockaddr_in6 *)&mcast_addr;
 
-#ifdef __linux__
-   if (inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
-   else if (inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
+   if (unified_inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
+   else if (unified_inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
    else {
       log.warning("Invalid multicast address: %s", Args->Group);
       return ERR::Args;
    }
-#elif _WIN32
-   if (win_inet_pton(AF_INET6, Args->Group, &addr6->sin6_addr) IS 1) is_ipv6 = true;
-   else if (win_inet_pton(AF_INET, Args->Group, &addr4->sin_addr) IS 1) is_ipv6 = false;
-   else {
-      log.warning("Invalid multicast address: %s", Args->Group);
-      return ERR::Args;
-   }
-#endif
 
    // Leave the multicast group
 #ifdef __linux__

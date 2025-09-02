@@ -51,7 +51,6 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
   #endif
 #endif
 
-#include <unordered_set>
 #include <stack>
 #include <mutex>
 #include <span>
@@ -410,6 +409,33 @@ inline void setIPV6(IPAddress &IP, uint8_t *Address, uint16_t Port) {
 }
 
 //********************************************************************************************************************
+// Unified IP address conversion functions to eliminate platform-specific duplication
+
+static uint32_t unified_inet_addr(CSTRING Str) {
+#ifdef __linux__
+   return inet_addr(Str);
+#elif _WIN32
+   return win_inet_addr(Str);
+#endif
+}
+
+static int unified_inet_pton(int af, CSTRING src, void *dst) {
+#ifdef __linux__
+   return inet_pton(af, src, dst);
+#elif _WIN32
+   return win_inet_pton(af, src, dst);
+#endif
+}
+
+static CSTRING unified_inet_ntop(int af, const void *src, char *dst, size_t size) {
+#ifdef __linux__
+   return inet_ntop(af, src, dst, size);
+#elif _WIN32
+   return win_inet_ntop(af, src, dst, size);
+#endif
+}
+
+//********************************************************************************************************************
 
 static OBJECTPTR clNetLookup = nullptr;
 static OBJECTPTR clProxy = nullptr;
@@ -435,7 +461,6 @@ static std::string glCertPath;
 //********************************************************************************************************************
 
 static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
-static bool check_machine_name(CSTRING HostName) __attribute__((unused));
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
@@ -595,20 +620,9 @@ CSTRING AddressToStr(IPAddress *Address)
    if (!Address) return nullptr;
 
    if (Address->Type IS IPADDR::V6) {
-      #ifdef __linux__
-         char ipv6_str[INET6_ADDRSTRLEN];
-         struct in6_addr addr;
-         pf::copymem(Address->Data, &addr.s6_addr, 16);
-
-         if (inet_ntop(AF_INET6, &addr, ipv6_str, INET6_ADDRSTRLEN)) { // String conversion
-            return pf::strclone(ipv6_str);
-         }
-      #elif _WIN32
-         // Windows IPv6 string conversion using wrapper function
-         char ipv6_str[46];
-         const char *result = win_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
-         if (result) return pf::strclone(result);
-      #endif
+      char ipv6_str[46]; // 46 bytes is sufficient for both platforms
+      const char *result = unified_inet_ntop(AF_INET6, Address->Data, ipv6_str, sizeof(ipv6_str));
+      if (result) return pf::strclone(result);
       return nullptr;
    }
    else if (Address->Type IS IPADDR::V4) {
@@ -689,31 +703,17 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
 
    // Try IPv6 first (contains colons)
    if (strchr(Str, ':')) {
-      #ifdef __linux__
-         struct in6_addr ipv6_addr;
-         if (inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
-            Address->Type = IPADDR::V6;
-            return ERR::Okay;
-         }
-      #elif _WIN32
-         // Windows IPv6 parsing using wrapper function
-         struct in6_addr ipv6_addr;
-         if (win_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
-            pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
-            Address->Type = IPADDR::V6;
-            return ERR::Okay;
-         }
-         return ERR::Failed;
-      #endif
+      struct in6_addr ipv6_addr;
+      if (unified_inet_pton(AF_INET6, Str, &ipv6_addr) IS 1) {
+         pf::copymem(&ipv6_addr.s6_addr, Address->Data, 16);
+         Address->Type = IPADDR::V6;
+         return ERR::Okay;
+      }
+      return ERR::Failed;
    }
 
    // IPv4
-   #ifdef __linux__
-      uint32_t result = inet_addr(Str);
-   #elif _WIN32
-      uint32_t result = win_inet_addr(Str);
-   #endif
+   uint32_t result = unified_inet_addr(Str);
 
    if (result IS INADDR_NONE) return ERR::Failed;
    
@@ -976,16 +976,6 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
 #else
    #error No support for send_data()
 #endif
-}
-
-//********************************************************************************************************************
-
-static bool check_machine_name(CSTRING HostName)
-{
-   for (int i=0; HostName[i]; i++) { // Check if it's a machine name
-      if (HostName[i] IS '.') return false;
-   }
-   return true;
 }
 
 //********************************************************************************************************************
