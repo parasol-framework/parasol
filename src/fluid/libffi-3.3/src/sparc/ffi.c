@@ -1,8 +1,8 @@
 /* -----------------------------------------------------------------------
    ffi.c - Copyright (c) 2011, 2013 Anthony Green
            Copyright (c) 1996, 2003-2004, 2007-2008 Red Hat, Inc.
-   
-   SPARC Foreign Function Interface 
+
+   SPARC Foreign Function Interface
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -369,7 +369,7 @@ ffi_prep_go_closure (ffi_go_closure *closure, ffi_cif *cif,
 }
 
 int FFI_HIDDEN
-ffi_closure_sparc_inner_v8(ffi_cif *cif, 
+ffi_closure_sparc_inner_v8(ffi_cif *cif,
 			   void (*fun)(ffi_cif*, void*, void**, void*),
 			   void *user_data, void *rvalue,
 			   unsigned long *argp)

@@ -695,7 +695,7 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
       return ERR::Okay;
    }
    else if (pf::iequals(Str, "0.0.0.0") or pf::iequals(Str, "*") or pf::iequals(Str, "")) {
-      // Bind to all interfaces     
+      // Bind to all interfaces
       Address->Type = IPADDR::V4;
       pf::clearmem(&Address->Data, sizeof(Address->Data));
       return ERR::Okay;
@@ -716,7 +716,7 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    uint32_t result = unified_inet_addr(Str);
 
    if (result IS INADDR_NONE) return ERR::Failed;
-   
+
    Address->Type = IPADDR::V4;
    Address->Data[0] = ntohl(result);
    Address->Data[1] = 0;
@@ -810,7 +810,7 @@ uint32_t LongToHost(uint32_t Value)
 -FUNCTION-
 SetSSL: Alters SSL settings on an initialised NetSocket object.
 
-Use the SetSSL() function to adjust the SSL capabilities of a NetSocket object.  The following commands are currently 
+Use the SetSSL() function to adjust the SSL capabilities of a NetSocket object.  The following commands are currently
 available:
 
 <list type="bullet">
@@ -839,7 +839,7 @@ NoSupport: SSL support is disabled in this build.
 
 ERR SetSSL(objNetSocket *Socket, CSTRING Command, CSTRING Value)
 {
-#ifndef DISABLE_SSL   
+#ifndef DISABLE_SSL
    pf::Log log(__FUNCTION__);
    log.traceBranch("Command: %s = %s", Command, Value ? Value : "NULL");
 

@@ -52,35 +52,35 @@ class DeadlockDetector {
 private:
    mutable std::shared_mutex detector_mutex;
    std::unordered_map<THREADID, THREADID> waiting_for;
-   
+
 public:
    bool would_deadlock(THREADID Requester, THREADID Holder) const {
       std::shared_lock lock(detector_mutex);
-      
+
       THREADID current = Holder;
       std::unordered_set<THREADID> visited;
-      
+
       while (true) {
          if (visited.contains(current)) return false; // Cycle detected, but not involving requester
          visited.insert(current);
-         
+
          auto it = waiting_for.find(current);
          if (it IS waiting_for.end()) return false;
          if (it->second IS Requester) return true;
          current = it->second;
       }
    }
-   
+
    void add_wait(THREADID Waiter, THREADID Holder) {
       std::lock_guard lock(detector_mutex);
       waiting_for[Waiter] = Holder;
    }
-   
+
    void remove_wait(THREADID Waiter) {
       std::lock_guard lock(detector_mutex);
       waiting_for.erase(Waiter);
    }
-   
+
    void clear_all() {
       std::lock_guard lock(detector_mutex);
       waiting_for.clear();
@@ -98,15 +98,15 @@ private:
    std::array<std::atomic<WINHANDLE>, MAX_THREADS> thread_locks{};
    std::atomic<int> next_index{1};
    std::once_flag init_flag;
-   
+
    WINHANDLE allocate_lock() {
       for (int attempts = 0; attempts < MAX_THREADS; ++attempts) {
          int index = next_index.fetch_add(1, std::memory_order_relaxed) % MAX_THREADS;
          if (index IS 0) index = 1; // Skip index 0
-         
+
          WINHANDLE expected = WINHANDLE(0);
          WINHANDLE new_lock;
-         
+
          if (alloc_public_waitlock(&new_lock, nullptr) IS ERR::Okay) {
             if (thread_locks[index].compare_exchange_weak(expected, new_lock, std::memory_order_acquire)) {
                pf::Log log("ThreadLockManager");
@@ -116,10 +116,10 @@ private:
             free_public_waitlock(new_lock);
          }
       }
-      
+
       return WINHANDLE(0); // Graceful failure instead of exit(0)
    }
-   
+
 public:
    ThreadLockManager() {
       std::call_once(init_flag, [this]() {
@@ -129,12 +129,12 @@ public:
          }
       });
    }
-   
+
    WINHANDLE get_thread_lock() {
       thread_local WINHANDLE tl_lock = allocate_lock();
       return tl_lock;
    }
-   
+
    void free_all_locks() {
       for (auto& lock_atomic : thread_locks) {
          WINHANDLE lock = lock_atomic.exchange(WINHANDLE(0), std::memory_order_acquire);
@@ -143,10 +143,10 @@ public:
          }
       }
    }
-   
+
    void free_thread_lock(WINHANDLE Lock) {
       if (!Lock) return;
-      
+
       for (auto& lock_atomic : thread_locks) {
          WINHANDLE expected = Lock;
          if (lock_atomic.compare_exchange_weak(expected, WINHANDLE(0), std::memory_order_release)) {
@@ -231,7 +231,7 @@ ERR init_sleep(THREADID OtherThreadID, int ResourceID, int ResourceType)
    #ifdef _WIN32
    glWaitLocks[glWLIndex].Lock = get_threadlock();
    #endif
-   
+
    // Add to modern deadlock detector
    glDeadlockDetector.add_wait(our_thread, OtherThreadID);
 
@@ -250,7 +250,7 @@ void remove_process_waitlocks(void)
    auto const our_thread = get_thread_id();
 
    const std::lock_guard<std::mutex> lock(glWaitLockMutex);
-   
+
    // Clear deadlock detector entries for this thread
    glDeadlockDetector.remove_wait(our_thread);
 
@@ -345,7 +345,7 @@ ERR AccessMemory(MEMORYID MemoryID, MEM Flags, int MilliSeconds, APTR *Result)
          while ((mem->second.AccessCount > 0) and (mem->second.ThreadLockID != our_thread)) {
             auto now = steady_clock::now();
             if (now >= end_time) return log.warning(ERR::TimeOut);
-            
+
             auto timeout_remaining = end_time - now;
             //log.msg("Sleep on memory #%d, Access %d, Threads %d/%d", MemoryID, mem->second.AccessCount, (int)mem->second.ThreadLockID, our_thread);
             if (cvResources.wait_for(glmMemory, timeout_remaining) IS std::cv_status::timeout) {
@@ -482,7 +482,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
    // Using an atomic increment we can achieve a 'quick lock' of the object without having to resort to locks.
    // This is quite safe so long as the developer is being careful with use of the object between threads (i.e. not
    // destroying the object when other threads could potentially be using it).
-   
+
    // Use proper atomic compare-and-swap for thread-safe lock acquisition
 
    char expected = 0;
@@ -490,7 +490,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
       Object->ThreadID = int(our_thread);
       return ERR::Okay;
    }
-   
+
    // Support nested locks - check if we already own the lock
 
    if (int(our_thread) IS Object->ThreadID) {
@@ -524,7 +524,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
                Object->SleepQueue.fetch_sub(1, std::memory_order_release);
                return ERR::DoesNotExist;
             }
-            
+
             // Use proper atomic compare-and-swap for lock acquisition
             char expected = 0;
             if (Object->Queue.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_relaxed)) {
@@ -537,7 +537,7 @@ ERR LockObject(OBJECTPTR Object, int Timeout)
 
             auto timeout_remaining = end_time - steady_clock::now();
             if (timeout_remaining <= milliseconds(0)) break;
-            
+
             if (cvObjects.wait_for(glmObjectLocking, timeout_remaining) IS std::cv_status::timeout) break;
          }
 

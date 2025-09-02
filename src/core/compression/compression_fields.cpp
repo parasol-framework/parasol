@@ -5,7 +5,7 @@
 ArchiveName: Apply an archive name to the object, allowing it to be used as a named object in the file system.
 
 Setting the ArchiveName will allow a Compression object's files to be accessible using standard file system paths.
-This is achieved through use of the `archive:` volume, which is a virtual filesystem included in the Core API.  
+This is achieved through use of the `archive:` volume, which is a virtual filesystem included in the Core API.
 
 *********************************************************************************************************************/
 

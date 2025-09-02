@@ -25,7 +25,7 @@ void anim_transform::perform()
                   const double mod = 1.0 / double(values.size() - 1);
                   seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
                }
-               
+
                if (i >= std::ssize(values)-1) i = std::ssize(values) - 2;
                read_numseq(values[i], { &t_from.x, &t_from.y });
                read_numseq(values[i+1], { &t_to.x, &t_to.y } );
@@ -82,7 +82,7 @@ void anim_transform::perform()
                   const double mod = 1.0 / double(values.size() - 1);
                   seek_to = (seek >= 1.0) ? 1.0 : fmod(seek, mod) / mod;
                }
-               
+
                read_numseq(values[i], { &t_from.x, &t_from.y });
                read_numseq(values[i+1], { &t_to.x, &t_to.y } );
 

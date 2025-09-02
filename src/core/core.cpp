@@ -223,7 +223,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 #endif
 
    // Randomise the internal random variables
-   
+
    auto now = std::chrono::steady_clock::now();
    auto duration = now.time_since_epoch();
    srand(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
@@ -346,7 +346,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       }
 
       if (glLogLevel > 2) {
-         std::ostringstream cmdline;         
+         std::ostringstream cmdline;
          for (int i=0; i < Info->ArgCount; i++) {
             if (i > 0) cmdline << ' ';
             cmdline << Info->Args[i];

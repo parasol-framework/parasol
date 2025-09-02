@@ -9,10 +9,10 @@
    distribute, sublicense, and/or sell copies of the Software, and to
    permit persons to whom the Software is furnished to do so, subject to
    the following conditions:
-   
+
    The above copyright notice and this permission notice shall be
    included in all copies or substantial portions of the Software.
-   
+
    THE SOFTWARE IS PROVIDED ``AS IS'', WITHOUT WARRANTY OF ANY KIND,
    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -37,7 +37,7 @@
 
    Return values of types up to 8 bytes are returned in r2 and r3.  For
    return values greater than 8 bytes, the caller must allocate memory for
-   the result and pass the address as if it were argument 0.  
+   the result and pass the address as if it were argument 0.
 
    While this isn't specified explicitly in the ABI documentation, GCC
    promotes integral arguments smaller than int size to 32 bits.
@@ -51,7 +51,7 @@
 
 extern UINT64 ffi_call_sysv (void (*) (char *, extended_cif *),
 			     extended_cif *,
-			     unsigned, 
+			     unsigned,
 			     void (*fn) (void));
 extern void ffi_closure_sysv (void);
 
@@ -113,15 +113,15 @@ void ffi_prep_args (char *stack, extended_cif *ecif)
 	    case FFI_TYPE_SINT8:
 	      *(signed int *) argp = (signed int) *(SINT8 *) avalue;
 	      break;
-		  
+
 	    case FFI_TYPE_UINT8:
 	      *(unsigned int *) argp = (unsigned int) *(UINT8 *) avalue;
 	      break;
-		  
+
 	    case FFI_TYPE_SINT16:
 	      *(signed int *) argp = (signed int) *(SINT16 *) avalue;
 	      break;
-		  
+
 	    case FFI_TYPE_UINT16:
 	      *(unsigned int *) argp = (unsigned int) *(UINT16 *) avalue;
 	      break;

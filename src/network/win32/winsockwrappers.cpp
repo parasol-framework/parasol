@@ -294,7 +294,7 @@ ERR win_bind(WSW_SOCKET SocketHandle, const struct sockaddr *Name, int NameLen)
 }
 
 //********************************************************************************************************************
-// If win_closesocket() is going to be called from a thread, deregister the socket ahead of time because you're 
+// If win_closesocket() is going to be called from a thread, deregister the socket ahead of time because you're
 // otherwise likely to get calls to that socket going through the Win32 message queue and causing a segfault.
 
 void win_deregister_socket(WSW_SOCKET SocketHandle)
@@ -305,7 +305,7 @@ void win_deregister_socket(WSW_SOCKET SocketHandle)
    // Cancel all pending async events for SocketHandle
    // This prevents stale events from being delivered to new sockets that reuse the handle
    WSAAsyncSelect(SocketHandle, glNetWindow, 0, 0);
-   
+
    // Process pending Windows messages for this socket to clear the queue
    // NB: closesocket() does not perform this task in spite of MSDN implying it does.
 
@@ -317,7 +317,7 @@ void win_deregister_socket(WSW_SOCKET SocketHandle)
       }
       else other_messages.push_back(msg);
    }
-   
+
    for (const auto &saved_msg : other_messages) {
       PostMessage(glNetWindow, saved_msg.message, saved_msg.wParam, saved_msg.lParam);
    }
@@ -484,7 +484,7 @@ ERR WIN_RECVFROM(WSW_SOCKET Socket, void *Buffer, size_t BufferSize, size_t *Byt
 {
    *BytesRead = 0;
    if (!BufferSize) return ERR::Okay;
-   
+
    auto result = recvfrom(Socket, reinterpret_cast<char *>(Buffer), BufferSize, 0, From, FromLen);
    if (result > 0) {
       *BytesRead = result;
@@ -541,7 +541,7 @@ ERR win_join_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
          return ERR::Args;
       }
       mreq6.ipv6mr_interface = 0; // Use default interface
-      
+
       if (setsockopt(Socket, IPPROTO_IPV6, IPV6_JOIN_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
          return convert_error();
       }
@@ -552,7 +552,7 @@ ERR win_join_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
          return ERR::Args;
       }
       mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
-      
+
       if (setsockopt(Socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
          return convert_error();
       }
@@ -570,7 +570,7 @@ ERR win_leave_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
          return ERR::Args;
       }
       mreq6.ipv6mr_interface = 0; // Use default interface
-      
+
       if (setsockopt(Socket, IPPROTO_IPV6, IPV6_LEAVE_GROUP, (char*)&mreq6, sizeof(mreq6)) != 0) {
          return convert_error();
       }
@@ -581,7 +581,7 @@ ERR win_leave_multicast_group(WSW_SOCKET Socket, const char *Group, bool IPv6)
          return ERR::Args;
       }
       mreq.imr_interface.s_addr = INADDR_ANY; // Use default interface
-      
+
       if (setsockopt(Socket, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) != 0) {
          return convert_error();
       }
@@ -740,7 +740,7 @@ WSW_SOCKET win_socket_ipv6(void *NetSocket, char Read, char Write, bool &IPV6, b
    IPV6 = false;
    int socket_type = UDP ? SOCK_DGRAM : SOCK_STREAM;
    int protocol = UDP ? IPPROTO_UDP : IPPROTO_TCP;
-   
+
    // Try to create IPv6 dual-stack socket first
    auto handle = socket(AF_INET6, socket_type, protocol);
    if (handle != INVALID_SOCKET) {

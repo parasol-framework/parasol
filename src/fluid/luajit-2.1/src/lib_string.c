@@ -201,7 +201,7 @@ LJLIB_CF(string_trim)
     setstrV(L, L->top-1, &G(L)->strempty);
     return 1;
   }
-  
+
   const char *str = strdata(s);
   MSize len = s->len;
   const char *start = str;
@@ -240,7 +240,7 @@ LJLIB_CF(string_rtrim)
     setstrV(L, L->top-1, &G(L)->strempty);
     return 1;
   }
-  
+
   const char *str = strdata(s);
   MSize len = s->len;
   const char *end = str + len;
@@ -369,26 +369,26 @@ LJLIB_CF(string_cap)
   GCstr *s = lj_lib_checkstr(L, 1);
   const char *str = strdata(s);
   MSize len = s->len;
-  
+
   if (len == 0) {
     setstrV(L, L->top-1, &G(L)->strempty);
     return 1;
   }
-  
+
   /* Create new string with first character uppercased */
   SBuf *sb = lj_buf_tmp_(L);
   lj_buf_reset(sb);
-  
+
   /* Convert first character to uppercase */
   char first = str[0];
   if (first >= 'a' && first <= 'z') {
     first = first - 32;  /* Convert to uppercase */
   }
   lj_buf_putb(sb, first);
-  
+
   /* Add remaining characters unchanged */
   if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
-  
+
   setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;
@@ -399,25 +399,25 @@ LJLIB_CF(string_decap)
   GCstr *s = lj_lib_checkstr(L, 1);
   const char *str = strdata(s);
   MSize len = s->len;
-  
+
   if (len == 0) {
     setstrV(L, L->top-1, &G(L)->strempty);
     return 1;
   }
-  
+
   /* Create new string with first character lowercased */
   SBuf *sb = lj_buf_tmp_(L);
   lj_buf_reset(sb);
-  
+
   /* Convert first character to lowercase */
   char first = str[0];
   if (first >= 'A' && first <= 'Z') {
     first = first + 32;  /* Convert to lowercase */
   }
   lj_buf_putb(sb, first);
-  
+
   if (len > 1) lj_buf_putmem(sb, str + 1, len - 1);
-  
+
   setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;
@@ -427,7 +427,7 @@ LJLIB_CF(string_hash)
 {
   GCstr *s = lj_lib_checkstr(L, 1);
   int caseSensitive = 0;  /* Default: case insensitive */
-  
+
   /* Check for optional second parameter (boolean) */
   if (L->base+1 < L->top && tvisbool(L->base+1)) {
     caseSensitive = boolV(L->base+1);
@@ -436,12 +436,12 @@ LJLIB_CF(string_hash)
   MSize len = s->len;
   uint32_t hash = 5381;  /* djb2 hash algorithm */
   MSize i;
-  
+
   if (caseSensitive) {
     for (i = 0; i < len; i++) {
       hash = ((hash << 5) + hash) + (unsigned char)str[i];
     }
-  } 
+  }
   else {
     for (i = 0; i < len; i++) {
       unsigned char c = (unsigned char)str[i];
@@ -449,7 +449,7 @@ LJLIB_CF(string_hash)
       hash = ((hash << 5) + hash) + c;
     }
   }
-  
+
   setintV(L->top-1, (int32_t)hash);
   return 1;
 }
@@ -457,20 +457,20 @@ LJLIB_CF(string_hash)
 LJLIB_CF(string_escXML)
 {
   GCstr *s = lj_lib_optstr(L, 1);
-  
+
   /* Handle nil input - return empty string */
   if (!s) {
     setstrV(L, L->top-1, &G(L)->strempty);
     return 1;
   }
-  
+
   const char *str = strdata(s);
   MSize len = s->len;
   SBuf *sb = lj_buf_tmp_(L);
   MSize i;
-  
+
   lj_buf_reset(sb);
-  
+
   for (i = 0; i < len; i++) {
     char c = str[i];
     switch (c) {
@@ -480,7 +480,7 @@ LJLIB_CF(string_escXML)
       default: lj_buf_putb(sb, c); break;
     }
   }
-  
+
   setstrV(L, L->top-1, lj_buf_str(L, sb));
   lj_gc_check(L);
   return 1;

@@ -32,7 +32,7 @@ static int process_results(prvFluid *, APTR, const FunctionField *);
 
 //********************************************************************************************************************
 
-void new_module(lua_State *Lua, objModule *Module) 
+void new_module(lua_State *Lua, objModule *Module)
 {
    auto mod = (module *)lua_newuserdata(Lua, sizeof(module));
    new (mod) module;
@@ -42,7 +42,7 @@ void new_module(lua_State *Lua, objModule *Module)
 
    mod->Module = Module;
    Module->get(FID_FunctionList, mod->Functions);
-      
+
    // Build hash map for O(1) function lookups
    if (mod->Functions) {
       for (int i = 0; mod->Functions[i].Name; i++) {
@@ -76,7 +76,7 @@ static int module_load(lua_State *Lua)
    }
 
    if (auto loaded_mod = objModule::create::global(fl::Name(modname))) {
-      new_module(Lua, loaded_mod);     
+      new_module(Lua, loaded_mod);
       return 1;  // new userdatum is already on the stack
    }
    else {
@@ -122,7 +122,7 @@ static int module_index(lua_State *Lua)
 {
    if (auto mod = (module *)luaL_checkudata(Lua, 1, "Fluid.mod")) {
       if (auto function = luaL_checkstring(Lua, 2)) {
-         if (mod->Functions) {            
+         if (mod->Functions) {
             auto it = mod->FunctionMap.find(strihash(function)); // Case sensitive (lower camel case expected)
             if (it != mod->FunctionMap.end()) {
                lua_pushvalue(Lua, 1); // Arg1: Duplicate the module reference
@@ -150,12 +150,12 @@ static int module_call(lua_State *Lua)
    objScript *Self = Lua->Script;
    UBYTE buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
    int i;
-   
+
    // Track dynamically allocated objects for cleanup
    std::vector<std::string*> allocated_strings;
    std::vector<std::string_view*> allocated_string_views;
    std::vector<APTR> allocated_structs;
-   
+
    // Cleanup lambda for early exits
    auto cleanup = [&]() {
       for (auto ptr : allocated_strings) delete ptr;
@@ -204,7 +204,7 @@ static int module_call(lua_State *Lua)
    int in = 0;
 
    int j = 0;
-   
+
    for (i=1; args[i].Name; i++) {
       int argtype = args[i].Type;
 
@@ -613,11 +613,11 @@ static int module_call(lua_State *Lua)
    }
 
    // Call the function.  Determine return type and prepare FFI call interface once.
-   
+
    int restype = args->Type;
    int result = 1;
    int total_args = i - 1;
-   
+
    // Determine the correct FFI return type
 
    ffi_type *return_type;
@@ -634,10 +634,10 @@ static int module_call(lua_State *Lua)
       return_type = &ffi_type_void;
       result = 0;
    }
-   
+
    if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, total_args, return_type, arg_types) IS FFI_OK) {
       ffi_call(&cif, (void (*)())function, &rc, arg_values);
-      
+
       // Process the result based on the return type
       if (restype & FD_STR) {
          lua_pushstring(Lua, (CSTRING)rc);

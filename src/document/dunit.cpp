@@ -36,7 +36,7 @@ DUNIT::DUNIT(const std::string_view pValue, DU pDefaultType, double pMin)
 }
 
 //********************************************************************************************************************
-// Return values that have been computed are truncated in most cases because true floating point values can lead to 
+// Return values that have been computed are truncated in most cases because true floating point values can lead to
 // subtle computational bugs that aren't worth the time of investigation.
 
 double DUNIT::px(class layout &Layout) const {
@@ -53,7 +53,7 @@ double DUNIT::px(class layout &Layout) const {
       case DU::VP_HEIGHT:        return std::trunc(value * Layout.m_viewport->Parent->get<double>(FID_Height) * 0.01);
       case DU::ROOT_FONT_SIZE:   return std::trunc(value * Layout.Self->FontSize); // Measured in 72DPI pixels
       case DU::ROOT_LINE_HEIGHT: return std::trunc(value * (Layout.Self->FontSize * 1.3)); // Guesstimate
-         
+
       case DU::VP_MIN: {
          auto w = std::trunc(value * Layout.m_viewport->Parent->get<double>(FID_Width));
          auto h = std::trunc(value * Layout.m_viewport->Parent->get<double>(FID_Height));

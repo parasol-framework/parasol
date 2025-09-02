@@ -402,7 +402,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                auto &cell = segment.stream->lookup<bc_cell>(cursor);
                auto table = stack_table.top();
-               
+
                if ((cell.width >= 1) and (cell.height >= 1)) {
                   cell.viewport->setFields(fl::X(cell.x), fl::Y(cell.y),
                      fl::Width(cell.width), fl::Height(cell.height));

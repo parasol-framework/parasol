@@ -19,7 +19,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
          info.card_name = snd_ctl_card_info_get_name(card_info);
          info.device_name = device_name;
          info.is_modem = pf::iequals("modem", info.card_id);
-         
+
          // Get mixer control count
          info.mixer_controls = 0;
          snd_mixer_t *mixhandle = nullptr;
@@ -36,7 +36,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
             }
             snd_mixer_close(mixhandle);
          }
-         
+
          success = true;
       }
       snd_ctl_close(ctlhandle);
@@ -58,7 +58,7 @@ std::vector<ALSADeviceInfo> ALSADeviceEnumerator::enumerate_devices()
          if (populate_device_info(card, info)) {
             devices.push_back(info);
          }
-         
+
          if (snd_card_next(&card) < 0) card = -1;
       }
    }
@@ -70,7 +70,7 @@ std::vector<ALSADeviceInfo> ALSADeviceEnumerator::enumerate_devices()
 ALSADeviceInfo ALSADeviceEnumerator::find_device_by_id(const std::string& device_id)
 {
    ALSADeviceInfo result;
-   
+
    // Handle special case for "default"
    if (pf::iequals("default", device_id)) {
       return select_best_device();
@@ -104,14 +104,14 @@ ALSADeviceInfo ALSADeviceEnumerator::select_best_device(DeviceFilter filter, Dev
 {
    auto devices = enumerate_devices();
    ALSADeviceInfo best_device;
-   
+
    // Use default filter and selector if none provided
    if (!filter) filter = default_filter;
    if (!selector) selector = default_selector;
 
    for (const auto& device : devices) {
       if (!filter(device)) continue;
-      
+
       if (best_device.card_number IS -1 or selector(device, best_device)) {
          best_device = device;
       }
@@ -124,13 +124,13 @@ ALSADeviceInfo ALSADeviceEnumerator::select_best_device(DeviceFilter filter, Dev
 bool ALSADeviceEnumerator::has_genuine_devices()
 {
    auto devices = enumerate_devices();
-   
+
    for (const auto& device : devices) {
       if (!device.is_modem) {
          return true;
       }
    }
-   
+
    return false;
 }
 

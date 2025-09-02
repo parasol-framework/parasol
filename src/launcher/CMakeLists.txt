@@ -42,7 +42,7 @@ endif ()
 if (WIN32)
    # Specifying the WIN32 option will generate a Windows GUI application
    add_executable (parasol_cmd WIN32 "parasol.cpp" "sandbox-win.cpp" "${PROJECT_SOURCE_DIR}/src/link/resource.rc")
-   
+
    # Disable automatic manifest generation since we provide our own
    if (MSVC)
       set_target_properties(parasol_cmd PROPERTIES LINK_FLAGS "/MANIFEST:NO")

@@ -278,7 +278,7 @@ int64_t GetResource(RES Resource)
             else return -1; // Error retrieving resource usage
          #elif _WIN32
             return winGetProcessMemoryUsage(glProcessID);
-         #else 
+         #else
             return -1;
          #endif
       }
@@ -861,22 +861,22 @@ void WaitTime(double Seconds)
 {
    // Determine message processing mode (negative seconds disable message processing)
    bool process_msg = tlMainThread and (Seconds >= 0.0);
-   
+
    if (Seconds < 0.0) Seconds = -Seconds;
 
    // Convert to microseconds with high precision
    auto total_microseconds = int64_t(Seconds * 1000000.0);
-   
+
    if (total_microseconds <= 0) return; // Nothing to wait for
 
    if (process_msg) {
       auto end_time = PreciseTime() + total_microseconds;
       int64_t current_time;
-      
+
       do {
          current_time = PreciseTime();
          if (current_time >= end_time) break;
-         
+
          // Convert remaining time to milliseconds for ProcessMessages
          auto remaining_ms = (end_time - current_time) / 1000LL;
          if (ProcessMessages(PMF::NIL, remaining_ms) IS ERR::Terminate) break;

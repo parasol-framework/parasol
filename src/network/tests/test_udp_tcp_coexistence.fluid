@@ -193,7 +193,7 @@ function testMixedProtocolPatterns()
       tcp1 = obj.new('netsocket', { address = '127.0.0.1', port = basePort + 2 }),
       udp2 = obj.new('netsocket', { flags = 'UDP' })
    }
-   
+
    local dest = struct.new('IPAddress')
    check(mNet.StrToAddress('127.0.0.1', dest))
 

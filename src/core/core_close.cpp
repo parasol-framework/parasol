@@ -3,7 +3,7 @@ static void free_private_memory(void);
 
 //********************************************************************************************************************
 
-static void free_classes(void) 
+static void free_classes(void)
 {
    #ifdef __ANDROID__
    if (glAssetClass) { FreeResource(glAssetClass); glAssetClass = 0; }
@@ -53,8 +53,8 @@ static void remove_schedulers(void)
 
 //********************************************************************************************************************
 // Remove orphaned object locks
-   
-static void remove_object_locks(void) 
+
+static void remove_object_locks(void)
 {
    pf::Log log(__FUNCTION__);
 
@@ -425,7 +425,7 @@ static void free_private_memory(void)
    pf::Log log("Shutdown");
 
    log.branch("Checking for orphaned memory allocations...");
-   
+
    int count = 0;
 
    if (auto lock = std::unique_lock{glmMemory}) {

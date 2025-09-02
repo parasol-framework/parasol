@@ -51,7 +51,7 @@ static int thread_script(lua_State *Lua)
       }
 
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
-      
+
       prv->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](objScript *Script, FUNCTION Callback) {
          acActivate(Script);
          FreeResource(Script);

@@ -121,7 +121,7 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
          x = x * (i / total);
          y = y * (i / total);
          target->modify_vertex(i, x, y);
-   
+
          // Boundary management
 
          if (x < min_x) min_x = x;
@@ -145,14 +145,14 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
       }
       else if (Vector->Close) target->close_polygon();
    }
-   
+
    agg::trans_affine transform;
    if (rescale != scale) transform.scale(scale / rescale);
    transform.translate(cx, cy);
    target->transform(transform);
 
    if (&Path != target) Path.concat_path(*target);
-   
+
    Vector->Bounds = { min_x + cx, min_y + cy, max_x + cx, max_y + cy };
 }
 
@@ -248,7 +248,7 @@ The vertical center of the shape is defined here as either a fixed or scaled val
 *********************************************************************************************************************/
 
 static ERR SUPER_GET_CenterY(extVectorShape *Self, Unit *Value)
-{ 
+{
    Value->set(Self->CY);
    return ERR::Okay;
 }

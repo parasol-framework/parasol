@@ -382,11 +382,11 @@ end
 
    return {
       tests = {
-        'testPostString', 
-        'testGet', 
+        'testPostString',
+        'testGet',
         'testPostStringFile',
-        'testHTTPS', 
-        'testRedirectedHTTPS', 
+        'testHTTPS',
+        'testRedirectedHTTPS',
         'testIPV6'
       },
       init = function(Path)

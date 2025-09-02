@@ -62,27 +62,27 @@ ffi_raw_to_ptrarray (ffi_cif *cif, ffi_raw *raw, void **args)
 #if WORDS_BIGENDIAN
 
   for (i = 0; i < cif->nargs; i++, tp++, args++)
-    {	  
+    {
       switch ((*tp)->type)
 	{
 	case FFI_TYPE_UINT8:
 	case FFI_TYPE_SINT8:
 	  *args = (void*) ((char*)(raw++) + FFI_SIZEOF_ARG - 1);
 	  break;
-	  
+
 	case FFI_TYPE_UINT16:
 	case FFI_TYPE_SINT16:
 	  *args = (void*) ((char*)(raw++) + FFI_SIZEOF_ARG - 2);
 	  break;
 
-#if FFI_SIZEOF_ARG >= 4	  
+#if FFI_SIZEOF_ARG >= 4
 	case FFI_TYPE_UINT32:
 	case FFI_TYPE_SINT32:
 	  *args = (void*) ((char*)(raw++) + FFI_SIZEOF_ARG - 4);
 	  break;
 #endif
-	
-#if !FFI_NO_STRUCTS  
+
+#if !FFI_NO_STRUCTS
 	case FFI_TYPE_STRUCT:
 	  *args = (raw++)->ptr;
 	  break;
@@ -95,7 +95,7 @@ ffi_raw_to_ptrarray (ffi_cif *cif, ffi_raw *raw, void **args)
 	case FFI_TYPE_POINTER:
 	  *args = (void*) &(raw++)->ptr;
 	  break;
-	  
+
 	default:
 	  *args = raw;
 	  raw += FFI_ALIGN ((*tp)->size, FFI_SIZEOF_ARG) / FFI_SIZEOF_ARG;
@@ -108,7 +108,7 @@ ffi_raw_to_ptrarray (ffi_cif *cif, ffi_raw *raw, void **args)
 
   /* then assume little endian */
   for (i = 0; i < cif->nargs; i++, tp++, args++)
-    {	  
+    {
 #if !FFI_NO_STRUCTS
       if ((*tp)->type == FFI_TYPE_STRUCT)
 	{
@@ -141,7 +141,7 @@ ffi_ptrarray_to_raw (ffi_cif *cif, void **args, ffi_raw *raw)
   ffi_type **tp = cif->arg_types;
 
   for (i = 0; i < cif->nargs; i++, tp++, args++)
-    {	  
+    {
       switch ((*tp)->type)
 	{
 	case FFI_TYPE_UINT8:

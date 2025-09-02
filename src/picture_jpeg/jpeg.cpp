@@ -57,7 +57,7 @@ METHODDEF(void) init_parasol_source(j_decompress_ptr cinfo) {
 METHODDEF(boolean) fill_parasol_input_buffer(j_decompress_ptr cinfo) {
    parasol_src_ptr src = (parasol_src_ptr)cinfo->src;
    int nbytes;
-   
+
    if (src->infile->read(src->buffer, INPUT_BUF_SIZE, &nbytes) != ERR::Okay) {
       if (src->start_of_file) ERREXIT(cinfo, JERR_INPUT_EMPTY);
       WARNMS(cinfo, JWRN_JPEG_EOF);
@@ -65,18 +65,18 @@ METHODDEF(boolean) fill_parasol_input_buffer(j_decompress_ptr cinfo) {
       src->buffer[1] = JPEG_EOI;
       nbytes = 2;
    }
-   
+
    src->pub.next_input_byte = src->buffer;
    src->pub.bytes_in_buffer = nbytes;
    src->start_of_file = FALSE;
-   
+
    return TRUE;
 }
 
 // Skip input data
 METHODDEF(void) skip_parasol_input_data(j_decompress_ptr cinfo, long num_bytes) {
    parasol_src_ptr src = (parasol_src_ptr)cinfo->src;
-   
+
    if (num_bytes > 0) {
       while (num_bytes > (long)src->pub.bytes_in_buffer) {
          num_bytes -= (long)src->pub.bytes_in_buffer;
@@ -95,7 +95,7 @@ METHODDEF(void) term_parasol_source(j_decompress_ptr cinfo) {
 // Set up data source for reading from Parasol objFile
 static void jpeg_parasol_src(j_decompress_ptr cinfo, objFile *infile) {
    parasol_src_ptr src;
-   
+
    if (cinfo->src IS NULL) {
       cinfo->src = (struct jpeg_source_mgr *)
          (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
@@ -105,7 +105,7 @@ static void jpeg_parasol_src(j_decompress_ptr cinfo, objFile *infile) {
          (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                    INPUT_BUF_SIZE * sizeof(JOCTET));
    }
-   
+
    src = (parasol_src_ptr)cinfo->src;
    src->pub.init_source = init_parasol_source;
    src->pub.fill_input_buffer = fill_parasol_input_buffer;
@@ -141,14 +141,14 @@ METHODDEF(void) init_parasol_destination(j_compress_ptr cinfo) {
 // Empty output buffer
 METHODDEF(boolean) empty_parasol_output_buffer(j_compress_ptr cinfo) {
    parasol_dest_ptr dest = (parasol_dest_ptr)cinfo->dest;
-   
+
    if (dest->outfile->write(dest->buffer, OUTPUT_BUF_SIZE) != ERR::Okay) {
       ERREXIT(cinfo, JERR_FILE_WRITE);
    }
-   
+
    dest->pub.next_output_byte = dest->buffer;
    dest->pub.free_in_buffer = OUTPUT_BUF_SIZE;
-   
+
    return TRUE;
 }
 
@@ -156,7 +156,7 @@ METHODDEF(boolean) empty_parasol_output_buffer(j_compress_ptr cinfo) {
 METHODDEF(void) term_parasol_destination(j_compress_ptr cinfo) {
    parasol_dest_ptr dest = (parasol_dest_ptr)cinfo->dest;
    int datacount = OUTPUT_BUF_SIZE - dest->pub.free_in_buffer;
-   
+
    if (datacount > 0) {
       if (dest->outfile->write(dest->buffer, datacount) != ERR::Okay) {
          ERREXIT(cinfo, JERR_FILE_WRITE);
@@ -164,16 +164,16 @@ METHODDEF(void) term_parasol_destination(j_compress_ptr cinfo) {
    }
 }
 
-// Set up destination for writing to Parasol objFile  
+// Set up destination for writing to Parasol objFile
 static void jpeg_parasol_dest(j_compress_ptr cinfo, objFile *outfile) {
    parasol_dest_ptr dest;
-   
+
    if (cinfo->dest IS NULL) {
       cinfo->dest = (struct jpeg_destination_mgr *)
          (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                    sizeof(parasol_destination_mgr));
    }
-   
+
    dest = (parasol_dest_ptr)cinfo->dest;
    dest->pub.init_destination = init_parasol_destination;
    dest->pub.empty_output_buffer = empty_parasol_output_buffer;

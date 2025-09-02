@@ -118,7 +118,7 @@ static ERR IMAGE_SET_Picture(extVectorImage *Self, objPicture *Value)
 -FIELD-
 SpreadMethod: Defines image tiling behaviour, if desired.
 
-The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the 
+The SpreadMethod defines the way in which the image is tiled within the target area if it is smaller than the
 available space.  It is secondary to the application of #AspectRatio.  The default setting is `CLIP`, which prevents
 the image from being tiled.
 

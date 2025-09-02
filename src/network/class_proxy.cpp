@@ -44,7 +44,7 @@ public:
    std::string FindPort;
    int FindEnabled = -1;
    bool Find = false;
-   
+
    void setString(STRING& field, std::string_view value) {
       if (field) { FreeResource(field); field = nullptr; }
       if (!value.empty()) { field = pf::strclone(value); }
@@ -66,64 +66,64 @@ public:
       int serverPort;
       bool enabled;
    };
-   
+
    static std::vector<ProxyEntry> parseProxyString(const std::string_view servers, const bool enabled) {
       std::vector<ProxyEntry> entries;
-      
+
       static constexpr std::array<std::pair<std::string_view, int>, 3> protocolPorts = {{
          {"ftp", 21}, {"http", 80}, {"https", 443}
       }};
-      
+
       size_t pos = 0;
       while (pos < servers.length()) {
          auto entry = parseNextEntry(servers, pos, protocolPorts, enabled);
          if (entry) entries.push_back(*entry);
       }
-      
+
       return entries;
    }
-   
+
 private:
    static std::optional<ProxyEntry> parseNextEntry(
       const std::string_view servers, size_t& pos,
       const std::array<std::pair<std::string_view, int>, 3>& protocolPorts,
       const bool enabled) {
-      
+
       while (pos < servers.length() and servers[pos] == ';') ++pos;
       if (pos >= servers.length()) return std::nullopt;
-      
+
       size_t start = pos;
       while (pos < servers.length() and servers[pos] != ';') ++pos;
-      
+
       std::string entry(servers.substr(start, pos - start));
-      
+
       // Parse protocol=server:port format
       auto equalPos = entry.find('=');
       if (equalPos != std::string::npos) {
          std::string protocol = entry.substr(0, equalPos);
          std::string serverPart = entry.substr(equalPos + 1);
-         
+
          auto colonPos = serverPart.find(':');
          if (colonPos != std::string::npos) {
             std::string server = serverPart.substr(0, colonPos);
             int serverPort = std::stoi(serverPart.substr(colonPos + 1));
-           
+
             auto it = std::find_if(protocolPorts.begin(), protocolPorts.end(),
                [&protocol](const auto& pair) { return pair.first == protocol; });
             if (it != protocolPorts.end()) {
                return ProxyEntry{ std::format("Windows {}", protocol), server, it->second, serverPort, enabled };
             }
          }
-      } 
+      }
       else { // Global proxy format: server:port
          auto colonPos = entry.find(':');
          if (colonPos != std::string::npos) {
             std::string server = entry.substr(0, colonPos);
-            int serverPort = std::stoi(entry.substr(colonPos + 1));           
+            int serverPort = std::stoi(entry.substr(colonPos + 1));
             return ProxyEntry{ "Windows", server, 0, serverPort, enabled };
          }
       }
-      
+
       return std::nullopt;
    }
 };
@@ -247,7 +247,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
             for (const auto& [group, keys] : groups[0]) {
                if (keys.contains("Host")) hostGroups.push_back(group);
             }
-            
+
             for (const auto& group : hostGroups) {
                config->deleteGroup(group.c_str());
             }
@@ -262,16 +262,16 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
             CSTRING servers;
             if (task->getEnv(HKEY_PROXY "ProxyServer", &servers) IS ERR::Okay and servers[0]) {
                log.msg("Host has defined default proxies: %s", servers);
-               
+
                auto proxyEntries = WindowsProxyParser::parseProxyString(servers, enabled);
-               
+
                int id = 0;
                config->read("ID", "Value", id);
-               
+
                for (const auto& entry : proxyEntries) {
                   ++id;
                   config->write("ID", "Value", std::to_string(id));
-                  
+
                   std::string group = std::to_string(id);
                   config->write(group, "Name", entry.name);
                   config->write(group, "Server", entry.server);
@@ -279,8 +279,8 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
                   config->write(group, "ServerPort", std::to_string(entry.serverPort));
                   config->write(group, "Enabled", std::to_string(entry.enabled ? 1 : 0));
                   config->write(group, "Host", "1");
-                  
-                  log.trace("Added Windows proxy: %s -> %s:%d", 
+
+                  log.trace("Added Windows proxy: %s -> %s:%d",
                      entry.name, entry.server, entry.serverPort);
                }
             }
@@ -292,7 +292,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
       if (Args) {
          Self->FindPort = (Args->Port > 0) ? std::to_string(Args->Port) : "";
          Self->FindEnabled = Args->Enabled;
-      } 
+      }
       else {
          Self->FindPort.clear();
          Self->FindEnabled = -1;
@@ -335,7 +335,7 @@ static ERR PROXY_FindNext(extProxy *Self)
 template<typename KeysType>
 static bool matchesPortFilter(const KeysType& keys, const std::string& findPort) {
    if (findPort.empty()) return true;
-   
+
    if (keys.contains("Port")) {
       const auto& port = keys.at("Port");
       return (port IS "0") or pf::wildcmp(port, findPort);
@@ -343,12 +343,12 @@ static bool matchesPortFilter(const KeysType& keys, const std::string& findPort)
    return false;
 }
 
-// Check if proxy matches enabled filter  
+// Check if proxy matches enabled filter
 
 template<typename KeysType>
 static bool matchesEnabledFilter(const KeysType& keys, int findEnabled) {
    if (findEnabled IS -1) return true;
-   
+
    if (keys.contains("Enabled")) return std::stoi(keys.at("Enabled")) IS findEnabled;
    return false;
 }
@@ -358,7 +358,7 @@ static ERR find_proxy(extProxy *Self)
    pf::Log log(__FUNCTION__);
 
    clear_values(Self);
-   
+
    auto config = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
    if (config.ok()) {
       if (!Self->Find) Self->Find = true; // Start of search
@@ -739,14 +739,14 @@ static ERR get_record(extProxy *Self)
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
    Self->Record = std::stoi(Self->GroupName);
-   
+
    objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
 
    if (config.ok()) {
       std::string str;
       if (config->read(Self->GroupName, "Server", str) IS ERR::Okay) {
          Self->setString(Self->Server, str);
-      
+
          if (config->read(Self->GroupName, "NetworkFilter", str) IS ERR::Okay) {
             Self->setString(Self->NetworkFilter, str);
          }
@@ -762,7 +762,7 @@ static ERR get_record(extProxy *Self)
          if (config->read(Self->GroupName, "Name", str) IS ERR::Okay) {
             Self->setString(Self->ProxyName, str);
          }
-      
+
          config->read(Self->GroupName, "Port", Self->Port);
          config->read(Self->GroupName, "ServerPort", Self->ServerPort);
          config->read(Self->GroupName, "Enabled", Self->Enabled);

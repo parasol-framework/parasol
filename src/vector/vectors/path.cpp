@@ -26,7 +26,7 @@ void convert_to_aggpath(extVectorPath *Vector, std::vector<PathCommand> &Paths, 
    agg::point_d lp = { 0, 0 }; // Previous point in the path
    agg::point_d start = { 0, 0 }; // Starting point of the current polygon
 
-   // check_point() Checks for equality between lines and adjusts according to SVG rules.  A zero length subpath with 
+   // check_point() Checks for equality between lines and adjusts according to SVG rules.  A zero length subpath with
    // 'stroke-linecap' set to 'square' or 'round' is stroked, but not stroked when 'stroke-linecap' is set to 'butt'.
 
    auto check_point = [&lp, &Vector](PathCommand &Cmd) {

@@ -62,7 +62,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, int 
          }
       }
    };
-   
+
    std::vector<RGB16> calc_buffer(Width * sizeof(RGB16) * 2);
 
    buf1 = calc_buffer.data();

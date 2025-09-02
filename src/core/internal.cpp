@@ -195,7 +195,7 @@ ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::
          else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) { // Pointer to large/double
             pos += sizeof(int64_t);
          }
-         else if (Args[i+1].Type & FD_PTRSIZE) {          
+         else if (Args[i+1].Type & FD_PTRSIZE) {
             if (int memsize = ((int *)(Parameters + pos + sizeof(APTR)))[0]; memsize > 0) {
                size += memsize;
             }
@@ -208,11 +208,11 @@ ERR copy_args(const FunctionField *Args, int ArgsSize, int8_t *Parameters, std::
       else if (Args[i].Type & (FD_DOUBLE|FD_INT64)) pos += sizeof(int64_t);
       else pos += sizeof(int);
    }
-      
+
    Buffer.reserve(size); // Ensures that the buffer space remains stable when extended.
    Buffer.resize(ArgsSize);
    copymem(Parameters, Buffer.data(), ArgsSize);
-   
+
    pos = 0;
    for (int i=0; Args[i].Name; i++) {
       APTR param = Buffer.data() + pos;
