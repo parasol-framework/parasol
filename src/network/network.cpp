@@ -664,14 +664,12 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    // Handle special cases
    if (pf::iequals(Str, "localhost") or pf::iequals(Str, "127.0.0.1")) {
       Address->Type = IPADDR::V4;
-      Address->Port = 0;
       Address->Data[0] = 0x7f000001; // 127.0.0.1
       Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
       return ERR::Okay;
    }
    else if (pf::iequals(Str, "::1")) {
       Address->Type = IPADDR::V6;
-      Address->Port = 0;
       pf::clearmem(&Address->Data, sizeof(Address->Data));
       ((uint8_t*)Address->Data)[15] = 1; // ::1 in byte format
       return ERR::Okay;
@@ -679,14 +677,12 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
    else if (pf::iequals(Str, "::")) {
       // Bind to all interfaces (IPv6)
       Address->Type = IPADDR::V6;
-      Address->Port = 0;
       pf::clearmem(&Address->Data, sizeof(Address->Data));
       return ERR::Okay;
    }
    else if (pf::iequals(Str, "0.0.0.0") or pf::iequals(Str, "*") or pf::iequals(Str, "")) {
       // Bind to all interfaces     
       Address->Type = IPADDR::V4;
-      Address->Port = 0;
       pf::clearmem(&Address->Data, sizeof(Address->Data));
       return ERR::Okay;
    }

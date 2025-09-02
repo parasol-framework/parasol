@@ -1479,6 +1479,7 @@ bufsize Length: Number of bytes to send from Data.
 Okay: The packet was sent successfully.
 BufferOverflow: The network buffer is full, retry later.
 NullArgs: Invalid arguments provided.
+OutOfRange: Invalid port number specified.
 InvalidState: Socket is not configured for UDP mode.
 NetworkUnreachable: The destination network is unreachable.
 -END-
@@ -1492,7 +1493,7 @@ static ERR NETSOCKET_SendTo(extNetSocket *Self, struct ns::SendTo *Args)
    if ((Self->Flags & NSF::UDP) IS NSF::NIL) return log.warning(ERR::InvalidState);
    if ((!Args->Dest) or (!Args->Data) or (!Args->Length)) return log.warning(ERR::NullArgs);
    if (Args->Length <= 0) return log.warning(ERR::Args);
-   if (Args->Dest->Port <= 0 or Args->Dest->Port > 65535) return log.warning(ERR::Args);
+   if (Args->Dest->Port <= 0 or Args->Dest->Port > 65535) return log.warning(ERR::OutOfRange);
 
    // Enforce max packet size (optional safety)
    if (Self->MaxPacketSize and Args->Length > Self->MaxPacketSize) {

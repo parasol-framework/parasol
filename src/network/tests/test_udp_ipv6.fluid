@@ -110,9 +110,9 @@ function testUDPDualStack()
    proc.sleep(0.1)  -- Brief pause between messages
 
    -- Send IPv6 message
-   local ipv6Message = 'Hello from IPv6'
-   print('[Dual-Stack Client] Sending IPv6 message to ::1:' .. serverPort)
-   err, bytesSent = client.mtSendTo(dest, ipv6Message)
+   print('[Dual-Stack Client] Sending IPv6 message to ::1:' .. server.port)
+   check(mNet.StrToAddress('::1', dest))
+   err, bytesSent = client.mtSendTo(dest, 'Hello from IPv6')
    assert(err == ERR_Okay, 'Failed to send IPv6 message: ' .. mSys.GetErrorMsg(err))
 
    proc.sleep()
