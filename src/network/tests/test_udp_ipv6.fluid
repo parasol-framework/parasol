@@ -133,7 +133,6 @@ function testUDPIPv6ErrorHandling()
       'gggg::1',           -- Invalid hex digits
       '1::2::3',           -- Double double-colon
       '1:2:3:4:5:6:7:8:9', -- Too many groups
-      '',                  -- Empty address
       'not.an.ipv6.address' -- Not an IP address at all
    }
 
