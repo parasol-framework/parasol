@@ -1093,24 +1093,26 @@ function class(Name, Options, Spec, Private, Custom)
          local values = '' -- Parameter values
          local results = false
          local params = ''
-         for _, param in ipairs(method.params) do
-            struct_params = struct_params .. param.basicType .. ' ' .. pName(param) .. '; '
+         if method.params then
+            for _, param in ipairs(method.params) do
+               struct_params = struct_params .. param.basicType .. ' ' .. pName(param) .. '; '
 
-            if nz(params) then params = params .. ', ' end
+               if nz(params) then params = params .. ', ' end
 
-            if (param.type == 'FUNCTION *') then
-               params = params .. 'FUNCTION ' .. pName(param)
-               if nz(values) then values = values .. ', ' end
-               values = values .. '&' .. pName(param)
-            else
-               params = params .. param.type .. ' ' .. pName(param)
-               if nz(values) then values = values .. ', ' end
-
-               if (param.resultValue) then
-                  values  = values .. '(' .. param.basicType .. ')0'
-                  results = true
+               if (param.type == 'FUNCTION *') then
+                  params = params .. 'FUNCTION ' .. pName(param)
+                  if nz(values) then values = values .. ', ' end
+                  values = values .. '&' .. pName(param)
                else
-                  values = values .. pName(param)
+                  params = params .. param.type .. ' ' .. pName(param)
+                  if nz(values) then values = values .. ', ' end
+
+                  if (param.resultValue) then
+                     values  = values .. '(' .. param.basicType .. ')0'
+                     results = true
+                  else
+                     values = values .. pName(param)
+                  end
                end
             end
          end

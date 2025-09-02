@@ -91,10 +91,11 @@ static void task_stderr(HOSTHANDLE FD, APTR);
 #define HKEY_CURRENT_CONFIG	(0x80000005)
 #define HKEY_DYN_DATA	      (0x80000006)
 
-#define REG_DWORD 4
-#define REG_DWORD_BIG_ENDIAN 5
-#define REG_QWORD 11
-#define REG_SZ 1
+constexpr int REG_DWORD = 4;
+constexpr int REG_DWORD_BIG_ENDIAN = 5;
+constexpr int REG_QWORD = 11;
+constexpr int REG_SZ = 1;
+constexpr int REG_EXPAND_SZ = 0x00020000;
 
 #define KEY_READ  0x20019
 #define KEY_WRITE 0x20006
@@ -511,9 +512,9 @@ static void task_process_end(WINHANDLE FD, extTask *Task)
    winGetExitCodeProcess(Task->Platform, &Task->ReturnCode);
    if (Task->ReturnCode != 259) {
       Task->ReturnCodeSet = true;
-      log.branch("Process %" PF64 " ended, return code: %d.", (LARGE)FD, Task->ReturnCode);
+      log.branch("Process %" PF64 " ended, return code: %d.", (int64_t)FD, Task->ReturnCode);
    }
-   else log.branch("Process %" PF64 " signalled exit too early.", (LARGE)FD);
+   else log.branch("Process %" PF64 " signalled exit too early.", (int64_t)FD);
 
    if (Task->Platform) {
       char buffer[TASK_WIN_BUFFER_SIZE];
@@ -981,7 +982,7 @@ static ERR TASK_Activate(extTask *Self)
          // potentially pick this up but that's fine as waitpid() will just fail with -1 in that case.
 
          int status = 0;
-         LARGE ticks = PreciseTime() + LARGE(Self->TimeOut * 1000000.0);
+         int64_t ticks = PreciseTime() + int64_t(Self->TimeOut * 1000000.0);
          while (!waitpid(pid, &status, WNOHANG)) {
             ProcessMessages(PMF::NIL, 100);
 
@@ -1140,7 +1141,6 @@ static ERR TASK_Free(extTask *Self)
 #endif
 
 #ifdef _WIN32
-   if (Self->Env) { FreeResource(Self->Env); Self->Env = nullptr; }
    if (Self->Platform) { winFreeProcess(Self->Platform); Self->Platform = nullptr; }
    if (Self->InputCallback.defined()) RegisterFD(winGetStdInput(), RFD::READ|RFD::REMOVE, &task_stdinput_callback, Self);
 #endif
@@ -1210,17 +1210,9 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
 #ifdef _WIN32
 
-   static constexpr size_t ENV_SIZE = 4096;
-
    Args->Value = nullptr;
 
    if (glCurrentTask != Self) return ERR::ExecViolation;
-
-   if (!Self->Env) {
-      if (AllocMemory(ENV_SIZE, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Self->Env, nullptr) != ERR::Okay) {
-         return ERR::AllocMemory;
-      }
-   }
 
    if (Args->Name[0] IS '\\') {
       struct key {
@@ -1245,34 +1237,45 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
          APTR keyhandle;
          if (!RegOpenKeyExA(key.ID, folder.c_str(), 0, KEY_READ, &keyhandle)) {
             int type;
-            int envlen = ENV_SIZE;
+            char buffer[4096];
+            int envlen = sizeof(buffer);
             std::string name = full_path.substr(sep+1);
-            if (!RegQueryValueExA(keyhandle, name.c_str(), 0, &type, Self->Env, &envlen)) {
+            if (!RegQueryValueExA(keyhandle, name.c_str(), 0, &type, buffer, &envlen)) {
                // Numerical registry types can be converted into strings
 
                switch(type) {
                   case REG_DWORD:
-                     if (unsigned(envlen) >= sizeof(int)) {
-                        snprintf(Self->Env, ENV_SIZE, "%d", ((int *)Self->Env)[0]);
-                     }
+                     if (unsigned(envlen) >= sizeof(int)) Self->Env = std::to_string(((int *)buffer)[0]);
                      break;
-                  case REG_DWORD_BIG_ENDIAN: {
+
+                  case REG_DWORD_BIG_ENDIAN:
                      if (unsigned(envlen) >= sizeof(int)) {
                         if constexpr (std::endian::native == std::endian::little) {
-                           strcopy(std::to_string(reverse_long(((int *)Self->Env)[0])), Self->Env, ENV_SIZE);
+                           Self->Env = std::to_string(reverse_long(((int *)buffer)[0]));
                         }
-                        else strcopy(std::to_string(((int *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                        else Self->Env = std::to_string(((int *)buffer)[0]);
                      }
                      break;
-                  }
+                  
                   case REG_QWORD:
-                     if (unsigned(envlen) >= sizeof(LARGE)) {
-                        strcopy(std::to_string(((LARGE *)Self->Env)[0]), Self->Env, ENV_SIZE);
+                     if (unsigned(envlen) >= sizeof(int64_t)) {
+                        Self->Env = std::to_string(((int64_t *)buffer)[0]);
                      }
+                     break;
+
+                  case REG_SZ:
+                  case REG_EXPAND_SZ:
+                     Self->Env.assign(buffer, envlen);
+                     // Remove any trailing null characters
+                     while ((!Self->Env.empty()) and (Self->Env.back() IS 0)) Self->Env.pop_back();
+                     break;
+
+                  default:
+                     log.warning("Unsupported registry type %d for key %s", type, Args->Name);
                      break;
                }
 
-               Args->Value = Self->Env;
+               Args->Value = Self->Env.c_str();
             }
             winCloseHandle(keyhandle);
 
@@ -1283,11 +1286,9 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
       }
    }
 
-   auto len = winGetEnv(Args->Name, Self->Env, ENV_SIZE);
-   if (!len) return ERR::DoesNotExist;
-   if (len >= ENV_SIZE) return log.warning(ERR::BufferOverflow);
-
-   Args->Value = Self->Env;
+   winGetEnv(Args->Name, Self->Env);
+   if (Self->Env.empty()) return ERR::DoesNotExist;
+   Args->Value = Self->Env.c_str();
    return ERR::Okay;
 
 #elif __unix__
@@ -1572,7 +1573,7 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
                         }
 
                         case REG_QWORD: {
-                           LARGE int64 = strtoll(Args->Value, nullptr, 0);
+                           int64_t int64 = strtoll(Args->Value, nullptr, 0);
                            RegSetValueExA(keyhandle, str+len+1, 0, REG_QWORD, &int64, sizeof(int64));
                            break;
                         }
@@ -2194,7 +2195,7 @@ Note: This field affects the current process only and requires appropriate syste
 
 *********************************************************************************************************************/
 
-static ERR GET_AffinityMask(extTask *Self, LARGE *Value)
+static ERR GET_AffinityMask(extTask *Self, int64_t *Value)
 {
 #ifdef __unix__
    cpu_set_t cpuset;
@@ -2203,7 +2204,7 @@ static ERR GET_AffinityMask(extTask *Self, LARGE *Value)
    }
 
    // Convert cpu_set_t to bitmask
-   LARGE mask = 0;
+   int64_t mask = 0;
    for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
       if (CPU_ISSET(cpu, &cpuset)) {
          mask |= (1LL << cpu);
@@ -2219,7 +2220,7 @@ static ERR GET_AffinityMask(extTask *Self, LARGE *Value)
    return ERR::Okay;
 }
 
-static ERR SET_AffinityMask(extTask *Self, LARGE Value)
+static ERR SET_AffinityMask(extTask *Self, int64_t Value)
 {
    if (Value <= 0) return ERR::InvalidValue;
 

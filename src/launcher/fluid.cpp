@@ -194,7 +194,7 @@ static ERROR process_args(void)
             if (glProcedure) { FreeResource(glProcedure); glProcedure = nullptr; }
 
             if (args[i+1]) {
-               glProcedure = StrClone(args[i+1]);
+               glProcedure = pf::strclone(args[i+1]);
                i++;
             }
          }
