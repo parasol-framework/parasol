@@ -1220,17 +1220,13 @@ extern "C" int winDeleteFile(const char *Path)
 
 //********************************************************************************************************************
 
-extern "C" int winGetEnv(const char *Name, char *Buffer, int Size)
+extern "C" void winGetEnv(const char *Name, std::string &Buffer)
 {
-   if (!Name or !Buffer or Size <= 0) return 0;
-
-   int result = GetEnvironmentVariable(Name, Buffer, Size);
-   if (result >= Size) {
-      // Buffer too small, ensure null termination
-      Buffer[Size - 1] = 0;
-      return Size - 1;
-   }
-   return result;
+   Buffer.clear();
+   if (!Name) return;
+   char buffer[4096];
+   int result = GetEnvironmentVariable(Name, buffer, sizeof(buffer));
+   if (result > 0) Buffer.assign(buffer, result);
 }
 
 //********************************************************************************************************************

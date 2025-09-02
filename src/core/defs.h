@@ -470,7 +470,7 @@ class extTask : public objTask {
       int ErrFD = -1;      // stderr FD for receiving output from launched task
    #endif
    #ifdef _WIN32
-      STRING Env;
+      std::string Env;
       APTR Platform;
    #endif
    struct ActionEntry Actions[int(AC::END)]; // Action routines to be intercepted by the program
@@ -1106,7 +1106,7 @@ extern "C" void winEnterCriticalSection(APTR);
 extern std::string winFormatMessage(int);
 extern "C" int winFreeLibrary(WINHANDLE);
 extern "C" void winFreeProcess(APTR);
-extern "C" int winGetEnv(CSTRING, STRING, int);
+extern "C" void winGetEnv(CSTRING, std::string &);
 extern "C" int winGetExeDirectory(int, STRING);
 extern "C" int winGetCurrentDirectory(int, STRING);
 extern "C" WINHANDLE winGetCurrentProcess(void);
