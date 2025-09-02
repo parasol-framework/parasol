@@ -3,12 +3,12 @@ Client-Server Network Communications test.  Creates a server socket and then sta
 --]]
 
    include 'network'
+   if not mNet then mNet = mod.load('network') end
 
    glTestSteps = 0
    glExpectedSteps = 6
    glServerData = nil
    glClientData = nil
-
    glPort = 8206
    glTestCompleted = false
 
@@ -18,6 +18,36 @@ function printableState(State)
    elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
    elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
    else return tostring(State) end
+end
+
+------------------------------------------------------------------------------------------------------------------------
+-- Test address validation and error handling
+
+function testStrToAddress()
+   local invalidAddresses = {
+      'gggg::1',           -- Invalid hex digits
+      '1::2::3',           -- Double double-colon
+      '1:2:3:4:5:6:7:8:9', -- Too many groups
+      'not.an.ipv6.address' -- Not an IP address at all
+   }
+
+   for i, addr in ipairs(invalidAddresses) do
+      local dest = struct.new('IPAddress')
+      assert(mNet.StrToAddress(addr, dest) != ERR_Okay, 'StrToAddress should fail for invalid IPv6 address: ' .. addr)
+   end
+
+   local validAddresses = {
+      '::1',                   -- Loopback
+      '::',                    -- Any address
+      '2001:db8::1',           -- Documentation prefix
+      'fe80::1',               -- Link-local
+      '::ffff:127.0.0.1',      -- IPv4-mapped IPv6
+   }
+
+   for i, addr in ipairs(validAddresses) do
+      local dest = struct.new('IPAddress')
+      assert(mNet.StrToAddress(addr, dest) == ERR_Okay, 'StrToAddress should succeed for IPv6 address: ' .. addr)
+   end
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -276,6 +306,7 @@ end
 
    return {
       tests = {
+         'testStrToAddress',
          'testClientServer',
          'testBasicCommunication',
          'testConnectionStates'

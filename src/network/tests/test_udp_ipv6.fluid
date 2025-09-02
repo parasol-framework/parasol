@@ -2,7 +2,6 @@
 UDP IPv6 Communication Test
 --]]
 
-   require 'common'
    include 'network'
    if not mNet then mNet = mod.load('network') end
 
@@ -123,50 +122,6 @@ function testUDPDualStack()
 end
 
 ------------------------------------------------------------------------------------------------------------------------
--- Test IPv6 address validation and error handling
-
-function testUDPIPv6ErrorHandling()
-   local client = obj.new('netsocket', { flags = 'UDP' })
-
-   -- Test invalid IPv6 addresses
-   local invalidAddresses = {
-      'gggg::1',           -- Invalid hex digits
-      '1::2::3',           -- Double double-colon
-      '1:2:3:4:5:6:7:8:9', -- Too many groups
-      'not.an.ipv6.address' -- Not an IP address at all
-   }
-
-   for i, addr in ipairs(invalidAddresses) do
-      local dest = struct.new('IPAddress')
-      if mNet.StrToAddress(addr, dest) == ERR_Okay then
-          dest.port = 12345
-          local err, bytesSent = client.mtSendTo(dest, 'test', 4)
-          assert(err != ERR_Okay, 'SendTo should fail with invalid IPv6 address: ' .. addr)
-          print('Correctly rejected invalid IPv6 address: ' .. addr)
-      end
-   end
-
-   -- Test valid IPv6 addresses (should not fail due to address parsing)
-   local validAddresses = {
-      '::1',                   -- Loopback
-      '::',                    -- Any address
-      '2001:db8::1',           -- Documentation prefix
-      'fe80::1',               -- Link-local
-      '::ffff:127.0.0.1',      -- IPv4-mapped IPv6
-   }
-
-   for i, addr in ipairs(validAddresses) do
-      local dest = struct.new('IPAddress')
-      if mNet.StrToAddress(addr, dest) == ERR_Okay then
-          dest.port = 12345
-          local err, bytesSent = client.mtSendTo(dest, 'test', 4)
-          -- Note: May still fail due to network unreachable, but should not fail due to address parsing
-          print('Address parsing accepted valid IPv6 address: ' .. addr .. ' (err: ' .. mSys.GetErrorMsg(err) .. ')')
-      end
-   end
-end
-
-------------------------------------------------------------------------------------------------------------------------
 -- Test IPv6 specific socket properties
 
 function testUDPIPv6Properties()
@@ -182,7 +137,6 @@ end
    return {
       tests = {
          'testUDPIPv6Properties',
-         'testUDPIPv6ErrorHandling',
          'testUDPIPv6Basic',
          'testUDPDualStack'
       }

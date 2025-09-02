@@ -8,7 +8,6 @@ This test verifies that UDP and TCP sockets can coexist and operate independentl
 - Resource sharing validation
 --]]
 
-   require 'common'
    include 'network'
    if not mNet then mNet = mod.load('network') end
 

@@ -2,7 +2,6 @@
 UDP Broadcast and Multicast Test
 --]]
 
-   require 'common'
    include 'network'
    if not mNet then mNet = mod.load('network') end
 
