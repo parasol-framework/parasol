@@ -731,7 +731,7 @@ static ERR HTTP_Activate(extHTTP *Self)
    auto cstr = cmd.str();
    if (write_socket(Self, cstr.c_str(), cstr.length(), nullptr) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
-         if (auto result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port); result IS ERR::Okay) {
+         if (auto result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port, 5.0); result IS ERR::Okay) {
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);

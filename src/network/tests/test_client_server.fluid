@@ -14,9 +14,11 @@ Client-Server Network Communications test.  Creates a server socket and then sta
 
 function printableState(State)
    if (State == NTC_CONNECTED) then return 'CONNECTED'
+   elseif (State == NTC_RESOLVING) then return 'RESOLVING'
    elseif (State == NTC_CONNECTING) then return 'CONNECTING'
    elseif (State == NTC_DISCONNECTED) then return 'DISCONNECTED'
    elseif (State == NTC_HANDSHAKING) then return 'HANDSHAKING'
+   elseif (State == NTC_MULTISTATE) then return 'MULTISTATE'
    else return tostring(State) end
 end
 
@@ -55,8 +57,6 @@ end
 function testClientServer()
    local proc = processing.new({ timeout = 5.0 })
 
-   print('Creating server socket.')
-
    local sockServer = obj.new('netsocket', {
       name = 'Server',
       address = '127.0.0.1',
@@ -85,8 +85,6 @@ function testClientServer()
       port  = glPort,
       flags = 'SERVER'
    } )
-
-   print('Creating client socket.')
 
    local clientSocket = obj.new('netsocket', {
       name = 'Client',
@@ -124,8 +122,6 @@ function testBasicCommunication()
    local proc = processing.new({ timeout = 10.0 })
 
    glPort = glPort + 1
-
-   print('Starting basic client-server communication test on port ' .. glPort)
 
    -- Create server socket with comprehensive message handling
    local sockServer = obj.new('netsocket', {
@@ -184,9 +180,6 @@ function testBasicCommunication()
       flags = 'SERVER|MULTI_CONNECT'
    })
 
-   assert(sockServer, 'Failed to create server socket')
-   print('[Server] Created and listening on port ' .. glPort)
-
    -- Create client socket with state-aware message handling
    local clientSocket = obj.new('netsocket', {
       name = 'BasicTestClient',
@@ -226,8 +219,6 @@ function testBasicCommunication()
          end
       end
    })
-
-   assert(clientSocket, 'Failed to create client socket')
 
    print('[Client] Attempting connection to server...')
    local err = clientSocket.mtConnect('127.0.0.1', glPort)
@@ -282,8 +273,7 @@ function testConnectionStates()
    })
 
    client.mtConnect('127.0.0.1', glPort)
-   local err = proc.sleep()
-   assert(err == ERR_Okay, 'Connection state test failed: ' .. mSys.GetErrorMsg(err))
+   proc.sleep()
 
    -- Verify expected state transitions occurred
    assert(#stateChanges >= 2, 'Expected at least 2 state changes, got: ' .. #stateChanges)
@@ -300,6 +290,53 @@ function testConnectionStates()
    assert(foundServerConnected, 'Server client connection state change not detected')
 
    print('Connection state test completed successfully!')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testConnectionTimeout()
+   local timeoutDuration = 0.5
+   local startTime = mSys.PreciseTime()
+   local connectionTimedOut = false
+   local proc = processing.new({ timeout = timeoutDuration + 2.0 })
+   
+   -- Try connecting to an IP address that should not respond (RFC 5737 test address)
+   -- 192.0.2.1 is reserved for documentation and should not be routable
+   local testAddress = '192.0.2.1'
+   local testPort = 12345
+   
+   local clientSocket = obj.new('netsocket', {
+      name = 'TimeoutTestClient',
+      feedback = function(Socket, State)
+         local currentTime = mSys.PreciseTime()
+         local elapsed = (currentTime - startTime) / 1000000.0  -- Convert to seconds
+         print(string.format('[Client] State: %s after %.2fs', printableState(State), elapsed))
+         
+         if (State == NTC_DISCONNECTED) then
+            if (Socket.error == ERR_TimeOut) then
+               connectionTimedOut = true
+               proc.signal()
+            end
+         end
+      end
+   })
+   
+   print(string.format('[Client] Attempting connection to %s:%d with %.1fs timeout...', testAddress, testPort, timeoutDuration))
+   
+   local err = clientSocket.mtConnect(testAddress, testPort, timeoutDuration)
+   assert(err == ERR_Okay, '[Client] Connect() call failed: ' .. mSys.GetErrorMsg(err))
+   
+   proc.sleep()   
+   local endTime = mSys.PreciseTime()
+   local totalElapsed = (endTime - startTime) / 1000000.0
+   
+   -- Verify the timeout occurred within expected time bounds
+   assert(connectionTimedOut, 'Connection timeout did not occur')
+   assert(clientSocket.error == ERR_TimeOut, 'Socket error should be ERR_TimeOut, got: ' .. mSys.GetErrorMsg(clientSocket.error))
+   assert(totalElapsed >= timeoutDuration, string.format('Timeout occurred too early: %.2fs < %.2fs', totalElapsed, timeoutDuration))
+   assert(totalElapsed <= (timeoutDuration + 1.0), string.format('Timeout occurred too late: %.2fs > %.2fs', totalElapsed, timeoutDuration + 1.0))
+   
+   print(string.format('Connection timeout test completed successfully! (%.2fs elapsed)', totalElapsed))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

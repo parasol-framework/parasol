@@ -140,12 +140,14 @@ Post-Condition: If this method returns `ERR::Okay`, will be in state `NTC::CONNE
 -INPUT-
 cstr Address: String containing either a domain name (e.g. `www.google.com`) or an IP address (e.g. `123.123.123.123`)
 int Port: Remote port to connect to.
+double Timeout: Connection timeout in seconds (0 = no timeout).
 
 -ERRORS-
 Okay: The NetSocket connecting process was successfully started.
 Args: Address was NULL, or Port was not in the required range.
-InvalidState: The NetSocket was not in the state `NTC::DISCONNECTED`.
+InvalidState: The NetSocket was not in the state `NTC::DISCONNECTED` or the object is in server mode.
 HostNotFound: Host name resolution failed.
+TimeOut: Connection attempt timed out.
 Failed: The connect failed for some other reason.
 -END-
 
@@ -153,6 +155,7 @@ Failed: The connect failed for some other reason.
 
 static void connect_name_resolved_nl(objNetLookup *, ERR, const std::string &, const std::vector<IPAddress> &);
 static void connect_name_resolved(extNetSocket *, ERR, const std::string &, const std::vector<IPAddress> &);
+static ERR connect_timeout_handler(OBJECTPTR, int64_t, int64_t);
 
 static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 {
@@ -160,7 +163,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
 
    if ((!Args) or (!Args->Address) or (Args->Port <= 0) or (Args->Port >= 65536)) return log.warning(ERR::Args);
 
-   if ((Self->Flags & NSF::SERVER) != NSF::NIL) return ERR::Failed;
+   if ((Self->Flags & NSF::SERVER) != NSF::NIL) return ERR::InvalidState;
 
    if ((Self->Flags & NSF::UDP) != NSF::NIL) return log.warning(ERR::NoSupport); // UDP is connectionless
 
@@ -180,7 +183,13 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
    Self->Port = Args->Port;
 
    Self->setState(NTC::RESOLVING);
+   
+   // Set up timeout timer if specified.  Failure is not critical.
 
+   if (Args->Timeout > 0) {
+      SubscribeTimer(Args->Timeout, C_FUNCTION(connect_timeout_handler, Self), &Self->TimerHandle);
+   }
+      
    IPAddress server_ip;
    if (net::StrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
       std::vector<IPAddress> list;
@@ -195,7 +204,10 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
+      
       if (Self->NetLookup->resolveName(Self->Address) != ERR::Okay) {
+         // Cancel timer on DNS failure
+         if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
          return log.warning(Self->Error = ERR::HostNotFound);
       }
    }
@@ -435,6 +447,32 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 }
 
 //********************************************************************************************************************
+// Connection timeout handler - called when the connection timeout expires
+
+static ERR connect_timeout_handler(OBJECTPTR Subscriber, int64_t TimeElapsed, int64_t CurrentTime)
+{
+   pf::Log log(__FUNCTION__);
+   auto socket = (extNetSocket *)Subscriber;
+   
+   log.msg("Connection timeout triggered.");
+   
+   socket->TimerHandle = 0;  
+   socket->Error = ERR::TimeOut;
+
+   if ((socket->State != NTC::CONNECTING) and (socket->State != NTC::RESOLVING) and (socket->State != NTC::HANDSHAKING)) {
+      log.trace("Socket is no longer connecting, ignoring timeout.");
+      return ERR::Terminate;
+   }
+   
+   if (socket->Handle != NOHANDLE) free_socket(socket);
+   
+   // Cancel DNS resolution if in progress
+   if (socket->NetLookup) { FreeResource(socket->NetLookup); socket->NetLookup = nullptr; }
+   
+   return ERR::Terminate; // Unsubscribe
+}
+
+//********************************************************************************************************************
 // TODO: Accept data-feed content for writing to the socket.
 
 static ERR NETSOCKET_DataFeed(extNetSocket *Self, struct acDataFeed *Args)
@@ -552,6 +590,7 @@ static ERR NETSOCKET_Free(extNetSocket *Self)
    sslDisconnect(Self);
 #endif
 
+   if (Self->TimerHandle)    { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
    if (Self->Address)        { FreeResource(Self->Address); Self->Address = nullptr; }
    if (Self->NetLookup)      { FreeResource(Self->NetLookup); Self->NetLookup = nullptr; }
    if (Self->SSLCertificate) { FreeResource(Self->SSLCertificate); Self->SSLCertificate = nullptr; }
@@ -952,7 +991,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
       }
    }
    else if ((Self->Address) and (Self->Port > 0)) {
-      if ((error = Self->connect(Self->Address, Self->Port)) != ERR::Okay) {
+      if ((error = Self->connect(Self->Address, Self->Port, 0)) != ERR::Okay) {
          return error;
       }
       else return ERR::Okay;
@@ -1361,9 +1400,9 @@ The source address and port of the received packet will be provided in the outpu
 For TCP sockets, use the standard Read action instead.
 
 -INPUT-
+ptr(struct(IPAddress)) Source: Source IP address of the received packet.
 buf(ptr) Buffer:    Pointer to the buffer where received data will be stored.
 bufsize BufferSize: Size of the receive buffer in bytes.
-ptr(struct(IPAddress)) Source: Source IP address of the received packet.
 &int BytesRead:     Number of bytes actually received.
 
 -ERRORS-
@@ -1568,7 +1607,7 @@ static const FieldArray clSocketFields[] = {
    { "SSLPrivateKey",    FDF_STRING|FDF_RI, nullptr, SET_SSLPrivateKey },
    { "SSLKeyPassword",   FDF_STRING|FDF_RI, nullptr, SET_SSLKeyPassword },
    { "State",            FDF_INT|FDF_LOOKUP|FDF_RW, GET_State, SET_State, &clNetSocketState },
-   { "Error",            FDF_INT|FDF_R },
+   { "Error",            FDF_ERROR|FDF_R },
    { "Port",             FDF_INT|FDF_RI },
    { "Flags",            FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clNetSocketFlags },
    { "TotalClients",     FDF_INT|FDF_R },

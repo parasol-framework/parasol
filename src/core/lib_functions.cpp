@@ -704,10 +704,10 @@ can return `ERR::Terminate` at any time to cancel the subscription.  All other e
 should call `check(ERR::Terminate)` to perform the equivalent of this behaviour.
 
 To change the interval, call ~UpdateTimer() with the new value.  To release a timer subscription, call
-~UpdateTimer() with the resulting SubscriptionID and an Interval of zero.
+~UpdateTimer() with the resulting `Subscription` handle and an `Interval` of zero.
 
 Timer management is provisioned by the ~ProcessMessages() function.  Failure to regularly process incoming
-messages will lead to unreliable timer cycles.  It should be noted that the smaller the Interval that has been used,
+messages will lead to unreliable timer cycles.  It should be noted that the smaller the `Interval` that has been used,
 the more imperative regular message checking becomes.  Prolonged processing inside a timer routine can also impact on
 other timer subscriptions that are waiting to be processed.
 

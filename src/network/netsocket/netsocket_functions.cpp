@@ -13,7 +13,8 @@ static void free_socket(extNetSocket *Self)
       DeregisterFD((HOSTHANDLE)Self->Handle);
 #pragma GCC diagnostic warning "-Wint-to-pointer-cast"
 
-      if (!Self->ExternalSocket) { CLOSESOCKET_THREADED(Self->Handle); Self->Handle = NOHANDLE; }
+      if (!Self->ExternalSocket) CLOSESOCKET_THREADED(Self->Handle);
+      Self->Handle = NOHANDLE;
    }
 
    Self->WriteQueue.Buffer.clear();
@@ -182,6 +183,9 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
          }
          else {
             log.traceBranch("Connection to host granted.");
+            
+            if (Socket->TimerHandle) { UpdateTimer(Socket->TimerHandle, 0); Socket->TimerHandle = 0; }
+            
             #ifndef DISABLE_SSL
                if (Socket->SSLHandle) sslConnect(Socket);
                else Socket->setState(NTC::CONNECTED);
@@ -192,6 +196,9 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
       }
       else {
          log.msg("Connection state changed, error: %s", GetErrorMsg(Error));
+         
+         if (Socket->TimerHandle) { UpdateTimer(Socket->TimerHandle, 0); Socket->TimerHandle = 0; }
+         
          Socket->Error = Error;
          Socket->setState(NTC::DISCONNECTED);
       }
@@ -512,12 +519,17 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    if (!result) {
       log.traceBranch("Connection succesful.");
+      
+      if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
+      
       Self->setState(NTC::CONNECTED);
       RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
       return;
    }
    else {
       log.trace("getsockopt() result %d", result);
+
+      if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
 
       if (result IS ECONNREFUSED)      Self->Error = ERR::ConnectionRefused;
       else if (result IS ENETUNREACH)  Self->Error = ERR::NetworkUnreachable;
