@@ -281,6 +281,7 @@ class extNetSocket : public objNetSocket {
    uint8_t IncomingRecursion;     // Used by netsocket_client to prevent recursive handling of incoming data.
    uint8_t OutgoingRecursion;
    uint8_t ErrorCountdown = 8;    // Counts down on each error, disconnect occurs at zero.
+   TIMER   TimerHandle = 0;       // Timer subscription handle for timeout
    #ifdef _WIN32
       int16_t WinRecursion; // For win32_netresponse()
    #endif

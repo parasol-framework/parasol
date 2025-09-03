@@ -3,9 +3,10 @@ UDP Performance and Stress Test
 --]]
 
    include 'network'
+   if not mNet then mNet = mod.load('network') end
 
-local glBasePort = 19830  -- Base port for performance tests
-local glTestTimeout = 5.0
+   local glBasePort = 19830  -- Base port for performance tests
+   local glTestTimeout = 5.0
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Test high-frequency UDP messaging
@@ -16,6 +17,7 @@ function testUDPHighFrequency()
    local proc = processing.new({ timeout = glTestTimeout })
    local messagesReceived = 0
    local targetMessages = 100
+   local sv_source = struct.new('IPAddress')
 
    print('Testing high-frequency UDP messaging (' .. targetMessages .. ' messages)')
 
@@ -25,8 +27,8 @@ function testUDPHighFrequency()
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
-         if (err == ERR_Okay and bytesRead > 0) then
+         local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
+         if (err == ERR_Okay) and (bytesRead > 0) then
             messagesReceived = messagesReceived + 1
             if (messagesReceived >= targetMessages) then
                proc.signal()
@@ -39,11 +41,15 @@ function testUDPHighFrequency()
 
    local client = obj.new('netsocket', { flags = 'UDP' })
 
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = server.port
+
    -- Send messages rapidly
    local startTime = mSys.PreciseTime()
    for i = 1, targetMessages do
       local message = 'Message #' .. i
-      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message)
+      local err, bytesSent = client.mtSendTo(dest, message)
       assert(err == ERR_Okay, 'Failed to send message #' .. i .. ': ' .. mSys.GetErrorMsg(err))
 
       -- Small delay to prevent overwhelming the system
@@ -74,6 +80,7 @@ function testUDPLargePackets()
    local proc = processing.new({ timeout = glTestTimeout })
    local largePacketReceived = false
    local receivedSize = 0
+   local sv_source = struct.new('IPAddress')
 
    local server = obj.new('netsocket', {
       port    = serverPort,
@@ -82,8 +89,8 @@ function testUDPLargePackets()
       maxPacketSize = 65507,  -- Maximum UDP payload size
       incoming = function(Socket)
          local buffer = string.alloc(65600)  -- Slightly larger buffer
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 65600)
-         if (err == ERR_Okay and bytesRead > 0) then
+         local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
+         if (err == ERR_Okay) and (bytesRead > 0) then
             print('[Large Packet Server] Received packet of size: ' .. bytesRead)
             receivedSize = bytesRead
             largePacketReceived = true
@@ -97,10 +104,14 @@ function testUDPLargePackets()
    -- Test different large packet sizes
    local packetSizes = { 1024, 8192, 32768, 65507 }  -- Up to maximum UDP size
 
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = server.port
+
    for i, size in ipairs(packetSizes) do
       print('Sending packet of size: ' .. size)
       local largeMessage = string.rep('X', size)
-      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, largeMessage)
+      local err, bytesSent = client.mtSendTo(dest, largeMessage)
 
       if (err == ERR_Okay) then
          assert(bytesSent == size, 'Not all bytes sent for size ' .. size .. ' (sent: ' .. bytesSent .. ')')
@@ -133,6 +144,7 @@ function testUDPConcurrency()
    local targetClients = 5
    local messagesPerClient = 10
    local totalReceived = 0
+   local sv_source = struct.new('IPAddress')
 
    print('Testing UDP concurrency with ' .. targetClients .. ' concurrent clients')
 
@@ -142,8 +154,8 @@ function testUDPConcurrency()
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
-         if (err == ERR_Okay and bytesRead > 0) then
+         local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
+         if (err == ERR_Okay) and (bytesRead > 0) then
             totalReceived = totalReceived + 1
             local msg = buffer:sub(1, bytesRead)
 
@@ -166,11 +178,15 @@ function testUDPConcurrency()
       })
    end
 
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = server.port
+
    -- Each client sends multiple messages
    for clientId = 1, targetClients do
       for msgId = 1, messagesPerClient do
          local message = 'Client' .. clientId .. '_Msg' .. msgId
-         local err, bytesSent = clients[clientId].mtSendTo('127.0.0.1', serverPort, message)
+         local err, bytesSent = clients[clientId].mtSendTo(dest, message)
          assert(err == ERR_Okay, 'Client ' .. clientId .. ' failed to send message ' .. msgId)
       end
       print('Client ' .. clientId .. ' sent all ' .. messagesPerClient .. ' messages')
@@ -200,9 +216,13 @@ function testUDPBufferHandling()
 
    print('Sending ' .. rapidMessages .. ' messages rapidly to test buffer handling')
 
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = 12345
+
    for i = 1, rapidMessages do
       local message = 'Rapid message #' .. i
-      local err, bytesSent = client.mtSendTo('127.0.0.1', 12345, message)  -- Non-existent server
+      local err, bytesSent = client.mtSendTo(dest, message)  -- Non-existent server
 
       if (err == ERR_Okay) then
          successCount = successCount + 1
@@ -230,6 +250,7 @@ function testUDPPerformanceBenchmark()
    local messagesSent = 0
    local messagesReceived = 0
    local benchmarkActive = true
+   local sv_source = struct.new('IPAddress')
 
    print('Running UDP performance benchmark for ' .. benchmarkDuration .. ' seconds')
 
@@ -239,7 +260,7 @@ function testUDPPerformanceBenchmark()
       flags = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead, sourceAddr, sourcePort = Socket.mtRecvFrom(buffer, 1024)
+         local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          if (err == ERR_Okay and bytesRead > 0) then
              messagesReceived = messagesReceived + 1
          end
@@ -251,10 +272,14 @@ function testUDPPerformanceBenchmark()
    local startTime = mSys.PreciseTime()
    local endTime = startTime + (benchmarkDuration * 1000000)
 
+   local dest = struct.new('IPAddress')
+   check(mNet.StrToAddress('127.0.0.1', dest))
+   dest.port = server.port
+
    -- Send messages continuously for the benchmark duration
    while (mSys.PreciseTime() < endTime) do
       local message = 'Benchmark message ' .. messagesSent
-      local err, bytesSent = client.mtSendTo('127.0.0.1', serverPort, message)
+      local err, bytesSent = client.mtSendTo(dest, message)
       if (err == ERR_Okay) then
          messagesSent = messagesSent + 1
       end

@@ -25,7 +25,7 @@ function testUDPIPv6Basic()
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
          local buffer = string.alloc(1024)
-         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, sv_source)
+         local err, bytesRead = Socket.mtRecvFrom(sv_source, buffer)
          assert(err == ERR_Okay, 'Server failed to receive IPv6 UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
@@ -74,7 +74,7 @@ function testUDPDualStack()
       incoming = function(Socket)
          local buffer = string.alloc(1024)
          local source = struct.new('IPAddress')
-         local err, bytesRead = Socket.mtRecvFrom(buffer, 1024, source)
+         local err, bytesRead = Socket.mtRecvFrom(source, buffer)
          assert(err == ERR_Okay, 'Server failed to receive dual-stack UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then

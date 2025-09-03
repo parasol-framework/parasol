@@ -410,12 +410,12 @@ class objNetLookup : public Object {
 // NetSocket methods
 
 namespace ns {
-struct Connect { CSTRING Address; int Port; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Connect { CSTRING Address; int Port; double Timeout; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetLocalIPAddress { struct IPAddress * Address; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectClient { objNetClient * Client; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct DisconnectSocket { objClientSocket * Socket; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SendTo { struct IPAddress * Dest; APTR Data; int Length; int BytesSent; static const AC id = AC(-5); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RecvFrom { APTR Buffer; int BufferSize; struct IPAddress * Source; int BytesRead; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RecvFrom { struct IPAddress * Source; APTR Buffer; int BufferSize; int BytesRead; static const AC id = AC(-6); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct JoinMulticastGroup { CSTRING Group; static const AC id = AC(-7); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct LeaveMulticastGroup { CSTRING Group; static const AC id = AC(-8); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
@@ -498,8 +498,8 @@ class objNetSocket : public Object {
       if (Action(AC::Write, this, &write) IS ERR::Okay) return write.Result;
       else return 0;
    }
-   inline ERR connect(CSTRING Address, int Port) noexcept {
-      struct ns::Connect args = { Address, Port };
+   inline ERR connect(CSTRING Address, int Port, double Timeout) noexcept {
+      struct ns::Connect args = { Address, Port, Timeout };
       return(Action(AC(-1), this, &args));
    }
    inline ERR getLocalIPAddress(struct IPAddress * Address) noexcept {
@@ -520,8 +520,8 @@ class objNetSocket : public Object {
       if (BytesSent) *BytesSent = args.BytesSent;
       return(error);
    }
-   inline ERR recvFrom(APTR Buffer, int BufferSize, struct IPAddress * Source, int * BytesRead) noexcept {
-      struct ns::RecvFrom args = { Buffer, BufferSize, Source, (int)0 };
+   inline ERR recvFrom(struct IPAddress * Source, APTR Buffer, int BufferSize, int * BytesRead) noexcept {
+      struct ns::RecvFrom args = { Source, Buffer, BufferSize, (int)0 };
       ERR error = Action(AC(-6), this, &args);
       if (BytesRead) *BytesRead = args.BytesRead;
       return(error);

@@ -29,7 +29,7 @@ function testUDPBasicIPv4()
       address = '127.0.0.1',
       flags   = 'SERVER|UDP',
       incoming = function(Socket)
-         local err, bytesRead = Socket.mtRecvFrom(sv_buffer, 1024, sv_source)
+         local err, bytesRead = Socket.mtRecvFrom(sv_source, sv_buffer)
          assert(err == ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
@@ -51,7 +51,7 @@ function testUDPBasicIPv4()
       name  = 'UDPClient',
       flags = 'UDP',
       incoming = function(Socket)
-         local err, bytesRead = Socket.mtRecvFrom(cl_buffer, 1024, cl_source)
+         local err, bytesRead = Socket.mtRecvFrom(cl_source, cl_buffer)
          assert(err == ERR_Okay, 'Client failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then
@@ -138,7 +138,7 @@ function testUDPPacketSizes()
          local buffer = string.alloc(65600)  -- Larger than max packet
          local source = struct.new('IPAddress')
 
-         local err, bytesRead = Socket.mtRecvFrom(buffer, 65600, source)
+         local err, bytesRead = Socket.mtRecvFrom(source, buffer)
          assert(err == ERR_Okay, 'Server failed to receive UDP data: ' .. mSys.GetErrorMsg(err))
 
          if (bytesRead > 0) then

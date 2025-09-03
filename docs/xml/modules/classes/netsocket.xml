@@ -103,10 +103,11 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>Connect</name>
       <comment>Connects a NetSocket to an address.</comment>
-      <prototype>ERR ns::Connect(OBJECTPTR Object, CSTRING Address, INT Port)</prototype>
+      <prototype>ERR ns::Connect(OBJECTPTR Object, CSTRING Address, INT Port, DOUBLE Timeout)</prototype>
       <input>
         <param type="CSTRING" name="Address">String containing either a domain name (e.g. <code>www.google.com</code>) or an IP address (e.g. <code>123.123.123.123</code>)</param>
         <param type="INT" name="Port">Remote port to connect to.</param>
+        <param type="DOUBLE" name="Timeout">Connection timeout in seconds (0 = no timeout).</param>
       </input>
       <description>
 <p>This method initiates the connection process with a target IP address.  The address to connect to can be specified either as a domain name, in which case the domain name is first resolved to an IP address, or the address can be specified in standard IP notation.</p>
@@ -118,7 +119,8 @@ initially fill the internal write buffer, thereafter it will be called whenever 
         <error code="Okay">The NetSocket connecting process was successfully started.</error>
         <error code="Failed">The connect failed for some other reason.</error>
         <error code="Args">Address was NULL, or Port was not in the required range.</error>
-        <error code="InvalidState">The NetSocket was not in the state <code>NTC::DISCONNECTED</code>.</error>
+        <error code="TimeOut">Connection attempt timed out.</error>
+        <error code="InvalidState">The NetSocket was not in the state <code>NTC::DISCONNECTED</code> or the object is in server mode.</error>
         <error code="HostNotFound">Host name resolution failed.</error>
       </result>
     </method>
@@ -215,11 +217,11 @@ initially fill the internal write buffer, thereafter it will be called whenever 
     <method>
       <name>RecvFrom</name>
       <comment>Receive a datagram packet from any address (UDP only).</comment>
-      <prototype>ERR ns::RecvFrom(OBJECTPTR Object, APTR Buffer, INT BufferSize, struct IPAddress * Source, INT * BytesRead)</prototype>
+      <prototype>ERR ns::RecvFrom(OBJECTPTR Object, struct IPAddress * Source, APTR Buffer, INT BufferSize, INT * BytesRead)</prototype>
       <input>
+        <param type="struct IPAddress *" name="Source">Source IP address of the received packet.</param>
         <param type="APTR" name="Buffer">Pointer to the buffer where received data will be stored.</param>
         <param type="INT" name="BufferSize">Size of the receive buffer in bytes.</param>
-        <param type="struct IPAddress *" name="Source">Source IP address of the received packet.</param>
         <param type="INT *" name="BytesRead">Number of bytes actually received.</param>
       </input>
       <description>
@@ -253,6 +255,7 @@ initially fill the internal write buffer, thereafter it will be called whenever 
       </description>
       <result>
         <error code="Okay">The packet was sent successfully.</error>
+        <error code="OutOfRange">Invalid port number specified.</error>
         <error code="BufferOverflow">The network buffer is full, retry later.</error>
         <error code="InvalidState">Socket is not configured for UDP mode.</error>
         <error code="NetworkUnreachable">The destination network is unreachable.</error>
