@@ -41,14 +41,14 @@ static void set_script_args(objScript *Script, CSTRING *Args)
    char argbuffer[100];
    STRING argname = argbuffer;
 
-   for (ULONG i=0; Args[i]; i++) {
-      ULONG j = 0, k = 0;
+   for (uint32_t i=0; Args[i]; i++) {
+      uint32_t j = 0, k = 0;
       while (Args[i][k] IS '-') k++;
       while ((Args[i][k]) and (Args[i][k] != '=') and (j < sizeof(argbuffer)-10)) {
          argname[j++] = Args[i][k++];
       }
       argname[j] = 0;
-      LONG al = j;
+      int al = j;
 
       CSTRING value = nullptr;
       if (Args[i][k] IS '=') {
@@ -69,7 +69,7 @@ static void set_script_args(objScript *Script, CSTRING *Args)
          // This will be converted to files(0)=file.txt files(1)=file2.txt
 
          i++;
-         LONG arg_index = 0;
+         int arg_index = 0;
          while ((Args[i]) and (Args[i][0] != '}')) {
             snprintf(argname+al, sizeof(argbuffer)-al, "(%d)", arg_index);
             SetKey(Script, argname, Args[i]);
@@ -91,16 +91,16 @@ static void set_script_args(objScript *Script, CSTRING *Args)
 
 //********************************************************************************************************************
 
-static LONG run_script(objScript *Script)
+static int run_script(objScript *Script)
 {
    pf::Log log(__FUNCTION__);
-   DOUBLE start_time = (DOUBLE)PreciseTime() / 1000000.0;
+   double start_time = (double)PreciseTime() / 1000000.0;
    ERROR error;
 
    if (!(error = InitObject(Script))) {
       if (!(error = acActivate(Script))) {
          if (glTime) { // Print the execution time of the script
-            DOUBLE end_time = (DOUBLE)PreciseTime() / 1000000.0;
+            double end_time = (double)PreciseTime() / 1000000.0;
             print("Script executed in %f seconds.\n\n", end_time - start_time);
          }
 
@@ -126,7 +126,7 @@ static LONG run_script(objScript *Script)
 //********************************************************************************************************************
 // Executes the target.
 
-static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
+static int exec_source(CSTRING TargetFile, CSTRING Procedure)
 {
    CLASSID class_id, subclass;
    if (IdentifyFile(TargetFile, &class_id, &subclass)) {
@@ -154,7 +154,7 @@ static LONG exec_source(CSTRING TargetFile, CSTRING Procedure)
 static ERROR process_args(void)
 {
    CSTRING *args;
-   LONG i;
+   int i;
 
    if ((!CurrentTask()->get(FID_Parameters, args)) and (args)) {
       for (i=0; args[i]; i++) {
@@ -171,12 +171,12 @@ static ERROR process_args(void)
             };
 
             struct DirInfo *dir;
-            LONG total = 0;
+            int total = 0;
             if (!OpenDir("modules:", RDF::QUALIFY, &dir)) {
                while (!ScanDir(dir)) {
                   struct FileInfo *folder = dir->Info;
                   if (folder->Flags & RDF::FILE) {
-                     for (LONG m=0; m < std::ssize(modules); m++) {
+                     for (int m=0; m < std::ssize(modules); m++) {
                         if (iequals(modules[m], folder->Name)) total++;
                      }
                   }
@@ -224,10 +224,10 @@ static ERROR process_args(void)
 //********************************************************************************************************************
 // Support for stdin
 
-static LONG glScriptReceivedMsg  = 0;
+static int glScriptReceivedMsg  = 0;
 static std::ostringstream glScriptBuffer;
 
-static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
+static void read_stdin(objTask *Task, char *Buffer, int Size, ERROR Status)
 {
    pf::Log log(__FUNCTION__);
 
@@ -248,7 +248,7 @@ static void read_stdin(objTask *Task, char *Buffer, LONG Size, ERROR Status)
 
 //********************************************************************************************************************
 
-static ERROR msg_script_received(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERROR msg_script_received(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    return ERR_Terminate;
 }

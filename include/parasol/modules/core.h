@@ -3160,9 +3160,9 @@ struct Object { // Must be 64-bit aligned
          else data = *((T **)((int8_t *)target) + field->Offset);
 
          if (field->Flags & FD_CPP) {
-            auto vec = *((pf::vector<T> *)data);
-            Result = vec.data();
-            Elements = vec.size();
+            auto vec = (pf::vector<APTR> *)data; // Data type doesn't matter, we just need the size().
+            Result = data; // Return a generic pf::vector<>, the caller must cast to the correct type.
+            Elements = vec->size();
          }
          else {
             if (Elements IS -1) return ERR::Failed;
