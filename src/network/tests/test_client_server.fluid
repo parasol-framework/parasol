@@ -299,19 +299,19 @@ function testConnectionTimeout()
    local startTime = mSys.PreciseTime()
    local connectionTimedOut = false
    local proc = processing.new({ timeout = timeoutDuration + 2.0 })
-   
+
    -- Try connecting to an IP address that should not respond (RFC 5737 test address)
    -- 192.0.2.1 is reserved for documentation and should not be routable
    local testAddress = '192.0.2.1'
    local testPort = 12345
-   
+
    local clientSocket = obj.new('netsocket', {
       name = 'TimeoutTestClient',
       feedback = function(Socket, State)
          local currentTime = mSys.PreciseTime()
          local elapsed = (currentTime - startTime) / 1000000.0  -- Convert to seconds
          print(string.format('[Client] State: %s after %.2fs', printableState(State), elapsed))
-         
+
          if (State == NTC_DISCONNECTED) then
             if (Socket.error == ERR_TimeOut) then
                connectionTimedOut = true
@@ -320,22 +320,22 @@ function testConnectionTimeout()
          end
       end
    })
-   
+
    print(string.format('[Client] Attempting connection to %s:%d with %.1fs timeout...', testAddress, testPort, timeoutDuration))
-   
+
    local err = clientSocket.mtConnect(testAddress, testPort, timeoutDuration)
    assert(err == ERR_Okay, '[Client] Connect() call failed: ' .. mSys.GetErrorMsg(err))
-   
-   proc.sleep()   
+
+   proc.sleep()
    local endTime = mSys.PreciseTime()
    local totalElapsed = (endTime - startTime) / 1000000.0
-   
+
    -- Verify the timeout occurred within expected time bounds
    assert(connectionTimedOut, 'Connection timeout did not occur')
    assert(clientSocket.error == ERR_TimeOut, 'Socket error should be ERR_TimeOut, got: ' .. mSys.GetErrorMsg(clientSocket.error))
    assert(totalElapsed >= timeoutDuration, string.format('Timeout occurred too early: %.2fs < %.2fs', totalElapsed, timeoutDuration))
    assert(totalElapsed <= (timeoutDuration + 1.0), string.format('Timeout occurred too late: %.2fs > %.2fs', totalElapsed, timeoutDuration + 1.0))
-   
+
    print(string.format('Connection timeout test completed successfully! (%.2fs elapsed)', totalElapsed))
 end
 

@@ -183,13 +183,13 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
    Self->Port = Args->Port;
 
    Self->setState(NTC::RESOLVING);
-   
+
    // Set up timeout timer if specified.  Failure is not critical.
 
    if (Args->Timeout > 0) {
       SubscribeTimer(Args->Timeout, C_FUNCTION(connect_timeout_handler, Self), &Self->TimerHandle);
    }
-      
+
    IPAddress server_ip;
    if (net::StrToAddress(Self->Address, &server_ip) IS ERR::Okay) { // The address is an IP string, no resolution is necessary
       std::vector<IPAddress> list;
@@ -204,7 +204,7 @@ static ERR NETSOCKET_Connect(extNetSocket *Self, struct ns::Connect *Args)
       }
 
       ((extNetLookup *)Self->NetLookup)->Callback = C_FUNCTION(connect_name_resolved_nl);
-      
+
       if (Self->NetLookup->resolveName(Self->Address) != ERR::Okay) {
          // Cancel timer on DNS failure
          if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
@@ -453,22 +453,22 @@ static ERR connect_timeout_handler(OBJECTPTR Subscriber, int64_t TimeElapsed, in
 {
    pf::Log log(__FUNCTION__);
    auto socket = (extNetSocket *)Subscriber;
-   
+
    log.msg("Connection timeout triggered.");
-   
-   socket->TimerHandle = 0;  
+
+   socket->TimerHandle = 0;
    socket->Error = ERR::TimeOut;
 
    if ((socket->State != NTC::CONNECTING) and (socket->State != NTC::RESOLVING) and (socket->State != NTC::HANDSHAKING)) {
       log.trace("Socket is no longer connecting, ignoring timeout.");
       return ERR::Terminate;
    }
-   
+
    if (socket->Handle != NOHANDLE) free_socket(socket);
-   
+
    // Cancel DNS resolution if in progress
    if (socket->NetLookup) { FreeResource(socket->NetLookup); socket->NetLookup = nullptr; }
-   
+
    return ERR::Terminate; // Unsubscribe
 }
 

@@ -49,7 +49,7 @@ static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
       return ERR::NoData;
    }
 
-   for (LONG i=0; (str[i]) and (str[i] != '<'); i++) {
+   for (int i=0; (str[i]) and (str[i] != '<'); i++) {
       if (str[i] IS '\r') continue;
       // Content detected
 
@@ -89,7 +89,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
       // Comments will be stripped - check if this is a comment and skip it if this is the case.
       if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
-         LONG i;
+         int i;
          if ((i = pf::strsearch("-->", str)) != -1) {
             State.Pos = str + i + 3;
             return ERR::NothingDone;
@@ -109,7 +109,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    else raw_content = RAW_NONE;
 
    if (raw_content) {
-      LONG len;
+      int len;
 
       // CDATA handler
 
@@ -192,7 +192,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       if (*str IS '"'); // Quoted notation attributes are parsed as content values
       else {
-         LONG s = 0;
+         int s = 0;
          while ((str[s] > 0x20) and (str[s] != '>') and (str[s] != '=')) {
             if ((str[s] IS '/') and (str[s+1] IS '>')) break;
             if ((str[s] IS '?') and (str[s+1] IS '>')) break;
@@ -231,7 +231,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
       else if ((name.empty()) and (*str IS '"')) { // Detect notation value with no name
          str++;
-         LONG s;
+         int s;
          for (s=0; (str[s]) and (str[s] != '"'); s++) {
             if (str[s] IS '\n') Self->LineNo++;
          }
@@ -426,13 +426,13 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 
 //********************************************************************************************************************
 #if 0
-static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
+static void sift_down(ListSort **lookup, int Index, int heapsize)
 {
-   LONG largest = Index;
+   int largest = Index;
    do {
       Index = largest;
-      LONG left	= (Index << 1) + 1;
-      LONG right	= left + 1;
+      int left	= (Index << 1) + 1;
+      int right	= left + 1;
 
       if (left < heapsize){
          if (str_sort(lookup[largest]->String, lookup[left]->String) > 0) largest = left;
@@ -452,13 +452,13 @@ static void sift_down(ListSort **lookup, LONG Index, LONG heapsize)
 #endif
 //********************************************************************************************************************
 #if 0
-static void sift_up(ListSort **lookup, LONG i, LONG heapsize)
+static void sift_up(ListSort **lookup, int i, int heapsize)
 {
-   LONG largest = i;
+   int largest = i;
    do {
       i = largest;
-      LONG left	= (i << 1) + 1;
-      LONG right	= left + 1;
+      int left	= (i << 1) + 1;
+      int right	= left + 1;
 
       if (left < heapsize){
          if (str_sort(lookup[largest]->String, lookup[left]->String) < 0) largest = left;
@@ -496,11 +496,11 @@ static ERR parse_source(extXML *Self)
       char *buffer;
       LARGE size = 64 * 1024;
       if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-         LONG pos = 0;
+         int pos = 0;
          Self->ParseError = ERR::Okay;
          acSeekStart(Self->Source, 0);
          while (1) {
-            LONG result;
+            int result;
             if (acRead(Self->Source, buffer+pos, size-pos, &result) != ERR::Okay) {
                Self->ParseError = ERR::Read;
                break;
@@ -509,7 +509,7 @@ static ERR parse_source(extXML *Self)
 
             pos += result;
             if (pos >= size-1024) {
-               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, NULL) != ERR::Okay) {
+               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, nullptr) != ERR::Okay) {
                   Self->ParseError = ERR::ReallocMemory;
                   break;
                }
@@ -538,11 +538,11 @@ static ERR parse_source(extXML *Self)
 //********************************************************************************************************************
 // Extracts immediate content, does not recurse into child tags.
 
-static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, LONG Size)
+static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, int Size)
 {
    Buffer[0] = 0;
    if (!Tag.Children.empty()) {
-      LONG j = 0;
+      int j = 0;
       for (auto &scan : Tag.Children) {
          if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
 

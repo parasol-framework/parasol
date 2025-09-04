@@ -58,14 +58,14 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 JUMPTABLE_CORE
 
-static OBJECTPTR clXML = NULL;
-static ULONG glTagID = 1;
+static OBJECTPTR clXML = nullptr;
+static uint32_t glTagID = 1;
 
 struct ParseState {
    CSTRING Pos;
-   LONG   Balance;  // Indicates that the tag structure is correctly balanced if zero
+   int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
-   ParseState() : Pos(NULL), Balance(0) { }
+   ParseState() : Pos(nullptr), Balance(0) { }
 };
 
 typedef objXML::TAGS TAGS;
@@ -75,7 +75,7 @@ typedef objXML::CURSOR CURSOR;
 
 class extXML : public objXML {
    public:
-   ankerl::unordered_dense::map<LONG, XMLTag *> Map; // Lookup for any indexed tag.
+   ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
    STRING Statement;
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
@@ -88,7 +88,7 @@ class extXML : public objXML {
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
-   ankerl::unordered_dense::map<LONG, XMLTag *> & getMap() {
+   ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
       if (StaleMap) {
          Map.clear();
          updateIDs(Tags, 0);
@@ -100,18 +100,18 @@ class extXML : public objXML {
 
    // Return the tag for a particular ID.
 
-   XMLTag * getTag(LONG ID) {
+   XMLTag * getTag(int ID) {
       auto &map = getMap();
       auto it = map.find(ID);
-      if (it IS map.end()) return NULL;
+      if (it IS map.end()) return nullptr;
       else return it->second;
    }
 
-   TAGS * getInsert(LONG ID, CURSOR &Iterator) {
+   TAGS * getInsert(int ID, CURSOR &Iterator) {
       if (auto tag = getTag(ID)) {
          return getInsert(tag, Iterator);
       }
-      else return NULL;
+      else return nullptr;
    }
 
    // For a given tag, return its vector array
@@ -119,7 +119,7 @@ class extXML : public objXML {
    TAGS * getTags(XMLTag *Tag) {
       if (!Tag->ParentID) return &Tags;
       else if (auto parent = getTag(Tag->ParentID)) return &parent->Children;
-      else return NULL;
+      else return nullptr;
    }
 
    // For a given tag, return its vector array and cursor position.
@@ -130,7 +130,7 @@ class extXML : public objXML {
       if (Tag->ParentID) {
          auto parent = getTag(Tag->ParentID);
          if (parent) tags = &parent->Children;
-         else return NULL;
+         else return nullptr;
       }
       else tags = &Tags;
 
@@ -142,7 +142,7 @@ class extXML : public objXML {
          }
       }
 
-      return NULL;
+      return nullptr;
    }
 
    void modified() {
@@ -150,7 +150,7 @@ class extXML : public objXML {
       Modified++;
    }
 
-   ERR findTag(CSTRING XPath, FUNCTION *pCallback = NULL) {
+   ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr) {
       this->Attrib.clear();
 
       if (pCallback) this->Callback = *pCallback;
@@ -165,7 +165,7 @@ class extXML : public objXML {
    private:
    ERR find_tag(CSTRING XPath);
 
-   void updateIDs(TAGS &List, LONG ParentID) {
+   void updateIDs(TAGS &List, int ParentID) {
       for (auto &tag : List) {
          Map[tag.ID] = &tag;
          tag.ParentID = ParentID;
@@ -193,7 +193,7 @@ static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 
 static ERR MODExpunge(void)
 {
-   if (clXML) { FreeResource(clXML); clXML = NULL; }
+   if (clXML) { FreeResource(clXML); clXML = nullptr; }
    return ERR::Okay;
 }
 
@@ -207,7 +207,7 @@ The Clear action removes all parsed XML content from the object, including the c
 
 static ERR XML_Clear(extXML *Self)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    Self->Tags.clear();
    Self->LineNo = 1;
@@ -238,7 +238,7 @@ NullArgs: Either the XPath parameter or Result parameter was NULL.
 
 *********************************************************************************************************************/
 
-static THREADVAR LONG tlXMLCounter;
+static THREADVAR int tlXMLCounter;
 
 static ERR xml_count(extXML *Self, XMLTag &Tag, CSTRING Attrib)
 {
@@ -409,8 +409,8 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 
 static ERR XML_Free(extXML *Self)
 {
-   if (Self->Path)      { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
    Self->~extXML();
    return ERR::Okay;
 }
@@ -516,7 +516,7 @@ used interchangeably for lookups and filtering clauses.
 static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
    pf::Log log;
-   LONG count;
+   int count;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
@@ -576,7 +576,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
             (pf::startswith("content:", field)) or
             (pf::startswith("extract:", field)) or
             (field[0] IS '/')) {
-      LONG j;
+      int j;
       for (j=0; field[j] and (field[j] != '/'); j++) j++;
 
       if (Self->findTag(field+j) != ERR::Okay) {
@@ -596,7 +596,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
       else {
          // Extract tag content
 
-         UBYTE extract;
+         uint8_t extract;
 
          if (pf::startswith("content:", field)) extract = 1; // 'In-Depth' content extract.
          else if (pf::startswith("extract:", field)) extract = 2;
@@ -618,9 +618,9 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
          }
          else { // 'Immediate' content extract (not deep)
             if (!Self->Cursor->Children.empty()) {
-               LONG j = 0;
+               int j = 0;
                for (auto &scan : Self->Cursor->Children) {
-                  if (!scan.Attribs[0].isContent()) j += pf::strcopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
+                  if (scan.Attribs[0].isContent()) j += pf::strcopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
                }
                if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
             }
@@ -737,11 +737,11 @@ static ERR XML_Init(extXML *Self)
       if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement)) != ERR::Okay) {
          if ((Self->ParseError IS ERR::InvalidData) or (Self->ParseError IS ERR::NoData)) return ERR::NoSupport;
 
-         log.warning("XML parsing error #%d: %s", LONG(Self->ParseError), GetErrorMsg(Self->ParseError));
+         log.warning("XML parsing error #%d: %s", int(Self->ParseError), GetErrorMsg(Self->ParseError));
       }
 
       FreeResource(Self->Statement);
-      Self->Statement = NULL;
+      Self->Statement = nullptr;
 
       return Self->ParseError;
    }
@@ -797,7 +797,7 @@ static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
-   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, LONG(Args->Where));
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, int(Args->Where));
 
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR::NotFound);
@@ -861,7 +861,7 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
-   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, LONG(Args->Where), Args->XML);
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, int(Args->Where), Args->XML);
 
    auto src = Self->getTag(Args->Index);
    if (!src) return log.warning(ERR::NotFound);
@@ -937,7 +937,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
    if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
-   log.branch("Insert: %d, XPath: %s", LONG(Args->Where), Args->XPath);
+   log.branch("Insert: %d, XPath: %s", int(Args->Where), Args->XPath);
 
    if (Self->findTag(Args->XPath) IS ERR::Okay) {
       struct xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
@@ -1092,7 +1092,7 @@ static ERR XML_RemoveTag(extXML *Self, struct xml::RemoveTag *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
 
-   LONG count = Args->Total;
+   int count = Args->Total;
    if (count < 1) count = 1;
 
    if (auto tag = Self->getTag(Args->Index)) {
@@ -1163,7 +1163,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
       if (Self->findTag(Args->XPath) IS ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
 
       if (!Self->Attrib.empty()) { // Remove an attribute
-         for (LONG a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
+         for (int a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
             if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[a].Name)) {
                Self->Cursor->Attribs.erase(Self->Cursor->Attribs.begin() + a);
                break;
@@ -1224,7 +1224,7 @@ static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 
    STRING str;
    if (auto error = Self->serialise(0, XMF::READABLE|XMF::INCLUDE_SIBLINGS, &str); error IS ERR::Okay) {
-      if (acWrite(Args->Dest, str, strlen(str), NULL) != ERR::Okay) error = ERR::Write;
+      if (acWrite(Args->Dest, str, strlen(str), nullptr) != ERR::Okay) error = ERR::Write;
       FreeResource(str);
       return error;
    }
@@ -1534,7 +1534,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
    for (auto &scan : branch[0]) {
       std::string sortval;
       for (auto &filter : filters) {
-         XMLTag *tag = NULL;
+         XMLTag *tag = nullptr;
          // Check for matching tag name, either at the current tag or in one of the child tags underneath it.
          if (pf::wildcmp(filter.first, scan.Attribs[0].Name)) {
             tag = &scan;
@@ -1629,9 +1629,9 @@ static ERR GET_Path(extXML *Self, STRING *Value)
 
 static ERR SET_Path(extXML *Self, CSTRING Value)
 {
-   if (Self->Source) SET_Source(Self, NULL);
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Source) SET_Source(Self, nullptr);
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
 
    if (pf::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
@@ -1671,13 +1671,13 @@ parsing where the same data is used across multiple XML objects.
 
 *********************************************************************************************************************/
 
-static ERR GET_ReadOnly(extXML *Self, LONG *Value)
+static ERR GET_ReadOnly(extXML *Self, int *Value)
 {
    *Value = Self->ReadOnly;
    return ERR::Okay;
 }
 
-static ERR SET_ReadOnly(extXML *Self, LONG Value)
+static ERR SET_ReadOnly(extXML *Self, int Value)
 {
    Self->ReadOnly = Value;
    return ERR::Okay;
@@ -1698,8 +1698,8 @@ automatically.
 
 static ERR SET_Source(extXML *Self, OBJECTPTR Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
 
    if (Value) {
       Self->Source = Value;
@@ -1708,7 +1708,7 @@ static ERR SET_Source(extXML *Self, OBJECTPTR Value)
          return Self->ParseError;
       }
    }
-   else Self->Source = NULL;
+   else Self->Source = nullptr;
 
    return ERR::Okay;
 }
@@ -1774,8 +1774,8 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 
 static ERR SET_Statement(extXML *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
 
    if ((Value) and (*Value)) {
       if (Self->initialised()) {
@@ -1815,7 +1815,7 @@ maintain internal consistency and trigger appropriate cache invalidation.
 
 *********************************************************************************************************************/
 
-static ERR GET_Tags(extXML *Self, XMLTag **Values, LONG *Elements)
+static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 {
    *Values = Self->Tags.data();
    *Elements = Self->Tags.size();
@@ -1827,9 +1827,9 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, LONG *Elements)
 #include "xml_def.c"
 
 static const FieldArray clFields[] = {
-   { "Path",       FDF_STRING|FDF_RW, NULL, SET_Path },
+   { "Path",       FDF_STRING|FDF_RW, nullptr, SET_Path },
    { "Source",     FDF_OBJECT|FDF_RI },
-   { "Flags",      FDF_INTFLAGS|FDF_RW, NULL, NULL, &clXMLFlags },
+   { "Flags",      FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clXMLFlags },
    { "Start",      FDF_INT|FDF_RW },
    { "Modified",   FDF_INT|FDF_R },
    { "ParseError", FDF_INT|FD_PRIVATE|FDF_R },
@@ -1838,7 +1838,7 @@ static const FieldArray clFields[] = {
    { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
    { "Src",        FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
    { "Statement",  FDF_STRING|FDF_ALLOC|FDF_RW, GET_Statement, SET_Statement },
-   { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R, GET_Tags, NULL, "XMLTag" },
+   { "Tags",       FDF_ARRAY|FDF_STRUCT|FDF_R, GET_Tags, nullptr, "XMLTag" },
    END_FIELD
 };
 
@@ -1869,5 +1869,5 @@ static STRUCTS glStructures = {
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_xml_module() { return &ModHeader; }
