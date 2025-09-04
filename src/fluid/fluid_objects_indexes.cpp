@@ -585,7 +585,24 @@ static int object_get_array(lua_State *Lua, const obj_read &Handle, object *Def)
       auto field = (Field *)(Handle.Data);
       int total;
       APTR *list;
-      if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
+      if (field->Flags & FD_CPP) {
+         if (field->Flags & FD_STRING) {
+            pf::vector<std::string> *values; // std::string doesn't work like standard primitives - at least not in MSVC - so it gets a special handler.
+            if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
+               if (total <= 0) lua_pushnil(Lua);
+               else make_table(Lua, FD_STRING|FD_CPP, total, values);
+            }
+         }
+         else {
+            // For pf::vector primitives we can just convert to a raw data array.
+            pf::vector<APTR> *values; // The type doesn't matter.
+            if ((error = obj->get(field->FieldID, values, total, false)) IS ERR::Okay) {
+               if (total <= 0) lua_pushnil(Lua);
+               else make_any_table(Lua, field->Flags, (CSTRING)field->Arg, total, values->data());
+            }
+         }
+      }
+      else if ((error = obj->get(field->FieldID, list, total, false)) IS ERR::Okay) {
          if (total <= 0) lua_pushnil(Lua);
          else if (field->Flags & FD_STRING) {
             make_table(Lua, FD_STRING, total, list);

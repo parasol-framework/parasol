@@ -103,7 +103,7 @@ static int processing_new(lua_State *Lua)
 //
 // Lua's internal signal flag is always reset on entry in case it has been polluted by prior activity.  This behaviour
 // can be disabled by setting the third argument to false.
-// 
+//
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.

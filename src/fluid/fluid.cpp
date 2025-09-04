@@ -85,7 +85,7 @@ static LONG flTestCall2(void);
 static CSTRING flTestCall3(void);
 static void flTestCall4(LONG, LARGE);
 static LONG flTestCall5(LONG, LONG, LONG, LONG, LONG, LARGE);
-static LARGE flTestCall6(LONG, LARGE, LARGE, LONG, LARGE, DOUBLE);
+static LARGE flTestCall6(LONG, LARGE, LARGE, LONG, LARGE, double);
 static void flTestCall7(STRING a, STRING b, STRING c);
 
 FDEF argsTestCall1[]   = { { "Void", FD_VOID }, { 0, 0 } };
@@ -148,7 +148,7 @@ static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG Lon
    return LongF;
 }
 
-static LARGE flTestCall6(LONG long1, LARGE large1, LARGE large2, LONG long2, LARGE large3, DOUBLE float1)
+static LARGE flTestCall6(LONG long1, LARGE large1, LARGE large2, LONG long2, LARGE large3, double float1)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
@@ -362,7 +362,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
    else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, LONG));
    else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, LARGE));
-   else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, DOUBLE));
+   else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, double));
    else {
       va_end(list);
       return log.warning(ERR::FieldTypeMismatch);
@@ -419,12 +419,12 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
             case FD_STRING:
             case FD_OBJECT:
             case FD_POINTER: for (i=0; ((APTR *)Data)[i]; i++); break;
-            case FD_FLOAT:   for (i=0; ((FLOAT *)Data)[i]; i++); break;
-            case FD_DOUBLE:  for (i=0; ((DOUBLE *)Data)[i]; i++); break;
-            case FD_INT64:   for (i=0; ((LARGE *)Data)[i]; i++); break;
-            case FD_INT:    for (i=0; ((LONG *)Data)[i]; i++); break;
-            case FD_WORD:    for (i=0; ((WORD *)Data)[i]; i++); break;
-            case FD_BYTE:    for (i=0; ((BYTE *)Data)[i]; i++); break;
+            case FD_FLOAT:   for (i=0; ((float *)Data)[i]; i++); break;
+            case FD_DOUBLE:  for (i=0; ((double *)Data)[i]; i++); break;
+            case FD_INT64:   for (i=0; ((int64_t *)Data)[i]; i++); break;
+            case FD_INT:     for (i=0; ((int *)Data)[i]; i++); break;
+            case FD_WORD:    for (i=0; ((int16_t *)Data)[i]; i++); break;
+            case FD_BYTE:    for (i=0; ((int8_t *)Data)[i]; i++); break;
             default:
                log.warning("Unsupported type $%.8x", Type);
                lua_pushnil(Lua);
@@ -439,15 +439,27 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
    if (!Data) return;
 
    switch(Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
-      case FD_STRING:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_OBJECT:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_POINTER: for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_FLOAT:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((FLOAT *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_DOUBLE:  for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((DOUBLE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT64:   for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((LARGE *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_INT:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((LONG *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_WORD:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((WORD *)Data)[i]); lua_settable(Lua, -3); } break;
-      case FD_BYTE:    for (LONG i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((BYTE *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_STRING:
+         if (Type & FD_CPP) {
+            auto vec = ((pf::vector<std::string> *)Data);
+            for (int i=0; i < Elements; i++) {
+               lua_pushinteger(Lua, i+1);
+               lua_pushlstring(Lua, vec[0][i].c_str(), vec[0][i].size());
+               lua_settable(Lua, -3);
+            }
+         }
+         else {
+            for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushstring(Lua, ((CSTRING *)Data)[i]); lua_settable(Lua, -3); }
+         }
+         break;
+      case FD_OBJECT:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); push_object(Lua, ((OBJECTPTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_POINTER: for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushlightuserdata(Lua, ((APTR *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_FLOAT:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((float *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_DOUBLE:  for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((double *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_INT64:   for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushnumber(Lua, ((int64_t *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_INT:     for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((int *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_WORD:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((int16_t *)Data)[i]); lua_settable(Lua, -3); } break;
+      case FD_BYTE:    for (int i=0; i < Elements; i++) { lua_pushinteger(Lua, i+1); lua_pushinteger(Lua, ((int8_t *)Data)[i]); lua_settable(Lua, -3); } break;
    }
 }
 

@@ -498,8 +498,8 @@ int fcmd_require(lua_State *Lua)
 
    CSTRING error_msg = nullptr;
    ERR error = ERR::Okay;
-   auto module = luaL_checkstringview(Lua, 1);   
-   
+   auto module = luaL_checkstringview(Lua, 1);
+
    // For security purposes, check the validity of the module name.
 
    int slash_count = 0;
@@ -509,7 +509,7 @@ int fcmd_require(lua_State *Lua)
       local = true;
       module.remove_prefix(2);
    }
-   
+
    size_t i;
    for (i=0; i < module.size(); i++) {
       if ((module[i] >= 'a') and (module[i] <= 'z')) continue;
