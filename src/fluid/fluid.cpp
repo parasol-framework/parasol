@@ -444,7 +444,7 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
             auto vec = ((pf::vector<std::string> *)Data);
             for (int i=0; i < Elements; i++) {
                lua_pushinteger(Lua, i+1);
-               lua_pushlstring(Lua, vec[0][i].c_str(), vec[0][i].size());
+               lua_pushlstring(Lua, (*vec)[i].c_str(), (*vec)[i].size());
                lua_settable(Lua, -3);
             }
          }
