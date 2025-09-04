@@ -496,84 +496,95 @@ int fcmd_require(lua_State *Lua)
 {
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
-   CSTRING module, error_msg = nullptr;
+   CSTRING error_msg = nullptr;
    ERR error = ERR::Okay;
-   if ((module = lua_tostring(Lua, 1))) {
-      // For security purposes, check the validity of the module name.
+   auto module = luaL_checkstringview(Lua, 1);   
+   
+   // For security purposes, check the validity of the module name.
 
-      int i;
-      int slash_count = 0;
-      for (i=0; module[i]; i++) {
-         if ((module[i] >= 'a') and (module[i] <= 'z')) continue;
-         if ((module[i] >= 'A') and (module[i] <= 'Z')) continue;
-         if ((module[i] >= '0') and (module[i] <= '9')) continue;
-         if (module[i] IS '-') continue;
-         if (module[i] IS '/') { slash_count++; continue; }
-         break;
-      }
+   int slash_count = 0;
 
-      if ((module[i]) or (i >= 32) or (slash_count > 1)) {
-         luaL_error(Lua, "Invalid module name; only alpha-numeric names are permitted with max 32 chars.");
-         return 0;
-      }
+   bool local = false;
+   if (module.starts_with("./")) { // Local modules are permitted if the name starts with "./" and otherwise adheres to path rules
+      local = true;
+      module.remove_prefix(2);
+   }
+   
+   size_t i;
+   for (i=0; i < module.size(); i++) {
+      if ((module[i] >= 'a') and (module[i] <= 'z')) continue;
+      if ((module[i] >= 'A') and (module[i] <= 'Z')) continue;
+      if ((module[i] >= '0') and (module[i] <= '9')) continue;
+      if ((module[i] IS '-') or (module[i] IS '_')) continue;
+      if (module[i] IS '/') { slash_count++; continue; }
+      break;
+   }
 
-      // Check if the module is already loaded.
+   if ((i < module.size()) or (i >= 96) or (slash_count > 2)) {
+      luaL_error(Lua, "Invalid module name; only alpha-numeric names are permitted with max 96 chars.");
+      return 0;
+   }
 
-      auto modkey = std::string("require.") + module;
+   // Check if the module is already loaded.
 
-      lua_getfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
-      auto mod_value = lua_type(Lua, -1);
-      if (mod_value IS LUA_TTABLE) return 1; // Return the interface originally returned by the module
-      else {
-         auto loaded = lua_toboolean(Lua, -1);
-         lua_pop(Lua, 1);
-         if (loaded) return 0;
-      }
+   std::string modkey("require.");
+   modkey.append(module);
 
-      auto path = std::string("scripts:") + module + ".fluid";
+   lua_getfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
+   auto mod_value = lua_type(Lua, -1);
+   if (mod_value IS LUA_TTABLE) return 1; // Return the interface originally returned by the module
+   else {
+      auto loaded = lua_toboolean(Lua, -1);
+      lua_pop(Lua, 1);
+      if (loaded) return 0;
+   }
 
-      objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
+   std::string path;
+   if (local) path.assign(Lua->Script->get<CSTRING>(FID_WorkingPath));
+   else path.assign("scripts:");
+   path.append(module);
+   path.append(".fluid");
 
-      if (file.ok()) {
-         std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
-         struct code_reader_handle handle = { *file, buffer.get() };
-         if (!lua_load(Lua, &code_reader, &handle, module)) {
-            prv->RequireCounter++; // Used by getExecutionState()
-            auto result_top = lua_gettop(Lua);
-            if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) { // Success, mark the module as loaded.
-               auto results = lua_gettop(Lua) - result_top + 1;
-               if (results > 0) {
-                  // If an interface table is returned, store it with the modkey for future require calls.
-                  int rtype = lua_type(Lua, -1);
-                  if (rtype == LUA_TTABLE) {
-                     lua_pushvalue(Lua, -1); // Duplicate table on stack
-                     lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Store & pop one copy
-                     // Original table remains on stack for return
-                     prv->RequireCounter--;
-                     return 1;
-                  }
-                  else { // Discard non-table result, mark module as loaded
-                     lua_pop(Lua, 1);
-                     lua_pushboolean(Lua, 1);
-                     lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
-                  }
+   objFile::create file = { fl::Path(path), fl::Flags(FL::READ) };
+
+   if (file.ok()) {
+      std::unique_ptr<char[]> buffer(new char[SIZE_READ]);
+      struct code_reader_handle handle = { *file, buffer.get() };
+      if (!lua_load(Lua, &code_reader, &handle, module.data())) {
+         prv->RequireCounter++; // Used by getExecutionState()
+         auto result_top = lua_gettop(Lua);
+         if (!lua_pcall(Lua, 0, LUA_MULTRET, 0)) { // Success, mark the module as loaded.
+            auto results = lua_gettop(Lua) - result_top + 1;
+            if (results > 0) {
+               // If an interface table is returned, store it with the modkey for future require calls.
+               int rtype = lua_type(Lua, -1);
+               if (rtype == LUA_TTABLE) {
+                  lua_pushvalue(Lua, -1); // Duplicate table on stack
+                  lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str()); // Store & pop one copy
+                  // Original table remains on stack for return
+                  prv->RequireCounter--;
+                  return 1;
                }
-               else { // No return value; just mark as loaded
+               else { // Discard non-table result, mark module as loaded
+                  lua_pop(Lua, 1);
                   lua_pushboolean(Lua, 1);
                   lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
                }
             }
-            else error_msg = lua_tostring(Lua, -1);
-            prv->RequireCounter--;
+            else { // No return value; just mark as loaded
+               lua_pushboolean(Lua, 1);
+               lua_setfield(Lua, LUA_REGISTRYINDEX, modkey.c_str());
+            }
          }
          else error_msg = lua_tostring(Lua, -1);
+         prv->RequireCounter--;
       }
-      else {
-         luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
-         return 0;
-      }
+      else error_msg = lua_tostring(Lua, -1);
    }
-   else luaL_argerror(Lua, 1, "Expected module name.");
+   else {
+      luaL_error(Lua, "Failed to open file '%s', may not exist.", path.c_str());
+      return 0;
+   }
 
    if (error_msg) luaL_error(Lua, error_msg);
    else if (error != ERR::Okay) luaL_error(Lua, GetErrorMsg(error));

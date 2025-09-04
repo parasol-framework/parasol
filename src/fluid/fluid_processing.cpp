@@ -96,11 +96,14 @@ static int processing_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: err = proc.sleep([Seconds], [WakeOnSignal=true])
+// Usage: err = proc.sleep([Seconds], [WakeOnSignal=true], [ResetState=true])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal (i.e.
 // proc.signal()).
 //
+// Lua's internal signal flag is always reset on entry in case it has been polluted by prior activity.  This behaviour
+// can be disabled by setting the third argument to false.
+// 
 // Setting seconds to zero will process outstanding messages and return immediately.
 //
 // NOTE: Can be called directly as an interface function or as a member of a processing object.
@@ -131,12 +134,15 @@ static int processing_sleep(lua_State *Lua)
    else if (!timeout) wake_on_signal = false; // We don't want to intercept signals if just processing messages
    else wake_on_signal = true;
 
+   bool reset_state = true;
+   if (lua_type(Lua, 3) IS LUA_TBOOLEAN) reset_state = lua_toboolean(Lua, 3);
+
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
 
    // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
    // All other objects can be pre-signalled legitimately.
 
-   Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+   if (reset_state) Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
 
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {

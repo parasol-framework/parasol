@@ -150,7 +150,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               // Buffer size is optional, so set the buffer size parameter by default.  The user can override it if
+               // Buffer size is optional (can be nil), so set the buffer size parameter by default.  The user can override it if
                // more arguments are specified in the function call.
 
                int memsize = array->ArraySize;
@@ -168,7 +168,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
             j += sizeof(APTR);
 
             if (args[i+1].Type & FD_BUFSIZE) {
-               // Buffer size is optional, so set the buffer size parameter by default.
+               // Buffer size is optional (can be nil), so set the buffer size parameter by default.
                // The user can override it if more arguments are specified in the function call.
 
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = fstruct->AlignedSize;
