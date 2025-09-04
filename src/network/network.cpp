@@ -701,6 +701,13 @@ ERR StrToAddress(CSTRING Str, IPAddress *Address)
       pf::clearmem(&Address->Data, sizeof(Address->Data));
       return ERR::Okay;
    }
+   else if (pf::iequals(Str, "255.255.255.255")) {
+      // Needed to prevent confusion with INADDR_NONE
+      Address->Type = IPADDR::V4;
+      Address->Data[0] = 0xffffffff;
+      Address->Data[1] = Address->Data[2] = Address->Data[3] = 0;
+      return ERR::Okay;
+   }
 
    // Try IPv6 first (contains colons)
    if (strchr(Str, ':')) {
