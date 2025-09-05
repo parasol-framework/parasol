@@ -23,7 +23,7 @@ Alternative using compiled regex:
 
 Valid options to use when defining the search table are as follows:
 
-  nameFilter:     Include file/folder names that match this string or compiled regex object.
+  nameFilter:     Include file/folder names that match this string or use regex.new() to compile a regex object.
   nameWild:       Set to true to enable wildcard matching (Lua patterns) in nameFilter.  Ignored if nameFilter is a regex object.
   contentFilter:  Include files that contain this content.
   caseSensitive:  Enforces case-sensitive name comparisons if true.
@@ -34,7 +34,7 @@ Valid options to use when defining the search table are as follows:
   minDate:        Filter out files with a modification time less than this timestamp.
   maxDate:        Filter out files with a modification time exceeding this timestamp.
   scanLinks:      Allows symbolically linked files and folders to be included in the file search.
-  matchFolders:   Include folder names in the output of the search.
+  matchFolders:   Folder names will also be pattern-matched and included in feedback during the search.
   ignoreFiles:    Do not scan files (useful only in conjunction with matchFolders).
   maxDepth:       Maximum depth to recurse into sub-folders (0 = current folder, 1 = one sub-folder, etc.).
 
@@ -134,8 +134,6 @@ file.search = function(Path, Options)
 
       local err, fl = folder.mtNext()
       while (err == ERR_Okay) and (not lStop) do
-         msg(string.format('Found: %s (count: %d)', fl.path, count))
-
          count = count + 1
          processing.sleep(0)
 
@@ -171,6 +169,8 @@ file.search = function(Path, Options)
          if match and bit.band(fl.flags, FL_FILE) != 0 then
             match = contentMatch(fl.path)
          end
+
+         msg(string.format('Found: %s (count: %d); Match: ' .. tostring(match), fl.path, count))
 
          if match then
             if lOptions.matchFeedback then
@@ -220,14 +220,14 @@ file.search = function(Path, Options)
 
    -- Entry point for the search
 
-   if lOptions.nameFilter and type(lOptions.nameFilter) == 'table' then
+   if lOptions.nameFilter and type(lOptions.nameFilter) != 'string' then
       -- Check if it's a regex object by testing for regex methods
       if lOptions.nameFilter.test and lOptions.nameFilter.match then
          isRegexFilter = true
       end
    end
 
-   msg(string.format('Path: %s, Filter: %s, Content: %s', Path, Options.nameFilter, Options.contentFilter))
+   msg(string.format('Path: %s, Filter: %s, Regex: %s, Content: %s', Path, Options.nameFilter, tostring(isRegexFilter), Options.contentFilter))
 
    if lOptions.maxDate then
       local err, maxDate = mSys.StrReadDate(lOptions.maxDate)
