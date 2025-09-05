@@ -26,9 +26,13 @@ extern "C" {
 //
 // This function also serves a dual purpose in that it can be used to raise exceptions when an error condition needs to
 // be propagated.
+//
+// All incoming parameters are returned without modification, allowing check() to operate seamlessly in function call chains.
 
 int fcmd_check(lua_State *Lua)
 {
+   int param_count = lua_gettop(Lua); // Get the total number of parameters
+   
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERR error = ERR(lua_tointeger(Lua, 1));
       if (int(error) >= int(ERR::ExceptionThreshold)) {
@@ -37,7 +41,9 @@ int fcmd_check(lua_State *Lua)
          luaL_error(Lua, GetErrorMsg(error));
       }
    }
-   return 0;
+   
+   // Return all parameters that were passed in
+   return param_count;
 }
 
 //********************************************************************************************************************
