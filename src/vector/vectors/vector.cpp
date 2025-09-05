@@ -1026,12 +1026,12 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    Self->BasePath.rewind(0);
    Self->BasePath.approximation_scale(Args->Scale);
 
-   DOUBLE x, y;
+   double x, y;
    LONG cmd = -1;
    LONG index = 0;
 
   if (Args->Callback->isC()) {
-      auto routine = ((ERR (*)(extVector *, LONG, LONG, DOUBLE, DOUBLE, APTR))(Args->Callback->Routine));
+      auto routine = ((ERR (*)(extVector *, LONG, LONG, double, double, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(ParentContext());
 
@@ -1062,8 +1062,8 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
          { "Vector",  Self->UID, FD_OBJECTID },
          { "Index",   LONG(0) },
          { "Command", LONG(0) },
-         { "X",       DOUBLE(0) },
-         { "Y",       DOUBLE(0) }
+         { "X",       double(0) },
+         { "Y",       double(0) }
       }};
       args[0].Int = Self->UID;
 
@@ -1208,7 +1208,7 @@ static ERR VECTOR_SET_Cursor(extVector *Self, PTC Value)
    if (Self->initialised()) {
       // Send a dummy input event to refresh the cursor
 
-      DOUBLE x, y, absx, absy;
+      double x, y, absx, absy;
 
       gfx::GetRelativeCursorPos(Self->Scene->SurfaceID, &x, &y);
       gfx::GetCursorPos(&absx, &absy);
@@ -1245,7 +1245,7 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
+static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, LONG *Elements)
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
@@ -1258,7 +1258,7 @@ static ERR VECTOR_GET_DashArray(extVector *Self, DOUBLE **Value, LONG *Elements)
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
+static ERR VECTOR_SET_DashArray(extVector *Self, double *Value, LONG Elements)
 {
    pf::Log log;
 
@@ -1277,7 +1277,7 @@ static ERR VECTOR_SET_DashArray(extVector *Self, DOUBLE *Value, LONG Elements)
             for (LONG i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
          }
 
-         DOUBLE total_length = 0;
+         double total_length = 0;
          for (LONG i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
             if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
@@ -1320,7 +1320,7 @@ negative then the shift will be to the right.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_DashOffset(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_DashOffset(extVector *Self, double Value)
 {
    Self->DashOffset = Value;
    if (Self->DashArray) {
@@ -1341,7 +1341,7 @@ instance if the vector is the child of a viewport scaled down to 50%, the result
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DisplayScale(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_DisplayScale(extVector *Self, double *Value)
 {
    if (!Self->initialised()) return ERR::NotInitialised;
    gen_vector_tree(Self);
@@ -1471,13 +1471,13 @@ the #Opacity to determine a final opacity value for the render.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_FillOpacity(extVector *Self, double *Value)
 {
    *Value = Self->FillOpacity;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_FillOpacity(extVector *Self, double Value)
 {
    pf::Log log;
 
@@ -1785,7 +1785,7 @@ them for theta less than approximately 29 degrees, and a limit of 10.0 converts 
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_MiterLimit(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_MiterLimit(extVector *Self, double Value)
 {
    pf::Log log;
 
@@ -1941,7 +1941,7 @@ calculated as `#FillOpacity * Opacity`.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_SET_Opacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_Opacity(extVector *Self, double Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->Opacity = Value;
@@ -2121,7 +2121,7 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
 
    agg::path_storage &base = Self->BasePath;
 
-   DOUBLE x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
+   double x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
    for (ULONG i=0; i < base.total_vertices(); i++) {
       auto cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
@@ -2272,13 +2272,13 @@ rendering.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeOpacity(extVector *Self, DOUBLE *Value)
+static ERR VECTOR_GET_StrokeOpacity(extVector *Self, double *Value)
 {
    *Value = Self->StrokeOpacity;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeOpacity(extVector *Self, DOUBLE Value)
+static ERR VECTOR_SET_StrokeOpacity(extVector *Self, double Value)
 {
    if ((Value >= 0) and (Value <= 1.0)) {
       Self->StrokeOpacity = Value;
@@ -2449,7 +2449,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
 
 //********************************************************************************************************************
 
-DOUBLE extVector::fixed_stroke_width()
+double extVector::fixed_stroke_width()
 {
    if (this->ScaledStrokeWidth) {
       return get_parent_diagonal(this) * INV_SQRT2 * this->StrokeWidth;

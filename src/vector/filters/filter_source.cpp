@@ -58,10 +58,10 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
    // The configuration of the img values must be identical to the ImageFX code.
 
-   DOUBLE img_x = filter->TargetX;
-   DOUBLE img_y = filter->TargetY;
-   DOUBLE img_width = filter->TargetWidth;
-   DOUBLE img_height = filter->TargetHeight;
+   double img_x = filter->TargetX;
+   double img_y = filter->TargetY;
+   double img_width = filter->TargetWidth;
+   double img_height = filter->TargetHeight;
 
    if (filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (dmf::hasAnyX(Self->Dimensions)) img_x = trunc(filter->TargetX + (Self->X * filter->BoundWidth));

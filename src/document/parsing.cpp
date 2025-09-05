@@ -64,7 +64,7 @@ struct parser {
       }
    }
 
-   inline ERR  calc(const std::string &, DOUBLE *, std::string &);
+   inline ERR  calc(const std::string &, double *, std::string &);
    inline TRF  parse_tag(XMLTag &, IPF &);
    inline TRF  parse_tags(objXML::TAGS &, IPF = IPF::NIL);
    inline TRF  parse_tags_with_style(objXML::TAGS &, bc_font &, IPF = IPF::NIL);
@@ -2659,7 +2659,7 @@ void parser::tag_template(XMLTag &Tag)
 
 //********************************************************************************************************************
 
-ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
+ERR parser::calc(const std::string &String, double *Result, std::string &Output)
 {
    enum SIGN { PLUS=1, MINUS, MULTIPLY, DIVIDE, MODULO };
 
@@ -2695,7 +2695,7 @@ ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
          for (end=last_bracket+1; (in[end]) and (in[end-1] != ')'); end++);
          std::string buf(in, last_bracket, end - last_bracket);
 
-         DOUBLE calc_float;
+         double calc_float;
          std::string out;
          calc(buf.c_str()+1, &calc_float, out);
          in.replace(last_bracket, end - last_bracket, out);
@@ -2707,8 +2707,8 @@ ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
 
    STRING end;
    WORD precision = 9;
-   DOUBLE total   = 0;
-   DOUBLE overall = 0;
+   double total   = 0;
+   double overall = 0;
    int index     = 0;
    SIGN sign      = PLUS;
    bool number    = false;
@@ -2744,7 +2744,7 @@ ERR parser::calc(const std::string &String, DOUBLE *Result, std::string &Output)
       }
       else if ((in[s] >= '0') and (in[s] <= '9')) {
          number = true;
-         DOUBLE fvalue = strtod(in.c_str() + s, &end);
+         double fvalue = strtod(in.c_str() + s, &end);
          s += end - in.c_str();
 
          if (sign IS MINUS)         total = total - fvalue;
@@ -2859,7 +2859,7 @@ ERR parser::tag_xml_content_eval(std::string &Buffer)
             num.assign(Buffer, pos+2, end-(pos+2));
 
             std::string calcbuffer;
-            DOUBLE value;
+            double value;
             calc(num, &value, calcbuffer);
             Buffer.insert(end-pos+1, calcbuffer);
          }

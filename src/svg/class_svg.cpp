@@ -60,10 +60,10 @@ static ERR SVG_Activate(extSVG *Self)
 {
    if (!Self->Animations.empty()) {
       if (!Self->AnimationTimer) {
-         SubscribeTimer(1.0 / (DOUBLE)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
+         SubscribeTimer(1.0 / (double)Self->FrameRate, C_FUNCTION(animation_timer), &Self->AnimationTimer);
          SubscribeAction(Self->Scene, AC::Free, C_FUNCTION(notify_free_scene));
       }
-      else UpdateTimer(Self->AnimationTimer, 1.0 / (DOUBLE)Self->FrameRate);
+      else UpdateTimer(Self->AnimationTimer, 1.0 / (double)Self->FrameRate);
    }
 
    return ERR::Okay;
@@ -384,7 +384,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
             }
             else {
-               DOUBLE x, y, width, height;
+               double x, y, width, height;
 
                if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewX, x);
                if (error IS ERR::Okay) error = Self->Viewport->get(FID_ViewY, y);

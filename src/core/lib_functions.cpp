@@ -726,7 +726,7 @@ SystemLocked:
 
 *********************************************************************************************************************/
 
-ERR SubscribeTimer(DOUBLE Interval, FUNCTION *Callback, APTR *Subscription)
+ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
 {
    pf::Log log(__FUNCTION__);
 
@@ -789,7 +789,7 @@ Search:
 
 *********************************************************************************************************************/
 
-ERR UpdateTimer(APTR Subscription, DOUBLE Interval)
+ERR UpdateTimer(APTR Subscription, double Interval)
 {
    pf::Log log(__FUNCTION__);
 

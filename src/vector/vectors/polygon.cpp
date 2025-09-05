@@ -163,8 +163,8 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    // The provided (X,Y) coordinates will be treated as the polygon's new central position.
 
    if ((Args->Flags & MTF::X) != MTF::NIL) {
-      DOUBLE center_x = Self->Bounds.width() * 0.5;
-      DOUBLE x_change = Args->X - center_x;
+      double center_x = Self->Bounds.width() * 0.5;
+      double x_change = Args->X - center_x;
       for (unsigned i=0; i < Self->Points.size(); i++) {
          Self->Points[i].X += x_change;
          Self->Points[i].XScaled = ((Args->Flags & MTF::RELATIVE) != MTF::NIL);
@@ -174,8 +174,8 @@ static ERR POLYGON_MoveToPoint(extVectorPoly *Self, struct acMoveToPoint *Args)
    }
 
    if ((Args->Flags & MTF::Y) != MTF::NIL) {
-      DOUBLE center_y = Self->Bounds.height() * 0.5;
-      DOUBLE y_change = Args->Y - center_y;
+      double center_y = Self->Bounds.height() * 0.5;
+      double y_change = Args->Y - center_y;
       for (unsigned i=0; i < Self->Points.size(); i++) Self->Points[i].Y += y_change;
       Self->Bounds.top += y_change;
       Self->Bounds.bottom += y_change;

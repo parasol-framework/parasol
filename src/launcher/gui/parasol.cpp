@@ -363,8 +363,8 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
       if (!(error = InitObject(glScript))) {
          if (!(error = acActivate(glScript))) {
             if (ShowTime) {
-               DOUBLE startseconds = (DOUBLE)start_time / 1000000.0;
-               DOUBLE endseconds   = (DOUBLE)PreciseTime() / 1000000.0;
+               double startseconds = (double)start_time / 1000000.0;
+               double endseconds   = (double)PreciseTime() / 1000000.0;
                printf("Script executed in %f seconds.\n\n", endseconds - startseconds);
             }
          }

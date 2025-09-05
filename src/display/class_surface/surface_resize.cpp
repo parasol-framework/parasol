@@ -104,7 +104,7 @@ static ERR SURFACE_Resize(extSurface *Self, struct acResize *Args)
    if (((!Args->Width) or (Args->Width IS Self->Width)) and
        ((!Args->Height) or (Args->Height IS Self->Height))) return ERR::Okay|ERR::Notified;
 
-   struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, Args->Width, Args->Height, Args->Depth };
+   struct acRedimension redimension = { (double)Self->X, (double)Self->Y, 0, Args->Width, Args->Height, Args->Depth };
    return Action(AC::Redimension, Self, &redimension)|ERR::Notified;
 }
 

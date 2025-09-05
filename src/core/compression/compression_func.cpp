@@ -382,7 +382,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    // Update the header that we earlier wrote for our file entry.  Note that the header stores only some of the file's
    // meta information.  The majority is stored in the directory at the end of the zip file.
 
-   if (acSeek(Self->FileIO, (DOUBLE)entry.Offset, SEEK::START) != ERR::Okay) return ERR::Seek;
+   if (acSeek(Self->FileIO, (double)entry.Offset, SEEK::START) != ERR::Okay) return ERR::Seek;
 
    UBYTE header[sizeof(glHeader)];
    copymem(glHeader, header, sizeof(glHeader));
@@ -427,10 +427,10 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
    if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
    if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
    LONG chunksize  = HEAD_LENGTH + namelen + extralen + File->CompressedSize;
-   DOUBLE currentpos = File->Offset + chunksize;
+   double currentpos = File->Offset + chunksize;
    if (acSeekStart(Self->FileIO, currentpos) != ERR::Okay) return log.warning(ERR::Seek);
 
-   DOUBLE writepos = File->Offset;
+   double writepos = File->Offset;
 
    struct acRead read = { Self->Input, SIZE_COMPRESSION_BUFFER };
    while ((Action(AC::Read, Self->FileIO, &read) IS ERR::Okay) and (read.Result > 0)) {
@@ -578,7 +578,7 @@ static ERR scan_zip(extCompression *Self)
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected
 
-         if (acSeek(Self->FileIO, (DOUBLE)HEAD_COMPRESSEDSIZE-4, SEEK::CURRENT) != ERR::Okay) return log.warning(ERR::Seek);
+         if (acSeek(Self->FileIO, (double)HEAD_COMPRESSEDSIZE-4, SEEK::CURRENT) != ERR::Okay) return log.warning(ERR::Seek);
 
          struct {
             ULONG compressedsize;

@@ -412,7 +412,7 @@ static uint32_t RGBToValue(RGB8 *RGB, RGBPalette *Palette)
 
 //********************************************************************************************************************
 
-inline static uint8_t conv_l2r(DOUBLE X) {
+inline static uint8_t conv_l2r(double X) {
    int ix;
 
    if (X < 0.0031308) ix = F2T(((X * 12.92) * 255.0) + 0.5);

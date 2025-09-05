@@ -580,7 +580,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
 //********************************************************************************************************************
 // TODO: This code needs to utilise cell viewports for managing UI interactivity.
 #if 0
-static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_click(extDocument *Self, double X, double Y)
 {
    pf::Log log(__FUNCTION__);
 
@@ -681,7 +681,7 @@ static void check_mouse_click(extDocument *Self, DOUBLE X, DOUBLE Y)
 #endif
 //********************************************************************************************************************
 #if 0
-static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
+static void check_mouse_pos(extDocument *Self, double X, double Y)
 {
    Self->MouseOverSegment = -1;
    Self->PointerX = X;
@@ -711,7 +711,7 @@ static void check_mouse_pos(extDocument *Self, DOUBLE X, DOUBLE Y)
       if (!Self->SelectIndex.valid()) Self->SelectIndex = Self->CursorIndex;
 
       if (Self->MouseOverSegment != -1) {
-         DOUBLE cursor_x;
+         double cursor_x;
          stream_char cursor_index;
          if (!resolve_font_pos(Self->Segments[Self->MouseOverSegment], X, cursor_x, cursor_index)) {
             if (Self->ActiveEditDef) {
@@ -972,7 +972,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
          for (unsigned i=0; i < Self->Links.size(); i++) {
             auto &link = Self->Links[i];
             if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
-               DOUBLE link_x = 0, link_y = 0, link_width = 0, link_height = 0;
+               double link_x = 0, link_y = 0, link_width = 0, link_height = 0;
                for (++i; i < Self->Links.size(); i++) {
                   if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Index].ref)) {
                      link.origin.path->getBoundary(VBF::NIL, &link_x, &link_y, &link_width, &link_height);
@@ -993,13 +993,13 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 //********************************************************************************************************************
 // Scrolls any given area of the document into view.
 
-static bool view_area(extDocument *Self, DOUBLE Left, DOUBLE Top, DOUBLE Right, DOUBLE Bottom)
+static bool view_area(extDocument *Self, double Left, double Top, double Right, double Bottom)
 {
    pf::Log log(__FUNCTION__);
 
-   DOUBLE hgap = Self->VPWidth * 0.1, vgap = Self->VPHeight * 0.1;
-   DOUBLE view_x = -Self->XPosition, view_y = -Self->YPosition;
-   DOUBLE view_height = Self->VPHeight, view_width  = Self->VPWidth;
+   double hgap = Self->VPWidth * 0.1, vgap = Self->VPHeight * 0.1;
+   double view_x = -Self->XPosition, view_y = -Self->YPosition;
+   double view_height = Self->VPHeight, view_width  = Self->VPWidth;
 
    log.trace("View: %dx%d,%dx%d Link: %gx%g,%gx%g", view_x, view_y, view_width, view_height, Left, Top, Right, Bottom);
 
@@ -1262,8 +1262,8 @@ static ERR inputevent_button(objVectorViewport *Viewport, const InputEvent *Even
                button->viewport->newMatrix(&matrix, false);
             }
 
-            const auto width  = button->viewport->get<DOUBLE>(FID_Width);
-            const auto height = button->viewport->get<DOUBLE>(FID_Height);
+            const auto width  = button->viewport->get<double>(FID_Width);
+            const auto height = button->viewport->get<double>(FID_Height);
 
             if (auto m = button->viewport->Matrices) {
                const auto SCALE = 0.95;
@@ -1360,7 +1360,7 @@ static ERR inputevent_checkbox(objVectorViewport *Viewport, const InputEvent *Ev
 // Using only a stream index, this function will determine the x coordinate of the character at that index.  This is
 // slower than resolve_font_pos(), because the segment has to be resolved by this function.
 
-static ERR resolve_fontx_by_index(extDocument *Self, stream_char Char, DOUBLE &CharX)
+static ERR resolve_fontx_by_index(extDocument *Self, stream_char Char, double &CharX)
 {
    pf::Log log("resolve_fontx");
 

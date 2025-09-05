@@ -18,7 +18,7 @@
 
 freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
 {
-   DOUBLE x1, y1, x2, y2, x3, y3;
+   double x1, y1, x2, y2, x3, y3;
 
    if (glyphs.contains(Unicode)) return glyphs[Unicode];
 
@@ -206,8 +206,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
    }
 
    auto morph = Vector->Morph;
-   DOUBLE start_x, start_y, end_vx, end_vy;
-   DOUBLE path_scale = 1.0;
+   double start_x, start_y, end_vx, end_vy;
+   double path_scale = 1.0;
    if (morph) {
       if ((Vector->MorphFlags & VMF::STRETCH) != VMF::NIL) {
          // In stretch mode, the standard morphing algorithm is used (see gen_vector_path())
@@ -273,8 +273,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
       LONG char_index = 0;
       LONG cmd = -1;
       LONG prev_glyph_index = 0;
-      DOUBLE dist = 0; // Distance to next vertex
-      DOUBLE angle = 0;
+      double dist = 0; // Distance to next vertex
+      double angle = 0;
       for (auto &line : Vector->txLines) {
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
@@ -293,25 +293,25 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             agg::trans_affine transform(scale_char); // The initial transform scales the char to the path.
 
             if (Vector->Transition) { // Apply any special transitions to transform early.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
+               apply_transition(Vector->Transition, double(char_index) / double(total_chars), transform);
             }
 
             auto &glyph = pt.get_glyph(unicode);
 
-            DOUBLE kx, ky;
+            double kx, ky;
             get_kerning_xy(pt.font->face, glyph.glyph_index, prev_glyph_index, kx, ky);
             start_x += kx;
 
-            DOUBLE char_width = glyph.adv_x * std::abs(transform.sx); //transform.scale();
+            double char_width = glyph.adv_x * std::abs(transform.sx); //transform.scale();
 
             // Compute end_vx,end_vy (the last vertex to use for angle computation) and store the distance from start_x,start_y to end_vx,end_vy in dist.
             if (char_width > dist) {
                while (cmd != agg::path_cmd_stop) {
-                  DOUBLE current_x, current_y;
+                  double current_x, current_y;
                   cmd = morph->BasePath.vertex(&current_x, &current_y);
                   if (agg::is_vertex(cmd)) {
-                     const DOUBLE x = (current_x - end_vx), y = (current_y - end_vy);
-                     const DOUBLE vertex_dist = sqrt((x * x) + (y * y));
+                     const double x = (current_x - end_vx), y = (current_y - end_vy);
+                     const double vertex_dist = sqrt((x * x) + (y * y));
                      dist += vertex_dist;
 
                      //log.trace("%c char_width: %.2f, VXY: %.2f %.2f, next: %.2f %.2f, dist: %.2f", current_char, char_width, start_x, start_y, end_vx, end_vy, dist);
@@ -327,13 +327,13 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             // At this stage we can say that start_x,start_y is the bottom left corner of the character and end_vx,end_vy is
             // the bottom right corner.
 
-            DOUBLE tx = start_x, ty = start_y;
+            double tx = start_x, ty = start_y;
 
             if (cmd != agg::path_cmd_stop) { // Advance (start_x,start_y) to the next point on the morph path.
                angle = std::atan2(end_vy - start_y, end_vx - start_x);
 
-               DOUBLE x = end_vx - start_x, y = end_vy - start_y;
-               DOUBLE d = std::sqrt(x * x + y * y);
+               double x = end_vx - start_x, y = end_vy - start_y;
+               double d = std::sqrt(x * x + y * y);
                start_x += x / d * char_width;
                start_y += y / d * char_width;
 
@@ -362,8 +362,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
       Vector->txWidth = start_x;
    }
    else {
-      DOUBLE dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
-      DOUBLE longest_line_width = 0;
+      double dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
+      double longest_line_width = 0;
       LONG prev_glyph_index = 0;
       LONG char_index = 0;
 
@@ -388,7 +388,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             agg::trans_affine transform;
 
             if (Vector->Transition) { // Apply any special transitions to the transform.
-               apply_transition(Vector->Transition, DOUBLE(char_index) / DOUBLE(total_chars), transform);
+               apply_transition(Vector->Transition, double(char_index) / double(total_chars), transform);
             }
 
             // Determine if this is a new word that would wrap if drawn.
@@ -413,11 +413,11 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
             auto &glyph = pt.get_glyph(unicode);
 
-            DOUBLE kx, ky;
+            double kx, ky;
             get_kerning_xy(pt.font->face, glyph.glyph_index, prev_glyph_index, kx, ky);
             dx += kx;
 
-            DOUBLE char_width = glyph.adv_x * std::abs(transform.sx); // transform.scale();
+            double char_width = glyph.adv_x * std::abs(transform.sx); // transform.scale();
 
             transform.translate(dx, dy);
             agg::conv_transform<agg::path_storage, agg::trans_affine> trans_char(glyph.path, transform);
@@ -450,7 +450,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->Bounds = { 0.0, DOUBLE(-pt.ascent), Vector->txWidth, 1.0 };
+   Vector->Bounds = { 0.0, double(-pt.ascent), Vector->txWidth, 1.0 };
    if (Vector->txLines.size() > 1) Vector->Bounds.bottom += (Vector->txLines.size() - 1) * pt.line_spacing;
 
    // If debugging the above boundary calculation, use this for verification of the true values (bear in

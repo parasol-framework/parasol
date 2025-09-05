@@ -79,7 +79,7 @@ class extBlurFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "BlurFX";
    using create = pf::Create<extBlurFX>;
 
-   DOUBLE SX, SY;
+   double SX, SY;
 };
 
 //********************************************************************************************************************
@@ -94,14 +94,14 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    auto outBmp = Self->Target;
    if (outBmp->BytesPerPixel != 4) return ERR::Failed;
 
-   DOUBLE scale = 1.0;
+   double scale = 1.0;
    if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
 
    LONG rx, ry;
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (Self->Filter->AspectRatio IS VFA::NONE) {
          // Scaling is applied evenly on both axis.  Uses the same formula as a scaled stroke-width.
-         DOUBLE diag = dist(0, 0, Self->Filter->BoundWidth, Self->Filter->BoundHeight) * INV_SQRT2;
+         double diag = dist(0, 0, Self->Filter->BoundWidth, Self->Filter->BoundHeight) * INV_SQRT2;
          rx = F2T(Self->SX * diag * 2 * scale);
          ry = F2T(Self->SY * diag * 2 * scale);
       }
@@ -398,13 +398,13 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERR BLURFX_GET_SX(extBlurFX *Self, DOUBLE *Value)
+static ERR BLURFX_GET_SX(extBlurFX *Self, double *Value)
 {
    *Value = Self->SX;
    return ERR::Okay;
 }
 
-static ERR BLURFX_SET_SX(extBlurFX *Self, DOUBLE Value)
+static ERR BLURFX_SET_SX(extBlurFX *Self, double Value)
 {
    Self->SX = Value;
    return ERR::Okay;
@@ -421,13 +421,13 @@ If either value is 0 or less, the effect is disabled on that axis.
 
 *********************************************************************************************************************/
 
-static ERR BLURFX_GET_SY(extBlurFX *Self, DOUBLE *Value)
+static ERR BLURFX_GET_SY(extBlurFX *Self, double *Value)
 {
    *Value = Self->SY;
    return ERR::Okay;
 }
 
-static ERR BLURFX_SET_SY(extBlurFX *Self, DOUBLE Value)
+static ERR BLURFX_SET_SY(extBlurFX *Self, double Value)
 {
    Self->SY = Value;
    return ERR::Okay;

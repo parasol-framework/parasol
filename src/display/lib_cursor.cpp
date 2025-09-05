@@ -220,7 +220,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 *********************************************************************************************************************/
 
-ERR GetCursorPos(DOUBLE *X, DOUBLE *Y)
+ERR GetCursorPos(double *X, double *Y)
 {
    if (auto pointer = gfx::AccessPointer()) {
       if (X) *X = pointer->X;
@@ -255,7 +255,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 *********************************************************************************************************************/
 
-ERR GetRelativeCursorPos(OBJECTID SurfaceID, DOUBLE *X, DOUBLE *Y)
+ERR GetRelativeCursorPos(OBJECTID SurfaceID, double *X, double *Y)
 {
    pf::Log log(__FUNCTION__);
    LONG absx, absy;
@@ -644,7 +644,7 @@ AccessObject: Failed to access the SystemPointer object.
 
 *********************************************************************************************************************/
 
-ERR SetCursorPos(DOUBLE X, DOUBLE Y)
+ERR SetCursorPos(double X, double Y)
 {
    struct acMoveToPoint move = { X, Y, 0, MTF::X|MTF::Y };
    if (auto pointer = gfx::AccessPointer()) {

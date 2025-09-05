@@ -55,18 +55,18 @@ struct ROTATE {
       return *this;
    }
 
-   constexpr ROTATE & operator += (const DOUBLE &Angle) {
+   constexpr ROTATE & operator += (const double &Angle) {
       angle += Angle;
       return *this;
    }
 
-   constexpr ROTATE & operator *= (const DOUBLE &Angle) {
+   constexpr ROTATE & operator *= (const double &Angle) {
       angle *= Angle;
       return *this;
    }
 };
 
-constexpr ROTATE operator * (const ROTATE &lhs, const DOUBLE &Num) {
+constexpr ROTATE operator * (const ROTATE &lhs, const double &Num) {
    return ROTATE { lhs.angle * Num, lhs.cx, lhs.cy };
 }
 

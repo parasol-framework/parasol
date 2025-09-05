@@ -1027,7 +1027,7 @@ inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF
    CompressionFeedback(FDB pFeedback, int pIndex, CSTRING pPath, CSTRING pDest) :
       FeedbackID(pFeedback), Index(pIndex), Path(pPath), Dest(pDest),
       Progress(0), OriginalSize(0), CompressedSize(0),
-      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { } 
+      Year(0), Month(0), Day(0), Hour(0), Minute(0), Second(0) { }
   ]])
 
   struct("CompressedItem", { }, [[
@@ -2009,7 +2009,7 @@ struct Object { // Must be 64-bit aligned
       get(FieldID, result);
       return result;
    };
-   
+
    // Fetch an array field.  Result is a direct pointer to the data, do not free it.  Elements is set to the number of elements
 
    template <class T> ERR get(FIELD FieldID, T * &Result, int &Elements, bool TypeCheck = true) {
@@ -2038,7 +2038,7 @@ struct Object { // Must be 64-bit aligned
             data = (T *)(((int8_t *)target) + field->Offset);
          }
          else data = *((T **)((int8_t *)target) + field->Offset);
-         
+
          if (field->Flags & FD_CPP) {
             auto vec = (pf::vector<APTR> *)data; // Data type doesn't matter, we just need the size().
             Result = data; // Return a generic pf::vector<>, the caller must cast to the correct type.

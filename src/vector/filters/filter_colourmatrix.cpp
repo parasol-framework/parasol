@@ -44,13 +44,13 @@ this operation.
 
 #define CM_SIZE 20
 
-static const DOUBLE LUMA_R = 0.2125; // These values are as documented in W3C SVG
-static const DOUBLE LUMA_G = 0.7154;
-static const DOUBLE LUMA_B = 0.0721;
+static const double LUMA_R = 0.2125; // These values are as documented in W3C SVG
+static const double LUMA_G = 0.7154;
+static const double LUMA_B = 0.0721;
 
-static const DOUBLE ONETHIRD = 1.0 / 3.0;
+static const double ONETHIRD = 1.0 / 3.0;
 
-typedef std::array<DOUBLE, CM_SIZE> MATRIX;
+typedef std::array<double, CM_SIZE> MATRIX;
 
 static const MATRIX IDENTITY = { 1,0,0,0,0,   0,1,0,0,0,   0,0,1,0,0,   0,0,0,1,0 };
 
@@ -68,7 +68,7 @@ public:
       matrix = Matrix;
    }
 
-   ColourMatrix(const DOUBLE *Values) : preHue(0), postHue(0) {
+   ColourMatrix(const double *Values) : preHue(0), postHue(0) {
       for (auto i=0; i < CM_SIZE; i++) matrix[i] = Values[i];
    }
 
@@ -85,7 +85,7 @@ public:
       matrix = IDENTITY;
    }
 
-   DOUBLE & operator[] (int x) {
+   double & operator[] (int x) {
       return matrix[x];
    }
 
@@ -119,7 +119,7 @@ public:
    //
    //    Other values outside of this range are possible: -1.0 will invert the hue but keep the luminance
 
-   void adjustSaturation(DOUBLE s) {
+   void adjustSaturation(double s) {
       apply(MATRIX {
          LUMA_R+(1.0-LUMA_R)*s, LUMA_G-(LUMA_G*s),     LUMA_B-(LUMA_B*s), 0, 0,
          LUMA_R-(LUMA_R*s),     LUMA_G+(1.0-LUMA_G)*s, LUMA_B-(LUMA_B*s), 0, 0,
@@ -134,7 +134,7 @@ public:
    //       0 means no change
    //     1.0 is high contrast
 
-   void adjustContrast(DOUBLE r, DOUBLE g = NAN, DOUBLE b = NAN) {
+   void adjustContrast(double r, double g = NAN, double b = NAN) {
       if (isnan(g)) g = r;
       if (isnan(b)) b = r;
       r += 1;
@@ -148,7 +148,7 @@ public:
       });
    }
 
-   void adjustBrightness(DOUBLE r, DOUBLE g = NAN, DOUBLE b = NAN) {
+   void adjustBrightness(double r, double g = NAN, double b = NAN) {
       if (isnan(g)) g = r;
       if (isnan(b)) b = r;
       apply(MATRIX {
@@ -159,10 +159,10 @@ public:
       });
    }
 
-   void adjustHue(DOUBLE degrees) {
+   void adjustHue(double degrees) {
        degrees *= DEG2RAD;
-       DOUBLE ccos = cos(degrees);
-       DOUBLE csin = sin(degrees);
+       double ccos = cos(degrees);
+       double csin = sin(degrees);
        apply(MATRIX {
           ((LUMA_R + (ccos * (1 - LUMA_R))) + (csin * -(LUMA_R))), ((LUMA_G + (ccos * -(LUMA_G))) + (csin * -(LUMA_G))), ((LUMA_B + (ccos * -(LUMA_B))) + (csin * (1 - LUMA_B))), 0, 0,
           ((LUMA_R + (ccos * -(LUMA_R))) + (csin * 0.143)), ((LUMA_G + (ccos * (1 - LUMA_G))) + (csin * 0.14)), ((LUMA_B + (ccos * -(LUMA_B))) + (csin * -0.283)), 0, 0,
@@ -171,7 +171,7 @@ public:
        });
    }
 
-   void rotateHue(DOUBLE degrees) {
+   void rotateHue(double degrees) {
       if (initHue() IS ERR::Okay) {
          apply(preHue->matrix);
          rotateBlue(degrees);
@@ -188,7 +188,7 @@ public:
       });
    }
 
-   void adjustAlphaContrast(DOUBLE amount) {
+   void adjustAlphaContrast(double amount) {
        amount += 1;
        apply(MATRIX {
           1, 0, 0, 0, 0,
@@ -202,11 +202,11 @@ public:
    // the G and B channels.  Values greater than 1 will tend to over-expose the image.  Lowering the amount parameter < 1
    // will allow you to tint the image.
 
-   void colourise(DOUBLE r, DOUBLE g, DOUBLE b, DOUBLE amount = 1) {
+   void colourise(double r, double g, double b, double amount = 1) {
       if (amount > 1) amount = 1;
       else if (amount < 0) amount = 0;
 
-      DOUBLE inv_amount = (1.0 - amount);
+      double inv_amount = (1.0 - amount);
 
       apply(MATRIX {
          (inv_amount + ((amount * r) * LUMA_R)), ((amount * r) * LUMA_G), ((amount * r) * LUMA_B), 0, 0,
@@ -216,7 +216,7 @@ public:
       });
    }
 
-   void average(DOUBLE r=ONETHIRD, DOUBLE g=ONETHIRD, DOUBLE b=ONETHIRD) {
+   void average(double r=ONETHIRD, double g=ONETHIRD, double b=ONETHIRD) {
       apply(MATRIX {
          r, g, b, 0, 0,
          r, g, b, 0, 0,
@@ -233,19 +233,19 @@ public:
          0, 0, 0, -1, 255 });
    }
 
-   void rotateRed(DOUBLE degrees) {
+   void rotateRed(double degrees) {
       rotateColour(degrees, 2, 1);
    }
 
-   void rotateGreen(DOUBLE degrees) {
+   void rotateGreen(double degrees) {
       rotateColour(degrees, 0, 2);
    }
 
-   void rotateBlue(DOUBLE degrees) {
+   void rotateBlue(double degrees) {
       rotateColour(degrees, 1, 0);
    }
 
-   void rotateColour(DOUBLE degrees, LONG x, LONG y) {
+   void rotateColour(double degrees, LONG x, LONG y) {
       degrees *= DEG2RAD;
       auto mat = IDENTITY;
       mat[x + x * 5] = mat[y + y * 5] = cos(degrees);
@@ -254,30 +254,30 @@ public:
       apply(mat);
    }
 
-   void shearRed(DOUBLE green, DOUBLE blue) {
+   void shearRed(double green, double blue) {
       shearColour( 0, 1, green, 2, blue );
    }
 
-   void shearGreen(DOUBLE red, DOUBLE blue) {
+   void shearGreen(double red, double blue) {
       shearColour( 1, 0, red, 2, blue );
    }
 
-   void shearBlue(DOUBLE red, DOUBLE green) {
+   void shearBlue(double red, double green) {
       shearColour( 2, 0, red, 1, green );
    }
 
-   void shearColour(LONG x, LONG y1, DOUBLE d1, LONG y2, DOUBLE d2) {
+   void shearColour(LONG x, LONG y1, double d1, LONG y2, double d2) {
       MATRIX mat = IDENTITY;
       mat[y1 + x * 5] = d1;
       mat[y2 + x * 5] = d2;
       apply( mat );
    }
 
-   void transformVector(std::array<DOUBLE, 4> &values) {
-      DOUBLE r = values[0] * matrix[0] + values[1] * matrix[1] + values[2] * matrix[2] + values[3] * matrix[3] + matrix[4];
-      DOUBLE g = values[0] * matrix[5] + values[1] * matrix[6] + values[2] * matrix[7] + values[3] * matrix[8] + matrix[9];
-      DOUBLE b = values[0] * matrix[10] + values[1] * matrix[11] + values[2] * matrix[12] + values[3] * matrix[13] + matrix[14];
-      DOUBLE a = values[0] * matrix[15] + values[1] * matrix[16] + values[2] * matrix[17] + values[3] * matrix[18] + matrix[19];
+   void transformVector(std::array<double, 4> &values) {
+      double r = values[0] * matrix[0] + values[1] * matrix[1] + values[2] * matrix[2] + values[3] * matrix[3] + matrix[4];
+      double g = values[0] * matrix[5] + values[1] * matrix[6] + values[2] * matrix[7] + values[3] * matrix[8] + matrix[9];
+      double b = values[0] * matrix[10] + values[1] * matrix[11] + values[2] * matrix[12] + values[3] * matrix[13] + matrix[14];
+      double a = values[0] * matrix[15] + values[1] * matrix[16] + values[2] * matrix[17] + values[3] * matrix[18] + matrix[19];
 
       values[0] = r;
       values[1] = g;
@@ -286,7 +286,7 @@ public:
    }
 
    ERR initHue() {
-      const DOUBLE greenRotation = 39.182655;
+      const double greenRotation = 39.182655;
       UBYTE init = false;
 
       if (!init) {
@@ -297,11 +297,11 @@ public:
          preHue->rotateRed(45);
          preHue->rotateGreen(-greenRotation);
 
-         std::array<DOUBLE, 4> lum = { LUMA_R, LUMA_G, LUMA_B, 1.0 };
+         std::array<double, 4> lum = { LUMA_R, LUMA_G, LUMA_B, 1.0 };
          preHue->transformVector(lum);
 
-         DOUBLE red = lum[0] / lum[2];
-         DOUBLE green = lum[1] / lum[2];
+         double red = lum[0] / lum[2];
+         double green = lum[1] / lum[2];
 
          preHue->shearBlue(red, green);
 
@@ -323,7 +323,7 @@ class extColourFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "ColourFX";
    using create = pf::Create<extColourFX>;
 
-   DOUBLE Values[CM_SIZE];
+   double Values[CM_SIZE];
    ColourMatrix *Matrix;
    LONG TotalValues;
    CM Mode;
@@ -357,11 +357,11 @@ static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
       UBYTE *pixel = in_line;
       UBYTE *out = out_line;
       for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++, pixel += 4, out += 4) {
-         DOUBLE a = pixel[A];
+         double a = pixel[A];
          if (a) {
-            DOUBLE r = glLinearRGB.convert(pixel[R]);
-            DOUBLE g = glLinearRGB.convert(pixel[G]);
-            DOUBLE b = glLinearRGB.convert(pixel[B]);
+            double r = glLinearRGB.convert(pixel[R]);
+            double g = glLinearRGB.convert(pixel[G]);
+            double b = glLinearRGB.convert(pixel[B]);
 
             LONG r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
             LONG g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
@@ -512,18 +512,18 @@ When values are not defined, they default to 0.
 
 *********************************************************************************************************************/
 
-static ERR COLOURFX_GET_Values(extColourFX *Self, DOUBLE **Array, LONG *Elements)
+static ERR COLOURFX_GET_Values(extColourFX *Self, double **Array, LONG *Elements)
 {
    *Array = Self->Values;
    *Elements = Self->TotalValues;
    return ERR::Okay;
 }
 
-static ERR COLOURFX_SET_Values(extColourFX *Self, DOUBLE *Array, LONG Elements)
+static ERR COLOURFX_SET_Values(extColourFX *Self, double *Array, LONG Elements)
 {
    if (Elements > std::ssize(Self->Values)) return ERR::InvalidValue;
-   if (Array) copymem(Array, Self->Values, Elements * sizeof(DOUBLE));
-   clearmem(Self->Values + Elements, (std::ssize(Self->Values) - Elements) * sizeof(DOUBLE));
+   if (Array) copymem(Array, Self->Values, Elements * sizeof(double));
+   clearmem(Self->Values + Elements, (std::ssize(Self->Values) - Elements) * sizeof(double));
    return ERR::Okay;
 }
 

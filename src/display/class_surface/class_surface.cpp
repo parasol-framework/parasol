@@ -37,7 +37,7 @@ areas.
 using namespace display;
 #endif
 
-static ERR SET_Opacity(extSurface *, DOUBLE);
+static ERR SET_Opacity(extSurface *, double);
 static ERR SET_XOffset(extSurface *, Unit *);
 static ERR SET_YOffset(extSurface *, Unit *);
 
@@ -467,7 +467,7 @@ static void notify_redimension_parent(OBJECTPTR Object, ACTIONID ActionID, ERR R
 
    // Get the width and height of our parent surface
 
-   DOUBLE parentwidth, parentheight, width, height, x, y;
+   double parentwidth, parentheight, width, height, x, y;
 
    if (Self->ParentID) {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
@@ -1684,7 +1684,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 */
 
    log.traceBranch("Sending redimension notifications");
-   struct acRedimension redimension = { (DOUBLE)Self->X, (DOUBLE)Self->Y, 0, (DOUBLE)Self->Width, (DOUBLE)Self->Height, 0 };
+   struct acRedimension redimension = { (double)Self->X, (double)Self->Y, 0, (double)Self->Width, (double)Self->Height, 0 };
    NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
    return ERR::Okay|ERR::Notified;
 }
@@ -2130,7 +2130,7 @@ Okay
 static ERR SURFACE_ScheduleRedraw(extSurface *Self)
 {
    // TODO Currently defaults to 60FPS, we should get the correct FPS from the Display object.
-   const DOUBLE FPS = 60.0;
+   const double FPS = 60.0;
 
    if (Self->RedrawScheduled) return ERR::Okay;
 
@@ -2260,7 +2260,7 @@ static ERR SURFACE_SetOpacity(extSurface *Self, struct drw::SetOpacity *Args)
       return ERR::NoSupport;
    }
 
-   DOUBLE value;
+   double value;
    if (Args->Adjustment) {
       value = (Self->Opacity * (100.0 / 255.0)) + Args->Adjustment;
       SET_Opacity(Self, value);
@@ -2404,13 +2404,13 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
 
    auto Self = (extSurface *)CurrentContext();
 
-   static DOUBLE glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
+   static double glAnchorX = 0, glAnchorY = 0; // Anchoring is process-exclusive, so we can store the coordinates as global variables
 
    for (auto event=Events; event; event=event->Next) {
       // Process events that support consolidation first.
 
       if ((event->Flags & (JTYPE::ANCHORED|JTYPE::MOVEMENT)) != JTYPE::NIL) {
-         DOUBLE xchange, ychange;
+         double xchange, ychange;
          int dragindex;
 
          // Dragging support
@@ -2430,8 +2430,8 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
                   event = event->Next;
                }
 
-               DOUBLE absx = event->AbsX - glAnchorX;
-               DOUBLE absy = event->AbsY - glAnchorY;
+               double absx = event->AbsX - glAnchorX;
+               double absy = event->AbsY - glAnchorY;
 
                xchange = 0;
                ychange = 0;
@@ -2466,8 +2466,8 @@ static ERR consume_input_events(const InputEvent *Events, int Handle)
             if (Self->DragStatus IS DRAG::ANCHOR) {
                const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
                if ((dragindex = find_surface_list(Self)) != -1) {
-                  DOUBLE absx = glSurfaces[dragindex].Left + glAnchorX;
-                  DOUBLE absy = glSurfaces[dragindex].Top + glAnchorY;
+                  double absx = glSurfaces[dragindex].Left + glAnchorX;
+                  double absy = glSurfaces[dragindex].Top + glAnchorY;
                   gfx::SetCursorPos(absx, absy);
                }
             }

@@ -285,8 +285,8 @@ class extPointer : public objPointer {
    } Buttons[10];
    LARGE    ClickTime;
    LARGE    AnchorTime;
-   DOUBLE   LastClickX, LastClickY;
-   DOUBLE   LastReleaseX, LastReleaseY;
+   double   LastClickX, LastClickY;
+   double   LastReleaseX, LastReleaseY;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
    OBJECTID CursorReleaseID;
    OBJECTID DragSurface;        // Draggable surface anchored to the pointer position
@@ -347,7 +347,7 @@ class extDisplay : public objDisplay {
    public:
    using create = pf::Create<extDisplay>;
 
-   DOUBLE Gamma[3];          // Red, green, blue gamma radioactivity indicator
+   double Gamma[3];          // Red, green, blue gamma radioactivity indicator
    std::vector<struct resolution> Resolutions;
    FUNCTION  ResizeFeedback;
    LONG  ControllerPorts;
@@ -400,7 +400,7 @@ extern ERR  track_layer(extSurface *);
 extern void untrack_layer(OBJECTID);
 extern BYTE restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
 extern ERR  load_style_values(void);
-extern ERR  resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, DOUBLE, LONG);
+extern ERR  resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, double, LONG);
 extern void redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
 extern ERR  _expose_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, EXF);
 extern ERR  _redraw_surface(OBJECTID, const SURFACELIST &, LONG, LONG, LONG, LONG, LONG, IRF);
@@ -428,7 +428,7 @@ extern bool glHeadless;
 extern FieldDef CursorLookup[];
 extern TIMER glRefreshPointerTimer;
 extern extBitmap *glComposite;
-extern DOUBLE glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
+extern double glpRefreshRate, glpGammaRed, glpGammaGreen, glpGammaBlue;
 extern LONG glpDisplayWidth, glpDisplayHeight, glpDisplayX, glpDisplayY;
 extern LONG glpDisplayDepth; // If zero, the display depth will be based on the hosted desktop's bit depth.
 extern LONG glpMaximise, glpFullScreen;

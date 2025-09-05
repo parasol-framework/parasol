@@ -24,7 +24,7 @@ static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
 
-GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, DOUBLE Opacity)
+GRADIENT_TABLE * get_fill_gradient_table(extPainter &Painter, double Opacity)
 {
    pf::Log log(__FUNCTION__);
 
@@ -77,7 +77,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
       return &cols->table;
    }
    else {
-      DOUBLE opacity = Vector.StrokeOpacity * Vector.Opacity;
+      double opacity = Vector.StrokeOpacity * Vector.Opacity;
       if ((Vector.Stroke.GradientTable) and (opacity IS Vector.Stroke.GradientAlpha)) return Vector.Stroke.GradientTable;
 
       delete Vector.Stroke.GradientTable;

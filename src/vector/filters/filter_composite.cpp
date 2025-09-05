@@ -17,7 +17,7 @@ class extCompositeFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "CompositeFX";
    using create = pf::Create<extCompositeFX>;
 
-   DOUBLE K1, K2, K3, K4; // For the arithmetic operator
+   double K1, K2, K3, K4; // For the arithmetic operator
    OP Operator; // OP constant
 
    template <class CompositeOp>
@@ -649,22 +649,22 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
                         // Scale RGB to 0 - 1.0 and premultiply the values.
                         #define SCALE (1.0 / 255.0)
                         #define DESCALE 255.0
-                        const DOUBLE sA = DOUBLE(sp[A]) * SCALE;
-                        const DOUBLE sR = DOUBLE(glLinearRGB.convert(sp[R])) * SCALE * sA;
-                        const DOUBLE sG = DOUBLE(glLinearRGB.convert(sp[G])) * SCALE * sA;
-                        const DOUBLE sB = DOUBLE(glLinearRGB.convert(sp[B])) * SCALE * sA;
+                        const double sA = double(sp[A]) * SCALE;
+                        const double sR = double(glLinearRGB.convert(sp[R])) * SCALE * sA;
+                        const double sG = double(glLinearRGB.convert(sp[G])) * SCALE * sA;
+                        const double sB = double(glLinearRGB.convert(sp[B])) * SCALE * sA;
 
-                        const DOUBLE mA = DOUBLE(mp[A]) * SCALE;
-                        const DOUBLE mR = DOUBLE(glLinearRGB.convert(mp[R])) * SCALE * mA;
-                        const DOUBLE mG = DOUBLE(glLinearRGB.convert(mp[G])) * SCALE * mA;
-                        const DOUBLE mB = DOUBLE(glLinearRGB.convert(mp[B])) * SCALE * mA;
+                        const double mA = double(mp[A]) * SCALE;
+                        const double mR = double(glLinearRGB.convert(mp[R])) * SCALE * mA;
+                        const double mG = double(glLinearRGB.convert(mp[G])) * SCALE * mA;
+                        const double mB = double(glLinearRGB.convert(mp[B])) * SCALE * mA;
 
-                        DOUBLE dA = (Self->K1 * sA * mA) + (Self->K2 * sA) + (Self->K3 * mA) + Self->K4;
+                        double dA = (Self->K1 * sA * mA) + (Self->K2 * sA) + (Self->K3 * mA) + Self->K4;
 
                         if (dA > 0.0) {
                            if (dA > 1.0) dA = 1.0;
 
-                           DOUBLE demul = 1.0 / dA;
+                           double demul = 1.0 / dA;
                            LONG dr = F2T(((Self->K1 * sR * mR) + (Self->K2 * sR) + (Self->K3 * mR) + Self->K4) * demul * DESCALE);
                            LONG dg = F2T(((Self->K1 * sG * mG) + (Self->K2 * sG) + (Self->K3 * mG) + Self->K4) * demul * DESCALE);
                            LONG db = F2T(((Self->K1 * sB * mB) + (Self->K2 * sB) + (Self->K3 * mB) + Self->K4) * demul * DESCALE);
@@ -765,13 +765,13 @@ K1: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K1(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K1(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K1;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K1(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K1(extCompositeFX *Self, double Value)
 {
    Self->K1 = Value;
    return ERR::Okay;
@@ -784,13 +784,13 @@ K2: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K2(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K2(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K2;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K2(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K2(extCompositeFX *Self, double Value)
 {
    Self->K2 = Value;
    return ERR::Okay;
@@ -803,13 +803,13 @@ K3: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K3(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K3(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K3;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K3(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K3(extCompositeFX *Self, double Value)
 {
    Self->K3 = Value;
    return ERR::Okay;
@@ -822,13 +822,13 @@ K4: Input value for the arithmetic operation.
 
 *********************************************************************************************************************/
 
-static ERR COMPOSITEFX_GET_K4(extCompositeFX *Self, DOUBLE *Value)
+static ERR COMPOSITEFX_GET_K4(extCompositeFX *Self, double *Value)
 {
    *Value = Self->K4;
    return ERR::Okay;
 }
 
-static ERR COMPOSITEFX_SET_K4(extCompositeFX *Self, DOUBLE Value)
+static ERR COMPOSITEFX_SET_K4(extCompositeFX *Self, double Value)
 {
    Self->K4 = Value;
    return ERR::Okay;

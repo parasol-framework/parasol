@@ -207,8 +207,8 @@ static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *ar
          Buffer += sizeof(int);
       }
       else if (args[i].Type & FD_DOUBLE) {
-         lua_pushnumber(Lua, ((DOUBLE *)Buffer)[0]);
-         Buffer += sizeof(DOUBLE);
+         lua_pushnumber(Lua, ((double *)Buffer)[0]);
+         Buffer += sizeof(double);
       }
       else if (args[i].Type & FD_INT64) {
          lua_pushnumber(Lua, ((int64_t *)Buffer)[0]);

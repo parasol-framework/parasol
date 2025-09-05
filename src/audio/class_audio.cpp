@@ -39,14 +39,14 @@ static ERR init_audio(extAudio *Self)
 }
 #endif
 
-inline DOUBLE extAudio::MixerLag() {
+inline double extAudio::MixerLag() {
    if (!mixerLag) {
       pf::Log log(__FUNCTION__);
       #ifdef _WIN32
          // Windows uses a split buffer technique, so the write cursor is always 1/2 a buffer ahead.
-         mixerLag = MIX_INTERVAL + (DOUBLE(MixElements>>1) / DOUBLE(OutputRate));
+         mixerLag = MIX_INTERVAL + (double(MixElements>>1) / double(OutputRate));
       #elif ALSA_ENABLED
-         mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / DOUBLE(OutputRate);
+         mixerLag = MIX_INTERVAL + (AudioBufferSize / DriverBitSize) / double(OutputRate);
       #endif
       log.trace("Mixer lag: %.2f", mixerLag);
    }
@@ -782,8 +782,8 @@ static ERR AUDIO_SaveToObject(extAudio *Self, struct acSaveToObject *Args)
       if (pmin >= pmax) continue;
 
       std::ostringstream out;
-      auto fleft = (DOUBLE)left / (DOUBLE)(pmax - pmin);
-      auto fright = (DOUBLE)right / (DOUBLE)(pmax - pmin);
+      auto fleft = (double)left / (double)(pmax - pmin);
+      auto fright = (double)right / (double)(pmax - pmin);
       out << fleft << ',' << fright << ',' << mute ? 0 : 1;
 
       config->write("MIXER", Self->Volumes[i].Name, out.str());
@@ -951,9 +951,9 @@ static ERR AUDIO_SetVolume(extAudio *Self, struct snd::SetVolume *Args)
 
       pmax = pmax - 1; // -1 because the absolute maximum tends to produce distortion...
 
-      DOUBLE vol = Args->Volume;
+      double vol = Args->Volume;
       if (vol > 1.0) vol = 1.0;
-      LONG lvol = F2T(DOUBLE(pmin) + (DOUBLE(pmax - pmin) * vol));
+      LONG lvol = F2T(double(pmin) + (double(pmax - pmin) * vol));
 
       if ((Self->Volumes[index].Flags & VCF::CAPTURE) != VCF::NIL) {
          snd_mixer_selem_set_capture_volume_all(elem, lvol);
@@ -1160,13 +1160,13 @@ a value between `0` and `1.0`.
 
 *********************************************************************************************************************/
 
-static ERR GET_MasterVolume(extAudio *Self, DOUBLE *Value)
+static ERR GET_MasterVolume(extAudio *Self, double *Value)
 {
    *Value = Self->MasterVolume;
    return ERR::Okay;
 }
 
-static ERR SET_MasterVolume(extAudio *Self, DOUBLE Value)
+static ERR SET_MasterVolume(extAudio *Self, double Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 1.0) Value = 1.0;
@@ -1184,7 +1184,7 @@ in seconds and will differ between platforms and user configurations.
 
 *********************************************************************************************************************/
 
-static ERR GET_MixerLag(extAudio *Self, DOUBLE *Value)
+static ERR GET_MixerLag(extAudio *Self, double *Value)
 {
    *Value = Self->MixerLag();
    return ERR::Okay;

@@ -154,19 +154,19 @@ static void notify_free_event(OBJECTPTR, ACTIONID, ERR, APTR);
 static void notify_lostfocus_viewport(OBJECTPTR, ACTIONID, ERR, APTR);
 static ERR  feedback_view(objVectorViewport *, FM);
 static void process_parameters(extDocument *, const std::string_view);
-static CSTRING read_unit(CSTRING, DOUBLE &, bool &);
+static CSTRING read_unit(CSTRING, double &, bool &);
 static void redraw(extDocument *, bool);
 static ERR  report_event(extDocument *, DEF, entity *, KEYVALUE *);
 static void reset_cursor(extDocument *);
-static ERR  resolve_fontx_by_index(extDocument *, stream_char, DOUBLE &);
+static ERR  resolve_fontx_by_index(extDocument *, stream_char, double &);
 static int  safe_file_path(extDocument *, const std::string &);
 static void set_focus(extDocument *, int, CSTRING);
 static void show_bookmark(extDocument *, const std::string &);
 static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
 static bool valid_objectid(extDocument *, OBJECTID);
-static bool view_area(extDocument *, DOUBLE, DOUBLE, DOUBLE, DOUBLE);
-static std::string write_calc(DOUBLE, WORD);
+static bool view_area(extDocument *, double, double, double, double);
+static std::string write_calc(double, WORD);
 
 static ERR GET_WorkingPath(extDocument *, CSTRING *);
 

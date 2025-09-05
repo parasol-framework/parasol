@@ -1535,7 +1535,7 @@ static ERR DISPLAY_SetGamma(extDisplay *Self, gfx::SetGamma *Args)
 #ifdef __snap__
    pf::Log log;
    GA_palette palette[256];
-   DOUBLE intensity, red, green, blue;
+   double intensity, red, green, blue;
 
    if (!Args) return log.warning(ERR::NullArgs);
 
@@ -1558,7 +1558,7 @@ static ERR DISPLAY_SetGamma(extDisplay *Self, gfx::SetGamma *Args)
    }
 
    for (LONG i=0; i < std::ssize(palette); i++) {
-      intensity = (DOUBLE)i / 255.0;
+      intensity = (double)i / 255.0;
       palette[i].Red   = F2T(pow(intensity, 1.0 / red)   * 255.0);
       palette[i].Green = F2T(pow(intensity, 1.0 / green) * 255.0);
       palette[i].Blue  = F2T(pow(intensity, 1.0 / blue)  * 255.0);
@@ -1600,9 +1600,9 @@ static ERR DISPLAY_SetGammaLinear(extDisplay *Self, gfx::SetGammaLinear *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   DOUBLE red   = Args->Red;
-   DOUBLE green = Args->Green;
-   DOUBLE blue  = Args->Blue;
+   double red   = Args->Red;
+   double green = Args->Green;
+   double blue  = Args->Blue;
 
    if (red   < 0.00) red   = 0.00;
    if (green < 0.00) green = 0.00;
@@ -1619,16 +1619,16 @@ static ERR DISPLAY_SetGammaLinear(extDisplay *Self, gfx::SetGammaLinear *Args)
    }
 
    for (WORD i=0; i < std::ssize(palette); i++) {
-      DOUBLE intensity = (DOUBLE)i / 255.0;
+      double intensity = (double)i / 255.0;
 
       if (red > 1.0) palette[i].Red = F2T(pow(intensity, 1.0 / red) * 255.0);
-      else palette[i].Red = F2T((DOUBLE)i * red);
+      else palette[i].Red = F2T((double)i * red);
 
       if (green > 1.0) palette[i].Green = F2T(pow(intensity, 1.0 / green) * 255.0);
-      else palette[i].Green = F2T((DOUBLE)i * green);
+      else palette[i].Green = F2T((double)i * green);
 
       if (blue > 1.0) palette[i].Blue = F2T(pow(intensity, 1.0 / blue) * 255.0);
-      else palette[i].Blue = F2T((DOUBLE)i * blue);
+      else palette[i].Blue = F2T((double)i * blue);
    }
 
    glSNAP->Driver.SetGammaCorrectData(palette, std::ssize(palette), 0, TRUE);
@@ -1859,7 +1859,7 @@ ERR DISPLAY_Show(extDisplay *Self)
          #ifdef __ANDROID__
             AConfiguration *config;
             if (!adGetConfig(&config)) {
-               DOUBLE dp_factor = 160.0 / AConfiguration_getDensity(config);
+               double dp_factor = 160.0 / AConfiguration_getDensity(config);
                pointer->ClickSlop = F2I(8.0 * dp_factor);
                log.trace("Click-slop calculated as %d.", pointer->ClickSlop);
             }
@@ -2327,14 +2327,14 @@ To modify the display gamma values, please refer to the #SetGamma() and #SetGamm
 
 *********************************************************************************************************************/
 
-static ERR GET_Gamma(extDisplay *Self, DOUBLE **Value, LONG *Elements)
+static ERR GET_Gamma(extDisplay *Self, double **Value, LONG *Elements)
 {
    *Elements = 3;
    *Value = Self->Gamma;
    return ERR::Okay;
 }
 
-static ERR SET_Gamma(extDisplay *Self, DOUBLE *Value, LONG Elements)
+static ERR SET_Gamma(extDisplay *Self, double *Value, LONG Elements)
 {
    if (Value) {
       if (Elements > 3) Elements = 3;
@@ -2455,13 +2455,13 @@ be solid.  High values will retain the boldness of the display, while low values
 
 ****************************************************************************/
 
-static ERR GET_Opacity(extDisplay *Self, DOUBLE *Value)
+static ERR GET_Opacity(extDisplay *Self, double *Value)
 {
    *Value = Self->Opacity * 100 / 255;
    return ERR::Okay;
 }
 
-static ERR SET_Opacity(extDisplay *Self, DOUBLE Value)
+static ERR SET_Opacity(extDisplay *Self, double Value)
 {
 #ifdef _WIN32
    if (Value < 0) Self->Opacity = 0;
@@ -2549,7 +2549,7 @@ The value in this field reflects the refresh rate of the currently active displa
 
 *********************************************************************************************************************/
 
-static ERR SET_RefreshRate(extDisplay *Self, DOUBLE Value)
+static ERR SET_RefreshRate(extDisplay *Self, double Value)
 {
    return ERR::Okay;
 }

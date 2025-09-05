@@ -293,10 +293,10 @@ double: The scaled value is returned.
 
 *********************************************************************************************************************/
 
-DOUBLE ScaleToDPI(DOUBLE Value)
+double ScaleToDPI(double Value)
 {
    if ((!glDisplayInfo.HDensity) or (!glDisplayInfo.VDensity)) return Value;
-   else return 96.0 / (((DOUBLE)glDisplayInfo.HDensity + (DOUBLE)glDisplayInfo.VDensity) * 0.5) * Value;
+   else return 96.0 / (((double)glDisplayInfo.HDensity + (double)glDisplayInfo.VDensity) * 0.5) * Value;
 }
 
 } // namespace

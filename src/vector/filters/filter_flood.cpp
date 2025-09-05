@@ -22,7 +22,7 @@ class extFloodFX : public extFilterEffect {
 
    FRGB   Colour;
    RGB8   ColourRGB; // A cached conversion of the FRGB value
-   DOUBLE Opacity;
+   double Opacity;
 };
 
 //********************************************************************************************************************
@@ -120,13 +120,13 @@ Opacity: Modifies the opacity of the flood colour.
 
 *********************************************************************************************************************/
 
-static ERR FLOODFX_GET_Opacity(extFloodFX *Self, DOUBLE *Value)
+static ERR FLOODFX_GET_Opacity(extFloodFX *Self, double *Value)
 {
    *Value = Self->Opacity;
    return ERR::Okay;
 }
 
-static ERR FLOODFX_SET_Opacity(extFloodFX *Self, DOUBLE Value)
+static ERR FLOODFX_SET_Opacity(extFloodFX *Self, double Value)
 {
    pf::Log log;
    if ((Value >= 0.0) and (Value <= 1.0)) {

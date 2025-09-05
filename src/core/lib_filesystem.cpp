@@ -2530,9 +2530,9 @@ restart:
          LONG result = statfs(location.c_str(), &fstat);
 
          if (result != -1) {
-            DOUBLE blocksize = (DOUBLE)fstat.f_bsize;
-            Info->BytesFree  = ((DOUBLE)fstat.f_bavail) * blocksize;
-            Info->DeviceSize = ((DOUBLE)fstat.f_blocks) * blocksize;
+            double blocksize = (double)fstat.f_bsize;
+            Info->BytesFree  = ((double)fstat.f_bavail) * blocksize;
+            Info->DeviceSize = ((double)fstat.f_blocks) * blocksize;
             Info->BytesUsed  = Info->DeviceSize - Info->BytesFree;
 
             /* statvfs()

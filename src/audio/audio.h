@@ -149,12 +149,12 @@ struct AudioCommand {
 };
 
 struct AudioChannel {
-   DOUBLE   LVolume;        // Current left speaker volume after applying Pan (0 - 1.0)
-   DOUBLE   RVolume;        // Current right speaker volume after applying Pan (0 - 1.0)
-   DOUBLE   LVolumeTarget;  // Volume target when fading or ramping
-   DOUBLE   RVolumeTarget;  // Volume target when fading or ramping
-   DOUBLE   Volume;         // Playing volume (0 - 1.0)
-   DOUBLE   Pan;            // Pan value (-1.0 - 1.0)
+   double   LVolume;        // Current left speaker volume after applying Pan (0 - 1.0)
+   double   RVolume;        // Current right speaker volume after applying Pan (0 - 1.0)
+   double   LVolumeTarget;  // Volume target when fading or ramping
+   double   RVolumeTarget;  // Volume target when fading or ramping
+   double   Volume;         // Playing volume (0 - 1.0)
+   double   Pan;            // Pan value (-1.0 - 1.0)
    LARGE    EndTime;        // Anticipated end-time of playing the current sample, if OnStop is defined in the sample.
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
    CHF      Flags;          // Special flags
@@ -208,7 +208,7 @@ struct VolumeCtl {
       Channels = { -1 }; // A -1 value leaves the current system volume as-is.
    }
 
-   VolumeCtl(std::string pName, VCF pFlags = VCF::NIL, DOUBLE pVolume = -1) {
+   VolumeCtl(std::string pName, VCF pFlags = VCF::NIL, double pVolume = -1) {
       Name = pName;
       Flags = pFlags;
       Channels = { (FLOAT)pVolume };
@@ -241,7 +241,7 @@ class extAudio : public objAudio {
       snd_output_t *sndlog;
       BYTELEN AudioBufferSize;    // Buffer size measured in bytes
    #endif
-   DOUBLE  MasterVolume;
+   double  MasterVolume;
    TIMER   Timer;
    BYTELEN MixBufferSize;
    SAMPLE  MixElements;
@@ -265,14 +265,14 @@ class extAudio : public objAudio {
       return SAMPLE((((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe);
    }
 
-   inline DOUBLE MixerLag();
+   inline double MixerLag();
 
    inline void finish(AudioChannel &Channel, bool Notify);
 
    extAudio() = default;
 
    private:
-      DOUBLE mixerLag;
+      double mixerLag;
 };
 
 class extSound : public objSound {

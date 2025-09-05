@@ -65,9 +65,9 @@ static void raster_text_to_bitmap(extVectorText *Vector)
             str += char_len;
 
             if (Vector->txCursor.vector) {
-               line.chars.emplace_back(dx, dx, dy + 1, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
+               line.chars.emplace_back(dx, dx, dy + 1, dy - ((double)Vector->txBitmapFont->Height * 1.2));
                if (!*str) { // Last character reached, add a final cursor entry past the character position.
-                  line.chars.emplace_back(dx + char_width, dy, dx + char_width, dy - ((DOUBLE)Vector->txBitmapFont->Height * 1.2));
+                  line.chars.emplace_back(dx + char_width, dy, dx + char_width, dy - ((double)Vector->txBitmapFont->Height * 1.2));
                }
             }
 
@@ -141,5 +141,5 @@ static void raster_text_to_bitmap(extVectorText *Vector)
 
    // Text paths are always oriented around (0,0) and are transformed later
 
-   Vector->Bounds = { 0, 0, Vector->txWidth, DOUBLE(dy) };
+   Vector->Bounds = { 0, 0, Vector->txWidth, double(dy) };
 }

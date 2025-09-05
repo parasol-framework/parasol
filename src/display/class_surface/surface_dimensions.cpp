@@ -752,7 +752,7 @@ an X coordinate calculated from the formula `X = ContainerWidth - SurfaceWidth -
 static ERR GET_XOffset(extSurface *Self, Unit *Value)
 {
    pf::Log log;
-   DOUBLE value;
+   double value;
 
    if (Value->scaled()) {
       Unit xoffset;
@@ -876,7 +876,7 @@ at a Y coordinate calculated from the formula `Y = ContainerHeight - SurfaceHeig
 
 static ERR GET_YOffset(extSurface *Self, Unit *Value)
 {
-   DOUBLE value;
+   double value;
 
    if (Value->scaled()) {
       Unit yoffset;

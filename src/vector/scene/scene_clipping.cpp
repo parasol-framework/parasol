@@ -33,7 +33,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
                   // When the APPLY_FILLS option is enabled, regular fill painting rules will be applied.
 
                   if ((node->Fill->Colour.Alpha > 0) and (!node->DisableFillColour)) {
-                     DOUBLE value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
+                     double value = (node->Fill->Colour.Red * 0.2126) + (node->Fill->Colour.Green * 0.7152) + (node->Fill->Colour.Blue * 0.0722);
                      value *= node->FillOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
@@ -81,7 +81,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
                if ((m_clip->Flags & VCLF::APPLY_STROKES) != VCLF::NIL) {
                   if (node->StrokeRaster) {
-                     DOUBLE value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
+                     double value = (node->Stroke.Colour.Red * 0.2126) + (node->Stroke.Colour.Green * 0.7152) + (node->Stroke.Colour.Blue * 0.0722);
                      value *= node->StrokeOpacity;
                      solid.color(agg::gray8(value * 0xff, 0xff));
 
@@ -243,7 +243,7 @@ void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 
 void SceneRenderer::ClipBuffer::draw_bounding_box(SceneRenderer &Render)
 {
-   TClipRectangle<DOUBLE> shape_bounds = TCR_EXPANDING; // Bounds *without transforms*
+   TClipRectangle<double> shape_bounds = TCR_EXPANDING; // Bounds *without transforms*
    calc_full_boundary(m_shape, shape_bounds, false, false, false);
 
    // Set the target area to mock the shape.  The viewbox will remain at (0 0 1 1), or whatever the

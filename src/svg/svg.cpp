@@ -41,7 +41,7 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
 static OBJECTPTR clSVG = nullptr, clRSVG = nullptr, modDisplay = nullptr, modVector = nullptr, modPicture = nullptr;
-static DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
+static double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 struct prvSVG { // Private variables for RSVG
    class objSVG *SVG;
@@ -85,8 +85,8 @@ class extSVG : public objSVG {
    FUNCTION FrameCallback;
    ankerl::unordered_dense::map<std::string, XMLTag *> IDs;
    ankerl::unordered_dense::map<std::string, objFilterEffect *> Effects; // All effects, registered by their SVG identifier.
-   DOUBLE SVGVersion;
-   DOUBLE AnimEpoch;  // Epoch time for the animations.
+   double SVGVersion;
+   double AnimEpoch;  // Epoch time for the animations.
    objXML *XML;
    objVectorScene *Scene;
    std::string Folder;

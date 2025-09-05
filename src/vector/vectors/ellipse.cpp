@@ -15,8 +15,8 @@ class extVectorEllipse : public extVector {
    static constexpr CSTRING CLASS_NAME = "VectorEllipse";
    using create = pf::Create<extVectorEllipse>;
 
-   DOUBLE eCX, eCY;
-   DOUBLE eRadiusX, eRadiusY;
+   double eCX, eCY;
+   double eRadiusX, eRadiusY;
    DMF eDimensions;
    LONG eVertices;
 };
@@ -25,8 +25,8 @@ class extVectorEllipse : public extVector {
 
 static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
 {
-   DOUBLE cx = Vector->eCX, cy = Vector->eCY;
-   DOUBLE rx = Vector->eRadiusX, ry = Vector->eRadiusY;
+   double cx = Vector->eCX, cy = Vector->eCY;
+   double rx = Vector->eRadiusX, ry = Vector->eRadiusY;
 
    if (dmf::has(Vector->eDimensions, DMF::SCALED_CENTER_X|DMF::SCALED_CENTER_Y|DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) {
       auto view_width = get_parent_width(Vector);
@@ -65,8 +65,8 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
       // Calculate the number of vertices needed for a smooth result, based on the final scale of the ellipse
       // when parent views are taken into consideration.
       auto scale = Vector->Transform.scale();
-      DOUBLE ra = (fabs(rx * scale) + fabs(ry * scale)) * 0.5;
-      DOUBLE da = acos(ra / (ra + 0.125 / scale)) * 2.0;
+      double ra = (fabs(rx * scale) + fabs(ry * scale)) * 0.5;
+      double da = acos(ra / (ra + 0.125 / scale)) * 2.0;
       vertices = agg::uround(2.0 * agg::pi / da);
       if (vertices < 3) vertices = 3; // Because you need at least 3 vertices to create a shape.
    }
@@ -74,10 +74,10 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
    // TODO: Using co/sine lookup tables would speed up this loop.
 
    for (ULONG v=0; v < vertices; v++) {
-      DOUBLE angle = DOUBLE(v) / DOUBLE(vertices) * 2.0 * agg::pi;
+      double angle = double(v) / double(vertices) * 2.0 * agg::pi;
       //if (m_cw) angle = 2.0 * agg::pi - angle;
-      DOUBLE x = cx + cos(angle) * rx;
-      DOUBLE y = cy + sin(angle) * ry;
+      double x = cx + cos(angle) * rx;
+      double y = cy + sin(angle) * ry;
       if (v == 0) Path.move_to(x, y);
       else Path.line_to(x, y);
    }

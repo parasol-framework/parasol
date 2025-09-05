@@ -49,7 +49,7 @@ class is not integrated with the display's vector scene graph.
 *********************************************************************************************************************/
 
 static BitmapCache * check_bitmap_cache(extFont *, FTF);
-static ERR SET_Point(extFont *Self, DOUBLE);
+static ERR SET_Point(extFont *Self, double);
 static ERR SET_Style(extFont *, CSTRING);
 
 /*********************************************************************************************************************
@@ -195,7 +195,7 @@ static ERR FONT_Init(extFont *Self)
                LONG wfi = 0;
                winfnt_header_fields face;
                for (LONG i=0; i < font_count; i++) {
-                  file->seek((DOUBLE)fonts[i].Offset, SEEK::START);
+                  file->seek((double)fonts[i].Offset, SEEK::START);
 
                   winfnt_header_fields header;
                   if (file->read(&header, sizeof(header)) IS ERR::Okay) {
@@ -408,7 +408,7 @@ static ERR SET_Face(extFont *Self, STRING Value)
       // Extract the point size
 
       Value += i;
-      DOUBLE pt = strtod(Value, &Value);
+      double pt = strtod(Value, &Value);
       SET_Point(Self, pt);
 
       i = 0;
@@ -575,13 +575,13 @@ Please note that the use of translucency will always have an impact on the time 
 
 *********************************************************************************************************************/
 
-static ERR GET_Opacity(extFont *Self, DOUBLE *Value)
+static ERR GET_Opacity(extFont *Self, double *Value)
 {
    *Value = (Self->Colour.Alpha * 100)>>8;
    return ERR::Okay;
 }
 
-static ERR SET_Opacity(extFont *Self, DOUBLE Value)
+static ERR SET_Opacity(extFont *Self, double Value)
 {
    if (Value >= 100) Self->Colour.Alpha = 255;
    else if (Value <= 0) Self->Colour.Alpha = 0;
@@ -609,13 +609,13 @@ drop the font to point 8.
 
 *********************************************************************************************************************/
 
-static ERR GET_Point(extFont *Self, DOUBLE *Value)
+static ERR GET_Point(extFont *Self, double *Value)
 {
    *Value = Self->Point;
    return ERR::Okay;
 }
 
-static ERR SET_Point(extFont *Self, DOUBLE Value)
+static ERR SET_Point(extFont *Self, double Value)
 {
    if (Value < 1) Value = 1;
    Self->Point = Value;

@@ -732,7 +732,7 @@ static int object_get_double(lua_State *Lua, const obj_read &Handle, object *Def
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      DOUBLE result;
+      double result;
       if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) lua_pushnumber(Lua, result);
       release_object(Def);
    }

@@ -1,5 +1,5 @@
 
-static void set_dimension(XMLTag *Tag, const std::string Attrib, DOUBLE Value, bool Scaled)
+static void set_dimension(XMLTag *Tag, const std::string Attrib, double Value, bool Scaled)
 {
    if (Scaled) xml::NewAttrib(*Tag, Attrib, std::to_string(Value * 100.0) + "%");
    else xml::NewAttrib(*Tag, Attrib, std::to_string(Value));
@@ -275,7 +275,7 @@ static ERR save_svg_scan_std(extSVG *Self, objXML *XML, objVector *Vector, LONG 
    double *dash_array;
    int dash_total;
    if ((error IS ERR::Okay) and (Vector->get(FID_DashArray, dash_array, dash_total) IS ERR::Okay) and (dash_array)) {
-      DOUBLE dash_offset;
+      double dash_offset;
       if ((Vector->get(FID_DashOffset, dash_offset) IS ERR::Okay) and (dash_offset != 0)) {
          xml::NewAttrib(tag, "stroke-dashoffset", std::to_string(Vector->DashOffset));
       }
@@ -396,7 +396,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    ERR error = ERR::Okay;
    if (Vector->classID() IS CLASSID::VECTORRECTANGLE) {
       XMLTag *tag;
-      DOUBLE rx, ry, x, y, width, height;
+      double rx, ry, x, y, width, height;
 
       error = XML->insertXML(Parent, XMI::CHILD_END, "<rect/>", &new_index);
       if (error IS ERR::Okay) error = XML->getTag(new_index, &tag);
@@ -415,7 +415,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORELLIPSE) {
       XMLTag *tag;
-      DOUBLE rx, ry, cx, cy;
+      double rx, ry, cx, cy;
 
       auto dim = Vector->get<DMF>(FID_Dimensions);
       if (error IS ERR::Okay) error = Vector->get(FID_RadiusX, rx);
@@ -476,7 +476,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
          }
       }
 
-      DOUBLE path_length;
+      double path_length;
       if (((error = Vector->get(FID_PathLength, path_length)) IS ERR::Okay) and (path_length != 0)) {
          xml::NewAttrib(tag, "pathLength", std::to_string(path_length));
       }
@@ -485,7 +485,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORTEXT) {
       XMLTag *tag;
-      DOUBLE x, y, *dx, *dy, *rotate, text_length;
+      double x, y, *dx, *dy, *rotate, text_length;
       LONG total, i, weight;
       CSTRING str;
       char buffer[1024];
@@ -572,7 +572,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORWAVE) {
       XMLTag *tag;
-      DOUBLE dbl;
+      double dbl;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:wave/>", &tag);
 
@@ -596,7 +596,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORSPIRAL) {
       XMLTag *tag;
-      DOUBLE dbl;
+      double dbl;
       LONG length;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:spiral/>", &tag);
@@ -619,7 +619,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORSHAPE) {
       XMLTag *tag;
-      DOUBLE dbl;
+      double dbl;
       LONG num;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<parasol:shape/>", &tag);
@@ -648,7 +648,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
    }
    else if (Vector->classID() IS CLASSID::VECTORVIEWPORT) {
       XMLTag *tag;
-      DOUBLE x, y, width, height;
+      double x, y, width, height;
 
       error = XML->insertStatement(Parent, XMI::CHILD_END, "<svg/>", &tag);
 

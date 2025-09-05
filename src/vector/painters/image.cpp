@@ -143,7 +143,7 @@ X: Apply a horizontal offset to the image, the origin of which is determined by 
 
 *********************************************************************************************************************/
 
-static ERR IMAGE_SET_X(extVectorImage *Self, DOUBLE Value)
+static ERR IMAGE_SET_X(extVectorImage *Self, double Value)
 {
    Self->X = Value;
    Self->modified();
@@ -158,7 +158,7 @@ Y: Apply a vertical offset to the image, the origin of which is determined by th
 
 *********************************************************************************************************************/
 
-static ERR IMAGE_SET_Y(extVectorImage *Self, DOUBLE Value)
+static ERR IMAGE_SET_Y(extVectorImage *Self, double Value)
 {
    Self->X = Value;
    Self->modified();

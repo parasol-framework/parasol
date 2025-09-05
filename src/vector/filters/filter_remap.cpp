@@ -35,12 +35,12 @@ class Component {
    }
 
    std::string Name;
-   std::vector<DOUBLE> Table; // If table; A list of function values.
-   DOUBLE Slope;              // If linear; the slope of the linear function.
-   DOUBLE Intercept;          // If linear; the intercept of the linear function.
-   DOUBLE Amplitude;          // If gamma; the amplitude of the gamma function.
-   DOUBLE Exponent;           // If gamma; the exponent of the gamma function.
-   DOUBLE Offset;             // If gamma; the offset of the gamma function.
+   std::vector<double> Table; // If table; A list of function values.
+   double Slope;              // If linear; the slope of the linear function.
+   double Intercept;          // If linear; the intercept of the linear function.
+   double Amplitude;          // If gamma; the amplitude of the gamma function.
+   double Exponent;           // If gamma; the exponent of the gamma function.
+   double Offset;             // If gamma; the offset of the gamma function.
    RFT    Type;               // The type of algorithm to use.
    UBYTE  Lookup[256];        // sRGB lookup
    UBYTE  ILookup[256];       // Inverted linear RGB lookup
@@ -69,33 +69,33 @@ class Component {
       }
    }
 
-   void select_linear(const DOUBLE pSlope, const DOUBLE pIntercept) {
+   void select_linear(const double pSlope, const double pIntercept) {
       Type      = RFT_LINEAR;
       Slope     = pSlope;
       Intercept = pIntercept;
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
-         ULONG c = F2T((DOUBLE(i) * pSlope) + pIntercept * 255.0);
+         ULONG c = F2T((double(i) * pSlope) + pIntercept * 255.0);
          Lookup[i] = c;
          ILookup[i] = glLinearRGB.invert(c);
       }
    }
 
-   void select_gamma(const DOUBLE pAmplitude, const DOUBLE pExponent, const DOUBLE pOffset) {
+   void select_gamma(const double pAmplitude, const double pExponent, const double pOffset) {
       Type      = RFT_GAMMA;
       Amplitude = pAmplitude;
       Exponent  = pExponent;
       Offset    = pOffset;
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
-         DOUBLE pe = pow(DOUBLE(i) * (1.0/255.0), pExponent);
+         double pe = pow(double(i) * (1.0/255.0), pExponent);
          ULONG c = F2T(((pAmplitude * pe) + pOffset) * 255.0);
          Lookup[i]  = (c < 255) ? c : 255;
          ILookup[i] = glLinearRGB.invert((c < 255) ? c : 255);
       }
    }
 
-   void select_discrete(const DOUBLE *pValues, const LONG pSize) {
+   void select_discrete(const double *pValues, const LONG pSize) {
       Type = RFT_DISCRETE;
       Table.insert(Table.end(), pValues, pValues + pSize);
 
@@ -103,22 +103,22 @@ class Component {
       for (size_t i=0; i < sizeof(Lookup); i++) {
          auto k = ULONG((i * n) / 255.0);
          k = std::min(k, (ULONG)n - 1);
-         auto val = 255.0 * DOUBLE(Table[k]);
+         auto val = 255.0 * double(Table[k]);
          val = std::max(0.0, std::min(255.0, val));
          Lookup[i] = UBYTE(val);
          ILookup[i] = glLinearRGB.invert(UBYTE(val));
       }
    }
 
-   void select_table(const DOUBLE *pValues, const LONG pSize) {
+   void select_table(const double *pValues, const LONG pSize) {
       Type = RFT_TABLE;
       Table.insert(Table.end(), pValues, pValues + pSize);
 
       ULONG n = Table.size();
       for (size_t i=0; i < sizeof(Lookup); i++) {
-          DOUBLE c = DOUBLE(i) / 255.0;
+          double c = double(i) / 255.0;
           auto k = ULONG(c * (n - 1));
-          DOUBLE v = Table[std::min((k + 1), (n - 1))];
+          double v = Table[std::min((k + 1), (n - 1))];
           LONG val = F2T(255.0 * (Table[k] + (c * (n - 1) - k) * (v - Table[k])));
           Lookup[i] = std::max(0, std::min(255, val));
           ILookup[i] = glLinearRGB.invert(Lookup[i]);

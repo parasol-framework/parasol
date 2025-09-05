@@ -129,8 +129,8 @@ public:
 
 class CharPos {
 public:
-   DOUBLE x1, y1, x2, y2;
-   CharPos(DOUBLE X1, DOUBLE Y1, DOUBLE X2, DOUBLE Y2) : x1(X1), y1(Y1), x2(X2), y2(Y2) { }
+   double x1, y1, x2, y2;
+   CharPos(double X1, double Y1, double X2, double Y2) : x1(X1), y1(Y1), x2(X2), y2(Y2) { }
 };
 
 //********************************************************************************************************************
@@ -176,17 +176,17 @@ class extVectorText : public extVector {
    std::vector<TextLine> txLines;
    FUNCTION txValidateInput;
    FUNCTION txOnChange;
-   DOUBLE txInlineSize; // Enables word-wrapping
-   DOUBLE txX, txY;
-   DOUBLE txTextLength;
-   DOUBLE txFontSize;  // Font size measured in pixels @ 72 DPI.  Should always be a whole number.
-   DOUBLE txLetterSpacing; // SVG: Acts as a multiplier or fixed unit addition to the spacing of each glyph
-   DOUBLE txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
-   DOUBLE txStartOffset; // TODO
-   DOUBLE txSpacing; // TODO
-   DOUBLE txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
-   DOUBLE *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
-   DOUBLE *txRotate;  // A series of angles that will rotate each individual character.
+   double txInlineSize; // Enables word-wrapping
+   double txX, txY;
+   double txTextLength;
+   double txFontSize;  // Font size measured in pixels @ 72 DPI.  Should always be a whole number.
+   double txLetterSpacing; // SVG: Acts as a multiplier or fixed unit addition to the spacing of each glyph
+   double txWidth; // Width of the text computed by path generation.  Not for client use as GetBoundary() can be used for that.
+   double txStartOffset; // TODO
+   double txSpacing; // TODO
+   double txXOffset, txYOffset; // X,Y adjustment for ensuring that the cursor is visible.
+   double *txDX, *txDY; // A series of spacing adjustments that apply on a per-character level.
+   double *txRotate;  // A series of angles that will rotate each individual character.
    objFont *txBitmapFont;
    objBitmap *txAlphaBitmap; // Host for the bitmap font texture
    extVectorImage *txBitmapImage;
@@ -231,7 +231,7 @@ freetype_font::~freetype_font() {
 
 //********************************************************************************************************************
 
-inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, DOUBLE &Y)
+inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, double &X, double &Y)
 {
    FT_Vector delta;
    if (!FT_Get_Kerning(Face, PrevGlyph, Glyph, FT_KERNING_DEFAULT, &delta)) {
@@ -244,7 +244,7 @@ inline void get_kerning_xy(FT_Face Face, LONG Glyph, LONG PrevGlyph, DOUBLE &X, 
    }
 }
 
-inline DOUBLE get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
+inline double get_kerning(FT_Face Face, LONG Glyph, LONG PrevGlyph)
 {
    if ((not Glyph) or (not PrevGlyph)) return 0;
 
@@ -612,20 +612,20 @@ else (b) no extra shift along the x-axis occurs.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_DX(extVectorText *Self, DOUBLE **Values, LONG *Elements)
+static ERR TEXT_GET_DX(extVectorText *Self, double **Values, LONG *Elements)
 {
    *Values = Self->txDX;
    *Elements = Self->txTotalDX;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
+static ERR TEXT_SET_DX(extVectorText *Self, double *Values, LONG Elements)
 {
    if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = nullptr; Self->txTotalDX = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX) IS ERR::Okay) {
-         copymem(Values, Self->txDX, Elements * sizeof(DOUBLE));
+      if (AllocMemory(sizeof(double) * Elements, MEM::DATA, &Self->txDX) IS ERR::Okay) {
+         copymem(Values, Self->txDX, Elements * sizeof(double));
          Self->txTotalDX = Elements;
          reset_path(Self);
          return ERR::Okay;
@@ -643,20 +643,20 @@ This field follows the same rules described in #DX.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_DY(extVectorText *Self, DOUBLE **Values, LONG *Elements)
+static ERR TEXT_GET_DY(extVectorText *Self, double **Values, LONG *Elements)
 {
    *Values   = Self->txDY;
    *Elements = Self->txTotalDY;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
+static ERR TEXT_SET_DY(extVectorText *Self, double *Values, LONG Elements)
 {
    if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = nullptr; Self->txTotalDY = 0; }
 
    if ((Values) and (Elements > 0)) {
-      if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY) IS ERR::Okay) {
-         copymem(Values, Self->txDY, Elements * sizeof(DOUBLE));
+      if (AllocMemory(sizeof(double) * Elements, MEM::DATA, &Self->txDY) IS ERR::Okay) {
+         copymem(Values, Self->txDY, Elements * sizeof(double));
          Self->txTotalDY = Elements;
          reset_path(Self);
          return ERR::Okay;
@@ -929,13 +929,13 @@ The other dimension (height for horizontal text, width for vertical text) is of 
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_InlineSize(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_InlineSize(extVectorText *Self, double *Value)
 {
    *Value = Self->txInlineSize;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_InlineSize(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_InlineSize(extVectorText *Self, double Value)
 {
    Self->txInlineSize = Value;
    reset_path(Self);
@@ -950,13 +950,13 @@ LetterSpacing: Private.  Currently unsupported.
 
 // SVG standard, presuming this inserts space as opposed to acting as a multiplier
 
-static ERR TEXT_GET_LetterSpacing(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_LetterSpacing(extVectorText *Self, double *Value)
 {
    *Value = Self->txLetterSpacing;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_LetterSpacing(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_LetterSpacing(extVectorText *Self, double Value)
 {
    Self->txLetterSpacing = Value;
    reset_path(Self);
@@ -1067,13 +1067,13 @@ Spacing: Private.  Not currently implemented.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_Spacing(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_Spacing(extVectorText *Self, double *Value)
 {
    *Value = Self->txSpacing;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_Spacing(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_Spacing(extVectorText *Self, double Value)
 {
    Self->txSpacing = Value;
    reset_path(Self);
@@ -1086,13 +1086,13 @@ StartOffset: Private.  Not currently implemented.
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_StartOffset(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_StartOffset(extVectorText *Self, double *Value)
 {
    *Value = Self->txStartOffset;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_StartOffset(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_StartOffset(extVectorText *Self, double Value)
 {
    Self->txStartOffset = Value;
    reset_path(Self);
@@ -1188,19 +1188,19 @@ and is supplemental to any rotation due to text on a path and to 'glyph-orientat
 
 *********************************************************************************************************************/
 
-static ERR TEXT_GET_Rotate(extVectorText *Self, DOUBLE **Values, LONG *Elements)
+static ERR TEXT_GET_Rotate(extVectorText *Self, double **Values, LONG *Elements)
 {
    *Values = Self->txRotate;
    *Elements = Self->txTotalRotate;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
+static ERR TEXT_SET_Rotate(extVectorText *Self, double *Values, LONG Elements)
 {
    if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = nullptr; Self->txTotalRotate = 0; }
 
-   if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate) IS ERR::Okay) {
-      copymem(Values, Self->txRotate, Elements * sizeof(DOUBLE));
+   if (AllocMemory(sizeof(double) * Elements, MEM::DATA, &Self->txRotate) IS ERR::Okay) {
+      copymem(Values, Self->txRotate, Elements * sizeof(double));
       Self->txTotalRotate = Elements;
       reset_path(Self);
       return ERR::Okay;
@@ -1306,13 +1306,13 @@ TextLength.
 // NB: Internally we can fulfil TextLength requirements simply by checking the width of the text path boundary
 // and if they don't match, apply a rescale transformation just prior to drawing (Width * (TextLength / Width))
 
-static ERR TEXT_GET_TextLength(extVectorText *Self, DOUBLE *Value)
+static ERR TEXT_GET_TextLength(extVectorText *Self, double *Value)
 {
    *Value = Self->txTextLength;
    return ERR::Okay;
 }
 
-static ERR TEXT_SET_TextLength(extVectorText *Self, DOUBLE Value)
+static ERR TEXT_SET_TextLength(extVectorText *Self, double Value)
 {
    Self->txTextLength = Value;
    return ERR::Okay;

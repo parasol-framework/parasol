@@ -210,13 +210,13 @@ Please note that the use of translucency is realised at a significant cost to CP
 
 *********************************************************************************************************************/
 
-static ERR GET_Opacity(extSurface *Self, DOUBLE *Value)
+static ERR GET_Opacity(extSurface *Self, double *Value)
 {
    *Value = Self->Opacity * 100 / 255;
    return ERR::Okay;
 }
 
-static ERR SET_Opacity(extSurface *Self, DOUBLE Value)
+static ERR SET_Opacity(extSurface *Self, double Value)
 {
    LONG opacity;
 

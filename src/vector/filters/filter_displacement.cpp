@@ -105,14 +105,14 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
       // Scale is relative to the bounding box dimensions
       scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
       double scale = Self->Scale / scale_against;
-      sx = scale * DOUBLE(mix_width)  * (1.0 / 255.0);
-      sy = scale * DOUBLE(mix_height) * (1.0 / 255.0);
+      sx = scale * double(mix_width)  * (1.0 / 255.0);
+      sy = scale * double(mix_height) * (1.0 / 255.0);
    }
    else { // USERSPACE
       scale_against = sqrt((c_width * c_width) + (c_height * c_height)) * SQRT2DIV2;
       double scale = Self->Scale / scale_against;
-      sx = scale * DOUBLE(mix_width)  * (1.0 / 255.0);
-      sy = scale * DOUBLE(mix_height) * (1.0 / 255.0);
+      sx = scale * double(mix_width)  * (1.0 / 255.0);
+      sy = scale * double(mix_height) * (1.0 / 255.0);
    }
 
    const UBYTE x_type = RGBA[LONG(Self->XChannel)];
@@ -130,8 +130,8 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
          auto dy = m[y_type];
          // TODO: SVG recommends using interpolation between pixels rather than the dropping the fractional part
          // as done here.
-         const LONG cx = x + F2I(sx * (DOUBLE(dx) - HALF8BIT));
-         const LONG cy = y + F2I(sy * (DOUBLE(dy) - HALF8BIT));
+         const LONG cx = x + F2I(sx * (double(dx) - HALF8BIT));
+         const LONG cy = y + F2I(sy * (double(dy) - HALF8BIT));
          if ((cx < 0) or (cx >= in_width) or (cy < 0) or (cy >= in_height)) {
             // The source pixel is outside of retrievable bounds
             *d = 0;

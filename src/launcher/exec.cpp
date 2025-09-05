@@ -162,8 +162,8 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
       if (auto error = InitObject(glScript); error IS ERR::Okay) {
          if (auto error = acActivate(glScript); error IS ERR::Okay) {
             if (ShowTime) { // Print the execution time of the script
-               auto start_seconds = (DOUBLE)start_time / 1000000.0;
-               auto end_seconds   = (DOUBLE)PreciseTime() / 1000000.0;
+               auto start_seconds = (double)start_time / 1000000.0;
+               auto end_seconds   = (double)PreciseTime() / 1000000.0;
                printf("Script executed in %f seconds.\n\n", end_seconds - start_seconds);
             }
 

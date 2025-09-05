@@ -188,7 +188,7 @@ bool glSixBitDisplay = false;
 TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = nullptr;
 static auto glDisplayType = DT::NATIVE;
-DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
+double glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
 LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
@@ -1067,9 +1067,9 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    LONG i = 0;
    for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
-      DOUBLE fAlpha = (DOUBLE)iAlpha * (1.0 / 255.0);
+      double fAlpha = (double)iAlpha * (1.0 / 255.0);
       for (WORD iValue=0; iValue < 256; iValue++) {
-         glAlphaLookup[i++] = clipByte(F2I((DOUBLE)iValue * fAlpha));
+         glAlphaLookup[i++] = clipByte(F2I((double)iValue * fAlpha));
       }
    }
 
@@ -1377,7 +1377,7 @@ ERR init_egl(void)
       AConfiguration *config;
       objPointer *pointer;
       if (!adGetConfig(&config)) {
-         DOUBLE dp_factor = 160.0 / AConfiguration_getDensity(config);
+         double dp_factor = 160.0 / AConfiguration_getDensity(config);
          if (!AccessObject(glPointerID, 3000, &pointer)) {
             pointer->ClickSlop = F2I(8.0 * dp_factor);
             log.msg("Click-slop calculated as %d.", pointer->ClickSlop);

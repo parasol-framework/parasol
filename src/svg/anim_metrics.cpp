@@ -18,7 +18,7 @@ void anim_base::set_orig_value(svgState &State)
             break;
 
          case SVF_STROKE_WIDTH:
-            target_attrib_orig.assign(std::to_string(obj->get<DOUBLE>(FID_StrokeWidth)));
+            target_attrib_orig.assign(std::to_string(obj->get<double>(FID_StrokeWidth)));
             break;
 
          case SVF_FILL: {

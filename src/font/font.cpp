@@ -174,10 +174,10 @@ static LONG getutf8(CSTRING Value, ULONG *Unicode)
 // Returns the global point size for font scaling.  This is set to 10 by default, but the user can change the setting
 // in the interface style values.
 
-static DOUBLE glDefaultPoint = 10;
+static double glDefaultPoint = 10;
 static bool glPointSet = false;
 
-static DOUBLE global_point_size(void)
+static double global_point_size(void)
 {
    if (!glPointSet) {
       pf::Log log(__FUNCTION__);

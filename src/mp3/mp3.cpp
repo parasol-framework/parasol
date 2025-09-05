@@ -280,7 +280,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    prv->TotalSamples = detected_samples;
 
-   const DOUBLE seconds_len = DOUBLE(detected_samples) / DOUBLE(prv->info.hz);
+   const double seconds_len = double(detected_samples) / double(prv->info.hz);
 
    // Compute byte length with adjustment for padding at the end, but not the start.
 
@@ -576,7 +576,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
             return ERR::Failed;
          }
 
-         DOUBLE pct = DOUBLE(offset) / DOUBLE(Self->Length);
+         double pct = double(offset) / double(Self->Length);
 
          if (prv->TOCLoaded) {
             // The TOC gives us an approx. frame number for a given location in the compressed stream
@@ -769,7 +769,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
    sort(fsizes.begin(), fsizes.end(), std::greater<UWORD>());
    const LONG first = fsizes.size() / 4;
    const LONG last  = F2T(fsizes.size() * 0.75);
-   DOUBLE avg_frame_len = 0;
+   double avg_frame_len = 0;
    for (LONG i=first; i < last; i++) avg_frame_len += fsizes[i];
    avg_frame_len /= (last - first);
 
@@ -784,7 +784,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
          // For CBR we guess the total frames from the file size.
          prv->File->get(FID_Size, filesize);
          LONG total_frames = F2T((filesize - prv->SeekOffset - frame_start - ReduceEnd) / avg_frame_len);
-         DOUBLE seconds = (total_frames * (DOUBLE)avg_frame_len) / (DOUBLE(current_bitrate) / 1000.0 * 125.0);
+         double seconds = (total_frames * (double)avg_frame_len) / (double(current_bitrate) / 1000.0 * 125.0);
          prv->TotalFrames = total_frames;
          return seconds * Self->BytesPerSecond;
       }

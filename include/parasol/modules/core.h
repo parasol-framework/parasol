@@ -3129,7 +3129,7 @@ struct Object { // Must be 64-bit aligned
       get(FieldID, result);
       return result;
    };
-   
+
    // Fetch an array field.  Result is a direct pointer to the data, do not free it.  Elements is set to the number of elements
 
    template <class T> ERR get(FIELD FieldID, T * &Result, int &Elements, bool TypeCheck = true) {

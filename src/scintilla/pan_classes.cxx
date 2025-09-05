@@ -164,7 +164,7 @@ double Scintilla::ElapsedTime::Duration(bool reset)
 {
    LARGE systime = PreciseTime() / 1000LL;
    LARGE lasttime = ((LARGE)bigBit<<32) + *(ULONG*)&littleBit;
-   DOUBLE elapsed = systime - lasttime;
+   double elapsed = systime - lasttime;
 
    if (reset) {
       bigBit = (long)(systime>>32);

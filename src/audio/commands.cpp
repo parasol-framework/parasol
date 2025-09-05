@@ -316,7 +316,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixPan(objAudio *Audio, LONG Handle, DOUBLE Pan)
+ERR MixPan(objAudio *Audio, LONG Handle, double Pan)
 {
    pf::Log log(__FUNCTION__);
 
@@ -424,12 +424,12 @@ ERR MixPlay(objAudio *Audio, LONG Handle, LONG Position)
          // Either playing sample before releasing, or playing has ended - check the first loop type.
 
          if (sample.OnStop.defined()) {
-            DOUBLE sec;
+            double sec;
             if (sample.Stream) {
                // NB: Accuracy is dependent on the StreamLength value being correct.
-               sec = DOUBLE((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / DOUBLE(channel->Frequency);
+               sec = double((sample.StreamLength - sample.PlayPos)>>sample_shift(sample.SampleType)) / double(channel->Frequency);
             }
-            else sec = DOUBLE(sample.SampleLength - Position) / DOUBLE(channel->Frequency);
+            else sec = double(sample.SampleLength - Position) / double(channel->Frequency);
             channel->EndTime = PreciseTime() + F2I(sec * 1000000.0);
          }
          else channel->EndTime = 0;
@@ -759,7 +759,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR MixVolume(objAudio *Audio, LONG Handle, DOUBLE Volume)
+ERR MixVolume(objAudio *Audio, LONG Handle, double Volume)
 {
    pf::Log log(__FUNCTION__);
 

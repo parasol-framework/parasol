@@ -340,8 +340,8 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
                action->SendArgs = FALSE;
             }
             else {
-               DOUBLE right  = msgdraw->X + msgdraw->Width;
-               DOUBLE bottom = msgdraw->Y + msgdraw->Height;
+               double right  = msgdraw->X + msgdraw->Width;
+               double bottom = msgdraw->Y + msgdraw->Height;
 
                if (x < msgdraw->X) msgdraw->X = x;
                if (y < msgdraw->Y) msgdraw->Y = y;
@@ -503,8 +503,8 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
                action->SendArgs = FALSE;
             }
             else {
-               DOUBLE right  = msginvalid->X + msginvalid->Width;
-               DOUBLE bottom = msginvalid->Y + msginvalid->Height;
+               double right  = msginvalid->X + msginvalid->Width;
+               double bottom = msginvalid->Y + msginvalid->Height;
 
                if (Args->X < msginvalid->X) msginvalid->X = Args->X;
                if (Args->Y < msginvalid->Y) msginvalid->Y = Args->Y;

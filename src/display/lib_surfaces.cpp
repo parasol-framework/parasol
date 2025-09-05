@@ -696,7 +696,7 @@ void move_layer_pos(SURFACELIST &List, LONG Src, LONG Dest)
 // This function is also useful for skipping the dimension limits normally imposed when resizing.
 
 ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG InsideWidth,
-   LONG InsideHeight, LONG BPP, DOUBLE RefreshRate, LONG DeviceFlags)
+   LONG InsideHeight, LONG BPP, double RefreshRate, LONG DeviceFlags)
 {
    if (!Width)  Width = Self->Width;
    if (!Height) Height = Self->Height;
@@ -769,7 +769,7 @@ ERR resize_layer(extSurface *Self, LONG X, LONG Y, LONG Width, LONG Height, LONG
 
    forbidDrawing();
 
-   struct acRedimension redimension = { (DOUBLE)X, (DOUBLE)Y, 0, (DOUBLE)Width, (DOUBLE)Height, (DOUBLE)BPP };
+   struct acRedimension redimension = { (double)X, (double)Y, 0, (double)Width, (double)Height, (double)BPP };
    NotifySubscribers(Self, AC::Redimension, &redimension, ERR::Okay);
 
    permitDrawing();
