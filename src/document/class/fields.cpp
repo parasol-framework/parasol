@@ -220,7 +220,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    }
    else Self->Error = ERR::AllocMemory;
 
-   report_event(Self, DEF::PATH, 0, NULL);
+   report_event(Self, DEF::PATH, 0, nullptr);
 
    return Self->Error;
 }
@@ -310,7 +310,7 @@ A Pretext will always survive document unloading and resets.  It can be removed 
 static ERR SET_Pretext(extDocument *Self, CSTRING Value)
 {
    if (!Value) {
-      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+      if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = nullptr; }
       return ERR::Okay;
    }
    else if (Self->PretextXML) {
@@ -432,7 +432,7 @@ static ERR GET_WorkingPath(extDocument *Self, CSTRING *Value)
 
       ResolvePath(buf, RSF::APPROXIMATE, &Self->WorkingPath);
    }
-   else { *Value = NULL; return ERR::NoData; }
+   else { *Value = nullptr; return ERR::NoData; }
 
    *Value = Self->WorkingPath.c_str();
    return ERR::Okay;

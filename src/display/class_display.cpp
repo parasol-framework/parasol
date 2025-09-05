@@ -361,7 +361,7 @@ static ERR DISPLAY_Free(extDisplay *Self)
       if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
          if (Self->WindowHandle) {
             XDestroyWindow(XDisplay, Self->XWindowHandle);
-            Self->WindowHandle = NULL;
+            Self->WindowHandle = nullptr;
          }
       }
    }
@@ -373,7 +373,7 @@ static ERR DISPLAY_Free(extDisplay *Self)
    if ((Self->Flags & SCR::CUSTOM_WINDOW) IS SCR::NIL) {
       if (Self->WindowHandle) {
          winDestroyWindow(Self->WindowHandle);
-         Self->WindowHandle = NULL;
+         Self->WindowHandle = nullptr;
       }
    }
 #endif
@@ -390,7 +390,7 @@ static ERR DISPLAY_Free(extDisplay *Self)
 
    // Free the display's video bitmap
 
-   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
+   if (Self->Bitmap) { FreeResource(Self->Bitmap); Self->Bitmap = nullptr; }
 
    Self->~extDisplay();
    return ERR::Okay;
@@ -413,7 +413,7 @@ static ERR DISPLAY_GetKey(extDisplay *Self, struct acGetKey *Args)
       // Field is in the format:  Resolution(Index, Format) Where 'Format' contains % symbols to indicate variable references.
 
       CSTRING str = Args->Key + 11;
-      LONG index = strtol(str, NULL, 0);
+      LONG index = strtol(str, nullptr, 0);
       while ((*str) and (*str != ')') and (*str != ',')) str++;
       if (*str IS ',') str++;
       while ((*str) and (*str <= 0x20)) str++;
@@ -1212,7 +1212,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
    bestweight = 0x7fffffff;
    for (i=0; modes[i] != 0xffff; i++) {
       modeinfo.dwSize = sizeof(modeinfo);
-      if (!glSNAP->Init.GetVideoModeInfoExt(modes[i], &modeinfo, display, NULL)) {
+      if (!glSNAP->Init.GetVideoModeInfoExt(modes[i], &modeinfo, display, nullptr)) {
          if (modeinfo.AttributesExt & gaIsPanningMode) continue;
          if (modeinfo.Attributes & gaIsTextMode) continue;
 
@@ -2122,7 +2122,7 @@ This string describes the display device that is connected to the user's graphic
 static ERR GET_Display(extDisplay *Self, CSTRING *Value)
 {
    if (Self->Display[0]) *Value = Self->Display;
-   else *Value = NULL;
+   else *Value = nullptr;
    return ERR::Okay;
 }
 
@@ -2138,7 +2138,7 @@ This string names the manufacturer of the user's display device.
 static ERR GET_DisplayManufacturer(extDisplay *Self, CSTRING *Value)
 {
    if (Self->DisplayManufacturer[0]) *Value = Self->DisplayManufacturer;
-   else *Value = NULL;
+   else *Value = nullptr;
    return ERR::Okay;
 }
 
@@ -2217,7 +2217,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
          XChangeWindowAttributes(XDisplay, Self->XWindowHandle, CWEventMask, &swa);
 
          XDestroyWindow(XDisplay, Self->XWindowHandle);
-         Self->WindowHandle = NULL;
+         Self->WindowHandle = nullptr;
 
          Self->Flags = Self->Flags ^ SCR::BORDERLESS;
 
@@ -2416,7 +2416,7 @@ information is not detectable, a `NULL` pointer is returned.
 static ERR GET_Manufacturer(extDisplay *Self, STRING *Value)
 {
    if (Self->Manufacturer[0]) *Value = Self->Manufacturer;
-   else *Value = NULL;
+   else *Value = nullptr;
    return ERR::Okay;
 }
 
@@ -2674,7 +2674,7 @@ Title: Sets the window title (hosted environments only).
 *********************************************************************************************************************/
 
 #if defined(_WIN32)
-static STRING glWindowTitle = NULL;
+static STRING glWindowTitle = nullptr;
 #endif
 
 static ERR GET_Title(extDisplay *Self, CSTRING *Value)
@@ -2796,24 +2796,24 @@ void alloc_display_buffer(extDisplay *Self)
 
 static const FieldArray DisplayFields[] = {
    // Re-compile the FDL if making changes
-   { "RefreshRate",    FDF_DOUBLE|FDF_RW, NULL, SET_RefreshRate },
-   { "Bitmap",         FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
-   { "Flags",          FDF_INTFLAGS|FDF_RW, NULL, SET_Flags, &clDisplayFlags },
-   { "Width",          FDF_INT|FDF_RW, NULL, SET_Width },
-   { "Height",         FDF_INT|FDF_RW, NULL, SET_Height },
-   { "X",              FDF_INT|FDF_RW, NULL, SET_X },
-   { "Y",              FDF_INT|FDF_RW, NULL, SET_Y },
+   { "RefreshRate",    FDF_DOUBLE|FDF_RW, nullptr, SET_RefreshRate },
+   { "Bitmap",         FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::BITMAP },
+   { "Flags",          FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, &clDisplayFlags },
+   { "Width",          FDF_INT|FDF_RW, nullptr, SET_Width },
+   { "Height",         FDF_INT|FDF_RW, nullptr, SET_Height },
+   { "X",              FDF_INT|FDF_RW, nullptr, SET_X },
+   { "Y",              FDF_INT|FDF_RW, nullptr, SET_Y },
    { "BmpX",           FDF_INT|FDF_RW },
    { "BmpY",           FDF_INT|FDF_RW },
-   { "Buffer",         FDF_OBJECTID|FDF_R|FDF_SYSTEM, NULL, NULL, CLASSID::BITMAP },
+   { "Buffer",         FDF_OBJECTID|FDF_R|FDF_SYSTEM, nullptr, nullptr, CLASSID::BITMAP },
    { "TotalMemory",    FDF_INT|FDF_R },
    { "MinHScan",       FDF_INT|FDF_R },
    { "MaxHScan",       FDF_INT|FDF_R },
    { "MinVScan",       FDF_INT|FDF_R },
    { "MaxVScan",       FDF_INT|FDF_R },
-   { "DisplayType",    FDF_INT|FDF_LOOKUP|FDF_R, NULL, NULL, &clDisplayDisplayType },
-   { "PowerMode",      FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clDisplayPowerMode },
-   { "PopOver",        FDF_OBJECTID|FDF_W, NULL, SET_PopOver },
+   { "DisplayType",    FDF_INT|FDF_LOOKUP|FDF_R, nullptr, nullptr, &clDisplayDisplayType },
+   { "PowerMode",      FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clDisplayPowerMode },
+   { "PopOver",        FDF_OBJECTID|FDF_W, nullptr, SET_PopOver },
    { "LeftMargin",     FDF_INT|FDF_R },
    { "RightMargin",    FDF_INT|FDF_R },
    { "TopMargin",      FDF_INT|FDF_R },

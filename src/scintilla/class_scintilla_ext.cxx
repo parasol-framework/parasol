@@ -327,7 +327,7 @@ void ScintillaParasol::Paste()
    objClipboard::create clipboard = { };
    if (clipboard.ok()) {
       CSTRING *files;
-      if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+      if (clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, &files, nullptr) IS ERR::Okay) {
          objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
          if (file.ok()) {
             LONG len, size;
@@ -352,7 +352,7 @@ void ScintillaParasol::Paste()
 
                   FreeResource(buffer);
                }
-               else error_dialog("Paste Error", NULL, ERR::AllocMemory);
+               else error_dialog("Paste Error", nullptr, ERR::AllocMemory);
             }
          }
          else {
@@ -745,7 +745,7 @@ void ScintillaParasol::panDraw(objSurface *TargetSurface, objBitmap *Bitmap)
    // Create a new surface object (SurfacePan)
 
    if ((surface = Scintilla::Surface::Allocate())) {
-      surface->Init(Bitmap, NULL);
+      surface->Init(Bitmap, nullptr);
       this->Paint(surface, paintrect);      // Get Scintilla to do the painting.  See Editor::paint()
       surface->Release();
       delete surface;

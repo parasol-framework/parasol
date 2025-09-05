@@ -313,7 +313,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    // Skip over the PKZIP header that will be written for this file (we will be updating the header later).
 
-   if (acWriteResult(Self->FileIO, NULL, HEAD_LENGTH + entry.Name.size() + entry.Comment.size()) != LONG(HEAD_LENGTH + entry.Name.size() + entry.Comment.size())) return ERR::Write;
+   if (acWriteResult(Self->FileIO, nullptr, HEAD_LENGTH + entry.Name.size() + entry.Comment.size()) != LONG(HEAD_LENGTH + entry.Name.size() + entry.Comment.size())) return ERR::Write;
 
    // Specify the limitations of our buffer so that the compression routine doesn't overwrite its boundaries.  Then
    // start the compression of the input file.
@@ -469,7 +469,7 @@ static ERR fast_scan_zip(extCompression *Self)
    log.traceBranch();
 
    if (acSeek(Self->FileIO, TAIL_LENGTH, SEEK::END) != ERR::Okay) return ERR::Seek; // Surface error, fail
-   if (acRead(Self->FileIO, &tail, TAIL_LENGTH, NULL) != ERR::Okay) return ERR::Read; // Surface error, fail
+   if (acRead(Self->FileIO, &tail, TAIL_LENGTH, nullptr) != ERR::Okay) return ERR::Read; // Surface error, fail
 
    if (0x06054b50 != ((ULONG *)&tail)[0]) {
       // Tail not available, use the slow scanner instead
@@ -486,9 +486,9 @@ static ERR fast_scan_zip(extCompression *Self)
 
    zipentry *list, *scan;
    LONG total_files = 0;
-   if (AllocMemory(tail.listsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&list, NULL) IS ERR::Okay) {
+   if (AllocMemory(tail.listsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&list, nullptr) IS ERR::Okay) {
       log.trace("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
-      if (acRead(Self->FileIO, list, tail.listsize, NULL) != ERR::Okay) {
+      if (acRead(Self->FileIO, list, tail.listsize, nullptr) != ERR::Okay) {
          FreeResource(list);
          return scan_zip(Self);
       }

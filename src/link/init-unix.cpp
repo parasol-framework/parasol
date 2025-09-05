@@ -21,10 +21,10 @@ This file is in the public domain and may be distributed and modified without re
 #endif
 
 struct CoreBase *CoreBase;
-static APTR glCoreHandle = NULL;
+static APTR glCoreHandle = nullptr;
 typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
 typedef void CLOSECORE(void);
-static CLOSECORE *CloseCore = NULL;
+static CLOSECORE *CloseCore = nullptr;
 #else
 static struct CoreBase *CoreBase; // Dummy
 #endif
@@ -105,7 +105,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Error     = ERR::Okay;
    info.Flags     = OPF::ARGS|OPF::ERROR;
 
-   if (OpenCore(&info, &CoreBase) IS ERR::Okay) return NULL;
+   if (OpenCore(&info, &CoreBase) IS ERR::Okay) return nullptr;
    else if (info.Error IS ERR::CoreVersion) return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    else return "Failed to initialise Parasol.  Run again with --log-info.";
 }

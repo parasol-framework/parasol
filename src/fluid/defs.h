@@ -129,7 +129,7 @@ struct eventsub {
 
    eventsub(eventsub &&move) noexcept :
       Function(move.Function), EventID(move.EventID), EventHandle(move.EventHandle) {
-      move.EventHandle = NULL;
+      move.EventHandle = nullptr;
    }
 
    eventsub& operator=(eventsub &&move) = default;

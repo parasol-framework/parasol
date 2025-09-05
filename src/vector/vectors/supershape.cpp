@@ -569,12 +569,12 @@ static const FieldDef clSuperDimensions[] = {
    { "FixedCenterY",  DMF::FIXED_CENTER_Y },
    { "ScaledCenterX", DMF::SCALED_CENTER_X },
    { "ScaledCenterY", DMF::SCALED_CENTER_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const ActionArray clVectorShapeActions[] = {
    { AC::NewObject, SUPER_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clVectorShapeFields[] = {

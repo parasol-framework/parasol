@@ -415,7 +415,7 @@ static void error_dialog(const std::string Title, const std::string Message)
          CSTRING *results;
          int size;
          if ((dialog->get(FID_Results, results, size) IS ERR::Okay) and (size > 0)) {
-            dialog_id = strtol(results[0], NULL, 0);
+            dialog_id = strtol(results[0], nullptr, 0);
          }
       }
    }
@@ -536,7 +536,7 @@ static void deactivate_edit(extDocument *Self, bool Redraw)
    LONG cell_index = Self->Stream.find_cell(Self->ActiveEditCellID);
 
    Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef = NULL;
+   Self->ActiveEditDef = nullptr;
    Self->CursorIndex.reset();
    Self->SelectIndex.reset();
 
@@ -819,7 +819,7 @@ static ERR link_callback(objVector *Vector, InputEvent *Event)
 
    auto Self = (extDocument *)CurrentContext();
 
-   ui_link *link = NULL;
+   ui_link *link = nullptr;
    for (unsigned i=0; i < Self->Links.size(); i++) {
       if (*Self->Links[i].origin.path IS Vector) {
          link = &Self->Links[i];

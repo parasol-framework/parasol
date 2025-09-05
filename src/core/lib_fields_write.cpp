@@ -134,7 +134,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
    BYTE *offset = (BYTE *)Object + Field->Offset;
 
    if ((SrcType & FD_STRING) and (Field->Flags & FD_RGB)) {
-      if (!Source) Source = "0,0,0,0"; // A string of NULL will 'clear' the colour (the alpha value will be zero)
+      if (!Source) Source = "0,0,0,0"; // A string of nullptr will 'clear' the colour (the alpha value will be zero)
       else if (Field->Flags & FD_INT) ((RGB8 *)offset)->Alpha = 255;
       else if (Field->Flags & FD_BYTE) ((RGB8 *)offset)->Alpha = 255;
       write_array((CSTRING)Source, Field->Flags, 4, offset);
@@ -425,7 +425,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
       if ((arraybuffer = malloc(strlen((CSTRING)Data) * 8))) {
          if (!Data) {
             if (Field->Flags & FD_RGB) {
-               Data = "0,0,0,0"; // A string of NULL will 'clear' the colour (the alpha value will be zero)
+               Data = "0,0,0,0"; // A string of nullptr will 'clear' the colour (the alpha value will be zero)
                Elements = write_array((CSTRING)Data, Field->Flags, Field->Arg, arraybuffer);
             }
             else Elements = 0;

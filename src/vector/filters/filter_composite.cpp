@@ -898,7 +898,7 @@ static const FieldDef clCompositeOperator[] = {
    { "Minus",      OP::MINUS },
    { "Subtract",   OP::SUBTRACT },
    { "Overlay",    OP::OVERLAY },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clCompositeFXFields[] = {

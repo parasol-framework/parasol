@@ -83,8 +83,8 @@ public:
 
       log.branch("Caching font %s : %d : %s", pPath, pFace.nominal_point_size, pStyle);
 
-      mData     = NULL;
-      mOutline  = NULL;
+      mData     = nullptr;
+      mOutline  = nullptr;
       OpenCount = 0;
       Result    = ERR::Okay;
       Header    = pFace;
@@ -262,7 +262,7 @@ public:
       }
 
       UBYTE *buffer;
-      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return NULL;
+      if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return nullptr;
 
       LONG pos = 0;
       for (WORD i=0; i < 256; i++) {
@@ -305,13 +305,13 @@ public:
          pf::Log log(__FUNCTION__);
          log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, LONG(StyleFlags), OpenCount);
       }
-      if (mData) { FreeResource(mData); mData = NULL; }
-      if (mOutline) { FreeResource(mOutline); mOutline = NULL; }
+      if (mData) { FreeResource(mData); mData = nullptr; }
+      if (mOutline) { FreeResource(mOutline); mOutline = nullptr; }
    }
 };
 
 static std::list<BitmapCache> glBitmapCache;
-static APTR glCacheTimer = NULL;
+static APTR glCacheTimer = nullptr;
 
 //********************************************************************************************************************
 // Assumes a cache lock is held on being called.
@@ -335,7 +335,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
       }
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -351,6 +351,6 @@ ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
       if (!it->OpenCount) it = glBitmapCache.erase(it);
       else it++;
    }
-   glCacheTimer = NULL;
+   glCacheTimer = nullptr;
    return ERR::Terminate;
 }

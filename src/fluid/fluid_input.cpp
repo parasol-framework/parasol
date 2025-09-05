@@ -165,7 +165,7 @@ static int input_keyboard(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.input");
       lua_setmetatable(Lua, -2);
 
-      APTR event = NULL;
+      APTR event = nullptr;
       if (sub_keyevent) SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, C_FUNCTION(key_event, input), &event);
 
       input->InputHandle = 0;
@@ -330,7 +330,7 @@ static int input_subscribe(lua_State *Lua)
 
       lua_pushvalue(Lua, lua_gettop(Lua)); // Take a copy of the Fluid.input object
       input->InputValue = luaL_ref(Lua, LUA_REGISTRYINDEX);
-      input->KeyEvent    = NULL;
+      input->KeyEvent    = nullptr;
       input->InputHandle = 0;
       input->Mask        = mask;
       input->Mode        = FIM_DEVICE;
@@ -365,10 +365,10 @@ static int input_unsubscribe(lua_State *Lua)
 
    if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
    if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
-   if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
+   if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = nullptr; }
    if (input->InputHandle) { gfx::UnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
 
-   input->Script = NULL;
+   input->Script = nullptr;
    input->Mode   = 0;
    return 0;
 }
@@ -388,7 +388,7 @@ static int input_destruct(lua_State *Lua)
       if (input->InputHandle) { gfx::UnsubscribeInput(input->InputHandle); input->InputHandle = 0; }
       if (input->InputValue)  { luaL_unref(Lua, LUA_REGISTRYINDEX, input->InputValue); input->InputValue = 0; }
       if (input->Callback)    { luaL_unref(Lua, LUA_REGISTRYINDEX, input->Callback); input->Callback = 0; }
-      if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = NULL; }
+      if (input->KeyEvent)    { UnsubscribeEvent(input->KeyEvent); input->KeyEvent = nullptr; }
 
       if (Lua->Script) { // Remove from the chain.
          auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -483,7 +483,7 @@ static void focus_event(evFocus *Event, LONG Size, lua_State *Lua)
          if (input->SurfaceID IS Event->FocusList[Event->TotalWithFocus+i]) {
             log.trace("Lost focus notification received for key events on surface #%d.", input->SurfaceID);
             UnsubscribeEvent(input->KeyEvent);
-            input->KeyEvent = NULL;
+            input->KeyEvent = nullptr;
             break;
          }
       }
@@ -508,14 +508,14 @@ void register_input_class(lua_State *Lua)
       { "subscribe",   input_subscribe },
       { "keyboard",    input_keyboard },
       { "requestItem", input_request_item },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    static const struct luaL_Reg inputlib_methods[] = {
       { "__gc",       input_destruct },
       { "__tostring", input_tostring },
       { "__index",    input_index },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    pf::Log log(__FUNCTION__);
@@ -526,6 +526,6 @@ void register_input_class(lua_State *Lua)
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
-   luaL_openlib(Lua, NULL, inputlib_methods, 0);
+   luaL_openlib(Lua, nullptr, inputlib_methods, 0);
    luaL_openlib(Lua, "input", inputlib_functions, 0);
 }

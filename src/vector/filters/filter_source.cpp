@@ -39,7 +39,7 @@ class extSourceFX : public extFilterEffect {
 
 static void notify_free_source(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
-   ((extSourceFX *)CurrentContext())->Source = NULL;
+   ((extSourceFX *)CurrentContext())->Source = nullptr;
 }
 
 /*********************************************************************************************************************
@@ -110,8 +110,8 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
       if ((Self->BitmapData) and (Self->DataSize < cache->LineWidth * canvas_height)) {
          FreeResource(Self->BitmapData);
-         Self->BitmapData = NULL;
-         cache->Data = NULL;
+         Self->BitmapData = nullptr;
+         cache->Data = nullptr;
       }
 
       if (!cache->Data) {
@@ -128,7 +128,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
       auto &t = filter->ClientVector->Transform;
       VectorMatrix matrix = {
-         .Next = NULL, .Vector = Self->Scene->Viewport,
+         .Next = nullptr, .Vector = Self->Scene->Viewport,
          .ScaleX = t.sx, .ShearY = t.shy, .ShearX = t.shx, .ScaleY = t.sy, .TranslateX = t.tx, .TranslateY = t.ty
       };
 
@@ -138,7 +138,7 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       auto const save_next = Self->Source->Next;
       Self->Scene->Viewport->Child = Self->Source;
       Self->Source->Parent = Self->Scene->Viewport;
-      Self->Source->Next = NULL;
+      Self->Source->Next = nullptr;
 
       filter->Disabled = true; // Turning off the filter is required to prevent infinite recursion.
 
@@ -149,10 +149,10 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
       acDraw(Self->Scene);
 
       filter->Disabled = false;
-      Self->Scene->Viewport->Child = NULL;
+      Self->Scene->Viewport->Child = nullptr;
       Self->Source->Parent = save_parent;
       Self->Source->Next   = save_next;
-      ((extVectorViewport *)Self->Scene->Viewport)->Matrices = NULL;
+      ((extVectorViewport *)Self->Scene->Viewport)->Matrices = nullptr;
       mark_dirty(Self->Source, RC::DIRTY);
    }
 
@@ -166,10 +166,10 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
 static ERR SOURCEFX_Free(extSourceFX *Self)
 {
-   if (Self->Bitmap)     { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Source)     { UnsubscribeAction(Self->Source, AC::Free); Self->Source = NULL; }
-   if (Self->Scene)      { FreeResource(Self->Scene); Self->Scene = NULL; }
-   if (Self->BitmapData) { FreeResource(Self->BitmapData); Self->BitmapData = NULL; }
+   if (Self->Bitmap)     { FreeResource(Self->Bitmap); Self->Bitmap = nullptr; }
+   if (Self->Source)     { UnsubscribeAction(Self->Source, AC::Free); Self->Source = nullptr; }
+   if (Self->Scene)      { FreeResource(Self->Scene); Self->Scene = nullptr; }
+   if (Self->BitmapData) { FreeResource(Self->BitmapData); Self->BitmapData = nullptr; }
    return ERR::Okay;
 }
 
@@ -274,7 +274,7 @@ static ERR SOURCEFX_SET_SourceName(extSourceFX *Self, CSTRING Value)
 
    if (Self->Source) {
       UnsubscribeAction(Self->Source, AC::Free);
-      Self->Source = NULL;
+      Self->Source = nullptr;
    }
 
    objVector *src;
@@ -308,8 +308,8 @@ static ERR SOURCEFX_GET_XMLDef(extSourceFX *Self, STRING *Value)
 
 static const FieldArray clSourceFXFields[] = {
    { "AspectRatio", FDF_VIRTUAL|FDF_INT|FDF_LOOKUP|FDF_RW, SOURCEFX_GET_AspectRatio, SOURCEFX_SET_AspectRatio, &clAspectRatio },
-   { "SourceName",  FDF_VIRTUAL|FDF_STRING|FDF_I, NULL, SOURCEFX_SET_SourceName },
-   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, NULL, SOURCEFX_SET_Source, CLASSID::VECTOR },
+   { "SourceName",  FDF_VIRTUAL|FDF_STRING|FDF_I, nullptr, SOURCEFX_SET_SourceName },
+   { "Source",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, nullptr, SOURCEFX_SET_Source, CLASSID::VECTOR },
    { "XMLDef",      FDF_VIRTUAL|FDF_STRING|FDF_ALLOC|FDF_R, SOURCEFX_GET_XMLDef },
    END_FIELD
 };

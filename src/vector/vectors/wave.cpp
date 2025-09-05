@@ -511,14 +511,14 @@ static const FieldDef clWaveClose[] = {
    { "None",   WVC::NONE },
    { "Top",    WVC::TOP },
    { "Bottom", WVC::BOTTOM },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clWaveStyle[] = {
    { "Curved",   WVS::CURVED },
    { "Angled",   WVS::ANGLED },
    { "Sawtooth", WVS::SAWTOOTH },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldDef clWaveDimensions[] = {
@@ -530,7 +530,7 @@ static const FieldDef clWaveDimensions[] = {
    { "ScaledWidth",   DMF::SCALED_WIDTH },
    { "ScaledX",       DMF::SCALED_X },
    { "ScaledY",       DMF::SCALED_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clWaveFields[] = {
@@ -555,7 +555,7 @@ static const ActionArray clWaveActions[] = {
    { AC::MoveToPoint,   WAVE_MoveToPoint },
    //{ AC::Redimension, WAVE_Redimension },
    { AC::Resize,      WAVE_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static ERR init_wave(void)

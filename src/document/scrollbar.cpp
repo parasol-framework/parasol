@@ -287,7 +287,7 @@ void scroll_mgr::scroll_bar::clear()
 {
    if (m_bar_vp) {
       FreeResource(m_bar_vp);
-      m_bar_vp = NULL;
+      m_bar_vp = nullptr;
    }
 }
 

@@ -48,9 +48,9 @@ GC glXGC = 0, glClipXGC = 0;
 XWindowAttributes glRootWindow;
 Window glDisplayWindow = 0;
 Cursor C_Default;
-OBJECTPTR modXRR = NULL;
+OBJECTPTR modXRR = nullptr;
 WORD glPlugin = FALSE;
-APTR glDGAVideo = NULL;
+APTR glDGAVideo = nullptr;
 
 #ifdef XRANDR_ENABLED
 bool glXRRAvailable = false;
@@ -161,7 +161,7 @@ static EGLSurface glEGLSurface = EGL_NO_SURFACE;
 static EGLDisplay glEGLDisplay = EGL_NO_DISPLAY;
 static EGLint glEGLWidth, glEGLHeight, glEGLDepth;
 static pthread_mutex_t glGraphicsMutex;
-static CSTRING glLastLock = NULL;
+static CSTRING glLastLock = nullptr;
 static LONG glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
@@ -175,18 +175,18 @@ static LONG glActualCount = 0;
 
 std::recursive_mutex glInputLock;
 
-objCompression *glCompress = NULL;
-static objCompression *glIconArchive = NULL;
+objCompression *glCompress = nullptr;
+static objCompression *glIconArchive = nullptr;
 struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
 bool glHeadless = false;
-OBJECTPTR glModule = NULL;
-OBJECTPTR clDisplay = NULL, clPointer = NULL, clBitmap = NULL, clClipboard = NULL, clSurface = NULL, clController = NULL;
+OBJECTPTR glModule = nullptr;
+OBJECTPTR clDisplay = nullptr, clPointer = nullptr, clBitmap = nullptr, clClipboard = nullptr, clSurface = nullptr, clController = nullptr;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
 bool glSixBitDisplay = false;
 TIMER glRefreshPointerTimer = 0;
-extBitmap *glComposite = NULL;
+extBitmap *glComposite = nullptr;
 static auto glDisplayType = DT::NATIVE;
 DOUBLE glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
 LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
@@ -194,7 +194,7 @@ LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hos
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
-UBYTE *glDemultiply = NULL;
+UBYTE *glDemultiply = nullptr;
 int glLastPort = -1;
 
 std::vector<OBJECTID> glFocusList;
@@ -351,7 +351,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
    LARGE start = PreciseTime();
    while ((retcode = pthread_mutex_trylock(mutex)) IS EBUSY) {
       if (PreciseTime() - start >= Timeout * 1000LL) return ETIMEDOUT;
-      nanosleep(&sleepytime, NULL);
+      nanosleep(&sleepytime, nullptr);
    }
 
    return retcode;
@@ -403,7 +403,7 @@ void unlock_graphics(void)
 {
    glLockCount--;
    if (!glLockCount) {
-      glLastLock = NULL;
+      glLastLock = nullptr;
       if (glEGLContext != EGL_NO_CONTEXT) { // Turn off eglMakeCurrent() so that other threads can use OpenGL
          eglMakeCurrent(glEGLDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
       }
@@ -420,7 +420,7 @@ void unlock_graphics(void)
 WORD glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
 
 #ifdef XDGA_AVAILABLE
-APTR glDGAMemory = NULL;
+APTR glDGAMemory = nullptr;
 
 LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 {
@@ -436,7 +436,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 
       glDGAAvailable = FALSE;
 
-      displayname = XDisplayName(NULL);
+      displayname = XDisplayName(nullptr);
       if ((startswith(displayname, ":")) or (startswith(displayname, "unix:")) ) {
          LONG events, errors, major, minor, screen;
 
@@ -499,7 +499,7 @@ XErrorHandler CatchRedirectError(Display *XDisplay, XErrorEvent *event)
 
 //********************************************************************************************************************
 
-const CSTRING glXProtoList[] = { NULL,
+const CSTRING glXProtoList[] = { nullptr,
 "CreateWindow","ChangeWindowAttributes","GetWindowAttributes","DestroyWindow","DestroySubwindows","ChangeSaveSet","ReparentWindow","MapWindow","MapSubwindows",
 "UnmapWindow","UnmapSubwindows","ConfigureWindow","CirculateWindow","GetGeometry","QueryTree","InternAtom","GetAtomName",
 "ChangeProperty","DeleteProperty","GetProperty","ListProperties","SetSelectionOwner","GetSelectionOwner","ConvertSelection","SendEvent",
@@ -537,7 +537,7 @@ XErrorHandler CatchXError(Display *XDisplay, XErrorEvent *XEvent)
 int CatchXIOError(Display *XDisplay)
 {
    pf::Log log("X11");
-   log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(NULL));
+   log.error("A fatal XIO error occurred in relation to display \"%s\".", XDisplayName(nullptr));
    return 0;
 }
 
@@ -836,7 +836,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Register a fake FD as input_event_loop() so that we can process input events on every ProcessMessages() cycle.
 
-   RegisterFD((HOSTHANDLE)-2, RFD::ALWAYS_CALL, input_event_loop, NULL);
+   RegisterFD((HOSTHANDLE)-2, RFD::ALWAYS_CALL, input_event_loop, nullptr);
 
    #ifdef _GLES_
       pthread_mutexattr_t attr;
@@ -899,7 +899,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
       glXFD = XConnectionNumber(XDisplay);
       fcntl(glXFD, F_SETFD, 1); // FD does not duplicate across exec()
-      RegisterFD(glXFD, RFD::READ|RFD::ALWAYS_CALL, X11ManagerLoop, NULL);
+      RegisterFD(glXFD, RFD::READ|RFD::ALWAYS_CALL, X11ManagerLoop, nullptr);
 
       // This function checks for DGA and also maps the video memory for us
 
@@ -1134,7 +1134,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    auto src = icon_path + "Default.zip";
    if ((glIconArchive = objCompression::create::local(fl::Path(src), fl::ArchiveName("icons"), fl::Flags(CMF::READ_ONLY)))) {
       // The icons: special volume is a simple reference to the archive path.
-      if (SetVolume("icons", "archive:icons/", "misc/picture", NULL, NULL, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
+      if (SetVolume("icons", "archive:icons/", "misc/picture", nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN) != ERR::Okay) return ERR::SetVolume;
    }
 
 #ifdef _WIN32 // Get any existing Windows clipboard content
@@ -1169,21 +1169,21 @@ static ERR MODExpunge(void)
    }
 
    if (glRefreshPointerTimer) { UpdateTimer(glRefreshPointerTimer, 0); glRefreshPointerTimer = 0; }
-   if (glComposite)           { FreeResource(glComposite); glComposite = NULL; }
-   if (glCompress)            { FreeResource(glCompress); glCompress = NULL; }
-   if (glDemultiply)          { FreeResource(glDemultiply); glDemultiply = NULL; }
+   if (glComposite)           { FreeResource(glComposite); glComposite = nullptr; }
+   if (glCompress)            { FreeResource(glCompress); glCompress = nullptr; }
+   if (glDemultiply)          { FreeResource(glDemultiply); glDemultiply = nullptr; }
 
    DeregisterFD((HOSTHANDLE)-2); // Disable input_event_loop()
 
 #ifdef __xwindows__
 
    if (!glHeadless) {
-      if (modXRR) { FreeResource(modXRR); modXRR = NULL; }
+      if (modXRR) { FreeResource(modXRR); modXRR = nullptr; }
 
       if (glXFD != -1) { DeregisterFD(glXFD); glXFD = -1; }
 
-      XSetErrorHandler(NULL);
-      XSetIOErrorHandler(NULL);
+      XSetErrorHandler(nullptr);
+      XSetIOErrorHandler(nullptr);
 
       if (XDisplay) {
          free_xcursors();
@@ -1194,7 +1194,7 @@ static ERR MODExpunge(void)
          // Closing the display causes a crash, so we're not doing it anymore ...
          /*
          xtmp = XDisplay;
-         XDisplay = NULL;
+         XDisplay = nullptr;
          XCloseDisplay(xtmp);
          */
       }
@@ -1218,7 +1218,7 @@ static ERR MODExpunge(void)
                         TAGEND);
 
       FreeResource(modAndroid);
-      modAndroid = NULL;
+      modAndroid = nullptr;
    }
 
 #elif _WIN32
@@ -1337,8 +1337,8 @@ ERR init_egl(void)
    ANativeWindow *window;
    if (!adGetWindow(&window)) {
       ANativeWindow_setBuffersGeometry(window, 0, 0, format);
-      glEGLSurface = eglCreateWindowSurface(glEGLDisplay, config, window, NULL);
-      glEGLContext = eglCreateContext(glEGLDisplay, config, NULL, NULL);
+      glEGLSurface = eglCreateWindowSurface(glEGLDisplay, config, window, nullptr);
+      glEGLContext = eglCreateContext(glEGLDisplay, config, nullptr, nullptr);
    }
    else {
       log.warning(ERR::SystemCall);
@@ -1559,6 +1559,6 @@ static STRUCTS glStructures = {
    { "SurfaceInfo",   sizeof(SurfaceInfoV2) }
 };
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_display_module() { return &ModHeader; }
 

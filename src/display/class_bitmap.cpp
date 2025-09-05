@@ -159,15 +159,15 @@ static ERR SET_Palette(extBitmap *, RGBPalette *);
 
 static const FieldDef clDataFlags[] = {
    { "Video", MEM::VIDEO }, { "Blit", MEM::TEXTURE }, { "NoClear", MEM::NO_CLEAR }, { "Data", 0 },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
-FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_INT }, { NULL, 0 } };
-FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCPixel[]  = { { "Value", FD_INT }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { NULL, 0 } };
-FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { NULL, 0 } };
-FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { NULL, 0 } };
+FDEF argsDrawUCPixel[]  = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_INT }, { nullptr, 0 } };
+FDEF argsDrawUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RGB }, { nullptr, 0 } };
+FDEF argsReadUCPixel[]  = { { "Value", FD_INT }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { nullptr, 0 } };
+FDEF argsReadUCRPixel[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "X", FD_INT }, { "Y", FD_INT }, { "Colour", FD_PTR|FD_RESULT|FD_RGB }, { nullptr, 0 } };
+FDEF argsDrawUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB }, { nullptr, 0 } };
+FDEF argsReadUCRIndex[] = { { "Void", FD_VOID  }, { "Bitmap", FD_OBJECTPTR }, { "Data", FD_PTR }, { "Colour", FD_PTR|FD_RGB|FD_RESULT }, { nullptr, 0 } };
 
 //********************************************************************************************************************
 // Surface locking routines.  These should only be called on occasions where you need to use the CPU to access graphics
@@ -358,8 +358,8 @@ static ERR alloc_shm(LONG Size, uint8_t **Data, LONG *ID)
       return ERR::Memory;
    }
 
-   auto addr = shmat(id, NULL, 0);
-   if ((addr != (APTR)-1) and (addr != NULL)) {
+   auto addr = shmat(id, nullptr, 0);
+   if ((addr != (APTR)-1) and (addr != nullptr)) {
       *Data = (uint8_t *)addr;
       *ID = id;
       return ERR::Okay;
@@ -373,7 +373,7 @@ static ERR alloc_shm(LONG Size, uint8_t **Data, LONG *ID)
 static void free_shm(APTR Address, LONG ID)
 {
    shmdt(Address);
-   shmctl(ID, IPC_RMID, NULL);
+   shmctl(ID, IPC_RMID, nullptr);
 }
 #endif
 
@@ -506,7 +506,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
 
       if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
          FreeResource(Self->Data);
-         Self->Data = NULL;
+         Self->Data = nullptr;
       }
 
       return ERR::Okay;
@@ -537,7 +537,7 @@ static ERR BITMAP_Compress(extBitmap *Self, struct bmp::Compress *Args)
    if (error IS ERR::Okay) { // Free the original data
       if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
          FreeResource(Self->Data);
-         Self->Data = NULL;
+         Self->Data = nullptr;
       }
 
       Self->Flags |= BMF::COMPRESSED;
@@ -772,7 +772,7 @@ static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
       SetOwner(glCompress, glModule);
    }
 
-   auto error = glCompress->decompressBuffer(Self->prvCompress, Self->Data, Self->Size, NULL);
+   auto error = glCompress->decompressBuffer(Self->prvCompress, Self->Data, Self->Size, nullptr);
    if (error IS ERR::BufferOverflow) error = ERR::Okay;
 
    if ((Args) and (Args->RetainData IS TRUE)) {
@@ -780,7 +780,7 @@ static ERR BITMAP_Decompress(extBitmap *Self, struct bmp::Decompress *Args)
    }
    else {
       FreeResource(Self->prvCompress);
-      Self->prvCompress = NULL;
+      Self->prvCompress = nullptr;
       Self->Flags &= ~BMF::COMPRESSED;
    }
 
@@ -982,7 +982,7 @@ static ERR BITMAP_Free(extBitmap *Self)
          XShmDetach(XDisplay, &Self->x11.ShmInfo);
          Self->x11.XShmImage = false;
          free_shm(Self->Data, Self->x11.ShmInfo.shmid);
-         Self->Data = NULL;
+         Self->Data = nullptr;
       }
 
       if (Self->x11.gc) {
@@ -993,14 +993,14 @@ static ERR BITMAP_Free(extBitmap *Self)
 
    if ((Self->Data) and (Self->prvAFlags & BF_DATA)) {
       FreeResource(Self->Data);
-      Self->Data = NULL;
+      Self->Data = nullptr;
    }
 
-   if (Self->prvCompress) { FreeResource(Self->prvCompress); Self->prvCompress = NULL; }
+   if (Self->prvCompress) { FreeResource(Self->prvCompress); Self->prvCompress = nullptr; }
 
    if (Self->ResolutionChangeHandle) {
       UnsubscribeEvent(Self->ResolutionChangeHandle);
-      Self->ResolutionChangeHandle = NULL;
+      Self->ResolutionChangeHandle = nullptr;
    }
 
    #ifdef __xwindows__
@@ -1011,14 +1011,14 @@ static ERR BITMAP_Free(extBitmap *Self)
 
       if (Self->x11.readable) {
          XDestroyImage(Self->x11.readable);
-         Self->x11.readable = NULL;
+         Self->x11.readable = nullptr;
       }
    #endif
 
    #ifdef _WIN32
       if (Self->win.Drawable) {
          winDeleteDC(Self->win.Drawable);
-         Self->win.Drawable = NULL;
+         Self->win.Drawable = nullptr;
       }
    #endif
 
@@ -1829,7 +1829,7 @@ setfields:
       XSync(XDisplay, False);
 
       free_shm(Self->Data, Self->x11.ShmInfo.shmid);
-      Self->Data = NULL;
+      Self->Data = nullptr;
 
       alloc_shm(size, &Self->Data, &Self->x11.ShmInfo.shmid);
 
@@ -1958,7 +1958,7 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 
    size = width * height * pcx.NumPlanes;
    if (AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-      acWrite(Args->Dest, &pcx, sizeof(pcx), NULL);
+      acWrite(Args->Dest, &pcx, sizeof(pcx), nullptr);
 
       LONG dp = 0;
       for (i=Self->Clip.Top; i < (Self->Clip.Bottom); i++) {
@@ -2045,7 +2045,7 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
          }
       }
 
-      acWrite(Args->Dest, buffer, dp, NULL);
+      acWrite(Args->Dest, buffer, dp, nullptr);
       FreeResource(buffer);
 
       // Setup palette
@@ -2060,7 +2060,7 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
             palette[j++] = Self->Palette->Col[i].Blue;
          }
 
-         acWrite(Args->Dest, palette, sizeof(palette), NULL);
+         acWrite(Args->Dest, palette, sizeof(palette), nullptr);
       }
 
       return ERR::Okay;
@@ -2659,7 +2659,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
       Self->ReadUCRIndex = MemReadRGBIndexPlanar;
       Self->DrawUCPixel  = MemDrawPixelPlanar;
       Self->DrawUCRPixel = DrawRGBPixelPlanar;
-      Self->DrawUCRIndex = NULL;
+      Self->DrawUCRIndex = nullptr;
       return ERR::Okay;
    }
 
@@ -2802,19 +2802,19 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
 #include "class_bitmap_def.c"
 
 static const FieldArray clBitmapFields[] = {
-   { "Palette",       FDF_POINTER|FDF_RW, NULL, SET_Palette },
+   { "Palette",       FDF_POINTER|FDF_RW, nullptr, SET_Palette },
    { "ColourFormat",  FDF_POINTER|FDF_STRUCT|FDF_R, NULL, NULL, "ColourFormat" },
-   { "DrawUCPixel",   FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCPixel },
-   { "DrawUCRPixel",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRPixel },
-   { "ReadUCPixel",   FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCPixel },
-   { "ReadUCRPixel",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRPixel },
-   { "ReadUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsReadUCRIndex },
-   { "DrawUCRIndex",  FDF_POINTER|FDF_R, NULL, NULL, &argsDrawUCRIndex },
-   { "Data",          FDF_POINTER|FDF_RI, NULL, SET_Data },
-   { "Width",         FDF_INT|FDF_RI, NULL, NULL },
-   { "ByteWidth",     FDF_INT|FDF_R, NULL, NULL },
-   { "Height",        FDF_INT|FDF_RI, NULL, NULL },
-   { "Type",          FDF_INT|FDF_RI|FDF_LOOKUP, NULL, NULL, &clBitmapType },
+   { "DrawUCPixel",   FDF_POINTER|FDF_R, nullptr, nullptr, &argsDrawUCPixel },
+   { "DrawUCRPixel",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsDrawUCRPixel },
+   { "ReadUCPixel",   FDF_POINTER|FDF_R, nullptr, nullptr, &argsReadUCPixel },
+   { "ReadUCRPixel",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsReadUCRPixel },
+   { "ReadUCRIndex",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsReadUCRIndex },
+   { "DrawUCRIndex",  FDF_POINTER|FDF_R, nullptr, nullptr, &argsDrawUCRIndex },
+   { "Data",          FDF_POINTER|FDF_RI, nullptr, SET_Data },
+   { "Width",         FDF_INT|FDF_RI, nullptr, nullptr },
+   { "ByteWidth",     FDF_INT|FDF_R, nullptr, nullptr },
+   { "Height",        FDF_INT|FDF_RI, nullptr, nullptr },
+   { "Type",          FDF_INT|FDF_RI|FDF_LOOKUP, nullptr, nullptr, &clBitmapType },
    { "LineWidth",     FDF_INT|FDF_R },
    { "PlaneMod",      FDF_INT|FDF_R },
    { "ClipLeft",      FDF_INT|FDF_RW },
@@ -2822,20 +2822,20 @@ static const FieldArray clBitmapFields[] = {
    { "ClipBottom",    FDF_INT|FDF_RW },
    { "ClipTop",       FDF_INT|FDF_RW },
    { "Size",          FDF_INT|FDF_R },
-   { "DataFlags",     FDF_INTFLAGS|FDF_RI, NULL, NULL, &clDataFlags },
+   { "DataFlags",     FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clDataFlags },
    { "AmtColours",    FDF_INT|FDF_RI },
-   { "Flags",         FDF_INTFLAGS|FDF_RI, NULL, NULL, &clBitmapFlags },
-   { "TransIndex",    FDF_INT|FDF_RW, NULL, SET_TransIndex },
+   { "Flags",         FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clBitmapFlags },
+   { "TransIndex",    FDF_INT|FDF_RW, nullptr, SET_TransIndex },
    { "BytesPerPixel", FDF_INT|FDF_RI },
    { "BitsPerPixel",  FDF_INT|FDF_RI },
    { "Position",      FDF_INT|FDF_R },
    { "Opacity",       FDF_INT|FDF_RW },
    { "BlendMode",     FDF_INT|FDF_RW|FDF_LOOKUP, nullptr, nullptr, &clBitmapBlendMode },
    { "DataID",        FDF_INT|FDF_SYSTEM|FDF_R },
-   { "TransColour",   FDF_RGB|FDF_RW, NULL, SET_Trans },
-   { "Bkgd",          FDF_RGB|FDF_RW, NULL, SET_Bkgd },
-   { "BkgdIndex",     FDF_INT|FDF_RW, NULL, SET_BkgdIndex },
-   { "ColourSpace",   FDF_INTFLAGS|FDF_RW, NULL, NULL, &clBitmapColourSpace },
+   { "TransColour",   FDF_RGB|FDF_RW, nullptr, SET_Trans },
+   { "Bkgd",          FDF_RGB|FDF_RW, nullptr, SET_Bkgd },
+   { "BkgdIndex",     FDF_INT|FDF_RW, nullptr, SET_BkgdIndex },
+   { "ColourSpace",   FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clBitmapColourSpace },
    // Virtual fields
    { "Clip",          FDF_POINTER|FDF_STRUCT|FDF_RW, GET_Clip, SET_Clip },
    { "Handle",        FDF_POINTER|FDF_SYSTEM|FDF_RW, GET_Handle, SET_Handle },

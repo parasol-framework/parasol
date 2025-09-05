@@ -140,7 +140,7 @@ obj(Pointer): Returns the address of the default pointer object.
 
 objPointer * AccessPointer(void)
 {
-   objPointer *pointer = NULL;
+   objPointer *pointer = nullptr;
 
    if (!glPointerID) {
       if (FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &glPointerID) IS ERR::Okay) {
@@ -337,8 +337,8 @@ ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 */
       if ((!OwnerID) or (OwnerID IS pointer->CursorOwnerID)) {
          // Restore the pointer to the given cursor image
-         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, NULL, pointer->CursorOwnerID);
-         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, NULL, OwnerID);
+         if (!OwnerID) gfx::SetCursor(0, CRF::RESTRICT, Cursor, nullptr, pointer->CursorOwnerID);
+         else gfx::SetCursor(0, CRF::RESTRICT, Cursor, nullptr, OwnerID);
 
          pointer->CursorOwnerID   = 0;
          pointer->CursorRelease   = 0;
@@ -349,7 +349,7 @@ ERR RestoreCursor(PTC Cursor, OBJECTID OwnerID)
 
       if (pointer->BufferOwner) {
          if (OwnerID != pointer->BufferOwner) {
-            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, NULL, pointer->BufferOwner);
+            gfx::SetCursor(pointer->BufferObject, pointer->BufferFlags, pointer->BufferCursor, nullptr, pointer->BufferOwner);
          }
          else pointer->BufferOwner = 0; // Owner and Buffer are identical, so clear due to restored pointer
       }
@@ -624,7 +624,7 @@ AccessObject: Failed to access the internally maintained image object.
 ERR SetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
 {
    // If the driver doesn't support custom cursors then divert to gfx::SetCursor()
-   return gfx::SetCursor(ObjectID, Flags, PTC::DEFAULT, NULL, OwnerID);
+   return gfx::SetCursor(ObjectID, Flags, PTC::DEFAULT, nullptr, OwnerID);
 }
 
 /*********************************************************************************************************************

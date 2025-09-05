@@ -209,12 +209,12 @@ void winGetDPI(int *HDPI, int *VDPI)
       FreeLibrary(hUser32);
    }
 
-   if (auto screen = GetDC(NULL)) {
+   if (auto screen = GetDC(nullptr)) {
       *HDPI = GetDeviceCaps(screen, LOGPIXELSX);
       *VDPI = GetDeviceCaps(screen, LOGPIXELSY);
       if (*HDPI < 96) *HDPI = 96;
       if (*VDPI < 96) *VDPI = 96;
-      ReleaseDC(NULL, screen);
+      ReleaseDC(nullptr, screen);
    }
 }
 
@@ -236,7 +236,7 @@ char GetMonitorSizeFromEDID(const HKEY hDevRegKey, short *WidthMm, short *Height
     int retValue;
 
     for (int i = 0, retValue = ERROR_SUCCESS; retValue != ERROR_NO_MORE_ITEMS; ++i) {
-        retValue = RegEnumValue ( hDevRegKey, i, &valueName[0], &AcutalValueNameLength, NULL, &dwType, EDIDdata, &edidsize);
+        retValue = RegEnumValue ( hDevRegKey, i, &valueName[0], &AcutalValueNameLength, nullptr, &dwType, EDIDdata, &edidsize);
         if (retValue != ERROR_SUCCESS || 0 != _tcscmp(valueName,_T("EDID"))) continue;
         *WidthMm  = ((EDIDdata[68] & 0xF0) << 4) + EDIDdata[66];
         *HeightMm = ((EDIDdata[68] & 0x0F) << 8) + EDIDdata[67];
@@ -249,14 +249,14 @@ char GetSizeForDevID(const char * *TargetDevID, short *WidthMm, short *HeightMm)
 {
     HDEVINFO devInfo = SetupDiGetClassDevsEx(
         &GUID_CLASS_MONITOR, //class GUID
-        NULL, //enumerator
-        NULL, //HWND
+        nullptr, //enumerator
+        nullptr, //HWND
         DIGCF_PRESENT, // Flags //DIGCF_ALLCLASSES|
-        NULL, // device info, create a new one.
-        NULL, // machine name, local machine
-        NULL);// reserved
+        nullptr, // device info, create a new one.
+        nullptr, // machine name, local machine
+        nullptr);// reserved
 
-    if (NULL == devInfo) return FALSE;
+    if (nullptr == devInfo) return FALSE;
 
     char bRes = FALSE;
 
@@ -357,8 +357,8 @@ static const LPCTSTR glWinCursors[] = {
    IDC_IBEAM,
    IDC_ARROW,
    IDC_NO,
-   NULL,        // The invisible cursor is the NULL type
-   NULL,
+   nullptr,        // The invisible cursor is the nullptr type
+   nullptr,
    IDC_SIZEALL
 };
 
@@ -384,8 +384,8 @@ void winSetClassCursor(HWND Window, HCURSOR Cursor)
 void winInitCursors(struct WinCursor *Cursor, int Total)
 {
    for (int i=0; i < Total; i++) {
-      if (glWinCursors[i]) Cursor[i].WinCursor = LoadCursor(NULL, glWinCursors[i]);
-      else Cursor[i].WinCursor = NULL;
+      if (glWinCursors[i]) Cursor[i].WinCursor = LoadCursor(nullptr, glWinCursors[i]);
+      else Cursor[i].WinCursor = nullptr;
    }
 
    glCursors = Cursor;
@@ -474,7 +474,7 @@ int winGetDisplaySettings(int *bits, int *bytes, int *amtcolours)
    devmode.dmSize = sizeof(DEVMODE);
    devmode.dmDriverExtra = 0;
 
-   if (EnumDisplaySettings(NULL, -1, &devmode)) {
+   if (EnumDisplaySettings(nullptr, -1, &devmode)) {
       *bits = devmode.dmBitsPerPel;
 
       if (*bits <= 8) *bits = 24; // Pretend that the screen is 24 bit even though it is 256 colours, as this produces better results
@@ -997,8 +997,8 @@ static LRESULT CALLBACK WindowProcedure(HWND window, UINT msgcode, WPARAM wParam
             hSubMenu = GetSubMenu(hMenu, 0);
             SetMenuDefaultItem(hSubMenu, IDM_DEFAULTCMD, FALSE);
             SetForegroundWindow(hMainDlg);         // Per KB Article Q135788
-            TrackPopupMenu(hSubMenu, TPM_LEFTBUTTON|TPM_RIGHTBUTTON|TPM_LEFTALIGN, point.x, point.y, 0, hWnd, NULL);
-            PostMessage(hMainDlg, WM_NULL, 0, 0);   // Per KB Article Q135788
+            TrackPopupMenu(hSubMenu, TPM_LEFTBUTTON|TPM_RIGHTBUTTON|TPM_LEFTALIGN, point.x, point.y, 0, hWnd, nullptr);
+            PostMessage(hMainDlg, WM_nullptr, 0, 0);   // Per KB Article Q135788
             DestroyMenu(hMenu);
 #endif
          }
@@ -1148,7 +1148,7 @@ int winCreateScreenClass(void)
       glCancelAutoPlayMsg = RegisterWindowMessage(TEXT("QueryCancelAutoPlay"));
    }
 
-   glDefaultCursor = LoadCursor(NULL, IDC_ARROW);
+   glDefaultCursor = LoadCursor(nullptr, IDC_ARROW);
 
    winclass.cbSize        = sizeof(winclass);
    winclass.style         = CS_DBLCLKS|CS_VREDRAW|CS_HREDRAW;
@@ -1157,17 +1157,17 @@ int winCreateScreenClass(void)
    winclass.cbWndExtra    = sizeof(struct winextra);
    winclass.hInstance     = glInstance;
    if (!(winclass.hIcon = LoadIcon(glInstance, MAKEINTRESOURCE(500)))) winclass.hIcon = LoadIcon(glInstance, IDI_APPLICATION);
-   winclass.hCursor       = NULL; //glDefaultCursor;
-   winclass.hbrBackground = NULL;
-   winclass.lpszMenuName  = NULL;
+   winclass.hCursor       = nullptr; //glDefaultCursor;
+   winclass.hbrBackground = nullptr;
+   winclass.lpszMenuName  = nullptr;
    winclass.lpszClassName = "ScreenClass";
-   winclass.hIconSm       = NULL;
+   winclass.hIconSm       = nullptr;
 
    if (RegisterClassEx(&winclass)) {
       glScreenClassInit = 1;
 
       if (!glOleInit) {
-         HRESULT result = OleInitialize(NULL);
+         HRESULT result = OleInitialize(nullptr);
          if (result == S_OK) glOleInit = 1; // 1 = Successful initialisation
          else if (result == S_FALSE) glOleInit = 2; // 2 = Attempted initialisation failed.
       }
@@ -1232,13 +1232,13 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
    if (Borderless) {
       if (!(Window = CreateWindowEx(
             (glTaskBar ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW) | (glStickToFront ? WS_EX_TOPMOST : 0),
-            "ScreenClass", (glTaskBar ? Name : NULL),
+            "ScreenClass", (glTaskBar ? Name : nullptr),
             WS_POPUP|WS_CLIPCHILDREN|WS_CLIPSIBLINGS|(Maximise ? WS_MAXIMIZE : 0),
             *X, *Y,
             CW_USEDEFAULT, CW_USEDEFAULT,
             (HWND)PopOver,
-            (HMENU)NULL,
-            glInstance, NULL))) return NULL;
+            (HMENU)nullptr,
+            glInstance, nullptr))) return nullptr;
    }
    else if (!(Window = CreateWindowEx(
       (glTaskBar ? WS_EX_APPWINDOW : 0) | WS_EX_WINDOWEDGE | (glStickToFront ? WS_EX_TOPMOST : 0),
@@ -1247,8 +1247,8 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
       *X, *Y,
       CW_USEDEFAULT, CW_USEDEFAULT,
       (HWND)PopOver,
-      (HMENU)NULL,
-      glInstance, NULL))) return NULL;
+      (HMENU)nullptr,
+      glInstance, nullptr))) return nullptr;
 
    // Set the width and height of the window
 
@@ -1281,13 +1281,13 @@ HWND winCreateScreen(HWND PopOver, int *X, int *Y, int *Width, int *Height, char
       SetLastError(0);
       if (!SetWindowLong(Window, GWL_EXSTYLE, GetWindowLong(Window, GWL_EXSTYLE) | WS_EX_LAYERED)) {
          if (!GetLastError()) {
-            return NULL;
+            return nullptr;
          }
       }
 
       if (!Composite) {
          if (!SetLayeredWindowAttributes(Window, 0, Opacity, LWA_ALPHA)) {
-            return NULL;
+            return nullptr;
          }
       }
    }
@@ -1323,7 +1323,7 @@ HWND winCreateChild(HWND Parent, int X, int Y, int Width, int Height)
 
       return Window;
    }
-   else return NULL;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -1388,7 +1388,7 @@ void winUpdateWindow(HWND hWnd)
 
 HINSTANCE winGetModuleHandle(void)
 {
-   return GetModuleHandle(NULL);
+   return GetModuleHandle(nullptr);
 }
 
 //********************************************************************************************************************
@@ -1397,7 +1397,7 @@ int winDestroyWindow(HWND window)
 {
    NOTIFYICONDATA notify;
 
-   if (window == glMainScreen) glMainScreen = NULL;
+   if (window == glMainScreen) glMainScreen = nullptr;
 
    ZeroMemory(&notify, sizeof(notify));
    notify.cbSize = sizeof(notify);
@@ -1559,7 +1559,7 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
          size.cy = rect.bottom - rect.top;
 
          if (auto dcMemory = CreateCompatibleDC(WindowDC)) {
-            if (auto bmp = CreateDIBSection(WindowDC, (BITMAPINFO *)&info, DIB_RGB_COLORS, (void **)&alpha_data, NULL, 0)) {
+            if (auto bmp = CreateDIBSection(WindowDC, (BITMAPINFO *)&info, DIB_RGB_COLORS, (void **)&alpha_data, nullptr, 0)) {
                //printf("bpp %d, XD %d, YD %d, Width %d, Height %d, X %d, Y %d, ScanHeight %d\n", (int)BPP, XDest, YDest, Width, Height, X, Y, ScanHeight);
 
                precalc_rgb(Data, alpha_data, ScanWidth, ScanHeight);
@@ -1578,7 +1578,7 @@ void win32RedrawWindow(HWND Window, HDC WindowDC, int X, int Y, int Width,
                auto pOldBitmap = SelectObject(dcMemory, bmp);
                SetDIBitsToDevice(dcMemory, XDest, YDest, Width, Height, X, ScanHeight - (Y + Height), 0, ScanHeight, alpha_data, (BITMAPINFO *)&info, DIB_RGB_COLORS);
 
-               UpdateLayeredWindow(Window, NULL, NULL, &size, dcMemory, &ptSrc, 0, &blend_alpha, ULW_ALPHA);
+               UpdateLayeredWindow(Window, nullptr, nullptr, &size, dcMemory, &ptSrc, 0, &blend_alpha, ULW_ALPHA);
 
                direct_blit = FALSE;
                SelectObject(dcMemory, pOldBitmap);
@@ -1606,7 +1606,7 @@ int winGetPixelFormat(int *redmask, int *greenmask, int *bluemask, int *alphamas
    // WARNING: Calling DescribePixelFormat() causes layered windows to flicker for some bizarre reason.  Therefore this routine has been modified so that DescribePixelFormat() is only called once.
 
    if (!mred) {
-      if (DescribePixelFormat(GetDC(NULL), 1, sizeof(PIXELFORMATDESCRIPTOR), &pfd)) {
+      if (DescribePixelFormat(GetDC(nullptr), 1, sizeof(PIXELFORMATDESCRIPTOR), &pfd)) {
          if (pfd.cRedBits <= 8) mred = formats[pfd.cRedBits] << pfd.cRedShift;
          if (pfd.cGreenBits <= 8) mgreen = formats[pfd.cGreenBits] << pfd.cGreenShift;
          if (pfd.cBlueBits <= 8) mblue = formats[pfd.cBlueBits] << pfd.cBlueShift;
@@ -1660,7 +1660,7 @@ int winBlit(HDC dest, int xdest, int ydest, int width, int height, HDC src, int 
 
 void * winCreateCompatibleDC(void)
 {
-   return CreateCompatibleDC(NULL);
+   return CreateCompatibleDC(nullptr);
 }
 
 //********************************************************************************************************************
@@ -1712,7 +1712,7 @@ void winDeleteDC(HDC hdc)
 
 HBITMAP winCreateBitmap(int width, int height, int bpp)
 {
-   return CreateBitmap(width, height, 1, bpp, NULL);
+   return CreateBitmap(width, height, 1, bpp, nullptr);
 }
 
 //********************************************************************************************************************
@@ -1722,7 +1722,7 @@ void winTerminate(void)
    winTerminateClipboard();
 
    if (glScreenClassInit) {
-      UnregisterClass("ScreenClass", GetModuleHandle(NULL));
+      UnregisterClass("ScreenClass", GetModuleHandle(nullptr));
       glScreenClassInit = 0;
    }
 

@@ -285,28 +285,28 @@ static int object_get(lua_State *Lua)
             else result = object_get_array(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_STRUCT) {
-            result = object_get_struct(Lua, obj_read(0, NULL, field), def);
+            result = object_get_struct(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_STRING) {
-            result = object_get_string(Lua, obj_read(0, NULL, field), def);
+            result = object_get_string(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_POINTER) {
             if (field->Flags & (FD_OBJECT|FD_LOCAL)) {
-               result = object_get_object(Lua, obj_read(0, NULL, field), def);
+               result = object_get_object(Lua, obj_read(0, nullptr, field), def);
             }
-            else result = object_get_ptr(Lua, obj_read(0, NULL, field), def);
+            else result = object_get_ptr(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_DOUBLE) {
-            result = object_get_double(Lua, obj_read(0, NULL, field), def);
+            result = object_get_double(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_INT64) {
-            result = object_get_large(Lua, obj_read(0, NULL, field), def);
+            result = object_get_large(Lua, obj_read(0, nullptr, field), def);
          }
          else if (field->Flags & FD_INT) {
             if (field->Flags & FD_UNSIGNED) {
-               result = object_get_ulong(Lua, obj_read(0, NULL, field), def);
+               result = object_get_ulong(Lua, obj_read(0, nullptr, field), def);
             }
-            else result = object_get_long(Lua, obj_read(0, NULL, field), def);
+            else result = object_get_long(Lua, obj_read(0, nullptr, field), def);
          }
 
          release_object(def);
@@ -373,7 +373,7 @@ static int object_set(lua_State *Lua)
 
       ERR error;
       if (type IS LUA_TNUMBER) error = obj->set(fieldhash, luaL_checknumber(Lua, 2));
-      else error = obj->set(fieldhash, luaL_optstring(Lua, 2, NULL));
+      else error = obj->set(fieldhash, luaL_optstring(Lua, 2, nullptr));
 
       release_object(def);
       lua_pushinteger(Lua, LONG(error));
@@ -390,7 +390,7 @@ static int object_setkey(lua_State *Lua)
 {
    auto def = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    if (auto fieldname = luaL_checkstring(Lua, 1)) {
-      auto value = luaL_optstring(Lua, 2, NULL);
+      auto value = luaL_optstring(Lua, 2, nullptr);
       if (auto obj = access_object(def)) {
          ERR error = acSetKey(obj, fieldname, value);
          release_object(def);
@@ -463,7 +463,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
                }
                else return ERR::Failed;
             }
-            else return target->set(field->FieldID, (APTR)NULL);
+            else return target->set(field->FieldID, (APTR)nullptr);
          }
          else if (type IS LUA_TSTRING) {
             return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -474,7 +474,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
             }
             else if (lua_tointeger(Lua, ValueIndex) IS 0) {
                // Setting pointer fields with numbers is only allowed if that number evaluates to zero (NULL)
-               return obj->set(field->FieldID, (APTR)NULL);
+               return obj->set(field->FieldID, (APTR)nullptr);
             }
             else return ERR::SetValueNotPointer;
          }
@@ -485,7 +485,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
             return obj->set(field->FieldID, fs->Data);
          }
          else if (type IS LUA_TNIL) {
-            return obj->set(field->FieldID, (APTR)NULL);
+            return obj->set(field->FieldID, (APTR)nullptr);
          }
          else return ERR::SetValueNotPointer;
       }

@@ -710,9 +710,9 @@ static ERR GET_Width(extFont *Self, LONG *Value)
 
    if ((!Self->prvStrWidth) or ((Self->Align & (ALIGN::HORIZONTAL|ALIGN::RIGHT)) != ALIGN::NIL) or (Self->WrapEdge)){
       if (Self->WrapEdge > 0) {
-         string_size(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, NULL);
+         string_size(Self, Self->String, FSS_ALL, Self->WrapEdge - Self->X, &Self->prvStrWidth, nullptr);
       }
-      else string_size(Self, Self->String, FSS_ALL, 0, &Self->prvStrWidth, NULL);
+      else string_size(Self, Self->String, FSS_ALL, 0, &Self->prvStrWidth, nullptr);
    }
 
    *Value = Self->prvStrWidth;
@@ -1092,21 +1092,21 @@ static const FieldDef AlignFlags[] = {
    { "Bottom",     ALIGN::BOTTOM     }, { "Top",      ALIGN::TOP },
    { "Horizontal", ALIGN::HORIZONTAL }, { "Vertical", ALIGN::VERTICAL },
    { "Center",     ALIGN::CENTER     }, { "Middle",   ALIGN::MIDDLE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clFontFields[] = {
    { "Point",        FDF_DOUBLE|FDF_RW, GET_Point, SET_Point },
    { "GlyphSpacing", FDF_DOUBLE|FDF_RW },
-   { "Bitmap",       FDF_OBJECT|FDF_RW, NULL, NULL, CLASSID::BITMAP },
-   { "String",       FDF_STRING|FDF_RW, NULL, SET_String },
-   { "Path",         FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "Style",        FDF_STRING|FDF_RI, NULL, SET_Style },
-   { "Face",         FDF_STRING|FDF_RI, NULL, SET_Face },
+   { "Bitmap",       FDF_OBJECT|FDF_RW, nullptr, nullptr, CLASSID::BITMAP },
+   { "String",       FDF_STRING|FDF_RW, nullptr, SET_String },
+   { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "Style",        FDF_STRING|FDF_RI, nullptr, SET_Style },
+   { "Face",         FDF_STRING|FDF_RI, nullptr, SET_Face },
    { "Outline",      FDF_RGB|FDF_RW },
    { "Underline",    FDF_RGB|FDF_RW },
    { "Colour",       FDF_RGB|FDF_RW },
-   { "Flags",        FDF_INTFLAGS|FDF_RW, NULL, SET_Flags, clFontFlags },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, clFontFlags },
    { "Gutter",       FDF_INT|FDF_RI },
    { "LineSpacing",  FDF_INT|FDF_RW },
    { "X",            FDF_INT|FDF_RW },
@@ -1117,7 +1117,7 @@ static const FieldArray clFontFields[] = {
    { "Height",       FDF_INT|FDF_RI },
    { "Leading",      FDF_INT|FDF_R },
    { "MaxHeight",    FDF_INT|FDF_RI },
-   { "Align",        FDF_INTFLAGS|FDF_RW, NULL, NULL, AlignFlags },
+   { "Align",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, AlignFlags },
    { "AlignWidth",   FDF_INT|FDF_RW },
    { "AlignHeight",  FDF_INT|FDF_RW },
    { "Ascent",       FDF_INT|FDF_R },
@@ -1127,7 +1127,7 @@ static const FieldArray clFontFields[] = {
    { "Bold",         FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Bold, SET_Bold },
    { "Italic",       FDF_VIRTUAL|FDF_INT|FDF_RW, GET_Italic, SET_Italic },
    { "LineCount",    FDF_VIRTUAL|FDF_INT|FDF_R, GET_LineCount },
-   { "Location",     FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RW, NULL, SET_Path },
+   { "Location",     FDF_VIRTUAL|FDF_STRING|FDF_SYNONYM|FDF_RW, nullptr, SET_Path },
    { "Opacity",      FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, GET_Opacity, SET_Opacity },
    { "Width",        FDF_VIRTUAL|FDF_INT|FDF_R, GET_Width },
    { "YOffset",      FDF_VIRTUAL|FDF_INT|FDF_R, GET_YOffset },

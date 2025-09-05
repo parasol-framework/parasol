@@ -210,7 +210,7 @@ static const ActionArray clTransitionActions[] = {
    { AC::Free,      TRANSITION_Free },
    { AC::Init,      TRANSITION_Init },
    { AC::NewObject, TRANSITION_NewObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clTransitionFields[] = {

@@ -46,8 +46,8 @@ rendered image size.
 
 using namespace pf;
 
-static OBJECTPTR clPicture = NULL;
-static OBJECTPTR modDisplay = NULL;
+static OBJECTPTR clPicture = nullptr;
+static OBJECTPTR modDisplay = nullptr;
 static THREADVAR bool tlError = false;
 
 JUMPTABLE_CORE
@@ -103,8 +103,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (clPicture)  { FreeResource(clPicture); clPicture = NULL; }
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
+   if (clPicture)  { FreeResource(clPicture); clPicture = nullptr; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
    return ERR::Okay;
 }
 
@@ -138,9 +138,9 @@ static ERR PICTURE_Activate(extPicture *Self)
    tlError = false;
 
    auto bmp = Self->Bitmap;
-   png_structp read_ptr = NULL;
-   png_infop info_ptr = NULL;
-   png_infop end_info = NULL;
+   png_structp read_ptr = nullptr;
+   png_infop info_ptr = nullptr;
+   png_infop end_info = nullptr;
 
    if (!Self->prvFile) {
       CSTRING path;
@@ -166,7 +166,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
    int bit_depth, total_bit_depth, color_type;
    png_uint_32 png_width, png_height;
-   png_get_IHDR(read_ptr, info_ptr, &png_width, &png_height, &bit_depth, &color_type, NULL, NULL, NULL);
+   png_get_IHDR(read_ptr, info_ptr, &png_width, &png_height, &bit_depth, &color_type, nullptr, nullptr, nullptr);
    if (tlError) goto exit;
 
    bmp->Width  = png_width;
@@ -311,7 +311,7 @@ static ERR PICTURE_Activate(extPicture *Self)
 
    if (error IS ERR::Okay) {
       png_read_end(read_ptr, end_info);
-      if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
+      if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = nullptr; }
    }
    else {
 exit:
@@ -327,9 +327,9 @@ exit:
 
 static ERR PICTURE_Free(extPicture *Self)
 {
-   if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = NULL; }
-   if (Self->Bitmap)  { FreeResource(Self->Bitmap); Self->Bitmap = NULL; }
-   if (Self->Mask)    { FreeResource(Self->Mask); Self->Mask = NULL; }
+   if (Self->prvFile) { FreeResource(Self->prvFile); Self->prvFile = nullptr; }
+   if (Self->Bitmap)  { FreeResource(Self->Bitmap); Self->Bitmap = nullptr; }
+   if (Self->Mask)    { FreeResource(Self->Mask); Self->Mask = nullptr; }
    Self->~extPicture();
    return ERR::Okay;
 }
@@ -456,9 +456,9 @@ static ERR PICTURE_Query(extPicture *Self)
 
    objBitmap *Bitmap = Self->Bitmap;
    ERR error = ERR::Failed;
-   png_structp read_ptr = NULL;
-   png_infop info_ptr = NULL;
-   png_infop end_info = NULL;
+   png_structp read_ptr = nullptr;
+   png_infop info_ptr = nullptr;
+   png_infop end_info = nullptr;
    tlError = false;
 
    // Open the data file
@@ -483,7 +483,7 @@ static ERR PICTURE_Query(extPicture *Self)
 
    png_set_read_status_fn(read_ptr, read_row_callback); if (tlError) goto exit;
    png_read_info(read_ptr, info_ptr); if (tlError) goto exit;
-   png_get_IHDR(read_ptr, info_ptr, &width, &height, &bit_depth, &color_type, NULL, NULL, NULL); if (tlError) goto exit;
+   png_get_IHDR(read_ptr, info_ptr, &width, &height, &bit_depth, &color_type, nullptr, nullptr, nullptr); if (tlError) goto exit;
 
    if (!Bitmap->Width)  Bitmap->Width  = width;
    if (!Bitmap->Height) Bitmap->Height = height;
@@ -583,7 +583,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    // Setup the PNG file
 
-   png_set_write_fn(write_ptr, file, parasol_write_callback, NULL);
+   png_set_write_fn(write_ptr, file, parasol_write_callback, nullptr);
 
    png_set_write_status_fn(write_ptr, write_row_callback);
    if (tlError) {
@@ -782,7 +782,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       }
    }
 
-   png_write_end(write_ptr, NULL);
+   png_write_end(write_ptr, nullptr);
 
    error = ERR::Okay;
 
@@ -1163,15 +1163,15 @@ void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 
 void png_set_read_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr read_data_fn)
 {
-   if (png_ptr IS NULL) return;
+   if (png_ptr IS nullptr) return;
    png_ptr->io_ptr = io_ptr;
    png_ptr->read_data_fn = read_data_fn;
-   png_ptr->output_flush_fn = NULL;
+   png_ptr->output_flush_fn = nullptr;
 }
 
 void png_set_write_fn(png_structp png_ptr, png_voidp io_ptr, png_rw_ptr write_data_fn, png_flush_ptr output_flush_fn)
 {
-   if (png_ptr IS NULL) return;
+   if (png_ptr IS nullptr) return;
    png_ptr->io_ptr = io_ptr;
    png_ptr->write_data_fn = write_data_fn;
    png_ptr->output_flush_fn = output_flush_fn;
@@ -1242,7 +1242,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
       log.trace("Greyscale image source.");
       rgb.Alpha = 255;
       for (png_uint_32 y=0; y < PngHeight; y++) {
-         png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+         png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
          for (png_uint_32 x=0; x < PngWidth; x++) {
             rgb.Red   = row[x];
             rgb.Green = row[x];
@@ -1257,14 +1257,14 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
       while (passes > 0) {
          if (Bitmap->BitsPerPixel IS 8) {
             for (png_uint_32 y=0; y < PngHeight; y++) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+               png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
                for (png_uint_32 x=0; x < PngWidth; x++) Bitmap->DrawUCPixel(Bitmap, x, y, row[x]);
             }
          }
          else {
             rgb.Alpha = 255;
             for (png_uint_32 y=0; y < PngHeight; y++) {
-               png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+               png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
                for (png_uint_32 x=0; x < PngWidth; x++) {
                   Bitmap->DrawUCRPixel(Bitmap, x, y, &Bitmap->Palette->Col[row[x]]);
                }
@@ -1280,7 +1280,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
 
       while (passes > 0) {
          for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+            png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
             i = 0;
             for (png_uint_32 x=0; x < PngWidth; x++) {
                Bitmap->DrawUCRPixel(Bitmap, x, y, (RGB8 *)(row+i));
@@ -1301,7 +1301,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
       while (passes > 0) {
          rgb.Alpha = 255;
          for (png_uint_32 y=0; y < PngHeight; y++) {
-            png_read_row(ReadPtr, row_pointers, NULL); if (tlError) goto exit;
+            png_read_row(ReadPtr, row_pointers, nullptr); if (tlError) goto exit;
             i = 0;
             for (png_uint_32 x=0; x < PngWidth; x++) {
                rgb.Red   = row[i++];
@@ -1324,9 +1324,9 @@ exit:
 #include "picture_def.c"
 
 static const FieldArray clFields[] = {
-   { "Bitmap",        FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
-   { "Mask",          FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::BITMAP },
-   { "Flags",         FDF_INTFLAGS|FDF_RW, NULL, NULL, &clPictureFlags },
+   { "Bitmap",        FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::BITMAP },
+   { "Mask",          FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::BITMAP },
+   { "Flags",         FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clPictureFlags },
    { "DisplayHeight", FDF_INT|FDF_RW },
    { "DisplayWidth",  FDF_INT|FDF_RW },
    { "Quality",       FDF_INT|FDF_RW },
@@ -1366,6 +1366,6 @@ static ERR create_picture_class(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_picture_module() { return &ModHeader; }
 

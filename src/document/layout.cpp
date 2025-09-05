@@ -62,10 +62,10 @@ private:
 
    std::vector<doc_clip> m_clips;
 
-   bc_row *m_row = NULL;                 // Active table row (a persistent state is required in case of loop back)
-   font_entry *m_font = NULL;
-   RSTREAM *m_stream = NULL;
-   objVectorViewport *m_viewport = NULL; // Target viewport (the page)
+   bc_row *m_row = nullptr;                 // Active table row (a persistent state is required in case of loop back)
+   font_entry *m_font = nullptr;
+   RSTREAM *m_stream = nullptr;
+   objVectorViewport *m_viewport = nullptr; // Target viewport (the page)
    padding m_margins;
 
    double m_cursor_x = 0, m_cursor_y = 0; // Insertion point of the next text character or vector object
@@ -1395,7 +1395,7 @@ extend_page:
    reset();
 
    last_height  = page_height;
-   table        = NULL;
+   table        = nullptr;
    edit_segment = 0;
    check_wrap   = false;  // true if a wordwrap or collision check is required
 
@@ -1405,7 +1405,7 @@ extend_page:
    m_cursor_y       = m_margins.top;
    m_line_seg_start = m_segments.size();
    m_font           = *Font;
-   m_space_width    = vec::CharWidth(m_font->handle, ' ', 0, NULL);
+   m_space_width    = vec::CharWidth(m_font->handle, ' ', 0, nullptr);
    m_line_count     = 0;
 
    m_word_index.reset();

@@ -17,7 +17,7 @@ This program tests the locking of private objects between threads.
 using namespace pf;
 
 CSTRING ProgName = "ObjectLocking";
-static volatile OBJECTPTR glConfig = NULL;
+static volatile OBJECTPTR glConfig = nullptr;
 static ULONG glTotalThreads = 8;
 static ULONG glLockAttempts = 200;
 static LONG glAccessGap = 200000;
@@ -66,7 +66,7 @@ static void * thread_entry(void *Arg)
                #else
                ReleaseObject(glConfig);
                #endif
-               glConfig = NULL;
+               glConfig = nullptr;
                break;
             }
          }
@@ -86,7 +86,7 @@ static void * thread_entry(void *Arg)
    }
 
    log.msg("----- Thread %d is finished.", info->index);
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -104,15 +104,15 @@ int main(int argc, CSTRING *argv)
    if ((CurrentTask()->get(FID_Parameters, args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (iequals(args[0][i], "-threads")) {
-            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-attempts")) {
-            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-gap")) {
-            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-terminate")) glTerminateObject = true;
@@ -131,7 +131,7 @@ int main(int argc, CSTRING *argv)
 
    for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
-      pthread_create(&glThreads[i].thread, NULL, &thread_entry, &glThreads[i]);
+      pthread_create(&glThreads[i].thread, nullptr, &thread_entry, &glThreads[i]);
    }
 
    // Main block now waits for all threads to terminate before it exits.
@@ -141,7 +141,7 @@ int main(int argc, CSTRING *argv)
    log.msg("Waiting for thread completion.");
 
    for (unsigned i=0; i < glTotalThreads; i++) {
-      pthread_join(glThreads[i].thread, NULL);
+      pthread_join(glThreads[i].thread, nullptr);
    }
 
    FreeResource(glConfig);

@@ -73,7 +73,7 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
    // Find the struct definition if this array references one.  Note that struct arrays can be pointer based if
    // FD_POINTER is used, otherwise it is presumed that they are sequential.
 
-   struct_record *sdef = NULL;
+   struct_record *sdef = nullptr;
    if (FieldType & FD_STRUCT) {
       if (!StructName) { lua_pushnil(Lua); return; }
 
@@ -248,7 +248,7 @@ static int array_new(lua_State *Lua)
       }
       else if (auto total = lua_tointeger(Lua, 1)) {
          int fieldtype;
-         CSTRING s_name = NULL;
+         CSTRING s_name = nullptr;
          switch (strihash(type)) {
             case HASH_LONG:
             case HASH_INTEGER: fieldtype = FD_INT; break;
@@ -274,7 +274,7 @@ static int array_new(lua_State *Lua)
                }
          }
 
-         make_array(Lua, fieldtype, s_name, NULL, total, true);
+         make_array(Lua, fieldtype, s_name, nullptr, total, true);
          return 1;
       }
       else luaL_argerror(Lua, 1, "Array size > 0 required.");
@@ -680,7 +680,7 @@ static int array_destruct(lua_State *Lua)
 
    if ((a) and (a->Allocated)) {
       FreeResource(a->ptrPointer);
-      a->ptrPointer = NULL;
+      a->ptrPointer = nullptr;
       a->Allocated = FALSE;
       a->Total = 0;
       a->Type = 0;
@@ -721,7 +721,7 @@ void register_array_class(lua_State *Lua)
 
    static const struct luaL_Reg functions[] = {
       { "new",  array_new },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    static const struct luaL_Reg methods[] = {
@@ -730,7 +730,7 @@ void register_array_class(lua_State *Lua)
       { "__len",      array_len },
       { "__gc",       array_destruct },
       { "__tostring", array_tostring },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    log.trace("Registering array interface.");
@@ -739,7 +739,7 @@ void register_array_class(lua_State *Lua)
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // Push the Fluid.array metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
-   luaL_openlib(Lua, NULL, methods, 0);
+   luaL_openlib(Lua, nullptr, methods, 0);
 
    luaL_openlib(Lua, "array", functions, 0);
 }

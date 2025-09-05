@@ -14,10 +14,10 @@ extVectorViewport * get_parent_view(extVector *Vector)
             return Vector->ParentView;
          }
          else if (node->Parent->Class->BaseClassID IS CLASSID::VECTOR) node = (extVector *)(node->Parent);
-         else return NULL;
+         else return nullptr;
       }
    }
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -357,7 +357,7 @@ void gen_vector_path(extVector *Vector)
       }
       else if (Vector->FillRaster) {
          delete Vector->FillRaster;
-         Vector->FillRaster = NULL;
+         Vector->FillRaster = nullptr;
       }
 
       if (Vector->Stroked) {
@@ -387,7 +387,7 @@ void gen_vector_path(extVector *Vector)
       }
       else if (Vector->StrokeRaster) {
          delete Vector->StrokeRaster;
-         Vector->StrokeRaster = NULL;
+         Vector->StrokeRaster = nullptr;
       }
 
       Vector->Dirty &= ~RC::FINAL_PATH;

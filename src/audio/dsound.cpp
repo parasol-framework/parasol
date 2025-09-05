@@ -135,7 +135,7 @@ extern "C" const char * sndCreateBuffer(Object *Object, void *Wave, int BufferLe
       return "CreateSoundBuffer() failed to create WAVE audio buffer.";
    }
 
-   if (Stream) return NULL;
+   if (Stream) return nullptr;
 
    // Fill the buffer with audio content completely if it's not streamed.
 

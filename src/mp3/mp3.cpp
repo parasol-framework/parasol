@@ -28,8 +28,8 @@ using namespace pf;
 JUMPTABLE_CORE
 JUMPTABLE_AUDIO
 
-static OBJECTPTR modAudio = NULL;
-static OBJECTPTR clMP3 = NULL;
+static OBJECTPTR modAudio = nullptr;
+static OBJECTPTR clMP3 = nullptr;
 
 const LONG COMMENT_TRACK = 29;
 
@@ -301,7 +301,7 @@ static ERR MP3_Free(objSound *Self)
    prvMP3 *prv;
    if (!(prv = (prvMP3 *)Self->ChildPrivate)) return ERR::Okay;
 
-   if (prv->File) { FreeResource(prv->File); prv->File = NULL; }
+   if (prv->File) { FreeResource(prv->File); prv->File = nullptr; }
 
    return ERR::Okay;
 }
@@ -371,7 +371,7 @@ static ERR MP3_Init(objSound *Self)
       }
    }
    else {
-      FreeResource(Self->ChildPrivate); Self->ChildPrivate = NULL;
+      FreeResource(Self->ChildPrivate); Self->ChildPrivate = nullptr;
       return ERR::NoSupport;
    }
 
@@ -676,7 +676,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
    prv->File->get(FID_Size, filesize);
 
    UBYTE *buffer;
-   if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, NULL) IS ERR::Okay) {
+   if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, nullptr) IS ERR::Okay) {
       // Load MP3 data from the file
 
       prv->File->seekStart(prv->SeekOffset);
@@ -860,7 +860,7 @@ static const struct ActionArray clActions[] = {
    { AC::Init, MP3_Init },
    { AC::Read, MP3_Read },
    { AC::Seek, MP3_Seek },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************
@@ -888,11 +888,11 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (clMP3) { FreeResource(clMP3); clMP3 = NULL; }
+   if (clMP3) { FreeResource(clMP3); clMP3 = nullptr; }
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, NULL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr)
 extern "C" struct ModHeader * register_mp3_module() { return &ModHeader; }

@@ -404,9 +404,10 @@
     <field>
       <name>Flags</name>
       <comment>File flags and options.</comment>
-      <access read="R" write="I">Read/Init</access>
+      <access read="R" write="S">Read/Set</access>
       <type lookup="FL">FL</type>
       <description>
+<p>Note: If setting flags post-initialisation, the following restrictions apply: 1. The file must not have been activated (opened) yet; 2. Only the <code>NEW</code>, <code>READ</code> and <code>WRITE</code> flags can be utilised.</p>
 <types lookup="FL"/>
       </description>
     </field>

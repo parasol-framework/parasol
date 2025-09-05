@@ -112,8 +112,8 @@ JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 JUMPTABLE_FONT
 
-static OBJECTPTR clScintilla = NULL;
-static OBJECTPTR modDisplay = NULL, modFont = NULL, modVector = NULL;
+static OBJECTPTR clScintilla = nullptr;
+static OBJECTPTR modDisplay = nullptr, modFont = nullptr, modVector = nullptr;
 //static OBJECTID glInputID = 0;
 static RGB8 glHighlight = { 220, 220, 255 };
 extern OBJECTPTR clScintillaSearch;
@@ -126,7 +126,7 @@ struct styledef {
 
 // This is bad - the fonts should be stored in the class.
 
-static OBJECTPTR glFont = NULL, glBoldFont = NULL, glItalicFont = NULL, glBIFont = NULL;
+static OBJECTPTR glFont = nullptr, glBoldFont = nullptr, glItalicFont = nullptr, glBIFont = nullptr;
 
 static const struct {
    CSTRING File;
@@ -153,7 +153,7 @@ static const struct {
    { "*.vb",           SCLEX::VB },
    { "*.vbscript",     SCLEX::VBSCRIPT },
    { "*.xml",          SCLEX::XML },
-   { NULL, SCLEX::NIL }
+   { nullptr, SCLEX::NIL }
 };
 
 #define SCICOLOUR(red,green,blue) (((UBYTE)(blue))<<16)|(((UBYTE)(green))<<8)|((UBYTE)(red))
@@ -221,7 +221,7 @@ extern ERR init_search(void);
 static bool read_rgb8(CSTRING Value, RGB8 *RGB)
 {
    VectorPainter painter;
-   if (vec::ReadPainter(NULL, Value, &painter, NULL) IS ERR::Okay) {
+   if (vec::ReadPainter(nullptr, Value, &painter, nullptr) IS ERR::Okay) {
       RGB->Red   = F2T(painter.Colour.Red   * 255.0);
       RGB->Green = F2T(painter.Colour.Green * 255.0);
       RGB->Blue  = F2T(painter.Colour.Blue  * 255.0);
@@ -259,11 +259,11 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modDisplay)  { FreeResource(modDisplay);  modDisplay = NULL; }
-   if (modFont)     { FreeResource(modFont);     modFont = NULL; }
-   if (modVector)   { FreeResource(modVector);   modVector = NULL; }
-   if (clScintilla) { FreeResource(clScintilla); clScintilla = NULL; }
-   if (clScintillaSearch) { FreeResource(clScintillaSearch); clScintillaSearch = NULL; }
+   if (modDisplay)  { FreeResource(modDisplay);  modDisplay = nullptr; }
+   if (modFont)     { FreeResource(modFont);     modFont = nullptr; }
+   if (modVector)   { FreeResource(modVector);   modVector = nullptr; }
+   if (clScintilla) { FreeResource(clScintilla); clScintilla = nullptr; }
+   if (clScintillaSearch) { FreeResource(clScintillaSearch); clScintillaSearch = nullptr; }
    return ERR::Okay;
 }
 
@@ -339,7 +339,7 @@ static void notify_lostfocus(OBJECTPTR Object, ACTIONID ActionID, ERR Result, AP
    log.branch();
 
    auto Self = (extScintilla *)CurrentContext();
-   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
+   if (Self->prvKeyEvent) { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = nullptr; }
 
    Self->API->panLostFocus();
 }
@@ -381,7 +381,7 @@ static void notify_write(OBJECTPTR Object, ACTIONID ActionID, ERR Result, struct
    if (!Args) return;
 
    if (Result != ERR::Okay) {
-      if (Self->FileStream) { FreeResource(Self->FileStream); Self->FileStream = NULL; }
+      if (Self->FileStream) { FreeResource(Self->FileStream); Self->FileStream = nullptr; }
       return;
    }
 
@@ -488,7 +488,7 @@ static ERR SCINTILLA_DataFeed(extScintilla *Self, struct acDataFeed *Args)
                         };
 
                         auto script = (objScript *)Self->FileDrop.Context;
-                        script->callback(Self->FileDrop.ProcedureID, args, std::ssize(args), NULL);
+                        script->callback(Self->FileDrop.ProcedureID, args, std::ssize(args), nullptr);
                      }
                      break;
                   }
@@ -623,7 +623,7 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
    pf::Log log;
 
    delete Self->API;
-   Self->API = NULL;
+   Self->API = nullptr;
 
    if (Self->TimerID) { UpdateTimer(Self->TimerID, 0); Self->TimerID = 0; }
 
@@ -646,14 +646,14 @@ static ERR SCINTILLA_Free(extScintilla *Self, APTR)
       Self->PointerLocked = FALSE;
    }*/
 
-   if (Self->prvKeyEvent)  { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = NULL; }
-   if (Self->FileStream)   { FreeResource(Self->FileStream); Self->FileStream = NULL; }
-   if (Self->Path)         { FreeResource(Self->Path);  Self->Path = NULL; }
-   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
-   if (Self->Font)         { FreeResource(Self->Font);       Self->Font = NULL; }
-   if (Self->BoldFont)     { FreeResource(Self->BoldFont);   Self->BoldFont = NULL; }
-   if (Self->ItalicFont)   { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
-   if (Self->BIFont)       { FreeResource(Self->BIFont);     Self->BIFont = NULL; }
+   if (Self->prvKeyEvent)  { UnsubscribeEvent(Self->prvKeyEvent); Self->prvKeyEvent = nullptr; }
+   if (Self->FileStream)   { FreeResource(Self->FileStream); Self->FileStream = nullptr; }
+   if (Self->Path)         { FreeResource(Self->Path);  Self->Path = nullptr; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = nullptr; }
+   if (Self->Font)         { FreeResource(Self->Font);       Self->Font = nullptr; }
+   if (Self->BoldFont)     { FreeResource(Self->BoldFont);   Self->BoldFont = nullptr; }
+   if (Self->ItalicFont)   { FreeResource(Self->ItalicFont); Self->ItalicFont = nullptr; }
+   if (Self->BIFont)       { FreeResource(Self->BIFont);     Self->BIFont = nullptr; }
 
    gfx::UnsubscribeInput(Self->InputHandle);
 
@@ -1237,7 +1237,7 @@ static ERR SCINTILLA_SaveToObject(extScintilla *Self, struct acSaveToObject *Arg
    APTR buffer;
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)buffer);
-      error = acWrite(Args->Dest, buffer, len, NULL);
+      error = acWrite(Args->Dest, buffer, len, nullptr);
       FreeResource(buffer);
    }
    else error = ERR::AllocMemory;
@@ -1736,7 +1736,7 @@ static ERR SET_Path(extScintilla *Self, CSTRING Value)
 
    log.branch("%s", Value);
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if ((Self->Path = strclone(Value))) {
@@ -1765,7 +1765,7 @@ needs to be changed without causing a load operation.
 
 static ERR SET_Origin(extScintilla *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Path = strclone(Value))) return ERR::AllocMemory;
@@ -1954,7 +1954,7 @@ static ERR GET_String(extScintilla *Self, STRING *Value)
 {
    LONG len = SCICALL(SCI_GETLENGTH);
 
-   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = NULL; }
+   if (Self->StringBuffer) { FreeResource(Self->StringBuffer); Self->StringBuffer = nullptr; }
 
    if (AllocMemory(len+1, MEM::STRING|MEM::NO_CLEAR, &Self->StringBuffer) IS ERR::Okay) {
       SCICALL(SCI_GETTEXT, len+1, (const char *)Self->StringBuffer);
@@ -2092,9 +2092,9 @@ static void create_styled_fonts(extScintilla *Self)
 
    if (!Self->Font) return;
 
-   if (Self->BoldFont)   { FreeResource(Self->BoldFont); Self->BoldFont = NULL; }
-   if (Self->ItalicFont) { FreeResource(Self->ItalicFont); Self->ItalicFont = NULL; }
-   if (Self->BIFont)     { FreeResource(Self->BIFont); Self->BIFont = NULL; }
+   if (Self->BoldFont)   { FreeResource(Self->BoldFont); Self->BoldFont = nullptr; }
+   if (Self->ItalicFont) { FreeResource(Self->ItalicFont); Self->ItalicFont = nullptr; }
+   if (Self->BIFont)     { FreeResource(Self->BIFont); Self->BIFont = nullptr; }
 
    if ((Self->BoldFont = objFont::create::local(
          fl::Face(Self->Font->Face),
@@ -2121,7 +2121,7 @@ static void create_styled_fonts(extScintilla *Self)
 //********************************************************************************************************************
 // Scintilla initiates drawing instructions through window::InvalidateRectangle()
 
-static THREADVAR objBitmap *glBitmap = NULL;
+static THREADVAR objBitmap *glBitmap = nullptr;
 
 static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
 {
@@ -2141,7 +2141,7 @@ static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *B
 
    Self->API->panDraw(Surface, Bitmap);
 
-   glBitmap = NULL;
+   glBitmap = nullptr;
 
    if ((Self->Flags & SCIF::DISABLED) != SCIF::NIL) {
       gfx::DrawRectangle(Bitmap, 0, 0, Bitmap->Width, Bitmap->Height, Bitmap->packPixel(0, 0, 0, 64), BAF::FILL|BAF::BLEND);
@@ -2206,7 +2206,7 @@ static ERR load_file(extScintilla *Self, CSTRING Path)
 
             SubscribeAction(file, AC::Write, C_FUNCTION(notify_write));
             Self->FileStream = file;
-            file = NULL;
+            file = nullptr;
          }
          else error = ERR::Failed;
       }
@@ -2450,25 +2450,25 @@ static ERR idle_timer(extScintilla *Self, int64_t Elapsed, int64_t CurrentTime)
 #include "class_scintilla_def.cxx"
 
 static const FieldArray clFields[] = {
-   { "Font",           FDF_LOCAL|FDF_R, NULL, NULL, CLASSID::FONT },
-   { "Path",           FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "EventFlags",     FDF_INT|FDF_FLAGS|FDF_RW, NULL, NULL, &clScintillaEventFlags },
-   { "Surface",        FDF_OBJECTID|FDF_RI, NULL, NULL, CLASSID::SURFACE },
-   { "Flags",          FDF_INTFLAGS|FDF_RI, NULL, NULL, &clScintillaFlags },
+   { "Font",           FDF_LOCAL|FDF_R, nullptr, nullptr, CLASSID::FONT },
+   { "Path",           FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "EventFlags",     FDF_INT|FDF_FLAGS|FDF_RW, nullptr, nullptr, &clScintillaEventFlags },
+   { "Surface",        FDF_OBJECTID|FDF_RI, nullptr, nullptr, CLASSID::SURFACE },
+   { "Flags",          FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clScintillaFlags },
    { "Focus",          FDF_OBJECTID|FDF_RI },
    { "Visible",        FDF_INT|FDF_RI },
-   { "LeftMargin",     FDF_INT|FDF_RW, NULL, SET_LeftMargin },
-   { "RightMargin",    FDF_INT|FDF_RW, NULL, SET_RightMargin },
-   { "LineHighlight",  FDF_RGB|FDF_RW, NULL, SET_LineHighlight },
-   { "SelectFore",     FDF_RGB|FDF_RI, NULL, SET_SelectFore },
-   { "SelectBkgd",     FDF_RGB|FDF_RI, NULL, SET_SelectBkgd },
-   { "BkgdColour",     FDF_RGB|FDF_RW, NULL, SET_BkgdColour },
-   { "CursorColour",   FDF_RGB|FDF_RW, NULL, SET_CursorColour },
-   { "TextColour",     FDF_RGB|FDF_RW, NULL, SET_TextColour },
+   { "LeftMargin",     FDF_INT|FDF_RW, nullptr, SET_LeftMargin },
+   { "RightMargin",    FDF_INT|FDF_RW, nullptr, SET_RightMargin },
+   { "LineHighlight",  FDF_RGB|FDF_RW, nullptr, SET_LineHighlight },
+   { "SelectFore",     FDF_RGB|FDF_RI, nullptr, SET_SelectFore },
+   { "SelectBkgd",     FDF_RGB|FDF_RI, nullptr, SET_SelectBkgd },
+   { "BkgdColour",     FDF_RGB|FDF_RW, nullptr, SET_BkgdColour },
+   { "CursorColour",   FDF_RGB|FDF_RW, nullptr, SET_CursorColour },
+   { "TextColour",     FDF_RGB|FDF_RW, nullptr, SET_TextColour },
    { "CursorRow",      FDF_INT|FDF_RW },
    { "CursorCol",      FDF_INT|FDF_RW },
-   { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RI, NULL, SET_Lexer, &clScintillaLexer },
-   { "Modified",       FDF_INT|FDF_RW, NULL, SET_Modified },
+   { "Lexer",          FDF_INT|FDF_LOOKUP|FDF_RI, nullptr, SET_Lexer, &clScintillaLexer },
+   { "Modified",       FDF_INT|FDF_RW, nullptr, SET_Modified },
 
    // Virtual fields
    { "AllowTabs",      FDF_INT|FDF_RW,   GET_AllowTabs, SET_AllowTabs },
@@ -2509,5 +2509,5 @@ static ERR create_scintilla(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_scintilla_module() { return &ModHeader; }

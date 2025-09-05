@@ -750,10 +750,10 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
             lua_pushinteger(Lua, strtoll(value.c_str(), nullptr, 0));
          }
          else if (dt IS 'f') {
-            lua_pushnumber(Lua, strtod(value.c_str(), NULL));
+            lua_pushnumber(Lua, strtod(value.c_str(), nullptr));
          }
          else if (dt IS 'h') {
-            lua_pushnumber(Lua, strtoull(value.c_str(), NULL, 0)); // Using pushnumber() so that 64-bit hex is supported.
+            lua_pushnumber(Lua, strtoull(value.c_str(), nullptr, 0)); // Using pushnumber() so that 64-bit hex is supported.
          }
          else if (value[0] IS '\"') {
             if (value[n-1] IS '\"') lua_pushlstring(Lua, value.c_str()+1, n-2);
@@ -818,7 +818,7 @@ CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
       *Size = result;
       return (CSTRING)handle->Buffer;
    }
-   else return NULL;
+   else return nullptr;
 }
 
 //********************************************************************************************************************
@@ -848,5 +848,5 @@ static void stack_dump(lua_State *L)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_fluid_module() { return &ModHeader; }

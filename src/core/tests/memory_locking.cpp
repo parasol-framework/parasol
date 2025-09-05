@@ -56,7 +56,7 @@ static void * test_locking(void *Arg)
             if (i >= glLockAttempts-2) {
                FreeResource(memory);
                ReleaseMemory(glMemoryID);
-               memory = NULL;
+               memory = nullptr;
                break;
             }
          }
@@ -74,7 +74,7 @@ static void * test_locking(void *Arg)
    }
 
    log.msg("----- Thread %d is finished.", info->index);
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -89,7 +89,7 @@ static void * test_allocation(void *Arg)
    LONG i, j;
    LONG start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
-      AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], NULL);
+      AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], nullptr);
       if (rand() % 10 > 7) {
          for (j=start; j < i; j++) {
             FreeResource(memory[j]);
@@ -102,7 +102,7 @@ static void * test_allocation(void *Arg)
       FreeResource(memory[j]);
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -118,15 +118,15 @@ int main(int argc, CSTRING *argv)
    if ((CurrentTask()->get(FID_Parameters, args) IS ERR::Okay) and (args)) {
       for (unsigned i=0; i < args->size(); i++) {
          if (iequals(args[0][i], "-threads")) {
-            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glTotalThreads = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-attempts")) {
-            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glLockAttempts = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-gap")) {
-            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), NULL, 0);
+            if (++i < args->size()) glAccessGap = strtol(args[0][i].c_str(), nullptr, 0);
             else break;
          }
          else if (iequals(args[0][i], "-terminate")) glTerminateMemory = true;
@@ -134,7 +134,7 @@ int main(int argc, CSTRING *argv)
       }
    }
 
-   AllocMemory(10000, MEM::DATA, NULL, (MEMORYID *)&glMemoryID);
+   AllocMemory(10000, MEM::DATA, nullptr, (MEMORYID *)&glMemoryID);
 
    printf("Spawning %d threads...\n", glTotalThreads);
 
@@ -142,8 +142,8 @@ int main(int argc, CSTRING *argv)
 
    for (unsigned i=0; i < glTotalThreads; i++) {
       glThreads[i].index = i;
-      if (glTestAllocation) pthread_create(&glThreads[i].thread, NULL, &test_allocation, &glThreads[i]);
-      else pthread_create(&glThreads[i].thread, NULL, &test_locking, &glThreads[i]);
+      if (glTestAllocation) pthread_create(&glThreads[i].thread, nullptr, &test_allocation, &glThreads[i]);
+      else pthread_create(&glThreads[i].thread, nullptr, &test_locking, &glThreads[i]);
    }
 
    // Main block now waits for both threads to terminate, before it exits.  If main block exits, both threads exit,
@@ -152,7 +152,7 @@ int main(int argc, CSTRING *argv)
    printf("Waiting for thread completion.\n");
 
    for (unsigned i=0; i < glTotalThreads; i++) {
-      pthread_join(glThreads[i].thread, NULL);
+      pthread_join(glThreads[i].thread, nullptr);
    }
 
    FreeResource(glMemoryID);

@@ -76,14 +76,14 @@ static const UBYTE glWrapBreaks[256] = {
 
 //********************************************************************************************************************
 
-OBJECTPTR modFont = NULL;
+OBJECTPTR modFont = nullptr;
 
 JUMPTABLE_DISPLAY
 JUMPTABLE_CORE
 
-static OBJECTPTR clFont = NULL;
-static OBJECTPTR modDisplay = NULL;
-static FT_Library glFTLibrary = NULL;
+static OBJECTPTR clFont = nullptr;
+static OBJECTPTR modDisplay = nullptr;
+static FT_Library glFTLibrary = nullptr;
 
 #include "font_structs.h"
 
@@ -188,7 +188,7 @@ static DOUBLE global_point_size(void)
             char pointsize[20];
             glPointSet = true;
             if (acGetKey(style.obj, "/interface/@fontsize", pointsize, sizeof(pointsize)) IS ERR::Okay) {
-               glDefaultPoint = strtod(pointsize, NULL);
+               glDefaultPoint = strtod(pointsize, nullptr);
                if (glDefaultPoint < 6) glDefaultPoint = 6;
                else if (glDefaultPoint > 80) glDefaultPoint = 80;
                log.msg("Global font size is %.1f.", glDefaultPoint);
@@ -207,7 +207,7 @@ inline void calc_lines(extFont *Self)
 {
    if (Self->String) {
       if (Self->WrapEdge > 0) {
-         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, NULL, &Self->prvLineCount);
+         string_size(Self, Self->String, -1, Self->WrapEdge - Self->X, nullptr, &Self->prvLineCount);
       }
       else Self->prvLineCount = Self->prvLineCountCR;
    }
@@ -334,7 +334,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 
 //********************************************************************************************************************
 
-static objConfig *glConfig = NULL; // Font database
+static objConfig *glConfig = nullptr; // Font database
 
 static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
@@ -380,11 +380,11 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
-   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0);  glCacheTimer = NULL; }
-   if (glFTLibrary)  { FT_Done_FreeType(glFTLibrary); glFTLibrary  = NULL; }
-   if (glConfig)     { FreeResource(glConfig);        glConfig     = NULL; }
-   if (clFont)       { FreeResource(clFont);          clFont       = NULL; }
-   if (modDisplay)   { FreeResource(modDisplay);      modDisplay   = NULL; }
+   if (glCacheTimer) { UpdateTimer(glCacheTimer, 0);  glCacheTimer = nullptr; }
+   if (glFTLibrary)  { FT_Done_FreeType(glFTLibrary); glFTLibrary  = nullptr; }
+   if (glConfig)     { FreeResource(glConfig);        glConfig     = nullptr; }
+   if (clFont)       { FreeResource(clFont);          clFont       = nullptr; }
+   if (modDisplay)   { FreeResource(modDisplay);      modDisplay   = nullptr; }
    glBitmapCache.clear();
    return ERR::Okay;
 }
@@ -458,7 +458,7 @@ ERR GetList(FontList **Result)
          if (keys.contains("Axes")) size += keys["Axes"].size() + 1;
       }
 
-      FontList *list, *last_list = NULL;
+      FontList *list, *last_list = nullptr;
       if (AllocMemory(size, MEM::DATA, &list) IS ERR::Okay) {
          auto buffer = (STRING)(list + groups->size());
          *Result = list;
@@ -507,7 +507,7 @@ ERR GetList(FontList **Result)
                   buffer += strcopy(keys["Axes"], buffer) + 1;
                }
 
-               list->Points = NULL;
+               list->Points = nullptr;
                if (keys.contains("Points")) {
                   auto fontpoints = std::string_view(keys["Points"]);
                   if (!fontpoints.empty()) {
@@ -527,7 +527,7 @@ ERR GetList(FontList **Result)
             list++;
          }
 
-         if (last_list) last_list->Next = NULL;
+         if (last_list) last_list->Next = nullptr;
 
          return ERR::Okay;
       }
@@ -664,7 +664,7 @@ ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta)
       else if (!iequals("Regular", Style)) {
          if (Keys.contains("Regular")) return strclone(Keys["Regular"]);
       }
-      return STRING(NULL);
+      return STRING(nullptr);
    };
 
    std::string style_name(Style);
@@ -728,7 +728,7 @@ ERR RefreshFonts(void)
    scan_fixed_folder(glConfig);
    scan_truetype_folder(glConfig);
 
-   glConfig->sortByKey(NULL, false); // Sort the font names into alphabetical order
+   glConfig->sortByKey(nullptr, false); // Sort the font names into alphabetical order
 
    // Create a style list for each font, e.g.
    //
@@ -1189,5 +1189,5 @@ static STRUCTS glStructures = {
    { "FontList", sizeof(FontList) }
 };
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_font_module() { return &ModHeader; }

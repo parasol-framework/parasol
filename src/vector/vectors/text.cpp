@@ -61,7 +61,7 @@ where large glyphs were oriented around sharp corners.  The process would look s
 const LONG DEFAULT_WEIGHT = 400;
 
 static FIELD FID_FreetypeFace;
-objConfig *glFontConfig = NULL;
+objConfig *glFontConfig = nullptr;
 
 //********************************************************************************************************************
 
@@ -79,12 +79,12 @@ public:
 
    TextCursor() :
       mColumn(0), mRow(0),
-      timer(NULL), vector(NULL), flash(0), savePos(0),
+      timer(nullptr), vector(nullptr), flash(0), savePos(0),
       endColumn(0), endRow(0),
       selectColumn(0), selectRow(0) { }
 
    ~TextCursor() {
-      if (vector) { FreeResource(vector); vector = NULL; }
+      if (vector) { FreeResource(vector); vector = nullptr; }
       if (timer) { UpdateTimer(timer, 0); timer = 0; }
    }
 
@@ -226,7 +226,7 @@ static ERR text_focus_event(extVector *, FM, OBJECTPTR, APTR);
 //********************************************************************************************************************
 
 freetype_font::~freetype_font() {
-   if (face) { FT_Done_Face(face); face = NULL; }
+   if (face) { FT_Done_Face(face); face = nullptr; }
 }
 
 //********************************************************************************************************************
@@ -358,12 +358,12 @@ static ERR VECTORTEXT_Free(extVectorText *Self)
       ((extVector *)Self)->ParentView->subscribeInput(JTYPE::NIL, C_FUNCTION(text_input_events));
    }
 
-   if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = NULL; }
-   if (Self->txAlphaBitmap)  { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = NULL; }
-   if (Self->txFamily)       { FreeResource(Self->txFamily); Self->txFamily = NULL; }
-   if (Self->txDX)           { FreeResource(Self->txDX); Self->txDX = NULL; }
-   if (Self->txDY)           { FreeResource(Self->txDY); Self->txDY = NULL; }
-   if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+   if (Self->txBitmapImage)  { FreeResource(Self->txBitmapImage); Self->txBitmapImage = nullptr; }
+   if (Self->txAlphaBitmap)  { FreeResource(Self->txAlphaBitmap); Self->txAlphaBitmap = nullptr; }
+   if (Self->txFamily)       { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
+   if (Self->txDX)           { FreeResource(Self->txDX); Self->txDX = nullptr; }
+   if (Self->txDY)           { FreeResource(Self->txDY); Self->txDY = nullptr; }
+   if (Self->txKeyEvent)     { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = nullptr; }
 
    if (Self->txFocusID) {
       if (pf::ScopedObjectLock<extVector> focus(Self->txFocusID, 5000); focus.granted()) {
@@ -621,7 +621,7 @@ static ERR TEXT_GET_DX(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 
 static ERR TEXT_SET_DX(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
-   if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = NULL; Self->txTotalDX = 0; }
+   if (Self->txDX) { FreeResource(Self->txDX); Self->txDX = nullptr; Self->txTotalDX = 0; }
 
    if ((Values) and (Elements > 0)) {
       if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDX) IS ERR::Okay) {
@@ -652,7 +652,7 @@ static ERR TEXT_GET_DY(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 
 static ERR TEXT_SET_DY(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
-   if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = NULL; Self->txTotalDY = 0; }
+   if (Self->txDY) { FreeResource(Self->txDY); Self->txDY = nullptr; Self->txTotalDY = 0; }
 
    if ((Values) and (Elements > 0)) {
       if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txDY) IS ERR::Okay) {
@@ -717,7 +717,7 @@ static ERR TEXT_GET_Face(extVectorText *Self, CSTRING *Value)
 static ERR TEXT_SET_Face(extVectorText *Self, CSTRING Value)
 {
    if (Value) {
-      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
 
       CSTRING name;
       if (fnt::ResolveFamilyName(Value, &name) IS ERR::Okay) {
@@ -773,7 +773,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    if (Value->baseClassID() IS CLASSID::FONT) {
       auto other = (objFont *)Value;
 
-      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
 
       Self->txFamily = strclone(other->Face);
       Self->txFontSize = std::trunc(other->Point * (96.0 / 72.0));
@@ -786,7 +786,7 @@ static ERR TEXT_SET_Font(extVectorText *Self, OBJECTPTR Value)
    else if (Value->classID() IS CLASSID::VECTORTEXT) {
       auto other = (extVectorText *)Value;
 
-      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = NULL; }
+      if (Self->txFamily) { FreeResource(Self->txFamily); Self->txFamily = nullptr; }
 
       Self->txFamily = strclone(other->txFamily);
       Self->txFontSize = other->txFontSize;
@@ -825,14 +825,14 @@ static ERR TEXT_GET_Fill(extVectorText *Self, CSTRING *Value)
 
 static ERR TEXT_SET_Fill(extVectorText *Self, CSTRING Value)
 {
-   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = NULL; }
+   if (Self->FillString) { FreeResource(Self->FillString); Self->FillString = nullptr; }
 
    CSTRING next;
    if (auto error = vec::ReadPainter(Self->Scene, Value, &Self->Fill[0], &next); error IS ERR::Okay) {
       Self->FillString = strclone(Value);
 
       if (next) {
-         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], NULL);
+         vec::ReadPainter(Self->Scene, next, &Self->Fill[1], nullptr);
          Self->FGFill = true;
       }
       else Self->FGFill = false;
@@ -1197,7 +1197,7 @@ static ERR TEXT_GET_Rotate(extVectorText *Self, DOUBLE **Values, LONG *Elements)
 
 static ERR TEXT_SET_Rotate(extVectorText *Self, DOUBLE *Values, LONG Elements)
 {
-   if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = NULL; Self->txTotalRotate = 0; }
+   if (Self->txRotate) { FreeResource(Self->txRotate); Self->txRotate = nullptr; Self->txTotalRotate = 0; }
 
    if (AllocMemory(sizeof(DOUBLE) * Elements, MEM::DATA, &Self->txRotate) IS ERR::Okay) {
       copymem(Values, Self->txRotate, Elements * sizeof(DOUBLE));
@@ -1532,7 +1532,7 @@ static ERR text_focus_event(extVector *Vector, FM Event, OBJECTPTR EventObject, 
    else if ((Event & (FM::LOST_FOCUS|FM::CHILD_HAS_FOCUS)) != FM::NIL) {
       if (Self->txCursor.vector) Self->txCursor.vector->setVisibility(VIS::HIDDEN);
       if (Self->txCursor.timer)  { UpdateTimer(Self->txCursor.timer, 0); Self->txCursor.timer = 0; }
-      if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = NULL; }
+      if (Self->txKeyEvent)      { UnsubscribeEvent(Self->txKeyEvent); Self->txKeyEvent = nullptr; }
 
       // When a simple input line loses the focus, all selections are deselected
 
@@ -2046,7 +2046,7 @@ static const FieldDef clTextAlign[] = {
    { "Start",      ALIGN::LEFT },
    { "Middle",     ALIGN::HORIZONTAL },
    { "End",        ALIGN::RIGHT },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clTextFields[] = {
@@ -2076,7 +2076,7 @@ static const FieldArray clTextFields[] = {
    { "TextWidth",     FDF_VIRTUAL|FDF_INT|FDF_R, TEXT_GET_TextWidth },
    { "StartOffset",   FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_StartOffset, TEXT_SET_StartOffset },
    { "Spacing",       FDF_VIRTUAL|FDF_DOUBLE|FDF_RW, TEXT_GET_Spacing, TEXT_SET_Spacing },
-   { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_I, NULL, TEXT_SET_Font },
+   { "Font",          FDF_VIRTUAL|FDF_OBJECT|FDF_I, nullptr, TEXT_SET_Font },
    // Non-SVG fields related to real-time text editing
    { "OnChange",      FDF_VIRTUAL|FDF_FUNCTIONPTR|FDF_RW, TEXT_GET_OnChange, TEXT_SET_OnChange },
    { "Focus",         FDF_VIRTUAL|FDF_OBJECTID|FDF_RI, TEXT_GET_Focus, TEXT_SET_Focus },

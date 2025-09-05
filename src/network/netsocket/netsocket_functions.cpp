@@ -470,7 +470,7 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
    }
    else {
       Socket->Clients = Client->Next;
-      if ((Socket->Clients) and (Socket->Clients->Next)) Socket->Clients->Next->Prev = NULL;
+      if ((Socket->Clients) and (Socket->Clients->Next)) Socket->Clients->Next->Prev = nullptr;
    }
 
    FreeResource(Client);

@@ -299,7 +299,7 @@ struct fstruct * push_struct(objScript *Self, APTR Address, std::string_view Str
    else {
       if (Deallocate) FreeResource(Address);
       luaL_error(prv->Lua, "Unrecognised struct '%s'", StructName.data());
-      return NULL;
+      return nullptr;
    }
 }
 
@@ -317,7 +317,7 @@ struct fstruct * push_struct_def(lua_State *Lua, APTR Address, struct_record &St
    }
    else luaL_error(Lua, "Failed to create new struct.");
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -471,7 +471,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
             field_size = sizeof(std::vector<int>);
          }
          else if ((Sequence[pos] >= '0') and (Sequence[pos] <= '9')) { // Sanity check
-            array_size = strtol(Sequence.c_str() + pos, NULL, 0);
+            array_size = strtol(Sequence.c_str() + pos, nullptr, 0);
          }
          pos = Sequence.find_first_of("],", pos);
          if (pos IS std::string::npos) pos = Sequence.size();
@@ -558,7 +558,7 @@ static struct_field * find_field(struct fstruct *Struct, CSTRING FieldName)
       }
    }
 
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -730,9 +730,9 @@ static int struct_get(lua_State *Lua)
                if (field->Type & FD_ARRAY) {
                   if (field->Type & FD_CPP) {
                      auto vector = (pf::vector<std::string> *)(address);
-                     make_array(Lua, FD_CPP|FD_STRING, NULL, (APTR *)vector->data(), vector->size(), false);
+                     make_array(Lua, FD_CPP|FD_STRING, nullptr, (APTR *)vector->data(), vector->size(), false);
                   }
-                  else make_array(Lua, FD_STRING, NULL, (APTR *)address, array_size, false);
+                  else make_array(Lua, FD_STRING, nullptr, (APTR *)address, array_size, false);
                }
                else if (field->Type & FD_CPP) {
                   lua_pushstring(Lua, ((std::string *)address)->c_str());
@@ -750,23 +750,23 @@ static int struct_get(lua_State *Lua)
                lua_pushnil(Lua);
             }
             else if (field->Type & FD_FLOAT)   {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_FLOAT, NULL, (APTR *)address, array_size, false);
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_FLOAT, nullptr, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((FLOAT *)address)[0]);
             }
             else if (field->Type & FD_DOUBLE) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_DOUBLE, NULL, (APTR *)address, array_size, false);
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_DOUBLE, nullptr, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((DOUBLE *)address)[0]);
             }
             else if (field->Type & FD_INT64) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT64, NULL, (APTR *)address, array_size, false);
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT64, nullptr, (APTR *)address, array_size, false);
                else lua_pushnumber(Lua, ((LARGE *)address)[0]);
             }
             else if (field->Type & FD_INT) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT, NULL, (APTR *)address, array_size, false);
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_INT, nullptr, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((LONG *)address)[0]);
             }
             else if (field->Type & FD_WORD) {
-               if (field->Type & FD_ARRAY) make_array(Lua, FD_WORD, NULL, (APTR *)address, array_size, false);
+               if (field->Type & FD_ARRAY) make_array(Lua, FD_WORD, nullptr, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((WORD *)address)[0]);
             }
             else if (field->Type & FD_BYTE) {
@@ -774,7 +774,7 @@ static int struct_get(lua_State *Lua)
                   // Character arrays are interpreted as strings.  Use 'b' instead of 'c' if this behaviour is undesirable
                   lua_pushstring(Lua, (CSTRING)address);
                }
-               else if (field->Type & FD_ARRAY) make_array(Lua, FD_BYTE, NULL, (APTR *)address, array_size, false);
+               else if (field->Type & FD_ARRAY) make_array(Lua, FD_BYTE, nullptr, (APTR *)address, array_size, false);
                else lua_pushinteger(Lua, ((UBYTE *)address)[0]);
             }
             else {
@@ -844,7 +844,7 @@ static int struct_destruct(lua_State *Lua)
    if (auto fs = (fstruct *)luaL_checkudata(Lua, 1, "Fluid.struct")) {
       if (fs->Deallocate) {
          FreeResource(fs->Data);
-         fs->Data = NULL;
+         fs->Data = nullptr;
       }
    }
 
@@ -857,7 +857,7 @@ static int struct_destruct(lua_State *Lua)
 static const luaL_Reg structlib_functions[] = {
    { "new",   struct_new },
    { "size",  struct_size },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 static const luaL_Reg structlib_methods[] = {
@@ -865,7 +865,7 @@ static const luaL_Reg structlib_methods[] = {
    { "__newindex", struct_set },
    { "__len",      struct_len },
    { "__gc",       struct_destruct },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 void register_struct_class(lua_State *Lua)
@@ -877,7 +877,7 @@ void register_struct_class(lua_State *Lua)
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
-   luaL_openlib(Lua, NULL, structlib_methods, 0);
+   luaL_openlib(Lua, nullptr, structlib_methods, 0);
 
    luaL_openlib(Lua, "struct", structlib_functions, 0);
 }

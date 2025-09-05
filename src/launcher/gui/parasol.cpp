@@ -24,11 +24,11 @@ static CSTRING STR_UNPACK = "temp:scripts/";
 static CSTRING STR_MAIN   = "main.fluid";
 
 static OBJECTID glTargetID = 0;
-static STRING glDirectory = NULL, *glArgs = NULL;
+static STRING glDirectory = nullptr, *glArgs = nullptr;
 static char glBind[40] = { 0 };
 
-static OBJECTPTR glTask = NULL;
-static OBJECTPTR glScript = NULL;
+static OBJECTPTR glTask = nullptr;
+static OBJECTPTR glScript = nullptr;
 
 static ERROR decompress_archive(CSTRING);
 static ERROR prep_environment(LONG, LONG, LONG);
@@ -70,8 +70,8 @@ extern "C" void program(void)
    glTask = CurrentTask();
    bool time       = false;
    LONG winhandle  = 0;
-   STRING procedure  = NULL;
-   STRING scriptfile = NULL;
+   STRING procedure  = nullptr;
+   STRING scriptfile = nullptr;
    LONG width      = 0;
    LONG height     = 0;
 
@@ -113,7 +113,7 @@ extern "C" void program(void)
             }
          }
          else if (iequals(Args[i], "--procedure")) {
-            if (procedure) { FreeResource(procedure); procedure = NULL; }
+            if (procedure) { FreeResource(procedure); procedure = nullptr; }
 
             if (Args[i+1]) {
                for (j=0; Args[i+1][j]; j++);
@@ -190,8 +190,8 @@ exit:
       }
    }
 
-   if (procedure) { FreeResource(procedure); procedure = NULL; }
-   if (scriptfile) { FreeResource(scriptfile); scriptfile = NULL; }
+   if (procedure) { FreeResource(procedure); procedure = nullptr; }
+   if (scriptfile) { FreeResource(scriptfile); scriptfile = nullptr; }
 
    if (glDirectory) {
       for (i=0; glDirectory[i]; i++);

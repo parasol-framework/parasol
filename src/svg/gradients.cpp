@@ -7,7 +7,7 @@ static ERR gradient_defaults(extSVG *Self, objVectorGradient *Gradient, ULONG At
 {
    switch (Attrib) {
       case SVF_RESOLUTION:
-         Gradient->setResolution(strtod(Value.c_str(), NULL));
+         Gradient->setResolution(strtod(Value.c_str(), nullptr));
          return ERR::Okay;
 
       case SVF_COLOR_INTERPOLATION:
@@ -54,7 +54,7 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
             if (value.empty()) continue;
 
             if (iequals("offset", name)) {
-               stop.Offset = strtod(value.c_str(), NULL);
+               stop.Offset = strtod(value.c_str(), nullptr);
                for (LONG j=0; value[j]; j++) {
                   if (value[j] IS '%') {
                      stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
@@ -71,17 +71,17 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
             else if (iequals("stop-color", name)) {
                if (iequals("inherit", value)) {
                   VectorPainter painter;
-                  vec::ReadPainter(Self->Scene, m_stop_color.c_str(), &painter, NULL);
+                  vec::ReadPainter(Self->Scene, m_stop_color.c_str(), &painter, nullptr);
                   stop.RGB = painter.Colour;
                }
                else if (iequals("currentColor", value)) {
                   VectorPainter painter;
-                  vec::ReadPainter(Self->Scene, m_color.c_str(), &painter, NULL);
+                  vec::ReadPainter(Self->Scene, m_color.c_str(), &painter, nullptr);
                   stop.RGB = painter.Colour;
                }
                else {
                   VectorPainter painter;
-                  vec::ReadPainter(Self->Scene, value.c_str(), &painter, NULL);
+                  vec::ReadPainter(Self->Scene, value.c_str(), &painter, nullptr);
                   stop.RGB = painter.Colour;
                }
             }
@@ -89,7 +89,7 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
                if (iequals("inherit", value)) {
                   stop_opacity = m_stop_opacity;
                }
-               else stop_opacity = strtod(value.c_str(), NULL);
+               else stop_opacity = strtod(value.c_str(), nullptr);
             }
             else if (iequals("id", name)) {
                log.trace("Use of id attribute in <stop/> ignored.");

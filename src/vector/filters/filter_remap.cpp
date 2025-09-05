@@ -145,7 +145,7 @@ class extRemapFX : public extFilterEffect {
          case CMP::GREEN: return &Green;
          case CMP::BLUE:  return &Blue;
          case CMP::ALPHA: return &Alpha;
-         default: return NULL;
+         default: return nullptr;
       }
    }
 };

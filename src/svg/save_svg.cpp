@@ -56,7 +56,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
                case VGT::LINEAR:
                default:           gradient_type = "<linearGradient/>"; break;
             }
-            XMLTag *tag = NULL;
+            XMLTag *tag = nullptr;
             error = XML->insertStatement(def_index, XMI::CHILD_END, gradient_type, &tag);
 
             if (error IS ERR::Okay) xml::NewAttrib(tag, "id", key);
@@ -181,7 +181,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
 
             CSTRING effect_xml;
             if ((error IS ERR::Okay) and (filter->get(FID_EffectXML, effect_xml) IS ERR::Okay)) {
-               error = XML->insertStatement(tag->ID, XMI::CHILD, effect_xml, NULL);
+               error = XML->insertStatement(tag->ID, XMI::CHILD, effect_xml, nullptr);
                FreeResource(effect_xml);
             }
          }
@@ -541,7 +541,7 @@ static ERR save_svg_scan(extSVG *Self, objXML *XML, objVector *Vector, LONG Pare
          xml::NewAttrib(tag, "font-weight", std::to_string(weight));
 
       if ((error IS ERR::Okay) and ((error = Vector->get(FID_String, str)) IS ERR::Okay))
-         error = XML->insertContent(tag->ID, XMI::CHILD, str, NULL);
+         error = XML->insertContent(tag->ID, XMI::CHILD, str, nullptr);
 
       // TODO: lengthAdjust, font, font-size-adjust, font-stretch, font-style, font-variant, text-anchor, kerning, letter-spacing, path-length, word-spacing, text-decoration
 

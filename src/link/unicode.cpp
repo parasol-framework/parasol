@@ -224,10 +224,10 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
       if (glIconvBuffer) {
          // Calling this function with a NULL String is an easy/valid way to free the internal buffer
          FreeResource(glIconvBuffer);
-         glIconvBuffer = NULL;
+         glIconvBuffer = nullptr;
          buffersize = 0;
       }
-      return NULL;
+      return nullptr;
    }
 
    auto context = tlContext;
@@ -240,7 +240,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
          if (!modIconv) {
             init_failed = true;
             tlContext   = context;
-            return NULL;
+            return nullptr;
          }
 
          modResolveSymbol(modIconv, "libiconv_open", (APTR *)&iconv_open);
@@ -249,10 +249,10 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
          if ((!iconv) or (!iconv_open) or (!iconv_close)) {
             FreeResource(modIconv);
-            modIconv    = NULL;
+            modIconv    = nullptr;
             tlContext   = context;
             init_failed = true;
-            return NULL;
+            return nullptr;
          }
       #else
          modIconv = objModule::create::global(fl::Name("libiconv2"), fl::Flags(MOF::LINK_LIBRARY));
@@ -260,7 +260,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
          if (!modIconv) {
             init_failed = true;
             tlContext   = context;
-            return NULL;
+            return nullptr;
          }
       #endif
    }
@@ -291,7 +291,7 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 
             if (!glIconv) {
                tlContext = context;
-               return NULL;
+               return nullptr;
             }
             icvhash = enchash;
          }
@@ -302,9 +302,9 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
             buffersize = 4096;
             if (buffersize < in) buffersize = in + 1024;
 
-            if (AllocMemory(buffersize, MEM::STRING|MEM::NO_CLEAR, (APTR *)&glIconvBuffer, NULL) != ERR::Okay) {
+            if (AllocMemory(buffersize, MEM::STRING|MEM::NO_CLEAR, (APTR *)&glIconvBuffer, nullptr) != ERR::Okay) {
                tlContext = context;
-               return NULL;
+               return nullptr;
             }
          }
 
@@ -316,9 +316,9 @@ CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
             // Check/Expand the buffer size
 
             if (out+12 > buffersize) {
-               if (ReallocMemory(glIconvBuffer, buffersize + 4096, (APTR *)&glIconvBuffer, NULL) != ERR::Okay) {
+               if (ReallocMemory(glIconvBuffer, buffersize + 4096, (APTR *)&glIconvBuffer, nullptr) != ERR::Okay) {
                   tlContext = context;
-                  return NULL;
+                  return nullptr;
                }
                buffersize += 4096;
             }

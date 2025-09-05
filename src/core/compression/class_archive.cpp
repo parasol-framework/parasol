@@ -68,7 +68,7 @@ static void reset_state(extFile *Self)
    if (prv->Inflating) { inflateEnd(&prv->Stream); prv->Inflating = false; }
 
    prv->Stream.avail_in = 0;
-   prv->ReadPtr = NULL;
+   prv->ReadPtr = nullptr;
    Self->Position = 0;
 }
 
@@ -82,7 +82,7 @@ static ERR seek_to_item(extFile *Self)
    auto &item = prv->Info;
 
    acSeekStart(prv->FileStream, item.Offset + HEAD_EXTRALEN);
-   prv->ReadPtr = NULL;
+   prv->ReadPtr = nullptr;
 
    UWORD extra_len;
    if (fl::ReadLE(prv->FileStream, &extra_len) != ERR::Okay) return ERR::Read;
@@ -145,7 +145,7 @@ static extCompression * find_archive(std::string_view Path, std::string &FilePat
    }
 
    log.warning("No match for path '%s'", Path.data());
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -181,7 +181,7 @@ static ERR ARCHIVE_Free(extFile *Self)
    auto prv = (prvFileArchive *)Self->ChildPrivate;
 
    if (prv) {
-      if (prv->FileStream) { FreeResource(prv->FileStream); prv->FileStream = NULL; }
+      if (prv->FileStream) { FreeResource(prv->FileStream); prv->FileStream = nullptr; }
       if (prv->Inflating)  { inflateEnd(&prv->Stream); prv->Inflating = false; }
       prv->~prvFileArchive();
    }
@@ -202,7 +202,7 @@ static ERR ARCHIVE_Init(extFile *Self)
    if ((Self->Flags & (FL::NEW|FL::WRITE)) != FL::NIL) return log.warning(ERR::ReadOnly);
 
    ERR error = ERR::Search;
-   if (AllocMemory(sizeof(prvFileArchive), MEM::DATA, &Self->ChildPrivate, NULL) IS ERR::Okay) {
+   if (AllocMemory(sizeof(prvFileArchive), MEM::DATA, &Self->ChildPrivate, nullptr) IS ERR::Okay) {
       auto prv = (prvFileArchive *)Self->ChildPrivate;
       new (prv) prvFileArchive;
 
@@ -242,7 +242,7 @@ static ERR ARCHIVE_Init(extFile *Self)
       if (error != ERR::Okay) {
          prv->~prvFileArchive();
          FreeResource(Self->ChildPrivate);
-         Self->ChildPrivate = NULL;
+         Self->ChildPrivate = nullptr;
       }
    }
    else error = ERR::AllocMemory;
@@ -626,7 +626,7 @@ static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
    Info->Permissions = item->Permissions;
    Info->UserID      = item->UserID;
    Info->GroupID     = item->GroupID;
-   Info->Tags        = NULL;
+   Info->Tags        = nullptr;
    return ERR::Okay;
 }
 
@@ -685,11 +685,11 @@ static const ActionArray clArchiveActions[] = {
    { AC::Read,     ARCHIVE_Read },
    { AC::Seek,     ARCHIVE_Seek },
    { AC::Write,    ARCHIVE_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const MethodEntry clArchiveMethods[] = {
-   { AC::NIL, NULL, NULL, NULL, 0 }
+   { AC::NIL, nullptr, nullptr, nullptr, 0 }
 };
 
 static const struct FieldArray clArchiveFields[] = {

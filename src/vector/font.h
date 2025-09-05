@@ -30,13 +30,13 @@ struct CaseInsensitiveMap {
 
 class bmp_font : public common_font {
 public:
-   objFont *font = NULL;
+   objFont *font = nullptr;
 
    bmp_font() : common_font(CF_BITMAP) { }
    bmp_font(objFont *pFont) : font(pFont), common_font(CF_BITMAP) { }
 
    ~bmp_font() {
-      if (font) { FreeResource(font); font = NULL; }
+      if (font) { FreeResource(font); font = nullptr; }
    }
 };
 
@@ -57,8 +57,8 @@ class freetype_font {
       class ft_point : public common_font {
          public:
             GLYPH_TABLE glyphs;
-            freetype_font *font = NULL;
-            FT_Size ft_size = NULL;
+            freetype_font *font = nullptr;
+            FT_Size ft_size = nullptr;
 
             // These values are measured as pixels in 72 DPI.
             //
@@ -148,12 +148,12 @@ class freetype_font {
       using METRIC_TABLE = std::map<std::string, METRIC_GROUP, CaseInsensitiveMap>;
 
    public:
-      FT_Face face = NULL;
+      FT_Face face = nullptr;
       STYLE_CACHE style_cache; // Lists all known styles and contains the glyph cache for each style
       METRIC_TABLE metrics; // For variable fonts, these are pre-defined metrics with style names
       FMETA meta = FMETA::NIL;
       LONG glyph_flags = 0;
-      ft_point *active_size = NULL;
+      ft_point *active_size = nullptr;
 
       freetype_font()  { }
       freetype_font(FT_Face pFace, STYLE_CACHE &pStyles, METRIC_TABLE &pMetrics, FMETA pMeta = FMETA::NIL)

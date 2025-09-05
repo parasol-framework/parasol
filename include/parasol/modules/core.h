@@ -3885,9 +3885,9 @@ class objFile : public Object {
    }
 
    inline ERR setFlags(const FL Value) noexcept {
-      if (this->initialised()) return ERR::NoFieldAccess;
-      this->Flags = Value;
-      return ERR::Okay;
+      auto target = this;
+      auto field = &this->Class->Dictionary[3];
+      return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    inline ERR setStatic(const int Value) noexcept {

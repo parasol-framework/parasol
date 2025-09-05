@@ -20,9 +20,9 @@ static int action_activate(lua_State *Lua)
    ERR error = ERR::Okay;
    bool release = false;
 
-   if (object->ObjectPtr) error = Action(AC::Activate, object->ObjectPtr, NULL);
+   if (object->ObjectPtr) error = Action(AC::Activate, object->ObjectPtr, nullptr);
    else if (auto obj = access_object(object)) {
-      error = Action(AC::Activate, obj, NULL);
+      error = Action(AC::Activate, obj, nullptr);
       release = true;
    }
 
@@ -39,7 +39,7 @@ static int action_draw(lua_State *Lua)
    ERR error = ERR::Okay;
    BYTE argbuffer[sizeof(struct acDraw)+8]; // +8 for overflow protection in build_args()
 
-   if ((error = build_args(Lua, glActions[LONG(AC::Draw)].Args, glActions[LONG(AC::Draw)].Size, argbuffer, NULL)) != ERR::Okay) {
+   if ((error = build_args(Lua, glActions[LONG(AC::Draw)].Args, glActions[LONG(AC::Draw)].Size, argbuffer, nullptr)) != ERR::Okay) {
       luaL_error(Lua, "Argument build failed for Draw().");
       return 0;
    }

@@ -136,7 +136,7 @@ public:
    virtual void * FindFunction(const char *name) {
       pf::Log log(__FUNCTION__);
       log.msg("Name: %s", name);
-      return NULL;
+      return nullptr;
    }
 
    virtual bool IsValid() {

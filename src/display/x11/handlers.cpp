@@ -186,7 +186,7 @@ void handle_button_press(XEvent *xevent)
             .Type      = JET::WHEEL
          };
 
-         acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+         acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
       }
       else {
          struct dcDeviceInput input;
@@ -209,7 +209,7 @@ void handle_button_press(XEvent *xevent)
             input.Flags = glInputType[LONG(input.Type)].Flags;
             input.Timestamp = PreciseTime();
 
-            acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+            acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
          }
       }
 
@@ -235,7 +235,7 @@ void handle_button_release(XEvent *xevent)
       else if (xevent->xbutton.button IS 2) input.Type  = JET::BUTTON_3;
       else if (xevent->xbutton.button IS 3) input.Type  = JET::BUTTON_2;
 
-      if (input.Type != JET::NIL) acDataFeed(pointer, NULL, DATA::DEVICE_INPUT, &input, sizeof(input));
+      if (input.Type != JET::NIL) acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
       ReleaseObject(pointer);
    }
 
@@ -536,7 +536,7 @@ void handle_key_press(XEvent *xevent)
    if ((out = XLookupString(&xevent->xkey, buffer, sizeof(buffer)-1, &mod_sym, &glXComposeStatus)) > 0) {
       if (buffer[0] >= 0x20) {
          buffer[out] = 0;
-         unicode = UTF8ReadValue(buffer, NULL);
+         unicode = UTF8ReadValue(buffer, nullptr);
       }
    }
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {
@@ -614,7 +614,7 @@ void handle_key_release(XEvent *xevent)
    int out;
    if ((out = XLookupString(&xevent->xkey, buf, sizeof(buf)-1, &mod_sym, &glXComposeStatus)) > 0) {
       buf[out] = 0;
-      unicode = UTF8ReadValue(buf, NULL);
+      unicode = UTF8ReadValue(buf, nullptr);
    }
    else if ((mod_sym = XkbKeycodeToKeysym(XDisplay, xevent->xkey.keycode, 0, xevent->xkey.state & ShiftMask ? 1 : 0)) != NoSymbol) {
    }
@@ -678,7 +678,7 @@ void process_movement(Window Window, LONG X, LONG Y)
 
       struct acDataFeed feed;
       struct dcDeviceInput input;
-      feed.Object   = NULL;
+      feed.Object   = nullptr;
       feed.Datatype = DATA::DEVICE_INPUT;
       feed.Buffer   = &input;
       feed.Size     = sizeof(input);

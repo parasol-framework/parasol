@@ -173,13 +173,13 @@ void register_number_class(lua_State *Lua)
       { "byte",   number_i8 },
       { "word",   number_i16 },
       { "short",  number_i16 },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    static const luaL_Reg numlib_methods[] = {
       { "__tostring", number_tostring },
       { "__index",    number_index },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    pf::Log log(__FUNCTION__);
@@ -190,6 +190,6 @@ void register_number_class(lua_State *Lua)
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
 
-   luaL_openlib(Lua, NULL, numlib_methods, 0);
+   luaL_openlib(Lua, nullptr, numlib_methods, 0);
    luaL_openlib(Lua, "num", numlib_functions, 0);
 }

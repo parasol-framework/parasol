@@ -75,7 +75,7 @@ ERR extXML::find_tag(CSTRING XPath)
       while ((XPath[pos]) and (XPath[pos] <= 0x20)) pos++;
 
       if ((XPath[pos] >= '0') and (XPath[pos] <= '9')) { // Parse index
-         subscript = strtol(XPath+pos, NULL, 0);
+         subscript = strtol(XPath+pos, nullptr, 0);
          while ((XPath[pos] >= '0') and (XPath[pos] <= '9')) pos++;
       }
       else if ((XPath[pos] IS '@') or (XPath[pos] IS '=')) {
@@ -219,13 +219,13 @@ ERR extXML::find_tag(CSTRING XPath)
          ERR error = ERR::Okay;
          if (Callback.isC()) {
             auto routine = (ERR (*)(extXML *, LONG, CSTRING, APTR))Callback.Routine;
-            error = routine(this, Cursor->ID, Attrib.empty() ? NULL : Attrib.c_str(), Callback.Meta);
+            error = routine(this, Cursor->ID, Attrib.empty() ? nullptr : Attrib.c_str(), Callback.Meta);
          }
          else if (Callback.isScript()) {
             if (sc::Call(Callback, std::to_array<ScriptArg>({
                { "XML",  this, FD_OBJECTPTR },
                { "Tag",  Cursor->ID },
-               { "Attrib", Attrib.empty() ? CSTRING(NULL) : Attrib.c_str() }
+               { "Attrib", Attrib.empty() ? CSTRING(nullptr) : Attrib.c_str() }
             }), error) != ERR::Okay) error = ERR::Terminate;
          }
          else return ERR::InvalidValue;

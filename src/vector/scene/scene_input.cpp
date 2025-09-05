@@ -100,7 +100,7 @@ static void send_input_events(extVector *Vector, InputEvent *Event, bool Propaga
 static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
 {
    InputEvent event = {
-      .Next        = NULL,
+      .Next        = nullptr,
       .Value       = DOUBLE(Vector->UID),
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
@@ -122,7 +122,7 @@ static void send_enter_event(extVector *Vector, const InputEvent *Event, DOUBLE 
 static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X = 0, DOUBLE Y = 0)
 {
    InputEvent event = {
-      .Next        = NULL,
+      .Next        = nullptr,
       .Value       = DOUBLE(Vector->UID),
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
@@ -144,7 +144,7 @@ static void send_left_event(extVector *Vector, const InputEvent *Event, DOUBLE X
 static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const InputEvent *Event)
 {
    InputEvent event = {
-      .Next        = NULL,
+      .Next        = nullptr,
       .Value       = Event->Value,
       .Timestamp   = Event->Timestamp,
       .RecipientID = Vector->UID,
@@ -219,7 +219,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             pf::ScopedObjectLock<extVector> lk_vector(target);
             if (lk_vector.granted()) {
                InputEvent event = *input;
-               event.Next   = NULL;
+               event.Next   = nullptr;
                event.OverID = Self->ActiveVector;
                event.AbsX   = input->X; // Absolute coordinates are not translated.
                event.AbsY   = input->Y;
@@ -345,7 +345,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
                }
                else {
                   InputEvent event = *input;
-                  event.Next   = NULL;
+                  event.Next   = nullptr;
                   event.OverID = vector->UID;
                   event.AbsX   = input->X; // Absolute coordinates are not translated.
                   event.AbsY   = input->Y;

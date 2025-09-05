@@ -25,8 +25,8 @@ extern "C" {
 JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 
-static OBJECTPTR clJPEG = NULL;
-static OBJECTPTR modDisplay = NULL;
+static OBJECTPTR clJPEG = nullptr;
+static OBJECTPTR modDisplay = nullptr;
 
 static ERR JPEG_Activate(extPicture *);
 static ERR JPEG_Init(extPicture *);
@@ -96,7 +96,7 @@ METHODDEF(void) term_parasol_source(j_decompress_ptr cinfo) {
 static void jpeg_parasol_src(j_decompress_ptr cinfo, objFile *infile) {
    parasol_src_ptr src;
 
-   if (cinfo->src IS NULL) {
+   if (cinfo->src IS nullptr) {
       cinfo->src = (struct jpeg_source_mgr *)
          (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                    sizeof(parasol_source_mgr));
@@ -114,7 +114,7 @@ static void jpeg_parasol_src(j_decompress_ptr cinfo, objFile *infile) {
    src->pub.term_source = term_parasol_source;
    src->infile = infile;
    src->pub.bytes_in_buffer = 0;
-   src->pub.next_input_byte = NULL;
+   src->pub.next_input_byte = nullptr;
 }
 
 // Custom destination manager for saving
@@ -168,7 +168,7 @@ METHODDEF(void) term_parasol_destination(j_compress_ptr cinfo) {
 static void jpeg_parasol_dest(j_compress_ptr cinfo, objFile *outfile) {
    parasol_dest_ptr dest;
 
-   if (cinfo->dest IS NULL) {
+   if (cinfo->dest IS nullptr) {
       cinfo->dest = (struct jpeg_destination_mgr *)
          (*cinfo->mem->alloc_small)((j_common_ptr)cinfo, JPOOL_PERMANENT,
                                    sizeof(parasol_destination_mgr));
@@ -249,7 +249,7 @@ static ERR JPEG_Activate(extPicture *Self)
    }
 
    FreeResource(Self->prvFile);
-   Self->prvFile = NULL;
+   Self->prvFile = nullptr;
 
    return ERR::Okay;
 }
@@ -393,7 +393,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    log.branch();
 
-   OBJECTPTR file = NULL;
+   OBJECTPTR file = nullptr;
 
    if ((Args) and (Args->Dest)) file = Args->Dest;
    else {
@@ -459,7 +459,7 @@ static ActionArray clActions[] = {
    { AC::Init,      JPEG_Init },
    { AC::Query,     JPEG_Query },
    { AC::SaveImage, JPEG_SaveImage },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 //********************************************************************************************************************
@@ -490,12 +490,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   if (clJPEG)     { FreeResource(clJPEG);     clJPEG = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (clJPEG)     { FreeResource(clJPEG);     clJPEG = nullptr; }
    return ERR::Okay;
 }
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_jpeg_module() { return &ModHeader; }

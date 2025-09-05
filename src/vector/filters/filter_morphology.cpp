@@ -55,7 +55,7 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
    const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
 
    UBYTE *out_line;
-   UBYTE *buffer = NULL;
+   UBYTE *buffer = nullptr;
    LONG out_linewidth;
    bool buffer_as_input;
 
@@ -300,7 +300,7 @@ static ERR MORPHOLOGYFX_GET_XMLDef(extMorphologyFX *Self, STRING *Value)
 static const FieldDef clMorphologyFXOperator[] = {
    { "Erode",  MOP::ERODE },
    { "Dilate", MOP::DILATE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clMorphologyFXFields[] = {

@@ -9,7 +9,7 @@ static int object_action_call_args(lua_State *Lua)
    bool release = false;
 
    auto argbuffer = std::make_unique<BYTE[]>(glActions[int(action_id)].Size+8); // +8 for overflow protection in build_args()
-   ERR error = build_args(Lua, glActions[int(action_id)].Args, glActions[int(action_id)].Size, argbuffer.get(), NULL);
+   ERR error = build_args(Lua, glActions[int(action_id)].Args, glActions[int(action_id)].Size, argbuffer.get(), nullptr);
    if (error != ERR::Okay) {
       luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
       return 0;
@@ -44,9 +44,9 @@ static int object_action_call(lua_State *Lua)
    ERR error;
    bool release = false;
 
-   if (def->ObjectPtr) error = Action(action_id, def->ObjectPtr, NULL);
+   if (def->ObjectPtr) error = Action(action_id, def->ObjectPtr, nullptr);
    else if (auto obj = access_object(def)) {
-      error = Action(action_id, obj, NULL);
+      error = Action(action_id, obj, nullptr);
       release = true;
    }
    else error = ERR::AccessObject;
@@ -102,9 +102,9 @@ static int object_method_call(lua_State *Lua)
    bool release = false;
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, NULL);
+   if (def->ObjectPtr) error = Action(method->MethodID, def->ObjectPtr, nullptr);
    else if (auto obj = access_object(def)) {
-      error = Action(method->MethodID, obj, NULL);
+      error = Action(method->MethodID, obj, nullptr);
       release = true;
    }
    else error = ERR::AccessObject;
@@ -224,7 +224,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
             ((CSTRING *)(argbuffer + j))[0] = lua_tostring(Lua, n);
          }
          else if (type <= 0) {
-            ((CSTRING *)(argbuffer + j))[0] = NULL;
+            ((CSTRING *)(argbuffer + j))[0] = nullptr;
          }
          else if ((type IS LUA_TUSERDATA) or (type IS LUA_TLIGHTUSERDATA)) {
             luaL_error(Lua, "Arg #%d (%s) requires a string and not untyped pointer.", i, args[i].Name);
@@ -252,10 +252,10 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
                }
                else {
                   log.warning("Unable to resolve object pointer for #%d.", object->UID);
-                  ((OBJECTPTR *)(argbuffer + j))[0] = NULL;
+                  ((OBJECTPTR *)(argbuffer + j))[0] = nullptr;
                }
             }
-            else ((OBJECTPTR *)(argbuffer + j))[0] = NULL;
+            else ((OBJECTPTR *)(argbuffer + j))[0] = nullptr;
          }
          else if (args[i].Type & FD_FUNCTION) {
             if ((type IS LUA_TSTRING) or (type IS LUA_TFUNCTION)) {

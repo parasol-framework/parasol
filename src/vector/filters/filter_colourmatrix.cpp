@@ -72,7 +72,7 @@ public:
       for (auto i=0; i < CM_SIZE; i++) matrix[i] = Values[i];
    }
 
-   ColourMatrix() : preHue(NULL), postHue(NULL) {
+   ColourMatrix() : preHue(nullptr), postHue(nullptr) {
       reset();
    }
 
@@ -396,7 +396,7 @@ static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
 
 static ERR COLOURFX_Free(extColourFX *Self)
 {
-   if (Self->Matrix) { delete Self->Matrix; Self->Matrix = NULL; }
+   if (Self->Matrix) { delete Self->Matrix; Self->Matrix = nullptr; }
    return ERR::Okay;
 }
 
@@ -559,7 +559,7 @@ static const FieldDef clMode[] = {
    { "Hue",            CM::HUE },
    { "Desaturate",     CM::DESATURATE },
    { "Colourise",      CM::COLOURISE },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clColourFXFields[] = {

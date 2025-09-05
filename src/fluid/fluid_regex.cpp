@@ -429,14 +429,14 @@ void register_regex_class(lua_State *Lua)
 {
    static const struct luaL_Reg functions[] = {
       { "new", regex_new },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    static const struct luaL_Reg methods[] = {
       { "__index",    regex_get },
       { "__gc",       regex_destruct },
       { "__tostring", regex_tostring },
-      { NULL, NULL }
+      { nullptr, nullptr }
    };
 
    pf::Log(__FUNCTION__).trace("Registering regex interface");
@@ -446,7 +446,7 @@ void register_regex_class(lua_State *Lua)
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // Push the Fluid.regex metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
-   luaL_openlib(Lua, NULL, methods, 0);
+   luaL_openlib(Lua, nullptr, methods, 0);
 
    // Create regex module
    luaL_openlib(Lua, "regex", functions, 0);

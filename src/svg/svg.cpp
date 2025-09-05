@@ -40,7 +40,7 @@ JUMPTABLE_CORE
 JUMPTABLE_DISPLAY
 JUMPTABLE_VECTOR
 
-static OBJECTPTR clSVG = NULL, clRSVG = NULL, modDisplay = NULL, modVector = NULL, modPicture = NULL;
+static OBJECTPTR clSVG = nullptr, clRSVG = nullptr, modDisplay = nullptr, modVector = nullptr, modPicture = nullptr;
 static DOUBLE glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 struct prvSVG { // Private variables for RSVG
@@ -67,7 +67,7 @@ struct svgID { // All elements using the 'id' attribute will be registered with 
 };
 
 struct svgAnimState {
-   VectorMatrix *matrix = NULL;
+   VectorMatrix *matrix = nullptr;
    std::vector<class anim_transform *> transforms;
 };
 
@@ -309,12 +309,12 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modDisplay) { FreeResource(modDisplay); modDisplay = NULL; }
-   if (modVector)  { FreeResource(modVector);  modVector = NULL; }
-   if (modPicture) { FreeResource(modPicture); modPicture = NULL; }
+   if (modDisplay) { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modVector)  { FreeResource(modVector);  modVector = nullptr; }
+   if (modPicture) { FreeResource(modPicture); modPicture = nullptr; }
 
-   if (clSVG)  { FreeResource(clSVG);  clSVG = NULL; }
-   if (clRSVG) { FreeResource(clRSVG); clRSVG = NULL; }
+   if (clSVG)  { FreeResource(clSVG);  clSVG = nullptr; }
+   if (clRSVG) { FreeResource(clRSVG); clRSVG = nullptr; }
    return ERR::Okay;
 }
 
@@ -325,5 +325,5 @@ static ERR MODExpunge(void)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_svg_module() { return &ModHeader; }

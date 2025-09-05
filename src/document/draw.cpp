@@ -172,7 +172,7 @@ ERR layout::gen_scene_init(objVectorViewport *Viewport)
          acMoveToBack(Self->Bkgd);
       }
    }
-   else Self->Bkgd = NULL;
+   else Self->Bkgd = nullptr;
 
    return ERR::Okay;
 }
@@ -409,7 +409,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   if (!cell.rect_fill.empty()) {
                      if (!cell.fill.empty()) cell.rect_fill->setFields(fl::Fill(cell.fill));
-                     else cell.rect_fill->setFields(fl::Fill(NULL));
+                     else cell.rect_fill->setFields(fl::Fill(nullptr));
                   }
 
                   if (!cell.stroke.empty()) {
@@ -432,7 +432,7 @@ void layout::gen_scene_graph(objVectorViewport *Viewport, std::vector<doc_segmen
 
                   Self->VPToEntity.emplace(cell.viewport.id, vp_to_entity { &cell });
                }
-               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Stroke(NULL), fl::Fill(NULL));
+               else if (!cell.rect_fill.empty()) cell.rect_fill->setFields(fl::Stroke(nullptr), fl::Fill(nullptr));
 
                break;
             }

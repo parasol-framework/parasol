@@ -158,7 +158,7 @@ static const ActionArray clClipActions[] = {
    { AC::Init,      CLIP_Init },
    { AC::NewChild,  CLIP_NewChild },
    { AC::NewPlacement, CLIP_NewPlacement },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static const FieldArray clClipFields[] = {

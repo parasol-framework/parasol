@@ -14,7 +14,7 @@ Name: Events
 #include "defs.h"
 
 static const std::array<CSTRING, LONG(EVG::END)> glEventGroups = {
-   NULL,
+   nullptr,
    "filesystem",
    "network",
    "system",
@@ -45,7 +45,7 @@ struct eventsub {
    }
 };
 
-static struct eventsub *glEventList = NULL;
+static struct eventsub *glEventList = nullptr;
 static UBYTE glCallSignal = 0;
 static bool glEventListAltered = false;
 
@@ -67,7 +67,7 @@ void free_events(void)
       event = next;
    }
 
-   glEventList = NULL;
+   glEventList = nullptr;
 }
 
 /*********************************************************************************************************************
@@ -215,7 +215,7 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
       event->Group     = gid;
       event->ContextID = context->UID;
       event->Next      = glEventList;
-      event->Prev      = NULL;
+      event->Prev      = nullptr;
       event->EventMask = mask;
 
       if (glEventList) glEventList->Prev = event;

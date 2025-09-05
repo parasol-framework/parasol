@@ -118,7 +118,7 @@ static ERR SET_Path(extCompression *Self, CSTRING Value)
 {
    pf::Log log;
 
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Path = strclone(Value))) return log.warning(ERR::AllocMemory);

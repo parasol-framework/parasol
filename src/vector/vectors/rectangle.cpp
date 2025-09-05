@@ -547,7 +547,7 @@ static const FieldDef clRectDimensions[] = {
    { "ScaledY",       DMF::SCALED_Y },
    { "ScaledXOffset", DMF::SCALED_X_OFFSET },
    { "ScaledYOffset", DMF::SCALED_Y_OFFSET },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clRectangleFields[] = {
@@ -570,7 +570,7 @@ static const ActionArray clRectangleActions[] = {
    { AC::NewObject,     RECTANGLE_NewObject },
    //{ AC::Redimension, RECTANGLE_Redimension },
    { AC::Resize,      RECTANGLE_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static ERR init_rectangle(void)

@@ -177,7 +177,7 @@ static CSTRING read_unit(CSTRING Input, double &Output, bool &Scaled)
       else if ((str[0] IS 'p') and (str[1] IS 't')) { str += 2; multiplier = (4.0 / 3.0); } // Points.  A point is 4/3 of a pixel
       else if ((str[0] IS 'p') and (str[1] IS 'c')) { str += 2; multiplier = (4.0 / 3.0) * 12.0; } // Pica.  1 Pica is equal to 12 Points
 
-      Output = strtod(v, NULL) * multiplier;
+      Output = strtod(v, nullptr) * multiplier;
    }
    else Output = 0;
 
@@ -332,7 +332,7 @@ static ERR load_doc(extDocument *Self, std::string Path, bool Unload, ULD Unload
    auto i = Path.find_first_of("&#?");
    if (i != std::string::npos) Path.erase(i);
 
-   if (AnalysePath(Path.c_str(), NULL) IS ERR::Okay) {
+   if (AnalysePath(Path.c_str(), nullptr) IS ERR::Okay) {
       auto task = CurrentTask();
       task->setPath(Path);
 
@@ -411,13 +411,13 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->PageWidth     = 0;
    Self->CalcWidth     = 0;
    Self->MinPageWidth  = MIN_PAGE_WIDTH;
-   Self->DefaultScript = NULL;
+   Self->DefaultScript = nullptr;
    Self->FocusIndex    = -1;
    Self->PageProcessed = false;
    Self->RefreshTemplates = true;
    Self->MouseOverSegment = -1;
    Self->ActiveEditCellID = 0;
-   Self->ActiveEditDef    = NULL;
+   Self->ActiveEditDef    = nullptr;
    Self->SelectIndex.reset();
    Self->CursorIndex.reset();
 
@@ -428,7 +428,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    Self->FontFace = DEFAULT_FONTFACE;
    Self->FontSize = DEFAULT_FONTSIZE;
    Self->FontStyle = DEFAULT_FONTSTYLE;
-   Self->PageTag = NULL;
+   Self->PageTag = nullptr;
 
    Self->EditCells.clear();
    Self->Stream.clear();
@@ -442,19 +442,19 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
 
    if ((Flags & ULD::TERMINATE) != ULD::NIL) Self->Vars.clear();
 
-   if (Self->SVG)         { FreeResource(Self->SVG); Self->SVG = NULL; }
-   if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = NULL; }
-   if (Self->Author)      { FreeResource(Self->Author); Self->Author = NULL; }
-   if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = NULL; }
-   if (Self->Description) { FreeResource(Self->Description); Self->Description = NULL; }
-   if (Self->Title)       { FreeResource(Self->Title); Self->Title = NULL; }
+   if (Self->SVG)         { FreeResource(Self->SVG); Self->SVG = nullptr; }
+   if (Self->Keywords)    { FreeResource(Self->Keywords); Self->Keywords = nullptr; }
+   if (Self->Author)      { FreeResource(Self->Author); Self->Author = nullptr; }
+   if (Self->Copyright)   { FreeResource(Self->Copyright); Self->Copyright = nullptr; }
+   if (Self->Description) { FreeResource(Self->Description); Self->Description = nullptr; }
+   if (Self->Title)       { FreeResource(Self->Title); Self->Title = nullptr; }
 
    // Free templates only if they have been modified (no longer at the default settings).
 
    if (Self->Templates) {
       if (Self->TemplatesModified != Self->Templates->Modified) {
          FreeResource(Self->Templates);
-         Self->Templates = NULL;
+         Self->Templates = nullptr;
       }
    }
 
@@ -487,7 +487,7 @@ static ERR unload_doc(extDocument *Self, ULD Flags)
    }
 
    if (Self->Page) {
-      Self->Page->setMask(NULL); // Reset the clipping mask if it was defined by <body>
+      Self->Page->setMask(nullptr); // Reset the clipping mask if it was defined by <body>
 
       pf::vector<ChildEntry> list;
       if (ListChildren(Self->Page->UID, &list) IS ERR::Okay) {
@@ -608,7 +608,7 @@ static int getutf8(CSTRING Value, int *Unicode)
 
 static bc_font * find_style(RSTREAM &Stream, stream_char &Char)
 {
-   bc_font *style = NULL;
+   bc_font *style = nullptr;
 
    for (INDEX fi = Char.index; fi < Char.index; fi++) {
       if (Stream[fi].code IS SCODE::FONT) style = &Stream.lookup<bc_font>(fi);
@@ -864,7 +864,7 @@ void ui_link::exec(extDocument *Self)
 
       if (origin.type IS LINK::FUNCTION) {
          std::string function_name, args;
-         if (extract_script(Self, origin.ref, NULL, function_name, args) IS ERR::Okay) {
+         if (extract_script(Self, origin.ref, nullptr, function_name, args) IS ERR::Okay) {
             params.emplace("on-click", function_name);
          }
       }

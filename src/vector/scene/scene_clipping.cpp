@@ -177,7 +177,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
    }
 
    if (!m_clip->Viewport->Matrices) {
-      m_clip->Viewport->newMatrix(NULL, false);
+      m_clip->Viewport->newMatrix(nullptr, false);
    }
 
    if (m_clip->Units IS VUNIT::BOUNDING_BOX) draw_bounding_box(Scene);
@@ -190,7 +190,7 @@ void SceneRenderer::ClipBuffer::draw(SceneRenderer &Scene)
 void SceneRenderer::ClipBuffer::draw_userspace(SceneRenderer &Scene)
 {
    if (!m_clip->Viewport->Matrices) {
-      if (m_clip->Viewport->newMatrix(NULL, false) != ERR::Okay) return;
+      if (m_clip->Viewport->newMatrix(nullptr, false) != ERR::Okay) return;
    }
 
    auto &matrix = m_clip->Viewport->Matrices;

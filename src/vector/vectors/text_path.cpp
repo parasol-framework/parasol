@@ -211,12 +211,12 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
    if (morph) {
       if ((Vector->MorphFlags & VMF::STRETCH) != VMF::NIL) {
          // In stretch mode, the standard morphing algorithm is used (see gen_vector_path())
-         morph = NULL;
+         morph = nullptr;
       }
       else {
          if (morph->dirty()) gen_vector_path(morph); // Regenerate the target path if necessary
 
-         if (!morph->BasePath.total_vertices()) morph = NULL;
+         if (!morph->BasePath.total_vertices()) morph = nullptr;
          else {
             morph->BasePath.rewind(0);
             morph->BasePath.vertex(0, &start_x, &start_y);

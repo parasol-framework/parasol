@@ -123,7 +123,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
       // An internal buffer will need to be allocated if the one supplied to Read() is not large enough.
       outputsize = MIN_OUTPUT_SIZE;
       if (!(output = Self->OutputBuffer)) {
-         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) return ERR::AllocMemory;
+         if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, nullptr) != ERR::Okay) return ERR::AllocMemory;
          output = Self->OutputBuffer;
       }
    }
@@ -182,7 +182,7 @@ static ERR CSTREAM_Reset(extCompressedStream *Self)
       Self->Deflating = FALSE;
    }
 
-   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
+   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = nullptr; }
 
    return ERR::Okay;
 }
@@ -269,7 +269,7 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    }
 
    if (!Self->OutputBuffer) {
-      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) return ERR::AllocMemory;
+      if (AllocMemory(MIN_OUTPUT_SIZE, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, nullptr) != ERR::Okay) return ERR::AllocMemory;
    }
 
    Args->Result = 0;
@@ -304,7 +304,7 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
       if (len > 0) {
          Self->TotalOutput += len;
          log.trace("%d bytes (total %" PF64 ") were compressed.", len, Self->TotalOutput);
-         acWrite(Self->Output, Self->OutputBuffer, len, NULL);
+         acWrite(Self->Output, Self->OutputBuffer, len, nullptr);
       }
       else {
          // deflate() may not output anything if it needs more data to fill up a compression frame.  Return ERR::Okay
@@ -383,7 +383,7 @@ static const FieldArray clStreamFields[] = {
    { "TotalOutput", FDF_INT64|FDF_R },
    { "Input",       FDF_OBJECT|FDF_RI },
    { "Output",      FDF_OBJECT|FDF_RI },
-   { "Format",      FDF_INT|FDF_LOOKUP|FD_RI, NULL, NULL, &clCompressedStreamFormat },
+   { "Format",      FDF_INT|FDF_LOOKUP|FD_RI, nullptr, nullptr, &clCompressedStreamFormat },
    // Virtual fields
    { "Size",        FDF_INT64|FDF_R, CSTREAM_GET_Size },
    END_FIELD
@@ -397,7 +397,7 @@ static const ActionArray clStreamActions[] = {
    { AC::Reset,     CSTREAM_Reset },
    { AC::Seek,      CSTREAM_Seek },
    { AC::Write,     CSTREAM_Write },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 extern ERR add_compressed_stream_class(void)

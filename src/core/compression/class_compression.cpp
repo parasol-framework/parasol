@@ -648,7 +648,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, nullptr) != ERR::Okay) {
          return ERR::AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -787,7 +787,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
 
    if ((Self->OutputBuffer) and (Self->OutputSize > 64 * 1024)) {
       FreeResource(Self->OutputBuffer);
-      Self->OutputBuffer = NULL;
+      Self->OutputBuffer = nullptr;
       Self->OutputSize = 0;
    }
 
@@ -889,7 +889,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
    }
    else {
       Self->OutputSize = 32 * 1024;
-      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, NULL) != ERR::Okay) {
+      if (AllocMemory(Self->OutputSize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&Self->OutputBuffer, nullptr) != ERR::Okay) {
          return ERR::AllocMemory;
       }
       output = Self->OutputBuffer;
@@ -1216,7 +1216,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                   struct acRead read = { .Buffer = Self->Input, .Length = SIZE_COMPRESSION_BUFFER-1 };
                   if ((error = Action(AC::Read, Self->FileIO, &read)) IS ERR::Okay) {
                      Self->Input[read.Result] = 0;
-                     DeleteFile(destpath.c_str(), NULL);
+                     DeleteFile(destpath.c_str(), nullptr);
                      error = CreateLink(destpath.c_str(), (CSTRING)Self->Input);
                      if (error IS ERR::NoSupport) error = ERR::Okay;
                   }
@@ -1251,7 +1251,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
                   }
 
                   Self->Output[zf.OriginalSize] = 0; // !!! We should terminate according to the amount of data decompressed
-                  DeleteFile(destpath.c_str(), NULL);
+                  DeleteFile(destpath.c_str(), nullptr);
                   error = CreateLink(destpath.c_str(), (CSTRING)Self->Output);
                   if (error IS ERR::NoSupport) error = ERR::Okay;
 
@@ -1489,7 +1489,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
       fb.FeedbackID     = FDB::DECOMPRESS_OBJECT;
       fb.Index          = Self->FileIndex;
       fb.Path           = list.Name.c_str();
-      fb.Dest           = NULL;
+      fb.Dest           = nullptr;
       fb.OriginalSize   = list.OriginalSize;
       fb.CompressedSize = list.CompressedSize;
       fb.Progress       = 0;
@@ -1748,11 +1748,11 @@ static ERR COMPRESSION_Free(extCompression *Self)
 
    if (Self->Inflating)    { inflateEnd(&Self->InflateStream); Self->Inflating = false; }
    if (Self->Deflating)    { deflateEnd(&Self->DeflateStream); Self->Deflating = false; }
-   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = NULL; }
-   if (Self->Input)        { FreeResource(Self->Input); Self->Input = NULL; }
-   if (Self->Output)       { FreeResource(Self->Output); Self->Output = NULL; }
-   if (Self->FileIO)       { FreeResource(Self->FileIO); Self->FileIO = NULL; }
-   if (Self->Path)         { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->OutputBuffer) { FreeResource(Self->OutputBuffer); Self->OutputBuffer = nullptr; }
+   if (Self->Input)        { FreeResource(Self->Input); Self->Input = nullptr; }
+   if (Self->Output)       { FreeResource(Self->Output); Self->Output = nullptr; }
+   if (Self->FileIO)       { FreeResource(Self->FileIO); Self->FileIO = nullptr; }
+   if (Self->Path)         { FreeResource(Self->Path); Self->Path = nullptr; }
 
    Self->~extCompression();
 
@@ -1864,8 +1864,8 @@ static ERR COMPRESSION_NewObject(extCompression *Self)
 {
    pf::Log log;
 
-   if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, NULL) IS ERR::Okay) {
-      if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, NULL) IS ERR::Okay) {
+   if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Output, nullptr) IS ERR::Okay) {
+      if (AllocMemory(SIZE_COMPRESSION_BUFFER, MEM::DATA, (APTR *)&Self->Input, nullptr) IS ERR::Okay) {
          Self->CompressionLevel = 60; // 60% compression by default
          Self->Permissions      = PERMIT::NIL; // Inherit permissions by default. PERMIT::READ|PERMIT::WRITE|PERMIT::GROUP_READ|PERMIT::GROUP_WRITE;
          Self->MinOutputSize    = (32 * 1024) + 2048; // Has to at least match the minimum 'window size' of each compression block, plus extra in case of overflow.  Min window size is typically 16k
@@ -2064,7 +2064,7 @@ static const FieldDef clPermissionFlags[] = {
    { "AllRead",      PERMIT::ALL_READ },
    { "AllWrite",     PERMIT::ALL_WRITE },
    { "AllExec",      PERMIT::ALL_EXEC },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 #include "class_compression_def.c"
@@ -2072,14 +2072,14 @@ static const FieldDef clPermissionFlags[] = {
 static const FieldArray clFields[] = {
    { "TotalOutput",      FDF_INT64|FDF_R },
    { "Output",           FDF_OBJECTID|FDF_RI },
-   { "CompressionLevel", FDF_INT|FDF_RW, NULL, SET_CompressionLevel },
-   { "Flags",            FDF_INTFLAGS|FDF_RW, NULL, NULL, &clCompressionFlags },
+   { "CompressionLevel", FDF_INT|FDF_RW, nullptr, SET_CompressionLevel },
+   { "Flags",            FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clCompressionFlags },
    { "SegmentSize",      FDF_INT|FDF_SYSTEM|FDF_RW },
-   { "Permissions",      FDF_INT|FDF_LOOKUP|FDF_RW, NULL, NULL, &clPermissionFlags },
+   { "Permissions",      FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, nullptr, &clPermissionFlags },
    { "MinOutputSize",    FDF_INT|FDF_R },
-   { "WindowBits",       FDF_INT|FDF_RW, NULL, SET_WindowBits },
+   { "WindowBits",       FDF_INT|FDF_RW, nullptr, SET_WindowBits },
    // Virtual fields
-   { "ArchiveName",      FDF_STRING|FDF_W,       NULL, SET_ArchiveName },
+   { "ArchiveName",      FDF_STRING|FDF_W,       nullptr, SET_ArchiveName },
    { "Path",             FDF_STRING|FDF_RW,      GET_Path, SET_Path },
    { "Feedback",         FDF_FUNCTIONPTR|FDF_RW, GET_Feedback, SET_Feedback },
    { "Header",           FDF_POINTER|FDF_R,      GET_Header },

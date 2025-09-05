@@ -21,8 +21,8 @@ typedef void CLOSECORE(void);
 
 struct CoreBase *CoreBase;
 static APTR find_core(char *PathBuffer, int Size);
-static APTR corehandle = NULL;
-CLOSECORE *CloseCore = NULL;
+static APTR corehandle = nullptr;
+CLOSECORE *CloseCore = nullptr;
 #else
 static struct CoreBase *CoreBase; // Dummy
 #endif
@@ -56,7 +56,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Error = ERR::Okay;
    info.Flags = OPF::ARGS|OPF::ERROR;
 
-   if (OpenCore(&info, &CoreBase) == ERR::Okay) return NULL;
+   if (OpenCore(&info, &CoreBase) == ERR::Okay) return nullptr;
    else if (info.Error IS ERR::CoreVersion) {
       return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    }

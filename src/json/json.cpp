@@ -59,7 +59,7 @@ It will be translated to the following when loaded into an XML object:
 
 JUMPTABLE_CORE
 
-static OBJECTPTR clJSON = NULL;
+static OBJECTPTR clJSON = nullptr;
 
 static ERR JSON_Init(objXML *);
 static ERR JSON_SaveToObject(objXML *, struct acSaveToObject *);
@@ -69,7 +69,7 @@ static UWORD glTagID = 1;
 static ActionArray clActions[] = {
    { AC::Init,         JSON_Init },
    { AC::SaveToObject, JSON_SaveToObject },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags);
@@ -98,7 +98,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (clJSON) { FreeResource(clJSON); clJSON = NULL; }
+   if (clJSON) { FreeResource(clJSON); clJSON = nullptr; }
    return ERR::Okay;
 }
 
@@ -639,5 +639,5 @@ static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, NULL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, nullptr, nullptr)
 extern "C" struct ModHeader * register_json_module() { return &ModHeader; }

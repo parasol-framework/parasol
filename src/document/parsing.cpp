@@ -23,9 +23,9 @@ struct parser {
 
    RSTREAM *m_stream;                 // Generated stream content
    std::unique_ptr<RSTREAM> m_stream_alloc;
-   objXML *m_inject_xml = NULL;
-   objXML::TAGS *m_inject_tag = NULL, *m_header_tag = NULL, *m_footer_tag = NULL, *m_body_tag = NULL;
-   objTime *m_time = NULL;
+   objXML *m_inject_xml = nullptr;
+   objXML::TAGS *m_inject_tag = nullptr, *m_header_tag = nullptr, *m_footer_tag = nullptr, *m_body_tag = nullptr;
+   objTime *m_time = nullptr;
    int  m_loop_index  = 0;
    UWORD m_paragraph_depth = 0;     // Incremented when inside <p> tags
    char  m_in_template = 0;
@@ -40,7 +40,7 @@ struct parser {
    std::stack<bc_list *> m_list_stack;
    std::stack<process_table> m_table_stack;
 
-   parser(extDocument *pSelf, RSTREAM *pStream = NULL) : Self(pSelf) {
+   parser(extDocument *pSelf, RSTREAM *pStream = nullptr) : Self(pSelf) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -52,7 +52,7 @@ struct parser {
       }
    }
 
-   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = NULL) : Self(pSelf), m_xml(pXML) {
+   parser(extDocument *pSelf, objXML *pXML, RSTREAM *pStream = nullptr) : Self(pSelf), m_xml(pXML) {
       if (pStream) {
          m_stream = pStream;
          m_index = stream_char(pStream->size());
@@ -170,7 +170,7 @@ void parser::process_page(objXML *pXML)
    // Look for the first page that matches the requested page name (if a name is specified).  Pages can be located anywhere
    // within the XML source - they don't have to be at the root.
 
-   XMLTag *page = NULL;
+   XMLTag *page = nullptr;
    for (auto &scan : m_xml->Tags) {
       if (!iequals("page", scan.Attribs[0].Name)) continue;
 
@@ -743,7 +743,7 @@ static bool eval_condition(const std::string &String)
       { "<=", COND_LESS_EQUAL },
       { ">",  COND_GREATER_THAN },
       { ">=", COND_GREATER_EQUAL },
-      { NULL, 0 }
+      { nullptr, 0 }
    };
 
    int start = 0;
@@ -805,8 +805,8 @@ static bool eval_condition(const std::string &String)
          auto test_type = datatype(test);
 
          if (((test_type IS 'i') or (test_type IS 'f')) and ((cmp_type IS 'i') or (cmp_type IS 'f'))) {
-            auto cmp_float  = strtod(String.c_str()+i, NULL);
-            auto test_float = strtod(test.c_str(), NULL);
+            auto cmp_float  = strtod(String.c_str()+i, nullptr);
+            auto test_float = strtod(test.c_str(), nullptr);
             switch (condition) {
                case COND_NOT_EQUAL:     if (test_float != cmp_float) truth = true; break;
                case COND_EQUAL:         if (test_float IS cmp_float) truth = true; break;
@@ -892,7 +892,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
       return TRF::NIL;
    }
 
-   XMLTag *object_template = NULL;
+   XMLTag *object_template = nullptr;
 
    auto saved_attribs = Tag.Attribs;
    translate_attrib_args(Tag.Attribs);
@@ -900,7 +900,7 @@ TRF parser::parse_tag(XMLTag &Tag, IPF &Flags)
    auto tagname = Tag.Attribs[0].Name;
    if (tagname.starts_with('$')) tagname.erase(0, 1);
    auto tag_hash = strihash(tagname);
-   object_template = NULL;
+   object_template = nullptr;
 
    auto result = TRF::NIL;
    if (Tag.isContent()) {
@@ -1624,7 +1624,7 @@ void parser::tag_call(XMLTag &Tag)
 
          script->exec(function.c_str(), args.data(), args.size());
       }
-      else script->exec(function.c_str(), NULL, 0);
+      else script->exec(function.c_str(), nullptr, 0);
    }
 
    // Check for a result and print it
@@ -3647,7 +3647,7 @@ void parser::tag_table(XMLTag &Tag)
             break;
 
          case HASH_stroke_width:
-            table.stroke_width = std::clamp(strtod(value.c_str(), NULL), 0.0, 255.0);
+            table.stroke_width = std::clamp(strtod(value.c_str(), nullptr), 0.0, 255.0);
             break;
       }
    }
@@ -3671,7 +3671,7 @@ void parser::tag_table(XMLTag &Tag)
 
       size_t i;
       for (i=0; (i < table.columns.size()) and (i < list.size()); i++) {
-         table.columns[i].preset_width = strtod(list[i].c_str(), NULL);
+         table.columns[i].preset_width = strtod(list[i].c_str(), nullptr);
          if (list[i].find_first_of('%') != std::string::npos) {
             table.columns[i].preset_width *= 0.01;
             table.columns[i].preset_width_rel = true;
@@ -3707,7 +3707,7 @@ void parser::tag_row(XMLTag &Tag)
 
    for (int i=1; i < std::ssize(Tag.Attribs); i++) {
       if (iequals("height", Tag.Attribs[i].Name)) {
-         escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), NULL), 0.0, 4000.0);
+         escrow.min_height = std::clamp(strtod(Tag.Attribs[i].Value.c_str(), nullptr), 0.0, 4000.0);
       }
       else if (iequals("fill", Tag.Attribs[i].Name))   escrow.fill   = Tag.Attribs[i].Value;
       else if (iequals("stroke", Tag.Attribs[i].Name)) escrow.stroke = Tag.Attribs[i].Value;

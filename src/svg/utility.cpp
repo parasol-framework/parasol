@@ -102,7 +102,7 @@ ERR svgState::current_colour(objVector *Vector, FRGB &RGB) noexcept
 {
    if (!m_color.empty()) {
       VectorPainter painter;
-      if (vec::ReadPainter(NULL, m_color.c_str(), &painter, NULL) IS ERR::Okay) {
+      if (vec::ReadPainter(nullptr, m_color.c_str(), &painter, nullptr) IS ERR::Okay) {
          RGB = painter.Colour;
          return ERR::Okay;
       }
@@ -171,7 +171,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
       if (iequals("stop", scan.name())) {
          Transition stop;
          stop.Offset = 0;
-         stop.Transform = NULL;
+         stop.Transform = nullptr;
          for (unsigned a=1; a < scan.Attribs.size(); a++) {
             auto &name = scan.Attribs[a].Name;
             auto &value = scan.Attribs[a].Value;
@@ -205,7 +205,7 @@ static std::vector<Transition> process_transition_stops(extSVG *Self, const objX
 static CSTRING folder(extSVG *Self)
 {
    if (!Self->Folder.empty()) return Self->Folder.c_str();
-   if (!Self->Path) return NULL;
+   if (!Self->Path) return nullptr;
 
    // Setting a path of "my/house/is/red.svg" results in "my/house/is/"
 
@@ -217,7 +217,7 @@ static CSTRING folder(extSVG *Self)
       }
       else Self->Folder.clear();
    }
-   return NULL;
+   return nullptr;
 }
 
 //********************************************************************************************************************
@@ -266,7 +266,7 @@ static XMLTag * find_href_tag(extSVG *Self, std::string Ref)
    if ((!ref.empty()) and (Self->IDs.contains(ref))) {
       return Self->IDs[ref];
    }
-   return NULL;
+   return nullptr;
 }
 
 /*********************************************************************************************************************
@@ -463,7 +463,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
    AdjustLogLevel(1);
 #endif
 
-   if (Self->XML) { FreeResource(Self->XML); Self->XML = NULL; }
+   if (Self->XML) { FreeResource(Self->XML); Self->XML = nullptr; }
 
    objXML *xml;
    ERR error = ERR::Okay;
@@ -514,7 +514,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
 
          convert_styles(xml->Tags);
 
-         objVector *sibling = NULL;
+         objVector *sibling = nullptr;
          for (auto &scan : xml->Tags) {
             if (iequals("svg", scan.name())) {
                svgState state(Self);

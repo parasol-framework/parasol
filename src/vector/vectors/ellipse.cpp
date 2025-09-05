@@ -362,7 +362,7 @@ static const FieldDef clEllipseDimensions[] = {
    { "ScaledRadiusY", DMF::SCALED_RADIUS_Y },
    { "ScaledCenterX", DMF::SCALED_CENTER_X },
    { "ScaledCenterY", DMF::SCALED_CENTER_Y },
-   { NULL, 0 }
+   { nullptr, 0 }
 };
 
 static const FieldArray clEllipseFields[] = {
@@ -390,7 +390,7 @@ static const ActionArray clEllipseActions[] = {
    { AC::MoveToPoint,   ELLIPSE_MoveToPoint },
    //{ AC::Redimension, ELLIPSE_Redimension },
    //{ AC::Resize,      ELLIPSE_Resize },
-   { AC::NIL, NULL }
+   { AC::NIL, nullptr }
 };
 
 static ERR init_ellipse(void)

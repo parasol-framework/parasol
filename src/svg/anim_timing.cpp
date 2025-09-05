@@ -151,7 +151,7 @@ static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
       //
       // Tested in: w3-animate-elem-(24|81)-t.svg
 
-      VectorMatrix *m = NULL;
+      VectorMatrix *m = nullptr;
       if (vt.transforms.front()->additive IS ADD::REPLACE) {
          for (m = vector->Matrices; (m); m=m->Next) {
             if (m->Tag IS MTAG_SVG_TRANSFORM) {

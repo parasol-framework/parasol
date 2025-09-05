@@ -29,7 +29,7 @@ the display API will be diverted to the module binary that is relevant to the pl
 //********************************************************************************************************************
 
 struct CoreBase *CoreBase;
-static objModule *modDriver = NULL;
+static objModule *modDriver = nullptr;
 
 //********************************************************************************************************************
 // Module function list.
@@ -109,7 +109,7 @@ Function JumpTable[] = {
    { scrUnsupported, "GetInputEvent", argsGetInputEvent },
    { scrUnsupported, "GetInputTypeName", argsGetInputTypeName },
    { scrUnsupported, "ScaleToDPI", argsScaleToDPI },
-   { NULL, NULL, NULL }
+   { nullptr, nullptr, nullptr }
 };
 
 //********************************************************************************************************************
@@ -271,10 +271,10 @@ static ERROR MODOpen(OBJECTPTR Module)
 
 static ERROR MODExpunge(void)
 {
-   if (modDriver) { FreeResource(modDriver); modDriver = NULL; }
+   if (modDriver) { FreeResource(modDriver); modDriver = nullptr; }
    return ERR_Okay;
 }
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, MODOpen, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, nullptr)

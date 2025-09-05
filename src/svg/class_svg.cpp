@@ -35,7 +35,7 @@ static void notify_free_frame_callback(OBJECTPTR Object, ACTIONID ActionID, ERR 
 static void notify_free_scene(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extSVG *)CurrentContext();
-   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = NULL; }
+   if (Self->AnimationTimer) { UpdateTimer(Self->AnimationTimer, 0); Self->AnimationTimer = nullptr; }
 }
 
 /*********************************************************************************************************************
@@ -131,13 +131,13 @@ static ERR SVG_Free(extSVG *Self)
 
    if ((Self->Target) and (Self->Target IS Self->Scene) and (Self->Scene->Owner IS Self)) {
       FreeResource(Self->Target);
-      Self->Target = NULL;
+      Self->Target = nullptr;
    }
 
-   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = NULL; }
-   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = NULL; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
-   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = NULL; }
+   if (Self->Path)      { FreeResource(Self->Path);      Self->Path = nullptr; }
+   if (Self->Title)     { FreeResource(Self->Title);     Self->Title = nullptr; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   if (Self->XML)       { FreeResource(Self->XML);       Self->XML = nullptr; }
 
    if (!Self->Resources.empty()) {
       for (auto id : Self->Resources) FreeResource(id);
@@ -179,8 +179,8 @@ static ERR SVG_Init(extSVG *Self)
       else return ERR::NewObject;
    }
 
-   if (Self->Path) return parse_svg(Self, Self->Path, NULL);
-   else if (Self->Statement) return parse_svg(Self, NULL, Self->Statement);
+   if (Self->Path) return parse_svg(Self, Self->Path, nullptr);
+   else if (Self->Statement) return parse_svg(Self, nullptr, Self->Statement);
 
    return ERR::Okay;
 }
@@ -285,7 +285,7 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
 //   Self->Scene->Viewport->setViewY(Args->Y);
 
    auto data = bmp->offset(Args->X, Args->Y);
-   Action(AC::Draw, Self->Scene, NULL);
+   Action(AC::Draw, Self->Scene, nullptr);
    bmp->Data = data;
    return ERR::Okay;
 }
@@ -367,7 +367,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
       if (xml.ok()) {
          Self->XML = *xml;
 
-         ERR error = xml->insertXML(0, XMI::NIL, header, NULL);
+         ERR error = xml->insertXML(0, XMI::NIL, header, nullptr);
          LONG index = xml->Tags.back().ID;
 
          XMLTag *tag;
@@ -423,7 +423,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
                }
             }
 
-            Self->XML = NULL;
+            Self->XML = nullptr;
          }
 
          return error;
@@ -580,7 +580,7 @@ static ERR GET_Path(extSVG *Self, STRING *Value)
 
 static ERR SET_Path(extSVG *Self, CSTRING Value)
 {
-   if (Self->Path)   { FreeResource(Self->Path); Self->Path = NULL; }
+   if (Self->Path)   { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->Folder.clear();
 
    if ((Value) and (*Value)) {
@@ -623,7 +623,7 @@ progressive document construction from data streams.
 
 static ERR SET_Statement(extSVG *Self, CSTRING Value)
 {
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = NULL; }
+   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
 
    if ((Value) and (*Value)) {
       if (!(Self->Statement = strclone(Value))) return ERR::AllocMemory;
@@ -694,7 +694,7 @@ where a title has been specified, it will be possible to read it from this field
 
 static ERR SET_Title(extSVG *Self, CSTRING Value)
 {
-   if (Self->Title) { FreeResource(Self->Title); Self->Title = NULL; }
+   if (Self->Title) { FreeResource(Self->Title); Self->Title = nullptr; }
    if (Value) Self->Title = strclone(Value);
    return ERR::Okay;
 }
@@ -734,19 +734,19 @@ static ERR GET_Viewport(extSVG *Self, OBJECTPTR *Value)
 #include "class_svg_def.c"
 
 static const FieldArray clSVGFields[] = {
-   { "Target",    FDF_OBJECT|FDF_RI, NULL, SET_Target },
-   { "Path",      FDF_STRING|FDF_RW, NULL, SET_Path },
-   { "Title",     FDF_STRING|FDF_RW, NULL, SET_Title },
-   { "Statement", FDF_STRING|FDF_RW, NULL, SET_Statement },
-   { "Frame",     FDF_INT|FDF_RW, NULL, NULL },
-   { "Flags",     FDF_INTFLAGS|FDF_RW, NULL, NULL, &clSVGFlags },
-   { "FrameRate", FDF_INT|FDF_RW, NULL, SET_FrameRate },
+   { "Target",    FDF_OBJECT|FDF_RI, nullptr, SET_Target },
+   { "Path",      FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "Title",     FDF_STRING|FDF_RW, nullptr, SET_Title },
+   { "Statement", FDF_STRING|FDF_RW, nullptr, SET_Statement },
+   { "Frame",     FDF_INT|FDF_RW, nullptr, nullptr },
+   { "Flags",     FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clSVGFlags },
+   { "FrameRate", FDF_INT|FDF_RW, nullptr, SET_FrameRate },
    // Virtual Fields
    { "Colour",        FDF_VIRTUAL|FDF_STRING|FDF_RW, GET_Colour, SET_Colour },
    { "FrameCallback", FDF_VIRTUAL|FDF_FUNCTION|FDF_RW, GET_FrameCallback, SET_FrameCallback },
    { "Src",           FDF_VIRTUAL|FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, NULL },
-   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, NULL },
+   { "Scene",         FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Scene, nullptr },
+   { "Viewport",      FDF_VIRTUAL|FDF_OBJECT|FDF_R, GET_Viewport, nullptr },
    END_FIELD
 };
 

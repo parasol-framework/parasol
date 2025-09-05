@@ -147,7 +147,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
             }
 
             UBYTE fnbuffer[256];
-            if ((path[0] IS '/') and (path[1] IS 0)) path = NULL;
+            if ((path[0] IS '/') and (path[1] IS 0)) path = nullptr;
             else if (((glFileMonitor[i].Flags & MFF::QUALIFY) != MFF::NIL) and (event->mask & IN_ISDIR)) {
                LONG j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
                fnbuffer[j++] = '/';
@@ -155,7 +155,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                path = fnbuffer;
             }
          }
-         else path = NULL;
+         else path = nullptr;
 
          MFF flags = MFF::NIL;
          if (event->mask & IN_Q_OVERFLOW) log.warning("A buffer overflow has occurred in the file monitor.");
@@ -191,7 +191,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                   }), error)) error = ERR::Function;
             }
 
-            if (error IS ERR::Terminate) Action(fl::Watch::id, glFileMonitor[i].File, NULL);
+            if (error IS ERR::Terminate) Action(fl::Watch::id, glFileMonitor[i].File, nullptr);
          }
          else log.warning("Flags $%.8x not recognised.", LONG(flags));
          break;
@@ -260,7 +260,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
          }
          else error = ERR::Terminate;
 
-         if (error IS ERR::Terminate) Action(fl::Watch::id, File, NULL);
+         if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
       }
    }
    else {
@@ -268,7 +268,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
       pf::SwitchContext context(File->prvWatch->Routine.Context);
       error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 
-      if (error IS ERR::Terminate) Action(fl::Watch::id, File, NULL);
+      if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
    }
 
    winFindNextChangeNotification(Handle);

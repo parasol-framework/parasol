@@ -47,7 +47,7 @@ static void set_memory_manager(APTR Address, ResourceManager *Manager)
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return NULL;
+   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return nullptr;
    set_memory_manager(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
@@ -259,7 +259,7 @@ ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeS
    pf::Log log(__FUNCTION__);
 
    if ((!Bitmap) or (!Path)) return log.warning(ERR::NullArgs);
-   if (StrokeWidth < 0.001) StrokeStyle = NULL;
+   if (StrokeWidth < 0.001) StrokeStyle = nullptr;
 
    if ((!StrokeStyle) and (!FillStyle)) {
       log.traceWarning("No Stroke or Fill parameter provided.");
@@ -499,7 +499,7 @@ ERR GeneratePath(CSTRING Sequence, APTR *Path)
       if ((error = read_path(paths, Sequence)) IS ERR::Okay) {
          auto vector = new_simplevector();
          if (vector) {
-            convert_to_aggpath(NULL, paths, vector->mPath);
+            convert_to_aggpath(nullptr, paths, vector->mPath);
             *Path = vector;
          }
          else error = ERR::AllocMemory;
@@ -989,7 +989,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
    pf::Log log(__FUNCTION__);
    uint32_t i;
 
-   if (Result) *Result = NULL;
+   if (Result) *Result = nullptr;
    if ((!IRI) or (!Painter)) return ERR::NullArgs;
 
    Painter->reset();
@@ -1063,7 +1063,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
                while ((*IRI) and (*IRI <= 0x20)) IRI++; // Skip whitespace
             }
 
-            if (Result) *Result = IRI[0] ? IRI : NULL;
+            if (Result) *Result = IRI[0] ? IRI : nullptr;
             return ERR::Okay;
          }
 
@@ -1114,18 +1114,18 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       auto &rgb = Painter->Colour;
       while (*IRI != '(') IRI++;
       IRI++;
-      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
+      double hue = strtod(IRI, nullptr) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = strtod(IRI, NULL) * 0.01;
+      double sat = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double light = strtod(IRI, NULL) * 0.01;
+      double light = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
 
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, nullptr), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1166,17 +1166,17 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       // Rules apply as for HSL, but the conversion algorithm is different.
       auto &rgb = Painter->Colour;
       IRI += 4;
-      double hue = strtod(IRI, NULL) * (1.0 / 360.0);
+      double hue = strtod(IRI, nullptr) * (1.0 / 360.0);
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double sat = strtod(IRI, NULL) * 0.01;
+      double sat = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) IRI++;
-      double val = strtod(IRI, NULL) * 0.01;
+      double val = strtod(IRI, nullptr) * 0.01;
       while ((*IRI) and (*IRI != ',')) IRI++;
       if (*IRI) {
          IRI++;
-         rgb.Alpha = std::clamp(strtod(IRI, NULL), 0.0, 1.0);
+         rgb.Alpha = std::clamp(strtod(IRI, nullptr), 0.0, 1.0);
          while (*IRI) IRI++;
       }
       else rgb.Alpha = 1.0;
@@ -1221,7 +1221,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[1]<<4)|nibbles[1]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[2]<<4)|nibbles[2]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
-         if (Result) *Result = IRI[0] ? IRI : NULL;
+         if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
       else if (n IS 6) {
@@ -1229,7 +1229,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = 1.0;
-         if (Result) *Result = IRI[0] ? IRI : NULL;
+         if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
       else if (n IS 8) {
@@ -1237,7 +1237,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
          rgb.Green = double((nibbles[2]<<4) | nibbles[3]) * (1.0 / 255.0);
          rgb.Blue  = double((nibbles[4]<<4) | nibbles[5]) * (1.0 / 255.0);
          rgb.Alpha = double((nibbles[6]<<4) | nibbles[7]) * (1.0 / 255.0);
-         if (Result) *Result = IRI[0] ? IRI : NULL;
+         if (Result) *Result = IRI[0] ? IRI : nullptr;
          return ERR::Okay;
       }
       else return ERR::Syntax;

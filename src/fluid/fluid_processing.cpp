@@ -150,7 +150,7 @@ static int processing_sleep(lua_State *Lua)
          auto signal_list_c = std::make_unique<ObjectSignal[]>(fp->Signals->size() + 1);
          LONG i = 0;
          for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
-         signal_list_c[i].Object = NULL;
+         signal_list_c[i].Object = nullptr;
 
          std::scoped_lock lock(recursion);
          error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
@@ -158,7 +158,7 @@ static int processing_sleep(lua_State *Lua)
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
          ObjectSignal signal_list_c[2];
          signal_list_c[0].Object   = Lua->Script;
-         signal_list_c[1].Object   = NULL;
+         signal_list_c[1].Object   = nullptr;
 
          std::scoped_lock lock(recursion);
          error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
@@ -181,7 +181,7 @@ static int processing_sleep(lua_State *Lua)
 
 static int processing_signal(lua_State *Lua)
 {
-   Action(AC::Signal, Lua->Script, NULL);
+   Action(AC::Signal, Lua->Script, nullptr);
    return 0;
 }
 
@@ -267,7 +267,7 @@ static int processing_delayed_call(lua_State *Lua)
 static int processing_destruct(lua_State *Lua)
 {
    auto fp = (fprocessing *)luaL_checkudata(Lua, 1, "Fluid.processing");
-   if (fp->Signals) { delete fp->Signals; fp->Signals = NULL; }
+   if (fp->Signals) { delete fp->Signals; fp->Signals = nullptr; }
    return 0;
 }
 
@@ -280,13 +280,13 @@ static const luaL_Reg processinglib_functions[] = {
    { "signal",  processing_signal },
    { "task",    processing_task },
    { "delayedCall", processing_delayed_call },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 static const luaL_Reg processinglib_methods[] = {
    { "__index",    processing_get },
    { "__gc",       processing_destruct },
-   { NULL, NULL }
+   { nullptr, nullptr }
 };
 
 void register_processing_class(lua_State *Lua)
@@ -298,7 +298,7 @@ void register_processing_class(lua_State *Lua)
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable
-   luaL_openlib(Lua, NULL, processinglib_methods, 0);
+   luaL_openlib(Lua, nullptr, processinglib_methods, 0);
 
    luaL_openlib(Lua, "processing", processinglib_functions, 0);
 }

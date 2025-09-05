@@ -64,7 +64,7 @@ private:
 SurfacePan::SurfacePan()
 :  cliprect(0,0,0,0)
 {
-   bitmap = NULL;
+   bitmap = nullptr;
    own_bitmap = FALSE;
    penx   = 0;
    peny   = 0;
@@ -78,12 +78,12 @@ SurfacePan::~SurfacePan()
 
 void SurfacePan::Release()
 {
-   if ((bitmap) and (own_bitmap)) { FreeResource(bitmap); bitmap = NULL; }
+   if ((bitmap) and (own_bitmap)) { FreeResource(bitmap); bitmap = nullptr; }
 }
 
 bool SurfacePan::Initialised()
 {
-   return bitmap != NULL;
+   return bitmap != nullptr;
 }
 
 void SurfacePan::Init(Scintilla::WindowID WinID)

@@ -39,10 +39,10 @@ static void notify_enable_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Resu
 static void notify_free_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
 {
    auto Self = (extDocument *)CurrentContext();
-   Self->Scene = NULL;
-   Self->Viewport = NULL;
-   Self->Page = NULL;
-   Self->View = NULL;
+   Self->Scene = nullptr;
+   Self->Viewport = nullptr;
+   Self->Page = nullptr;
+   Self->View = nullptr;
 
    // If the viewport is being forcibly terminated (e.g. by window closure) then the cleanest way to deal with
    // lingering page resources is to remove them now.
@@ -348,7 +348,7 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
       objClipboard::create clipboard = { };
       if (clipboard.ok()) {
          CSTRING *files;
-         if (clipboard->getFiles(CLIPTYPE::TEXT, 0, NULL, &files, NULL) IS ERR::Okay) {
+         if (clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, &files, nullptr) IS ERR::Okay) {
             objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
                LONG size;
@@ -623,7 +623,7 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    if ((Self->Focus) and (Self->Focus != Self->Viewport)) UnsubscribeAction(Self->Focus, AC::NIL);
 
-   if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = NULL; }
+   if (Self->PretextXML) { FreeResource(Self->PretextXML); Self->PretextXML = nullptr; }
 
    if (Self->Viewport) UnsubscribeAction(Self->Viewport, AC::NIL);
 
@@ -634,10 +634,10 @@ static ERR DOCUMENT_Free(extDocument *Self)
 
    unload_doc(Self, ULD::TERMINATE);
 
-   if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = NULL; }
+   if (Self->Templates) { FreeResource(Self->Templates); Self->Templates = nullptr; }
 
-   if (Self->Page) { FreeResource(Self->Page); Self->Page = NULL; }
-   if (Self->View) { FreeResource(Self->View); Self->View = NULL; }
+   if (Self->Page) { FreeResource(Self->Page); Self->Page = nullptr; }
+   if (Self->View) { FreeResource(Self->View); Self->View = nullptr; }
 
    Self->~extDocument();
    return ERR::Okay;
@@ -1022,7 +1022,7 @@ static ERR DOCUMENT_ReadContent(extDocument *Self, doc::ReadContent *Args)
 
    if (!Args) return log.warning(ERR::NullArgs);
 
-   Args->Result = NULL;
+   Args->Result = nullptr;
 
    if ((Args->Start < 0) or (Args->Start >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
    if ((Args->End < 0) or (Args->End >= std::ssize(Self->Stream))) return log.warning(ERR::OutOfRange);
@@ -1198,7 +1198,7 @@ static ERR DOCUMENT_SaveToObject(extDocument *Self, struct acSaveToObject *Args)
    if (!Args) return log.warning(ERR::NullArgs);
 
    log.branch("Destination: %d", Args->Dest->UID);
-   acWrite(Args->Dest, "Save not supported.", 0, NULL);
+   acWrite(Args->Dest, "Save not supported.", 0, nullptr);
    return ERR::Okay;
 }
 
@@ -1381,23 +1381,23 @@ static const FieldArray clFields[] = {
    { "Author",       FDF_STRING|FDF_R },
    { "Copyright",    FDF_STRING|FDF_R },
    { "Keywords",     FDF_STRING|FDF_R },
-   { "Viewport",     FDF_OBJECT|FDF_RW, NULL, SET_Viewport, CLASSID::VECTORVIEWPORT },
-   { "Focus",        FDF_OBJECT|FDF_RI, NULL, NULL, CLASSID::VECTORVIEWPORT },
-   { "View",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
-   { "Page",         FDF_OBJECT|FDF_R, NULL, NULL, CLASSID::VECTORVIEWPORT },
+   { "Viewport",     FDF_OBJECT|FDF_RW, nullptr, SET_Viewport, CLASSID::VECTORVIEWPORT },
+   { "Focus",        FDF_OBJECT|FDF_RI, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "View",         FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
+   { "Page",         FDF_OBJECT|FDF_R, nullptr, nullptr, CLASSID::VECTORVIEWPORT },
    { "TabFocus",     FDF_OBJECTID|FDF_RW },
-   { "EventMask",    FDF_INTFLAGS|FDF_FLAGS|FDF_RW, NULL, NULL, &clDocumentEventMask },
-   { "Flags",        FDF_INTFLAGS|FDF_RI, NULL, SET_Flags, &clDocumentFlags },
+   { "EventMask",    FDF_INTFLAGS|FDF_FLAGS|FDF_RW, nullptr, nullptr, &clDocumentEventMask },
+   { "Flags",        FDF_INTFLAGS|FDF_RI, nullptr, SET_Flags, &clDocumentFlags },
    { "PageHeight",   FDF_INT|FDF_R },
    { "Error",        FDF_INT|FDF_R },
    // Virtual fields
-   { "ClientScript",  FDF_OBJECT|FDF_I,        NULL, SET_ClientScript },
+   { "ClientScript",  FDF_OBJECT|FDF_I,        nullptr, SET_ClientScript },
    { "EventCallback", FDF_FUNCTIONPTR|FDF_RW,  GET_EventCallback, SET_EventCallback },
    { "Path",          FDF_STRING|FDF_RW,       GET_Path, SET_Path },
    { "Origin",        FDF_STRING|FDF_RW,       GET_Path, SET_Origin },
    { "PageWidth",     FDF_UNIT|FDF_INT|FDF_SCALED|FDF_RW, GET_PageWidth, SET_PageWidth },
-   { "Pretext",       FDF_STRING|FDF_W,        NULL, SET_Pretext },
+   { "Pretext",       FDF_STRING|FDF_W,        nullptr, SET_Pretext },
    { "Src",           FDF_SYNONYM|FDF_STRING|FDF_RW, GET_Path, SET_Path },
-   { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, NULL },
+   { "WorkingPath",   FDF_STRING|FDF_R,        GET_WorkingPath, nullptr },
    END_FIELD
 };

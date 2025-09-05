@@ -28,7 +28,7 @@ The REST API and documentation on how to use Backstage is documented in the Para
 
 using namespace pf;
 
-static OBJECTPTR modNetwork = NULL;
+static OBJECTPTR modNetwork = nullptr;
 
 JUMPTABLE_CORE
 JUMPTABLE_NETWORK
@@ -77,7 +77,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
 static ERR MODExpunge(void)
 {
-   if (modNetwork) { FreeResource(modNetwork); modNetwork = NULL; }
+   if (modNetwork) { FreeResource(modNetwork); modNetwork = nullptr; }
    return ERR::Okay;
 }
 
@@ -126,6 +126,6 @@ ERR init_backstage(int Port)
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, NULL, NULL, MODExpunge, MOD_IDL, NULL)
+PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, nullptr)
 extern "C" struct ModHeader * register_backstage_module() { return &ModHeader; }
 
