@@ -49,7 +49,7 @@ XWindowAttributes glRootWindow;
 Window glDisplayWindow = 0;
 Cursor C_Default;
 OBJECTPTR modXRR = nullptr;
-WORD glPlugin = FALSE;
+int16_t glPlugin = FALSE;
 APTR glDGAVideo = nullptr;
 
 #ifdef XRANDR_ENABLED
@@ -201,7 +201,7 @@ std::vector<OBJECTID> glFocusList;
 std::recursive_mutex glFocusLock;
 std::recursive_mutex glSurfaceLock;
 
-THREADVAR WORD tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
+THREADVAR int16_t tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
 THREADVAR OBJECTID tlFreeExpose = 0;
 
 //********************************************************************************************************************
@@ -209,8 +209,8 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 
 inline UBYTE clipByte(LONG value)
 {
-   value = (0 & (-(WORD)(value < 0))) | (value & (-(WORD)!(value < 0)));
-   value = (255 & (-(WORD)(value > 255))) | (value & (-(WORD)!(value > 255)));
+   value = (0 & (-(int16_t)(value < 0))) | (value & (-(int16_t)!(value < 0)));
+   value = (255 & (-(int16_t)(value > 255))) | (value & (-(int16_t)!(value > 255)));
    return value;
 }
 
@@ -277,7 +277,7 @@ ERR xr_set_display_mode(LONG *Width, LONG *Height)
 
    XRRScreenSize *sizes;
    if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
-      WORD index    = -1;
+      int16_t index    = -1;
       LONG bestweight = 0x7fffffff;
 
       for (i=0; i < count; i++) {
@@ -417,7 +417,7 @@ void unlock_graphics(void)
 
 #ifdef __xwindows__
 
-WORD glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
+int16_t glDGAAvailable = -1; // -1 indicates that we have not tried the setup process yet
 
 #ifdef XDGA_AVAILABLE
 APTR glDGAMemory = nullptr;
@@ -954,7 +954,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       if (glX11.Manager) setenv("DISPLAY", ":10", TRUE);
 
 #ifdef XRANDR_ENABLED
-      WORD i;
+      int16_t i;
       XRRScreenSize *sizes;
       XPixmapFormatValues *list;
       LONG errors, count;
@@ -993,9 +993,9 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
             write_string(*file, "  <gfx_output unknown/>\n");
             write_string(*file, "</displayinfo>\n\n");
 
-            WORD xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
+            int16_t xbpp = DefaultDepth(XDisplay, DefaultScreen(XDisplay));
 
-            WORD xbytes;
+            int16_t xbytes;
             if (xbpp <= 8) xbytes = 1;
             else if (xbpp <= 16) xbytes = 2;
             else if (xbpp <= 24) xbytes = 3;
@@ -1066,9 +1066,9 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
    LONG i = 0;
-   for (WORD iAlpha=0; iAlpha < 256; iAlpha++) {
+   for (int16_t iAlpha=0; iAlpha < 256; iAlpha++) {
       double fAlpha = (double)iAlpha * (1.0 / 255.0);
-      for (WORD iValue=0; iValue < 256; iValue++) {
+      for (int16_t iValue=0; iValue < 256; iValue++) {
          glAlphaLookup[i++] = clipByte(F2I((double)iValue * fAlpha));
       }
    }

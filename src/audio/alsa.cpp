@@ -25,7 +25,7 @@ static ERR init_audio(extAudio *Self)
    snd_mixer_selem_id_t *sid;
    snd_pcm_uframes_t periodsize;
    LONG err, index;
-   WORD channel;
+   int16_t channel;
    long pmin, pmax;
    int dir;
    std::string pcm_name;

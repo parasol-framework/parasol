@@ -131,8 +131,8 @@ struct SurfaceRecord {
    LONG     Top;           // Absolute Y
    LONG     Right;         // Absolute right coordinate
    LONG     Bottom;        // Absolute bottom coordinate
-   WORD     Level;         // Level number within the hierarchy
-   WORD     LineWidth;     // [applies to the bitmap owner]
+   int16_t     Level;         // Level number within the hierarchy
+   int16_t     LineWidth;     // [applies to the bitmap owner]
    BYTE     BytesPerPixel; // [applies to the bitmap owner]
    BYTE     BitsPerPixel;  // [applies to the bitmap owner]
    BYTE     Cursor;        // Preferred cursor image ID
@@ -219,9 +219,9 @@ INLINE ERR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
 #endif
 
 struct resolution {
-   WORD width;
-   WORD height;
-   WORD bpp;
+   int16_t width;
+   int16_t height;
+   int16_t bpp;
 };
 
 extern std::vector<InputEvent> glInputEvents;
@@ -299,12 +299,12 @@ class extPointer : public objPointer {
    char     DragData[8];          // Data preferences for current drag & drop item
    char     Device[32];
    char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
-   WORD     ButtonOrderFlags[12]; // Button order represented as JD flags
+   int16_t     ButtonOrderFlags[12]; // Button order represented as JD flags
    BYTE     PostComposite;        // Enable post-composite drawing (default)
    UBYTE    prvOverCursorID;
    struct {
-      WORD HotX;
-      WORD HotY;
+      int16_t HotX;
+      int16_t HotY;
    } Cursors[LONG(PTC::END)];
 };
 
@@ -326,16 +326,16 @@ class extSurface : public objSurface {
    SWIN     WindowType;           // See SWIN constants
    TIMER    RedrawTimer;          // For ScheduleRedraw()
    SurfaceCallback CallbackCache[4];
-   WORD     ScrollProgress;
-   WORD     Opacity;
-   UWORD    InheritedRoot:1;      // TRUE if the user set the RootLayer manually
-   UWORD    ParentDefined:1;      // TRUE if the parent field was set manually
-   UWORD    SkipPopOver:1;
-   UWORD    FixedX:1;
-   UWORD    FixedY:1;
-   UWORD    Document:1;
-   UWORD    RedrawScheduled:1;
-   UWORD    RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
+   int16_t     ScrollProgress;
+   int16_t     Opacity;
+   uint16_t InheritedRoot:1;      // TRUE if the user set the RootLayer manually
+   uint16_t ParentDefined:1;      // TRUE if the parent field was set manually
+   uint16_t SkipPopOver:1;
+   uint16_t FixedX:1;
+   uint16_t FixedY:1;
+   uint16_t Document:1;
+   uint16_t RedrawScheduled:1;
+   uint16_t RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
    BYTE     BitsPerPixel;         // Bitmap bits per pixel
    BYTE     BytesPerPixel;        // Bitmap bytes per pixel
    UBYTE    CallbackCount;
@@ -364,7 +364,7 @@ class extDisplay : public objDisplay {
    #else
       APTR   WindowHandle;
    #endif
-   WORD  Opacity;
+   int16_t  Opacity;
    char  Manufacturer[60];
    char  Chipset[40];
    char  Display[32];
@@ -380,7 +380,7 @@ extern ERR  create_pointer_class(void);
 extern ERR  create_surface_class(void);
 extern ERR  get_surface_abs(OBJECTID, LONG *, LONG *, LONG *, LONG *);
 extern void input_event_loop(HOSTHANDLE, APTR);
-extern ERR  lock_surface(extBitmap *, WORD);
+extern ERR  lock_surface(extBitmap *, int16_t);
 extern ERR  unlock_surface(extBitmap *);
 extern ERR  get_display_info(OBJECTID, DISPLAYINFO *, LONG);
 extern void resize_feedback(FUNCTION *, OBJECTID, LONG X, LONG Y, LONG Width, LONG Height);
@@ -447,7 +447,7 @@ extern std::recursive_mutex glInputLock;
 
 // Thread-specific variables.
 
-extern THREADVAR WORD tlNoDrawing, tlNoExpose, tlVolatileIndex;
+extern THREADVAR int16_t tlNoDrawing, tlNoExpose, tlVolatileIndex;
 extern THREADVAR OBJECTID tlFreeExpose;
 
 struct InputType {
@@ -511,7 +511,7 @@ extern void free_xcursors(void);
 extern ERR resize_pixmap(extDisplay *, LONG, LONG);
 extern ERR xr_set_display_mode(LONG *, LONG *);
 
-extern WORD glDGAAvailable;
+extern int16_t glDGAAvailable;
 extern APTR glDGAMemory;
 extern XVisualInfo glXInfoAlpha;
 extern X11Globals glX11;
@@ -528,7 +528,7 @@ extern XWindowAttributes glRootWindow;
 extern Window glDisplayWindow;
 extern Cursor C_Default;
 extern OBJECTPTR modXRR;
-extern WORD glPlugin;
+extern int16_t glPlugin;
 extern APTR glDGAVideo;
 extern bool glXRRAvailable;
 

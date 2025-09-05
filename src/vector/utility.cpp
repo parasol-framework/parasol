@@ -1,5 +1,5 @@
 
-agg::gamma_lut<UBYTE, UWORD, 8, 12> glGamma(2.2);
+agg::gamma_lut<UBYTE, uint16_t, 8, 12> glGamma(2.2);
 double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
@@ -505,10 +505,10 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                                     // Decode UTF16 Big Endian
                                     char buffer[100];
                                     int out = 0;
-                                    auto str = (UWORD *)sft_name.string;
-                                    UWORD prev_unicode = 0;
+                                    auto str = (uint16_t *)sft_name.string;
+                                    uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       uint16_t unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
                                        if ((unicode >= 'A') and (unicode <= 'Z')) {
                                           if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
                                              buffer[out++] = ' ';

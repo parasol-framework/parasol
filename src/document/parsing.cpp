@@ -27,7 +27,7 @@ struct parser {
    objXML::TAGS *m_inject_tag = nullptr, *m_header_tag = nullptr, *m_footer_tag = nullptr, *m_body_tag = nullptr;
    objTime *m_time = nullptr;
    int  m_loop_index  = 0;
-   UWORD m_paragraph_depth = 0;     // Incremented when inside <p> tags
+   uint16_t m_paragraph_depth = 0;     // Incremented when inside <p> tags
    char  m_in_template = 0;
    bool  m_strip_feeds = false;
    bool  m_check_else  = false;
@@ -2706,7 +2706,7 @@ ERR parser::calc(const std::string &String, double *Result, std::string &Output)
    // Perform the calculation
 
    STRING end;
-   WORD precision = 9;
+   int16_t precision = 9;
    double total   = 0;
    double overall = 0;
    int index     = 0;

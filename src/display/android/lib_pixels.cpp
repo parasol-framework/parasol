@@ -71,7 +71,7 @@ static void VideoDrawRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *
 {
 }
 
-static void VideoDrawRGBIndex16(objBitmap *Bitmap, UWORD *Data, struct RGB*RGB)
+static void VideoDrawRGBIndex16(objBitmap *Bitmap, uint16_t *Data, struct RGB*RGB)
 {
 
 }
@@ -86,7 +86,7 @@ static void VideoReadRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *
 
 }
 
-static void VideoReadRGBIndex16(objBitmap *Bitmap, UWORD *Data, struct RGB*RGB)
+static void VideoReadRGBIndex16(objBitmap *Bitmap, uint16_t *Data, struct RGB*RGB)
 {
 }
 

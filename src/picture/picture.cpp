@@ -667,7 +667,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          UBYTE *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
-            WORD maskx = 0;
+            int16_t maskx = 0;
             for (LONG x=0; x < bmp->ByteWidth; x+=3) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
@@ -713,7 +713,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          UBYTE *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
-            WORD maskx = 0;
+            int16_t maskx = 0;
             for (LONG x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];     // Blue
                row[i++] = data[x+1];     // Green
@@ -747,11 +747,11 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
          auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
          row_pointers = row.get();
-         UWORD *data = (UWORD *)bmp->Data;
+         uint16_t *data = (uint16_t *)bmp->Data;
          UBYTE *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
-            WORD maskx = 0;
+            int16_t maskx = 0;
             for (LONG x=0; x < bmp->Width; x++) {
                row[i++] = bmp->unpackBlue(data[x]);
                row[i++] = bmp->unpackGreen(data[x]);
@@ -760,14 +760,14 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
             }
             if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
-            data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
+            data = (uint16_t *)(((UBYTE *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
          }
       }
       else {
          auto row = std::make_unique<UBYTE[]>(bmp->Width * 3);
          row_pointers = row.get();
-         UWORD *data = (UWORD *)bmp->Data;
+         uint16_t *data = (uint16_t *)bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
             for (LONG x=0; x < bmp->Width; x++) {
@@ -777,7 +777,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
             }
             if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
-            data = (UWORD *)(((UBYTE *)data) + bmp->LineWidth);
+            data = (uint16_t *)(((UBYTE *)data) + bmp->LineWidth);
          }
       }
    }

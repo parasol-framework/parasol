@@ -280,7 +280,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
       }
       else if (Cinfo->out_color_space IS JCS_RGB) {
          for (JDIMENSION x=0; x < Cinfo->output_width; x++) {
-            WORD i = *row++;
+            int16_t i = *row++;
             rgb.Red   = GETJSAMPLE(Cinfo->colormap[0][i]);
             rgb.Green = GETJSAMPLE(Cinfo->colormap[1][i]);
             rgb.Blue  = GETJSAMPLE(Cinfo->colormap[2][i]);
@@ -430,7 +430,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
       for (LONG y=0; y < Self->Bitmap->Height; y++) {
          row_pointer[0] = buffer.get();
-         WORD index = 0;
+         int16_t index = 0;
          for (LONG x=0; x < Self->Bitmap->Width; x++) {
             Self->Bitmap->ReadUCRPixel(Self->Bitmap, x, y, &rgb);
             buffer[index++] = rgb.Red;

@@ -152,17 +152,17 @@ static ERR FONT_Init(extFont *Self)
 
                // Count the number of fonts in the file
 
-               WORD size_shift = 0;
-               UWORD font_count = 0;
+               int16_t size_shift = 0;
+               uint16_t font_count = 0;
                LONG font_offset = 0;
                fl::ReadLE(*file, &size_shift);
 
-               WORD type_id;
+               int16_t type_id;
                for ((error = fl::ReadLE(*file, &type_id)); (error IS ERR::Okay) and (type_id); error = fl::ReadLE(*file, &type_id)) {
-                  WORD count = 0;
+                  int16_t count = 0;
                   fl::ReadLE(*file, &count);
 
-                  if ((UWORD)type_id IS 0x8008) {
+                  if ((uint16_t)type_id IS 0x8008) {
                      font_count  = count;
                      file->get(FID_Position, font_offset);
                      font_offset += 4;
@@ -183,7 +183,7 @@ static ERR FONT_Init(extFont *Self)
                auto fonts = std::make_unique<winFont[]>(font_count);
 
                for (LONG i=0; i < font_count; i++) {
-                  UWORD offset, size;
+                  uint16_t offset, size;
                   fl::ReadLE(*file, &offset);
                   fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;
@@ -777,8 +777,8 @@ static ERR draw_bitmap_font(extFont *Self)
    UBYTE *xdata, *data;
    LONG linewidth, offset, charclip, wrapindex, charlen;
    ULONG unicode, ocolour;
-   WORD startx, xpos, ex, ey, sx, sy, xinc;
-   WORD bytewidth, alpha, charwidth;
+   int16_t startx, xpos, ex, ey, sx, sy, xinc;
+   int16_t bytewidth, alpha, charwidth;
    bool draw_line;
    #define CHECK_LINE_CLIP(font,y,bmp) if (((y)-1 < (bmp)->Clip.Bottom) and ((y) + (font)->prvBitmapHeight + 1 > (bmp)->Clip.Top)) draw_line = true; else draw_line = false;
 
@@ -828,7 +828,7 @@ static ERR draw_bitmap_font(extFont *Self)
 
    if (acLock(bitmap) != ERR::Okay) return log.warning(ERR::Lock);
 
-   WORD dx = 0, dy = 0;
+   int16_t dx = 0, dy = 0;
    startx = dxcoord;
    CHECK_LINE_CLIP(Self, dycoord, bitmap);
    while (*str) {
@@ -854,7 +854,7 @@ static ERR draw_bitmap_font(extFont *Self)
          CHECK_LINE_CLIP(Self, dycoord, bitmap);
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
+         int16_t tabwidth = (Self->prvChar['o'].Advance * Self->GlyphSpacing) * Self->TabSize;
          if (tabwidth) dxcoord = Self->X + pf::roundup(dxcoord - Self->X, tabwidth);
          str++;
       }
@@ -1010,7 +1010,7 @@ static ERR draw_bitmap_font(extFont *Self)
                   }
                }
                else if (bitmap->BytesPerPixel IS 2) {
-                  auto dest = (UWORD *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
+                  auto dest = (uint16_t *)(bitmap->Data + (sx<<1) + (sy * bitmap->LineWidth));
                   for (dy=sy; dy < ey; dy++) {
                      xpos = xinc & 0x07;
                      xdata = data + (xinc>>3);
@@ -1021,7 +1021,7 @@ static ERR draw_bitmap_font(extFont *Self)
                            xdata++;
                         }
                      }
-                     dest = (UWORD *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint16_t *)(((UBYTE *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }

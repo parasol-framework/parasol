@@ -341,7 +341,7 @@ INLINE CSTRING GETSTATUS(int Code) __attribute__((unused));
 
 INLINE CSTRING GETSTATUS(int Code)
 {
-   for (WORD i=0; clStatus[i].Name; i++) {
+   for (int16_t i=0; clStatus[i].Name; i++) {
       if (clStatus[i].Value IS Code) return clStatus[i].Name;
    }
    return "Unrecognised Status Code";

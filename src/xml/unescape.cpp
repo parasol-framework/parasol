@@ -7,7 +7,7 @@ static ankerl::unordered_dense::map<std::string, std::string> glOfficial = {
    { "quot", "\"" }
 };
 
-static ankerl::unordered_dense::map<std::string, UWORD> glHTML = {
+static ankerl::unordered_dense::map<std::string, uint16_t> glHTML = {
    { "AElig",   0xc6 },
    { "Aacute",  0xC1 },
    { "Acirc",   0xC2 },

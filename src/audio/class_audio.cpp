@@ -117,7 +117,7 @@ static ERR AUDIO_Activate(extAudio *Self)
 
    // Calculate one mixing element size for the hardware driver (not our floating point mixer).
 
-   if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(WORD);
+   if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(int16_t);
    else if (Self->BitDepth IS 24) Self->DriverBitSize = 3;
    else if (Self->BitDepth IS 32) Self->DriverBitSize = sizeof(FLOAT);
    else Self->DriverBitSize = sizeof(BYTE);
@@ -139,12 +139,12 @@ static ERR AUDIO_Activate(extAudio *Self)
 
       #ifdef _WIN32
          WAVEFORMATEX wave = {
-            .Format            = WORD((Self->BitDepth IS 32) ? WAVE_FLOAT : WAVE_RAW),
-            .Channels          = WORD(Self->Stereo ? 2 : 1),
+            .Format            = int16_t((Self->BitDepth IS 32) ? WAVE_FLOAT : WAVE_RAW),
+            .Channels          = int16_t(Self->Stereo ? 2 : 1),
             .Frequency         = 44100,
             .AvgBytesPerSecond = 44100 * Self->DriverBitSize,
             .BlockAlign        = Self->DriverBitSize,
-            .BitsPerSample     = WORD(Self->BitDepth),
+            .BitsPerSample     = int16_t(Self->BitDepth),
             .ExtraLength       = 0
          };
 

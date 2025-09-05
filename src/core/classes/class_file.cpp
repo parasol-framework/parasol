@@ -1679,7 +1679,7 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
 
          if (auto local = localtime(&stats.st_mtime)) {
             Self->prvCreated = DateTime {
-               .Year   = WORD(1900 + local->tm_year),
+               .Year   = int16_t(1900 + local->tm_year),
                .Month  = BYTE(local->tm_mon + 1),
                .Day    = BYTE(local->tm_mday),
                .Hour   = BYTE(local->tm_hour),
@@ -1708,7 +1708,7 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
 
             if (auto local = localtime(&stats.st_mtime)) {
                Self->prvCreated = {
-                  .Year   = WORD(1900 + local->tm_year),
+                  .Year   = int16_t(1900 + local->tm_year),
                   .Month  = BYTE(local->tm_mon + 1),
                   .Day    = BYTE(local->tm_mday),
                   .Hour   = BYTE(local->tm_hour),
@@ -1755,7 +1755,7 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
 
          if (auto local = localtime(&stats.st_mtime)) {
             Self->prvModified = DateTime {
-               .Year   = WORD(1900 + local->tm_year),
+               .Year   = int16_t(1900 + local->tm_year),
                .Month  = BYTE(local->tm_mon + 1),
                .Day    = BYTE(local->tm_mday),
                .Hour   = BYTE(local->tm_hour),
@@ -1786,7 +1786,7 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
 
             if (auto local = localtime(&stats.st_mtime)) {
                Self->prvModified = DateTime {
-                  .Year   = WORD(1900 + local->tm_year),
+                  .Year   = int16_t(1900 + local->tm_year),
                   .Month  = BYTE(local->tm_mon + 1),
                   .Day    = BYTE(local->tm_mday),
                   .Hour   = BYTE(local->tm_hour),
@@ -2568,7 +2568,7 @@ static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
 
          if (auto local = localtime(&stats.st_mtime)) {
             DateTime datetime = {
-               .Year   = WORD(1900 + local->tm_year),
+               .Year   = int16_t(1900 + local->tm_year),
                .Month  = BYTE(local->tm_mon + 1),
                .Day    = BYTE(local->tm_mday),
                .Hour   = BYTE(local->tm_hour),
@@ -2590,7 +2590,7 @@ static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
          if (!stat64(path, &stats)) {
             if (auto local = localtime(&stats.st_mtime)) {
                DateTime datetime = {
-                  .Year   = WORD(1900 + local->tm_year),
+                  .Year   = int16_t(1900 + local->tm_year),
                   .Month  = BYTE(local->tm_mon + 1),
                   .Day    = BYTE(local->tm_mday),
                   .Hour   = BYTE(local->tm_hour),

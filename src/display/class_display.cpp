@@ -1205,7 +1205,7 @@ static ERR DISPLAY_Resize(extDisplay *Self, struct acResize *Args)
    if (!(width = Args->Width)) width = Self->Width;
    if (!(height = Args->Height)) height = Self->Height;
 
-   UWORD *modes = glSNAPDevice->AvailableModes;
+   uint16_t *modes = glSNAPDevice->AvailableModes;
    if (glSNAP->Init.GetDisplayOutput) display = glSNAP->Init.GetDisplayOutput() & gaOUTPUT_SELECTMASK;
    else display = gaOUTPUT_CRT;
    gfxmode = -1;
@@ -1618,7 +1618,7 @@ static ERR DISPLAY_SetGammaLinear(extDisplay *Self, gfx::SetGammaLinear *Args)
       Self->Gamma[2]  = blue;
    }
 
-   for (WORD i=0; i < std::ssize(palette); i++) {
+   for (int16_t i=0; i < std::ssize(palette); i++) {
       double intensity = (double)i / 255.0;
 
       if (red > 1.0) palette[i].Red = F2T(pow(intensity, 1.0 / red) * 255.0);
@@ -2338,7 +2338,7 @@ static ERR SET_Gamma(extDisplay *Self, double *Value, LONG Elements)
 {
    if (Value) {
       if (Elements > 3) Elements = 3;
-      WORD i;
+      int16_t i;
       for (i=0; i < Elements; i++) Self->Gamma[i] = Value[i];
    }
    return ERR::Okay;

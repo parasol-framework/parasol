@@ -99,7 +99,7 @@ typedef int HANDLE;
 struct extCacheFile : public CacheFile {
    std::string FullPath;
    std::vector<BYTE> Buffer;
-   WORD Locks;       // Internal count of active locks for this element.
+   int16_t Locks;       // Internal count of active locks for this element.
 
    extCacheFile() {}
 

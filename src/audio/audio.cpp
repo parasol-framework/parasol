@@ -139,7 +139,7 @@ extern "C" void dsCloseDevice(void);
 #ifdef ALSA_ENABLED
 static void free_alsa(extAudio *);
 
-static const WORD glAlsaConvert[6] = {
+static const int16_t glAlsaConvert[6] = {
    SND_MIXER_SCHN_FRONT_LEFT,   // Conversion table must follow the CHN_ order
    SND_MIXER_SCHN_FRONT_RIGHT,
    SND_MIXER_SCHN_FRONT_CENTER,

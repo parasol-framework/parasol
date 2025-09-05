@@ -188,7 +188,7 @@ struct WaitLock {
    }
 };
 
-static THREADVAR WORD glWLIndex = -1; // The current thread's index within glWaitLocks
+static THREADVAR int16_t glWLIndex = -1; // The current thread's index within glWaitLocks
 static std::vector<WaitLock> glWaitLocks;
 static std::mutex glWaitLockMutex;
 

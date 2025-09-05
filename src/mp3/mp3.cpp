@@ -38,7 +38,7 @@ const LONG COMMENT_TRACK = 29;
 #define MPF_COPYRIGHT (1<<3)
 #define MPF_ORIGINAL  (1<<2)
 
-const LONG MAX_FRAME_BYTES = MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(WORD);
+const LONG MAX_FRAME_BYTES = MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(int16_t);
 
 struct prvMP3 {
    std::array<UBYTE, 16 * 1024> Input;  // For incoming MP3 data.  Also needs to be big enough to accomodate the ID3v2 header.
@@ -284,8 +284,8 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
 
    // Compute byte length with adjustment for padding at the end, but not the start.
 
-   int64_t len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(WORD);
-   len -= int64_t(prv->PaddingEnd * prv->info.channels) * sizeof(WORD);
+   int64_t len = prv->TotalFrames * prv->SamplesPerFrame * prv->info.channels * sizeof(int16_t);
+   len -= int64_t(prv->PaddingEnd * prv->info.channels) * sizeof(int16_t);
    Self->setLength(len);
 
    log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, (long long)len, prv->PaddingStart, prv->PaddingEnd);
@@ -455,10 +455,10 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
          if (pos + MAX_FRAME_BYTES > Args->Length) {
             // Buffer overflow management - necessary if we need to decode more data than what the output buffer can support.
 
-            WORD pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
+            int16_t pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
             decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, pcm, &prv->info);
             if (decoded_samples) {
-               LONG decoded_bytes = decoded_samples * sizeof(WORD) * prv->info.channels;
+               LONG decoded_bytes = decoded_samples * sizeof(int16_t) * prv->info.channels;
 
                if (pos + decoded_bytes > Args->Length) {
                   // We can't write the full amount, store the rest in overflow.  It is presumed that Length
@@ -478,11 +478,11 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
             }
          }
          else {
-            decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, (WORD *)((UBYTE *)Args->Buffer + pos), &prv->info);
+            decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, (int16_t *)((UBYTE *)Args->Buffer + pos), &prv->info);
 
             if (decoded_samples) {
                prv->FramesProcessed++;
-               const LONG decoded_bytes = decoded_samples * sizeof(WORD) * prv->info.channels;
+               const LONG decoded_bytes = decoded_samples * sizeof(int16_t) * prv->info.channels;
                prv->WriteOffset += decoded_bytes;
                in  += prv->info.frame_bytes;
                pos += decoded_bytes;
@@ -593,7 +593,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             log.detail("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
-            prv->WriteOffset     = int64_t(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
+            prv->WriteOffset     = int64_t(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(int16_t);
             prv->ReadOffset      = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
@@ -618,7 +618,7 @@ static ERR MP3_Seek(objSound *Self, struct acSeek *Args)
 
             log.detail("Seeking to byte offset %d, frame %d of %d", offset, frame, prv->TotalFrames);
 
-            prv->WriteOffset     = int64_t(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(WORD);
+            prv->WriteOffset     = int64_t(frame * prv->SamplesPerFrame * prv->info.channels) * sizeof(int16_t);
             prv->ReadOffset      = prv->WriteOffset;
             prv->FramesProcessed = frame;
             Self->Position = prv->WriteOffset;
@@ -654,8 +654,8 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
 {
    pf::Log log(__FUNCTION__);
    LONG buffer_size;
-   std::array<UWORD, 16> avg;  // Used to compute the interquartile mean
-   std::vector<UWORD> fsizes;  // List of all compressed frame sizes
+   std::array<uint16_t, 16> avg;  // Used to compute the interquartile mean
+   std::vector<uint16_t> fsizes;  // List of all compressed frame sizes
 
    log.branch();
 
@@ -766,7 +766,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
 
    // Calculate average frame length using interquartile mean
 
-   sort(fsizes.begin(), fsizes.end(), std::greater<UWORD>());
+   sort(fsizes.begin(), fsizes.end(), std::greater<uint16_t>());
    const LONG first = fsizes.size() / 4;
    const LONG last  = F2T(fsizes.size() * 0.75);
    double avg_frame_len = 0;
@@ -778,7 +778,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
    if (filesize > buffer_size) {
       if (prv->VBR) {
          prv->TotalFrames = F2T((filesize - prv->SeekOffset - frame_start - ReduceEnd) / avg_frame_len);
-         return int64_t(prv->TotalFrames * frame_samples * channels) * sizeof(WORD);
+         return int64_t(prv->TotalFrames * frame_samples * channels) * sizeof(int16_t);
       }
       else {
          // For CBR we guess the total frames from the file size.
@@ -790,7 +790,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
       }
    }
    else if (fsizes.size() > 0) { // The entire file was loaded into the buffer, so we know the exact length.
-      return fsizes.size() * frame_size * channels * sizeof(WORD);
+      return fsizes.size() * frame_size * channels * sizeof(int16_t);
    }
    else { // File has no detectable MP3 audio content
       return -1;

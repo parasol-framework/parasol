@@ -116,14 +116,14 @@ ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
 #ifdef __snap__
 
    GA_modeInfo modeinfo;
-   UWORD *modes;
+   uint16_t *modes;
    LONG colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
-   WORD f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
-   WORD f_bytes, c_bytes;
-   WORD f_width, c_width, f_height, c_height;
-   WORD f_refresh, c_refresh;
-   WORD f_minrefresh, c_minrefresh;
-   WORD f_maxrefresh, c_maxrefresh;
+   int16_t f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
+   int16_t f_bytes, c_bytes;
+   int16_t f_width, c_width, f_height, c_height;
+   int16_t f_refresh, c_refresh;
+   int16_t f_minrefresh, c_minrefresh;
+   int16_t f_maxrefresh, c_maxrefresh;
    BYTE interlace, matched;
 
    if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR::Args;

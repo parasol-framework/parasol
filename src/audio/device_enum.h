@@ -14,7 +14,7 @@ struct ALSADeviceInfo {
    std::string card_id;
    std::string card_name;
    std::string device_name;  // "hw:X" format
-   WORD mixer_controls;
+   int16_t mixer_controls;
    bool is_modem;
    
    ALSADeviceInfo() : card_number(-1), mixer_controls(0), is_modem(false) {}

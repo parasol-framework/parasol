@@ -79,7 +79,7 @@ private:
    SEGINDEX m_line_seg_start = 0; // Set to the starting segment of a new line.  Resets on end_line() or wordwrap.  Used for ensuring that all distinct entries on the line use the same line height
    int m_word_width   = 0;       // Pixel width of the current word
    int m_line_count   = 0;       // Increments at every line-end or word-wrap
-   WORD m_space_width  = 0;       // Caches the pixel width of a single space in the current font.
+   int16_t m_space_width  = 0;       // Caches the pixel width of a single space in the current font.
    bool m_no_wrap      = false;   // Set to true when word-wrap is disabled.
    bool m_cursor_drawn = false;   // Set to true when the cursor has been drawn during scene graph creation.
    bool m_edit_mode    = false;   // Set to true when inside an area that allows user editing of the content.

@@ -75,7 +75,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
             return log.warning(ERR::Seek);
          }
 
-         UWORD namelen, extralen;
+         uint16_t namelen, extralen;
          if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
          if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
          dataoffset = last.Offset + HEAD_LENGTH + namelen + extralen + last.CompressedSize;
@@ -112,12 +112,12 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
       UBYTE header[sizeof(glHeader)];
       copymem(glHeader, header, sizeof(glHeader));
 
-      wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
+      wrb<uint16_t>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
       wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
       wrb<ULONG>(entry.CRC, header + HEAD_CRC);
       wrb<ULONG>(entry.CompressedSize, header + HEAD_COMPRESSEDSIZE);
       wrb<ULONG>(entry.OriginalSize, header + HEAD_FILESIZE);
-      wrb<UWORD>(entry.Name.size(), header + HEAD_NAMELEN);
+      wrb<uint16_t>(entry.Name.size(), header + HEAD_NAMELEN);
       if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) return ERR::Okay;
       if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (LONG)entry.Name.size()) return ERR::Okay;
 
@@ -168,7 +168,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    std::list<ZipFile>::iterator file_index;
    LONG i, len;
 
-   WORD level = Self->CompressionLevel / 10;
+   int16_t level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
@@ -240,7 +240,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
       if (acSeek(Self->FileIO, chain.Offset + HEAD_NAMELEN, SEEK::START) != ERR::Okay) return log.warning(ERR::Seek);
 
-      UWORD namelen, extralen;
+      uint16_t namelen, extralen;
       if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
       if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
       dataoffset = chain.Offset + HEAD_LENGTH + namelen + extralen + chain.CompressedSize;
@@ -386,12 +386,12 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    UBYTE header[sizeof(glHeader)];
    copymem(glHeader, header, sizeof(glHeader));
-   wrb<UWORD>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
+   wrb<uint16_t>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
    wrb<ULONG>(entry.TimeStamp, header + HEAD_TIMESTAMP);
    wrb<ULONG>(entry.CRC, header + HEAD_CRC);
    wrb<ULONG>(entry.CompressedSize, header + HEAD_COMPRESSEDSIZE);
    wrb<ULONG>(entry.OriginalSize, header + HEAD_FILESIZE);
-   wrb<UWORD>(entry.Name.size(), header + HEAD_NAMELEN);
+   wrb<uint16_t>(entry.Name.size(), header + HEAD_NAMELEN);
    if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) return ERR::Write;
    if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (LONG)entry.Name.size()) return ERR::Write;
 
@@ -423,7 +423,7 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
 
    if (acSeekStart(Self->FileIO, File->Offset + HEAD_NAMELEN) != ERR::Okay) return log.warning(ERR::Seek);
 
-   UWORD namelen, extralen;
+   uint16_t namelen, extralen;
    if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
    if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
    LONG chunksize  = HEAD_LENGTH + namelen + extralen + File->CompressedSize;
@@ -583,8 +583,8 @@ static ERR scan_zip(extCompression *Self)
          struct {
             ULONG compressedsize;
             ULONG originalsize;
-            UWORD namelen;
-            UWORD extralen;
+            uint16_t namelen;
+            uint16_t extralen;
          } header;
 
          if (acRead(Self->FileIO, &header, sizeof(header), &result) != ERR::Okay) return log.warning(ERR::Read);
@@ -715,7 +715,7 @@ static void write_eof(extCompression *Self)
          auto &last = Self->Files.back();
          acSeekStart(Self->FileIO, last.Offset + HEAD_NAMELEN);
 
-         UWORD namelen, extralen;
+         uint16_t namelen, extralen;
          if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return;
          if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return;
          acSeekCurrent(Self->FileIO, last.CompressedSize + namelen + extralen);
@@ -724,21 +724,21 @@ static void write_eof(extCompression *Self)
          // Write out the central directory
 
          ULONG listsize  = 0;
-         UWORD filecount = 0;
+         uint16_t filecount = 0;
          for (auto &chain : Self->Files) {
             UBYTE elist[sizeof(glList)];
             copymem(glList, elist, sizeof(glList));
 
-            wrb<UWORD>(chain.DeflateMethod, elist+LIST_METHOD);
+            wrb<uint16_t>(chain.DeflateMethod, elist+LIST_METHOD);
             wrb<ULONG>(chain.TimeStamp, elist+LIST_TIMESTAMP);
             wrb<ULONG>(chain.CRC, elist+LIST_CRC);
             wrb<ULONG>(chain.CompressedSize, elist+LIST_COMPRESSEDSIZE);
             wrb<ULONG>(chain.OriginalSize, elist+LIST_FILESIZE);
-            wrb<UWORD>(chain.Name.size(), elist+LIST_NAMELEN);
-            wrb<UWORD>(0, elist+LIST_EXTRALEN);
-            wrb<UWORD>(chain.Comment.size(), elist+LIST_COMMENTLEN);
-            wrb<UWORD>(0, elist+LIST_DISKNO);
-            wrb<UWORD>(0, elist+LIST_IFILE);
+            wrb<uint16_t>(chain.Name.size(), elist+LIST_NAMELEN);
+            wrb<uint16_t>(0, elist+LIST_EXTRALEN);
+            wrb<uint16_t>(chain.Comment.size(), elist+LIST_COMMENTLEN);
+            wrb<uint16_t>(0, elist+LIST_DISKNO);
+            wrb<uint16_t>(0, elist+LIST_IFILE);
             wrb<ULONG>(chain.Flags, elist+LIST_ATTRIB);
             wrb<ULONG>(chain.Offset, elist+LIST_OFFSET);
 
@@ -754,8 +754,8 @@ static void write_eof(extCompression *Self)
          UBYTE tail[sizeof(glTail)];
          copymem(glTail, tail, sizeof(glTail));
 
-         wrb<UWORD>(filecount,  tail + TAIL_FILECOUNT); // File count for this file
-         wrb<UWORD>(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
+         wrb<uint16_t>(filecount,  tail + TAIL_FILECOUNT); // File count for this file
+         wrb<uint16_t>(filecount,  tail + TAIL_TOTALFILECOUNT); // File count for all zip files when spanning multiple archives
          wrb<ULONG>(listsize,   tail + TAIL_FILELISTSIZE);
          wrb<ULONG>(listoffset, tail + TAIL_FILELISTOFFSET);
          acWriteResult(Self->FileIO, tail, TAIL_LENGTH);

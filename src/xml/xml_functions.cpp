@@ -120,7 +120,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
          }
       }
       else if (raw_content IS RAW_NDATA) {
-         UWORD nest = 1;
+         uint16_t nest = 1;
          for (len=0; str[len]; len++) {
             if ((str[len] IS '<') and (str[len+1] IS '!') and (str[len+2] IS '[') and
                 ((str[len+3] IS 'N') or (str[len+3] IS 'C')) and (str[len+4] IS 'D') and (str[len+5] IS 'A') and (str[len+6] IS 'T') and (str[len+7] IS 'A')  and (str[len+8] IS '[')) {

@@ -82,7 +82,7 @@ static Cursor get_x11_cursor(PTC CursorID)
 {
    pf::Log log(__FUNCTION__);
 
-   for (WORD i=0; i < std::ssize(XCursors); i++) {
+   for (int16_t i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
    }
 
@@ -92,7 +92,7 @@ static Cursor get_x11_cursor(PTC CursorID)
 
 void init_xcursors(void)
 {
-   for (WORD i=0; i < std::ssize(XCursors); i++) {
+   for (int16_t i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].CursorID IS PTC::INVISIBLE) XCursors[i].XCursor = create_blank_cursor();
       else XCursors[i].XCursor = XCreateFontCursor(XDisplay, XCursors[i].XCursorID);
    }
@@ -100,7 +100,7 @@ void init_xcursors(void)
 
 void free_xcursors(void)
 {
-   for (WORD i=0; i < std::ssize(XCursors); i++) {
+   for (int16_t i=0; i < std::ssize(XCursors); i++) {
       if (XCursors[i].XCursor) XFreeCursor(XDisplay, XCursors[i].XCursor);
    }
 }
@@ -111,7 +111,7 @@ void free_xcursors(void)
 #ifdef _WIN32
 HCURSOR GetWinCursor(PTC CursorID)
 {
-   for (WORD i=0; i < std::ssize(winCursors); i++) {
+   for (int16_t i=0; i < std::ssize(winCursors); i++) {
       if (winCursors[i].CursorID IS CursorID) return winCursors[i].WinCursor;
    }
 

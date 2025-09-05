@@ -58,21 +58,21 @@ typedef struct _GUID {
 } GUID;
 
 typedef struct WAVEFormat {
-   WORD Format;               // Type of WAVE data in the chunk: RAW or ADPCM
-   WORD Channels;             // Number of channels, 1=mono, 2=stereo
+   int16_t Format;               // Type of WAVE data in the chunk: RAW or ADPCM
+   int16_t Channels;             // Number of channels, 1=mono, 2=stereo
    LONG Frequency;            // Playback frequency
    LONG AvgBytesPerSecond;    // Channels * SamplesPerSecond * (BitsPerSample / 8)
-   WORD BlockAlign;           // Channels * (BitsPerSample / 8)
-   WORD BitsPerSample;        // Bits per sample
-   WORD ExtraLength;
+   int16_t BlockAlign;           // Channels * (BitsPerSample / 8)
+   int16_t BitsPerSample;        // Bits per sample
+   int16_t ExtraLength;
 } WAVEFORMATEX;
 
 typedef struct {
   WAVEFORMATEX Format;
   union {
-    WORD wValidBitsPerSample;
-    WORD wSamplesPerBlock;
-    WORD wReserved;
+    int16_t wValidBitsPerSample;
+    int16_t wSamplesPerBlock;
+    int16_t wReserved;
   } Samples;
   LONG dwChannelMask;         // Set to 0x3 for the left and right speakers
   GUID SubFormat;
@@ -83,11 +83,11 @@ typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT, FLOAT **);
 // Function to set mixing step for thread-safe operation
 void set_mix_step(LONG step);
 
-static const WORD WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
-static const WORD WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.
-static const WORD WAVE_FLOAT = 0x0003;  // Uncompressed floating point waveform
+static const int16_t WAVE_RAW   = 0x0001;  // Uncompressed waveform data.
+static const int16_t WAVE_ADPCM = 0x0002;  // ADPCM compressed waveform data.
+static const int16_t WAVE_FLOAT = 0x0003;  // Uncompressed floating point waveform
 
-static const WORD WAVE_FORMAT_EXTENSIBLE = WORD(0xfffe);
+static const int16_t WAVE_FORMAT_EXTENSIBLE = int16_t(0xfffe);
 
 const LONG DEFAULT_BUFFER_SIZE = 8096; // Measured in samples, not bytes
 

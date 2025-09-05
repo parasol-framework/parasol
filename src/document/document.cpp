@@ -166,7 +166,7 @@ static std::string stream_to_string(RSTREAM &, stream_char, stream_char);
 static ERR  unload_doc(extDocument *, ULD = ULD::NIL);
 static bool valid_objectid(extDocument *, OBJECTID);
 static bool view_area(extDocument *, double, double, double, double);
-static std::string write_calc(double, WORD);
+static std::string write_calc(double, int16_t);
 
 static ERR GET_WorkingPath(extDocument *, CSTRING *);
 

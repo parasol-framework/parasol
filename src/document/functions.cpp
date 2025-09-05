@@ -111,7 +111,7 @@ Special operators include:
 
 *********************************************************************************************************************/
 
-static std::string write_calc(double Value, WORD Precision)
+static std::string write_calc(double Value, int16_t Precision)
 {
    if (!Precision) return std::to_string(F2T(Value));
 

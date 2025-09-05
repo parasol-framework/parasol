@@ -148,7 +148,7 @@ static struct {
    HANDLE LocalHandle;
 } glHandleBank[MAX_HANDLES];
 
-static WORD glHandleCount = 0;
+static int16_t glHandleCount = 0;
 static CRITICAL_SECTION csHandleBank;
 static CRITICAL_SECTION csJob;
 
@@ -161,7 +161,7 @@ typedef unsigned char UBYTE;
 
 
 typedef struct DateTime {
-   WORD Year;
+   int16_t Year;
    BYTE Month;
    BYTE Day;
    BYTE Hour;
@@ -581,7 +581,7 @@ extern "C" void winShutdown(void)
    UnregisterClass(glMsgClass, glInstance);
 
    EnterCriticalSection(&csHandleBank);
-      WORD i;
+      int16_t i;
       for (i=0; i < glHandleCount; i++) {
          if (glHandleBank[i].LocalHandle) CloseHandle(glHandleBank[i].LocalHandle);
       }
@@ -1465,7 +1465,7 @@ extern "C" BYTE winGetCommand(char *Path, char *Buffer, int BufferSize)
 
 extern "C" int winCurrentDirectory(char *Buffer, int BufferSize)
 {
-   WORD i, len;
+   int16_t i, len;
 
    Buffer[0] = 0;
    if ((len = GetModuleFileNameA(nullptr, Buffer, BufferSize))) {
@@ -1703,7 +1703,7 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
 
 //********************************************************************************************************************
 
-extern "C" int winSetFileTime(STRING Location, bool Folder, WORD Year, WORD Month, WORD Day, WORD Hour, WORD Minute, WORD Second)
+extern "C" int winSetFileTime(STRING Location, bool Folder, int16_t Year, int16_t Month, int16_t Day, int16_t Hour, int16_t Minute, int16_t Second)
 {
    SYSTEMTIME time;
    FILETIME filetime, localtime;

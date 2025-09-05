@@ -278,8 +278,8 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    // Debug processing
 
-   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)      glLogLevel = (WORD)Info->Detail;
-   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL)   glMaxDepth = (WORD)Info->MaxDepth;
+   if ((Info->Flags & OPF::DETAIL) != OPF::NIL)      glLogLevel = (int16_t)Info->Detail;
+   if ((Info->Flags & OPF::MAX_DEPTH) != OPF::NIL)   glMaxDepth = (int16_t)Info->MaxDepth;
    if ((Info->Flags & OPF::SHOW_MEMORY) != OPF::NIL) glShowPrivate = true;
 
    // Android sets an important JNI pointer on initialisation.

@@ -84,7 +84,7 @@ static ERR seek_to_item(extFile *Self)
    acSeekStart(prv->FileStream, item.Offset + HEAD_EXTRALEN);
    prv->ReadPtr = nullptr;
 
-   UWORD extra_len;
+   uint16_t extra_len;
    if (fl::ReadLE(prv->FileStream, &extra_len) != ERR::Okay) return ERR::Read;
    ULONG stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR::Okay) return ERR::Seek;
@@ -450,7 +450,7 @@ static ERR ARCHIVE_GET_Timestamp(extFile *Self, LARGE *Value)
       }
       else {
          DateTime datetime = {
-            .Year   = WORD(prv->Info.Year),
+            .Year   = int16_t(prv->Info.Year),
             .Month  = BYTE(prv->Info.Month),
             .Day    = BYTE(prv->Info.Day),
             .Hour   = BYTE(prv->Info.Hour),

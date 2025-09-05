@@ -8,54 +8,54 @@ struct winFont {
 };
 
 struct winmz_header_fields {
-   UWORD magic;
+   uint16_t magic;
    UBYTE data[29 * 2];
    ULONG lfanew;
 };
 
 struct winne_header_fields {
-   UWORD magic;
+   uint16_t magic;
    UBYTE data[34];
-   UWORD resource_tab_offset;
-   UWORD rname_tab_offset;
+   uint16_t resource_tab_offset;
+   uint16_t rname_tab_offset;
 };
 
 PACK(struct winfnt_header_fields {
-   UWORD version;
+   uint16_t version;
    ULONG file_size;
    char copyright[60];
-   UWORD file_type;
-   UWORD nominal_point_size;     // Point size
-   UWORD vertical_resolution;
-   UWORD horizontal_resolution;
-   UWORD ascent;                 // The amount of pixels above the base-line
-   UWORD internal_leading;       // top leading pixels
-   UWORD external_leading;       // gutter
+   uint16_t file_type;
+   uint16_t nominal_point_size;     // Point size
+   uint16_t vertical_resolution;
+   uint16_t horizontal_resolution;
+   uint16_t ascent;                 // The amount of pixels above the base-line
+   uint16_t internal_leading;       // top leading pixels
+   uint16_t external_leading;       // gutter
    BYTE  italic;                 // TRUE if font is italic
    BYTE  underline;              // TRUE if font is underlined
    BYTE  strike_out;             // TRUE if font is striked-out
-   UWORD weight;                 // Indicates font boldness
+   uint16_t weight;                 // Indicates font boldness
    BYTE  charset;
-   UWORD pixel_width;
-   UWORD pixel_height;
+   uint16_t pixel_width;
+   uint16_t pixel_height;
    BYTE  pitch_and_family;
-   UWORD avg_width;
-   UWORD max_width;
+   uint16_t avg_width;
+   uint16_t max_width;
    UBYTE first_char;
    UBYTE last_char;
    UBYTE default_char;
    UBYTE break_char;
-   UWORD bytes_per_row;
+   uint16_t bytes_per_row;
    ULONG device_offset;
    ULONG face_name_offset;
    ULONG bits_pointer;
    ULONG bits_offset;
    BYTE  reserved;
    ULONG flags;
-   UWORD A_space;
-   UWORD B_space;
-   UWORD C_space;
-   UWORD color_table_offset;
+   uint16_t A_space;
+   uint16_t B_space;
+   uint16_t C_space;
+   uint16_t color_table_offset;
    BYTE  reservedend[4];
 });
 
@@ -74,7 +74,7 @@ public:
    winfnt_header_fields Header;
    FontCharacter Chars[256];
    std::string Path;
-   WORD OpenCount;
+   int16_t OpenCount;
    FTF StyleFlags;
    ERR Result;
 
@@ -104,7 +104,7 @@ public:
       if (pFace.version IS 0x300) {
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
-            UWORD width;
+            uint16_t width;
             ULONG offset;
 
             if (fl::ReadLE(pFile, &width) != ERR::Okay) break;
@@ -119,7 +119,7 @@ public:
       else {
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
-            UWORD width, offset;
+            uint16_t width, offset;
             if (fl::ReadLE(pFile, &width) != ERR::Okay) break;
             if (fl::ReadLE(pFile, &offset) != ERR::Okay) break;
             Chars[j].Width   = width;
@@ -138,7 +138,7 @@ public:
          if ((pFile->read(mData, size, &result) IS ERR::Okay) and (result IS size)) {
             // Convert the graphics format for wide characters from column-first format to row-first format.
 
-            for (WORD i=0; i < 256; i++) {
+            for (int16_t i=0; i < 256; i++) {
                if (!Chars[i].Width) continue;
 
                LONG sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
@@ -257,7 +257,7 @@ public:
       if (mOutline) return mOutline;
 
       LONG size = 0;
-      for (WORD i=0; i < 256; i++) {
+      for (int16_t i=0; i < 256; i++) {
          if (Chars[i].Width) size += (Header.pixel_height+2) * ((Chars[i].Width+9)>>3);
       }
 
@@ -265,7 +265,7 @@ public:
       if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return nullptr;
 
       LONG pos = 0;
-      for (WORD i=0; i < 256; i++) {
+      for (int16_t i=0; i < 256; i++) {
          if (Chars[i].Width) {
             auto gfx = mData + Chars[i].Offset;
             Chars[i].OutlineOffset = pos;

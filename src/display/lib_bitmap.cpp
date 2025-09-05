@@ -23,7 +23,7 @@ static ERR dither(extBitmap *Bitmap, extBitmap *Dest, ColourFormat *Format, int 
    RGB8 brgb;
    uint8_t *data;
    int x, y;
-   WORD index;
+   int16_t index;
 
    if ((Width < 1) or (Height < 1)) return ERR::Okay;
 
@@ -1133,31 +1133,31 @@ template <class INT> uint8_t UnpackSGreen(BITMAPSURFACE *S,INT C) { return (((C 
 template <class INT> uint8_t UnpackSBlue(BITMAPSURFACE *S, INT C) { return (((C >> S->Format.BluePos)  & S->Format.BlueMask) << S->Format.BlueShift); }
 template <class INT> uint8_t UnpackSAlpha(BITMAPSURFACE *S,INT C) { return (((C >> S->Format.AlphaPos) & S->Format.AlphaMask)); }
 
-static uint32_t read_surface8(BITMAPSURFACE *Surface, WORD X, WORD Y)
+static uint32_t read_surface8(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 {
    return ((uint8_t *)Surface->Data)[(Surface->LineWidth * Y) + X];
 }
 
-static uint32_t read_surface16(BITMAPSURFACE *Surface, WORD X, WORD Y)
+static uint32_t read_surface16(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 {
    return ((uint16_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + X + X))[0];
 }
 
-static uint32_t read_surface_lsb24(BITMAPSURFACE *Surface, WORD X, WORD Y)
+static uint32_t read_surface_lsb24(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 {
    uint8_t *data;
    data = (uint8_t *)Surface->Data + (Surface->LineWidth * Y) + (X + X + X);
    return (data[2]<<16) | (data[1]<<8) | data[0];
 }
 
-static uint32_t read_surface_msb24(BITMAPSURFACE *Surface, WORD X, WORD Y)
+static uint32_t read_surface_msb24(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 {
    uint8_t *data;
    data = (uint8_t *)Surface->Data + (Surface->LineWidth * Y) + (X + X + X);
    return (data[0]<<16) | (data[1]<<8) | data[2];
 }
 
-static uint32_t read_surface32(BITMAPSURFACE *Surface, WORD X, WORD Y)
+static uint32_t read_surface32(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 {
    return ((uint32_t *)((uint8_t *)Surface->Data + (Surface->LineWidth * Y) + (X<<2)))[0];
 }
@@ -1169,10 +1169,10 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
    RGB8 pixel, src;
    uint8_t *srctable, *desttable;
    int i;
-   WORD srcwidth;
+   int16_t srcwidth;
    uint32_t colour;
    uint8_t *data, *srcdata;
-   uint32_t (*read_surface)(BITMAPSURFACE *, WORD, WORD);
+   uint32_t (*read_surface)(BITMAPSURFACE *, int16_t, int16_t);
 
    if ((!Surface) or (!Bitmap)) return log.warning(ERR::NullArgs);
 
@@ -1257,7 +1257,7 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
       // Source is an ximage, destination is a pixmap.  NB: If DGA is enabled, we will avoid using these routines because mem-copying from software
       // straight to video RAM is a lot faster.
 
-      WORD alignment;
+      int16_t alignment;
 
       if (dest->LineWidth & 0x0001) alignment = 8;
       else if (dest->LineWidth & 0x0002) alignment = 16;

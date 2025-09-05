@@ -1,5 +1,5 @@
 
-extern agg::gamma_lut<uint8_t, UWORD, 8, 12> glGamma;
+extern agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma;
 
 static PIXEL_ORDER pxBGRA(2, 1, 0, 3);
 static PIXEL_ORDER pxRGBA(0, 1, 2, 3);

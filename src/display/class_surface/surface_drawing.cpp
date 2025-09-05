@@ -1,5 +1,5 @@
 
-void copy_bkgd(const SURFACELIST &, int, int, int, ClipRectangle &, extBitmap *, extBitmap *, WORD, bool);
+void copy_bkgd(const SURFACELIST &, int, int, int, ClipRectangle &, extBitmap *, extBitmap *, int16_t, bool);
 
 ERR _expose_surface(OBJECTID SurfaceID, const SURFACELIST &List, int index, int X, int Y, int Width, int Height, EXF Flags)
 {
@@ -723,7 +723,7 @@ void prepare_background(extSurface *Self, const SURFACELIST &List, int Index, ex
 // Coordinates are absolute.
 
 void copy_bkgd(const SURFACELIST &List, int Index, int End, int Master, ClipRectangle &Area,
-   extBitmap *DestBitmap, extBitmap *SrcBitmap, WORD Opacity, bool Pervasive)
+   extBitmap *DestBitmap, extBitmap *SrcBitmap, int16_t Opacity, bool Pervasive)
 {
    pf::Log log(__FUNCTION__);
 

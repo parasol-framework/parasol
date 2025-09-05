@@ -95,8 +95,8 @@ class extFont : public objFont {
    class BitmapCache *BmpCache;
    LONG prvLineCount;
    LONG prvStrWidth;
-   WORD prvBitmapHeight;
-   WORD prvLineCountCR;
+   int16_t prvBitmapHeight;
+   int16_t prvLineCountCR;
    char prvEscape[2];
    char prvFace[32];
    char prvStyle[20];
@@ -111,7 +111,7 @@ static ERR add_font_class(void);
 static LONG getutf8(CSTRING, ULONG *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
-static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<UWORD> &);
+static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
 static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
 
 //********************************************************************************************************************
@@ -219,7 +219,7 @@ inline void calc_lines(extFont *Self)
 static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
    ULONG unicode;
-   WORD rowcount, wordwidth, lastword, tabwidth, charwidth;
+   int16_t rowcount, wordwidth, lastword, tabwidth, charwidth;
    UBYTE line_abort, pchar;
 
    if ((!Font) or (!String)) return;
@@ -513,7 +513,7 @@ ERR GetList(FontList **Result)
                   if (!fontpoints.empty()) {
                      list->Points = (LONG *)buffer;
                      std::size_t i = 0;
-                     for (WORD j=0; i != std::string::npos; j++) {
+                     for (int16_t j=0; i != std::string::npos; j++) {
                         ((LONG *)buffer)[0] = svtonum<LONG>(fontpoints);
                         buffer += sizeof(LONG);
                         if (i = fontpoints.find(','); i != std::string::npos) fontpoints.remove_prefix(i+1);
@@ -578,7 +578,7 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
          whitespace = 0;
       }
       else if (*str IS '\t') {
-         WORD tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
+         int16_t tabwidth = (font->prvChar[' '].Advance * Font->GlyphSpacing) * Font->TabSize;
          if (tabwidth) len = pf::roundup(len, tabwidth);
          str++;
          Chars--;
@@ -919,10 +919,10 @@ static void scan_truetype_folder(objConfig *Config)
                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
                                     // Decode UTF16 Big Endian
                                     LONG out = 0;
-                                    auto str = (UWORD *)sft_name.string;
-                                    UWORD prev_unicode = 0;
+                                    auto str = (uint16_t *)sft_name.string;
+                                    uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                       UWORD unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       uint16_t unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
                                        if ((unicode >= 'A') and (unicode <= 'Z')) {
                                           if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
                                              buffer[out++] = ' ';
@@ -995,7 +995,7 @@ static void scan_fixed_folder(objConfig *Config)
          auto src = location.c_str();
 
          winfnt_header_fields header;
-         std::vector<UWORD> points;
+         std::vector<uint16_t> points;
          std::string facename;
          if (analyse_bmp_font(src, &header, facename, points) IS ERR::Okay) {
             log.detail("Detected font file \"%s\", name: %s", src, facename.c_str());
@@ -1067,13 +1067,13 @@ static void scan_fixed_folder(objConfig *Config)
 
 //********************************************************************************************************************
 
-static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<UWORD> &Points)
+static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::string &FaceName, std::vector<uint16_t> &Points)
 {
    pf::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
    winne_header_fields ne_header;
    LONG i, res_offset, font_offset;
-   UWORD size_shift, font_count, count;
+   uint16_t size_shift, font_count, count;
    char face[50];
 
    if ((!Path) or (!Header)) return ERR::NullArgs;
@@ -1094,7 +1094,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
             size_shift  = 0;
             fl::ReadLE(*file, &size_shift);
 
-            UWORD type_id = 0;
+            uint16_t type_id = 0;
             for (fl::ReadLE(*file, &type_id); type_id; fl::ReadLE(*file, &type_id)) {
                if (fl::ReadLE(*file, &count) IS ERR::Okay) {
                   if (type_id IS 0x8008) {
@@ -1121,7 +1121,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
                // Get the offset and size of each font entry
 
                for (LONG i=0; i < font_count; i++) {
-                  UWORD offset = 0, size = 0;
+                  uint16_t offset = 0, size = 0;
                   fl::ReadLE(*file, &offset);
                   fl::ReadLE(*file, &size);
                   fonts[i].Offset = offset<<size_shift;

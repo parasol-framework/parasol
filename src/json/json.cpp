@@ -64,7 +64,7 @@ static OBJECTPTR clJSON = nullptr;
 static ERR JSON_Init(objXML *);
 static ERR JSON_SaveToObject(objXML *, struct acSaveToObject *);
 
-static UWORD glTagID = 1;
+static uint16_t glTagID = 1;
 
 static ActionArray clActions[] = {
    { AC::Init,         JSON_Init },

@@ -497,7 +497,7 @@ static ERR GET_VisibleHeight(extSurface *Self, LONG *Value)
    else {
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      WORD i;
+      int16_t i;
       if ((i = find_surface_list(Self)) IS -1) return ERR::Search;
 
       auto clip = glSurfaces[i].area();

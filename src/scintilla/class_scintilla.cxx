@@ -2276,7 +2276,7 @@ static void key_event(evKey *Event, LONG Size, extScintilla *Self)
       string[0] = 0;
 
       if ((Event->Qualifiers & KQ::NOT_PRINTABLE) IS KQ::NIL) {
-         WORD out = UTF8WriteValue(Event->Unicode, string, sizeof(string)-1);
+         int16_t out = UTF8WriteValue(Event->Unicode, string, sizeof(string)-1);
          if (out >= 0) string[out] = 0;
       }
 

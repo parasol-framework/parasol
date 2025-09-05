@@ -38,7 +38,7 @@ static ERR OBJECT_SetName(OBJECTPTR, CSTRING);
 static void field_setup(extMetaClass *);
 static void sort_class_fields(extMetaClass *, std::vector<Field> &);
 
-static void add_field(extMetaClass *, std::vector<Field> &, const FieldArray &, UWORD &);
+static void add_field(extMetaClass *, std::vector<Field> &, const FieldArray &, uint16_t &);
 static void register_fields(std::vector<Field> &);
 static Field * lookup_id_byclass(extMetaClass *, uint32_t, extMetaClass **);
 
@@ -837,7 +837,7 @@ static void field_setup(extMetaClass *Class)
 
       if (Class->SubFields) {
          std::vector<Field> subFields;
-         UWORD offset = 0;
+         uint16_t offset = 0;
          for (unsigned i=0; Class->SubFields[i].Name; i++) {
             bool found = false;
             auto hash = strihash(Class->SubFields[i].Name);
@@ -875,7 +875,7 @@ static void field_setup(extMetaClass *Class)
       bool name_field   = true;
       bool owner_field  = true;
       auto class_fields = Class->Fields;
-      UWORD offset      = sizeof(Object);
+      uint16_t offset      = sizeof(Object);
       for (unsigned i=0; class_fields[i].Name; i++) {
          add_field(Class, Class->FieldLookup, class_fields[i], offset);
 
@@ -992,7 +992,7 @@ static void register_fields(std::vector<Field> &Fields)
 
 //********************************************************************************************************************
 
-static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const FieldArray &Source, UWORD &Offset)
+static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const FieldArray &Source, uint16_t &Offset)
 {
    pf::Log log(__FUNCTION__);
 

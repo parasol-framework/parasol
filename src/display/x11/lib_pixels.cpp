@@ -105,26 +105,26 @@ static void VideoDrawRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
    XDrawPoint(XDisplay, ((extBitmap *)Bitmap)->x11.drawable, ((extBitmap *)Bitmap)->getGC(), X, Y);
 }
 
-static void VideoDrawRGBIndex16(objBitmap *Bitmap, UWORD *Data, RGB8 *RGB)
+static void VideoDrawRGBIndex16(objBitmap *Bitmap, uint16_t *Data, RGB8 *RGB)
 {
 
 }
 
 static ULONG VideoReadPixel16(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   return ((UWORD *)((BYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
+   return ((uint16_t *)((BYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
 }
 
 static void VideoReadRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
 {
-   UWORD data = ((UWORD *)((BYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
+   uint16_t data = ((uint16_t *)((BYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
    RGB->Red   = Bitmap->unpackRed(data);
    RGB->Green = Bitmap->unpackGreen(data);
    RGB->Blue  = Bitmap->unpackBlue(data);
    RGB->Alpha = 0;
 }
 
-static void VideoReadRGBIndex16(objBitmap *Bitmap, UWORD *Data, RGB8 *RGB)
+static void VideoReadRGBIndex16(objBitmap *Bitmap, uint16_t *Data, RGB8 *RGB)
 {
    RGB->Red   = Bitmap->unpackRed(Data[0]);
    RGB->Green = Bitmap->unpackGreen(Data[0]);

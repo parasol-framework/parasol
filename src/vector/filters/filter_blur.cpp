@@ -27,12 +27,12 @@ conditions.
 
 template<class T> struct stack_blur_tables
 {
-  static UWORD const g_stack_blur8_mul[255];
+  static uint16_t const g_stack_blur8_mul[255];
   static UBYTE  const g_stack_blur8_shr[255];
 };
 
 template<class T>
-UWORD const stack_blur_tables<T>::g_stack_blur8_mul[255] =
+uint16_t const stack_blur_tables<T>::g_stack_blur8_mul[255] =
 {
   512,512,456,512,328,456,335,512,405,328,271,456,388,335,292,512,
   454,405,364,328,298,271,496,456,420,388,360,335,312,292,273,512,

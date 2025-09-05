@@ -83,17 +83,17 @@ PACK(struct zipentry {
    UBYTE ostype;
    UBYTE required_version;
    UBYTE required_os;
-   UWORD flags;
-   UWORD deflatemethod;
+   uint16_t flags;
+   uint16_t deflatemethod;
    ULONG timestamp;
    ULONG crc32;
    ULONG compressedsize;
    ULONG originalsize;
-   UWORD namelen;
-   UWORD extralen;
-   UWORD commentlen;
-   UWORD diskno;
-   UWORD ifile;
+   uint16_t namelen;
+   uint16_t extralen;
+   uint16_t commentlen;
+   uint16_t diskno;
+   uint16_t ifile;
    ULONG attrib;
    ULONG offset;
 });
@@ -110,11 +110,11 @@ static const LONG TAIL_LENGTH         = 22;
 PACK(struct ziptail {
    ULONG header;
    ULONG size;
-   UWORD filecount;
-   UWORD diskfilecount;
+   uint16_t filecount;
+   uint16_t diskfilecount;
    ULONG listsize;
    ULONG listoffset;
-   UWORD commentlen;
+   uint16_t commentlen;
 });
 
 #define ZIP_PARASOL 0x7e // Use this identifier to declare Parasol zipped files
@@ -146,9 +146,9 @@ struct ZipFile {
    ULONG  TimeStamp = 0;     // Time stamp information
    ULONG  CRC = 0;           // CRC validation number
    ULONG  Offset = 0;        // Byte offset of the file within the archive
-   UWORD  NameLen = 0;       // The zip record's name length, including padding.
-   UWORD  CommentLen = 0;    // The zip record's comment length, including padding.
-   UWORD  DeflateMethod = 0; // Set to 8 for normal deflation
+   uint16_t  NameLen = 0;       // The zip record's name length, including padding.
+   uint16_t  CommentLen = 0;    // The zip record's comment length, including padding.
+   uint16_t  DeflateMethod = 0; // Set to 8 for normal deflation
    UBYTE  Month = 0;
    UBYTE  Day = 0;
    UBYTE  Hour = 0;
@@ -201,7 +201,7 @@ class extCompression : public objCompression {
    LONG   OutputSize;           // Size of OutputBuffer
    LONG   TotalFiles;
    LONG   FileIndex;
-   WORD   CompressionCount;  // Counter of times that compression has occurred
+   int16_t   CompressionCount;  // Counter of times that compression has occurred
    bool   Deflating;
    bool   Inflating;
 };
@@ -1119,8 +1119,8 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
    std::string destpath(Args->Dest);
    auto dest_len = destpath.size();
 
-   UWORD pathend = 0;
-   for (UWORD i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
+   uint16_t pathend = 0;
+   for (uint16_t i=0; Args->Path[i]; i++) if ((Args->Path[i] IS '/') or (Args->Path[i] IS '\\')) pathend = i + 1;
 
    ERR error      = ERR::Okay;
    bool inflate_end = false;
@@ -1193,7 +1193,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
             goto exit;
          }
 
-         UWORD namelen, extralen;
+         uint16_t namelen, extralen;
          if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) { error = ERR::Read; goto exit; }
          if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) { error = ERR::Read; goto exit; }
          if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR::Okay) {
@@ -1502,7 +1502,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
          return log.warning(ERR::Seek);
       }
 
-      UWORD namelen, extralen;
+      uint16_t namelen, extralen;
       if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
       if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
       if (acSeek(Self->FileIO, namelen + extralen, SEEK::CURRENT) != ERR::Okay) {

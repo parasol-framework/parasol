@@ -100,7 +100,7 @@ class extSVG : public objSVG {
    ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
    ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
    TIMER AnimationTimer;
-   WORD  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
+   int16_t  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  PreserveWS; // Preserve white-space
 };
 

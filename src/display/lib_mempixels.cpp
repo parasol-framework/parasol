@@ -153,35 +153,35 @@ static void MemReadMSBRGBIndex24(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RG
 
 static void MemDrawPixel16(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
 {
-   ((UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0] = Colour;
+   ((uint16_t *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0] = Colour;
 }
 
 static void MemDrawRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   ((UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0] = Bitmap->packPixel(RGB->Red, RGB->Green, RGB->Blue);
+   ((uint16_t *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0] = Bitmap->packPixel(RGB->Red, RGB->Green, RGB->Blue);
 }
 
-static void MemDrawRGBIndex16(objBitmap *Bitmap, UWORD *Data, struct RGB8 *RGB)
+static void MemDrawRGBIndex16(objBitmap *Bitmap, uint16_t *Data, struct RGB8 *RGB)
 {
    Data[0] = Bitmap->packPixel(RGB->Red, RGB->Green, RGB->Blue);
 }
 
 static ULONG MemReadPixel16(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   return ((UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0];
+   return ((uint16_t *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0];
 }
 
 static void MemReadRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RGB)
 {
-   UWORD data;
-   data = ((UWORD *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0];
+   uint16_t data;
+   data = ((uint16_t *)(Bitmap->Data + (Y * Bitmap->LineWidth) + X + X))[0];
    RGB->Red   = Bitmap->unpackRed(data);
    RGB->Green = Bitmap->unpackGreen(data);
    RGB->Blue  = Bitmap->unpackBlue(data);
    RGB->Alpha = 255;
 }
 
-static void MemReadRGBIndex16(objBitmap *Bitmap, UWORD *Data, struct RGB8 *RGB)
+static void MemReadRGBIndex16(objBitmap *Bitmap, uint16_t *Data, struct RGB8 *RGB)
 {
    RGB->Red   = Bitmap->unpackRed(Data[0]);
    RGB->Green = Bitmap->unpackGreen(Data[0]);

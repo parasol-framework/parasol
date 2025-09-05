@@ -615,7 +615,7 @@ int64_t SetResource(RES Resource, int64_t Value)
    pf::Log log(__FUNCTION__);
 
 #ifdef __unix__
-   static WORD privileged = 0;
+   static int16_t privileged = 0;
 #endif
 
    int64_t oldvalue = 0;
