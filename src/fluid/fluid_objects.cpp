@@ -33,8 +33,8 @@ template<class... Args> void RMSG(Args...) {
    //log.trace(Args)  // Enable if you want to debug results returned from functions, actions etc
 }
 
-static ULONG OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_getKey;
-static ULONG OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
+static uint32_t OJH_init, OJH_free, OJH_lock, OJH_children, OJH_detach, OJH_get, OJH_new, OJH_state, OJH_state_dep, OJH_getKey;
+static uint32_t OJH_set, OJH_setKey, OJH_delayCall, OJH_exists, OJH_subscribe, OJH_unsubscribe;
 
 static int object_action_call_args(lua_State *);
 static int object_method_call_args(lua_State *);
@@ -377,7 +377,7 @@ static int object_new(lua_State *Lua)
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = nullptr;
-      log.trace("$%.8x", ULONG(class_id));
+      log.trace("$%.8x", uint32_t(class_id));
    }
    else if ((class_name = luaL_checkstring(Lua, 1))) {
       if (class_name[0] IS '@') { // Deprecated
@@ -385,7 +385,7 @@ static int object_new(lua_State *Lua)
          class_name++;
       }
       class_id = CLASSID(strihash(class_name));
-      log.trace("%s, $%.8x", class_name, ULONG(class_id));
+      log.trace("%s, $%.8x", class_name, uint32_t(class_id));
    }
    else {
       log.warning("String or ID expected for class name, got '%s'.", lua_typename(Lua, type));

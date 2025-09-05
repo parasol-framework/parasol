@@ -142,7 +142,7 @@ ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
                         lua_gettable(Lua, -2); // Get value at index
                         if (type & FD_FLOAT)       ((FLOAT*)address)[i]  = lua_tonumber(Lua, -1);
                         else if (type & FD_DOUBLE) ((DOUBLE*)address)[i] = lua_tonumber(Lua, -1);
-                        else if (type & FD_INT64)  ((LARGE*)address)[i]  = lua_tonumber(Lua, -1);
+                        else if (type & FD_INT64)  ((int64_t*)address)[i]  = lua_tonumber(Lua, -1);
                         else if (type & FD_INT)    ((LONG*)address)[i]   = lua_tointeger(Lua, -1);
                         else if (type & FD_WORD)   ((WORD*)address)[i]   = lua_tointeger(Lua, -1);
                         else if (type & FD_BYTE)   ((UBYTE*)address)[i]  = lua_tointeger(Lua, -1);
@@ -153,7 +153,7 @@ ERR table_to_struct(lua_State *Lua, std::string_view StructName, APTR *Result)
                else if (type & (FD_STRING|FD_STRUCT|FD_POINTER));
                else if (type & FD_FLOAT)  ((FLOAT *)address)[0]  = lua_tonumber(Lua, -1);
                else if (type & FD_DOUBLE) ((DOUBLE *)address)[0] = lua_tonumber(Lua, -1);
-               else if (type & FD_INT64)  ((LARGE *)address)[0]  = lua_tonumber(Lua, -1);
+               else if (type & FD_INT64)  ((int64_t *)address)[0]  = lua_tonumber(Lua, -1);
                else if (type & FD_INT)    ((LONG *)address)[0]   = lua_tointeger(Lua, -1);
                else if (type & FD_WORD)   ((WORD *)address)[0]   = lua_tointeger(Lua, -1);
                else if (type & FD_BYTE)   ((UBYTE *)address)[0]  = lua_tointeger(Lua, -1);
@@ -262,7 +262,7 @@ ERR struct_to_table(lua_State *Lua, std::vector<lua_ref> &References, struct_rec
       }
       else if (type & FD_FLOAT)  lua_pushnumber(Lua, ((FLOAT *)address)[0]);
       else if (type & FD_DOUBLE) lua_pushnumber(Lua, ((DOUBLE *)address)[0]);
-      else if (type & FD_INT64)  lua_pushnumber(Lua, ((LARGE *)address)[0]);
+      else if (type & FD_INT64)  lua_pushnumber(Lua, ((int64_t *)address)[0]);
       else if (type & FD_INT)    lua_pushinteger(Lua, ((LONG *)address)[0]);
       else if (type & FD_WORD)   lua_pushinteger(Lua, ((WORD *)address)[0]);
       else if (type & FD_BYTE)   lua_pushinteger(Lua, ((UBYTE *)address)[0]);
@@ -393,7 +393,7 @@ static ERR generate_structdef(objScript *Self, const std::string_view StructName
       switch (Sequence[pos]) {
          case 'l': type |= FD_INT;     field_size = sizeof(LONG); break;
          case 'd': type |= FD_DOUBLE;   field_size = sizeof(DOUBLE); break;
-         case 'x': type |= FD_INT64;    field_size = sizeof(LARGE); break;
+         case 'x': type |= FD_INT64;    field_size = sizeof(int64_t); break;
          case 'f': type |= FD_FLOAT;    field_size = sizeof(FLOAT); break;
          case 'r': type |= FD_FUNCTION; field_size = sizeof(FUNCTION); break;
          case 'w': type |= FD_WORD;     field_size = sizeof(WORD); break;
@@ -759,7 +759,7 @@ static int struct_get(lua_State *Lua)
             }
             else if (field->Type & FD_INT64) {
                if (field->Type & FD_ARRAY) make_array(Lua, FD_INT64, nullptr, (APTR *)address, array_size, false);
-               else lua_pushnumber(Lua, ((LARGE *)address)[0]);
+               else lua_pushnumber(Lua, ((int64_t *)address)[0]);
             }
             else if (field->Type & FD_INT) {
                if (field->Type & FD_ARRAY) make_array(Lua, FD_INT, nullptr, (APTR *)address, array_size, false);

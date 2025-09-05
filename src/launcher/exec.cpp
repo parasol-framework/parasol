@@ -40,7 +40,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
             std::ostringstream cmdline;
 
             char exe_buffer[128];
-            ULONG i = get_exe(exe_buffer, sizeof(exe_buffer));
+            uint32_t i = get_exe(exe_buffer, sizeof(exe_buffer));
             if ((!i) or (i >= sizeof(exe_buffer)-1)) return ERR::Failed;
 
             cmdline << '"' << exe_buffer << "\" --relaunch";
@@ -156,7 +156,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
          }
       }
 
-      LARGE start_time = 0;
+      int64_t start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
       if (auto error = InitObject(glScript); error IS ERR::Okay) {

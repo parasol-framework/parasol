@@ -97,8 +97,8 @@ class extSVG : public objSVG {
    std::vector<std::unique_ptr<svgLink>> Links;
    std::vector<svgInherit> Inherit;
    std::vector<OBJECTID> Resources; // Resources to terminate if ENFORCE_TRACKING was enabled.
-   ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by ULONG begins, it must activate() the referenced anim_base
-   ankerl::unordered_dense::map<ULONG, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by ULONG ends, it must activate() the referenced anim_base
+   ankerl::unordered_dense::map<uint32_t, std::vector<anim_base *>> StartOnBegin; // When the animation indicated by uint32_t begins, it must activate() the referenced anim_base
+   ankerl::unordered_dense::map<uint32_t, std::vector<anim_base *>> StartOnEnd; // When the animation indicated by uint32_t ends, it must activate() the referenced anim_base
    TIMER AnimationTimer;
    int16_t  Cloning;  // Incremented when inside a duplicated tag space, e.g. due to a <use> tag
    bool  PreserveWS; // Preserve white-space
@@ -144,7 +144,7 @@ struct svgState {
       operator double() const noexcept { return value; }
       operator DU() const noexcept { return type; }
 
-      inline LARGE field() const noexcept {
+      inline int64_t field() const noexcept {
          return (type == DU::SCALED) ? (field_id | TDOUBLE | TSCALE) : field_id | TDOUBLE;
       }
 
@@ -198,7 +198,7 @@ private:
    void applyTag(const XMLTag &) noexcept;
    void applyStateToVector(objVector *) const noexcept;
    const std::vector<GradientStop> process_gradient_stops(const XMLTag &) noexcept;
-   ERR  set_property(objVector *, ULONG, XMLTag &, const std::string) noexcept;
+   ERR  set_property(objVector *, uint32_t, XMLTag &, const std::string) noexcept;
    ERR  process_tag(XMLTag &, XMLTag &, OBJECTPTR, objVector * &) noexcept;
 
    ERR  proc_defs(XMLTag &, OBJECTPTR) noexcept;
@@ -258,9 +258,9 @@ private:
 
 //********************************************************************************************************************
 
-static ERR  animation_timer(extSVG *, LARGE, LARGE);
+static ERR  animation_timer(extSVG *, int64_t, int64_t);
 static void convert_styles(objXML::TAGS &);
-static double read_unit(std::string_view &, LARGE * = nullptr);
+static double read_unit(std::string_view &, int64_t * = nullptr);
 
 static ERR  init_svg(void);
 static ERR  init_rsvg(void);

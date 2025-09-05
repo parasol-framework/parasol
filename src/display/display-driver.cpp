@@ -348,7 +348,7 @@ int pthread_mutex_timedlock (pthread_mutex_t *mutex, int Timeout)
    sleepytime.tv_sec = 0;
    sleepytime.tv_nsec = 10000000; // 10ms
 
-   LARGE start = PreciseTime();
+   int64_t start = PreciseTime();
    while ((retcode = pthread_mutex_trylock(mutex)) IS EBUSY) {
       if (PreciseTime() - start >= Timeout * 1000LL) return ETIMEDOUT;
       nanosleep(&sleepytime, nullptr);

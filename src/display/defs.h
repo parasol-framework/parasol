@@ -279,12 +279,12 @@ class extPointer : public objPointer {
    using create = pf::Create<extPointer>;
 
    struct {
-      LARGE LastClickTime;      // Timestamp
+      int64_t LastClickTime;      // Timestamp
       OBJECTID LastClicked;     // Most recently clicked object
       UBYTE DblClick:1;         // TRUE if last click was a double-click
    } Buttons[10];
-   LARGE    ClickTime;
-   LARGE    AnchorTime;
+   int64_t    ClickTime;
+   int64_t    AnchorTime;
    double   LastClickX, LastClickY;
    double   LastReleaseX, LastReleaseY;
    OBJECTID LastSurfaceID;      // Last object that the pointer was positioned over
@@ -312,7 +312,7 @@ class extSurface : public objSurface {
    public:
    using create = pf::Create<extSurface>;
 
-   LARGE    LastRedimension;      // Timestamp of the last redimension call
+   int64_t    LastRedimension;      // Timestamp of the last redimension call
    objBitmap *Bitmap;
    SurfaceCallback *Callback;
    APTR      Data;
@@ -614,7 +614,7 @@ class extBitmap : public objBitmap {
    public:
    using create = pf::Create<extBitmap>;
 
-   ULONG  *Gradients;
+   uint32_t  *Gradients;
    APTR   ResolutionChangeHandle;
    RGBPalette prvPaletteArray;
    struct ColourFormat prvColourFormat;
@@ -642,7 +642,7 @@ class extBitmap : public objBitmap {
          APTR Drawable;  // HDC for the Bitmap
       } win;
    #elif _GLES_
-      ULONG prvWriteBackBuffer:1;  // For OpenGL surface locking.
+      uint32_t prvWriteBackBuffer:1;  // For OpenGL surface locking.
       LONG prvGLPixel;
       LONG prvGLFormat;
    #endif

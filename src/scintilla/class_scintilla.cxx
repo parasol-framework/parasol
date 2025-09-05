@@ -120,7 +120,7 @@ extern OBJECTPTR clScintillaSearch;
 
 struct styledef {
    UBYTE Index;
-   ULONG Colour;
+   uint32_t Colour;
    FTF FontStyle;
 };
 
@@ -1188,7 +1188,7 @@ static ERR SCINTILLA_ReplaceText(extScintilla *Self, struct sci::ReplaceText *Ar
             end = end + (len - findlen);
          }
          else {
-            SCICALL(SCI_REPLACETARGET, (ULONG)-1, replace);
+            SCICALL(SCI_REPLACETARGET, (uint32_t)-1, replace);
             end = end + (replacelen - findlen);
          }
       }

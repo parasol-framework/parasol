@@ -1,6 +1,6 @@
 // Video pixel drawing routines.
 
-static void VideoDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, ULONG Colour)
+static void VideoDrawPixel(objBitmap *Bitmap, LONG X, LONG Y, uint32_t Colour)
 {
    SetPixel(((extBitmap *)Bitmap)->win.Drawable, X, Y, Colour);
 }
@@ -15,7 +15,7 @@ static void VideoDrawRGBIndex(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
 
 }
 
-static ULONG VideoReadPixel(objBitmap *Bitmap, LONG X, LONG Y)
+static uint32_t VideoReadPixel(objBitmap *Bitmap, LONG X, LONG Y)
 {
    return GetPixel(((extBitmap *)Bitmap)->win.Drawable, X, Y);
 }

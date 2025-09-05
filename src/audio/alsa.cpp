@@ -252,14 +252,14 @@ static ERR init_audio(extAudio *Self)
    // by the hardware.
 
    dir = 0;
-   if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (ULONG *)&Self->OutputRate, &dir)) < 0) {
+   if ((err = snd_pcm_hw_params_set_rate_near(pcmhandle, hwparams, (uint32_t *)&Self->OutputRate, &dir)) < 0) {
       log.warning("set_rate_near() %s", snd_strerror(err));
       return ERR::Failed;
    }
 
    // Set number of channels
 
-   ULONG channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
+   uint32_t channels = ((Self->Flags & ADF::STEREO) != ADF::NIL) ? 2 : 1;
    if ((err = snd_pcm_hw_params_set_channels_near(pcmhandle, hwparams, &channels)) < 0) {
       log.warning("set_channels_near(%d) %s", channels, snd_strerror(err));
       return ERR::Failed;
@@ -321,7 +321,7 @@ static ERR init_audio(extAudio *Self)
 
    // Retrieve ALSA buffer sizes
 
-   err = snd_pcm_hw_params_get_periods(hwparams, (ULONG *)&Self->Periods, &dir);
+   err = snd_pcm_hw_params_get_periods(hwparams, (uint32_t *)&Self->Periods, &dir);
 
    snd_pcm_hw_params_get_period_size(hwparams, &periodsize, 0);
    Self->PeriodSize = periodsize;

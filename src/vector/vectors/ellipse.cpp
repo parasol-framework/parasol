@@ -59,7 +59,7 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
    Path.arc_to(rx, ry, 0, 0, 1, cx, cy-ry);
    Path.close_polygon();
 #else
-   ULONG vertices;
+   uint32_t vertices;
    if (Vector->eVertices >= 3) vertices = Vector->eVertices;
    else {
       // Calculate the number of vertices needed for a smooth result, based on the final scale of the ellipse
@@ -73,7 +73,7 @@ static void generate_ellipse(extVectorEllipse *Vector, agg::path_storage &Path)
 
    // TODO: Using co/sine lookup tables would speed up this loop.
 
-   for (ULONG v=0; v < vertices; v++) {
+   for (uint32_t v=0; v < vertices; v++) {
       double angle = double(v) / double(vertices) * 2.0 * agg::pi;
       //if (m_cw) angle = 2.0 * agg::pi - angle;
       double x = cx + cos(angle) * rx;

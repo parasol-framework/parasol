@@ -129,9 +129,9 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 
 /****************************************************************************/
 
-INLINE ULONG to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
+INLINE uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
-   ULONG col32 = colour.AsLong();
+   uint32_t col32 = colour.AsLong();
    return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
 }
 
@@ -220,8 +220,8 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
    if (bitmap) {
       BitmapClipper clipper(bitmap, cliprect);
 
-      ULONG bk32 = to_pan_col(bitmap, back);
-      ULONG fr32 = to_pan_col(bitmap, fore);
+      uint32_t bk32 = to_pan_col(bitmap, back);
+      uint32_t fr32 = to_pan_col(bitmap, fore);
 
       DBGDRAW("panRectangleDraw()","#%.8x, #%.8x", bk32, fr32);
 
@@ -235,7 +235,7 @@ void SurfacePan::RectangleDraw(Scintilla::PRectangle rc, Scintilla::ColourAlloca
 void SurfacePan::FillRectangle(Scintilla::PRectangle rc, Scintilla::ColourAllocated back)
 {
    if (bitmap) {
-      ULONG colour;
+      uint32_t colour;
 
       BitmapClipper clipper(bitmap, cliprect);
       colour = to_pan_col(bitmap, back);
@@ -309,7 +309,7 @@ void SurfacePan::Copy(Scintilla::PRectangle rc, Scintilla::Point from, Scintilla
 void SurfacePan::DrawTextBase(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase, const char *String, int len, Scintilla::ColourAllocated fore)
 {
    pf::Log log(__FUNCTION__);
-   ULONG col32;
+   uint32_t col32;
 
    std::string nstr(String, len);
 
@@ -378,7 +378,7 @@ void SurfacePan::DrawTextTransparent(Scintilla::PRectangle rc, Scintilla::Font &
 void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int len, int *positions)
 {
    objFont *font = (objFont *)GetFont(font_);
-   ULONG unicode;
+   uint32_t unicode;
    UBYTE *str;
    LONG i, charpos, copy;
 

@@ -210,7 +210,7 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 
    CSTREAM_Reset(Self);
 
-   LARGE pos = 0;
+   int64_t pos = 0;
    if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
    else if (Args->Position IS SEEK::CURRENT) pos = Self->TotalOutput + F2T(Args->Offset);
    else return log.warning(ERR::Args);
@@ -356,7 +356,7 @@ If the size is unknown, a value of `-1` is returned.
 
 *********************************************************************************************************************/
 
-static ERR CSTREAM_GET_Size(extCompressedStream *Self, LARGE *Value)
+static ERR CSTREAM_GET_Size(extCompressedStream *Self, int64_t *Value)
 {
    *Value = -1;
    if (Self->Input) {

@@ -108,7 +108,7 @@ class extFont : public objFont {
 #include "font_bitmap.cpp"
 
 static ERR add_font_class(void);
-static LONG getutf8(CSTRING, ULONG *);
+static LONG getutf8(CSTRING, uint32_t *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
@@ -117,7 +117,7 @@ static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
 //********************************************************************************************************************
 // Return the first unicode value from a given string address.
 
-static LONG getutf8(CSTRING Value, ULONG *Unicode)
+static LONG getutf8(CSTRING Value, uint32_t *Unicode)
 {
    LONG i, len, code;
 
@@ -218,7 +218,7 @@ inline void calc_lines(extFont *Self)
 
 static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
 {
-   ULONG unicode;
+   uint32_t unicode;
    int16_t rowcount, wordwidth, lastword, tabwidth, charwidth;
    UBYTE line_abort, pchar;
 
@@ -410,7 +410,7 @@ int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-LONG CharWidth(objFont *Font, ULONG Char)
+LONG CharWidth(objFont *Font, uint32_t Char)
 {
    auto font = (extFont *)Font;
    if (Font->FixedWidth > 0) return Font->FixedWidth;
@@ -585,7 +585,7 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
          whitespace = 0;
       }
       else {
-         ULONG unicode;
+         uint32_t unicode;
          str += getutf8(str, &unicode);
          Chars--;
 

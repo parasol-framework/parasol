@@ -360,7 +360,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
 
    objNetClient *client_ip;
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
-      if (((LARGE *)&ip)[0] IS ((LARGE *)&client_ip->IP)[0]) break;
+      if (((int64_t *)&ip)[0] IS ((int64_t *)&client_ip->IP)[0]) break;
    }
 
    if (!client_ip) {
@@ -376,7 +376,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
          return;
       }
 
-      ((LARGE *)&client_ip->IP)[0] = ((LARGE *)&ip)[0];
+      ((int64_t *)&client_ip->IP)[0] = ((int64_t *)&ip)[0];
       client_ip->TotalConnections = 0;
       Self->TotalClients++;
 

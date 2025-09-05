@@ -85,17 +85,17 @@ PACK(struct zipentry {
    UBYTE required_os;
    uint16_t flags;
    uint16_t deflatemethod;
-   ULONG timestamp;
-   ULONG crc32;
-   ULONG compressedsize;
-   ULONG originalsize;
+   uint32_t timestamp;
+   uint32_t crc32;
+   uint32_t compressedsize;
+   uint32_t originalsize;
    uint16_t namelen;
    uint16_t extralen;
    uint16_t commentlen;
    uint16_t diskno;
    uint16_t ifile;
-   ULONG attrib;
-   ULONG offset;
+   uint32_t attrib;
+   uint32_t offset;
 });
 
 //********************************************************************************************************************
@@ -108,12 +108,12 @@ static const LONG TAIL_COMMENTLEN     = 20;
 static const LONG TAIL_LENGTH         = 22;
 
 PACK(struct ziptail {
-   ULONG header;
-   ULONG size;
+   uint32_t header;
+   uint32_t size;
    uint16_t filecount;
    uint16_t diskfilecount;
-   ULONG listsize;
-   ULONG listoffset;
+   uint32_t listsize;
+   uint32_t listoffset;
    uint16_t commentlen;
 });
 
@@ -139,13 +139,13 @@ static const LONG ZIP_OWRITE = 0x02000000; // Write-access allowed (others/every
 struct ZipFile {
    std::string Name;
    std::string Comment;
-   ULONG  CompressedSize = 0;
-   ULONG  OriginalSize = 0;
+   uint32_t  CompressedSize = 0;
+   uint32_t  OriginalSize = 0;
    LONG   Year = 0;
    LONG   Flags = 0;         // These match the zip 'attrib' value
-   ULONG  TimeStamp = 0;     // Time stamp information
-   ULONG  CRC = 0;           // CRC validation number
-   ULONG  Offset = 0;        // Byte offset of the file within the archive
+   uint32_t  TimeStamp = 0;     // Time stamp information
+   uint32_t  CRC = 0;           // CRC validation number
+   uint32_t  Offset = 0;        // Byte offset of the file within the archive
    uint16_t  NameLen = 0;       // The zip record's name length, including padding.
    uint16_t  CommentLen = 0;    // The zip record's comment length, including padding.
    uint16_t  DeflateMethod = 0; // Set to 8 for normal deflation
@@ -188,7 +188,7 @@ class extCompression : public objCompression {
    UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
    char      Password[128];      // Password for the compressed object
    FUNCTION  Feedback;           // Set a function here to get de/compression feedack
-   ULONG     ArchiveHash;        // Archive reference, used for the 'archive:' volume
+   uint32_t     ArchiveHash;        // Archive reference, used for the 'archive:' volume
 
    // Zip only fields
    z_stream Zip;

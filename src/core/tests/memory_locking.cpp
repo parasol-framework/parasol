@@ -17,8 +17,8 @@ using namespace pf;
 
 CSTRING ProgName = "MemoryLocking";
 static volatile MEMORYID glMemoryID = 0;
-static ULONG glTotalThreads = 2;
-static ULONG glLockAttempts = 20;
+static uint32_t glTotalThreads = 2;
+static uint32_t glLockAttempts = 20;
 static LONG glAccessGap = 2000;
 static bool glTerminateMemory = false;
 static bool glTestAllocation = false;

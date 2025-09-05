@@ -86,7 +86,7 @@ template <class T = double> double dist(const pf::POINT<T> &A, const pf::POINT<T
 
 class anim_base {
 private:
-   ULONG _hash_id = 0;
+   uint32_t _hash_id = 0;
 
 public:
    struct spline_point {
@@ -158,7 +158,7 @@ public:
    void activate(bool);
    void stop(double);
 
-   ULONG hash_id() {
+   uint32_t hash_id() {
       _hash_id = strihash(id);
       return _hash_id;
    }

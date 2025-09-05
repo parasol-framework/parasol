@@ -46,7 +46,7 @@ static ERR SET_YOffset(extSurface *, Unit *);
 
 static ERR consume_input_events(const InputEvent *, int);
 static void draw_region(extSurface *, extSurface *, extBitmap *);
-static ERR redraw_timer(extSurface *, LARGE, LARGE);
+static ERR redraw_timer(extSurface *, int64_t, int64_t);
 
 /*********************************************************************************************************************
 ** This call is used to refresh the pointer image when at least one layer has been rearranged.  The timer is used to
@@ -54,7 +54,7 @@ static ERR redraw_timer(extSurface *, LARGE, LARGE);
 ** The delay also prevents clashes with read/write access to the surface list.
 */
 
-static ERR refresh_pointer_timer(OBJECTPTR Task, LARGE Elapsed, LARGE CurrentTime)
+static ERR refresh_pointer_timer(OBJECTPTR Task, int64_t Elapsed, int64_t CurrentTime)
 {
    objPointer *pointer;
    if ((pointer = gfx::AccessPointer())) {
@@ -722,7 +722,7 @@ Focus: Changes the primary user focus to the surface object.
 -END-
 *********************************************************************************************************************/
 
-static LARGE glLastFocusTime = 0;
+static int64_t glLastFocusTime = 0;
 
 static ERR SURFACE_Focus(extSurface *Self)
 {
@@ -2322,7 +2322,7 @@ static ERR SURFACE_Show(extSurface *Self)
 
 //********************************************************************************************************************
 
-static ERR redraw_timer(extSurface *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR redraw_timer(extSurface *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    if (Self->RedrawScheduled) {
       Self->RedrawScheduled = false; // Done before Draw() because it tests this field.

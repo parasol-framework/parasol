@@ -51,7 +51,7 @@ struct ArchiveDriver {
    std::list<ZipFile>::iterator Index;
 };
 
-static ankerl::unordered_dense::map<ULONG, extCompression *> glArchives;
+static ankerl::unordered_dense::map<uint32_t, extCompression *> glArchives;
 
 static ERR close_folder(DirInfo *);
 static ERR open_folder(DirInfo *);
@@ -86,7 +86,7 @@ static ERR seek_to_item(extFile *Self)
 
    uint16_t extra_len;
    if (fl::ReadLE(prv->FileStream, &extra_len) != ERR::Okay) return ERR::Read;
-   ULONG stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
+   uint32_t stream_start = item.Offset + HEAD_LENGTH + item.NameLen + extra_len;
    if (acSeekStart(prv->FileStream, stream_start) != ERR::Okay) return ERR::Seek;
 
    if (item.CompressedSize > 0) {
@@ -392,7 +392,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
 {
    Log log;
-   LARGE pos;
+   int64_t pos;
 
    log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, LONG(Args->Position));
 
@@ -430,7 +430,7 @@ static ERR ARCHIVE_Write(extFile *Self, struct acWrite *Args)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
+static ERR ARCHIVE_GET_Size(extFile *Self, int64_t *Value)
 {
    if (auto prv = (prvFileArchive *)Self->ChildPrivate) {
       *Value = prv->Info.OriginalSize;
@@ -441,7 +441,7 @@ static ERR ARCHIVE_GET_Size(extFile *Self, LARGE *Value)
 
 //********************************************************************************************************************
 
-static ERR ARCHIVE_GET_Timestamp(extFile *Self, LARGE *Value)
+static ERR ARCHIVE_GET_Timestamp(extFile *Self, int64_t *Value)
 {
    if (auto prv = (prvFileArchive *)Self->ChildPrivate) {
       if (prv->Info.TimeStamp) {

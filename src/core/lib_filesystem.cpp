@@ -152,11 +152,11 @@ static std::mutex glCacheLock;
 
 //********************************************************************************************************************
 
-static const ULONG get_volume_id(std::string_view Path)
+static const uint32_t get_volume_id(std::string_view Path)
 {
    if ((Path.starts_with(':')) or (Path.empty())) return 0;
 
-   ULONG hash = 5381;
+   uint32_t hash = 5381;
    for (LONG len=0; (len < std::ssize(Path)) and (Path[len] != ':'); len++) {
       char c = Path[len];
       if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS

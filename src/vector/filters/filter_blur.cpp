@@ -147,15 +147,15 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    UBYTE *in_data  = inBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
    UBYTE *out_data = outBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
 
-   ULONG sum_r, sum_g, sum_b, sum_a;
-   ULONG sum_in_r, sum_in_g, sum_in_b, sum_in_a;
-   ULONG sum_out_r, sum_out_g, sum_out_b, sum_out_a;
+   uint32_t sum_r, sum_g, sum_b, sum_a;
+   uint32_t sum_in_r, sum_in_g, sum_in_b, sum_in_a;
+   uint32_t sum_out_r, sum_out_g, sum_out_b, sum_out_a;
    LONG x, y, xp, yp;
-   ULONG stack_ptr;
-   ULONG stack_start;
-   ULONG div;
-   ULONG mul_sum;
-   ULONG shr_sum;
+   uint32_t stack_ptr;
+   uint32_t stack_start;
+   uint32_t div;
+   uint32_t mul_sum;
+   uint32_t shr_sum;
 
    std::vector<agg::rgba8> stack;
 

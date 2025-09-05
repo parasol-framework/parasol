@@ -65,7 +65,7 @@ OBJECTPTR modFluid = nullptr;
 OBJECTPTR clFluid = nullptr;
 struct ActionTable *glActions = nullptr;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
-ankerl::unordered_dense::map<std::string, ULONG> glStructSizes;
+ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
 static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread callbacks
 
@@ -83,9 +83,9 @@ FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { 
 static void flTestCall1(void);
 static LONG flTestCall2(void);
 static CSTRING flTestCall3(void);
-static void flTestCall4(LONG, LARGE);
-static LONG flTestCall5(LONG, LONG, LONG, LONG, LONG, LARGE);
-static LARGE flTestCall6(LONG, LARGE, LARGE, LONG, LARGE, double);
+static void flTestCall4(LONG, int64_t);
+static LONG flTestCall5(LONG, LONG, LONG, LONG, LONG, int64_t);
+static int64_t flTestCall6(LONG, int64_t, int64_t, LONG, int64_t, double);
 static void flTestCall7(STRING a, STRING b, STRING c);
 
 FDEF argsTestCall1[]   = { { "Void", FD_VOID }, { 0, 0 } };
@@ -133,14 +133,14 @@ static CSTRING flTestCall3(void)
    return "hello world";
 }
 
-static void flTestCall4(LONG Long, LARGE Large)
+static void flTestCall4(LONG Long, int64_t Large)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received long %d / $%.8x", Long, Long);
-   log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (ULONG)Large, (ULONG)(Large>>32));
+   log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
 }
 
-static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG LongE, LARGE LongF)
+static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG LongE, int64_t LongF)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
@@ -148,7 +148,7 @@ static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG Lon
    return LongF;
 }
 
-static LARGE flTestCall6(LONG long1, LARGE large1, LARGE large2, LONG long2, LARGE large3, double float1)
+static int64_t flTestCall6(LONG long1, int64_t large1, int64_t large2, LONG long2, int64_t large3, double float1)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
@@ -361,7 +361,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
    if (Type & FD_STRING)       lua_pushstring(prv->Lua, va_arg(list, STRING));
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
    else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, LONG));
-   else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, LARGE));
+   else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, int64_t));
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, double));
    else {
       va_end(list);

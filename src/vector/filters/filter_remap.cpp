@@ -75,7 +75,7 @@ class Component {
       Intercept = pIntercept;
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
-         ULONG c = F2T((double(i) * pSlope) + pIntercept * 255.0);
+         uint32_t c = F2T((double(i) * pSlope) + pIntercept * 255.0);
          Lookup[i] = c;
          ILookup[i] = glLinearRGB.invert(c);
       }
@@ -89,7 +89,7 @@ class Component {
 
       for (size_t i=0; i < sizeof(Lookup); i++) {
          double pe = pow(double(i) * (1.0/255.0), pExponent);
-         ULONG c = F2T(((pAmplitude * pe) + pOffset) * 255.0);
+         uint32_t c = F2T(((pAmplitude * pe) + pOffset) * 255.0);
          Lookup[i]  = (c < 255) ? c : 255;
          ILookup[i] = glLinearRGB.invert((c < 255) ? c : 255);
       }
@@ -99,10 +99,10 @@ class Component {
       Type = RFT_DISCRETE;
       Table.insert(Table.end(), pValues, pValues + pSize);
 
-      ULONG n = Table.size();
+      uint32_t n = Table.size();
       for (size_t i=0; i < sizeof(Lookup); i++) {
-         auto k = ULONG((i * n) / 255.0);
-         k = std::min(k, (ULONG)n - 1);
+         auto k = uint32_t((i * n) / 255.0);
+         k = std::min(k, (uint32_t)n - 1);
          auto val = 255.0 * double(Table[k]);
          val = std::max(0.0, std::min(255.0, val));
          Lookup[i] = UBYTE(val);
@@ -114,10 +114,10 @@ class Component {
       Type = RFT_TABLE;
       Table.insert(Table.end(), pValues, pValues + pSize);
 
-      ULONG n = Table.size();
+      uint32_t n = Table.size();
       for (size_t i=0; i < sizeof(Lookup); i++) {
           double c = double(i) / 255.0;
-          auto k = ULONG(c * (n - 1));
+          auto k = uint32_t(c * (n - 1));
           double v = Table[std::min((k + 1), (n - 1))];
           LONG val = F2T(255.0 * (Table[k] + (c * (n - 1) - k) * (v - Table[k])));
           Lookup[i] = std::max(0, std::min(255, val));
@@ -176,7 +176,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
    UBYTE *in = bmp->Data + (bmp->Clip.Left * 4) + (bmp->Clip.Top * bmp->LineWidth);
    UBYTE *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
    for (LONG y=0; y < height; y++) {
-      auto dp = (ULONG *)dest;
+      auto dp = (uint32_t *)dest;
       auto sp = in;
 
       if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
@@ -187,7 +187,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
                out[G] = Self->Green.ILookup[glLinearRGB.convert(sp[G])];
                out[B] = Self->Blue.ILookup[glLinearRGB.convert(sp[B])];
                out[A] = Self->Alpha.Lookup[a];
-               dp[0] = ((ULONG *)out)[0];
+               dp[0] = ((uint32_t *)out)[0];
             }
             dp++;
             sp += 4;
@@ -201,7 +201,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
                out[G] = Self->Green.Lookup[sp[G]];
                out[B] = Self->Blue.Lookup[sp[B]];
                out[A] = Self->Alpha.Lookup[a];
-               dp[0] = ((ULONG *)out)[0];
+               dp[0] = ((uint32_t *)out)[0];
             }
             dp++;
             sp += 4;

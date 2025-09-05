@@ -731,7 +731,7 @@ void print_diagnosis(LONG Signal)
          }
          else class_name = "None";
 
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, ULONG(class_id));
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, uint32_t(class_id));
       }
 
       glPageFault = 0;

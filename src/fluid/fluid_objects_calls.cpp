@@ -155,7 +155,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
 
                int memsize = array->ArraySize;
                if (args[i+1].Type & FD_INT)  ((int *)(argbuffer + j))[0] = memsize;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = memsize;
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = memsize;
                //log.trace("Preset buffer size of %d bytes.", memsize);
             }
 
@@ -172,7 +172,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
                // The user can override it if more arguments are specified in the function call.
 
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = fstruct->AlignedSize;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = fstruct->AlignedSize;
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = fstruct->AlignedSize;
             }
             n--; // Adjustment required due to successful get_meta()
          }
@@ -189,7 +189,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
                //log.trace("Advance setting of following BUFSIZE parameter to %d", farray->ArraySize);
 
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = farray->ArraySize;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = farray->ArraySize;
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = farray->ArraySize;
                else log.trace("Cannot set BUFSIZE argument - unknown type.");
             }
             n--; // Adjustment required due to successful get_meta()
@@ -203,7 +203,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
 
             if (args[i+1].Type & FD_BUFSIZE) {
                if (args[i+1].Type & FD_INT) ((int *)(argbuffer + j))[0] = len;
-               else if (args[i+1].Type & FD_INT64) ((LARGE *)(argbuffer + j))[0] = len;
+               else if (args[i+1].Type & FD_INT64) ((int64_t *)(argbuffer + j))[0] = len;
             }
          }
          else if (type IS LUA_TNUMBER) {
@@ -325,9 +325,9 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
       }
       else if (args[i].Type & FD_INT64) {
          j = ALIGN64(j);
-         ((LARGE *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
+         ((int64_t *)(argbuffer + j))[0] = lua_tointeger(Lua, n);
          //log.trace("Arg: %s, Value: %" PF64, args[i].Name, ((LARGE *)(argbuffer + j))[0]);
-         j += sizeof(LARGE);
+         j += sizeof(int64_t);
       }
       else {
          log.warning("Unsupported arg %s, flags $%.8x, aborting now.", args[i].Name, args[i].Type);
@@ -366,7 +366,7 @@ static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *Ar
             if (args[i+1].Type & FD_ARRAYSIZE) {
                const APTR size_var = ((APTR *)(ArgBuf + of + sizeof(APTR)))[0];
                if (args[i+1].Type & FD_INT) total_elements = ((int *)size_var)[0];
-               else if (args[i+1].Type & FD_INT64) total_elements = ((LARGE *)size_var)[0];
+               else if (args[i+1].Type & FD_INT64) total_elements = ((int64_t *)size_var)[0];
                else log.warning("Invalid parameter definition for '%s' of $%.8x", args[i+1].Name, args[i+1].Type);
             }
 
@@ -489,11 +489,11 @@ static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *Ar
       else if (type & FD_INT64) {
          of = ALIGN64(of);
          if (type & FD_RESULT) {
-            RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", args[i].Name, ((LARGE *)(ArgBuf+of))[0]);
-            lua_pushnumber(Lua, ((LARGE *)(ArgBuf+of))[0]);
+            RMSG("Result-Arg: %s, Value: %" PF64 " (Large)", args[i].Name, ((int64_t *)(ArgBuf+of))[0]);
+            lua_pushnumber(Lua, ((int64_t *)(ArgBuf+of))[0]);
             total++;
          }
-         of += sizeof(LARGE);
+         of += sizeof(int64_t);
       }
       else if (type & FD_TAGS) {
          // Tags come last and have no result

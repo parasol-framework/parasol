@@ -469,7 +469,7 @@ void ScintillaParasol::NotifyParent(Scintilla::SCNotification scn)
                // Move the cursor to the start of the line, after following the indentation whitespace
                pos = SendScintilla(SCI_GETLINEINDENTPOSITION, row);
 
-               SendScintilla(SCI_SETSEL, (ULONG)-1, pos);
+               SendScintilla(SCI_SETSEL, (uint32_t)-1, pos);
             }
          }
       }

@@ -41,7 +41,7 @@ static ERR ASSET_Seek(objFile *, struct acSeek *);
 static ERR ASSET_Write(objFile *, struct acWrite *);
 
 static ERR GET_Permissions(objFile *, APTR *);
-static ERR GET_Size(objFile *, LARGE *);
+static ERR GET_Size(objFile *, int64_t *);
 
 static ERR SET_Permissions(objFile *, APTR);
 
@@ -351,7 +351,7 @@ static ERR SET_Permissions(objFile *Self, APTR Value)
 
 //********************************************************************************************************************
 
-static ERR GET_Size(objFile *Self, LARGE *Value)
+static ERR GET_Size(objFile *Self, int64_t *Value)
 {
    prvFileAsset *prv;
 

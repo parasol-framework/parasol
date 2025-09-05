@@ -49,7 +49,7 @@ static struct eventsub *glEventList = nullptr;
 static UBYTE glCallSignal = 0;
 static bool glEventListAltered = false;
 
-static ankerl::unordered_dense::map<ULONG, std::string> glEventNames;
+static ankerl::unordered_dense::map<uint32_t, std::string> glEventNames;
 
 //********************************************************************************************************************
 
@@ -105,8 +105,8 @@ ERR BroadcastEvent(APTR Event, LONG EventSize)
 
    if (glEventMask & groupmask) {
       log.trace("Broadcasting event $%.8x%.8x",
-         (ULONG)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
-         (ULONG)(((pf::Event *)Event)->EventID));
+         (uint32_t)(((pf::Event *)Event)->EventID>>32 & 0xffffffff),
+         (uint32_t)(((pf::Event *)Event)->EventID));
       SendMessage(MSGID::EVENT, MSF::NIL, Event, EventSize);
    }
 
@@ -158,7 +158,7 @@ int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
    glEventNames[hash_event]    = Event;
 
    log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x",
-      LONG(Group), SubGroup, Event, ULONG(event_id>>32), ULONG(event_id));
+      LONG(Group), SubGroup, Event, uint32_t(event_id>>32), uint32_t(event_id));
 
    return event_id;
 }
@@ -223,8 +223,8 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 
       glEventMask |= 1<<UBYTE(event->Group);
 
-      auto it_subgroup = glEventNames.find(ULONG(EventID>>32) & 0x00ffffff);
-      auto it_name = glEventNames.find(ULONG(EventID));
+      auto it_subgroup = glEventNames.find(uint32_t(EventID>>32) & 0x00ffffff);
+      auto it_name = glEventNames.find(uint32_t(EventID));
       if ((it_subgroup != glEventNames.end()) and (it_name != glEventNames.end())) {
          log.function("Handle: %p, Mask: $%.8x, %s.%s.%s",
             event, glEventMask, event->groupName(), it_subgroup->second.c_str(), it_name->second.c_str());
@@ -260,8 +260,8 @@ void UnsubscribeEvent(APTR Handle)
    if (!glEventList) return; // All events have already been freed (i.e. Core is closing)
 
    auto event = (eventsub *)Handle;
-   auto it_subgroup = glEventNames.find(ULONG(event->EventID>>32) & 0x00ffffff);
-   auto it_name = glEventNames.find(ULONG(event->EventID));
+   auto it_subgroup = glEventNames.find(uint32_t(event->EventID>>32) & 0x00ffffff);
+   auto it_name = glEventNames.find(uint32_t(event->EventID));
 
    if ((it_subgroup != glEventNames.end()) and (it_name != glEventNames.end())) {
       log.function("Handle: %p, %s.%s.%s", event, event->groupName(), it_subgroup->second.c_str(), it_name->second.c_str());

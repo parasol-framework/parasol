@@ -140,8 +140,8 @@ ERR ALSADeviceEnumerator::wait_for_devices(LONG timeout_ms)
    pf::Log log(__FUNCTION__);
    log.branch("Waiting for audio drivers to start...");
 
-   LARGE start_time = PreciseTime();
-   LARGE timeout_us = LARGE(timeout_ms) * 1000LL;
+   int64_t start_time = PreciseTime();
+   int64_t timeout_us = int64_t(timeout_ms) * 1000LL;
 
    while (PreciseTime() - start_time < timeout_us) {
       if (has_genuine_devices()) {

@@ -10,7 +10,7 @@ struct winFont {
 struct winmz_header_fields {
    uint16_t magic;
    UBYTE data[29 * 2];
-   ULONG lfanew;
+   uint32_t lfanew;
 };
 
 struct winne_header_fields {
@@ -22,7 +22,7 @@ struct winne_header_fields {
 
 PACK(struct winfnt_header_fields {
    uint16_t version;
-   ULONG file_size;
+   uint32_t file_size;
    char copyright[60];
    uint16_t file_type;
    uint16_t nominal_point_size;     // Point size
@@ -46,12 +46,12 @@ PACK(struct winfnt_header_fields {
    UBYTE default_char;
    UBYTE break_char;
    uint16_t bytes_per_row;
-   ULONG device_offset;
-   ULONG face_name_offset;
-   ULONG bits_pointer;
-   ULONG bits_offset;
+   uint32_t device_offset;
+   uint32_t face_name_offset;
+   uint32_t bits_pointer;
+   uint32_t bits_offset;
    BYTE  reserved;
-   ULONG flags;
+   uint32_t flags;
    uint16_t A_space;
    uint16_t B_space;
    uint16_t C_space;
@@ -105,7 +105,7 @@ public:
          LONG j = pFace.first_char;
          for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
             uint16_t width;
-            ULONG offset;
+            uint32_t offset;
 
             if (fl::ReadLE(pFile, &width) != ERR::Okay) break;
             if (fl::ReadLE(pFile, &offset) != ERR::Okay) break;
@@ -340,7 +340,7 @@ static BitmapCache * check_bitmap_cache(extFont *Self, FTF Style)
 
 //********************************************************************************************************************
 
-ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, LARGE Elapsed, LARGE CurrentTime)
+ERR bitmap_cache_cleaner(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 

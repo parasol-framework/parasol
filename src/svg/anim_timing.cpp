@@ -100,7 +100,7 @@ void anim_base::stop(double Time)
 
 //********************************************************************************************************************
 
-static ERR animation_timer(extSVG *SVG, LARGE TimeElapsed, LARGE CurrentTime)
+static ERR animation_timer(extSVG *SVG, int64_t TimeElapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 

@@ -783,7 +783,7 @@ static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      ULONG result;
+      uint32_t result;
       if ((error = obj->get(field->FieldID, (LONG &)result)) IS ERR::Okay) {
          lua_pushnumber(Lua, result);
       }

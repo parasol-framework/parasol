@@ -3,7 +3,7 @@
 #include <parasol/main.h>
 
 LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size);
-ULONG UTF8ReadValue(CSTRING String, LONG *Length);
+uint32_t UTF8ReadValue(CSTRING String, LONG *Length);
 //CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding);
 LONG UTF8WriteValue(LONG Value, STRING String, LONG StringSize);
 

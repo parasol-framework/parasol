@@ -228,7 +228,7 @@ void CloseCore(void)
 
       if (!glCrashStatus) {
          for (auto &fd : glFDTable) {
-            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (LARGE)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
+            log.warning("FD %" PF64 " was not deregistered prior to program close.  Routine: %p, Data: %p, Flags: $%.8x", (int64_t)fd.FD, fd.Routine, fd.Data, int(fd.Flags));
          }
       }
    }

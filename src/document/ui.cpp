@@ -922,7 +922,7 @@ static void set_focus(extDocument *Self, INDEX Index, CSTRING Caller)
 
    log.branch("Index: %d/%d, Type: %d, Ref: %d, HaveFocus: %d, Caller: %s",
       Index, LONG(std::ssize(Self->Tabs)), (Index != -1) ? LONG(Self->Tabs[Index].type) : -1,
-      (Index != -1) ? std::get<ULONG>(Self->Tabs[Index].ref) : -1, Self->HasFocus, Caller);
+      (Index != -1) ? std::get<uint32_t>(Self->Tabs[Index].ref) : -1, Self->HasFocus, Caller);
 
    if (Self->ActiveEditDef) deactivate_edit(Self, true);
 

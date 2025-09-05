@@ -2122,7 +2122,7 @@ static ERR VECTOR_GET_Sequence(extVector *Self, STRING *Value)
    agg::path_storage &base = Self->BasePath;
 
    double x, y, x2, y2, x3, y3, last_x = 0, last_y = 0;
-   for (ULONG i=0; i < base.total_vertices(); i++) {
+   for (uint32_t i=0; i < base.total_vertices(); i++) {
       auto cmd = base.command(i);
       //LONG cmd_flags = cmd & (~agg::path_cmd_mask);
       cmd &= agg::path_cmd_mask;

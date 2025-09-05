@@ -41,9 +41,9 @@ struct winextra {
 };
 
 #if defined(_MSC_VER)
-typedef __int64 LARGE;
+typedef __int64 int64_t;
 #else
-typedef long long LARGE;
+typedef long long int64_t;
 #endif
 
 #define IDT_RESIZE_WINDOW 1
@@ -141,7 +141,7 @@ static ankerl::unordered_dense::map<int, const char *> glCmd = { {
 
 int winLookupSurfaceID(HWND Window)
 {
-   return int(LARGE(GetProp(Window, "SurfaceID")));
+   return int(int64_t(GetProp(Window, "SurfaceID")));
 }
 
 namespace display {

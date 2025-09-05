@@ -16,7 +16,7 @@
 //
 // REQUIREMENT: The caller must have acquired a lock on glFontMutex.
 
-freetype_font::glyph & freetype_font::ft_point::get_glyph(ULONG Unicode)
+freetype_font::glyph & freetype_font::ft_point::get_glyph(uint32_t Unicode)
 {
    double x1, y1, x2, y2, x3, y3;
 
@@ -237,7 +237,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
       for (auto const &line : Vector->txLines) {
          for (auto lstr=line.c_str(); *lstr; ) {
             LONG char_len;
-            ULONG unicode = UTF8ReadValue(lstr, &char_len);
+            uint32_t unicode = UTF8ReadValue(lstr, &char_len);
             lstr += char_len;
             if (unicode <= 0x20) continue;
             else if (!unicode) break;
@@ -281,7 +281,7 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
          LONG char_len;
          for (auto str=line.c_str(); *str; ) {
-            ULONG unicode = UTF8ReadValue(str, &char_len);
+            uint32_t unicode = UTF8ReadValue(str, &char_len);
             str += char_len;
 
             if (unicode <= 0x20) wrap_state = WS_NO_WORD;

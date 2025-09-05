@@ -52,7 +52,7 @@ class freetype_font {
       };
 
       using METRIC_GROUP = std::vector<FT_Fixed>;
-      using GLYPH_TABLE = ankerl::unordered_dense::map<ULONG, glyph>; // Unicode to glyph lookup
+      using GLYPH_TABLE = ankerl::unordered_dense::map<uint32_t, glyph>; // Unicode to glyph lookup
 
       class ft_point : public common_font {
          public:
@@ -71,7 +71,7 @@ class freetype_font {
             double line_spacing;
             METRIC_GROUP axis;
 
-            glyph & get_glyph(ULONG);
+            glyph & get_glyph(uint32_t);
 
             ft_point() : common_font(CF_FREETYPE) { }
 
@@ -174,7 +174,7 @@ extern ERR get_font(pf::Log &Log, CSTRING, CSTRING, LONG, LONG, common_font **);
 // glyphs that have gone stale.
 
 extern std::recursive_mutex glFontMutex;
-extern ankerl::unordered_dense::map<ULONG, std::unique_ptr<bmp_font>> glBitmapFonts;
-extern ankerl::unordered_dense::map<ULONG, std::unique_ptr<freetype_font>> glFreetypeFonts;
+extern ankerl::unordered_dense::map<uint32_t, std::unique_ptr<bmp_font>> glBitmapFonts;
+extern ankerl::unordered_dense::map<uint32_t, std::unique_ptr<freetype_font>> glFreetypeFonts;
 
 extern FT_Library glFTLibrary;

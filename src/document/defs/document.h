@@ -919,8 +919,8 @@ struct doc_menu {
    std::string m_font_style;
    int m_font_size;
 
-   LARGE m_show_time = 0; // Time of last acShow()
-   LARGE m_hide_time = 0; // Time of last acHide()
+   int64_t m_show_time = 0; // Time of last acShow()
+   int64_t m_hide_time = 0; // Time of last acHide()
 
    objSurface * create(double);
    objSurface * get();

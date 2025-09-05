@@ -245,7 +245,7 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
    Server->InUse++;
    client->ReadCalled = false;
 
-   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (LARGE)(MAXINT)Handle, Server->UID, client->UID);
+   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (int64_t)(MAXINT)Handle, Server->UID, client->UID);
 
    ERR error = ERR::Okay;
    if (Server->Incoming.defined()) {

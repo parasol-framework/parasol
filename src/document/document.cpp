@@ -53,11 +53,11 @@ that is distributed with this package.  Please refer to it for further informati
 #include "defs/hashes.h"
 #include "../link/unicode.h"
 
-using BYTECODE = ULONG;
-using CELL_ID = ULONG;
+using BYTECODE = uint32_t;
+using CELL_ID = uint32_t;
 
 static BYTECODE glByteCodeID = 1;
-static ULONG glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
+static uint32_t glUID = 1000; // Use for generating unique/incrementing ID's, e.g. cell ID
 
 using namespace pf;
 

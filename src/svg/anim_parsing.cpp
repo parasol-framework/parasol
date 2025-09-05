@@ -35,7 +35,7 @@ static double parse_begin(anim_base &Anim, std::string_view Value)
 //********************************************************************************************************************
 // Set common animation properties
 
-static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, ULONG Hash, const std::string_view Value)
+static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, uint32_t Hash, const std::string_view Value)
 {
    switch (Hash) {
       case SVF_ID:

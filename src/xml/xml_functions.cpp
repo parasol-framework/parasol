@@ -494,7 +494,7 @@ static ERR parse_source(extXML *Self)
 
    if (Self->Source) {
       char *buffer;
-      LARGE size = 64 * 1024;
+      int64_t size = 64 * 1024;
       if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
          int pos = 0;
          Self->ParseError = ERR::Okay;

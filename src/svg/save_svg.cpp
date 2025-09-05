@@ -43,7 +43,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
             if ((error = XML->insertXML(Parent, XMI::CHILD_END, "<defs/>", &def_index)) != ERR::Okay) return error;
          }
 
-         log.msg("Processing definition %s (%x)", def->Class->ClassName, ULONG(def->classID()));
+         log.msg("Processing definition %s (%x)", def->Class->ClassName, uint32_t(def->classID()));
 
          if (def->classID() IS CLASSID::VECTORGRADIENT) {
             auto gradient = (objVectorGradient *)def;
@@ -194,7 +194,7 @@ static ERR save_svg_defs(extSVG *Self, objXML *XML, objVectorScene *Scene, LONG 
          else if (def->Class->BaseClassID IS CLASSID::VECTOR) {
             log.warning("%s not supported.", def->Class->ClassName);
          }
-         else log.warning("Unrecognised definition class %x", ULONG(def->classID()));
+         else log.warning("Unrecognised definition class %x", uint32_t(def->classID()));
       }
 
       return ERR::Okay;

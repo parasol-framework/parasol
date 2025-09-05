@@ -177,7 +177,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
          ERR error;
          if (flags != MFF::NIL) {
             if (glFileMonitor[i].Routine.isC()) {
-               ERR (*routine)(extFile *, CSTRING path, LARGE Custom, MFF Flags, APTR);
+               ERR (*routine)(extFile *, CSTRING path, int64_t Custom, MFF Flags, APTR);
                routine = glFileMonitor[i].Routine.Routine;
                pf::SwitchContext context(glFileMonitor[i].Routine.Context);
                error = routine(glFileMonitor[i].File, path, glFileMonitor[i].Custom, flags, glFileMonitor[i].Routine.Meta);
@@ -247,7 +247,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);
-            auto routine = (ERR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.Routine;
+            auto routine = (ERR (*)(extFile *, CSTRING, int64_t, LONG, APTR))File->prvWatch->Routine.Routine;
             error = routine(File, path, File->prvWatch->Custom, status, File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
@@ -264,7 +264,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
       }
    }
    else {
-      auto routine = (ERR (*)(extFile *, CSTRING, LARGE, LONG, APTR))File->prvWatch->Routine.Routine;
+      auto routine = (ERR (*)(extFile *, CSTRING, int64_t, LONG, APTR))File->prvWatch->Routine.Routine;
       pf::SwitchContext context(File->prvWatch->Routine.Context);
       error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 

@@ -124,7 +124,7 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    static const double HALF8BIT = 255.0 * 0.5;
    for (LONG y=0; y < height; y++) {
       auto m = mix;
-      auto d = (ULONG *)dest;
+      auto d = (uint32_t *)dest;
       for (LONG x=0; x < width; x++, m += mixBmp->BytesPerPixel, d++) {
          auto dx = m[x_type];
          auto dy = m[y_type];
@@ -136,7 +136,7 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
             // The source pixel is outside of retrievable bounds
             *d = 0;
          }
-         else *d = ((ULONG *)(input + (cx * 4) + (cy * inBmp->LineWidth)))[0];
+         else *d = ((uint32_t *)(input + (cx * 4) + (cy * inBmp->LineWidth)))[0];
       }
       mix  += mixBmp->LineWidth;
       dest += Self->Target->LineWidth;

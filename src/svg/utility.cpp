@@ -322,7 +322,7 @@ static double read_time(const std::string_view Value)
 //********************************************************************************************************************
 // Designed for reading unit values such as '50%' and '6px'.  The returned value is scaled to pixels.
 
-static double read_unit(std::string_view &Value, LARGE *FieldID)
+static double read_unit(std::string_view &Value, int64_t *FieldID)
 {
    if (FieldID) *FieldID |= TDOUBLE;
 
@@ -608,8 +608,8 @@ static void convert_styles(objXML::TAGS &Tags)
 
 static void update_dpi(void)
 {
-   static LARGE last_update = -0x7fffffff;
-   LARGE current_time = PreciseTime();
+   static int64_t last_update = -0x7fffffff;
+   int64_t current_time = PreciseTime();
 
    if (current_time - last_update > 3000000LL) {
       DISPLAYINFO *display;

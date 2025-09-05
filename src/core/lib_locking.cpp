@@ -167,7 +167,7 @@ struct WaitLock {
    #ifdef _WIN32
    WINHANDLE Lock;
    #endif
-   LARGE WaitingTime;
+   int64_t WaitingTime;
    THREADID WaitingForThreadID;
    int  WaitingForResourceID;
    int  WaitingForResourceType;

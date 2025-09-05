@@ -357,7 +357,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 
       // Start the timer if requested
 
-      LARGE start_time = 0;
+      int64_t start_time = 0;
       if (ShowTime) start_time = PreciseTime();
 
       if (!(error = InitObject(glScript))) {

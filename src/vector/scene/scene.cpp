@@ -712,7 +712,7 @@ The `RENDER_TIME` flag must be set before fetching this value, as it is required
 
 *********************************************************************************************************************/
 
-static ERR GET_RenderTime(extVectorScene *Self, LARGE *Value)
+static ERR GET_RenderTime(extVectorScene *Self, int64_t *Value)
 {
    Self->Flags |= VPF::RENDER_TIME;
    *Value = Self->RenderTime;

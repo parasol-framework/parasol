@@ -155,7 +155,7 @@ struct AudioChannel {
    double   RVolumeTarget;  // Volume target when fading or ramping
    double   Volume;         // Playing volume (0 - 1.0)
    double   Pan;            // Pan value (-1.0 - 1.0)
-   LARGE    EndTime;        // Anticipated end-time of playing the current sample, if OnStop is defined in the sample.
+   int64_t    EndTime;        // Anticipated end-time of playing the current sample, if OnStop is defined in the sample.
    LONG     SampleHandle;   // Sample index, direct lookup into extAudio->Samples
    CHF      Flags;          // Special flags
    LONG     Position;       // Current playing/mixing byte position within Sample.
@@ -216,9 +216,9 @@ struct VolumeCtl {
 };
 
 struct MixTimer {
-   LARGE Time;
+   int64_t Time;
    LONG  SampleHandle;
-   MixTimer(LARGE pTime, LONG pHandle) : Time(pTime), SampleHandle(pHandle) { }
+   MixTimer(int64_t pTime, LONG pHandle) : Time(pTime), SampleHandle(pHandle) { }
 };
 
 class extAudio : public objAudio {
@@ -262,7 +262,7 @@ class extAudio : public objAudio {
 
    inline SAMPLE MixLeft(LONG Value) {
       if (!Value) return SAMPLE(0);
-      return SAMPLE((((100 * (LARGE)OutputRate) / (Value * 40)) + 1) & 0xfffffffe);
+      return SAMPLE((((100 * (int64_t)OutputRate) / (Value * 40)) + 1) & 0xfffffffe);
    }
 
    inline double MixerLag();

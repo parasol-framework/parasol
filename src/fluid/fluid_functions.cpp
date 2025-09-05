@@ -650,7 +650,7 @@ int fcmd_loadfile(lua_State *Lua)
          if (fb_file.ok()) { // A compiled version exists.  Compare datestamps
             objFile::create src_file = { fl::Path(path) };
             if (src_file.ok()) {
-               LARGE fb_ts, src_ts;
+               int64_t fb_ts, src_ts;
                fb_file->get(FID_TimeStamp, &fb_ts);
                src_file->get(FID_TimeStamp, &src_ts);
 

@@ -144,11 +144,11 @@ public:
 
    std::vector<CharPos> chars;
 
-   inline LONG charLength(ULONG Offset = 0) const { // Total number of bytes used by the char at Offset
+   inline LONG charLength(uint32_t Offset = 0) const { // Total number of bytes used by the char at Offset
       return UTF8CharLength(c_str() + Offset);
    }
 
-   inline LONG utf8CharOffset(ULONG Char) const { // Convert a character index to its byte offset
+   inline LONG utf8CharOffset(uint32_t Char) const { // Convert a character index to its byte offset
       return UTF8CharOffset(c_str(), Char);
    }
 
@@ -160,7 +160,7 @@ public:
       return length() - UTF8PrevLength(c_str(), length());
    }
 
-   inline LONG prevChar(ULONG Offset) const { // Return the direct offset to a previous character.
+   inline LONG prevChar(uint32_t Offset) const { // Return the direct offset to a previous character.
       return Offset - UTF8PrevLength(c_str(), Offset);
    }
 };
@@ -213,7 +213,7 @@ class extVectorText : public extVector {
 //********************************************************************************************************************
 
 static void add_line(extVectorText *, std::string, LONG Offset, LONG Length, LONG Line = -1);
-static ERR cursor_timer(extVectorText *, LARGE, LARGE);
+static ERR cursor_timer(extVectorText *, int64_t, int64_t);
 static void delete_selection(extVectorText *);
 static void insert_char(extVectorText *, LONG, LONG);
 static void generate_text(extVectorText *, agg::path_storage &Path);
@@ -288,7 +288,7 @@ static LONG string_width(extVectorText *Self, const std::string_view &String)
          i++;
       }
       else {
-         ULONG unicode;
+         uint32_t unicode;
          auto charlen = get_utf8(String, unicode, i);
          auto &glyph  = pt->get_glyph(unicode);
          len += glyph.adv_x * Self->txLetterSpacing;
@@ -1463,7 +1463,7 @@ static ERR reset_font(extVectorText *Vector, bool Force)
 
 //********************************************************************************************************************
 
-static ERR cursor_timer(extVectorText *Self, LARGE Elapsed, LARGE CurrentTime)
+static ERR cursor_timer(extVectorText *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    if (((Self->txFlags & VTXF::EDITABLE) != VTXF::NIL) and (Self->txCursor.vector)) {
       pf::Log log(__FUNCTION__);

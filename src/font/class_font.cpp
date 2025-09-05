@@ -147,7 +147,7 @@ static ERR FONT_Init(extFont *Self)
 
             winne_header_fields ne_header;
             if ((file->read(&ne_header, sizeof(ne_header)) IS ERR::Okay) and (ne_header.magic IS ID_WINNE)) {
-               ULONG res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
+               uint32_t res_offset = mz_header.lfanew + ne_header.resource_tab_offset;
                file->seek(res_offset, SEEK::START);
 
                // Count the number of fonts in the file
@@ -776,7 +776,7 @@ static ERR draw_bitmap_font(extFont *Self)
    static const UBYTE table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
    UBYTE *xdata, *data;
    LONG linewidth, offset, charclip, wrapindex, charlen;
-   ULONG unicode, ocolour;
+   uint32_t unicode, ocolour;
    int16_t startx, xpos, ex, ey, sx, sy, xinc;
    int16_t bytewidth, alpha, charwidth;
    bool draw_line;
@@ -815,8 +815,8 @@ static ERR draw_bitmap_font(extFont *Self)
       else dxcoord = Self->X + Self->AlignWidth - linewidth;
    }
 
-   ULONG colour  = bitmap->getColour(Self->Colour);
-   ULONG ucolour = bitmap->getColour(Self->Underline);
+   uint32_t colour  = bitmap->getColour(Self->Colour);
+   uint32_t ucolour = bitmap->getColour(Self->Underline);
 
    if (Self->Outline.Alpha > 0) {
       Self->BmpCache->get_outline();
@@ -994,7 +994,7 @@ static ERR draw_bitmap_font(extFont *Self)
             }
             else {
                if (bitmap->BytesPerPixel IS 4) {
-                  auto dest = (ULONG *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
+                  auto dest = (uint32_t *)(bitmap->Data + (sx<<2) + (sy * bitmap->LineWidth));
                   for (dy=sy; dy < ey; dy++) {
                      xpos = xinc & 0x07;
                      xdata = data + (xinc>>3);
@@ -1005,7 +1005,7 @@ static ERR draw_bitmap_font(extFont *Self)
                            xdata++;
                         }
                      }
-                     dest = (ULONG *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint32_t *)(((UBYTE *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }

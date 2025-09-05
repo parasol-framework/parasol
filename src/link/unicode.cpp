@@ -106,9 +106,9 @@ uint: Returns the extracted unicode value.  If a failure occurs (the encoding is
 
 *********************************************************************************************************************/
 
-ULONG UTF8ReadValue(CSTRING String, LONG *Length)
+uint32_t UTF8ReadValue(CSTRING String, LONG *Length)
 {
-   ULONG code;
+   uint32_t code;
    const char *str;
 
    if (!(str = String)) {
@@ -213,10 +213,10 @@ cstr: Returns the original string pointer if it is already valid, otherwise a co
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 {
    static LONG buffersize = 0;
-   static ULONG icvhash = 0;
+   static uint32_t icvhash = 0;
    static bool init_failed = false;
    CSTRING str, output, input;
-   ULONG uchar, enchash;
+   uint32_t uchar, enchash;
    LONG len, in, out;
    size_t inleft, outleft;
 

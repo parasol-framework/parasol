@@ -294,7 +294,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
          feedback = display->ResizeFeedback;
       }
       else {
-         log.warning("Failed to get display ID for window %u.", (ULONG)xevent->window);
+         log.warning("Failed to get display ID for window %u.", (uint32_t)xevent->window);
          return;
       }
    }
@@ -326,7 +326,7 @@ void handle_exposure(XExposeEvent *event)
       struct drw::ExposeToDisplay region = { .X = 0, .Y = 0, .Width = 20000, .Height = 20000, .Flags = EXF::CHILDREN };
       QueueAction(drw::ExposeToDisplay::id, surface_id, &region); // Redraw everything
    }
-   else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (ULONG)event->window);
+   else log.warning("XEvent.Expose: Failed to find a Surface ID for window %u.", (uint32_t)event->window);
 }
 
 //********************************************************************************************************************
@@ -528,7 +528,7 @@ KEY xkeysym_to_pkey(KeySym KSym)
 void handle_key_press(XEvent *xevent)
 {
    pf::Log log(__FUNCTION__);
-   ULONG unicode = 0;
+   uint32_t unicode = 0;
    KeySym mod_sym; // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
    static XComposeStatus glXComposeStatus = { 0, 0 };
    char buffer[12];
@@ -607,7 +607,7 @@ void handle_key_release(XEvent *xevent)
 
    // A KeySym is an encoding of a symbol on the cap of a key.  See X11/keysym.h
 
-   ULONG unicode = 0;
+   uint32_t unicode = 0;
    KeySym mod_sym;
    static XComposeStatus glXComposeStatus = { 0, 0 };
    char buf[12];

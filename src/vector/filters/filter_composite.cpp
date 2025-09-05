@@ -58,13 +58,13 @@ class extCompositeFX : public extFilterEffect {
 
 struct composite_over {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
-      else if (!S[A]) ((ULONG *)D)[0] = ((ULONG *)M)[0];
+      if (!M[A]) ((uint32_t *)D)[0] = ((uint32_t *)S)[0];
+      else if (!S[A]) ((uint32_t *)D)[0] = ((uint32_t *)M)[0];
       else {
-         const ULONG dA = S[A] + M[A] - ((S[A] * M[A] + 0xff)>>8);
-         const ULONG sA = S[A] + (S[A] >> 7); // 0..255 -> 0..256
-         const ULONG cA = 256 - sA;
-         const ULONG mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
+         const uint32_t dA = S[A] + M[A] - ((S[A] * M[A] + 0xff)>>8);
+         const uint32_t sA = S[A] + (S[A] >> 7); // 0..255 -> 0..256
+         const uint32_t cA = 256 - sA;
+         const uint32_t mA = M[A] + (M[A] >> 7); // 0..255 -> 0..256
 
          D[R] = glLinearRGB.invert(((glLinearRGB.convert(S[R]) * sA + ((glLinearRGB.convert(M[R]) * mA * cA)>>8))>>8) * 255 / dA);
          D[G] = glLinearRGB.invert(((glLinearRGB.convert(S[G]) * sA + ((glLinearRGB.convert(M[G]) * mA * cA)>>8))>>8) * 255 / dA);
@@ -76,7 +76,7 @@ struct composite_over {
 
 struct composite_in {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (M[A] IS 255) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      if (M[A] IS 255) ((uint32_t *)D)[0] = ((uint32_t *)S)[0];
       else {
          D[R] = S[R];
          D[G] = S[G];
@@ -88,7 +88,7 @@ struct composite_in {
 
 struct composite_out {
    static inline void blend(UBYTE *D, UBYTE *S, UBYTE *M, UBYTE A, UBYTE R, UBYTE G, UBYTE B) {
-      if (!M[A]) ((ULONG *)D)[0] = ((ULONG *)S)[0];
+      if (!M[A]) ((uint32_t *)D)[0] = ((uint32_t *)S)[0];
       else {
          D[R] = S[R];
          D[G] = S[G];
