@@ -9,7 +9,7 @@ the display and as such is not recommended.
 
 *********************************************************************************************************************/
 
-static ERR GET_BitsPerPixel(extSurface *Self, LONG *Value)
+static ERR GET_BitsPerPixel(extSurface *Self, int *Value)
 {
    SURFACEINFO *info;
    if (gfx::GetSurfaceInfo(Self->UID, &info) IS ERR::Okay) {
@@ -67,7 +67,7 @@ static ERR SET_Cursor(extSurface *Self, PTC Value)
 {
    Self->Cursor = Value;
    if (Self->initialised()) {
-      UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (BYTE)Self->Cursor);
+      UpdateSurfaceField(Self, &SurfaceRecord::Cursor, (int8_t)Self->Cursor);
 
       if (auto pointer = gfx::AccessPointer()) {
          acRefresh(pointer);

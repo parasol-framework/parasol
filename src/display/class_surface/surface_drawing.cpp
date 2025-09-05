@@ -322,7 +322,7 @@ ERR SURFACE_Draw(extSurface *Self, struct acDraw *Args)
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acDraw)];
    int msgindex = 0;
    while (ScanMessages(&msgindex, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
@@ -396,7 +396,7 @@ static ERR SURFACE_ExposeToDisplay(extSurface *Self, struct drw::ExposeToDisplay
 
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    int msgindex = 0;
    while (ScanMessages(&msgindex, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
@@ -492,7 +492,7 @@ static ERR SURFACE_InvalidateRegion(extSurface *Self, struct drw::InvalidateRegi
    // Check if other draw messages are queued for this object - if so, do not do anything until the final message is reached.
 
    int msgindex = 0;
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(*Args)];
    while (ScanMessages(&msgindex, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
       if ((action->ActionID IS drw::InvalidateRegion::id) and (action->ObjectID IS Self->UID)) {
@@ -638,7 +638,7 @@ void move_layer(extSurface *Self, int X, int Y)
 */
 
 void prepare_background(extSurface *Self, const SURFACELIST &List, int Index, extBitmap *DestBitmap,
-   const ClipRectangle &clip, BYTE Stage)
+   const ClipRectangle &clip, int8_t Stage)
 {
    pf::Log log("prepare_bkgd");
 

@@ -340,7 +340,7 @@ static ERR SOUND_Activate(extSound *Self)
       if ((Self->Stream IS STREAM::ALWAYS) and (Self->Length > 16 * 1024)) Self->Flags |= SDF::STREAM;
       else if ((Self->Stream IS STREAM::SMART) and (Self->Length > 256 * 1024)) Self->Flags |= SDF::STREAM;
 
-      BYTE *buffer;
+      int8_t *buffer;
       if ((Self->Flags & SDF::STREAM) != SDF::NIL) {
          log.msg("Streaming enabled for playback in format $%.8x; Length: %d", int(sampleformat), Self->Length);
 
@@ -1231,9 +1231,9 @@ The buffer that is referred to by the Header field is not populated until the In
 
 *********************************************************************************************************************/
 
-static ERR SOUND_GET_Header(extSound *Self, BYTE **Value, int *Elements)
+static ERR SOUND_GET_Header(extSound *Self, int8_t **Value, int *Elements)
 {
-   *Value = (BYTE *)Self->Header;
+   *Value = (int8_t *)Self->Header;
    *Elements = std::ssize(Self->Header);
    return ERR::Okay;
 }

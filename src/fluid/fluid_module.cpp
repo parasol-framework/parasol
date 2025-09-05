@@ -148,7 +148,7 @@ static int module_call(lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
    objScript *Self = Lua->Script;
-   UBYTE buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
+   uint8_t buffer[MAX_MODULE_ARGS * 16]; // 16 bytes seems overkill but some parameters output meta information (e.g. size).
    int i;
 
    // Track dynamically allocated objects for cleanup
@@ -184,7 +184,7 @@ static int module_call(lua_State *Lua)
       nargs = MAX_MODULE_ARGS-1;
    }
 
-   UBYTE *end = buffer + sizeof(buffer);
+   uint8_t *end = buffer + sizeof(buffer);
 
    log.trace("%s() Index: %d, Args: %d", mod->Functions[index].Name, index, nargs);
 
@@ -717,7 +717,7 @@ static int process_results(prvFluid *prv, APTR resultsidx, const FunctionField *
 {
    pf::Log log(__FUNCTION__);
 
-   auto scan = (UBYTE *)resultsidx;
+   auto scan = (uint8_t *)resultsidx;
    int results = 0;
    for (int i=1; args[i].Name; i++) {
       const auto argtype = args[i].Type;

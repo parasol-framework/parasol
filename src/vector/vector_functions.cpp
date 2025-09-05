@@ -831,10 +831,10 @@ ERR ParseTransform(VectorMatrix *Matrix, CSTRING Commands)
    enum { M_MUL, M_TRANSLATE, M_ROTATE, M_SCALE, M_SKEW };
    class cmd {
       public:
-      BYTE type;
+      int8_t type;
       double sx, sy, shx, shy, tx, ty;
       double angle;
-      cmd(BYTE pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
+      cmd(int8_t pType) : type(pType), sx(0), sy(0), shx(0), shy(0), tx(0), ty(0), angle(0) {};
    };
 
    std::vector<cmd> list;
@@ -1212,7 +1212,7 @@ ERR ReadPainter(objVectorScene *Scene, CSTRING IRI, VectorPainter *Painter, CSTR
       auto &rgb = Painter->Colour;
       IRI++;
       char nibbles[8];
-      UBYTE n = 0;
+      uint8_t n = 0;
       while ((*IRI) and (n < std::ssize(nibbles))) nibbles[n++] = read_nibble(IRI++);
       while ((*IRI) and (*IRI != ';')) IRI++;
 

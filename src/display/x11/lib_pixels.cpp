@@ -21,25 +21,25 @@ static void VideoDrawRGBIndex32(objBitmap *Bitmap, uint32_t *Data, RGB8 *RGB)
 
 static uint32_t VideoReadPixel32(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   return ((uint32_t *)((UBYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<2)))[0];
+   return ((uint32_t *)((uint8_t *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<2)))[0];
 }
 
 static void VideoReadRGBPixel32(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
 {
-   uint32_t colour = ((uint32_t *)((UBYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<2)))[0];
-   RGB->Red   = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.RedPos);
-   RGB->Green = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.GreenPos);
-   RGB->Blue  = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.BluePos);
-   RGB->Alpha = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos);
+   uint32_t colour = ((uint32_t *)((uint8_t *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<2)))[0];
+   RGB->Red   = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.RedPos);
+   RGB->Green = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.GreenPos);
+   RGB->Blue  = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.BluePos);
+   RGB->Alpha = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos);
 }
 
 static void VideoReadRGBIndex32(objBitmap *Bitmap, uint32_t *Data, RGB8 *RGB)
 {
    uint32_t colour = Data[0];
-   RGB->Red   = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.RedPos);
-   RGB->Green = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.GreenPos);
-   RGB->Blue  = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.BluePos);
-   RGB->Alpha = (UBYTE)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos);
+   RGB->Red   = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.RedPos);
+   RGB->Green = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.GreenPos);
+   RGB->Blue  = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.BluePos);
+   RGB->Alpha = (uint8_t)(colour >> ((extBitmap *)Bitmap)->prvColourFormat.AlphaPos);
 }
 
 /*********************************************************************************************************************
@@ -59,20 +59,20 @@ static void VideoDrawRGBPixel24(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
    XDrawPoint(XDisplay, ((extBitmap *)Bitmap)->x11.drawable, ((extBitmap *)Bitmap)->getGC(), X, Y);
 }
 
-static void VideoDrawRGBIndex24(objBitmap *Bitmap, UBYTE *Data, RGB8 *RGB)
+static void VideoDrawRGBIndex24(objBitmap *Bitmap, uint8_t *Data, RGB8 *RGB)
 {
 
 }
 
 static uint32_t VideoReadPixel24(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   auto data = (UBYTE *)((extBitmap *)Bitmap)->x11.readable->data + (Bitmap->LineWidth * Y) + (X + X + X);
+   auto data = (uint8_t *)((extBitmap *)Bitmap)->x11.readable->data + (Bitmap->LineWidth * Y) + (X + X + X);
    return (data[2]<<16)|(data[1]<<8)|data[0];
 }
 
 static void VideoReadRGBPixel24(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
 {
-   auto data = (UBYTE *)((extBitmap *)Bitmap)->x11.readable->data;
+   auto data = (uint8_t *)((extBitmap *)Bitmap)->x11.readable->data;
    data += ((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y;
    data += X + X + X;
    RGB->Red   = data[2];
@@ -81,7 +81,7 @@ static void VideoReadRGBPixel24(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
    RGB->Alpha = 0;
 }
 
-static void VideoReadRGBIndex24(objBitmap *Bitmap, UBYTE *Data, RGB8 *RGB)
+static void VideoReadRGBIndex24(objBitmap *Bitmap, uint8_t *Data, RGB8 *RGB)
 {
    RGB->Red   = Data[2];
    RGB->Green = Data[1];
@@ -112,12 +112,12 @@ static void VideoDrawRGBIndex16(objBitmap *Bitmap, uint16_t *Data, RGB8 *RGB)
 
 static uint32_t VideoReadPixel16(objBitmap *Bitmap, LONG X, LONG Y)
 {
-   return ((uint16_t *)((BYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
+   return ((uint16_t *)((int8_t *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
 }
 
 static void VideoReadRGBPixel16(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
 {
-   uint16_t data = ((uint16_t *)((BYTE *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
+   uint16_t data = ((uint16_t *)((int8_t *)((extBitmap *)Bitmap)->x11.readable->data + (((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + (X<<1)))[0];
    RGB->Red   = Bitmap->unpackRed(data);
    RGB->Green = Bitmap->unpackGreen(data);
    RGB->Blue  = Bitmap->unpackBlue(data);
@@ -147,7 +147,7 @@ static void VideoDrawRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
    XDrawPoint(XDisplay, ((extBitmap *)Bitmap)->x11.drawable, ((extBitmap *)Bitmap)->getGC(), X, Y);
 }
 
-static void VideoDrawRGBIndex8(objBitmap *Bitmap, UBYTE *Data, RGB8 *RGB)
+static void VideoDrawRGBIndex8(objBitmap *Bitmap, uint8_t *Data, RGB8 *RGB)
 {
 
 }
@@ -159,7 +159,7 @@ static uint32_t VideoReadPixel8(objBitmap *Bitmap, LONG X, LONG Y)
 
 static void VideoReadRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
 {
-   auto data  = (UBYTE *)((extBitmap *)Bitmap)->x11.readable->data;
+   auto data  = (uint8_t *)((extBitmap *)Bitmap)->x11.readable->data;
    auto index = data[(((extBitmap *)Bitmap)->x11.readable->bytes_per_line * Y) + X];
    RGB->Red   = Bitmap->Palette->Col[index].Red;
    RGB->Green = Bitmap->Palette->Col[index].Green;
@@ -167,7 +167,7 @@ static void VideoReadRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, RGB8 *RGB)
    RGB->Alpha = 0;
 }
 
-static void VideoReadRGBIndex8(objBitmap *Bitmap, UBYTE *Data, RGB8 *RGB)
+static void VideoReadRGBIndex8(objBitmap *Bitmap, uint8_t *Data, RGB8 *RGB)
 {
    RGB->Red   = Bitmap->Palette->Col[*Data].Red;
    RGB->Green = Bitmap->Palette->Col[*Data].Green;

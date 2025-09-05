@@ -29,7 +29,7 @@ class extVectorShape : public extVector {
    LONG Repeat;
    DMF Dimensions;
    bool Close;
-   UBYTE Mod;
+   uint8_t Mod;
 };
 
 //********************************************************************************************************************

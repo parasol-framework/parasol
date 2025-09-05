@@ -700,7 +700,7 @@ void parser::translate_reserved(std::string &Output, size_t pos, bool &time_quer
 
 //********************************************************************************************************************
 
-static BYTE datatype(std::string_view String)
+static int8_t datatype(std::string_view String)
 {
    size_t i = 0;
    while ((i < String.size()) and (String[i]) and (String[i] <= 0x20)) i++; // Skip white-space
@@ -3738,7 +3738,7 @@ void parser::tag_cell(XMLTag &Tag)
 {
    pf::Log log(__FUNCTION__);
    auto new_style = m_style;
-   static UBYTE edit_recurse = 0;
+   static uint8_t edit_recurse = 0;
 
    if (m_table_stack.empty()) {
       log.warning("<cell> not defined inside <table> section.");

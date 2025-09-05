@@ -97,7 +97,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 {
 #if 0
    pf::Log log(__FUNCTION__);
-   static THREADVAR BYTE recursion = FALSE; // Recursion avoidance is essential for correct queuing
+   static THREADVAR int8_t recursion = FALSE; // Recursion avoidance is essential for correct queuing
    if (recursion) return;
    recursion = TRUE;
 
@@ -108,7 +108,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
    // Read and process each event in sequence
 
    LONG result, i;
-   UBYTE buffer[2048];
+   uint8_t buffer[2048];
    LONG count = 0;
    LONG buffersize = 0;
    while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) or (buffersize > 0)) {
@@ -146,7 +146,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                lseek(FD, sizeof(struct inotify_event) + event->len - sizeof(buffer), SEEK_CUR);
             }
 
-            UBYTE fnbuffer[256];
+            uint8_t fnbuffer[256];
             if ((path[0] IS '/') and (path[1] IS 0)) path = nullptr;
             else if (((glFileMonitor[i].Flags & MFF::QUALIFY) != MFF::NIL) and (event->mask & IN_ISDIR)) {
                LONG j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);

@@ -145,7 +145,7 @@ static int thread_action(lua_State *Lua)
    log.trace("#%d/%p, Action: %s/%d, Args: %d", object->UID, object->ObjectPtr, action, int(action_id), arg_size);
 
    if (arg_size > 0) {
-      auto arg_buffer = std::make_unique<BYTE[]>(arg_size+8); // +8 for overflow protection in build_args()
+      auto arg_buffer = std::make_unique<int8_t[]>(arg_size+8); // +8 for overflow protection in build_args()
       int result_count;
 
       if ((error = build_args(Lua, args, arg_size, arg_buffer.get(), &result_count)) IS ERR::Okay) {
@@ -236,7 +236,7 @@ static int thread_method(lua_State *Lua)
                callback.Meta = APTR(lua_tointeger(Lua, 4));
 
                if (argsize > 0) {
-                  auto argbuffer = std::make_unique<BYTE[]>(argsize+8); // +8 for overflow protection in build_args()
+                  auto argbuffer = std::make_unique<int8_t[]>(argsize+8); // +8 for overflow protection in build_args()
                   int resultcount;
 
                   lua_remove(Lua, 1); // Remove all 4 required arguments so that the user's custom parameters are then left on the stack

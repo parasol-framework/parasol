@@ -16,7 +16,7 @@ ERR GET_VDensity(extDisplay *Self, LONG *Value);
 
 //********************************************************************************************************************
 
-std::array<UBYTE, 256 * 256> glAlphaLookup;
+std::array<uint8_t, 256 * 256> glAlphaLookup;
 
 #ifdef __xwindows__
 
@@ -39,8 +39,8 @@ _XDisplay *XDisplay = 0;
 XVisualInfo glXInfoAlpha;
 bool glX11ShmImage = false;
 bool glXCompositeSupported = false;
-UBYTE KeyHeld[LONG(KEY::LIST_END)];
-UBYTE glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
+uint8_t KeyHeld[LONG(KEY::LIST_END)];
+uint8_t glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 KQ glKeyFlags = KQ::NIL;
 LONG glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
 Atom atomSurfaceID = 0, XWADeleteWindow = 0;
@@ -153,8 +153,8 @@ const CSTRING glInputNames[LONG(JET::END)] = {
 
 #ifdef _GLES_ // OpenGL specific data
 enum { EGL_STOPPED=0, EGL_REQUIRES_INIT, EGL_INITIALISED, EGL_TERMINATED };
-static UBYTE glEGLState = 0;
-static UBYTE glEGLRefreshDisplay = FALSE;
+static uint8_t glEGLState = 0;
+static uint8_t glEGLRefreshDisplay = FALSE;
 static OBJECTID glEGLPreferredDepth = 0;
 static EGLContext glEGLContext = EGL_NO_CONTEXT;
 static EGLSurface glEGLSurface = EGL_NO_SURFACE;
@@ -194,7 +194,7 @@ LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hos
 LONG glpMaximise = FALSE, glpFullScreen = FALSE;
 SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
-UBYTE *glDemultiply = nullptr;
+uint8_t *glDemultiply = nullptr;
 int glLastPort = -1;
 
 std::vector<OBJECTID> glFocusList;
@@ -207,7 +207,7 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 //********************************************************************************************************************
 // Alpha blending data.
 
-inline UBYTE clipByte(LONG value)
+inline uint8_t clipByte(LONG value)
 {
    value = (0 & (-(int16_t)(value < 0))) | (value & (-(int16_t)!(value < 0)));
    value = (255 & (-(int16_t)(value > 255))) | (value & (-(int16_t)!(value > 255)));

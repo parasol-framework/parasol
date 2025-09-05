@@ -148,7 +148,7 @@ extern "C" void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *
 
 //********************************************************************************************************************
 
-extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, BYTE Group, BYTE InternalRedirect,
+extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, int8_t Group, int8_t InternalRedirect,
    struct winprocess **ProcessResult, char HideWindow, char *RedirectStdOut, char *RedirectStdErr, LONG *ProcessID)
 {
    SECURITY_ATTRIBUTES sa;

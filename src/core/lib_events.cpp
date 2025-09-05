@@ -37,16 +37,16 @@ struct eventsub {
    void     (*Callback)(APTR Info, LONG Size, APTR Meta);
    APTR     CallbackMeta;
    EVG      Group;
-   UBYTE    Called;
+   uint8_t    Called;
    OBJECTID ContextID;
 
    inline CSTRING groupName() {
-      return glEventGroups[UBYTE(Group)];
+      return glEventGroups[uint8_t(Group)];
    }
 };
 
 static struct eventsub *glEventList = nullptr;
-static UBYTE glCallSignal = 0;
+static uint8_t glCallSignal = 0;
 static bool glEventListAltered = false;
 
 static ankerl::unordered_dense::map<uint32_t, std::string> glEventNames;
@@ -150,7 +150,7 @@ int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
    auto hash_subgroup = strhash(SubGroup) & 0x00ffffff;
    auto hash_event = strhash(Event);
 
-   int64_t event_id = int64_t(UBYTE(Group))<<56;
+   int64_t event_id = int64_t(uint8_t(Group))<<56;
    if ((SubGroup) and (SubGroup[0] != '*')) event_id |= int64_t(hash_subgroup)<<32;
    if ((Event) and (Event[0] != '*')) event_id |= hash_event;
 
@@ -197,7 +197,7 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 
    if (!Callback->isC()) return ERR::Args; // Currently only StdC callbacks are accepted.
 
-   auto gid = EVG(UBYTE(EventID>>56));
+   auto gid = EVG(uint8_t(EventID>>56));
 
    if ((LONG(gid) < 1) or (LONG(gid) >= LONG(EVG::END))) {
       return log.warning(ERR::Args);
@@ -221,7 +221,7 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
       if (glEventList) glEventList->Prev = event;
       glEventList = event;
 
-      glEventMask |= 1<<UBYTE(event->Group);
+      glEventMask |= 1<<uint8_t(event->Group);
 
       auto it_subgroup = glEventNames.find(uint32_t(EventID>>32) & 0x00ffffff);
       auto it_name = glEventNames.find(uint32_t(EventID));
@@ -280,7 +280,7 @@ void UnsubscribeEvent(APTR Handle)
       if (scan->Group IS event->Group) break;
       scan = scan->Next;
    }
-   if (!scan) glEventMask = glEventMask & (~(1<<UBYTE(event->Group)));
+   if (!scan) glEventMask = glEventMask & (~(1<<uint8_t(event->Group)));
 
    free(event);
 

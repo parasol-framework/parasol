@@ -604,7 +604,7 @@ static ERR CLIENTSOCKET_Write(extClientSocket *Self, struct acWrite *Args)
       if ((error IS ERR::DataSize) or (error IS ERR::BufferOverflow) or (len > 0))  {
          // Put data into the write queue and register the socket for write events
          log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
-         Self->WriteQueue.write((BYTE *)Args->Buffer + len, std::min<size_t>(Args->Length - len, server->MsgLimit));
+         Self->WriteQueue.write((int8_t *)Args->Buffer + len, std::min<size_t>(Args->Length - len, server->MsgLimit));
          #ifdef __linux__
             RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&clientsocket_outgoing), Self);
          #elif _WIN32

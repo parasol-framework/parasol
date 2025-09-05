@@ -222,7 +222,7 @@ static ERR ASSET_Init(objFile *Self)
       else if (Self->Path[len-1] IS '/') {
          // Check that the folder exists.
 
-         UBYTE dirpath[len];
+         uint8_t dirpath[len];
 
          StrCopy(Self->Path+LEN_ASSETS, dirpath);
 
@@ -464,7 +464,7 @@ static ERR close_dir(DirInfo *Dir)
 static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 {
    pf::Log log(__FUNCTION__);
-   BYTE dir;
+   int8_t dir;
    LONG i, len;
 
    // We need to open the file in order to retrieve its size.
@@ -617,7 +617,7 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
 
    const char *filename;
    FileInfo *entry, *current;
-   UBYTE assetpath[300];
+   uint8_t assetpath[300];
    LONG i;
 
    // Read folder structure

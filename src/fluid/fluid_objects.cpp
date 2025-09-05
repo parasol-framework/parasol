@@ -40,7 +40,7 @@ static int object_action_call_args(lua_State *);
 static int object_method_call_args(lua_State *);
 static int object_action_call(lua_State *);
 static int object_method_call(lua_State *);
-static LONG get_results(lua_State *, const FunctionField *, const BYTE *);
+static LONG get_results(lua_State *, const FunctionField *, const int8_t *);
 static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
 
 static int object_children(lua_State *);

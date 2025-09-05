@@ -1,5 +1,5 @@
 
-agg::gamma_lut<UBYTE, uint16_t, 8, 12> glGamma(2.2);
+agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma(2.2);
 double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
 static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
@@ -139,7 +139,7 @@ ERR read_path(std::vector<PathCommand> &Path, CSTRING Value)
    PathCommand path;
 
    int max_cmds = 8192; // Maximum commands per path - this acts as a safety net in case the parser gets stuck.
-   UBYTE cmd = 0;
+   uint8_t cmd = 0;
    while (*Value) {
       if (std::isalpha(*Value)) cmd = *Value++;
       else if (std::isdigit(*Value) or (*Value IS '-') or (*Value IS '+') or (*Value IS '.')); // Use the previous command
@@ -508,7 +508,7 @@ ERR get_font(pf::Log &Log, CSTRING Family, CSTRING Style, int Weight, int Size, 
                                     auto str = (uint16_t *)sft_name.string;
                                     uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                       uint16_t unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       uint16_t unicode = (str[i]>>8) | (uint8_t(str[i])<<8);
                                        if ((unicode >= 'A') and (unicode <= 'Z')) {
                                           if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
                                              buffer[out++] = ' ';

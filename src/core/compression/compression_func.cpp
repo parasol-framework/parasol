@@ -109,7 +109,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
 
       if (acSeekStart(Self->FileIO, entry.Offset) != ERR::Okay) return ERR::Seek;
 
-      UBYTE header[sizeof(glHeader)];
+      uint8_t header[sizeof(glHeader)];
       copymem(glHeader, header, sizeof(glHeader));
 
       wrb<uint16_t>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
@@ -384,7 +384,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    if (acSeek(Self->FileIO, (double)entry.Offset, SEEK::START) != ERR::Okay) return ERR::Seek;
 
-   UBYTE header[sizeof(glHeader)];
+   uint8_t header[sizeof(glHeader)];
    copymem(glHeader, header, sizeof(glHeader));
    wrb<uint16_t>(entry.DeflateMethod, header + HEAD_DEFLATEMETHOD);
    wrb<uint32_t>(entry.TimeStamp, header + HEAD_TIMESTAMP);
@@ -553,7 +553,7 @@ static ERR fast_scan_zip(extCompression *Self)
 
          Self->Files.push_back(zf);
 
-         head = (uint32_t *)(((UBYTE *)head) + LIST_LENGTH + scan->commentlen + scan->namelen + scan->extralen);
+         head = (uint32_t *)(((uint8_t *)head) + LIST_LENGTH + scan->commentlen + scan->namelen + scan->extralen);
       }
    }
 
@@ -726,7 +726,7 @@ static void write_eof(extCompression *Self)
          uint32_t listsize  = 0;
          uint16_t filecount = 0;
          for (auto &chain : Self->Files) {
-            UBYTE elist[sizeof(glList)];
+            uint8_t elist[sizeof(glList)];
             copymem(glList, elist, sizeof(glList));
 
             wrb<uint16_t>(chain.DeflateMethod, elist+LIST_METHOD);
@@ -751,7 +751,7 @@ static void write_eof(extCompression *Self)
             filecount++;
          }
 
-         UBYTE tail[sizeof(glTail)];
+         uint8_t tail[sizeof(glTail)];
          copymem(glTail, tail, sizeof(glTail));
 
          wrb<uint16_t>(filecount,  tail + TAIL_FILECOUNT); // File count for this file

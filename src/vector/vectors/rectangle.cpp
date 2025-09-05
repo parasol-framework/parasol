@@ -309,7 +309,7 @@ against the rectangle's diagonal.
 
 static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, double **Value, LONG *Elements)
 {
-   *Value = (DOUBLE *)Self->rRound.data();
+   *Value = (double *)Self->rRound.data();
    *Elements = 8;
    return ERR::Okay;
 }

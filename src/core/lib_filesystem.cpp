@@ -98,7 +98,7 @@ typedef int HANDLE;
 
 struct extCacheFile : public CacheFile {
    std::string FullPath;
-   std::vector<BYTE> Buffer;
+   std::vector<int8_t> Buffer;
    int16_t Locks;       // Internal count of active locks for this element.
 
    extCacheFile() {}
@@ -1535,7 +1535,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
 
       // This routine is designed to handle streams - where either the source is a stream or the destination is a stream.
 
-      std::vector<BYTE> data(bufsize);
+      std::vector<int8_t> data(bufsize);
       error = ERR::Okay;
       const int64_t STREAM_TIMEOUT = 10000LL;
       int64_t time = PreciseTime() / 1000LL;
@@ -1611,7 +1611,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    else result = lstat64(src.c_str(), &stinfo);
 
    if ((!result) and (S_ISLNK(stinfo.st_mode))) {
-      BYTE linkto[512];
+      int8_t linkto[512];
 
       if (srcdir) src.pop_back();
 
@@ -1844,7 +1844,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
          // Use a reasonably small read buffer so that we can provide continuous feedback
 
          LONG bufsize = ((Callback) and (Callback->defined())) ? 65536 : 524288;
-         std::vector<BYTE> data(bufsize);
+         std::vector<int8_t> data(bufsize);
          LONG len;
          error = ERR::Okay;
          while ((len = read(handle, data.data(), bufsize)) > 0) {

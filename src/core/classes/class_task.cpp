@@ -104,7 +104,7 @@ constexpr int REG_EXPAND_SZ = 0x00020000;
 #define INVALID_HANDLE_VALUE (void *)(-1)
 
 extern "C" DLLCALL int WINAPI RegOpenKeyExA(int,CSTRING,int,int,APTR *);
-extern "C" DLLCALL int WINAPI RegQueryValueExA(APTR,CSTRING,int *,int *,BYTE *,int *);
+extern "C" DLLCALL int WINAPI RegQueryValueExA(APTR,CSTRING,int *,int *,int8_t *,int *);
 extern "C" DLLCALL int WINAPI RegSetValueExA(APTR hKey, CSTRING lpValueName, int Reserved, int dwType, const void *lpData, int cbData);
 
 static MSGID glProcessBreak = MSGID::NIL;
@@ -228,7 +228,7 @@ static void check_incoming(extTask *Self)
 #ifdef __unix__
 static void task_stdout(HOSTHANDLE FD, APTR Task)
 {
-   thread_local UBYTE recursive = 0;
+   thread_local uint8_t recursive = 0;
 
    if (recursive) return;
 
@@ -259,7 +259,7 @@ static void task_stderr(HOSTHANDLE FD, APTR Task)
 {
    char buffer[TASK_IO_BUFFER_SIZE];
    int len;
-   thread_local UBYTE recursive = 0;
+   thread_local uint8_t recursive = 0;
 
    if (recursive) return;
 
@@ -307,7 +307,7 @@ static void output_callback(extTask *Task, FUNCTION *Callback, APTR Buffer, int 
 static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 {
    pf::Log log(__FUNCTION__);
-   thread_local UBYTE recursive = 0;
+   thread_local uint8_t recursive = 0;
 
    if (recursive) return;
    if (!Task->Platform) return;
@@ -329,7 +329,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
 static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
 {
    pf::Log log(__FUNCTION__);
-   thread_local UBYTE recursive = 0;
+   thread_local uint8_t recursive = 0;
 
    if (recursive) return;
    if (!Task->Platform) return;
@@ -630,7 +630,7 @@ static ERR TASK_Activate(extTask *Self)
    #endif
    #ifdef __unix__
       int pid;
-      BYTE privileged, shell;
+      int8_t privileged, shell;
    #endif
 
    Self->ReturnCodeSet = false;
@@ -996,7 +996,7 @@ static ERR TASK_Activate(extTask *Self)
          // Find out what error code was returned
 
          if (WIFEXITED(status)) {
-            Self->ReturnCode = (BYTE)WEXITSTATUS(status);
+            Self->ReturnCode = (int8_t)WEXITSTATUS(status);
             Self->ReturnCodeSet = true;
          }
 
@@ -1237,7 +1237,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
          APTR keyhandle;
          if (!RegOpenKeyExA(key.ID, folder.c_str(), 0, KEY_READ, &keyhandle)) {
             int type;
-            char buffer[4096];
+            int8_t buffer[4096];
             int envlen = sizeof(buffer);
             std::string name = full_path.substr(sep+1);
             if (!RegQueryValueExA(keyhandle, name.c_str(), 0, &type, buffer, &envlen)) {
@@ -1265,7 +1265,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
                   case REG_SZ:
                   case REG_EXPAND_SZ:
-                     Self->Env.assign(buffer, envlen);
+                     Self->Env.assign((char *)buffer, envlen);
                      // Remove any trailing null characters
                      while ((!Self->Env.empty()) and (Self->Env.back() IS 0)) Self->Env.pop_back();
                      break;
@@ -2289,7 +2289,7 @@ static ERR GET_ReturnCode(extTask *Self, int *Value)
       // The process has exited.  Find out what error code was returned and pass it as the result.
 
       if (WIFEXITED(status)) {
-         Self->ReturnCode = (BYTE)WEXITSTATUS(status);
+         Self->ReturnCode = (int8_t)WEXITSTATUS(status);
          Self->ReturnCodeSet = true;
       }
 

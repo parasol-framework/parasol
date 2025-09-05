@@ -29,7 +29,7 @@ class extSourceFX : public extFilterEffect {
    objBitmap *Bitmap;     // Rendered image cache.
    objVector *Source;     // The vector branch to render as source graphic.
    objVectorScene *Scene; // Internal scene for rendering.
-   UBYTE *BitmapData;
+   uint8_t *BitmapData;
    ARF  AspectRatio;      // Aspect ratio flags.
    LONG DataSize;
    bool Render;           // Must be true if the bitmap cache needs to be rendered.

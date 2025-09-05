@@ -532,7 +532,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
       for (LONG i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
          if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
-         Data = (BYTE *)Data + def_size;
+         Data = (int8_t *)Data + def_size;
          lua_settable(Lua, -3);
       }
    }
@@ -678,7 +678,7 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 
 //********************************************************************************************************************
 
-static BYTE datatype(std::string_view String)
+static int8_t datatype(std::string_view String)
 {
    size_t i = 0;
    while ((i < String.size()) and (String[i] <= 0x20)) i++; // Skip white-space

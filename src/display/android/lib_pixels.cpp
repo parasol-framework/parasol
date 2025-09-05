@@ -40,7 +40,7 @@ static void VideoDrawRGBPixel24(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *
 {
 }
 
-static void VideoDrawRGBIndex24(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
+static void VideoDrawRGBIndex24(objBitmap *Bitmap, uint8_t *Data, struct RGB8 *RGB)
 {
 
 }
@@ -55,7 +55,7 @@ static void VideoReadRGBPixel24(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *
 
 }
 
-static void VideoReadRGBIndex24(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
+static void VideoReadRGBIndex24(objBitmap *Bitmap, uint8_t *Data, struct RGB8 *RGB)
 {
 }
 
@@ -102,7 +102,7 @@ static void VideoDrawRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *R
 {
 }
 
-static void VideoDrawRGBIndex8(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
+static void VideoDrawRGBIndex8(objBitmap *Bitmap, uint8_t *Data, struct RGB8 *RGB)
 {
 
 }
@@ -116,7 +116,7 @@ static void VideoReadRGBPixel8(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *R
 {
 }
 
-static void VideoReadRGBIndex8(objBitmap *Bitmap, UBYTE *Data, struct RGB*RGB)
+static void VideoReadRGBIndex8(objBitmap *Bitmap, uint8_t *Data, struct RGB*RGB)
 {
    RGB->Red   = Bitmap->Palette->Col[*Data].Red;
    RGB->Green = Bitmap->Palette->Col[*Data].Green;

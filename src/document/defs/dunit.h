@@ -2,7 +2,7 @@
 // Display Unit class.  Reads CSS metric values during parsing and returns them as pixel values during the layout
 // process.
 
-enum class DU : UBYTE {
+enum class DU : uint8_t {
    NIL = 0,
    PIXEL,             // px in 72DPI
    SCALED,            // %: Scale to fill empty space

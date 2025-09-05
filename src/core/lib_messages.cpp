@@ -34,7 +34,7 @@ Name: Messages
 
 static ERR wake_task(void);
 #ifdef _WIN32
-static ERR sleep_task(int, BYTE);
+static ERR sleep_task(int, int8_t);
 #else
 static ERR sleep_task(int);
 ERR write_nonblock(int Handle, APTR Data, int Size, int64_t EndTime);
@@ -46,7 +46,7 @@ static std::recursive_mutex glQueueLock;
 static std::vector<TaskMessage> glQueue; // Available to all threads, use glQueueLock
 
 template <class T> inline APTR ResolveAddress(T *Pointer, int Offset) {
-   return APTR(((BYTE *)Pointer) + Offset);
+   return APTR(((int8_t *)Pointer) + Offset);
 }
 
 static ERR msghandler_free(APTR Address)
@@ -504,9 +504,9 @@ ERR ScanMessages(int *Handle, MSGID Type, APTR Buffer, int BufferSize)
             BufferSize -= sizeof(Message);
             if (BufferSize < it->Size) {
                ((Message *)Buffer)->Size = BufferSize;
-               copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), BufferSize);
+               copymem(it->getBuffer(), ((int8_t *)Buffer) + sizeof(Message), BufferSize);
             }
-            else copymem(it->getBuffer(), ((BYTE *)Buffer) + sizeof(Message), it->Size);
+            else copymem(it->getBuffer(), ((int8_t *)Buffer) + sizeof(Message), it->Size);
          }
 
          *Handle = index + 1;
@@ -928,7 +928,7 @@ ERR sleep_task(int Timeout)
       }
    }
 
-   UBYTE buffer[64];
+   uint8_t buffer[64];
    if (result > 0) {
       glFDProtected++;
       for (auto &fd : glFDTable) {
@@ -998,7 +998,7 @@ ERR sleep_task(int Timeout)
 // sleep_task() - Windows version
 
 #ifdef _WIN32
-ERR sleep_task(int Timeout, BYTE SystemOnly)
+ERR sleep_task(int Timeout, int8_t SystemOnly)
 {
    pf::Log log(__FUNCTION__);
 
@@ -1162,7 +1162,7 @@ static ERR wake_task(void)
    // NOTE: If sockets are not available on the host then you can use a mutex for sleeping, BUT this would mean that
    // every FD has to be given its own thread for processing.
 
-   UBYTE msg = 1;
+   uint8_t msg = 1;
 
    // Each thread gets its own comm socket for dispatch, because allowing them to all use the same socket has been
    // discovered to cause problems.  The use of pthread keys also ensures that the socket FD is automatically closed

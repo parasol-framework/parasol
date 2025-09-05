@@ -275,14 +275,14 @@ The Colour value is defined in floating-point RGBA format, using a range of 0 - 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, float **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, FLOAT *Value, LONG Elements)
+static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, float *Value, LONG Elements)
 {
    pf::Log log;
    if (Value) {

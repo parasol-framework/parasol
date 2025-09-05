@@ -103,7 +103,7 @@ static LRESULT CALLBACK window_procedure(HWND, UINT, WPARAM, LPARAM);
 extern "C" int validate_process(int ProcessID);
 
 typedef void * APTR;
-typedef unsigned char UBYTE;
+typedef unsigned char uint8_t;
 
 static UINT glDeadProcessMsg; // Read only.
 
@@ -157,17 +157,17 @@ static CRITICAL_SECTION csJob;
 typedef long long int64_t;
 typedef void * APTR;
 //typedef void * OBJECTPTR;
-typedef unsigned char UBYTE;
+typedef unsigned char uint8_t;
 
 
 typedef struct DateTime {
    int16_t Year;
-   BYTE Month;
-   BYTE Day;
-   BYTE Hour;
-   BYTE Minute;
-   BYTE Second;
-   BYTE TimeZone;
+   int8_t Month;
+   int8_t Day;
+   int8_t Hour;
+   int8_t Minute;
+   int8_t Second;
+   int8_t TimeZone;
 } DateTime;
 
 #define DRIVETYPE_REMOVABLE 1
@@ -283,7 +283,7 @@ static void printerror(void)
 //********************************************************************************************************************
 // Console checker for Cygwin
 
-BYTE is_console(HANDLE h)
+int8_t is_console(HANDLE h)
 {
    if (FILE_TYPE_UNKNOWN IS GetFileType(h) and ERROR_INVALID_HANDLE IS GetLastError()) {
        if ((h = CreateFile("CONOUT$", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr))) {
@@ -300,7 +300,7 @@ BYTE is_console(HANDLE h)
 // If the program is launched from a console, attach to it.  Otherwise create a new console window and redirect output
 // to it (e.g. if launched from a desktop icon).
 
-extern "C" void activate_console(BYTE AllowOpenConsole)
+extern "C" void activate_console(int8_t AllowOpenConsole)
 {
    static bool activated = false;
 
@@ -1043,7 +1043,7 @@ extern "C" int winWaitForSingleObject(HANDLE Handle, int Time)
 //   -3 = A message was received in the windows message queue.
 //   -4 = Unknown result returned from windows.
 
-extern "C" int winWaitForObjects(int Total, HANDLE *Handles, int Time, BYTE WinMsgs)
+extern "C" int winWaitForObjects(int Total, HANDLE *Handles, int Time, int8_t WinMsgs)
 {
    if (Time IS -1) Time = INFINITE;
 
@@ -1446,7 +1446,7 @@ extern "C" int winGetFullPathName(const char *Path, int PathLength, char *Output
 
 //********************************************************************************************************************
 
-extern "C" BYTE winGetCommand(char *Path, char *Buffer, int BufferSize)
+extern "C" int8_t winGetCommand(char *Path, char *Buffer, int BufferSize)
 {
    if (BufferSize < MAX_PATH+3) return 1;
 
@@ -1505,7 +1505,7 @@ static void convert_time(FILETIME *Source, struct DateTime *Dest)
 
 //********************************************************************************************************************
 
-extern "C" ERR winGetFileAttributesEx(const char *Path, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive, BYTE *Folder, int64_t *Size,
+extern "C" ERR winGetFileAttributesEx(const char *Path, int8_t *Hidden, int8_t *ReadOnly, int8_t *Archive, int8_t *Folder, int64_t *Size,
    struct DateTime *LastWrite, struct DateTime *LastAccess, struct DateTime *LastCreate)
 {
    WIN32_FILE_ATTRIBUTE_DATA info;
@@ -1899,7 +1899,7 @@ extern ERR winGetVolumeInformation(STRING Volume, std::string &Label, std::strin
 
 //********************************************************************************************************************
 
-extern "C" int winTestLocation(STRING Location, BYTE CaseSensitive)
+extern "C" int winTestLocation(STRING Location, int8_t CaseSensitive)
 {
    int len, result;
    HANDLE handle;
@@ -2142,7 +2142,7 @@ extern "C" HANDLE winFindFile(CSTRING Location, HANDLE *Handle, STRING Result)
 */
 
 extern "C" int winScan(HANDLE *Handle, CSTRING Path, STRING Name, long long *Size, struct DateTime *CreateTime,
-   struct DateTime *WriteTime, BYTE *Dir, BYTE *Hidden, BYTE *ReadOnly, BYTE *Archive)
+   struct DateTime *WriteTime, int8_t *Dir, int8_t *Hidden, int8_t *ReadOnly, int8_t *Archive)
 {
    WIN32_FIND_DATA find;
    int i;
@@ -2228,7 +2228,7 @@ extern "C" void winGetAttrib(CSTRING Path, int *Flags)
 
 //********************************************************************************************************************
 
-extern "C" int winFileInfo(CSTRING Path, size_t *Size, struct DateTime *Time, BYTE *Folder)
+extern "C" int winFileInfo(CSTRING Path, size_t *Size, struct DateTime *Time, int8_t *Folder)
 {
    if (!Path) return 0;
 

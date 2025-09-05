@@ -28,9 +28,9 @@ signal an end to the streaming process.
 
 class extCompressedStream : public objCompressedStream {
    public:
-   UBYTE *OutputBuffer;
-   UBYTE Inflating:1;
-   UBYTE Deflating:1;
+   uint8_t *OutputBuffer;
+   uint8_t Inflating:1;
+   uint8_t Deflating:1;
    z_stream Stream;
    gz_header Header;
 };
@@ -86,7 +86,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    Args->Result = 0;
    if (Args->Length <= 0) return ERR::Okay;
 
-   UBYTE inputstream[2048];
+   uint8_t inputstream[2048];
    LONG length;
 
    if (acRead(Self->Input, inputstream, sizeof(inputstream), &length) != ERR::Okay) return ERR::Read;
@@ -217,7 +217,7 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 
    if (pos < 0) return log.warning(ERR::OutOfRange);
 
-   UBYTE buffer[1024];
+   uint8_t buffer[1024];
    while (pos > 0) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);

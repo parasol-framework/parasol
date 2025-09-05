@@ -49,7 +49,7 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
       String += (String[0] IS '#') ? 1 : 2;
       int i = 0;
       while ((i < ArraySize) and (*String)) {
-         UBYTE byte = 0;
+         uint8_t byte = 0;
          for (int shift=4; shift >= 0; shift -= 4) {
             if (*String) {
                if (std::isdigit(*String)) byte |= (*String - '0') << shift;
@@ -60,8 +60,8 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
          }
 
          if (Flags & FD_INT)        ((int *)Dest)[i]   = byte;
-         else if (Flags & FD_BYTE)   ((BYTE *)Dest)[i]   = byte;
-         else if (Flags & FD_FLOAT)  ((FLOAT *)Dest)[i]  = byte;
+         else if (Flags & FD_BYTE)   ((int8_t *)Dest)[i]   = byte;
+         else if (Flags & FD_FLOAT)  ((float *)Dest)[i]  = byte;
          else if (Flags & FD_DOUBLE) ((double *)Dest)[i] = byte;
          i++;
       }
@@ -73,8 +73,8 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
       int i;
       for (i=0; (i < ArraySize) and (*String); i++) {
           if (Flags & FD_INT)        ((int *)Dest)[i]   = strtol(String, &end, 0);
-          else if (Flags & FD_BYTE)   ((UBYTE *)Dest)[i]  = strtol(String, &end, 0);
-          else if (Flags & FD_FLOAT)  ((FLOAT *)Dest)[i]  = strtod(String, &end);
+          else if (Flags & FD_BYTE)   ((uint8_t *)Dest)[i]  = strtol(String, &end, 0);
+          else if (Flags & FD_FLOAT)  ((float *)Dest)[i]  = strtod(String, &end);
           else if (Flags & FD_DOUBLE) ((double *)Dest)[i] = strtod(String, &end);
           String = end;
           while ((*String) and (!std::isdigit(*String)) and (*String != '-')) String++;
@@ -131,7 +131,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
    // Direct writing to field arrays without a SET function is only supported for the RGB type.  The client should
    // define a SET function for all other cases.
 
-   BYTE *offset = (BYTE *)Object + Field->Offset;
+   auto offset = (int8_t *)Object + Field->Offset;
 
    if ((SrcType & FD_STRING) and (Field->Flags & FD_RGB)) {
       if (!Source) Source = "0,0,0,0"; // A string of nullptr will 'clear' the colour (the alpha value will be zero)
@@ -141,7 +141,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
       return ERR::Okay;
    }
    else if ((SrcType & FD_POINTER) and (Field->Flags & FD_RGB)) { // Presume the source is a pointer to an RGB structure
-      RGB8 *rgb = (RGB8 *)Source;
+      auto rgb = (RGB8 *)Source;
       ((RGB8 *)offset)->Red   = rgb->Red;
       ((RGB8 *)offset)->Green = rgb->Green;
       ((RGB8 *)offset)->Blue  = rgb->Blue;
@@ -279,8 +279,8 @@ static ERR writeval_lookup(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
 
 static ERR writeval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   auto offset = (int *)((BYTE *)Object + Field->Offset);
-   if (Flags & FD_INT)        *offset = *((int *)Data);
+   auto offset = (int *)((int8_t *)Object + Field->Offset);
+   if (Flags & FD_INT)         *offset = *((int *)Data);
    else if (Flags & FD_INT64)  *offset = (int)(*((int64_t *)Data));
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
    else if (Flags & FD_STRING) *offset = strtol((STRING)Data, nullptr, 0);
@@ -290,7 +290,7 @@ static ERR writeval_long(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, i
 
 static ERR writeval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   auto offset = (int64_t *)((BYTE *)Object + Field->Offset);
+   auto offset = (int64_t *)((int8_t *)Object + Field->Offset);
    if (Flags & FD_INT64)      *offset = *((int64_t *)Data);
    else if (Flags & FD_INT)   *offset = *((int *)Data);
    else if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = F2I(*((double *)Data));
@@ -301,7 +301,7 @@ static ERR writeval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, 
 
 static ERR writeval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   auto offset = (DOUBLE *)((BYTE *)Object + Field->Offset);
+   auto offset = (double *)((int8_t *)Object + Field->Offset);
    if (Flags & (FD_DOUBLE|FD_FLOAT)) *offset = *((double *)Data);
    else if (Flags & FD_INT)    *offset = *((int *)Data);
    else if (Flags & FD_INT64)  *offset = (*((int64_t *)Data));
@@ -312,7 +312,7 @@ static ERR writeval_double(OBJECTPTR Object, Field *Field, int Flags, CPTR Data,
 
 static ERR writeval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   auto offset = (FUNCTION *)((BYTE *)Object + Field->Offset);
+   auto offset = (FUNCTION *)((int8_t *)Object + Field->Offset);
    if (Flags & FD_FUNCTION) {
       offset[0] = ((FUNCTION *)Data)[0];
    }
@@ -327,7 +327,7 @@ static ERR writeval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Dat
 
 static ERR writeval_ptr(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   auto offset = (APTR *)((BYTE *)Object + Field->Offset);
+   auto offset = (APTR *)((int8_t *)Object + Field->Offset);
    if (Flags & (FD_POINTER|FD_STRING)) *offset = (void *)Data;
    else return ERR::SetValueNotPointer;
    return ERR::Okay;
@@ -432,7 +432,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
          }
          else if (Field->Flags & FD_RGB) {
             Elements = write_array((CSTRING)Data, Field->Flags, 4, arraybuffer);
-            if (Field->Flags & FD_INT)      ((RGB8 *)arraybuffer)->Alpha = 255;
+            if (Field->Flags & FD_INT)       ((RGB8 *)arraybuffer)->Alpha = 255;
             else if (Field->Flags & FD_BYTE) ((RGB8 *)arraybuffer)->Alpha = 255;
          }
          else Elements = write_array((CSTRING)Data, Field->Flags, 0, arraybuffer);

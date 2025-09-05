@@ -31,7 +31,7 @@
 
 #include "windows.h"
 
-typedef unsigned char UBYTE;
+typedef unsigned char uint8_t;
 
 struct winextra {
    int surface_id;   // 0
@@ -84,7 +84,7 @@ static HWND glDeferredActiveWindow = 0;
 char glTrayIcon = FALSE, glTaskBar = TRUE, glStickToFront = FALSE;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
-static BYTE glScreenClassInit = 0;
+static int8_t glScreenClassInit = 0;
 
 #ifdef DBGMSG
 static ankerl::unordered_dense::map<int, const char *> glCmd = { {
@@ -231,7 +231,7 @@ char GetMonitorSizeFromEDID(const HKEY hDevRegKey, short *WidthMm, short *Height
 {
     DWORD dwType, AcutalValueNameLength = NAME_SIZE;
     TCHAR valueName[NAME_SIZE];
-    BYTE EDIDdata[1024];
+    int8_t EDIDdata[1024];
     DWORD edidsize=sizeof(EDIDdata);
     int retValue;
 
@@ -631,7 +631,7 @@ static void HandleKeyPress(WPARAM value)
 
    // Process normal key presses
 
-   UBYTE keystate[256];
+   uint8_t keystate[256];
    WCHAR printable[2];
    int result;
 
@@ -1633,7 +1633,7 @@ void winGetError(int Error, char *Buffer, int BufferSize)
 
 //********************************************************************************************************************
 
-void winDrawRectangle(HDC hdc, int x, int y, int width, int height, UBYTE red, UBYTE green, UBYTE blue)
+void winDrawRectangle(HDC hdc, int x, int y, int width, int height, uint8_t red, uint8_t green, uint8_t blue)
 {
    RECT rect;
 

@@ -31,7 +31,7 @@ class extVectorWave : public extVector {
    double wThickness;
    DMF    wDimensions;
    WVC    wClose;
-   UBYTE  wStyle;
+   uint8_t  wStyle;
 };
 
 //********************************************************************************************************************

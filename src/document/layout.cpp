@@ -30,7 +30,7 @@ given clipping zones.  This allows text to be laid out around the table with no 
 
 */
 
-enum struct WTC: UBYTE {
+enum struct WTC: uint8_t {
    DO_NOTHING, WRAP_OVER, WRAP_LINE
 };
 

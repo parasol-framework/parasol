@@ -1909,16 +1909,16 @@ static ERR BITMAP_SaveImage(extBitmap *Self, struct acSaveImage *Args)
 {
    pf::Log log;
    struct {
-      BYTE Signature;
-      BYTE Version;
-      BYTE Encoding;
-      BYTE BitsPixel;
+      int8_t  Signature;
+      int8_t  Version;
+      int8_t  Encoding;
+      int8_t  BitsPixel;
       int16_t XMin, YMin;
       int16_t XMax, YMax;
       int16_t XDPI, YDPI; // DPI
       uint8_t palette[48];
-      BYTE Reserved;
-      BYTE NumPlanes;
+      int8_t  Reserved;
+      int8_t  NumPlanes;
       int16_t BytesLine;
       int16_t PalType;
       int16_t XRes;
@@ -2140,7 +2140,7 @@ Write: Writes raw image data to a bitmap object.
 static ERR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
 {
    if (Self->Data) {
-      auto Data = (BYTE *)Self->Data + Self->Position;
+      auto Data = (int8_t *)Self->Data + Self->Position;
       LONG amt_bytes = 0;
       while (Args->Length > 0) {
          Data[amt_bytes] = ((uint8_t *)Args->Buffer)[amt_bytes];

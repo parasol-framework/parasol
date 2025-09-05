@@ -161,9 +161,11 @@ function getFieldType(Def, Type, CustomName, Option)
       Def.type = 'int64_t'
       Def.doc_type = 'INT64'
    elseif bit.band(Type, FD_DOUBLE) != 0 then
-      Def.type = 'DOUBLE'
+      Def.type = 'double'
+      Def.doc_type = 'DOUBLE'
    elseif bit.band(Type, FD_FLOAT) != 0 then
-      Def.type = 'FLOAT'
+      Def.type = 'float'
+      Def.doc_type = 'FLOAT'
    else
       print(string.format('Failed to identify field type $%.8x for field "%s"', Type, CustomName))
       Def.type = 'void'
@@ -418,7 +420,7 @@ function cType(Field, Origin)
    do -- Double arrays
       local count = Field.type:match('^double%((.+)%)')
       if (count != nil) then
-         Field.type = 'DOUBLE'
+         Field.type = 'double'
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.double
          goto finalise
@@ -428,7 +430,7 @@ function cType(Field, Origin)
    do -- Float arrays
       local count = Field.type:match('^float%((.+)%)')
       if (count != nil) then
-         Field.type = 'FLOAT'
+         Field.type = 'float'
          Field.arraySize = tonumber(count)
          Field.fullType = glTypes.float
          goto finalise

@@ -63,7 +63,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
          LONG aligned_size = ALIGN64(def->second.Size);
-         auto structbuf = std::make_unique<UBYTE[]>(total * aligned_size);
+         auto structbuf = std::make_unique<uint8_t[]>(total * aligned_size);
 
          for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
             LONG index = lua_tointeger(Lua, -2) - 1;

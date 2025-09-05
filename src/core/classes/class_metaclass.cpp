@@ -947,7 +947,7 @@ static void field_setup(extMetaClass *Class)
 
       std::vector<uint32_t> local(std::ssize(Class->Local));
 
-      UBYTE int_count = 0;
+      uint8_t int_count = 0;
       if ((Class->Flags & CLF::INHERIT_LOCAL) != CLF::NIL) {
          for (unsigned i=0; i < Class->FieldLookup.size(); i++) {
             if (Class->FieldLookup[i].Flags & FD_LOCAL) {
@@ -1009,7 +1009,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
    );
 
    if (field.Flags & FD_VIRTUAL); // No offset will be added for virtual fields
-   else if (field.Flags & FD_RGB) Offset += sizeof(BYTE) * 4;
+   else if (field.Flags & FD_RGB) Offset += sizeof(int8_t) * 4;
    else if (field.Flags & (FD_POINTER|FD_ARRAY)) {
       #ifdef _LP64
          if (Offset & 0x7) { // Check for mis-alignment
@@ -1023,7 +1023,7 @@ static void add_field(extMetaClass *Class, std::vector<Field> &Fields, const Fie
       Offset += sizeof(APTR);
    }
    else if (field.Flags & FD_INT) Offset += sizeof(int);
-   else if (field.Flags & FD_BYTE) Offset += sizeof(BYTE);
+   else if (field.Flags & FD_BYTE) Offset += sizeof(int8_t);
    else if (field.Flags & FD_FUNCTION) Offset += sizeof(FUNCTION);
    else if (field.Flags & (FD_DOUBLE|FD_INT64)) {
       if (Offset & 0x7) {

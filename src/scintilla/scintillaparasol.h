@@ -19,24 +19,24 @@ class extScintilla : public objScintilla {
    ScintillaParasol *API;
    APTR   prvKeyEvent;
    STRING StringBuffer;
-   LONG   LongestLine;         // Longest line in the document
-   LONG   LongestWidth;        // Pixel width of the longest line
-   LONG   TabWidth;
-   LONG   InputHandle;
+   int    LongestLine;         // Longest line in the document
+   int    LongestWidth;        // Pixel width of the longest line
+   int    TabWidth;
+   int    InputHandle;
    TIMER  TimerID;
    SEF    ReportEventFlags;    // For delayed event reporting.
-   UWORD  KeyAlt:1;
-   UWORD  KeyCtrl:1;
-   UWORD  KeyShift:1;
-   UWORD  LineNumbers:1;
-   UWORD  Wordwrap:1;
-   UWORD  Symbols:1;
-   UWORD  FoldingMarkers:1;
-   UWORD  ShowWhitespace:1;
-   UWORD  AutoIndent:1;
-   UWORD  HoldModify:1;
-   UWORD  AllowTabs:1;
-   UBYTE  ScrollLocked;
+   uint16_t KeyAlt:1;
+   uint16_t KeyCtrl:1;
+   uint16_t KeyShift:1;
+   uint16_t LineNumbers:1;
+   uint16_t Wordwrap:1;
+   uint16_t Symbols:1;
+   uint16_t FoldingMarkers:1;
+   uint16_t ShowWhitespace:1;
+   uint16_t AutoIndent:1;
+   uint16_t HoldModify:1;
+   uint16_t AllowTabs:1;
+   uint8_t  ScrollLocked;
 };
 
 // This class inherits from ScintillaBase which inherits from Editor.  Responsible for a lot of the editing code.
@@ -136,13 +136,13 @@ private:
    //void SetSelectedTextStyle(int style);
    void NotifyKey(int key, int modifiers);
 
-   long braceMode;
-   LONG oldpos = -1;
+   int braceMode;
+   int oldpos = -1;
    Scintilla::ElapsedTime timer;
-   BYTE idle_timer_on:1;
-   BYTE ticking_on:1;
-   BYTE captured_mouse:1;
-   DOUBLE lastticktime;
+   int8_t idle_timer_on:1;
+   int8_t ticking_on:1;
+   int8_t captured_mouse:1;
+   double lastticktime;
    extScintilla *scintilla;
    OBJECTID surfaceid;
 };

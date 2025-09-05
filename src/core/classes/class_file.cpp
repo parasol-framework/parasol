@@ -586,7 +586,7 @@ static ERR FILE_Init(extFile *Self)
          if (AllocMemory((Self->Size < 1) ? 1 : Self->Size+1, MEM::NO_CLEAR, (APTR *)&Self->Buffer, nullptr) != ERR::Okay) {
             return log.warning(ERR::AllocMemory);
          }
-         ((BYTE *)Self->Buffer)[Self->Size] = 0;
+         ((int8_t *)Self->Buffer)[Self->Size] = 0;
       }
       return ERR::Okay;
    }
@@ -1005,7 +1005,7 @@ static ERR FILE_Read(extFile *Self, struct acRead *Args)
          // In loop mode, we must make the file buffer appear to be of infinite length in terms of the read/write
          // position marker.
 
-         auto dest = (BYTE *)Args->Buffer;
+         auto dest = (int8_t *)Args->Buffer;
          int len;
          for (int readlen=Args->Length; readlen > 0; readlen -= len) {
             if (Self->Size) len = Self->Size - (Self->Position % Self->Size); // Calculate amount of space ahead of us.
@@ -1680,11 +1680,11 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
          if (auto local = localtime(&stats.st_mtime)) {
             Self->prvCreated = DateTime {
                .Year   = int16_t(1900 + local->tm_year),
-               .Month  = BYTE(local->tm_mon + 1),
-               .Day    = BYTE(local->tm_mday),
-               .Hour   = BYTE(local->tm_hour),
-               .Minute = BYTE(local->tm_min),
-               .Second = BYTE(local->tm_sec)
+               .Month  = int8_t(local->tm_mon + 1),
+               .Day    = int8_t(local->tm_mday),
+               .Hour   = int8_t(local->tm_hour),
+               .Minute = int8_t(local->tm_min),
+               .Second = int8_t(local->tm_sec)
             };
 
             *Value = &Self->prvCreated;
@@ -1709,11 +1709,11 @@ static ERR GET_Created(extFile *Self, DateTime **Value)
             if (auto local = localtime(&stats.st_mtime)) {
                Self->prvCreated = {
                   .Year   = int16_t(1900 + local->tm_year),
-                  .Month  = BYTE(local->tm_mon + 1),
-                  .Day    = BYTE(local->tm_mday),
-                  .Hour   = BYTE(local->tm_hour),
-                  .Minute = BYTE(local->tm_min),
-                  .Second = BYTE(local->tm_sec)
+                  .Month  = int8_t(local->tm_mon + 1),
+                  .Day    = int8_t(local->tm_mday),
+                  .Hour   = int8_t(local->tm_hour),
+                  .Minute = int8_t(local->tm_min),
+                  .Second = int8_t(local->tm_sec)
                };
 
                *Value = &Self->prvCreated;
@@ -1756,11 +1756,11 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
          if (auto local = localtime(&stats.st_mtime)) {
             Self->prvModified = DateTime {
                .Year   = int16_t(1900 + local->tm_year),
-               .Month  = BYTE(local->tm_mon + 1),
-               .Day    = BYTE(local->tm_mday),
-               .Hour   = BYTE(local->tm_hour),
-               .Minute = BYTE(local->tm_min),
-               .Second = BYTE(local->tm_sec)
+               .Month  = int8_t(local->tm_mon + 1),
+               .Day    = int8_t(local->tm_mday),
+               .Hour   = int8_t(local->tm_hour),
+               .Minute = int8_t(local->tm_min),
+               .Second = int8_t(local->tm_sec)
             };
 
             *Value = &Self->prvModified;
@@ -1787,11 +1787,11 @@ static ERR GET_Date(extFile *Self, DateTime **Value)
             if (auto local = localtime(&stats.st_mtime)) {
                Self->prvModified = DateTime {
                   .Year   = int16_t(1900 + local->tm_year),
-                  .Month  = BYTE(local->tm_mon + 1),
-                  .Day    = BYTE(local->tm_mday),
-                  .Hour   = BYTE(local->tm_hour),
-                  .Minute = BYTE(local->tm_min),
-                  .Second = BYTE(local->tm_sec)
+                  .Month  = int8_t(local->tm_mon + 1),
+                  .Day    = int8_t(local->tm_mday),
+                  .Hour   = int8_t(local->tm_hour),
+                  .Minute = int8_t(local->tm_min),
+                  .Second = int8_t(local->tm_sec)
                };
 
                *Value = &Self->prvModified;
@@ -2569,11 +2569,11 @@ static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
          if (auto local = localtime(&stats.st_mtime)) {
             DateTime datetime = {
                .Year   = int16_t(1900 + local->tm_year),
-               .Month  = BYTE(local->tm_mon + 1),
-               .Day    = BYTE(local->tm_mday),
-               .Hour   = BYTE(local->tm_hour),
-               .Minute = BYTE(local->tm_min),
-               .Second = BYTE(local->tm_sec)
+               .Month  = int8_t(local->tm_mon + 1),
+               .Day    = int8_t(local->tm_mday),
+               .Hour   = int8_t(local->tm_hour),
+               .Minute = int8_t(local->tm_min),
+               .Second = int8_t(local->tm_sec)
             };
 
             *Value = calc_timestamp(&datetime);
@@ -2591,11 +2591,11 @@ static ERR GET_TimeStamp(extFile *Self, int64_t *Value)
             if (auto local = localtime(&stats.st_mtime)) {
                DateTime datetime = {
                   .Year   = int16_t(1900 + local->tm_year),
-                  .Month  = BYTE(local->tm_mon + 1),
-                  .Day    = BYTE(local->tm_mday),
-                  .Hour   = BYTE(local->tm_hour),
-                  .Minute = BYTE(local->tm_min),
-                  .Second = BYTE(local->tm_sec)
+                  .Month  = int8_t(local->tm_mon + 1),
+                  .Day    = int8_t(local->tm_mday),
+                  .Hour   = int8_t(local->tm_hour),
+                  .Minute = int8_t(local->tm_min),
+                  .Second = int8_t(local->tm_sec)
                };
 
                *Value = calc_timestamp(&datetime);

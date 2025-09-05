@@ -286,7 +286,7 @@ class objAudio : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
-   inline ERR setMasterVolume(const DOUBLE Value) noexcept {
+   inline ERR setMasterVolume(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);

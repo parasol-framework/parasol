@@ -123,7 +123,7 @@ static ERR init_volumes(const std::forward_list<std::string> &);
 #define HKEY_LOCAL_MACHINE 0x80000002
 #define KEY_READ 0x20019
 DLLCALL LONG WINAPI RegOpenKeyExA(LONG,STRING,LONG,LONG,APTR *);
-DLLCALL LONG WINAPI RegQueryValueExA(APTR,STRING,LONG *,LONG *,BYTE *,LONG *);
+DLLCALL LONG WINAPI RegQueryValueExA(APTR,STRING,LONG *,LONG *,int8_t *,LONG *);
 DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 

@@ -8,7 +8,7 @@ static int object_action_call_args(lua_State *Lua)
    AC action_id = AC(lua_tointeger(Lua, lua_upvalueindex(2)));
    bool release = false;
 
-   auto argbuffer = std::make_unique<BYTE[]>(glActions[int(action_id)].Size+8); // +8 for overflow protection in build_args()
+   auto argbuffer = std::make_unique<int8_t[]>(glActions[int(action_id)].Size+8); // +8 for overflow protection in build_args()
    ERR error = build_args(Lua, glActions[int(action_id)].Args, glActions[int(action_id)].Size, argbuffer.get(), nullptr);
    if (error != ERR::Okay) {
       luaL_error(Lua, "Argument build failure for %s.", glActions[int(action_id)].Name);
@@ -66,7 +66,7 @@ static int object_method_call_args(lua_State *Lua)
    auto def = (object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
    auto method = (MethodEntry *)lua_touserdata(Lua, lua_upvalueindex(2));
 
-   auto argbuffer = std::make_unique<BYTE[]>(method->Size+8); // +8 for overflow protection in build_args()
+   auto argbuffer = std::make_unique<int8_t[]>(method->Size+8); // +8 for overflow protection in build_args()
    int resultcount;
    ERR error = build_args(Lua, method->Args, method->Size, argbuffer.get(), &resultcount);
    if (error != ERR::Okay) {
@@ -86,7 +86,7 @@ static int object_method_call_args(lua_State *Lua)
 
    lua_pushinteger(Lua, int(error));
 
-   results += get_results(Lua, method->Args, (const BYTE *)argbuffer.get());
+   results += get_results(Lua, method->Args, (const int8_t *)argbuffer.get());
 
    if (release) release_object(def);
    report_action_error(Lua, def, method->Name, error);
@@ -119,7 +119,7 @@ static int object_method_call(lua_State *Lua)
 //********************************************************************************************************************
 // Build argument buffer for actions and methods.
 
-ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *argbuffer, int *ResultCount)
+ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, int8_t *argbuffer, int *ResultCount)
 {
    pf::Log log(__FUNCTION__);
 
@@ -348,7 +348,7 @@ ERR build_args(lua_State *Lua, const FunctionField *args, int ArgsSize, BYTE *ar
 
 // Note: Please refer to process_results() in fluid_module.c for the 'official' take on result handling.
 
-static int get_results(lua_State *Lua, const FunctionField *args, const BYTE *ArgBuf)
+static int get_results(lua_State *Lua, const FunctionField *args, const int8_t *ArgBuf)
 {
    pf::Log log(__FUNCTION__);
    int i;

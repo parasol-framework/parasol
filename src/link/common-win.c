@@ -3,18 +3,18 @@
 
 extern "C" {
 DLLCALL APTR WINAPI LoadLibraryA(CSTRING);
-DLLCALL LONG WINAPI FreeLibrary(APTR);
-DLLCALL LONG WINAPI FindClose(APTR);
+DLLCALL int WINAPI FreeLibrary(APTR);
+DLLCALL int WINAPI FindClose(APTR);
 DLLCALL APTR WINAPI FindFirstFileA(STRING, void *);
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
-DLLCALL LONG WINAPI RegOpenKeyExA(LONG,CSTRING,LONG,LONG,APTR *);
-DLLCALL LONG WINAPI RegQueryValueExA(APTR,CSTRING,LONG *,LONG *,BYTE *,LONG *);
+DLLCALL int WINAPI RegOpenKeyExA(int,CSTRING,int,int,APTR *);
+DLLCALL int WINAPI RegQueryValueExA(APTR,CSTRING,int *,int *,BYTE *,int *);
 DLLCALL void WINAPI CloseHandle(APTR);
-DLLCALL int  WINAPI MessageBoxA(LONG,CSTRING,CSTRING,LONG);
-DLLCALL LONG WINAPI GetCurrentDirectoryA(LONG, CSTRING);
-DLLCALL LONG WINAPI GetModuleFileNameA(APTR, CSTRING, LONG);
-DLLCALL LONG WINAPI SetDllDirectoryA(CSTRING);
-DLLCALL LONG WINAPI SetDefaultDllDirectories(LONG DirectoryFlags);
+DLLCALL int  WINAPI MessageBoxA(int,CSTRING,CSTRING,int);
+DLLCALL int WINAPI GetCurrentDirectoryA(int, CSTRING);
+DLLCALL int WINAPI GetModuleFileNameA(APTR, CSTRING, int);
+DLLCALL int WINAPI SetDllDirectoryA(CSTRING);
+DLLCALL int WINAPI SetDefaultDllDirectories(int DirectoryFlags);
 DLLCALL void * AddDllDirectory(STRING NewDirectory);
 }
 
@@ -24,21 +24,21 @@ DLLCALL void * AddDllDirectory(STRING NewDirectory);
 #define INVALID_HANDLE_VALUE (void *)(-1)
 
 typedef struct _FILETIME {
-	LONG dwLowDateTime;
-	LONG dwHighDateTime;
+	int dwLowDateTime;
+	int dwHighDateTime;
 } FILETIME,*PFILETIME,*LPFILETIME;
 
 typedef struct _WIN32_FIND_DATAW {
-	LONG dwFileAttributes;
+	int dwFileAttributes;
 	FILETIME ftCreationTime;
 	FILETIME ftLastAccessTime;
 	FILETIME ftLastWriteTime;
-	LONG nFileSizeHigh;
-	LONG nFileSizeLow;
-	LONG dwReserved0;
-	LONG dwReserved1;
-   UWORD cFileName[MAX_PATH];
-	UWORD cAlternateFileName[14];
+	int nFileSizeHigh;
+	int nFileSizeLow;
+	int dwReserved0;
+	int dwReserved1;
+   uint16_t cFileName[MAX_PATH];
+	uint16_t cAlternateFileName[14];
 } WIN32_FIND_DATAW,*LPWIN32_FIND_DATAW;
 
 typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
@@ -53,13 +53,13 @@ static APTR find_core(char *PathBuffer, int Size)
    PathBuffer[0] = 0;
 
    if (!PathBuffer[0]) {
-      LONG len, i;
+      int len, i;
       void *handle;
       WIN32_FIND_DATA find;
 
       // Check local directories for base installation
 
-      if ((len = GetModuleFileNameA(NULL, PathBuffer, Size))) {
+      if ((len = GetModuleFileNameA(nullptr, PathBuffer, Size))) {
          for (i=len; i > 0; i--) {
             if (PathBuffer[i] IS '\\') {
                PathBuffer[i+1] = 0;
@@ -103,15 +103,15 @@ static APTR find_core(char *PathBuffer, int Size)
    if (!PathBuffer[0]) { // If local core library not found, check the Windows registry
       APTR keyhandle;
       if (!RegOpenKeyExA(HKEY_LOCAL_MACHINE, "Software\\Parasol", 0, KEY_READ, &keyhandle)) {
-         LONG j = Size;
+         int j = Size;
          if (!RegQueryValueExA(keyhandle, "Location", 0, 0, PathBuffer, &j)) {
-            LONG i;
+            int i;
             for (i=0; PathBuffer[i]; i++);
             pos = i;
             strncpy(PathBuffer+i, "lib\\core.dll", Size-i-1);
          }
          CloseHandle(keyhandle);
-         keyhandle = NULL;
+         keyhandle = nullptr;
       }
    }
 
@@ -123,7 +123,7 @@ static APTR find_core(char *PathBuffer, int Size)
 
    {
       APTR handle;
-      if (!(handle = LoadLibraryA(PathBuffer))) return NULL;
+      if (!(handle = LoadLibraryA(PathBuffer))) return nullptr;
 
       PathBuffer[pos] = 0;
       return handle;

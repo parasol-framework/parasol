@@ -900,8 +900,8 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                   colour = src->TransIndex;
                   while (Height > 0) {
                      for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                     ddata = (uint32_t *)(((BYTE *)ddata) + dest->LineWidth);
-                     sdata = (uint32_t *)(((BYTE *)sdata) + src->LineWidth);
+                     ddata = (uint32_t *)(((int8_t *)ddata) + dest->LineWidth);
+                     sdata = (uint32_t *)(((int8_t *)sdata) + src->LineWidth);
                      Height--;
                   }
                }
@@ -913,8 +913,8 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                   colour = src->TransIndex;
                   while (Height > 0) {
                      for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                     ddata = (uint16_t *)(((BYTE *)ddata) + dest->LineWidth);
-                     sdata = (uint16_t *)(((BYTE *)sdata) + src->LineWidth);
+                     ddata = (uint16_t *)(((int8_t *)ddata) + dest->LineWidth);
+                     sdata = (uint16_t *)(((int8_t *)sdata) + src->LineWidth);
                      Height--;
                   }
                }
@@ -980,8 +980,8 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                                    ((srctable[(uint8_t)(sdata[i]>>src->prvColourFormat.BluePos)]  + desttable[(uint8_t)(ddata[i]>>dest->prvColourFormat.BluePos)]) << dest->prvColourFormat.BluePos) |
                                    cmp_alpha;
                      }
-                     ddata = (uint32_t *)(((BYTE *)ddata) + dest->LineWidth);
-                     sdata = (uint32_t *)(((BYTE *)sdata) + src->LineWidth);
+                     ddata = (uint32_t *)(((int8_t *)ddata) + dest->LineWidth);
+                     sdata = (uint32_t *)(((int8_t *)sdata) + src->LineWidth);
                      Height--;
                   }
                }
@@ -996,8 +996,8 @@ ERR CopyArea(objBitmap *Source, objBitmap *Dest, BAF Flags, int X, int Y, int Wi
                                                    srctable[src->unpackGreen(sdata[i])] + desttable[dest->unpackGreen(ddata[i])],
                                                    srctable[src->unpackBlue(sdata[i])]  + desttable[dest->unpackBlue(ddata[i])]);
                      }
-                     ddata = (uint16_t *)(((BYTE *)ddata) + dest->LineWidth);
-                     sdata = (uint16_t *)(((BYTE *)sdata) + src->LineWidth);
+                     ddata = (uint16_t *)(((int8_t *)ddata) + dest->LineWidth);
+                     sdata = (uint16_t *)(((int8_t *)sdata) + src->LineWidth);
                      Height--;
                   }
                }
@@ -1140,7 +1140,7 @@ static uint32_t read_surface8(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 
 static uint32_t read_surface16(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
 {
-   return ((uint16_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + X + X))[0];
+   return ((uint16_t *)((int8_t *)Surface->Data + (Y * Surface->LineWidth) + X + X))[0];
 }
 
 static uint32_t read_surface_lsb24(BITMAPSURFACE *Surface, int16_t X, int16_t Y)
@@ -1292,7 +1292,7 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
 
    if (lock_surface((extBitmap *)Bitmap, SURFACE_WRITE) IS ERR::Okay) {
       if (((Flags & CSRF::ALPHA) != CSRF::NIL) and (Surface->BitsPerPixel IS 32)) { // 32-bit alpha blending support
-         uint32_t *sdata = (uint32_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
+         uint32_t *sdata = (uint32_t *)((int8_t *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
 
          if (Bitmap->BitsPerPixel IS 32) {
             uint32_t *ddata = (uint32_t *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<2));
@@ -1387,26 +1387,26 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
          }
          else if (Surface->BitsPerPixel IS Bitmap->BitsPerPixel) {
             if (Surface->BytesPerPixel IS 4) {
-               uint32_t *sdata = (uint32_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
+               uint32_t *sdata = (uint32_t *)((int8_t *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
                uint32_t *ddata = (uint32_t *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<2));
                colour = Surface->Colour;
                while (Height > 0) {
                   for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                  ddata = (uint32_t *)(((BYTE *)ddata) + Bitmap->LineWidth);
-                  sdata = (uint32_t *)(((BYTE *)sdata) + Surface->LineWidth);
+                  ddata = (uint32_t *)(((int8_t *)ddata) + Bitmap->LineWidth);
+                  sdata = (uint32_t *)(((int8_t *)sdata) + Surface->LineWidth);
                   Height--;
                }
             }
             else if (Surface->BytesPerPixel IS 2) {
                uint16_t *ddata, *sdata;
 
-               sdata = (uint16_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<1));
+               sdata = (uint16_t *)((int8_t *)Surface->Data + (Y * Surface->LineWidth) + (X<<1));
                ddata = (uint16_t *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<1));
                colour = Surface->Colour;
                while (Height > 0) {
                   for (i=0; i < Width; i++) if (sdata[i] != colour) ddata[i] = sdata[i];
-                  ddata = (uint16_t *)(((BYTE *)ddata) + Bitmap->LineWidth);
-                  sdata = (uint16_t *)(((BYTE *)sdata) + Surface->LineWidth);
+                  ddata = (uint16_t *)(((int8_t *)ddata) + Bitmap->LineWidth);
+                  sdata = (uint16_t *)(((int8_t *)sdata) + Surface->LineWidth);
                   Height--;
                }
             }
@@ -1445,7 +1445,7 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
             if ((Surface->BytesPerPixel IS 4) and (Bitmap->BytesPerPixel IS 4)) {
                uint32_t *ddata, *sdata;
 
-               sdata = (uint32_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
+               sdata = (uint32_t *)((int8_t *)Surface->Data + (Y * Surface->LineWidth) + (X<<2));
                ddata = (uint32_t *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<2));
                while (Height > 0) {
                   for (int i=0; i < Width; i++) {
@@ -1453,15 +1453,15 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
                                 ((srctable[(uint8_t)(sdata[i]>>Surface->Format.GreenPos)] + desttable[(uint8_t)(ddata[i]>>dest->prvColourFormat.GreenPos)]) << dest->prvColourFormat.GreenPos) |
                                 ((srctable[(uint8_t)(sdata[i]>>Surface->Format.BluePos)]  + desttable[(uint8_t)(ddata[i]>>dest->prvColourFormat.BluePos)]) << dest->prvColourFormat.BluePos);
                   }
-                  ddata = (uint32_t *)(((BYTE *)ddata) + Bitmap->LineWidth);
-                  sdata = (uint32_t *)(((BYTE *)sdata) + Surface->LineWidth);
+                  ddata = (uint32_t *)(((int8_t *)ddata) + Bitmap->LineWidth);
+                  sdata = (uint32_t *)(((int8_t *)sdata) + Surface->LineWidth);
                   Height--;
                }
             }
             else if ((Surface->BytesPerPixel IS 2) and (Bitmap->BytesPerPixel IS 2)) {
                uint16_t *ddata, *sdata;
 
-               sdata = (uint16_t *)((BYTE *)Surface->Data + (Y * Surface->LineWidth) + (X<<1));
+               sdata = (uint16_t *)((int8_t *)Surface->Data + (Y * Surface->LineWidth) + (X<<1));
                ddata = (uint16_t *)(Bitmap->Data + (YDest * Bitmap->LineWidth) + (XDest<<1));
                while (Height > 0) {
                   for (i=0; i < Width; i++) {
@@ -1469,8 +1469,8 @@ ERR CopyRawBitmap(BITMAPSURFACE *Surface, objBitmap *Bitmap, CSRF Flags, int X, 
                                                   srctable[UnpackSGreen(Surface, sdata[i])] + desttable[Bitmap->unpackGreen(ddata[i])],
                                                   srctable[UnpackSBlue(Surface, sdata[i])] + desttable[Bitmap->unpackBlue(ddata[i])]);
                   }
-                  ddata = (uint16_t *)(((BYTE *)ddata) + Bitmap->LineWidth);
-                  sdata = (uint16_t *)(((BYTE *)sdata) + Surface->LineWidth);
+                  ddata = (uint16_t *)(((int8_t *)ddata) + Bitmap->LineWidth);
+                  sdata = (uint16_t *)(((int8_t *)sdata) + Surface->LineWidth);
                   Height--;
                }
             }
@@ -1665,7 +1665,7 @@ void DrawRectangle(objBitmap *Target, int X, int Y, const int Width, const int H
             xend = X + w;
             while (h > 0) {
                for (x=X; x < xend; x++) word[x] = (uint16_t)Colour;
-               word = (uint16_t *)(((BYTE *)word) + Bitmap->LineWidth);
+               word = (uint16_t *)(((int8_t *)word) + Bitmap->LineWidth);
                h--;
             }
          }

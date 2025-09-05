@@ -97,7 +97,7 @@ void stream_char::erase_char(RSTREAM &Stream) // Erase a character OR an escape 
 //********************************************************************************************************************
 // Retrieve the first available character.  Assumes that the position is valid.  Does not support unicode!
 
-UBYTE stream_char::get_char(RSTREAM &Stream)
+uint8_t stream_char::get_char(RSTREAM &Stream)
 {
    auto idx = index;
    auto seek = offset;
@@ -115,7 +115,7 @@ UBYTE stream_char::get_char(RSTREAM &Stream)
 //********************************************************************************************************************
 // Retrieve the first character after seeking past N viable characters (forward only).  Does not support unicode!
 
-UBYTE stream_char::get_char(RSTREAM &Stream, INDEX Seek)
+uint8_t stream_char::get_char(RSTREAM &Stream, INDEX Seek)
 {
    auto idx = index;
    auto off = offset;
@@ -169,7 +169,7 @@ void stream_char::prev_char(RSTREAM &Stream)
 // Return the previous printable character for a given position.  Does not support unicode!  Non-text codes are
 // completely ignored.
 
-UBYTE stream_char::get_prev_char(RSTREAM &Stream)
+uint8_t stream_char::get_prev_char(RSTREAM &Stream)
 {
    if ((offset > 0) and (Stream[index].code IS SCODE::TEXT)) {
       return Stream.lookup<bc_text>(index).text[offset-1];
@@ -188,7 +188,7 @@ UBYTE stream_char::get_prev_char(RSTREAM &Stream)
 // Return the previous printable character for a given position.  Inline graphics are considered characters but will
 // be returned as 0xff.
 
-UBYTE stream_char::get_prev_char_or_inline(RSTREAM &Stream)
+uint8_t stream_char::get_prev_char_or_inline(RSTREAM &Stream)
 {
    if ((offset > 0) and (Stream[index].code IS SCODE::TEXT)) {
       return Stream.lookup<bc_text>(index).text[offset-1];

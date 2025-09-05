@@ -287,7 +287,7 @@ public:
 
    ERR initHue() {
       const double greenRotation = 39.182655;
-      UBYTE init = false;
+      uint8_t init = false;
 
       if (!init) {
          preHue = new (std::nothrow) ColourMatrix();
@@ -340,10 +340,10 @@ static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
    if (Self->Target->BytesPerPixel != 4) return ERR::Failed;
    if (!Self->Matrix) return ERR::Failed;
 
-   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
-   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
-   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
-   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
+   const uint8_t A = Self->Target->ColourFormat->AlphaPos>>3;
+   const uint8_t R = Self->Target->ColourFormat->RedPos>>3;
+   const uint8_t G = Self->Target->ColourFormat->GreenPos>>3;
+   const uint8_t B = Self->Target->ColourFormat->BluePos>>3;
 
    ColourMatrix &matrix = *Self->Matrix;
 
@@ -354,8 +354,8 @@ static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
    auto in_line  = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
 
    for (LONG y=0; y < inBmp->Clip.Bottom - inBmp->Clip.Top; y++) {
-      UBYTE *pixel = in_line;
-      UBYTE *out = out_line;
+      uint8_t *pixel = in_line;
+      uint8_t *out = out_line;
       for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++, pixel += 4, out += 4) {
          double a = pixel[A];
          if (a) {

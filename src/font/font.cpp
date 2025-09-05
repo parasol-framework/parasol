@@ -55,7 +55,7 @@ using namespace pf;
 // This table determines what ASCII characters are treated as white-space for word-wrapping purposes.  You'll need to
 // refer to an ASCII table to see what is going on here.
 
-static const UBYTE glWrapBreaks[256] = {
+static const uint8_t glWrapBreaks[256] = {
    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x0f
    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x1f
    1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, // 0x2f
@@ -89,7 +89,7 @@ static FT_Library glFTLibrary = nullptr;
 
 class extFont : public objFont {
    public:
-   UBYTE *prvData;
+   uint8_t *prvData;
    std::string prvBuffer;
    struct FontCharacter *prvChar;
    class BitmapCache *BmpCache;
@@ -100,7 +100,7 @@ class extFont : public objFont {
    char prvEscape[2];
    char prvFace[32];
    char prvStyle[20];
-   UBYTE prvDefaultChar;
+   uint8_t prvDefaultChar;
 };
 
 #include "font_def.c"
@@ -220,7 +220,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 {
    uint32_t unicode;
    int16_t rowcount, wordwidth, lastword, tabwidth, charwidth;
-   UBYTE line_abort, pchar;
+   uint8_t line_abort, pchar;
 
    if ((!Font) or (!String)) return;
    if (!Font->initialised()) return;
@@ -295,7 +295,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
             break;
          }
          else {
-            pchar = glWrapBreaks[(UBYTE)(*String)];
+            pchar = glWrapBreaks[(uint8_t)(*String)];
             wordwidth += charwidth;
             String += charlen;
             charcount++;
@@ -922,7 +922,7 @@ static void scan_truetype_folder(objConfig *Config)
                                     auto str = (uint16_t *)sft_name.string;
                                     uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
-                                       uint16_t unicode = (str[i]>>8) | (UBYTE(str[i])<<8);
+                                       uint16_t unicode = (str[i]>>8) | (uint8_t(str[i])<<8);
                                        if ((unicode >= 'A') and (unicode <= 'Z')) {
                                           if ((i > 0) and (prev_unicode >= 'a') and (prev_unicode <= 'z')) {
                                              buffer[out++] = ' ';

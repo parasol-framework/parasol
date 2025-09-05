@@ -78,7 +78,7 @@ typedef struct {
   GUID SubFormat;
 } WAVEFORMATEXTENSIBLE;
 
-typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, FLOAT, FLOAT, FLOAT **);
+typedef LONG (*MixRoutine)(APTR, LONG, LONG, LONG, float, float, float **);
 
 // Function to set mixing step for thread-safe operation
 void set_mix_step(LONG step);
@@ -96,7 +96,7 @@ struct PlatformData { void *Void; };
 struct AudioSample {
    FUNCTION Callback;     // For feeding audio streams.
    FUNCTION OnStop;       // Called when playback stops.
-   UBYTE *  Data;         // Pointer to the sample data.
+   uint8_t *  Data;         // Pointer to the sample data.
    SAMPLE   Loop1Start;   // Start of the first loop
    SAMPLE   Loop1End;     // End of the first loop
    SAMPLE   Loop2Start;   // Start of the second loop
@@ -161,9 +161,9 @@ struct AudioChannel {
    LONG     Position;       // Current playing/mixing byte position within Sample.
    LONG     Frequency;      // Playback frequency
    LONG     PositionLow;    // Playing position, lower bits
-   BYTE     Priority;       // Priority of the sound that has been assigned to this channel
+   int8_t     Priority;       // Priority of the sound that has been assigned to this channel
    CHS      State;          // Channel state
-   BYTE     LoopIndex;      // The current active loop (either 0, 1 or 2)
+   int8_t     LoopIndex;      // The current active loop (either 0, 1 or 2)
    bool     Buffering;
 
    bool active() {
@@ -201,7 +201,7 @@ struct ChannelSet {
 struct VolumeCtl {
    std::string Name;     // Name of the mixer
    VCF Flags;            // Special flags identifying the mixer's attributes.
-   std::vector<FLOAT> Channels; // A variable length array of channel volumes.
+   std::vector<float> Channels; // A variable length array of channel volumes.
 
    VolumeCtl() {
       Flags = VCF::NIL;
@@ -211,7 +211,7 @@ struct VolumeCtl {
    VolumeCtl(std::string pName, VCF pFlags = VCF::NIL, double pVolume = -1) {
       Name = pName;
       Flags = pFlags;
-      Channels = { (FLOAT)pVolume };
+      Channels = { (float)pVolume };
    }
 };
 
@@ -232,10 +232,10 @@ class extAudio : public objAudio {
    APTR  TaskRemovedHandle;
    APTR  UserLoginHandle;
    #ifdef _WIN32
-      UBYTE  PlatformData[128];  // Data area for holding platform/hardware specific information
+      uint8_t  PlatformData[128];  // Data area for holding platform/hardware specific information
    #endif
    #ifdef ALSA_ENABLED
-      UBYTE *AudioBuffer;
+      uint8_t *AudioBuffer;
       snd_pcm_t    *Handle;
       snd_mixer_t  *MixHandle;
       snd_output_t *sndlog;
@@ -247,7 +247,7 @@ class extAudio : public objAudio {
    SAMPLE  MixElements;
    LONG    MaxChannels;    // Recommended maximum mixing channels for Sound class
    std::string Device;
-   BYTE  DriverBitSize;  // Target sample bit size; accounts for stereo channel
+   int8_t  DriverBitSize;  // Target sample bit size; accounts for stereo channel
    bool  Stereo;
    bool  Mute;
    bool  Initialising;
@@ -278,9 +278,9 @@ class extAudio : public objAudio {
 class extSound : public objSound {
    public:
    FUNCTION OnStop;
-   UBYTE  Header[32];
+   uint8_t  Header[32];
    #ifdef _WIN32
-   UBYTE  PlatformData[64];   // Data area for holding platform/hardware specific information
+   uint8_t  PlatformData[64];   // Data area for holding platform/hardware specific information
    #endif
    ankerl::unordered_dense::map<std::string, std::string> Tags;
    objFile *File;

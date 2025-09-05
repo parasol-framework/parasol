@@ -357,10 +357,10 @@ A list of the most recently resolved IP addresses can be read from this field.
 
 *********************************************************************************************************************/
 
-static ERR GET_Addresses(extNetLookup *Self, BYTE **Value, int *Elements)
+static ERR GET_Addresses(extNetLookup *Self, int8_t **Value, int *Elements)
 {
    if (!Self->Info.Addresses.empty()) {
-      *Value = (BYTE *)Self->Info.Addresses.data();
+      *Value = (int8_t *)Self->Info.Addresses.data();
       *Elements = Self->Info.Addresses.size();
       return ERR::Okay;
    }

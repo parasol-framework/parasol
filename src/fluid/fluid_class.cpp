@@ -19,7 +19,7 @@ extern "C" {
 #include "defs.h"
 
 static ERR run_script(objScript *);
-static ERR stack_args(lua_State *, OBJECTID, const FunctionField *, BYTE *);
+static ERR stack_args(lua_State *, OBJECTID, const FunctionField *, int8_t *);
 static ERR save_binary(objScript *, OBJECTPTR);
 
 inline CSTRING check_bom(CSTRING Value)
@@ -172,7 +172,7 @@ void process_error(objScript *Self, CSTRING Procedure)
 // This routine is intended for handling action notifications only.  It takes the FunctionField list provided by the
 // action and copies them into a table.  Each value is represented by the relevant parameter name for ease of use.
 
-static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, BYTE *Buffer)
+static ERR stack_args(lua_State *Lua, OBJECTID ObjectID, const FunctionField *args, int8_t *Buffer)
 {
    pf::Log log(__FUNCTION__);
    int j;
@@ -252,7 +252,7 @@ void notify_action(OBJECTPTR Object, ACTIONID ActionID, ERR Result, APTR Args)
             lua_newtable(prv->Lua);  // +1: Table to store the parameters
 
             if ((scan.Args) and (Args)) {
-               stack_args(prv->Lua, Object->UID, scan.Args, (STRING)Args);
+               stack_args(prv->Lua, Object->UID, scan.Args, (int8_t *)Args);
             }
 
             int total_args = 2;

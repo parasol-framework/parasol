@@ -1967,7 +1967,7 @@ static ERR load_pic(extSVG *Self, std::string Path, objPicture **Picture, double
             pf::BASE64DECODE state;
             clearmem(&state, sizeof(state));
 
-            UBYTE *output;
+            uint8_t *output;
             int size = strlen(val);
             if (AllocMemory(size, MEM::DATA|MEM::NO_CLEAR, &output) IS ERR::Okay) {
                int written;

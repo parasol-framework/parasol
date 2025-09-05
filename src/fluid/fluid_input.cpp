@@ -264,7 +264,7 @@ static int input_request_item(lua_State *Lua)
       if (src.granted()) {
          struct dcRequest dcr;
          dcr.Item          = item;
-         dcr.Preference[0] = UBYTE(datatype);
+         dcr.Preference[0] = uint8_t(datatype);
          dcr.Preference[1] = 0;
 
          auto error = acDataFeed(*src, Lua->Script, DATA::REQUEST, &dcr, sizeof(dcr));

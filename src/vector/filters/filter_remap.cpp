@@ -42,8 +42,8 @@ class Component {
    double Exponent;           // If gamma; the exponent of the gamma function.
    double Offset;             // If gamma; the offset of the gamma function.
    RFT    Type;               // The type of algorithm to use.
-   UBYTE  Lookup[256];        // sRGB lookup
-   UBYTE  ILookup[256];       // Inverted linear RGB lookup
+   uint8_t  Lookup[256];        // sRGB lookup
+   uint8_t  ILookup[256];       // Inverted linear RGB lookup
 
    void select_invert() {
       Type = RFT_INVERT;
@@ -61,7 +61,7 @@ class Component {
       }
    }
 
-   void select_mask(UBYTE pMask) {
+   void select_mask(uint8_t pMask) {
       Type = RFT_MASK;
       for (size_t i=0; i < sizeof(Lookup); i++) {
          Lookup[i]  = i & pMask;
@@ -105,8 +105,8 @@ class Component {
          k = std::min(k, (uint32_t)n - 1);
          auto val = 255.0 * double(Table[k]);
          val = std::max(0.0, std::min(255.0, val));
-         Lookup[i] = UBYTE(val);
-         ILookup[i] = glLinearRGB.invert(UBYTE(val));
+         Lookup[i] = uint8_t(val);
+         ILookup[i] = glLinearRGB.invert(uint8_t(val));
       }
    }
 
@@ -168,13 +168,13 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
    if (bmp->Clip.Right - bmp->Clip.Left < width) width = bmp->Clip.Right - bmp->Clip.Left;
    if (bmp->Clip.Bottom - bmp->Clip.Top < height) height = bmp->Clip.Bottom - bmp->Clip.Top;
 
-   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
-   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
-   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
-   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
+   const uint8_t R = Self->Target->ColourFormat->RedPos>>3;
+   const uint8_t G = Self->Target->ColourFormat->GreenPos>>3;
+   const uint8_t B = Self->Target->ColourFormat->BluePos>>3;
+   const uint8_t A = Self->Target->ColourFormat->AlphaPos>>3;
 
-   UBYTE *in = bmp->Data + (bmp->Clip.Left * 4) + (bmp->Clip.Top * bmp->LineWidth);
-   UBYTE *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
+   uint8_t *in = bmp->Data + (bmp->Clip.Left * 4) + (bmp->Clip.Top * bmp->LineWidth);
+   uint8_t *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
    for (LONG y=0; y < height; y++) {
       auto dp = (uint32_t *)dest;
       auto sp = in;
@@ -182,7 +182,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
       if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
          for (LONG x=0; x < width; x++) {
             if (auto a = sp[A]) {
-               UBYTE out[4];
+               uint8_t out[4];
                out[R] = Self->Red.ILookup[glLinearRGB.convert(sp[R])];
                out[G] = Self->Green.ILookup[glLinearRGB.convert(sp[G])];
                out[B] = Self->Blue.ILookup[glLinearRGB.convert(sp[B])];
@@ -196,7 +196,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
       else {
          for (LONG x=0; x < width; x++) {
             if (auto a = sp[A]) {
-               UBYTE out[4];
+               uint8_t out[4];
                out[R] = Self->Red.Lookup[sp[R]];
                out[G] = Self->Green.Lookup[sp[G]];
                out[B] = Self->Blue.Lookup[sp[B]];
