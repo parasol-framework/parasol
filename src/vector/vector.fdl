@@ -659,9 +659,9 @@ module({ name="Vector", copyright="Paul Manias © 2010-2025", version=1.0, times
 
 inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 {
-   DOUBLE t0 = This.ScaleX * Other.ScaleX + This.ShearY * Other.ShearX;
-   DOUBLE t2 = This.ShearX * Other.ScaleX + This.ScaleY * Other.ShearX;
-   DOUBLE t4 = This.TranslateX * Other.ScaleX + This.TranslateY * Other.ShearX + Other.TranslateX;
+   double t0 = This.ScaleX * Other.ScaleX + This.ShearY * Other.ShearX;
+   double t2 = This.ShearX * Other.ScaleX + This.ScaleY * Other.ShearX;
+   double t4 = This.TranslateX * Other.ScaleX + This.TranslateY * Other.ShearX + Other.TranslateX;
    This.ShearY     = This.ScaleX * Other.ShearY + This.ShearY * Other.ScaleY;
    This.ScaleY     = This.ShearX * Other.ShearY + This.ScaleY * Other.ScaleY;
    This.TranslateY = This.TranslateX  * Other.ShearY + This.TranslateY * Other.ScaleY + Other.TranslateY;
@@ -672,7 +672,7 @@ inline void operator*=(VectorMatrix &This, const VectorMatrix &Other)
 
 //********************************************************************************************************************
 
-inline void SET_VECTOR_COLOUR(objVectorColour *Colour, DOUBLE Red, DOUBLE Green, DOUBLE Blue, DOUBLE Alpha) {
+inline void SET_VECTOR_COLOUR(objVectorColour *Colour, double Red, double Green, double Blue, double Alpha) {
    Colour->Class->ClassID = CLASSID::VECTORCOLOUR;
    Colour->Red   = Red;
    Colour->Green = Green;

@@ -124,7 +124,7 @@ ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
    int16_t f_refresh, c_refresh;
    int16_t f_minrefresh, c_minrefresh;
    int16_t f_maxrefresh, c_maxrefresh;
-   BYTE interlace, matched;
+   int8_t interlace, matched;
 
    if ((!Info) or (Size < sizeof(DisplayInfoV3))) return ERR::Args;
 

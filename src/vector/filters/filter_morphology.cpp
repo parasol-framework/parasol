@@ -49,13 +49,13 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
    if (canvasWidth * canvasHeight > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
 
-   const UBYTE A = Self->Target->ColourFormat->AlphaPos>>3;
-   const UBYTE R = Self->Target->ColourFormat->RedPos>>3;
-   const UBYTE G = Self->Target->ColourFormat->GreenPos>>3;
-   const UBYTE B = Self->Target->ColourFormat->BluePos>>3;
+   const uint8_t A = Self->Target->ColourFormat->AlphaPos>>3;
+   const uint8_t R = Self->Target->ColourFormat->RedPos>>3;
+   const uint8_t G = Self->Target->ColourFormat->GreenPos>>3;
+   const uint8_t B = Self->Target->ColourFormat->BluePos>>3;
 
-   UBYTE *out_line;
-   UBYTE *buffer = nullptr;
+   uint8_t *out_line;
+   uint8_t *buffer = nullptr;
    LONG out_linewidth;
    bool buffer_as_input;
 
@@ -63,38 +63,38 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
    // directly write to the target bitmap.
 
    if ((Self->RadiusX > 0) and (Self->RadiusY > 0)) {
-      buffer = new (std::nothrow) UBYTE[canvasWidth * canvasHeight * 4];
+      buffer = new (std::nothrow) uint8_t[canvasWidth * canvasHeight * 4];
       if (!buffer) return ERR::Memory;
       out_line = buffer;
       out_linewidth = canvasWidth * 4;
       buffer_as_input = true;
    }
    else {
-      out_line = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+      out_line = (uint8_t *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
       out_linewidth = Self->Target->LineWidth;
       buffer_as_input = false;
    }
 
    objBitmap *inBmp;
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
-   UBYTE *input = inBmp->Data + (inBmp->Clip.Top * inBmp->LineWidth) + (inBmp->Clip.Left * inBmp->BytesPerPixel);
+   uint8_t *input = inBmp->Data + (inBmp->Clip.Top * inBmp->LineWidth) + (inBmp->Clip.Left * inBmp->BytesPerPixel);
 
    if (Self->RadiusX > 0) { // Top-to-bottom dilate
       auto radius = Self->RadiusX;
       if (canvasWidth - 1 < radius) radius = canvasWidth - 1;
 
-      const UBYTE *endinput  = input + (radius * 4);
-      const UBYTE *inputline = input;
+      const uint8_t *endinput  = input + (radius * 4);
+      const uint8_t *inputline = input;
 
       for (int x=0; x < canvasWidth; ++x) {
-         const UBYTE *in  = inputline;
-         const UBYTE *end = endinput;
+         const uint8_t *in  = inputline;
+         const uint8_t *end = endinput;
          auto out         = out_line;
 
          if (Self->Operator IS MOP::DILATE) {
             for (int y = 0; y < canvasHeight; ++y) {
-               UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
-               for (const UBYTE *pix=in; pix <= end; pix += 4) {
+               uint8_t maxB = 0, maxG = 0, maxR = 0, maxA = 0;
+               for (const uint8_t *pix=in; pix <= end; pix += 4) {
                   if (pix[B] > maxB) maxB = pix[B];
                   if (pix[G] > maxG) maxG = pix[G];
                   if (pix[R] > maxR) maxR = pix[R];
@@ -109,8 +109,8 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
          }
          else { // ERODE
             for (int y = 0; y < canvasHeight; ++y) {
-               UBYTE minB = 255, minG = 255, minR = 255, minA = 255;
-               for (const UBYTE *p=in; p <= end; p += 4) {
+               uint8_t minB = 255, minG = 255, minR = 255, minA = 255;
+               for (const uint8_t *p=in; p <= end; p += 4) {
                   if (p[B] < minB) minB = p[B];
                   if (p[G] < minG) minG = p[G];
                   if (p[R] < minR) minR = p[R];
@@ -134,8 +134,8 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
       auto radius = Self->RadiusY;
       if (canvasHeight - 1 < radius) radius = canvasHeight - 1;
 
-      const UBYTE *endinput;
-      const UBYTE *inputline;
+      const uint8_t *endinput;
+      const uint8_t *inputline;
       LONG inwidth;
 
       if (buffer_as_input) {
@@ -149,18 +149,18 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
          inwidth   = inBmp->LineWidth;
       }
 
-      out_line = (UBYTE *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
+      out_line = (uint8_t *)(Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth));
       out_linewidth = Self->Target->LineWidth;
 
       for (int y=0; y < canvasHeight; y++) {
-         const UBYTE *in = inputline;
-         const UBYTE *end = endinput;
+         const uint8_t *in = inputline;
+         const uint8_t *end = endinput;
          auto out = out_line;
 
          if (Self->Operator IS MOP::DILATE) {
             for (int x=0; x < canvasWidth; x++) {
-               UBYTE maxB = 0, maxG = 0, maxR = 0, maxA = 0;
-               for (const UBYTE *pix=in; pix <= end; pix += inwidth) {
+               uint8_t maxB = 0, maxG = 0, maxR = 0, maxA = 0;
+               for (const uint8_t *pix=in; pix <= end; pix += inwidth) {
                   if (pix[B] > maxB) maxB = pix[B];
                   if (pix[G] > maxG) maxG = pix[G];
                   if (pix[R] > maxR) maxR = pix[R];
@@ -174,8 +174,8 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
          }
          else { // ERODE
             for (int x=0; x < canvasWidth; x++) {
-               UBYTE minB = 255, minG = 255, minR = 255, minA = 255;
-               for (const UBYTE *pix=in; pix <= end; pix += inwidth) {
+               uint8_t minB = 255, minG = 255, minR = 255, minA = 255;
+               for (const uint8_t *pix=in; pix <= end; pix += inwidth) {
                   if (pix[B] < minB) minB = pix[B];
                   if (pix[G] < minG) minG = pix[G];
                   if (pix[R] < minR) minR = pix[R];

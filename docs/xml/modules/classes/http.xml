@@ -58,6 +58,7 @@ http.acActivate()
 <p>Secure sockets are supported and can be enabled by setting the <fl>Port</fl> to 443 prior to connection, or by using <code>https://</code> in URI strings.  Methods of communication remain unchanged when using SSL, as encrypted communication is handled transparently.</p></description>
     <source>
       <file>http.cpp</file>
+      <file>http_fields.cpp</file>
     </source>
   </info>
 

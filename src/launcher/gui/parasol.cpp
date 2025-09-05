@@ -241,7 +241,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
 {
    LONG i, j, k;
    ERROR error;
-   BYTE argbuffer[100], *argname;
+   int8_t argbuffer[100], *argname;
 
    *CoreObjectID = 0;
 

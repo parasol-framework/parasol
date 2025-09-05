@@ -143,7 +143,7 @@ IntegrityLevel get_integrity_level(void)
 //********************************************************************************************************************
 // Execute a process at low priority.
 
-ERR create_low_process(std::string_view ExePath, BYTE SharedOutput)
+ERR create_low_process(std::string_view ExePath, int8_t SharedOutput)
 {
    ERR result = ERR::Failed;
    HANDLE hToken = nullptr;

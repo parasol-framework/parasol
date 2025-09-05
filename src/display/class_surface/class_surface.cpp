@@ -860,7 +860,7 @@ static ERR SURFACE_Focus(extSurface *Self)
    // placed first, then the lost-focus chain.
 
    int event_size = sizeof(evFocus) + (glFocusList.size() * sizeof(OBJECTID)) + (lostfocus.size() * sizeof(OBJECTID));
-   auto buffer = std::make_unique<BYTE[]>(event_size);
+   auto buffer = std::make_unique<int8_t[]>(event_size);
    auto ev = (evFocus *)(buffer.get());
    ev->EventID        = EVID_GUI_SURFACE_FOCUS;
    ev->TotalWithFocus = glFocusList.size();
@@ -1587,7 +1587,7 @@ static ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
    // response times.
 
    int index = 0;
-   UBYTE msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
+   uint8_t msgbuffer[sizeof(Message) + sizeof(ActionMessage) + sizeof(struct acMove)];
    while (ScanMessages(&index, MSGID::ACTION, msgbuffer, sizeof(msgbuffer)) IS ERR::Okay) {
       auto action = (ActionMessage *)(msgbuffer + sizeof(Message));
 

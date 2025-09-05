@@ -309,7 +309,7 @@ struct finput {
    int   Callback;
    int   InputValue;
    JTYPE Mask;
-   BYTE  Mode;
+   int8_t  Mode;
 };
 
 enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
@@ -416,7 +416,7 @@ struct lua_ref {
 OBJECTPTR access_object(struct object *);
 std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
-ERR build_args(lua_State *, const struct FunctionField *, int, BYTE *, int *);
+ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
 int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
 int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));

@@ -544,10 +544,10 @@ class objBitmap : public Object {
    int       BkgdIndex;                                            // The bitmap's background colour is defined here as a colour index.
    CS        ColourSpace;                                          // Defines the colour space for RGB values.
    public:
-   inline ULONG getColour(struct RGB8 &RGB) {
+   inline uint32_t getColour(struct RGB8 &RGB) {
       if (BitsPerPixel > 8) return packPixel(RGB);
       else {
-         ULONG result;
+         uint32_t result;
          if (getColour(RGB.Red, RGB.Green, RGB.Blue, RGB.Alpha, &result) IS ERR::Okay) {
             return result;
          }
@@ -555,7 +555,7 @@ class objBitmap : public Object {
       }
    }
 
-   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B) {
+   inline uint32_t packPixel(uint8_t R, uint8_t G, uint8_t B) {
       return
          (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
          (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
@@ -563,7 +563,7 @@ class objBitmap : public Object {
          (((255>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
    }
 
-   inline ULONG packPixel(UBYTE R, UBYTE G, UBYTE B, UBYTE A) {
+   inline uint32_t packPixel(uint8_t R, uint8_t G, uint8_t B, uint8_t A) {
       return
          (((R>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
          (((G>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
@@ -571,7 +571,7 @@ class objBitmap : public Object {
          (((A>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
    }
 
-   inline ULONG packPixel(struct RGB8 &RGB, UBYTE Alpha) {
+   inline uint32_t packPixel(struct RGB8 &RGB, uint8_t Alpha) {
       return
          (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
          (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
@@ -579,7 +579,7 @@ class objBitmap : public Object {
          (((Alpha>>ColourFormat->AlphaShift) & ColourFormat->AlphaMask) << ColourFormat->AlphaPos);
    }
 
-   inline ULONG packPixel(struct RGB8 &RGB) {
+   inline uint32_t packPixel(struct RGB8 &RGB) {
       return
          (((RGB.Red>>ColourFormat->RedShift) & ColourFormat->RedMask) << ColourFormat->RedPos) |
          (((RGB.Green>>ColourFormat->GreenShift) & ColourFormat->GreenMask) << ColourFormat->GreenPos) |
@@ -589,19 +589,19 @@ class objBitmap : public Object {
 
    // Pack pixel 'whole-byte' version, for faster 24/32 bit formats
 
-   inline ULONG packPixelWB(UBYTE R, UBYTE G, UBYTE B, UBYTE A = 255) {
+   inline uint32_t packPixelWB(uint8_t R, uint8_t G, uint8_t B, uint8_t A = 255) {
       return (R << ColourFormat->RedPos) | (G << ColourFormat->GreenPos) | (B << ColourFormat->BluePos) | (A << ColourFormat->AlphaPos);
    }
 
-   inline ULONG packPixelWB(struct RGB8 &RGB) {
+   inline uint32_t packPixelWB(struct RGB8 &RGB) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (RGB.Alpha << ColourFormat->AlphaPos);
    }
 
-   inline ULONG packPixelWB(struct RGB8 &RGB, UBYTE Alpha) {
+   inline uint32_t packPixelWB(struct RGB8 &RGB, uint8_t Alpha) {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
    }
 
-   inline UBYTE * offset(LONG X, LONG Y) {
+   inline uint8_t * offset(int X, int Y) {
       auto r_data = Data;
       Data += (X * BytesPerPixel) + (Y * LineWidth);
       return r_data;
@@ -609,10 +609,10 @@ class objBitmap : public Object {
 
    // Colour unpacking routines
 
-   template <class T> inline UBYTE unpackRed(T Packed)   { return (((Packed >> ColourFormat->RedPos) & ColourFormat->RedMask) << ColourFormat->RedShift); }
-   template <class T> inline UBYTE unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
-   template <class T> inline UBYTE unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
-   template <class T> inline UBYTE unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
+   template <class T> inline uint8_t unpackRed(T Packed)   { return (((Packed >> ColourFormat->RedPos) & ColourFormat->RedMask) << ColourFormat->RedShift); }
+   template <class T> inline uint8_t unpackGreen(T Packed) { return (((Packed >> ColourFormat->GreenPos) & ColourFormat->GreenMask) << ColourFormat->GreenShift); }
+   template <class T> inline uint8_t unpackBlue(T Packed)  { return (((Packed >> ColourFormat->BluePos) & ColourFormat->BlueMask) << ColourFormat->BlueShift); }
+   template <class T> inline uint8_t unpackAlpha(T Packed) { return (((Packed >> ColourFormat->AlphaPos) & ColourFormat->AlphaMask)); }
 
    // Action stubs
 
@@ -1081,7 +1081,7 @@ class objDisplay : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1391,11 +1391,11 @@ class objSurface : public Object {
 
 #ifdef PRV_SURFACE
    // These coordinate fields are considered private but may be accessed by some internal classes, like Document
-   LONG     XOffset, YOffset;     // Fixed horizontal and vertical offset
-   DOUBLE   XOffsetPercent;       // Scaled horizontal offset
-   DOUBLE   YOffsetPercent;       // Scaled vertical offset
-   DOUBLE   WidthPercent, HeightPercent; // Scaled width and height
-   DOUBLE   XPercent, YPercent;   // Scaled coordinate
+   int     XOffset, YOffset;     // Fixed horizontal and vertical offset
+   double  XOffsetPercent;       // Scaled horizontal offset
+   double  YOffsetPercent;       // Scaled vertical offset
+   double  WidthPercent, HeightPercent; // Scaled width and height
+   double  XPercent, YPercent;   // Scaled coordinate
 #endif
    public:
    inline bool visible() const { return (Flags & RNF::VISIBLE) != RNF::NIL; }
@@ -1651,7 +1651,7 @@ class objSurface : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);
@@ -1857,6 +1857,6 @@ extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
 namespace fl {
    using namespace pf;
 
-constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, LONG(Value)); }
+constexpr FieldValue WindowType(SWIN Value) { return FieldValue(FID_WindowType, int(Value)); }
 
 } // namespace

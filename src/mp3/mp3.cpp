@@ -41,9 +41,9 @@ const LONG COMMENT_TRACK = 29;
 const LONG MAX_FRAME_BYTES = MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(int16_t);
 
 struct prvMP3 {
-   std::array<UBYTE, 16 * 1024> Input;  // For incoming MP3 data.  Also needs to be big enough to accomodate the ID3v2 header.
-   std::array<UBYTE, 100> TOC; // Xing Table of Contents
-   std::array<UBYTE, MAX_FRAME_BYTES> Overflow;
+   std::array<uint8_t, 16 * 1024> Input;  // For incoming MP3 data.  Also needs to be big enough to accomodate the ID3v2 header.
+   std::array<uint8_t, 100> TOC; // Xing Table of Contents
+   std::array<uint8_t, MAX_FRAME_BYTES> Overflow;
    mp3dec_t mp3d;              // Decoder information
    mp3dec_frame_info_t info;   // Retains info on the most recently decoded frame.
    objFile *File;              // Source MP3 file
@@ -85,10 +85,10 @@ struct id3tag {
    char album[30];
    char year[4];
    char comment[30]; // Byte 30 may contain a track number instead of a null terminator
-   UBYTE genre;
+   uint8_t genre;
 };
 
-static LONG find_frame(objSound *, UBYTE *, LONG);
+static LONG find_frame(objSound *, uint8_t *, LONG);
 
 //********************************************************************************************************************
 
@@ -214,7 +214,7 @@ const LONG XING_STREAM_SIZE  = 2; // The compressed audio stream size in bytes i
 const LONG XING_TOC          = 4; // TOC entries are defined.
 const LONG XING_SCALE        = 8; // VBR quality is indicated from 0 (best) to 100 (worst).
 
-static int check_xing(objSound *Self, const UBYTE *Frame)
+static int check_xing(objSound *Self, const uint8_t *Frame)
 {
    pf::Log log;
 
@@ -229,7 +229,7 @@ static int check_xing(objSound *Self, const UBYTE *Frame)
    if (HDR_IS_CRC(Frame)) get_bits(bs, 16);
    if (L3_read_side_info(bs, gr_info, Frame) < 0) return 0; // side info corrupted
 
-   const UBYTE *tag = Frame + HDR_SIZE + bs->pos / 8;
+   const uint8_t *tag = Frame + HDR_SIZE + bs->pos / 8;
    if ((!strncmp("Xing", (CSTRING)tag, 4)) and (!strncmp("Info", (CSTRING)tag, 4))) return 0;
    const LONG flags = tag[7];
    if (!(flags & XING_FRAMES)) return -1;
@@ -421,7 +421,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
       if ((prv->OverflowSize) and (prv->OverflowPos < prv->OverflowSize)) {
          LONG to_copy = prv->OverflowSize - prv->OverflowPos;
          if (pos + to_copy > Args->Length) to_copy = Args->Length - pos;
-         copymem(prv->Overflow.data() + prv->OverflowPos, (UBYTE *)Args->Buffer + pos, to_copy);
+         copymem(prv->Overflow.data() + prv->OverflowPos, (uint8_t *)Args->Buffer + pos, to_copy);
          prv->OverflowPos += to_copy;
          prv->WriteOffset += to_copy;
          pos += to_copy;
@@ -466,10 +466,10 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
                   prv->OverflowPos  = 0;
                   prv->OverflowSize = pos + decoded_bytes - Args->Length;
                   decoded_bytes = Args->Length - pos;
-                  copymem((UBYTE *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
+                  copymem((uint8_t *)pcm + decoded_bytes, prv->Overflow.data(), prv->OverflowSize);
                }
 
-               copymem(pcm, (UBYTE *)Args->Buffer + pos, decoded_bytes);
+               copymem(pcm, (uint8_t *)Args->Buffer + pos, decoded_bytes);
 
                prv->FramesProcessed++;
                prv->WriteOffset += decoded_bytes;
@@ -478,7 +478,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
             }
          }
          else {
-            decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, (int16_t *)((UBYTE *)Args->Buffer + pos), &prv->info);
+            decoded_samples = mp3dec_decode_frame(&prv->mp3d, prv->Input.data() + in, prv->CompressedOffset - in, (int16_t *)((uint8_t *)Args->Buffer + pos), &prv->info);
 
             if (decoded_samples) {
                prv->FramesProcessed++;
@@ -516,7 +516,7 @@ static ERR MP3_Read(objSound *Self, struct acRead *Args)
 
       if (!in) break;
       else if (in < prv->CompressedOffset) {
-         copymem((UBYTE *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
+         copymem((uint8_t *)prv->Input.data() + in, prv->Input.data(), prv->CompressedOffset - in);
       }
 
       prv->CompressedOffset -= in;
@@ -668,14 +668,14 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
    LONG frame_size      = 0;
    LONG channels        = 1;
    LONG frame_samples   = 1152;
-   BYTE layer           = 0;
+   int8_t layer           = 0;
 
    prv->VBR = false;
 
    LONG filesize;
    prv->File->get(FID_Size, filesize);
 
-   UBYTE *buffer;
+   uint8_t *buffer;
    if (AllocMemory(SIZE_BUFFER, MEM::DATA|MEM::NO_CLEAR, (APTR *)&buffer, nullptr) IS ERR::Okay) {
       // Load MP3 data from the file
 
@@ -716,7 +716,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
             if (!current_bitrate) current_bitrate = bitrate;
             else if (current_bitrate != bitrate) prv->VBR = true;
 
-            BYTE pad = (frame & MPF_PAD) ? 1 : 0;
+            int8_t pad = (frame & MPF_PAD) ? 1 : 0;
             channels = HDR_IS_MONO(buffer) ? 1 : 2;
 
             if (layer IS 1) frame_size = ((12 * bitrate / samplerate) + pad) * 4;
@@ -799,7 +799,7 @@ static int64_t calc_length(objSound *Self, LONG ReduceEnd)
 
 //********************************************************************************************************************
 
-static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
+static LONG find_frame(objSound *Self, uint8_t *Buffer, LONG BufferSize)
 {
    pf::Log log(__FUNCTION__);
    LONG bitrate, frame_size;
@@ -824,7 +824,7 @@ static LONG find_frame(objSound *Self, UBYTE *Buffer, LONG BufferSize)
             if (frame & MPF_MPEG1) bitrate = bitrate_table[layer - 1][index]; // MPEG-1
             else bitrate = bitrate_table[3 + (layer >> 1)][index]; // MPEG-2
 
-            BYTE pad = (frame & MPF_PAD) ? 1 : 0;
+            int8_t pad = (frame & MPF_PAD) ? 1 : 0;
 
             if (layer IS 1) frame_size = ((12 * bitrate / samplerate) + pad) * 4;
             else frame_size = (144 * bitrate / samplerate) + pad;

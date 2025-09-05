@@ -10,7 +10,7 @@ static void VideoDrawRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RG
    SetPixel(((extBitmap *)Bitmap)->win.Drawable, X, Y, ((RGB->Blue)<<16) | ((RGB->Green)<<8) | RGB->Red);
 }
 
-static void VideoDrawRGBIndex(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
+static void VideoDrawRGBIndex(objBitmap *Bitmap, uint8_t *Data, struct RGB8 *RGB)
 {
 
 }
@@ -28,7 +28,7 @@ static void VideoReadRGBPixel(objBitmap *Bitmap, LONG X, LONG Y, struct RGB8 *RG
    RGB->Blue  = col>>16;
 }
 
-static void VideoReadRGBIndex(objBitmap *Bitmap, UBYTE *Data, struct RGB8 *RGB)
+static void VideoReadRGBIndex(objBitmap *Bitmap, uint8_t *Data, struct RGB8 *RGB)
 {
    RGB->Red = 0;
    RGB->Green = 0;

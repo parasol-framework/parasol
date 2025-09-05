@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdint.h>
 
 #include "windows.h"
 
@@ -105,7 +106,7 @@ void report_windows_hdrop(LPIDA, int, char);
 
 void winCopyClipboard(void);
 
-BYTE glOleInit = 0;
+int8_t glOleInit = 0;
 int glIgnoreClip = 0;
 int glClipboardUpdates = 0;
 static UINT fmtShellIDList = 0;

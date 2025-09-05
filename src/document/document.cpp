@@ -132,7 +132,7 @@ struct layout; // Pre-def
 static ERR  activate_cell_edit(extDocument *, int, stream_char);
 static ERR  add_document_class(void);
 static int add_tabfocus(extDocument *, TT, BYTECODE);
-static void advance_tabfocus(extDocument *, BYTE);
+static void advance_tabfocus(extDocument *, int8_t);
 static void deactivate_edit(extDocument *, bool);
 static ERR  extract_script(extDocument *, const std::string &, objScript **, std::string &, std::string &);
 static void error_dialog(const std::string, const std::string);

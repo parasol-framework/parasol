@@ -102,7 +102,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    }
 
    auto line_no = Self->LineNo;
-   BYTE raw_content;
+   int8_t raw_content;
 
    if (!strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
    else if (!strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }

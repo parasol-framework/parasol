@@ -93,7 +93,7 @@ This field is only of use to sub-classes that need to examine the first 32 bytes
 
 *********************************************************************************************************************/
 
-static ERR GET_Header(extCompression *Self, UBYTE **Header)
+static ERR GET_Header(extCompression *Self, uint8_t **Header)
 {
    *Header = Self->Header;
    return ERR::Okay;

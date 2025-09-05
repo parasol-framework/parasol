@@ -77,16 +77,16 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) != ERR::Okay) return log.warning(ERR::Failed);
    if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) != ERR::Okay) return log.warning(ERR::Failed);
 
-   const UBYTE RGBA[4] = {
-      UBYTE(Self->Target->ColourFormat->RedPos>>3),
-      UBYTE(Self->Target->ColourFormat->GreenPos>>3),
-      UBYTE(Self->Target->ColourFormat->BluePos>>3),
-      UBYTE(Self->Target->ColourFormat->AlphaPos>>3)
+   const uint8_t RGBA[4] = {
+      uint8_t(Self->Target->ColourFormat->RedPos>>3),
+      uint8_t(Self->Target->ColourFormat->GreenPos>>3),
+      uint8_t(Self->Target->ColourFormat->BluePos>>3),
+      uint8_t(Self->Target->ColourFormat->AlphaPos>>3)
    };
 
-   UBYTE *input = inBmp->Data + (inBmp->Clip.Left * inBmp->BytesPerPixel) + (inBmp->Clip.Top * inBmp->LineWidth);
-   UBYTE *mix   = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-   UBYTE *dest  = Self->Target->Data + (Self->Target->Clip.Left * Self->Target->BytesPerPixel) + (Self->Target->Clip.Top * Self->Target->LineWidth);
+   uint8_t *input = inBmp->Data + (inBmp->Clip.Left * inBmp->BytesPerPixel) + (inBmp->Clip.Top * inBmp->LineWidth);
+   uint8_t *mix   = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
+   uint8_t *dest  = Self->Target->Data + (Self->Target->Clip.Left * Self->Target->BytesPerPixel) + (Self->Target->Clip.Top * Self->Target->LineWidth);
 
    const LONG width      = Self->Target->Clip.Right  - Self->Target->Clip.Left;
    const LONG height     = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
@@ -115,8 +115,8 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
       sy = scale * double(mix_height) * (1.0 / 255.0);
    }
 
-   const UBYTE x_type = RGBA[LONG(Self->XChannel)];
-   const UBYTE y_type = RGBA[LONG(Self->YChannel)];
+   const uint8_t x_type = RGBA[LONG(Self->XChannel)];
+   const uint8_t y_type = RGBA[LONG(Self->YChannel)];
 
    //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX);
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);

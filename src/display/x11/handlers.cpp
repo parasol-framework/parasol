@@ -11,7 +11,7 @@ static inline OBJECTID get_display(Window Window)
    if (!XDisplay) return 0;
 
    if (XGetWindowProperty(XDisplay, Window, atomSurfaceID, 0, 1, False, AnyPropertyType, &atom, &format, &nitems,
-         &nbytes, (UBYTE **)&data) IS Success) {
+         &nbytes, (uint8_t **)&data) IS Success) {
       display_id = data[0];
       XFree(data);
       return display_id;

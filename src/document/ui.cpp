@@ -1046,7 +1046,7 @@ static bool view_area(extDocument *Self, double Left, double Top, double Right, 
 
 //********************************************************************************************************************
 
-static void advance_tabfocus(extDocument *Self, BYTE Direction)
+static void advance_tabfocus(extDocument *Self, int8_t Direction)
 {
    pf::Log log(__FUNCTION__);
 

@@ -71,7 +71,7 @@ static HSV rgb_to_hsl(FRGB Colour)
 
 static FRGB hsl_to_rgb(HSV Colour)
 {
-   auto hueToRgb = [](FLOAT p, FLOAT q, FLOAT t) -> FLOAT {
+   auto hueToRgb = [](float p, float q, float t) -> float {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
       if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
@@ -81,7 +81,7 @@ static FRGB hsl_to_rgb(HSV Colour)
    };
 
    if (Colour.Saturation == 0) {
-      return { FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Value), FLOAT(Colour.Alpha) };
+      return { float(Colour.Value), float(Colour.Value), float(Colour.Value), float(Colour.Alpha) };
    }
    else {
       const double q = (Colour.Value < 0.5) ? Colour.Value * (1.0 + Colour.Saturation) : Colour.Value + Colour.Saturation - Colour.Value * Colour.Saturation;
@@ -90,7 +90,7 @@ static FRGB hsl_to_rgb(HSV Colour)
          hueToRgb(p, q, Colour.Hue + 1.0/3.0),
          hueToRgb(p, q, Colour.Hue),
          hueToRgb(p, q, Colour.Hue - 1.0/3.0),
-         FLOAT(Colour.Alpha)
+         float(Colour.Alpha)
       };
    }
 }

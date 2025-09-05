@@ -59,7 +59,7 @@ extern "C" {
 
 extern int glIgnoreClip;
 extern int glClipboardUpdates;
-extern BYTE glOleInit;
+extern int8_t glOleInit;
 
 int winLookupSurfaceID(HWND);
 void winCreateScreenClassClipboard(void);

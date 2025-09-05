@@ -171,7 +171,7 @@ struct WaitLock {
    THREADID WaitingForThreadID;
    int  WaitingForResourceID;
    int  WaitingForResourceType;
-   UBYTE Flags; // WLF flags
+   uint8_t Flags; // WLF flags
 
    #define WLF_REMOVED 0x01  // Set if the resource was removed by the thread that was holding it.
 

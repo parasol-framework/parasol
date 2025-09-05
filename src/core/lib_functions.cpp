@@ -207,7 +207,7 @@ uint32_t GenCRC32(uint32_t crc, APTR Data, uint32_t len)
 {
    if (!Data) return 0;
 
-   auto buf = (BYTE *)Data;
+   auto buf = (int8_t *)Data;
    crc = crc ^ 0xffffffff;
    while (len >= 8) {
       crc = crc_table[((int)crc ^ (buf[0])) & 0xff] ^ (crc >> 8);

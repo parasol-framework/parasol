@@ -92,7 +92,7 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
    if (FieldType & FD_INT)        type_size = sizeof(int);
    else if (FieldType & FD_WORD)   type_size = sizeof(int16_t);
    else if (FieldType & FD_BYTE)   type_size = sizeof(int8_t);
-   else if (FieldType & FD_FLOAT)  type_size = sizeof(FLOAT);
+   else if (FieldType & FD_FLOAT)  type_size = sizeof(float);
    else if (FieldType & FD_DOUBLE) type_size = sizeof(double);
    else if (FieldType & FD_INT64)  type_size = sizeof(int64_t);
    else if (FieldType & FD_STRING) {
@@ -112,7 +112,7 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
       if (FieldType & FD_INT)        for (Total=0; ((int *)List)[Total]; Total++);
       else if (FieldType & FD_WORD)   for (Total=0; ((int16_t *)List)[Total]; Total++);
       else if (FieldType & FD_BYTE)   for (Total=0; ((int8_t *)List)[Total]; Total++);
-      else if (FieldType & FD_FLOAT)  for (Total=0; ((FLOAT *)List)[Total]; Total++);
+      else if (FieldType & FD_FLOAT)  for (Total=0; ((float *)List)[Total]; Total++);
       else if (FieldType & FD_DOUBLE) for (Total=0; ((double *)List)[Total]; Total++);
       else if (FieldType & FD_INT64)  for (Total=0; ((int64_t *)List)[Total]; Total++);
       else if (FieldType & FD_STRING) {
@@ -232,7 +232,7 @@ static int array_new(lua_State *Lua)
             if (auto a = (struct array *)lua_newuserdata(Lua, sizeof(struct array) + len + 1)) {
                a->Total   = len;
                a->Type    = FD_BYTE;
-               a->ptrByte = (UBYTE *)(a + 1);
+               a->ptrByte = (uint8_t *)(a + 1);
                copymem(str, a->ptrByte, len + 1);
 
                luaL_getmetatable(Lua, "Fluid.array");

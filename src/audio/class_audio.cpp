@@ -119,14 +119,14 @@ static ERR AUDIO_Activate(extAudio *Self)
 
    if (Self->BitDepth IS 16) Self->DriverBitSize = sizeof(int16_t);
    else if (Self->BitDepth IS 24) Self->DriverBitSize = 3;
-   else if (Self->BitDepth IS 32) Self->DriverBitSize = sizeof(FLOAT);
-   else Self->DriverBitSize = sizeof(BYTE);
+   else if (Self->BitDepth IS 32) Self->DriverBitSize = sizeof(float);
+   else Self->DriverBitSize = sizeof(int8_t);
 
    if (Self->Stereo) Self->DriverBitSize *= 2;
 
    // Allocate a floating-point mixing buffer
 
-   const LONG mixbitsize = Self->Stereo ? sizeof(FLOAT) * 2 : sizeof(FLOAT);
+   const LONG mixbitsize = Self->Stereo ? sizeof(float) * 2 : sizeof(float);
 
    Self->MixBufferSize = BYTELEN((F2T((mixbitsize * Self->OutputRate) * (MIX_INTERVAL * 1.5)) + 15) & (~15));
    Self->MixElements   = SAMPLE(Self->MixBufferSize / mixbitsize);

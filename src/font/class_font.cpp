@@ -773,8 +773,8 @@ static ERR draw_bitmap_font(extFont *Self)
    pf::Log log(__FUNCTION__);
    objBitmap *bitmap;
    RGB8 rgb;
-   static const UBYTE table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
-   UBYTE *xdata, *data;
+   static const uint8_t table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
+   uint8_t *xdata, *data;
    LONG linewidth, offset, charclip, wrapindex, charlen;
    uint32_t unicode, ocolour;
    int16_t startx, xpos, ex, ey, sx, sy, xinc;
@@ -1005,7 +1005,7 @@ static ERR draw_bitmap_font(extFont *Self)
                            xdata++;
                         }
                      }
-                     dest = (uint32_t *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint32_t *)(((uint8_t *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
@@ -1021,7 +1021,7 @@ static ERR draw_bitmap_font(extFont *Self)
                            xdata++;
                         }
                      }
-                     dest = (uint16_t *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint16_t *)(((uint8_t *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }
@@ -1031,18 +1031,18 @@ static ERR draw_bitmap_font(extFont *Self)
                      else colour = 255;
                   }
 
-                  auto dest = (UBYTE *)(bitmap->Data + sx + (sy * bitmap->LineWidth));
+                  auto dest = (uint8_t *)(bitmap->Data + sx + (sy * bitmap->LineWidth));
                   for (dy=sy; dy < ey; dy++) {
                      xpos = xinc & 0x07;
                      xdata = data + (xinc>>3);
                      for (dx=0; dx < ex-sx; dx++) {
-                        if (*xdata & table[xpos++]) dest[dx] = (UBYTE)colour;
+                        if (*xdata & table[xpos++]) dest[dx] = (uint8_t)colour;
                         if (xpos > 7) {
                            xpos = 0;
                            xdata++;
                         }
                      }
-                     dest = (UBYTE *)(((UBYTE *)dest) + bitmap->LineWidth);
+                     dest = (uint8_t *)(((uint8_t *)dest) + bitmap->LineWidth);
                      data += bytewidth;
                   }
                }

@@ -163,7 +163,7 @@ static LONG test_x11(STRING Path)
 static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    LONG i;
-   UBYTE display;
+   uint8_t display;
    CSTRING displaymod;
    enum {
       DISPLAY_AUTO=0,
@@ -237,7 +237,7 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    if (objModule::load(displaymod, (OBJECTPTR *)&modDriver, &driver_base) != ERR_Okay) {
 #if defined(__linux__) && !defined(__ANDROID__)
       if (display IS DISPLAY_X11) {
-         static UBYTE x11_fail = FALSE;
+         static uint8_t x11_fail = FALSE;
          if (!x11_fail) {
             printf("An X Server needs to be running (try running 'parasol-xserver' to automatically create one).\n");
             x11_fail = TRUE;

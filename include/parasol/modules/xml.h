@@ -101,11 +101,11 @@ typedef struct XMLTag {
    XTF Flags;                        // Optional flags
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
    pf::vector<XMLTag> Children;      // Array of child tags
-   XMLTag(LONG pID, LONG pLine = 0) :
+   XMLTag(int pID, int pLine = 0) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
       { }
 
-   XMLTag(LONG pID, LONG pLine, pf::vector<XMLAttrib> pAttribs) :
+   XMLTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
       ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
       { }
 
@@ -186,8 +186,8 @@ class objXML : public Object {
    typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
 
-   template <class T> inline ERR insertStatement(LONG Index, XMI Where, T Statement, XMLTag **Result) {
-      LONG index_result;
+   template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XMLTag **Result) {
+      int index_result;
       XMLTag *tag_result;
       if (auto error = insertXML(Index, Where, to_cstring(Statement), &index_result); error IS ERR::Okay) {
          error = getTag(index_result, &tag_result);
@@ -197,13 +197,13 @@ class objXML : public Object {
       else return error;
    }
 
-   template <class T> inline ERR setAttribValue(LONG Tag, LONG Flags, T &&Attrib, LONG Value) {
+   template <class T> inline ERR setAttribValue(int Tag, int Flags, T &&Attrib, int Value) {
       auto attrib = to_cstring(Attrib);
       auto buffer = std::to_string(Value);
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
 
-   template <class T> inline ERR setAttribValue(LONG Tag, LONG Flags, T &&Attrib, DOUBLE Value) {
+   template <class T> inline ERR setAttribValue(int Tag, int Flags, T &&Attrib, double Value) {
       auto attrib = to_cstring(Attrib);
       auto buffer = std::to_string(Value);
       return setAttrib(Tag, Flags, attrib, buffer.c_str());

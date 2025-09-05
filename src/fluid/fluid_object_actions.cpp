@@ -37,7 +37,7 @@ static int action_draw(lua_State *Lua)
    auto object = (struct object *)get_meta(Lua, lua_upvalueindex(1), "Fluid.obj");
 
    ERR error = ERR::Okay;
-   BYTE argbuffer[sizeof(struct acDraw)+8]; // +8 for overflow protection in build_args()
+   int8_t argbuffer[sizeof(struct acDraw)+8]; // +8 for overflow protection in build_args()
 
    if ((error = build_args(Lua, glActions[LONG(AC::Draw)].Args, glActions[LONG(AC::Draw)].Size, argbuffer, nullptr)) != ERR::Okay) {
       luaL_error(Lua, "Argument build failed for Draw().");

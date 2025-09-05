@@ -39,9 +39,9 @@ struct prvFileArchive {
    z_stream Stream;
    extFile  *FileStream;
    extCompression *Archive;
-   UBYTE    InputBuffer[SIZE_COMPRESSION_BUFFER];
-   UBYTE    OutputBuffer[SIZE_COMPRESSION_BUFFER];
-   UBYTE    *ReadPtr;      // Current position within OutputBuffer
+   uint8_t    InputBuffer[SIZE_COMPRESSION_BUFFER];
+   uint8_t    OutputBuffer[SIZE_COMPRESSION_BUFFER];
+   uint8_t    *ReadPtr;      // Current position within OutputBuffer
    LONG     InputLength;
    bool     Inflating;
    bool     InvalidState; // Set to true if the archive is corrupt.
@@ -332,7 +332,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
 
       while (true) {
          // Output any buffered data to the client first
-         if (prv->ReadPtr < (UBYTE *)prv->Stream.next_out) {
+         if (prv->ReadPtr < (uint8_t *)prv->Stream.next_out) {
             LONG len = (LONG)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
             if (len > Args->Length) len = Args->Length;
             copymem(prv->ReadPtr, (char *)Args->Buffer + Args->Result, len);
@@ -410,7 +410,7 @@ static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
       if (error != ERR::Okay) return log.warning(error);
    }
 
-   UBYTE buffer[2048];
+   uint8_t buffer[2048];
    while (Self->Position < pos) {
       struct acRead read = { .Buffer = buffer, .Length = (LONG)(pos - Self->Position) };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
@@ -451,10 +451,10 @@ static ERR ARCHIVE_GET_Timestamp(extFile *Self, int64_t *Value)
       else {
          DateTime datetime = {
             .Year   = int16_t(prv->Info.Year),
-            .Month  = BYTE(prv->Info.Month),
-            .Day    = BYTE(prv->Info.Day),
-            .Hour   = BYTE(prv->Info.Hour),
-            .Minute = BYTE(prv->Info.Minute),
+            .Month  = int8_t(prv->Info.Month),
+            .Day    = int8_t(prv->Info.Day),
+            .Hour   = int8_t(prv->Info.Hour),
+            .Minute = int8_t(prv->Info.Minute),
             .Second = 0
          };
 

@@ -278,7 +278,7 @@ ERR FreeResource(MEMORYID MemoryID)
                }
             }
 
-            auto mem_end = ((BYTE *)mem.Address) + mem.Size;
+            auto mem_end = ((int8_t *)mem.Address) + mem.Size;
 
             if (((int *)mem.Address)[-1] != CODE_MEMH) {
                log.warning("Bad header on block #%d, address %p, size %d.", MemoryID, mem.Address, mem.Size);

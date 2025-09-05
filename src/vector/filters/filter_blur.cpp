@@ -28,7 +28,7 @@ conditions.
 template<class T> struct stack_blur_tables
 {
   static uint16_t const g_stack_blur8_mul[255];
-  static UBYTE  const g_stack_blur8_shr[255];
+  static uint8_t  const g_stack_blur8_shr[255];
 };
 
 template<class T>
@@ -53,7 +53,7 @@ uint16_t const stack_blur_tables<T>::g_stack_blur8_mul[255] =
 };
 
 template<class T>
-UBYTE const stack_blur_tables<T>::g_stack_blur8_shr[255] =
+uint8_t const stack_blur_tables<T>::g_stack_blur8_shr[255] =
 {
     9, 11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17,
    17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19,
@@ -131,7 +131,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
 
    inBmp->premultiply();
 
-   UBYTE *dst_pix_ptr;
+   uint8_t *dst_pix_ptr;
    agg::rgba8 *stack_pix_ptr;
 
    const LONG w = (outBmp->Clip.Right - outBmp->Clip.Left);
@@ -139,13 +139,13 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    const LONG wm = w - 1;
    const LONG hm = h - 1;
 
-   UBYTE A = inBmp->ColourFormat->AlphaPos>>3;
-   UBYTE R = inBmp->ColourFormat->RedPos>>3;
-   UBYTE G = inBmp->ColourFormat->GreenPos>>3;
-   UBYTE B = inBmp->ColourFormat->BluePos>>3;
+   uint8_t A = inBmp->ColourFormat->AlphaPos>>3;
+   uint8_t R = inBmp->ColourFormat->RedPos>>3;
+   uint8_t G = inBmp->ColourFormat->GreenPos>>3;
+   uint8_t B = inBmp->ColourFormat->BluePos>>3;
 
-   UBYTE *in_data  = inBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
-   UBYTE *out_data = outBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
+   uint8_t *in_data  = inBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
+   uint8_t *out_data = outBmp->Data + (outBmp->Clip.Left<<2) + (outBmp->Clip.Top * inBmp->LineWidth);
 
    uint32_t sum_r, sum_g, sum_b, sum_a;
    uint32_t sum_in_r, sum_in_g, sum_in_b, sum_in_a;
@@ -169,7 +169,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
       for (y=0; y < h; y++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
 
-         const UBYTE * src_pix_ptr = in_data + (outBmp->LineWidth * y);
+         const uint8_t * src_pix_ptr = in_data + (outBmp->LineWidth * y);
          for (LONG i=0; i <= rx; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
@@ -279,7 +279,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
       for (x = 0; x < w; x++) {
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
 
-         const UBYTE * src_pix_ptr = in_data + (x<<2);
+         const uint8_t * src_pix_ptr = in_data + (x<<2);
          for (LONG i = 0; i <= ry; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];

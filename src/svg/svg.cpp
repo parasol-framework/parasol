@@ -105,7 +105,7 @@ class extSVG : public objSVG {
 };
 
 struct svgState {
-   enum class DU : UBYTE {
+   enum class DU : uint8_t {
       NIL = 0,
       PIXEL,  // px
       SCALED, // %: Scale to fill empty space

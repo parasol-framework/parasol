@@ -37,7 +37,7 @@ namespace agg {
          rgba(const rgba& c, double a_) : r(c.r), g(c.g), b(c.b), a(a_), linear(c.linear) {}
 
          // Consolidated RGB8 constructors - reduced code duplication
-         rgba(RGB8 &RGB, UBYTE Alpha = 0) :
+         rgba(RGB8 &RGB, uint8_t Alpha = 0) :
             r(RGB.Red / 255.0), g(RGB.Green / 255.0), b(RGB.Blue / 255.0),
             a((Alpha ? Alpha : RGB.Alpha) / 255.0), linear(false) {}
 
@@ -152,7 +152,7 @@ namespace agg {
             b(value_type(RGB.Blue)),
             a(value_type(RGB.Alpha)) {}
 
-        rgba8(const RGB8 &RGB, UBYTE Alpha) :
+        rgba8(const RGB8 &RGB, uint8_t Alpha) :
             r(value_type(RGB.Red)),
             g(value_type(RGB.Green)),
             b(value_type(RGB.Blue)),
@@ -164,7 +164,7 @@ namespace agg {
             b((value_type)uround(RGB.Blue * double(base_mask))),
             a((value_type)uround(RGB.Alpha * double(base_mask))) {}
 
-        rgba8(const FRGB &RGB, FLOAT Alpha) :
+        rgba8(const FRGB &RGB, float Alpha) :
             r((value_type)uround(RGB.Red * double(base_mask))),
             g((value_type)uround(RGB.Green * double(base_mask))),
             b((value_type)uround(RGB.Blue * double(base_mask))),

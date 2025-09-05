@@ -136,7 +136,7 @@ int fcmd_catch(lua_State *Lua)
          }
 
          if (type IS LUA_TFUNCTION) {
-            BYTE caught_by_filter = FALSE;
+            int8_t caught_by_filter = FALSE;
             prv->Catch++; // Flag to convert ERR results to exceptions.
             prv->CaughtError = ERR::Okay;
             lua_pushcfunction(Lua, fcmd_catch_handler);
@@ -848,7 +848,7 @@ int fcmd_nz(lua_State *Lua)
       return 0;
    }
 
-   BYTE isnull = FALSE;
+   int8_t isnull = FALSE;
    int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       if (lua_tonumber(Lua, 1)) isnull = FALSE;

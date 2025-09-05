@@ -762,13 +762,13 @@ static ERR DISPLAY_Init(extDisplay *Self)
 
          if (glDGAAvailable) {
             bmp->Flags |= BMF::X11_DGA;
-            bmp->Data = (UBYTE *)glDGAVideo;
+            bmp->Data = (uint8_t *)glDGAVideo;
          }
       }
 
       glDisplayWindow = Self->XWindowHandle;
 
-      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->UID, 1);
+      XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (uint8_t *)&Self->UID, 1);
 
    #elif _WIN32
 
@@ -2265,7 +2265,7 @@ static ERR SET_Flags(extDisplay *Self, SCR Value)
             XSetTransientForHint(XDisplay, Self->XWindowHandle, DefaultRootWindow(XDisplay));
          }
 
-         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (UBYTE *)&Self->UID, 1);
+         XChangeProperty(XDisplay, Self->XWindowHandle, atomSurfaceID, atomSurfaceID, 32, PropModeReplace, (uint8_t *)&Self->UID, 1);
 
          // Indicate that the window position is not to be meddled with by the window manager.
 

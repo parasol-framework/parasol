@@ -168,7 +168,7 @@ double Scintilla::ElapsedTime::Duration(bool reset)
 
    if (reset) {
       bigBit = (long)(systime>>32);
-      *(ULONG*)&littleBit = (systime & 0xFFFFFFFF);
+      *(uint32_t*)&littleBit = (systime & 0xFFFFFFFF);
    }
 
    return elapsed * 0.001;

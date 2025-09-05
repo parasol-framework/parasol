@@ -7,7 +7,7 @@ class SurfacePan : public Scintilla::Surface
    int penx;
    int peny;
    objBitmap *bitmap;
-   BYTE own_bitmap:1; /* True if this object owns the bitmap, and will free it */
+   int8_t own_bitmap:1; /* True if this object owns the bitmap, and will free it */
    LONG pencol;
    Scintilla::PRectangle cliprect;
 
@@ -129,7 +129,7 @@ void SurfacePan::InitPixMap(int width, int height, Scintilla::Surface *surface_,
 
 /****************************************************************************/
 
-INLINE uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
+inline uint32_t to_pan_col(objBitmap *bitmap, const Scintilla::ColourAllocated& colour)
 {
    uint32_t col32 = colour.AsLong();
    return bitmap->packPixel(SCIRED(col32), SCIGREEN(col32), SCIBLUE(col32), 255);
@@ -379,15 +379,15 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
 {
    objFont *font = (objFont *)GetFont(font_);
    uint32_t unicode;
-   UBYTE *str;
+   uint8_t *str;
    LONG i, charpos, copy;
 
-   str = (UBYTE *)string;
+   str = (uint8_t *)string;
    if (font) {
       charpos = 0;
       for (i=0; i < len; ) {
          if (font->FixedWidth) {
-            if ((UBYTE)(str[i]) < 128) copy = 1;
+            if ((uint8_t)(str[i]) < 128) copy = 1;
             else if ((str[i] & 0xe0) IS 0xc0) copy = 2;
             else if ((str[i] & 0xf0) IS 0xe0) copy = 3;
             else if ((str[i] & 0xf8) IS 0xf0) copy = 4;
@@ -400,7 +400,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
          else {
             if (str[i] < 128) {
                unicode = str[i];
-               if ((UBYTE)(str[i]) < 128) copy = 1;
+               if ((uint8_t)(str[i]) < 128) copy = 1;
                else if ((str[i] & 0xe0) IS 0xc0) copy = 2;
                else if ((str[i] & 0xf0) IS 0xe0) copy = 3;
                else if ((str[i] & 0xf8) IS 0xf0) copy = 4;

@@ -261,7 +261,7 @@ class objFont : public Object {
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
-   inline ERR setOpacity(const DOUBLE Value) noexcept {
+   inline ERR setOpacity(const double Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_DOUBLE, &Value, 1);

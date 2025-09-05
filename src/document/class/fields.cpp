@@ -155,7 +155,7 @@ static ERR GET_Path(extDocument *Self, CSTRING *Value)
 static ERR SET_Path(extDocument *Self, CSTRING Value)
 {
    pf::Log log;
-   static BYTE recursion = 0;
+   static int8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
 

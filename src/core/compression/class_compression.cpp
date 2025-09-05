@@ -79,10 +79,10 @@ static const LONG LIST_OFFSET         = 42;  // Relative offset of local header
 static const LONG LIST_LENGTH         = 46;  // END
 
 PACK(struct zipentry {
-   UBYTE version;
-   UBYTE ostype;
-   UBYTE required_version;
-   UBYTE required_os;
+   uint8_t version;
+   uint8_t ostype;
+   uint8_t required_version;
+   uint8_t required_os;
    uint16_t flags;
    uint16_t deflatemethod;
    uint32_t timestamp;
@@ -149,10 +149,10 @@ struct ZipFile {
    uint16_t  NameLen = 0;       // The zip record's name length, including padding.
    uint16_t  CommentLen = 0;    // The zip record's comment length, including padding.
    uint16_t  DeflateMethod = 0; // Set to 8 for normal deflation
-   UBYTE  Month = 0;
-   UBYTE  Day = 0;
-   UBYTE  Hour = 0;
-   UBYTE  Minute = 0;
+   uint8_t  Month = 0;
+   uint8_t  Day = 0;
+   uint8_t  Hour = 0;
+   uint8_t  Minute = 0;
    bool   IsFolder = false;
 
    ZipFile() { }
@@ -185,7 +185,7 @@ class extCompression : public objCompression {
    OBJECTPTR FileIO;             // File input/output
    STRING *  FileList;           // List of all files held in the compression object
    STRING    Path;               // Location of the compressed data
-   UBYTE     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
+   uint8_t     Header[32];         // The first 32 bytes of data from the compressed file (for sub-classes only)
    char      Password[128];      // Password for the compressed object
    FUNCTION  Feedback;           // Set a function here to get de/compression feedack
    uint32_t     ArchiveHash;        // Archive reference, used for the 'archive:' volume
@@ -195,9 +195,9 @@ class extCompression : public objCompression {
    z_stream InflateStream;
    z_stream DeflateStream;
    std::list<ZipFile> Files;    // List of files in the archive (must be in order of the archive's entries)
-   UBYTE  *Output;
-   UBYTE  *Input;
-   UBYTE  *OutputBuffer;        // Output buffer for compressed data
+   uint8_t  *Output;
+   uint8_t  *Input;
+   uint8_t  *OutputBuffer;        // Output buffer for compressed data
    LONG   OutputSize;           // Size of OutputBuffer
    LONG   TotalFiles;
    LONG   FileIndex;
@@ -222,7 +222,7 @@ static ERR GET_Size(extCompression *, int64_t *);
 //********************************************************************************************************************
 // Special definitions.
 
-static const UBYTE glHeader[HEAD_LENGTH] = {
+static const uint8_t glHeader[HEAD_LENGTH] = {
    'P', 'K', 0x03, 0x04,   // 0 Signature
    0x14, 0x00,             // 4 Version 2.0
    0x00, 0x00,             // 6 Flags
@@ -235,7 +235,7 @@ static const UBYTE glHeader[HEAD_LENGTH] = {
    0x00, 0x00              // 28 Length of extra field.
 };
 
-static const UBYTE glList[LIST_LENGTH] = {
+static const uint8_t glList[LIST_LENGTH] = {
    'P', 'K', 0x01, 0x02,   // 00 Signature
    0x14, ZIP_PARASOL,      // 04 Version 2.0, host OS
    0x14, 0x00,             // 06 Version need to extract, OS needed to extract
@@ -257,7 +257,7 @@ static const UBYTE glList[LIST_LENGTH] = {
    // Comment follows
 };
 
-static const UBYTE glTail[TAIL_LENGTH] = {
+static const uint8_t glTail[TAIL_LENGTH] = {
    'P', 'K', 0x05, 0x06,   // 0 Signature
    0x00, 0x00,             // 4 Number of this disk
    0x00, 0x00,             // 6 Number of the disk with starting central directory

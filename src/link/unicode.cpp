@@ -8,18 +8,18 @@ size_t  (*iconv)(iconv_t cd, const char** inbuf, size_t* inbytesleft,   char** o
 int     (*iconv_close)(iconv_t cd);
 void    (*iconvlist)(int (*do_one)(unsigned int namescount, const char* const* names, void* data), void* data);
 
-STRING glIconvBuffer = NULL;
-OBJECTPTR modIconv = NULL;
-static iconv_t glIconv = NULL;
+STRING glIconvBuffer = nullptr;
+OBJECTPTR modIconv = nullptr;
+static iconv_t glIconv = nullptr;
 
 void free_iconv(void)
 {
    if (modIconv) {
-      if (glIconv) { iconv_close(glIconv); glIconv = NULL; }
-      if (glIconvBuffer) { FreeResource(glIconvBuffer); glIconvBuffer = NULL; }
+      if (glIconv) { iconv_close(glIconv); glIconv = nullptr; }
+      if (glIconvBuffer) { FreeResource(glIconvBuffer); glIconvBuffer = nullptr; }
 
       FreeResource(modIconv);
-      modIconv = NULL;
+      modIconv = nullptr;
    }
 }
 */
@@ -32,14 +32,14 @@ This function copies part of one string over to another.  If the Chars value is 
 copy the entire Src string to Dest.  If this function encounters the end of the Src string (null byte) while
 copying, it will terminate the output string at the same point and return.
 
-Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Chars valuae.
+Please note that the Dest string will <i>always</i> be null-terminated by this function regardless of the Chars value.
 For example, if `123` is copied into the middle of string `ABCDEFGHI` then the result would be `ABC123` and the `GHI`
 part of the string would be lost.
 
 -INPUT-
 cstr Src:  Pointer to the source string.
 str Dest:  Pointer to the destination buffer.
-int Chars: The maximum number of UTF8 characters to copy.  Can be set to COPY_ALL to copy up to the null terminator of the Src.
+int Chars: The maximum number of UTF8 characters to copy.  Can be set to `COPY_ALL` to copy up to the null terminator of the Src.
 int Size:  Byte size of the destination buffer.
 
 -RESULT-
@@ -47,7 +47,7 @@ int: Returns the total amount of <i>bytes</i> that were copied, not including th
 
 *********************************************************************************************************************/
 
-LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
+int UTF8Copy(CSTRING String, STRING Dest, int Chars, int Size)
 {
    if (!Dest) return 0;
    if (Size < 1) return 0;
@@ -56,13 +56,13 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
       return 0;
    }
 
-   UBYTE copy;
-   LONG i = 0;
+   uint8_t copy;
+   int i = 0;
    while (Chars > 0) {
       // Determine the number of bytes to copy for this character
 
       if (!*String) break;
-      else if ((UBYTE)(*String) < 128) copy = 1;
+      else if ((uint8_t)(*String) < 128) copy = 1;
       else if ((*String & 0xe0) IS 0xc0) copy = 2;
       else if ((*String & 0xf0) IS 0xe0) copy = 3;
       else if ((*String & 0xf8) IS 0xf0) copy = 4;
@@ -77,7 +77,7 @@ LONG UTF8Copy(CSTRING String, STRING Dest, LONG Chars, LONG Size)
       // Do the copy
 
       Dest[i++] = *String++; // First character
-      for (UBYTE j=1; j < copy; j++) { // Subsequent characters are subject to UTF8 validity
+      for (uint8_t j=1; j < copy; j++) { // Subsequent characters are subject to UTF8 validity
          if ((*String & 0xc0) != 0x80) break;
          Dest[i++] = *String++;
       }
@@ -106,7 +106,7 @@ uint: Returns the extracted unicode value.  If a failure occurs (the encoding is
 
 *********************************************************************************************************************/
 
-uint32_t UTF8ReadValue(CSTRING String, LONG *Length)
+uint32_t UTF8ReadValue(CSTRING String, int *Length)
 {
    uint32_t code;
    const char *str;
@@ -120,7 +120,7 @@ uint32_t UTF8ReadValue(CSTRING String, LONG *Length)
       if (Length) *Length = 0;
       return 0;
    }
-   else if ((UBYTE)(*str) < 128) {
+   else if ((uint8_t)(*str) < 128) {
       if (Length) *Length = 1;
       return *str;
    }
@@ -212,12 +212,12 @@ cstr: Returns the original string pointer if it is already valid, otherwise a co
 #if 0
 CSTRING UTF8ValidEncoding(CSTRING String, CSTRING Encoding)
 {
-   static LONG buffersize = 0;
+   static int buffersize = 0;
    static uint32_t icvhash = 0;
    static bool init_failed = false;
    CSTRING str, output, input;
    uint32_t uchar, enchash;
-   LONG len, in, out;
+   int len, in, out;
    size_t inleft, outleft;
 
    if ((!String) or (init_failed)) {
@@ -386,11 +386,11 @@ int: Returns the total amount of characters written to the string buffer.
 
 *********************************************************************************************************************/
 
-LONG UTF8WriteValue(LONG Value, STRING String, LONG StringSize)
+int UTF8WriteValue(int Value, STRING String, int StringSize)
 {
    if (Value < 128) {
       if (Value < 0) return 0;
-      *String = (UBYTE)Value;
+      *String = (uint8_t)Value;
       return 1;
    }
    else if (Value < 0x800) {

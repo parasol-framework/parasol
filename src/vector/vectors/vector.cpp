@@ -1430,14 +1430,14 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_FillColour(extVector *Self, float **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->Fill[0].Colour;
+   *Value = (float *)&Self->Fill[0].Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_FillColour(extVector *Self, float *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Fill[0].Colour.Red   = Value[0];
@@ -2237,14 +2237,14 @@ This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeColour(extVector *Self, FLOAT **Value, LONG *Elements)
+static ERR VECTOR_GET_StrokeColour(extVector *Self, float **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->Stroke.Colour;
+   *Value = (float *)&Self->Stroke.Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeColour(extVector *Self, FLOAT *Value, LONG Elements)
+static ERR VECTOR_SET_StrokeColour(extVector *Self, float *Value, LONG Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Stroke.Colour.Red   = Value[0];

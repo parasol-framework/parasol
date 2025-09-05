@@ -68,7 +68,7 @@ static ERR create_picture_class(void);
 
 //********************************************************************************************************************
 
-static void conv_l2r_row32(UBYTE *Row, LONG Width) {
+static void conv_l2r_row32(uint8_t *Row, LONG Width) {
    for (LONG x=0; x < Width; x++) {
       Row[0] = glLinearRGB.invert(Row[0]);
       Row[1] = glLinearRGB.invert(Row[1]);
@@ -79,7 +79,7 @@ static void conv_l2r_row32(UBYTE *Row, LONG Width) {
 
 //********************************************************************************************************************
 
-static void conv_l2r_row24(UBYTE *Row, LONG Width) {
+static void conv_l2r_row24(uint8_t *Row, LONG Width) {
    for (LONG x=0; x < Width; x++) {
       Row[0] = glLinearRGB.invert(Row[0]);
       Row[1] = glLinearRGB.invert(Row[1]);
@@ -406,7 +406,7 @@ static ERR PICTURE_Init(extPicture *Self)
          if (ReadFileToBuffer(Self->prvPath.c_str(), Self->prvHeader, sizeof(Self->prvHeader)-1, &result) IS ERR::Okay) {
             Self->prvHeader[result] = 0;
 
-            auto buffer = (UBYTE *)Self->prvHeader;
+            auto buffer = (uint8_t *)Self->prvHeader;
 
             if ((buffer[0] IS 0x89) and (buffer[1] IS 0x50) and (buffer[2] IS 0x4e) and (buffer[3] IS 0x47) and
                 (buffer[4] IS 0x0d) and (buffer[5] IS 0x0a) and (buffer[6] IS 0x1a) and (buffer[7] IS 0x0a)) {
@@ -661,10 +661,10 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
 
    if ((bmp->BitsPerPixel IS 8) or (bmp->BitsPerPixel IS 24)) {
       if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
          row_pointers = row.get();
-         UBYTE *data = bmp->Data;
-         UBYTE *mask = Self->Mask->Data;
+         uint8_t *data = bmp->Data;
+         uint8_t *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
             int16_t maskx = 0;
@@ -689,9 +689,9 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    }
    else if (bmp->BitsPerPixel IS 32) {
       if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) {
-         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
          row_pointers = row.get();
-         UBYTE *data = bmp->Data;
+         uint8_t *data = bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
             for (LONG x=0; x < (bmp->Width<<2); x+=4) {
@@ -706,11 +706,11 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          }
       }
       else if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
 
          row_pointers = row.get();
-         UBYTE *data = bmp->Data;
-         UBYTE *mask = Self->Mask->Data;
+         uint8_t *data = bmp->Data;
+         uint8_t *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
             int16_t maskx = 0;
@@ -727,9 +727,9 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          }
       }
       else {
-         auto row = std::make_unique<UBYTE[]>(bmp->Width * 3);
+         auto row = std::make_unique<uint8_t[]>(bmp->Width * 3);
          row_pointers = row.get();
-         UBYTE *data = bmp->Data;
+         uint8_t *data = bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             i = 0;
             for (LONG x=0; x < (bmp->Width<<2); x+=4) {
@@ -745,10 +745,10 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
    }
    else if (bmp->BytesPerPixel IS 2) {
       if ((Self->Flags & PCF::ALPHA) != PCF::NIL) {
-         auto row = std::make_unique<UBYTE[]>(bmp->Width * 4);
+         auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
          row_pointers = row.get();
          uint16_t *data = (uint16_t *)bmp->Data;
-         UBYTE *mask = Self->Mask->Data;
+         uint8_t *mask = Self->Mask->Data;
          for (LONG y=0; y < bmp->Height; y++) {
             LONG i = 0;
             int16_t maskx = 0;
@@ -760,12 +760,12 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
             }
             if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row32(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
-            data = (uint16_t *)(((UBYTE *)data) + bmp->LineWidth);
+            data = (uint16_t *)(((uint8_t *)data) + bmp->LineWidth);
             mask += Self->Mask->LineWidth;
          }
       }
       else {
-         auto row = std::make_unique<UBYTE[]>(bmp->Width * 3);
+         auto row = std::make_unique<uint8_t[]>(bmp->Width * 3);
          row_pointers = row.get();
          uint16_t *data = (uint16_t *)bmp->Data;
          for (LONG y=0; y < bmp->Height; y++) {
@@ -777,7 +777,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
             }
             if (bmp->ColourSpace IS CS::LINEAR_RGB) conv_l2r_row24(row.get(), bmp->Width);
             png_write_row(write_ptr, row_pointers);
-            data = (uint16_t *)(((UBYTE *)data) + bmp->LineWidth);
+            data = (uint16_t *)(((uint8_t *)data) + bmp->LineWidth);
          }
       }
    }
@@ -1206,7 +1206,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
                             png_infop InfoPtr, png_uint_32 PngWidth, png_uint_32 PngHeight)
 {
    ERR error;
-   UBYTE *row;
+   uint8_t *row;
    png_bytep row_pointers;
    RGB8 rgb;
    LONG i;

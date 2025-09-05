@@ -308,7 +308,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 static ERR JPEG_Init(extPicture *Self)
 {
    pf::Log log;
-   UBYTE *buffer;
+   uint8_t *buffer;
    CSTRING path = nullptr;
 
    Self->get(FID_Location, path);
@@ -424,7 +424,7 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
    jpeg_start_compress(&cinfo, TRUE);
 
    {
-      auto buffer = std::make_unique<UBYTE[]>(3 * Self->Bitmap->Width);
+      auto buffer = std::make_unique<uint8_t[]>(3 * Self->Bitmap->Width);
       JSAMPROW row_pointer[1];
       RGB8 rgb;
 

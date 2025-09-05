@@ -133,10 +133,10 @@ struct SurfaceRecord {
    LONG     Bottom;        // Absolute bottom coordinate
    int16_t     Level;         // Level number within the hierarchy
    int16_t     LineWidth;     // [applies to the bitmap owner]
-   BYTE     BytesPerPixel; // [applies to the bitmap owner]
-   BYTE     BitsPerPixel;  // [applies to the bitmap owner]
-   BYTE     Cursor;        // Preferred cursor image ID
-   UBYTE    Opacity;       // Current opacity setting 0 - 255
+   int8_t     BytesPerPixel; // [applies to the bitmap owner]
+   int8_t     BitsPerPixel;  // [applies to the bitmap owner]
+   int8_t     Cursor;        // Preferred cursor image ID
+   uint8_t    Opacity;       // Current opacity setting 0 - 255
 
    inline void setArea(LONG pLeft, LONG pTop, LONG pRight, LONG pBottom) {
       Left   = pLeft;
@@ -173,7 +173,7 @@ public:
    }
 
    bool operator() (const WinHook &lhs, const WinHook &rhs) const {
-       if (lhs.SurfaceID == rhs.SurfaceID) return UBYTE(lhs.Event) < UBYTE(rhs.Event);
+       if (lhs.SurfaceID == rhs.SurfaceID) return uint8_t(lhs.Event) < uint8_t(rhs.Event);
        else return lhs.SurfaceID < rhs.SurfaceID;
    }
 };
@@ -182,7 +182,7 @@ namespace std {
    template <> struct hash<WinHook> {
       std::size_t operator()(const WinHook &k) const {
          return ((std::hash<OBJECTID>()(k.SurfaceID)
-            ^ (std::hash<UBYTE>()(UBYTE(k.Event)) << 1)) >> 1);
+            ^ (std::hash<uint8_t>()(uint8_t(k.Event)) << 1)) >> 1);
       }
    };
 }
@@ -200,14 +200,14 @@ static const auto MT_PtrUngrabX11Pointer = AC(-3);
 struct ptrSetWinCursor { PTC Cursor;  };
 struct ptrGrabX11Pointer { OBJECTID SurfaceID;  };
 
-INLINE ERR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
+inline ERR ptrSetWinCursor(OBJECTPTR Ob, PTC Cursor) {
    struct ptrSetWinCursor args = { Cursor };
    return Action(MT_PtrSetWinCursor, Ob, &args);
 }
 
 #define ptrUngrabX11Pointer(obj) Action(MT_PtrUngrabX11Pointer,(obj),0)
 
-INLINE ERR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
+inline ERR ptrGrabX11Pointer(OBJECTPTR Ob, OBJECTID SurfaceID) {
    struct ptrGrabX11Pointer args = { SurfaceID };
    return Action(MT_PtrGrabX11Pointer, Ob, &args);
 }
@@ -281,7 +281,7 @@ class extPointer : public objPointer {
    struct {
       int64_t LastClickTime;      // Timestamp
       OBJECTID LastClicked;     // Most recently clicked object
-      UBYTE DblClick:1;         // TRUE if last click was a double-click
+      uint8_t DblClick:1;         // TRUE if last click was a double-click
    } Buttons[10];
    int64_t    ClickTime;
    int64_t    AnchorTime;
@@ -300,8 +300,8 @@ class extPointer : public objPointer {
    char     Device[32];
    char     ButtonOrder[12];      // The order of the first 11 buttons can be changed here
    int16_t     ButtonOrderFlags[12]; // Button order represented as JD flags
-   BYTE     PostComposite;        // Enable post-composite drawing (default)
-   UBYTE    prvOverCursorID;
+   int8_t     PostComposite;        // Enable post-composite drawing (default)
+   uint8_t    prvOverCursorID;
    struct {
       int16_t HotX;
       int16_t HotY;
@@ -336,11 +336,11 @@ class extSurface : public objSurface {
    uint16_t Document:1;
    uint16_t RedrawScheduled:1;
    uint16_t RedrawCountdown;      // Unsubscribe from the timer when this value reaches zero.
-   BYTE     BitsPerPixel;         // Bitmap bits per pixel
-   BYTE     BytesPerPixel;        // Bitmap bytes per pixel
-   UBYTE    CallbackCount;
-   UBYTE    CallbackSize;         // Current size of the callback array.
-   BYTE     Anchored;
+   int8_t     BitsPerPixel;         // Bitmap bits per pixel
+   int8_t     BytesPerPixel;        // Bitmap bytes per pixel
+   uint8_t    CallbackCount;
+   uint8_t    CallbackSize;         // Current size of the callback array.
+   int8_t     Anchored;
 };
 
 class extDisplay : public objDisplay {
@@ -393,12 +393,12 @@ extern ERR  load_styles(void);
 extern LONG find_bitmap_owner(const SURFACELIST &, LONG);
 extern void move_layer(extSurface *, LONG, LONG);
 extern void move_layer_pos(SURFACELIST &, LONG, LONG);
-extern void prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, BYTE);
+extern void prepare_background(extSurface *, const SURFACELIST &, LONG, extBitmap *, const ClipRectangle &, int8_t);
 extern void process_surface_callbacks(extSurface *, extBitmap *);
 extern void refresh_pointer(extSurface *Self);
 extern ERR  track_layer(extSurface *);
 extern void untrack_layer(OBJECTID);
-extern BYTE restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
+extern int8_t restrict_region_to_parents(const SURFACELIST &, LONG, ClipRectangle &, bool);
 extern ERR  load_style_values(void);
 extern ERR  resize_layer(extSurface *, LONG X, LONG Y, LONG, LONG, LONG, LONG, LONG BPP, double, LONG);
 extern void redraw_nonintersect(OBJECTID, const SURFACELIST &, LONG, const ClipRectangle &, const ClipRectangle &, IRF, EXF);
@@ -434,8 +434,8 @@ extern LONG glpDisplayDepth; // If zero, the display depth will be based on the 
 extern LONG glpMaximise, glpFullScreen;
 extern SWIN glpWindowType;
 extern char glpDPMS[20];
-extern UBYTE *glDemultiply;
-extern std::array<UBYTE, 256 * 256> glAlphaLookup;
+extern uint8_t *glDemultiply;
+extern std::array<uint8_t, 256 * 256> glAlphaLookup;
 extern std::list<ClipRecord> glClips;
 extern int glLastPort;
 
@@ -472,7 +472,7 @@ void free_egl(void);
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
 
-extern BYTE glTrayIcon, glTaskBar, glStickToFront;
+extern int8_t glTrayIcon, glTaskBar, glStickToFront;
 
 extern "C" {
 DLLCALL LONG WINAPI SetPixelV(APTR, LONG, LONG, LONG);
@@ -518,8 +518,8 @@ extern X11Globals glX11;
 extern _XDisplay *XDisplay;
 extern bool glX11ShmImage;
 extern bool glXCompositeSupported;
-extern UBYTE KeyHeld[LONG(KEY::LIST_END)];
-extern UBYTE glTrayIcon, glTaskBar, glStickToFront;
+extern uint8_t KeyHeld[LONG(KEY::LIST_END)];
+extern uint8_t glTrayIcon, glTaskBar, glStickToFront;
 extern KQ glKeyFlags;
 extern LONG glXFD, glDGAPixelsPerLine, glDGABankSize;
 extern Atom atomSurfaceID, XWADeleteWindow;
@@ -618,7 +618,7 @@ class extBitmap : public objBitmap {
    APTR   ResolutionChangeHandle;
    RGBPalette prvPaletteArray;
    struct ColourFormat prvColourFormat;
-   UBYTE *prvCompress;
+   uint8_t *prvCompress;
    LONG   prvAFlags;                  // Private allocation flags
    #ifdef __xwindows__
       struct {

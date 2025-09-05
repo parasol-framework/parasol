@@ -85,14 +85,14 @@ The colour is complemented by the #Opacity field.
 
 *********************************************************************************************************************/
 
-static ERR FLOODFX_GET_Colour(extFloodFX *Self, FLOAT **Value, LONG *Elements)
+static ERR FLOODFX_GET_Colour(extFloodFX *Self, float **Value, LONG *Elements)
 {
-   *Value = (FLOAT *)&Self->Colour;
+   *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR FLOODFX_SET_Colour(extFloodFX *Self, FLOAT *Value, LONG Elements)
+static ERR FLOODFX_SET_Colour(extFloodFX *Self, float *Value, LONG Elements)
 {
    pf::Log log;
    if (Value) {

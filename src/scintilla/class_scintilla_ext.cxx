@@ -66,7 +66,7 @@ void ScintillaParasol::SetStyles(const struct styledef *Def, LONG Total)
       index = Def[i].Index;
       WndProc(SCI_STYLESETFONT, index, (MAXINT)"courier"); // Font name, must be set to something
       WndProc(SCI_STYLESETSIZE, index, 10); // Default Size
-      WndProc(SCI_STYLESETFORE, index, SCICOLOUR((UBYTE)(Def[i].Colour>>16), (UBYTE)(Def[i].Colour>>8), Def[i].Colour));
+      WndProc(SCI_STYLESETFORE, index, SCICOLOUR((uint8_t)(Def[i].Colour>>16), (uint8_t)(Def[i].Colour>>8), Def[i].Colour));
 
       if ((index IS STYLE_BRACELIGHT) or (index IS STYLE_BRACEBAD)) {
          WndProc(SCI_STYLESETBACK, index, SCICOLOUR(255, 255, 200));
@@ -148,7 +148,7 @@ void ScintillaParasol::AddToPopUp(const char *label, int cmD, bool enabled)
    OBJECTPTR menu = reinterpret_cast<OBJECTPTR>(popup.GetID());
 
    if (menu) {
-      BYTE buffer[200];
+      int8_t buffer[200];
       snprintf(buffer, sizeof(buffer), "<item text=\"%s\"></item>", label);
       acDataXML(menu, buffer);
    }
