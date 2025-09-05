@@ -1865,6 +1865,27 @@ ERR SET_Date(extFile *Self, DateTime *Date)
 -FIELD-
 Flags: File flags and options.
 
+Note: If setting flags post-initialisation, the following restrictions apply: 1. The file must not have been 
+activated (opened) yet; 2. Only the `NEW`, `READ` and `WRITE` flags can be utilised.
+
+*********************************************************************************************************************/
+
+static ERR SET_Flags(extFile *Self, FL Value)
+{
+   if (Self->initialised()) {
+      if (Self->Handle != -1) return ERR::AlreadyDefined;
+      else if ((Self->Flags & ~(FL::FILE|FL::FOLDER|FL::READ|FL::WRITE|FL::NEW)) IS FL::NIL) {
+         Self->Flags |= Value & (FL::READ|FL::WRITE|FL::NEW); // Setting R/W/N flags is permitted post-initialisation if the file hasn't been activated yet.
+      }
+      else return ERR::AlreadyDefined;
+   }
+   else Self->Flags = Value;
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 Group: Retrieve or change the group ID of a file.
 
@@ -2667,7 +2688,7 @@ static const FieldDef PermissionFlags[] = {
 
 static const FieldArray FileFields[] = {
    { "Position",     FDF_INT64|FDF_RW, nullptr, SET_Position },
-   { "Flags",        FDF_INTFLAGS|FDF_RI, nullptr, nullptr, &clFileFlags },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, SET_Flags, &clFileFlags },
    { "Static",       FDF_INT|FDF_RI },
    { "Target",       FDF_OBJECTID|FDF_RW, nullptr, nullptr, CLASSID::SURFACE },
    { "Buffer",       FDF_ARRAY|FDF_BYTE|FDF_R, GET_Buffer },
