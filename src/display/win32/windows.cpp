@@ -81,7 +81,7 @@ static HWND glMainScreen = 0;
 static char glCursorEntry = FALSE;
 static HCURSOR glDefaultCursor = 0;
 static HWND glDeferredActiveWindow = 0;
-char glTrayIcon = FALSE, glTaskBar = TRUE, glStickToFront = FALSE;
+uint8_t glTrayIcon = 0, glTaskBar = 0, glStickToFront = 0;
 struct WinCursor *glCursors = 0;
 HCURSOR glCurrentCursor = 0;
 static int8_t glScreenClassInit = 0;

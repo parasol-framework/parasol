@@ -252,7 +252,7 @@ ERR SetHostOption(HOST Option, int64_t Value)
 
    switch (Option) {
       case HOST::TRAY_ICON:
-         glTrayIcon += Value;
+         glTrayIcon = Value;
          if (glTrayIcon) glTaskBar = 0;
          break;
 
@@ -262,7 +262,7 @@ ERR SetHostOption(HOST Option, int64_t Value)
          break;
 
       case HOST::STICK_TO_FRONT:
-         glStickToFront += Value;
+         glStickToFront = Value;
          break;
 
       default:

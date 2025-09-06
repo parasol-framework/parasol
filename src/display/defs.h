@@ -472,7 +472,7 @@ void free_egl(void);
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
 
-extern int8_t glTrayIcon, glTaskBar, glStickToFront;
+extern uint8_t glTrayIcon, glTaskBar, glStickToFront;
 
 extern "C" {
 DLLCALL int WINAPI SetPixelV(APTR, int, int, int);
@@ -519,7 +519,6 @@ extern _XDisplay *XDisplay;
 extern bool glX11ShmImage;
 extern bool glXCompositeSupported;
 extern uint8_t KeyHeld[int(KEY::LIST_END)];
-extern uint8_t glTrayIcon, glTaskBar, glStickToFront;
 extern KQ glKeyFlags;
 extern int glXFD, glDGAPixelsPerLine, glDGABankSize;
 extern Atom atomSurfaceID, XWADeleteWindow;
