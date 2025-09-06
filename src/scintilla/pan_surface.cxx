@@ -8,7 +8,7 @@ class SurfacePan : public Scintilla::Surface
    int peny;
    objBitmap *bitmap;
    int8_t own_bitmap:1; /* True if this object owns the bitmap, and will free it */
-   LONG pencol;
+   int pencol;
    Scintilla::PRectangle cliprect;
 
 public:
@@ -206,7 +206,7 @@ void SurfacePan::Polygon(Scintilla::Point *pts, int npts, Scintilla::ColourAlloc
 
       //ULONG col = to_pan_col(bitmap, fore);
 
-      LONG i;
+      int i;
       for (i=0; i<npts-1; ++i) {
          //gfx::DrawLine(bitmap, pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, col);
       }
@@ -363,7 +363,7 @@ void SurfacePan::DrawTextClipped(Scintilla::PRectangle rc, Scintilla::Font &font
 void SurfacePan::DrawTextTransparent(Scintilla::PRectangle rc, Scintilla::Font &font_, int ybase,
    const char *s, int len, Scintilla::ColourAllocated fore)
 {
-   LONG i;
+   int i;
 
    for (i=0; i < len; i++) {
       if (s[i] != ' ') {
@@ -380,7 +380,7 @@ void SurfacePan::MeasureWidths(Scintilla::Font &font_, const char *string, int l
    objFont *font = (objFont *)GetFont(font_);
    uint32_t unicode;
    uint8_t *str;
-   LONG i, charpos, copy;
+   int i, charpos, copy;
 
    str = (uint8_t *)string;
    if (font) {

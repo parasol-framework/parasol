@@ -11,7 +11,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 *********************************************************************************************************************/
 
-static ERR GET_AbsX(extSurface *Self, LONG *Value)
+static ERR GET_AbsX(extSurface *Self, int *Value)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -22,7 +22,7 @@ static ERR GET_AbsX(extSurface *Self, LONG *Value)
    else return ERR::Search;
 }
 
-static ERR SET_AbsX(extSurface *Self, LONG Value)
+static ERR SET_AbsX(extSurface *Self, int Value)
 {
    pf::Log log;
 
@@ -30,7 +30,7 @@ static ERR SET_AbsX(extSurface *Self, LONG Value)
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       if (auto parent = find_parent_list(glSurfaces, Self); parent != -1) {
-         LONG x = Value - glSurfaces[parent].Left;
+         int x = Value - glSurfaces[parent].Left;
          move_layer(Self, x, Self->Y);
          return ERR::Okay;
       }
@@ -51,7 +51,7 @@ It is possible to set this field, but only after initialisation of the surface o
 
 *********************************************************************************************************************/
 
-static ERR GET_AbsY(extSurface *Self, LONG *Value)
+static ERR GET_AbsY(extSurface *Self, int *Value)
 {
    const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
@@ -62,7 +62,7 @@ static ERR GET_AbsY(extSurface *Self, LONG *Value)
    else return ERR::Search;
 }
 
-static ERR SET_AbsY(extSurface *Self, LONG Value)
+static ERR SET_AbsY(extSurface *Self, int Value)
 {
    pf::Log log;
 
@@ -70,7 +70,7 @@ static ERR SET_AbsY(extSurface *Self, LONG Value)
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
       if (auto parent = find_parent_list(glSurfaces, Self); parent != -1) {
-         LONG y = Value - glSurfaces[parent].Top;
+         int y = Value - glSurfaces[parent].Top;
          move_layer(Self, Self->X, y);
          return ERR::Okay;
       }
@@ -95,7 +95,7 @@ Bottom: Returns the bottom-most coordinate of a surface object, `Y + Height`.
 
 *********************************************************************************************************************/
 
-static ERR GET_Bottom(extSurface *Self, LONG *Bottom)
+static ERR GET_Bottom(extSurface *Self, int *Bottom)
 {
    *Bottom = Self->Y + Self->Height;
    return ERR::Okay;
@@ -115,7 +115,7 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERR SET_BottomLimit(extSurface *Self, LONG Value)
+static ERR SET_BottomLimit(extSurface *Self, int Value)
 {
    Self->BottomLimit = Value;
    return ERR::Okay;
@@ -303,7 +303,7 @@ setting the coordinate fields directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_LeftLimit(extSurface *Self, LONG Value)
+static ERR SET_LeftLimit(extSurface *Self, int Value)
 {
    Self->LeftLimit = Value;
    return ERR::Okay;
@@ -321,7 +321,7 @@ It is possible to circumvent the MaxHeight by setting the Height field directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_MaxHeight(extSurface *Self, LONG Value)
+static ERR SET_MaxHeight(extSurface *Self, int Value)
 {
    Self->MaxHeight = Value;
 
@@ -348,7 +348,7 @@ It is possible to circumvent the MaxWidth by setting the Width field directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_MaxWidth(extSurface *Self, LONG Value)
+static ERR SET_MaxWidth(extSurface *Self, int Value)
 {
    Self->MaxWidth = Value;
 
@@ -377,7 +377,7 @@ It is possible to circumvent the MinHeight by setting the #Height field directly
 
 *********************************************************************************************************************/
 
-static ERR SET_MinHeight(extSurface *Self, LONG Value)
+static ERR SET_MinHeight(extSurface *Self, int Value)
 {
    Self->MinHeight = Value;
    if (Self->MinHeight < 1) Self->MinHeight = 1;
@@ -405,7 +405,7 @@ It is possible to circumvent the MinWidth by setting the #Width field directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_MinWidth(extSurface *Self, LONG Value)
+static ERR SET_MinWidth(extSurface *Self, int Value)
 {
    Self->MinWidth = Value;
    if (Self->MinWidth < 1) Self->MinWidth = 1;
@@ -427,7 +427,7 @@ Right: Returns the right-most coordinate of a surface object, `X + Width`.
 
 *********************************************************************************************************************/
 
-static ERR GET_Right(extSurface *Self, LONG *Value)
+static ERR GET_Right(extSurface *Self, int *Value)
 {
    *Value = Self->X + Self->Width;
    return ERR::Okay;
@@ -447,7 +447,7 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERR SET_RightLimit(extSurface *Self, LONG Value)
+static ERR SET_RightLimit(extSurface *Self, int Value)
 {
    Self->RightLimit = Value;
    return ERR::Okay;
@@ -467,7 +467,7 @@ setting the coordinate fields directly (which can be useful in certain cases).
 
 *********************************************************************************************************************/
 
-static ERR SET_TopLimit(extSurface *Self, LONG Value)
+static ERR SET_TopLimit(extSurface *Self, int Value)
 {
    Self->TopLimit = Value;
    return ERR::Okay;
@@ -488,7 +488,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleHeight(extSurface *Self, LONG *Value)
+static ERR GET_VisibleHeight(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -522,7 +522,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleWidth(extSurface *Self, LONG *Value)
+static ERR GET_VisibleWidth(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -556,7 +556,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleX(extSurface *Self, LONG *Value)
+static ERR GET_VisibleX(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;
@@ -590,7 +590,7 @@ If none of the surface area is visible then zero is returned.  The result is nev
 
 *********************************************************************************************************************/
 
-static ERR GET_VisibleY(extSurface *Self, LONG *Value)
+static ERR GET_VisibleY(extSurface *Self, int *Value)
 {
    if (!Self->ParentID) {
       *Value = Self->Height;

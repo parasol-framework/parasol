@@ -80,7 +80,7 @@ static void notify_lostfocus_viewport(OBJECTPTR Object, ACTIONID ActionID, ERR R
 
    // Redraw any selected link so that it is unhighlighted
 
-   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < LONG(Self->Tabs.size()))) {
+   if ((Self->FocusIndex >= 0) and (Self->FocusIndex < int(Self->Tabs.size()))) {
       if (Self->Tabs[Self->FocusIndex].type IS TT::LINK) {
          for (auto &link : Self->Links) {
             if (link.origin.uid IS std::get<BYTECODE>(Self->Tabs[Self->FocusIndex].ref)) {
@@ -96,7 +96,7 @@ static void notify_listener_free(OBJECTPTR Listener, ACTIONID ActionID, ERR Resu
 {
    auto Self = (extDocument *)CurrentContext();
 
-   for (LONG t=0; t < LONG(DRT::END); t++) {
+   for (int t=0; t < int(DRT::END); t++) {
 restart:
       auto &triggers = Self->Triggers[t];
       for (auto cb=triggers.begin(); cb != triggers.end(); cb++) {
@@ -134,12 +134,12 @@ static ERR feedback_view(objVectorViewport *View, FM Event)
    // The resize event is triggered just prior to the layout of the document.  The recipient
    // function can resize elements on the page in advance of the new layout.
 
-   for (auto &trigger : Self->Triggers[LONG(DRT::BEFORE_LAYOUT)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::BEFORE_LAYOUT)]) {
       if (trigger.isScript()) {
          sc::Call(trigger, std::to_array<ScriptArg>({ { "ViewWidth",  Self->VPWidth }, { "ViewHeight", Self->VPHeight } }));
       }
       else if (trigger.isC()) {
-         auto routine = (void (*)(APTR, extDocument *, LONG, LONG, APTR))trigger.Routine;
+         auto routine = (void (*)(APTR, extDocument *, int, int, APTR))trigger.Routine;
          pf::SwitchContext context(trigger.Context);
          routine(trigger.Context, Self, Self->VPWidth, Self->VPHeight, trigger.Meta);
       }
@@ -226,7 +226,7 @@ static ERR DOCUMENT_AddListener(extDocument *Self, doc::AddListener *Args)
 {
    if ((!Args) or (Args->Trigger IS DRT::NIL) or (!Args->Function)) return ERR::NullArgs;
 
-   Self->Triggers[LONG(Args->Trigger)].push_back(*Args->Function);
+   Self->Triggers[int(Args->Trigger)].push_back(*Args->Function);
 
    // Scripts can't auto-remove listeners, so a Free subscription is necessary.  Functional
    // subscribers are expected to self-manage however.
@@ -351,10 +351,10 @@ static ERR DOCUMENT_Clipboard(extDocument *Self, struct acClipboard *Args)
          if (clipboard->getFiles(CLIPTYPE::TEXT, 0, nullptr, &files, nullptr) IS ERR::Okay) {
             objFile::create file = { fl::Path(files[0]), fl::Flags(FL::READ) };
             if (file.ok()) {
-               LONG size;
+               int size;
                if ((file->get(FID_Size, size) IS ERR::Okay) and (size > 0)) {
                   if (auto buffer = new (std::nothrow) char[size+1]) {
-                     LONG result;
+                     int result;
                      if (file->read(buffer, size, &result) IS ERR::Okay) {
                         buffer[result] = 0;
                         acDataText(Self, buffer);
@@ -698,7 +698,7 @@ Search
 static ERR DOCUMENT_HideIndex(extDocument *Self, doc::HideIndex *Args)
 {
    pf::Log log(__FUNCTION__);
-   LONG tab;
+   int tab;
 
    if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
 
@@ -902,7 +902,7 @@ static ERR DOCUMENT_InsertXML(extDocument *Self, doc::InsertXML *Args)
    pf::Log log;
 
    if ((!Args) or (!Args->XML)) return log.warning(ERR::NullArgs);
-   if ((Args->Index < -1) or (Args->Index > LONG(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
+   if ((Args->Index < -1) or (Args->Index > int(Self->Stream.size()))) return log.warning(ERR::OutOfRange);
 
    if (Self->Stream.data.empty()) return ERR::NoData;
 
@@ -1073,7 +1073,7 @@ static ERR DOCUMENT_Refresh(extDocument *Self)
 
    Self->Processing++;
 
-   for (auto &trigger : Self->Triggers[LONG(DRT::REFRESH)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::REFRESH)]) {
       if (trigger.isScript()) {
          // The refresh trigger can return ERR::Skip to prevent a complete reload of the document.
 

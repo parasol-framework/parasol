@@ -71,7 +71,7 @@ static struct MsgHandler *glMsgThread = nullptr; // Message handler for thread c
 
 static CSTRING load_include_struct(lua_State *, CSTRING, CSTRING);
 static CSTRING load_include_constant(lua_State *, CSTRING, CSTRING);
-static ERR flSetVariable(objScript *, CSTRING, LONG, ...);
+static ERR flSetVariable(objScript *, CSTRING, int, ...);
 
 //********************************************************************************************************************
 
@@ -81,11 +81,11 @@ FDEF argsSetVariable[] = { { "Error", FD_ERROR }, { "Script", FD_OBJECTPTR }, { 
 
 #ifdef _DEBUG
 static void flTestCall1(void);
-static LONG flTestCall2(void);
+static int flTestCall2(void);
 static CSTRING flTestCall3(void);
-static void flTestCall4(LONG, int64_t);
-static LONG flTestCall5(LONG, LONG, LONG, LONG, LONG, int64_t);
-static int64_t flTestCall6(LONG, int64_t, int64_t, LONG, int64_t, double);
+static void flTestCall4(int, int64_t);
+static int flTestCall5(int, int, int, int, int, int64_t);
+static int64_t flTestCall6(int, int64_t, int64_t, int, int64_t, double);
 static void flTestCall7(STRING a, STRING b, STRING c);
 
 FDEF argsTestCall1[]   = { { "Void", FD_VOID }, { 0, 0 } };
@@ -119,7 +119,7 @@ static void flTestCall1(void)
    log.msg("No parameters.");
 }
 
-static LONG flTestCall2(void)
+static int flTestCall2(void)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Returning 0xdedbeef / %d", 0xdedbeef);
@@ -133,25 +133,25 @@ static CSTRING flTestCall3(void)
    return "hello world";
 }
 
-static void flTestCall4(LONG Long, int64_t Large)
+static void flTestCall4(int Long, int64_t Large)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received long %d / $%.8x", Long, Long);
    log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
 }
 
-static LONG flTestCall5(LONG LongA, LONG LongB, LONG LongC, LONG LongD, LONG LongE, int64_t LongF)
+static int flTestCall5(int LongA, int LongB, int LongC, int LongD, int LongE, int64_t LongF)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
-   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (LONG)LongF);
+   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (int)LongF);
    return LongF;
 }
 
-static int64_t flTestCall6(LONG long1, int64_t large1, int64_t large2, LONG long2, int64_t large3, double float1)
+static int64_t flTestCall6(int long1, int64_t large1, int64_t large2, int long2, int64_t large3, double float1)
 {
    pf::Log log(__FUNCTION__);
-   log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (LONG)large2, (LONG)long2, (LONG)large3);
+   log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (int)large2, (int)long2, (int)large3);
    log.msg("Received double %f", float1);
    log.msg("Returning %" PF64, large2);
    return large2;
@@ -181,7 +181,7 @@ CSTRING next_line(CSTRING String)
 
 //********************************************************************************************************************
 
-APTR get_meta(lua_State *Lua, LONG Arg, CSTRING MetaTable)
+APTR get_meta(lua_State *Lua, int Arg, CSTRING MetaTable)
 {
    APTR address;
    if ((address = (struct object *)lua_touserdata(Lua, Arg))) {
@@ -296,7 +296,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Create a lookup table for converting named actions to IDs.
 
-   for (LONG action_id=1; glActions[action_id].Name; action_id++) {
+   for (int action_id=1; glActions[action_id].Name; action_id++) {
       glActionLookup[glActions[action_id].Name] = AC(action_id);
    }
 
@@ -344,7 +344,7 @@ ObjectCorrupt: Privately maintained memory has become inaccessible.
 
 *********************************************************************************************************************/
 
-static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
+static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
 {
    pf::Log log(__FUNCTION__);
    prvFluid *prv;
@@ -360,7 +360,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, LONG Type, ...)
 
    if (Type & FD_STRING)       lua_pushstring(prv->Lua, va_arg(list, STRING));
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
-   else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, LONG));
+   else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, int));
    else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, int64_t));
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, double));
    else {
@@ -405,7 +405,7 @@ void hook_debug(lua_State *Lua, lua_Debug *Info)
 // Works with primitives only, for structs please use make_struct_[ptr|serial]_table() because the struct name
 // will be required.
 
-void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
+void make_table(lua_State *Lua, int Type, int Elements, CPTR Data)
 {
    pf::Log log(__FUNCTION__);
 
@@ -414,7 +414,7 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
    if (Elements < 0) {
       if (!Data) Elements = 0;
       else {
-         LONG i = 0;
+         int i = 0;
          switch (Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_OBJECT|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
             case FD_STRING:
             case FD_OBJECT:
@@ -466,14 +466,14 @@ void make_table(lua_State *Lua, LONG Type, LONG Elements, CPTR Data)
 //********************************************************************************************************************
 // Create a Lua array from a list of structure pointers.
 
-void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR *Values)
+void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, int Elements, CPTR *Values)
 {
    pf::Log log(__FUNCTION__);
 
    log.trace("%s, Elements: %d, Values: %p", StructName, Elements, Values);
 
    if (Elements < 0) {
-      LONG i;
+      int i;
       for (i=0; Values[i]; i++);
       Elements = i;
    }
@@ -486,7 +486,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
    auto s_name = struct_name(StructName);
    if (prv->Structs.contains(s_name)) {
       std::vector<lua_ref> ref;
-      for (LONG i=0; i < Elements; i++) {
+      for (int i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
          if (struct_to_table(Lua, ref, prv->Structs[s_name], Values[i]) != ERR::Okay) lua_pushnil(Lua);
          lua_settable(Lua, -3);
@@ -498,7 +498,7 @@ void make_struct_ptr_table(lua_State *Lua, CSTRING StructName, LONG Elements, CP
 //********************************************************************************************************************
 // Create a Lua array from a serialised list of structures.
 
-void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements, CPTR Data)
+void make_struct_serial_table(lua_State *Lua, CSTRING StructName, int Elements, CPTR Data)
 {
    pf::Log log(__FUNCTION__);
 
@@ -517,9 +517,9 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
       // padded to 64-bit so that the potential for mishap is eliminated.
 
       #ifdef _LP64
-      LONG def_size = ALIGN64(def->Size);
+      int def_size = ALIGN64(def->Size);
       #else
-      LONG def_size = ALIGN32(def->Size);
+      int def_size = ALIGN32(def->Size);
       #endif
 
       char aligned = ((def->Size & 0x7) != 0) ? 'N': 'Y';
@@ -529,7 +529,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
 
       std::vector<lua_ref> ref;
 
-      for (LONG i=0; i < Elements; i++) {
+      for (int i=0; i < Elements; i++) {
          lua_pushinteger(Lua, i+1);
          if (struct_to_table(Lua, ref, *def, Data) != ERR::Okay) lua_pushnil(Lua);
          Data = (int8_t *)Data + def_size;
@@ -542,7 +542,7 @@ void make_struct_serial_table(lua_State *Lua, CSTRING StructName, LONG Elements,
 //********************************************************************************************************************
 // The TypeName can be in the format 'Struct:Arg' without causing any issues.
 
-void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, CPTR Values)
+void make_any_table(lua_State *Lua, int Type, CSTRING TypeName, int Elements, CPTR Values)
 {
    if (Type & FD_STRUCT) {
       if (Type & FD_POINTER) make_struct_ptr_table(Lua, TypeName, Elements, (CPTR *)Values);
@@ -553,12 +553,12 @@ void make_any_table(lua_State *Lua, LONG Type, CSTRING TypeName, LONG Elements, 
 
 //********************************************************************************************************************
 
-void get_line(objScript *Self, LONG Line, STRING Buffer, LONG Size)
+void get_line(objScript *Self, int Line, STRING Buffer, int Size)
 {
    CSTRING str;
 
    if ((str = Self->String)) {
-      LONG i;
+      int i;
       for (i=0; i < Line; i++) {
          if (!(str = next_line(str))) {
             Buffer[0] = 0;
@@ -589,7 +589,7 @@ ERR load_include(objScript *Script, CSTRING IncName)
 
    // For security purposes, check the validity of the include name.
 
-   LONG i;
+   int i;
    for (i=0; IncName[i]; i++) {
       if ((IncName[i] >= 'a') and (IncName[i] <= 'z')) continue;
       if ((IncName[i] >= 'A') and (IncName[i] <= 'Z')) continue;
@@ -649,14 +649,14 @@ static CSTRING load_include_struct(lua_State *Lua, CSTRING Line, CSTRING Source)
 {
    pf::Log log("load_include");
 
-   LONG i;
+   int i;
    for (i=0; (Line[i] >= 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] IS ':') {
       std::string name(Line, i);
       Line += i + 1;
 
-      LONG j;
+      int j;
       for (j=0; (Line[j] != '\n') and (Line[j] != '\r') and (Line[j]); j++);
 
       if ((Line[j] IS '\n') or (Line[j] IS '\r')) {
@@ -709,7 +709,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
 {
    pf::Log log("load_include");
 
-   LONG i;
+   int i;
    for (i=0; (unsigned(Line[i]) > 0x20) and (Line[i] != ':'); i++);
 
    if (Line[i] != ':') {
@@ -726,7 +726,7 @@ static CSTRING load_include_constant(lua_State *Lua, CSTRING Line, CSTRING Sourc
    auto append_from = prefix.size();
 
    while (*Line > 0x20) {
-      LONG n;
+      int n;
       for (n=0; (Line[n] > 0x20) and (Line[n] != '='); n++);
 
       if (Line[n] != '=') {
@@ -783,7 +783,7 @@ int code_writer_id(lua_State *Lua, CPTR Data, size_t Size, void *FileID)
    if (file.granted()) {
       if (acWrite(*file, (APTR)Data, Size) IS ERR::Okay) return 0;
    }
-   log.warning("Failed writing %d bytes.", (LONG)Size);
+   log.warning("Failed writing %d bytes.", (int)Size);
    return 1;
 }
 
@@ -793,7 +793,7 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 
    if (Size <= 0) return 0; // Ignore bad size requests
 
-   LONG result;
+   int result;
    if (acWrite(File, (APTR)Data, Size, &result) IS ERR::Okay) {
       if ((size_t)result != Size) {
          log.warning("Wrote %d bytes instead of %d.", result, (int)Size);
@@ -813,7 +813,7 @@ int code_writer(lua_State *Lua, CPTR Data, size_t Size, OBJECTPTR File)
 CSTRING code_reader(lua_State *Lua, void *Handle, size_t *Size)
 {
    auto handle = (code_reader_handle *)Handle;
-   LONG result;
+   int result;
    if (acRead(handle->File, handle->Buffer, SIZE_READ, &result) IS ERR::Okay) {
       *Size = result;
       return (CSTRING)handle->Buffer;

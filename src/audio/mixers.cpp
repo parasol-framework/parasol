@@ -2,10 +2,10 @@
 #include <immintrin.h>  // For SIMD support where available
 
 // Thread-local step value for mixing (temporary solution)
-thread_local LONG MixStep = 1;
+thread_local int MixStep = 1;
 
 // Function to set the mixing step (called from functions.cpp)
-void set_mix_step(LONG step) {
+void set_mix_step(int step) {
    MixStep = step;
 }
 

@@ -21,7 +21,7 @@ TODO: Add a SetPoint(DOUBLE X, DOUBLE Y) method for modifying existing points.
 
 *********************************************************************************************************************/
 
-constexpr LONG MAX_POINTS = 1024 * 16; // Maximum of 16k points per polygon object.
+constexpr int MAX_POINTS = 1024 * 16; // Maximum of 16k points per polygon object.
 
 static void generate_polygon(extVectorPoly *Vector, agg::path_storage &Path)
 {
@@ -237,13 +237,13 @@ the default.  If `false`, the polygon will not be closed, which results in the e
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_Closed(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_Closed(extVectorPoly *Self, int *Value)
 {
    *Value = Self->Closed;
    return ERR::Okay;
 }
 
-static ERR POLY_SET_Closed(extVectorPoly *Self, LONG Value)
+static ERR POLY_SET_Closed(extVectorPoly *Self, int Value)
 {
    if (Value) Self->Closed = true;
    else Self->Closed = false;
@@ -263,13 +263,13 @@ operations.
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_PathLength(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_PathLength(extVectorPoly *Self, int *Value)
 {
    *Value = Self->PathLength;
    return ERR::Okay;
 }
 
-static ERR POLY_SET_PathLength(extVectorPoly *Self, LONG Value)
+static ERR POLY_SET_PathLength(extVectorPoly *Self, int Value)
 {
    if (Value >= 0) {
       Self->PathLength = Value;
@@ -289,14 +289,14 @@ points is required for the shape to be valid.  The !VectorPoint structure consis
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, LONG *Elements)
+static ERR POLY_GET_PointsArray(extVectorPoly *Self, VectorPoint **Value, int *Elements)
 {
    *Value = Self->Points.data();
    *Elements = Self->Points.size();
    return ERR::Okay;
 }
 
-static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, LONG Elements)
+static ERR POLY_SET_PointsArray(extVectorPoly *Self, VectorPoint *Value, int Elements)
 {
    if (Elements >= 2) {
       Self->Points.clear();
@@ -335,7 +335,7 @@ TotalPoints is a read-only field value that reflects the total number of coordin
 
 *********************************************************************************************************************/
 
-static ERR POLY_GET_TotalPoints(extVectorPoly *Self, LONG *Value)
+static ERR POLY_GET_TotalPoints(extVectorPoly *Self, int *Value)
 {
    *Value = Self->Points.size();
    return ERR::Okay;

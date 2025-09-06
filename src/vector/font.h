@@ -13,8 +13,8 @@
 
 class common_font {
 public:
-   LONG type;
-   common_font(LONG pType) : type(pType) { }
+   int type;
+   common_font(int pType) : type(pType) { }
 };
 
 //********************************************************************************************************************
@@ -48,7 +48,7 @@ class freetype_font {
       struct glyph {
          agg::path_storage path; // AGG vector path generated from the freetype glyph
          double adv_x, adv_y;    // Pixel advances, these values should not be rounded
-         LONG   glyph_index;     // Freetype glyph index; saves having to call a function for conversion
+         int   glyph_index;     // Freetype glyph index; saves having to call a function for conversion
       };
 
       using METRIC_GROUP = std::vector<FT_Fixed>;
@@ -75,7 +75,7 @@ class freetype_font {
 
             ft_point() : common_font(CF_FREETYPE) { }
 
-            ft_point(freetype_font &pFont, METRIC_GROUP &pMetrics, LONG pSize) : common_font(CF_FREETYPE) {
+            ft_point(freetype_font &pFont, METRIC_GROUP &pMetrics, int pSize) : common_font(CF_FREETYPE) {
                font = &pFont;
                set_axis(pMetrics);
                FT_Set_Var_Design_Coordinates(pFont.face, axis.size(), axis.data());
@@ -83,7 +83,7 @@ class freetype_font {
                set_size(pSize);
             }
 
-            ft_point(freetype_font &pFont, LONG pSize) : common_font(CF_FREETYPE) {
+            ft_point(freetype_font &pFont, int pSize) : common_font(CF_FREETYPE) {
                font = &pFont;
                set_size(pSize);
             }
@@ -95,7 +95,7 @@ class freetype_font {
                //if (ft_size) { FT_Done_Size(ft_size); ft_size = NULL; }
             }
 
-            void set_size(LONG Size) {
+            void set_size(int Size) {
                if (!FT_New_Size(font->face, &ft_size)) {
                   FT_Activate_Size(ft_size);
                   FT_Set_Char_Size(font->face, 0, Size<<6, 72, 72);
@@ -143,7 +143,7 @@ class freetype_font {
             }
       };
 
-      using SIZE_CACHE = std::map<LONG, ft_point>; // font-size = glyph cache
+      using SIZE_CACHE = std::map<int, ft_point>; // font-size = glyph cache
       using STYLE_CACHE = std::map<std::string, SIZE_CACHE, CaseInsensitiveMap>;
       using METRIC_TABLE = std::map<std::string, METRIC_GROUP, CaseInsensitiveMap>;
 
@@ -152,7 +152,7 @@ class freetype_font {
       STYLE_CACHE style_cache; // Lists all known styles and contains the glyph cache for each style
       METRIC_TABLE metrics; // For variable fonts, these are pre-defined metrics with style names
       FMETA meta = FMETA::NIL;
-      LONG glyph_flags = 0;
+      int glyph_flags = 0;
       ft_point *active_size = nullptr;
 
       freetype_font()  { }
@@ -167,7 +167,7 @@ class freetype_font {
       ~freetype_font();
 };
 
-extern ERR get_font(pf::Log &Log, CSTRING, CSTRING, LONG, LONG, common_font **);
+extern ERR get_font(pf::Log &Log, CSTRING, CSTRING, int, int, common_font **);
 
 // Caching note: Although it is policy for cached fonts to be permanently retained, it is not necessary for the
 // glyphs themselves to be permanently cached.  Future resource management should therefore actively remove

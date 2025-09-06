@@ -1,5 +1,5 @@
 
-static ERR parse_spline(APTR Path, LONG Index, LONG Command, double X, double Y, anim_base::SPLINE_POINTS &Meta)
+static ERR parse_spline(APTR Path, int Index, int Command, double X, double Y, anim_base::SPLINE_POINTS &Meta)
 {
    Meta.emplace_back(pf::POINT<float> { float(X), float(Y) }, 0);
 
@@ -173,7 +173,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, uint32_t Hash, const 
 
       case SVF_VALUES: {
          Anim.values.clear();
-         LONG s, v = 0;
+         int s, v = 0;
          while (v < std::ssize(Value)) {
             while ((v < std::ssize(Value)) and (Value[v] <= 0x20)) v++;
             for (s=v; (s < std::ssize(Value)) and (Value[s] != ';'); s++);
@@ -191,7 +191,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, uint32_t Hash, const 
 
       case SVF_KEYPOINTS: {
          Anim.key_points.clear();
-         LONG s, v = 0;
+         int s, v = 0;
          while (v < std::ssize(Value)) {
             while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
             for (s=v; s < std::ssize(Value) and (Value[s] != ';'); s++);
@@ -220,7 +220,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, uint32_t Hash, const 
 
       case SVF_KEYTIMES: {
          Anim.timing.clear();
-         LONG s, v = 0;
+         int s, v = 0;
          double last_val = 0.0;
          while (v < std::ssize(Value)) {
             while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
@@ -251,7 +251,7 @@ static ERR set_anim_property(anim_base &Anim, XMLTag &Tag, uint32_t Hash, const 
 
       case SVF_KEYSPLINES: {
          Anim.splines.clear();
-         LONG s, v = 0;
+         int s, v = 0;
          while (v < std::ssize(Value)) {
             while (v < std::ssize(Value) and (Value[v] <= 0x20)) v++;
             for (s=v; s < std::ssize(Value) and (Value[s] != ';'); s++);

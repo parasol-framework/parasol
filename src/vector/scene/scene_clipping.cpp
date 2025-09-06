@@ -114,7 +114,7 @@ void SceneRenderer::ClipBuffer::draw_clips(SceneRenderer &Render, extVector *Sha
 
 //********************************************************************************************************************
 
-void SceneRenderer::ClipBuffer::resize_bitmap(LONG X, LONG Y, LONG Width, LONG Height)
+void SceneRenderer::ClipBuffer::resize_bitmap(int X, int Y, int Width, int Height)
 {
    if ((Width <= 0) or (Height <= 0)) Width = Height = 1;
 

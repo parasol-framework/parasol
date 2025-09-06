@@ -31,7 +31,7 @@ but the compression ratio will improve.
 
 *********************************************************************************************************************/
 
-static ERR SET_CompressionLevel(extCompression *Self, LONG Value)
+static ERR SET_CompressionLevel(extCompression *Self, int Value)
 {
    if (Value < 0) Value = 0;
    else if (Value > 100) Value = 100;
@@ -235,7 +235,7 @@ To support GZIP decompression, please set the WindowBits value to 47.
 
 *********************************************************************************************************************/
 
-static ERR SET_WindowBits(extCompression *Self, LONG Value)
+static ERR SET_WindowBits(extCompression *Self, int Value)
 {
    pf::Log log;
 

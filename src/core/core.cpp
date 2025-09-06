@@ -88,12 +88,12 @@ This documentation is intended for technical reference and is not suitable as an
 #define KERR(...) fprintf(stderr, __VA_ARGS__)
 
 #ifdef __unix__
-static void CrashHandler(LONG, siginfo_t *, APTR) __attribute__((unused));
-static void NullHandler(LONG, siginfo_t *Info, APTR)  __attribute__((unused));
-static void child_handler(LONG, siginfo_t *Info, APTR)  __attribute__((unused));
-static void DiagnosisHandler(LONG, siginfo_t *Info, APTR)  __attribute__((unused));
+static void CrashHandler(int, siginfo_t *, APTR) __attribute__((unused));
+static void NullHandler(int, siginfo_t *Info, APTR)  __attribute__((unused));
+static void child_handler(int, siginfo_t *Info, APTR)  __attribute__((unused));
+static void DiagnosisHandler(int, siginfo_t *Info, APTR)  __attribute__((unused));
 #elif _WIN32
-static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info) __attribute__((unused));
+static int CrashHandler(int Code, APTR Address, int Continuable, int *Info) __attribute__((unused));
 static void BreakHandler(void)  __attribute__((unused));
 #endif
 
@@ -112,7 +112,7 @@ extern ERR add_asset_class(void);
 extern ERR add_file_class(void);
 extern ERR add_storage_class(void);
 
-LONG InitCore(void);
+int InitCore(void);
 __export void CloseCore(void);
 __export ERR OpenCore(OpenInfo *, struct CoreBase **);
 static ERR init_volumes(const std::forward_list<std::string> &);
@@ -122,8 +122,8 @@ static ERR init_volumes(const std::forward_list<std::string> &);
 #define WINAPI  __stdcall
 #define HKEY_LOCAL_MACHINE 0x80000002
 #define KEY_READ 0x20019
-DLLCALL LONG WINAPI RegOpenKeyExA(LONG,STRING,LONG,LONG,APTR *);
-DLLCALL LONG WINAPI RegQueryValueExA(APTR,STRING,LONG *,LONG *,int8_t *,LONG *);
+DLLCALL int WINAPI RegOpenKeyExA(int,STRING,int,int,APTR *);
+DLLCALL int WINAPI RegQueryValueExA(APTR,STRING,int *,int *,int8_t *,int *);
 DLLCALL void WINAPI CloseHandle(APTR);
 #endif
 
@@ -141,7 +141,7 @@ static void print_class_list(void)
    for (auto & [ cid, v ] : glClassDB) {
       out << v.Name << " ";
    }
-   log.msg("Total: %d, %s", (LONG)glClassDB.size(), out.str().c_str());
+   log.msg("Total: %d, %s", (int)glClassDB.size(), out.str().c_str());
 }
 
 //********************************************************************************************************************
@@ -165,7 +165,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          bool hold_priority;
       #endif
    #endif
-   LONG i;
+   int i;
 
    if (!Info) return ERR::NullArgs;
    if ((Info->Flags & OPF::ERROR) != OPF::NIL) Info->Error = ERR::Failed;
@@ -285,7 +285,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    // Android sets an important JNI pointer on initialisation.
 
    if (((Info->Flags & OPF::OPTIONS) != OPF::NIL) and (Info->Options)) {
-      for (LONG i=0; LONG(Info->Options[i].Tag) != TAGEND; i++) {
+      for (int i=0; int(Info->Options[i].Tag) != TAGEND; i++) {
          switch (Info->Options[i].Tag) {
             case TOI::ANDROID_ENV: {
                glJNIEnv = Info->Options[i].Value.Pointer;
@@ -369,7 +369,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    // Ensure that the process priority starts out at zero
 
    if (!hold_priority) {
-      LONG p = getpriority(PRIO_PROCESS, 0);
+      int p = getpriority(PRIO_PROCESS, 0);
       if (p) nice(-p);
    }
 #endif
@@ -445,7 +445,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
          if (bind(glSocket, (struct sockaddr *)sockpath, socklen) IS -1) {
             KERR("bind() failed on '%s' [%d]: %s\n", sockpath->sun_path, errno, strerror(errno));
             if (errno IS EADDRINUSE) {
-               LONG reuse;
+               int reuse;
 
                // If you open-close-open the Core, the socket needs to be bound to an existing bind address.
 
@@ -511,10 +511,10 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       auto file = objFile::create { fl::Path(glClassBinPath), fl::Flags(FL::READ) };
 
       if (file.ok()) {
-         LONG filesize;
+         int filesize;
          file->get(FID_Size, filesize);
 
-         LONG hdr;
+         int hdr;
          file->read(&hdr, sizeof(hdr));
          if (hdr IS CLASSDB_HEADER) {
             while (file->Position + ClassRecord::MIN_SIZE < filesize) {
@@ -568,7 +568,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
 
    {
       pf::Log log("Core");
-      log.branch("Initialising %d static modules.", LONG(std::ssize(glStaticModules)));
+      log.branch("Initialising %d static modules.", int(std::ssize(glStaticModules)));
       for (auto & [ name, hdr ] : glStaticModules) {
          objModule::create mod = { pf::FieldValue(FID_Name, name.c_str()) };
       }
@@ -647,7 +647,7 @@ static const CSTRING signals[] = {
 };
 
 #ifdef __ANDROID__
-void print_diagnosis(LONG Signal)
+void print_diagnosis(int Signal)
 {
    LOGE("Application diagnosis, signal %d.", Signal);
 
@@ -692,7 +692,7 @@ void print_diagnosis(LONG Signal)
 
 #else
 
-void print_diagnosis(LONG Signal)
+void print_diagnosis(int Signal)
 {
    FILE *fd;
 #ifndef _WIN32
@@ -743,9 +743,9 @@ void print_diagnosis(LONG Signal)
       glCodeIndex = CP_PRINT_ACTION;
       if (ctx->action > AC::NIL) {
          if (ctx->field) fprintf(fd, "  Last Action:    Set.%s\n", ctx->field->Name);
-         else fprintf(fd, "  Last Action:    %s\n", ActionTable[LONG(ctx->action)].Name);
+         else fprintf(fd, "  Last Action:    %s\n", ActionTable[int(ctx->action)].Name);
       }
-      else if (ctx->action < AC::NIL) fprintf(fd, "  Last Method:    %d\n", LONG(ctx->action));
+      else if (ctx->action < AC::NIL) fprintf(fd, "  Last Method:    %d\n", int(ctx->action));
    }
    else fprintf(fd, "  The action table is corrupt.\n");
 
@@ -800,7 +800,7 @@ void print_diagnosis(LONG Signal)
 //********************************************************************************************************************
 
 #ifdef __unix__
-static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
+static void DiagnosisHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 {
    if (glLogLevel < 2) return;
    print_diagnosis(0);
@@ -811,7 +811,7 @@ static void DiagnosisHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 //********************************************************************************************************************
 
 #ifdef __unix__
-static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
+static void CrashHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 {
    pf::Log log("Core");
 
@@ -868,7 +868,7 @@ static void CrashHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 //********************************************************************************************************************
 
 #ifdef __unix__
-static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
+static void NullHandler(int SignalNumber, siginfo_t *Info, APTR Context)
 {
    //printf("Alarm signalled (sig %d).\n", SignalNumber);
 }
@@ -877,18 +877,18 @@ static void NullHandler(LONG SignalNumber, siginfo_t *Info, APTR Context)
 //********************************************************************************************************************
 
 #ifdef __unix__
-static void child_handler(LONG SignalNumber, siginfo_t *Info, APTR Context)
+static void child_handler(int SignalNumber, siginfo_t *Info, APTR Context)
 {
 #if 0
    parasol:Log log(__FUNCTION__);
 
-   LONG childprocess = Info->si_pid;
+   int childprocess = Info->si_pid;
 
    // Get the return code
 
-   LONG status = 0;
+   int status = 0;
    waitpid(Info->si_pid, &status, WNOHANG);
-   LONG result = WEXITSTATUS(status);
+   int result = WEXITSTATUS(status);
 
    log.warning("Process #%d exited, return-code %d.", childprocess, result);
 
@@ -935,7 +935,7 @@ const CSTRING ExceptionTable[EXP_END] = {
 
 APTR glExceptionAddress = 0;
 
-static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
+static int CrashHandler(int Code, APTR Address, int Continuable, int *Info)
 {
    pf::Log log("Core");
 
@@ -989,7 +989,7 @@ static LONG CrashHandler(LONG Code, APTR Address, LONG Continuable, LONG *Info)
 
 //********************************************************************************************************************
 
-extern "C" ERR convert_errno(LONG Error, ERR Default)
+extern "C" ERR convert_errno(int Error, ERR Default)
 {
    switch (Error) {
       case 0:       return ERR::Okay;
@@ -1118,7 +1118,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    // the Core.
 
    if (((glOpenInfo->Flags & OPF::OPTIONS) != OPF::NIL) and (glOpenInfo->Options)) {
-      for (LONG i=0; LONG(glOpenInfo->Options[i].Tag) != TAGEND; i++) {
+      for (int i=0; int(glOpenInfo->Options[i].Tag) != TAGEND; i++) {
          switch (glOpenInfo->Options[i].Tag) {
             case TOI::LOCAL_CACHE: {
                SetVolume("localcache", glOpenInfo->Options[i].Value.String, nullptr, nullptr, nullptr, VOLUME::REPLACE|VOLUME::HIDDEN|VOLUME::SYSTEM);
@@ -1207,10 +1207,10 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
          char net[] = "net1";
          char usb[] = "usb1";
 
-         for (LONG i=0; i < len; i++) {
+         for (int i=0; i < len; i++) {
             std::string label, filesystem;
             label = buffer[i];
-            LONG type;
+            int type;
             winGetVolumeInformation(buffer+i, label, filesystem, type);
 
             if (buffer[i+2] IS '\\') buffer[i+2] = '/';
@@ -1258,13 +1258,13 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    // We extract all lines with /dev/hd** and convert those into drives.
 
    char mount[80], drivename[] = "driveXXX", devpath[40];
-   LONG file;
+   int file;
 
    log.msg("Scanning /proc/mounts for hard disks");
 
-   LONG driveno = 2; // Drive 1 is already assigned to root, so start from #2
+   int driveno = 2; // Drive 1 is already assigned to root, so start from #2
    if ((file = open("/proc/mounts", O_RDONLY)) != -1) {
-      LONG size = lseek(file, 0, SEEK_END);
+      int size = lseek(file, 0, SEEK_END);
       lseek(file, 0, SEEK_SET);
       if (size < 1) size = 8192;
 
@@ -1278,7 +1278,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
             if (std::string_view(str, size).starts_with("/dev/hd")) {
                // Extract mount point
 
-               LONG i = 0;
+               int i = 0;
                while ((*str) and (*str > 0x20)) {
                   if (i < std::ssize(devpath)-1) devpath[i++] = *str;
                   str++;
@@ -1314,7 +1314,7 @@ static ERR init_volumes(const std::forward_list<std::string> &Volumes)
    };
    char cdname[] = "cd1";
 
-   for (LONG i=0; i < std::ssize(cdroms); i++) {
+   for (int i=0; i < std::ssize(cdroms); i++) {
       if (!access(cdroms[i], F_OK)) {
          SetVolume(cdname, cdroms[i], "devices/compactdisc", nullptr, "cd", VOLUME::NIL);
          cdname[2] = cdname[2] + 1;

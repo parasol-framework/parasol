@@ -45,9 +45,9 @@ freetype_font::glyph & freetype_font::ft_point::get_glyph(uint32_t Unicode)
 
    const FT_Outline &outline = font->face->glyph->outline;
 
-   LONG first = 0; // index of first point in contour
-   for (LONG n=0; n < outline.n_contours; n++) {
-      LONG last = outline.contours[n];  // index of last point in contour
+   int first = 0; // index of first point in contour
+   for (int n=0; n < outline.n_contours; n++) {
+      int last = outline.contours[n];  // index of last point in contour
       FT_Vector *limit = outline.points + last;
 
       FT_Vector v_start = outline.points[first];
@@ -232,11 +232,11 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
 
    // Compute the string length in characters if a transition is being applied
 
-   LONG total_chars = 0;
+   int total_chars = 0;
    if (Vector->Transition) {
       for (auto const &line : Vector->txLines) {
          for (auto lstr=line.c_str(); *lstr; ) {
-            LONG char_len;
+            int char_len;
             uint32_t unicode = UTF8ReadValue(lstr, &char_len);
             lstr += char_len;
             if (unicode <= 0x20) continue;
@@ -270,16 +270,16 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
          scale_char.translate(0, -Vector->txFontSize * path_scale);
       }
 
-      LONG char_index = 0;
-      LONG cmd = -1;
-      LONG prev_glyph_index = 0;
+      int char_index = 0;
+      int cmd = -1;
+      int prev_glyph_index = 0;
       double dist = 0; // Distance to next vertex
       double angle = 0;
       for (auto &line : Vector->txLines) {
          line.chars.clear();
          auto wrap_state = WS_NO_WORD;
 
-         LONG char_len;
+         int char_len;
          for (auto str=line.c_str(); *str; ) {
             uint32_t unicode = UTF8ReadValue(str, &char_len);
             str += char_len;
@@ -364,8 +364,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
    else {
       double dx = 0, dy = 0; // Text coordinate tracking from (0,0), not transformed
       double longest_line_width = 0;
-      LONG prev_glyph_index = 0;
-      LONG char_index = 0;
+      int prev_glyph_index = 0;
+      int char_index = 0;
 
       for (auto &line : Vector->txLines) {
          line.chars.clear();
@@ -374,8 +374,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             calc_caret_position(line, Vector->txFontSize);
          }
          else for (auto str=line.c_str(); *str; ) {
-            LONG char_len;
-            LONG unicode = UTF8ReadValue(str, &char_len);
+            int char_len;
+            int unicode = UTF8ReadValue(str, &char_len);
 
             if (unicode <= 0x20) { wrap_state = WS_NO_WORD; prev_glyph_index = 0; }
             else if (wrap_state IS WS_NEW_WORD) wrap_state = WS_IN_WORD;
@@ -395,8 +395,8 @@ static void generate_text(extVectorText *Vector, agg::path_storage &Path)
             // TODO: Wrapping information should be cached for speeding up subsequent redraws.
 
             if ((wrap_state IS WS_NEW_WORD) and (Vector->txInlineSize)) {
-               LONG word_length = 0;
-               for (LONG c=0; (str[c]) and (str[c] > 0x20); ) {
+               int word_length = 0;
+               for (int c=0; (str[c]) and (str[c] > 0x20); ) {
                   for (++c; ((str[c] & 0xc0) IS 0x80); c++);
                   word_length++;
                }

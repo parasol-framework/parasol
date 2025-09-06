@@ -29,7 +29,7 @@ extern CoreBase *CoreBase;
 static AAssetManager *glAssetManager = nullptr;
 static bool glAssetManagerFree = false;
 
-connst LONG LEN_ASSETS = 7; // "assets:" length
+connst int LEN_ASSETS = 7; // "assets:" length
 
 static ERR ASSET_Delete(objFile *, APTR);
 static ERR ASSET_Free(objFile *, APTR);
@@ -76,10 +76,10 @@ static const MethodEntry clMethods[] = {
 
 static ERR close_dir(DirInfo *);
 static ERR open_dir(DirInfo *);
-static ERR get_info(std::string_view, FileInfo *, LONG);
-static ERR read_dir(CSTRING, DirInfo **, LONG);
+static ERR get_info(std::string_view, FileInfo *, int);
+static ERR read_dir(CSTRING, DirInfo **, int);
 static ERR scan_dir(DirInfo *);
-static ERR test_path(std::string &, LONG *);
+static ERR test_path(std::string &, int *);
 static AAssetManager * get_asset_manager(void);
 
 //********************************************************************************************************************
@@ -89,7 +89,7 @@ ERR add_asset_class(void)
    pf::Log log(__FUNCTION__);
    OpenInfo *openinfo;
    CSTRING classname;
-   LONG i;
+   int i;
 
    log.branch();
 
@@ -213,7 +213,7 @@ static ERR ASSET_Init(objFile *Self)
    // Allocate private structure
 
    if (!AllocMemory(sizeof(prvFileAsset), Self->memflags(), &Self->ChildPrivate, nullptr)) {
-      LONG len;
+      int len;
       for (len=0; Self->Path[len]; len++);
 
       if (Self->Path[len-1] IS ':') {
@@ -311,7 +311,7 @@ static ERR ASSET_Rename(objFile *Self, struct acRename *Args)
 static ERR ASSET_Seek(objFile *Self, struct acSeek *Args)
 {
    prvFileAsset *prv;
-   LONG method;
+   int method;
 
    if (!(prv = Self->ChildPrivate)) return log.warning(ERR::ObjectCorrupt);
 
@@ -372,7 +372,7 @@ static ERR open_dir(DirInfo *Dir)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
-   LONG len;
+   int len;
 
    log.traceBranch("%s", Dir->prvResolvedPath.c_str());
 
@@ -461,11 +461,11 @@ static ERR close_dir(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
    int8_t dir;
-   LONG i, len;
+   int i, len;
 
    // We need to open the file in order to retrieve its size.
 
@@ -527,13 +527,13 @@ static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
 //********************************************************************************************************************
 // Test an assets: location.
 
-static ERR test_path(std::string &Path, LONG Flags, LOC *Type)
+static ERR test_path(std::string &Path, int Flags, LOC *Type)
 {
    pf::Log log(__FUNCTION__);
    AAssetManager *mgr;
    AAsset *asset;
    AAssetDir *dir;
-   LONG len;
+   int len;
 
    log.traceBranch("%s", Path);
 
@@ -581,12 +581,12 @@ static ERR test_path(std::string &Path, LONG Flags, LOC *Type)
 // Read the entire folder in one function call.
 
 #if 0
-static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
+static ERR read_dir(CSTRING Path, DirInfo **Result, int Flags)
 {
    DirInfo *dirinfo;
    AAssetDir *dir;
    AAssetManager *mgr;
-   LONG len;
+   int len;
 
    log.traceBranch("Path: %s, Flags: $%.8x", Path, Flags);
 
@@ -618,14 +618,14 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
    const char *filename;
    FileInfo *entry, *current;
    uint8_t assetpath[300];
-   LONG i;
+   int i;
 
    // Read folder structure
 
    current = nullptr;
    dirinfo->Total = 0;
    ERR error = ERR::Okay;
-   LONG insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
+   int insert = StrCopy(Path+LEN_ASSETS, assetpath, sizeof(assetpath)-2);
    if (assetpath[insert-1] != '/') assetpath[insert++] = '/';
    while ((filename = AAssetDir_getNextFileName(dir)) and (!error)) {
       entry = nullptr;
@@ -639,7 +639,7 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
       AAsset *asset;
       if ((asset = AAssetManager_open(mgr, assetpath, AASSET_MODE_UNKNOWN))) {
          if ((Flags & RDF::FILE) != RDF::NIL) {
-            LONG size = sizeof(FileInfo) + strlen(filename) + 2;
+            int size = sizeof(FileInfo) + strlen(filename) + 2;
             if (!AllocMemory(size, MEM::DATA, &entry, nullptr)) {
                entry->Flags = RDF::FILE;
 
@@ -669,7 +669,7 @@ static ERR read_dir(CSTRING Path, DirInfo **Result, LONG Flags)
          AAsset_close(asset);
       }
       else if ((Flags & RDF::FOLDER) != RDF::NIL) {
-         LONG size = sizeof(FileInfo) + strlen(filename) + 2;
+         int size = sizeof(FileInfo) + strlen(filename) + 2;
          if (!AllocMemory(size, MEM::DATA, &entry, nullptr)) {
             entry->Flags = RDF::FOLDER;
 

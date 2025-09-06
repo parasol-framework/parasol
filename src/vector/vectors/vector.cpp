@@ -34,10 +34,10 @@ static ERR VECTOR_Push(extVector *, struct vec::Push *);
 //********************************************************************************************************************
 // For the use of the VectorScene's Debug() method.
 
-void debug_tree(extVector *Vector, LONG &Level)
+void debug_tree(extVector *Vector, int &Level)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
+   int i;
 
    auto indent = std::make_unique<char[]>(Level + 1);
    for (i=0; i < Level; i++) indent[i] = ' '; // Indenting
@@ -198,7 +198,7 @@ Okay:
 
 static ERR VECTOR_Debug(extVector *Self)
 {
-   LONG level = 0;
+   int level = 0;
    debug_tree(Self, level);
    return ERR::Okay;
 }
@@ -239,10 +239,10 @@ static ERR VECTOR_Draw(extVector *Self, struct acDraw *Args)
       // TODO: Would need to account for client defined brush stroke widths and stroke scaling.
 
       const auto stroke_width = Self->fixed_stroke_width() + 1;
-      const LONG bx1 = F2T(Self->BX1 - stroke_width);
-      const LONG by1 = F2T(Self->BY1 - stroke_width);
-      const LONG bx2 = F2T(Self->BX2 + stroke_width);
-      const LONG by2 = F2T(Self->BY2 + stroke_width);
+      const int bx1 = F2T(Self->BX1 - stroke_width);
+      const int by1 = F2T(Self->BY1 - stroke_width);
+      const int bx2 = F2T(Self->BX2 + stroke_width);
+      const int by2 = F2T(Self->BY2 + stroke_width);
 
       struct drwScheduleRedraw area = { .X = bx1, .Y = by1, .Width = bx2 - bx1, .Height = by2 - by1 };
 #endif
@@ -770,7 +770,7 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
 
    auto scan = Self;
    if (Args->Position < 0) { // Move backward through the stack.
-      for (LONG i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
+      for (int i=-Args->Position; (scan->Prev) and (i); i--) scan = (extVector *)scan->Prev;
       if (scan IS Self) return ERR::Okay;
 
       // Patch up either side of the current position.
@@ -789,7 +789,7 @@ static ERR VECTOR_Push(extVector *Self, struct vec::Push *Args)
       else Self->Prev->Next = Self;
    }
    else { // Move forward through the stack.
-      for (LONG i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
+      for (int i=Args->Position; (scan->Next) and (i); i--) scan = (extVector *)scan->Next;
       if (scan IS Self) return ERR::Okay;
 
       if (Self->Prev) Self->Prev->Next = Self->Next;
@@ -1027,11 +1027,11 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    Self->BasePath.approximation_scale(Args->Scale);
 
    double x, y;
-   LONG cmd = -1;
-   LONG index = 0;
+   int cmd = -1;
+   int index = 0;
 
   if (Args->Callback->isC()) {
-      auto routine = ((ERR (*)(extVector *, LONG, LONG, double, double, APTR))(Args->Callback->Routine));
+      auto routine = ((ERR (*)(extVector *, int, int, double, double, APTR))(Args->Callback->Routine));
 
       pf::SwitchContext context(ParentContext());
 
@@ -1060,8 +1060,8 @@ static ERR VECTOR_Trace(extVector *Self, struct vec::Trace *Args)
    else if (Args->Callback->isScript()) {
       std::array<ScriptArg, 5> args {{
          { "Vector",  Self->UID, FD_OBJECTID },
-         { "Index",   LONG(0) },
-         { "Command", LONG(0) },
+         { "Index",   int(0) },
+         { "Command", int(0) },
          { "X",       double(0) },
          { "Y",       double(0) }
       }};
@@ -1245,7 +1245,7 @@ then the list of values is repeated to yield an even number of values.  Thus `5,
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, LONG *Elements)
+static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, int *Elements)
 {
    if (Self->DashArray) {
       *Value    = Self->DashArray->values.data();
@@ -1258,27 +1258,27 @@ static ERR VECTOR_GET_DashArray(extVector *Self, double **Value, LONG *Elements)
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_DashArray(extVector *Self, double *Value, LONG Elements)
+static ERR VECTOR_SET_DashArray(extVector *Self, double *Value, int Elements)
 {
    pf::Log log;
 
    if (Self->DashArray) { delete Self->DashArray; Self->DashArray = nullptr; }
 
    if ((Value) and (Elements >= 1)) {
-      LONG total;
+      int total;
 
       if (Elements & 1) total = Elements * 2; // To satisfy requirements, the dash path can be doubled to make an even number.
       else total = Elements;
 
       Self->DashArray = new (std::nothrow) DashedStroke(Self->BasePath, total);
       if (Self->DashArray) {
-         for (LONG i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
+         for (int i=0; i < Elements; i++) Self->DashArray->values[i] = Value[i];
          if (Elements & 1) {
-            for (LONG i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
+            for (int i=0; i < Elements; i++) Self->DashArray->values[Elements+i] = Value[i];
          }
 
          double total_length = 0;
-         for (LONG i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
+         for (int i=0; i < std::ssize(Self->DashArray->values)-1; i+=2) {
             if ((Self->DashArray->values[i] < 0) or (Self->DashArray->values[i+1] < 0)) { // Negative values can cause an infinite drawing cycle.
                log.warning("Invalid dash array value pair (%f, %f)", Self->DashArray->values[i], Self->DashArray->values[i+1]);
                delete Self->DashArray;
@@ -1430,14 +1430,14 @@ If the Alpha component is set to zero then the FillColour will be ignored by the
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_FillColour(extVector *Self, float **Value, LONG *Elements)
+static ERR VECTOR_GET_FillColour(extVector *Self, float **Value, int *Elements)
 {
    *Value = (float *)&Self->Fill[0].Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_FillColour(extVector *Self, float *Value, LONG Elements)
+static ERR VECTOR_SET_FillColour(extVector *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Fill[0].Colour.Red   = Value[0];
@@ -1917,13 +1917,13 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_NumericID(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_NumericID(extVector *Self, int *Value)
 {
    *Value = Self->NumericID;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_NumericID(extVector *Self, LONG Value)
+static ERR VECTOR_SET_NumericID(extVector *Self, int Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = nullptr; }
@@ -2237,14 +2237,14 @@ This field is complemented by the #StrokeOpacity and #Stroke fields.
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_StrokeColour(extVector *Self, float **Value, LONG *Elements)
+static ERR VECTOR_GET_StrokeColour(extVector *Self, float **Value, int *Elements)
 {
    *Value = (float *)&Self->Stroke.Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_StrokeColour(extVector *Self, float *Value, LONG Elements)
+static ERR VECTOR_SET_StrokeColour(extVector *Self, float *Value, int Elements)
 {
    if (Value) {
       if (Elements >= 1) Self->Stroke.Colour.Red   = Value[0];
@@ -2335,13 +2335,13 @@ When two vectors share the same priority, preference is given to the older of th
 
 *********************************************************************************************************************/
 
-static ERR VECTOR_GET_TabOrder(extVector *Self, LONG *Value)
+static ERR VECTOR_GET_TabOrder(extVector *Self, int *Value)
 {
    *Value = Self->TabOrder;
    return ERR::Okay;
 }
 
-static ERR VECTOR_SET_TabOrder(extVector *Self, LONG Value)
+static ERR VECTOR_SET_TabOrder(extVector *Self, int Value)
 {
    if ((Value >= 1) and (Value <= 255)) {
       Self->TabOrder = Value;
@@ -2433,7 +2433,7 @@ void send_feedback(extVector *Vector, FM Event, OBJECTPTR EventObject)
             // In this implementation the script function will receive all the events chained via the Next field
             sc::Call(sub.Callback, std::to_array<ScriptArg>({
                { "Vector", Vector, FDF_OBJECT },
-               { "Event",  LONG(Event) },
+               { "Event",  int(Event) },
                { "EventObject", EventObject, FDF_OBJECT }
             }), result);
          }

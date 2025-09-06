@@ -119,7 +119,7 @@ static ERR compress_folder(extCompression *Self, std::string Location, std::stri
       wrb<uint32_t>(entry.OriginalSize, header + HEAD_FILESIZE);
       wrb<uint16_t>(entry.Name.size(), header + HEAD_NAMELEN);
       if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) return ERR::Okay;
-      if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (LONG)entry.Name.size()) return ERR::Okay;
+      if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (int)entry.Name.size()) return ERR::Okay;
 
       Self->Files.push_back(entry);
 
@@ -166,7 +166,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    uint32_t dataoffset = 0;
    std::string filename;
    std::list<ZipFile>::iterator file_index;
-   LONG i, len;
+   int i, len;
 
    int16_t level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
@@ -295,7 +295,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    }
 
    PERMIT permissions;
-   if (file->get(FID_Permissions, (LONG &)permissions) IS ERR::Okay) {
+   if (file->get(FID_Permissions, (int &)permissions) IS ERR::Okay) {
       if ((permissions & PERMIT::USER_READ) != PERMIT::NIL)   entry.Flags |= ZIP_UREAD;
       if ((permissions & PERMIT::GROUP_READ) != PERMIT::NIL)  entry.Flags |= ZIP_GREAD;
       if ((permissions & PERMIT::OTHERS_READ) != PERMIT::NIL) entry.Flags |= ZIP_OREAD;
@@ -313,7 +313,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
 
    // Skip over the PKZIP header that will be written for this file (we will be updating the header later).
 
-   if (acWriteResult(Self->FileIO, nullptr, HEAD_LENGTH + entry.Name.size() + entry.Comment.size()) != LONG(HEAD_LENGTH + entry.Name.size() + entry.Comment.size())) return ERR::Write;
+   if (acWriteResult(Self->FileIO, nullptr, HEAD_LENGTH + entry.Name.size() + entry.Comment.size()) != int(HEAD_LENGTH + entry.Name.size() + entry.Comment.size())) return ERR::Write;
 
    // Specify the limitations of our buffer so that the compression routine doesn't overwrite its boundaries.  Then
    // start the compression of the input file.
@@ -393,7 +393,7 @@ static ERR compress_file(extCompression *Self, std::string Location, std::string
    wrb<uint32_t>(entry.OriginalSize, header + HEAD_FILESIZE);
    wrb<uint16_t>(entry.Name.size(), header + HEAD_NAMELEN);
    if (acWriteResult(Self->FileIO, header, HEAD_LENGTH) != HEAD_LENGTH) return ERR::Write;
-   if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (LONG)entry.Name.size()) return ERR::Write;
+   if (acWriteResult(Self->FileIO, entry.Name.c_str(), entry.Name.size()) != (int)entry.Name.size()) return ERR::Write;
 
    // Send updated feedback if necessary
 
@@ -426,7 +426,7 @@ static ERR remove_file(extCompression *Self, std::list<ZipFile>::iterator &File)
    uint16_t namelen, extralen;
    if (fl::ReadLE(Self->FileIO, &namelen) != ERR::Okay) return ERR::Read;
    if (fl::ReadLE(Self->FileIO, &extralen) != ERR::Okay) return ERR::Read;
-   LONG chunksize  = HEAD_LENGTH + namelen + extralen + File->CompressedSize;
+   int chunksize  = HEAD_LENGTH + namelen + extralen + File->CompressedSize;
    double currentpos = File->Offset + chunksize;
    if (acSeekStart(Self->FileIO, currentpos) != ERR::Okay) return log.warning(ERR::Seek);
 
@@ -485,7 +485,7 @@ static ERR fast_scan_zip(extCompression *Self)
    if (acSeek(Self->FileIO, tail.listoffset, SEEK::START) != ERR::Okay) return ERR::Seek;
 
    zipentry *list, *scan;
-   LONG total_files = 0;
+   int total_files = 0;
    if (AllocMemory(tail.listsize, MEM::DATA|MEM::NO_CLEAR, (APTR *)&list, nullptr) IS ERR::Okay) {
       log.trace("Reading end-of-central directory from index %d, %d bytes.", tail.listoffset, tail.listsize);
       if (acRead(Self->FileIO, list, tail.listsize, nullptr) != ERR::Okay) {
@@ -497,7 +497,7 @@ static ERR fast_scan_zip(extCompression *Self)
       auto head = (uint32_t *)list;
       #pragma GCC diagnostic warning "-Waddress-of-packed-member"
 
-      for (LONG i=0; i < tail.filecount; i++) {
+      for (int i=0; i < tail.filecount; i++) {
          if (0x02014b50 != head[0]) {
             log.warning("Zip file has corrupt end-of-file signature.");
             Self->Files.clear();
@@ -572,8 +572,8 @@ static ERR scan_zip(extCompression *Self)
 
    if (acSeek(Self->FileIO, 0.0, SEEK::START) != ERR::Okay) return log.warning(ERR::Seek);
 
-   LONG type, result;
-   LONG total_files = 0;
+   int type, result;
+   int total_files = 0;
    while (fl::ReadLE(Self->FileIO, &type) IS ERR::Okay) {
       if (type IS 0x04034b50) {
          // PKZIP file header entry detected

@@ -31,7 +31,7 @@ class extSourceFX : public extFilterEffect {
    objVectorScene *Scene; // Internal scene for rendering.
    uint8_t *BitmapData;
    ARF  AspectRatio;      // Aspect ratio flags.
-   LONG DataSize;
+   int DataSize;
    bool Render;           // Must be true if the bitmap cache needs to be rendered.
 };
 
@@ -104,8 +104,8 @@ static ERR SOURCEFX_Draw(extSourceFX *Self, struct acDraw *Args)
 
       // Manual data management - bitmap data is restricted to the clipping region.
 
-      const LONG canvas_width  = cache->Clip.Right - cache->Clip.Left;
-      const LONG canvas_height = cache->Clip.Bottom - cache->Clip.Top;
+      const int canvas_width  = cache->Clip.Right - cache->Clip.Left;
+      const int canvas_height = cache->Clip.Bottom - cache->Clip.Top;
       cache->LineWidth = canvas_width * cache->BytesPerPixel;
 
       if ((Self->BitmapData) and (Self->DataSize < cache->LineWidth * canvas_height)) {

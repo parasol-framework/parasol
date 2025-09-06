@@ -31,8 +31,8 @@ static OBJECTPTR glTask = nullptr;
 static OBJECTPTR glScript = nullptr;
 
 static ERROR decompress_archive(CSTRING);
-static ERROR prep_environment(LONG, LONG, LONG);
-static ERROR exec_script(CSTRING, OBJECTID *, LONG, STRING);
+static ERROR prep_environment(int, int, int);
+static ERROR exec_script(CSTRING, OBJECTID *, int, STRING);
 static ERROR PROGRAM_ActionNotify(OBJECTPTR, struct acActionNotify *);
 
 static const char Help[] = {
@@ -65,15 +65,15 @@ extern "C" void program(void)
 {
    pf::Log log;
 
-   LONG i, j;
+   int i, j;
 
    glTask = CurrentTask();
    bool time       = false;
-   LONG winhandle  = 0;
+   int winhandle  = 0;
    STRING procedure  = nullptr;
    STRING scriptfile = nullptr;
-   LONG width      = 0;
-   LONG height     = 0;
+   int width      = 0;
+   int height     = 0;
 
    FileSystemBase = (struct FileSystemBase *)GetResourcePtr(RES::FILESYSTEM);
 
@@ -213,7 +213,7 @@ exit:
 //********************************************************************************************************************
 // Prepares a special environment for running scripts.
 
-ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
+ERROR prep_environment(int WindowHandle, int Width, int Height)
 {
    pf::Log log(__FUNCTION__);
 
@@ -237,9 +237,9 @@ ERROR prep_environment(LONG WindowHandle, LONG Width, LONG Height)
 //********************************************************************************************************************
 // Runs scripts.
 
-ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STRING Procedure)
+ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, int ShowTime, STRING Procedure)
 {
-   LONG i, j, k;
+   int i, j, k;
    ERROR error;
    int8_t argbuffer[100], *argname;
 
@@ -267,7 +267,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
                argname = argbuffer+1; // Skip the first byte... reserved for '+'
                argbuffer[0] = '+'; // Append arg indicator
                for (i=0; glArgs[i]; i++) {
-                  for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+                  for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (int)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
                   argname[j] = 0;
 
                   if (glArgs[i][j] IS '=') {
@@ -322,7 +322,7 @@ ERROR exec_script(CSTRING ScriptFile, OBJECTID *CoreObjectID, LONG ShowTime, STR
          argname = argbuffer+1; // Skip the first byte... reserved for '+'
          argbuffer[0] = '+'; // Append arg indicator
          for (i=0; glArgs[i]; i++) {
-            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (LONG)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
+            for (j=0; (glArgs[i][j]) and (glArgs[i][j] != '=') and (j < (int)sizeof(argbuffer)-10); j++) argname[j] = glArgs[i][j];
             argname[j] = 0;
 
             if (glArgs[i][j] IS '=') {
@@ -394,7 +394,7 @@ static ERROR decompress_archive(CSTRING Location)
 {
    if (!Location) return(ERR_NullArgs);
 
-   LONG len, i, j;
+   int len, i, j;
    for (len=0; Location[len]; len++);
 
    objCompression::create compress = { fl::Path(Location) };

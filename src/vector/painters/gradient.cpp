@@ -19,7 +19,7 @@ definition.  This will ensure that the VectorGradient is de-allocated when the s
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements);
+static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, int Elements);
 
 // Return a gradient table for a vector with its opacity multiplier applied.  The table is cached with the vector so
 // that it does not need to be recalculated when required again.
@@ -102,7 +102,7 @@ GRADIENT_TABLE * get_stroke_gradient_table(extVector &Vector)
 
 GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS ColourSpace, double Alpha, double Resolution)
 {
-   LONG stop, i1, i2, i;
+   int stop, i1, i2, i;
 
    for (stop=0; stop < std::ssize(Stops)-1; stop++) {
       i1 = F2T(255.0 * Stops[stop].Offset);
@@ -140,7 +140,7 @@ GradientColours::GradientColours(const std::vector<GradientStop> &Stops, VCS Col
 
 GradientColours::GradientColours(const std::array<FRGB, 256> &Map, double Resolution)
 {
-   for (LONG i=0; i < std::ssize(Map); i++) {
+   for (int i=0; i < std::ssize(Map); i++) {
       table[i] = agg::rgba8(Map[i]);
    }
 
@@ -172,12 +172,12 @@ static ERR VECTORGRADIENT_Init(extVectorGradient *Self)
 {
    pf::Log log;
 
-   if ((LONG(Self->SpreadMethod) <= 0) or (LONG(Self->SpreadMethod) >= LONG(VSPREAD::END))) {
+   if ((int(Self->SpreadMethod) <= 0) or (int(Self->SpreadMethod) >= int(VSPREAD::END))) {
       log.traceWarning("Invalid SpreadMethod value of %d", Self->SpreadMethod);
       return ERR::OutOfRange;
    }
 
-   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+   if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return ERR::OutOfRange;
    }
@@ -275,14 +275,14 @@ The Colour value is defined in floating-point RGBA format, using a range of 0 - 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, float **Value, LONG *Elements)
+static ERR VECTORGRADIENT_GET_Colour(extVectorGradient *Self, float **Value, int *Elements)
 {
    *Value = (float *)&Self->Colour;
    *Elements = 4;
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, float *Value, LONG Elements)
+static ERR VECTORGRADIENT_SET_Colour(extVectorGradient *Self, float *Value, int Elements)
 {
    pf::Log log;
    if (Value) {
@@ -534,13 +534,13 @@ If NumericID is set by the client, then any value in #ID will be immediately cle
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, LONG *Value)
+static ERR VECTORGRADIENT_GET_NumericID(extVectorGradient *Self, int *Value)
 {
    *Value = Self->NumericID;
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, LONG Value)
+static ERR VECTORGRADIENT_SET_NumericID(extVectorGradient *Self, int Value)
 {
    Self->NumericID = Value;
    if (Self->ID) { FreeResource(Self->ID); Self->ID = nullptr; }
@@ -641,14 +641,14 @@ to define a start and end point for interpolating the gradient colours.
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, LONG *Elements)
+static ERR VECTORGRADIENT_GET_Stops(extVectorGradient *Self, GradientStop **Value, int *Elements)
 {
    *Value    = Self->Stops.data();
    *Elements = Self->Stops.size();
    return ERR::Okay;
 }
 
-static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, LONG Elements)
+static ERR VECTORGRADIENT_SET_Stops(extVectorGradient *Self, GradientStop *Value, int Elements)
 {
    Self->Stops.clear();
 
@@ -675,7 +675,7 @@ This read-only field indicates the total number of stops that have been defined 
 
 *********************************************************************************************************************/
 
-static ERR VECTORGRADIENT_GET_TotalStops(extVectorGradient *Self, LONG *Value)
+static ERR VECTORGRADIENT_GET_TotalStops(extVectorGradient *Self, int *Value)
 {
    *Value = Self->Stops.size();
    return ERR::Okay;

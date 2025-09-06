@@ -41,7 +41,7 @@ static ERR CLIP_Init(extVectorClip *Self)
 {
    pf::Log log;
 
-   if ((LONG(Self->Units) <= 0) or (LONG(Self->Units) >= LONG(VUNIT::END))) {
+   if ((int(Self->Units) <= 0) or (int(Self->Units) >= int(VUNIT::END))) {
       log.traceWarning("Invalid Units value of %d", Self->Units);
       return ERR::OutOfRange;
    }

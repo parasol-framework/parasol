@@ -13,7 +13,7 @@ Name: Events
 
 #include "defs.h"
 
-static const std::array<CSTRING, LONG(EVG::END)> glEventGroups = {
+static const std::array<CSTRING, int(EVG::END)> glEventGroups = {
    nullptr,
    "filesystem",
    "network",
@@ -34,7 +34,7 @@ struct eventsub {
    struct eventsub *Next, *Prev;
    EVENTID  EventID;
    EVENTID  EventMask;
-   void     (*Callback)(APTR Info, LONG Size, APTR Meta);
+   void     (*Callback)(APTR Info, int Size, APTR Meta);
    APTR     CallbackMeta;
    EVG      Group;
    uint8_t    Called;
@@ -95,13 +95,13 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR BroadcastEvent(APTR Event, LONG EventSize)
+ERR BroadcastEvent(APTR Event, int EventSize)
 {
    pf::Log log(__FUNCTION__);
 
    if ((!Event) or ((size_t)EventSize < sizeof(pf::Event))) return ERR::NullArgs;
 
-   LONG groupmask = 1<<((((pf::Event *)Event)->EventID>>56) & 0xff);
+   int groupmask = 1<<((((pf::Event *)Event)->EventID>>56) & 0xff);
 
    if (glEventMask & groupmask) {
       log.trace("Broadcasting event $%.8x%.8x",
@@ -158,7 +158,7 @@ int64_t GetEventID(EVG Group, CSTRING SubGroup, CSTRING Event)
    glEventNames[hash_event]    = Event;
 
    log.traceBranch("Group: %d, SubGroup: %s, Event: %s, Result: $%.8x%.8x",
-      LONG(Group), SubGroup, Event, uint32_t(event_id>>32), uint32_t(event_id));
+      int(Group), SubGroup, Event, uint32_t(event_id>>32), uint32_t(event_id));
 
    return event_id;
 }
@@ -199,7 +199,7 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 
    auto gid = EVG(uint8_t(EventID>>56));
 
-   if ((LONG(gid) < 1) or (LONG(gid) >= LONG(EVG::END))) {
+   if ((int(gid) < 1) or (int(gid) >= int(EVG::END))) {
       return log.warning(ERR::Args);
    }
 
@@ -210,7 +210,7 @@ ERR SubscribeEvent(int64_t EventID, FUNCTION *Callback, APTR *Handle)
 
       OBJECTPTR context = CurrentContext();
       event->EventID   = EventID;
-      event->Callback  = (void (*)(APTR, LONG, APTR))Callback->Routine;
+      event->Callback  = (void (*)(APTR, int, APTR))Callback->Routine;
       event->CallbackMeta = Callback->Meta;
       event->Group     = gid;
       event->ContextID = context->UID;
@@ -290,7 +290,7 @@ void UnsubscribeEvent(APTR Handle)
 //********************************************************************************************************************
 // ProcessMessages() will call this function whenever a MSGID::EVENT message is received.
 
-ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+ERR msg_event(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -298,8 +298,8 @@ ERR msg_event(APTR Custom, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
 
    pf::Event *event_msg = (pf::Event *)Message;
 
-   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (LONG)((event_msg->EventID>>32)& 0xffffffff),
-      (LONG)(event_msg->EventID & 0xffffffff));
+   log.msg(VLF::DETAIL|VLF::BRANCH, "Event $%.8x%8x has been received.", (int)((event_msg->EventID>>32)& 0xffffffff),
+      (int)(event_msg->EventID & 0xffffffff));
 
    struct eventsub *event;
    glCallSignal++;

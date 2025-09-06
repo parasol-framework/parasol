@@ -108,7 +108,7 @@ static ERR MODOpen(OBJECTPTR);
 JUMPTABLE_CORE
 static OBJECTPTR glAudioModule = nullptr;
 static OBJECTPTR clAudio = 0;
-static ankerl::unordered_dense::map<OBJECTID, LONG> glSoundChannels;
+static ankerl::unordered_dense::map<OBJECTID, int> glSoundChannels;
 class extAudio;
 
 ERR add_audio_class(void);
@@ -116,9 +116,9 @@ ERR add_sound_class(void);
 void free_audio_class(void);
 void free_sound_class(void);
 
-extern "C" void end_of_stream(OBJECTPTR, LONG);
+extern "C" void end_of_stream(OBJECTPTR, int);
 
-static void audio_stopped_event(extAudio &, LONG);
+static void audio_stopped_event(extAudio &, int);
 static ERR set_channel_volume(extAudio *, struct AudioChannel *);
 static void load_config(extAudio *);
 static ERR init_audio(extAudio *);

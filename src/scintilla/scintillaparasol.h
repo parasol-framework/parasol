@@ -78,7 +78,7 @@ public:
 
    // Custom interfacing methods
 
-   virtual void SetStyles(const struct styledef *Def, LONG Total);
+   virtual void SetStyles(const struct styledef *Def, int Total);
    virtual void panDraw(objSurface *, objBitmap *Bitmap);
    virtual void panFontChanged(void *Font, void *BoldFont, void *ItalicFont, void *BIFont);
    virtual void panIdleEvent();

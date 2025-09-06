@@ -253,7 +253,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AbsX(extVectorViewport *Self, LONG &Value)
+static ERR VIEW_GET_AbsX(extVectorViewport *Self, int &Value)
 {
    gen_vector_tree(Self);
 
@@ -271,7 +271,7 @@ graph.  Transforms are taken into consideration when calculating this value.
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_AbsY(extVectorViewport *Self, LONG &Value)
+static ERR VIEW_GET_AbsY(extVectorViewport *Self, int &Value)
 {
    gen_vector_tree(Self);
 
@@ -332,13 +332,13 @@ changes frequently (e.g. is animated).  Buffering also enforces overflow (clippi
 
 *********************************************************************************************************************/
 
-static ERR VIEW_GET_Buffered(extVectorViewport *Self, LONG &Value)
+static ERR VIEW_GET_Buffered(extVectorViewport *Self, int &Value)
 {
    Value = Self->vpBuffered;
    return ERR::Okay;
 }
 
-static ERR VIEW_SET_Buffered(extVectorViewport *Self, LONG Value)
+static ERR VIEW_SET_Buffered(extVectorViewport *Self, int Value)
 {
    Self->vpBuffered = Value;
    return ERR::Okay;

@@ -76,7 +76,7 @@ void anim_base::stop(double Time)
 {
    if (!begin_series.empty()) {
       // Check if there's a serialised begin offset following the one that's completed.
-      LONG i;
+      int i;
       for (i=0; i < std::ssize(begin_series)-1; i++) {
          if (begin_offset IS begin_series[i]) {
             begin_offset = begin_series[i+1];

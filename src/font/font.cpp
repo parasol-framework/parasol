@@ -93,8 +93,8 @@ class extFont : public objFont {
    std::string prvBuffer;
    struct FontCharacter *prvChar;
    class BitmapCache *BmpCache;
-   LONG prvLineCount;
-   LONG prvStrWidth;
+   int prvLineCount;
+   int prvStrWidth;
    int16_t prvBitmapHeight;
    int16_t prvLineCountCR;
    char prvEscape[2];
@@ -108,18 +108,18 @@ class extFont : public objFont {
 #include "font_bitmap.cpp"
 
 static ERR add_font_class(void);
-static LONG getutf8(CSTRING, uint32_t *);
+static int getutf8(CSTRING, uint32_t *);
 static void scan_truetype_folder(objConfig *);
 static void scan_fixed_folder(objConfig *);
 static ERR analyse_bmp_font(CSTRING, winfnt_header_fields *, std::string &, std::vector<uint16_t> &);
-static void string_size(extFont *, CSTRING, LONG, LONG, LONG *, LONG *);
+static void string_size(extFont *, CSTRING, int, int, int *, int *);
 
 //********************************************************************************************************************
 // Return the first unicode value from a given string address.
 
-static LONG getutf8(CSTRING Value, uint32_t *Unicode)
+static int getutf8(CSTRING Value, uint32_t *Unicode)
 {
-   LONG i, len, code;
+   int i, len, code;
 
    if ((*Value & 0x80) != 0x80) {
       if (Unicode) *Unicode = *Value;
@@ -216,7 +216,7 @@ inline void calc_lines(extFont *Self)
 
 //********************************************************************************************************************
 
-static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LONG *Width, LONG *Rows)
+static void string_size(extFont *Font, CSTRING String, int Chars, int Wrap, int *Width, int *Rows)
 {
    uint32_t unicode;
    int16_t rowcount, wordwidth, lastword, tabwidth, charwidth;
@@ -239,11 +239,11 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
    //log.msg("StringSize: %.10s, Wrap %d, Chars %d, Abort: %d", String, Wrap, Chars, line_abort);
 
    CSTRING start  = String;
-   LONG x         = 0;
-   LONG prevglyph = 0;
-   LONG longest   = 0;
-   LONG charcount = 0;
-   LONG wordindex = 0;
+   int x         = 0;
+   int prevglyph = 0;
+   int longest   = 0;
+   int charcount = 0;
+   int wordindex = 0;
    rowcount = line_abort ? 0 : 1;
    while ((*String) and (charcount < Chars)) {
       lastword = x;
@@ -275,23 +275,23 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
 
       // Calculate the width of the discovered word
 
-      wordindex = LONG(String - start);
+      wordindex = int(String - start);
       wordwidth = 0;
       charwidth = 0;
 
       while (charcount < Chars) {
-         LONG charlen = getutf8(String, &unicode);
+         int charlen = getutf8(String, &unicode);
 
          if (Font->FixedWidth > 0) charwidth = Font->FixedWidth;
          else if (unicode < 256) charwidth = Font->prvChar[unicode].Advance * Font->GlyphSpacing;
-         else charwidth = Font->prvChar[(LONG)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
+         else charwidth = Font->prvChar[(int)Font->prvDefaultChar].Advance * Font->GlyphSpacing;
 
          if ((!x) and (x+wordwidth+charwidth >= Wrap)) {
             // This is the first word of the line and it exceeds the boundary, so we have to split it.
 
             lastword = wordwidth;
             wordwidth += charwidth; // This is just to ensure that a break occurs
-            wordindex = (LONG)(String - start);
+            wordindex = (int)(String - start);
             break;
          }
          else {
@@ -325,7 +325,7 @@ static void string_size(extFont *Font, CSTRING String, LONG Chars, LONG Wrap, LO
    if (x > longest) longest = x;
 
    if (Rows) {
-      if (line_abort) *Rows = LONG(String - start);
+      if (line_abort) *Rows = int(String - start);
       else *Rows = rowcount;
    }
 
@@ -410,12 +410,12 @@ int: The pixel width of the character will be returned.
 
 *********************************************************************************************************************/
 
-LONG CharWidth(objFont *Font, uint32_t Char)
+int CharWidth(objFont *Font, uint32_t Char)
 {
    auto font = (extFont *)Font;
    if (Font->FixedWidth > 0) return Font->FixedWidth;
    else if ((Char < 256) and (font->prvChar)) return font->prvChar[Char].Advance;
-   else return font->prvChar ? font->prvChar[(LONG)font->prvDefaultChar].Advance : 0;
+   else return font->prvChar ? font->prvChar[(int)font->prvDefaultChar].Advance : 0;
 }
 
 /*********************************************************************************************************************
@@ -511,15 +511,15 @@ ERR GetList(FontList **Result)
                if (keys.contains("Points")) {
                   auto fontpoints = std::string_view(keys["Points"]);
                   if (!fontpoints.empty()) {
-                     list->Points = (LONG *)buffer;
+                     list->Points = (int *)buffer;
                      std::size_t i = 0;
                      for (int16_t j=0; i != std::string::npos; j++) {
-                        ((LONG *)buffer)[0] = svtonum<LONG>(fontpoints);
-                        buffer += sizeof(LONG);
+                        ((int *)buffer)[0] = svtonum<int>(fontpoints);
+                        buffer += sizeof(int);
                         if (i = fontpoints.find(','); i != std::string::npos) fontpoints.remove_prefix(i+1);
                      }
-                     ((LONG *)buffer)[0] = 0;
-                     buffer += sizeof(LONG);
+                     ((int *)buffer)[0] = 0;
+                     buffer += sizeof(int);
                   }
                }
             }
@@ -557,7 +557,7 @@ int: The pixel width of the string is returned - this will be zero if there was 
 
 *********************************************************************************************************************/
 
-LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
+int StringWidth(objFont *Font, CSTRING String, int Chars)
 {
    if ((!Font) or (!String)) return 0;
    if (!Font->initialised()) return 0;
@@ -566,9 +566,9 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
    CSTRING str = String;
    if (Chars < 0) Chars = 0x7fffffff;
 
-   LONG len    = 0;
-   LONG widest = 0;
-   LONG whitespace = 0;
+   int len    = 0;
+   int widest = 0;
+   int whitespace = 0;
    while ((*str) and (Chars > 0)) {
       if (*str IS '\n') {
          if (widest < len) widest = len - whitespace;
@@ -589,14 +589,14 @@ LONG StringWidth(objFont *Font, CSTRING String, LONG Chars)
          str += getutf8(str, &unicode);
          Chars--;
 
-         LONG advance;
+         int advance;
          if (Font->FixedWidth > 0) advance = Font->FixedWidth;
          else if ((unicode < 256) and (font->prvChar) and (font->prvChar[unicode].Advance)) {
             advance = font->prvChar[unicode].Advance;
          }
-         else advance = font->prvChar[(LONG)font->prvDefaultChar].Advance;
+         else advance = font->prvChar[(int)font->prvDefaultChar].Advance;
 
-         LONG final_advance = advance * Font->GlyphSpacing;
+         int final_advance = advance * Font->GlyphSpacing;
          len += final_advance;
          whitespace = final_advance - advance;
       }
@@ -746,7 +746,7 @@ ERR RefreshFonts(void)
 
          styles.sort();
          std::ostringstream style_list;
-         for (LONG i=0; not styles.empty(); i++) {
+         for (int i=0; not styles.empty(); i++) {
             if (i) style_list << ",";
             style_list << styles.front();
             styles.pop_front();
@@ -913,12 +913,12 @@ static void scan_truetype_folder(objConfig *Config)
                         char buffer[100];
                         auto name_table_size = FT_Get_Sfnt_Name_Count(ftface);
                         for (FT_UInt s=0; (s < mvar->num_namedstyles); s++) {
-                           for (LONG n=LONG(name_table_size)-1; n >= 0; n--) {
+                           for (int n=int(name_table_size)-1; n >= 0; n--) {
                               FT_SfntName sft_name;
                               if (!FT_Get_Sfnt_Name(ftface, n, &sft_name)) {
                                  if (sft_name.name_id IS mvar->namedstyle[s].strid) {
                                     // Decode UTF16 Big Endian
-                                    LONG out = 0;
+                                    int out = 0;
                                     auto str = (uint16_t *)sft_name.string;
                                     uint16_t prev_unicode = 0;
                                     for (FT_UInt i=0; (i < sft_name.string_len>>1) and (out < std::ssize(buffer)-8); i++) {
@@ -1072,7 +1072,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
    pf::Log log(__FUNCTION__);
    winmz_header_fields mz_header;
    winne_header_fields ne_header;
-   LONG i, res_offset, font_offset;
+   int i, res_offset, font_offset;
    uint16_t size_shift, font_count, count;
    char face[50];
 
@@ -1120,7 +1120,7 @@ static ERR analyse_bmp_font(CSTRING Path, winfnt_header_fields *Header, std::str
 
                // Get the offset and size of each font entry
 
-               for (LONG i=0; i < font_count; i++) {
+               for (int i=0; i < font_count; i++) {
                   uint16_t offset = 0, size = 0;
                   fl::ReadLE(*file, &offset);
                   fl::ReadLE(*file, &size);

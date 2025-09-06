@@ -263,7 +263,7 @@ static void decompress_jpeg(extPicture *Self, objBitmap *Bitmap, struct jpeg_dec
 
    log.trace("Unpacking data to a %dbpp Bitmap...", Bitmap->BitsPerPixel);
 
-   LONG row_stride = Cinfo->output_width * Cinfo->output_components;
+   int row_stride = Cinfo->output_width * Cinfo->output_components;
    JSAMPARRAY buffer = (*Cinfo->mem->alloc_sarray)((j_common_ptr) Cinfo, JPOOL_IMAGE, row_stride, 1);
    for (JDIMENSION y=0; Cinfo->output_scanline < Cinfo->output_height; y++) {
       jpeg_read_scanlines(Cinfo, buffer, 1);
@@ -428,10 +428,10 @@ static ERR JPEG_SaveImage(extPicture *Self, struct acSaveImage *Args)
       JSAMPROW row_pointer[1];
       RGB8 rgb;
 
-      for (LONG y=0; y < Self->Bitmap->Height; y++) {
+      for (int y=0; y < Self->Bitmap->Height; y++) {
          row_pointer[0] = buffer.get();
          int16_t index = 0;
-         for (LONG x=0; x < Self->Bitmap->Width; x++) {
+         for (int x=0; x < Self->Bitmap->Width; x++) {
             Self->Bitmap->ReadUCRPixel(Self->Bitmap, x, y, &rgb);
             buffer[index++] = rgb.Red;
             buffer[index++] = rgb.Green;

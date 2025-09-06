@@ -96,7 +96,7 @@ static ERR TIME_SetTime(objTime *Self)
    pf::Log log;
    struct timeval tmday;
    struct tm time;
-   LONG fd;
+   int fd;
 
    log.branch();
 

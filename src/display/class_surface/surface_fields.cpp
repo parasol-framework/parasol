@@ -19,7 +19,7 @@ static ERR GET_BitsPerPixel(extSurface *Self, int *Value)
    return ERR::Okay;
 }
 
-static ERR SET_BitsPerPixel(extSurface *Self, LONG Value)
+static ERR SET_BitsPerPixel(extSurface *Self, int Value)
 {
    Self->BitsPerPixel = Value;
    return ERR::Okay;
@@ -156,7 +156,7 @@ with normally.
 
 *********************************************************************************************************************/
 
-static ERR SET_Modal(extSurface *Self, LONG Value)
+static ERR SET_Modal(extSurface *Self, int Value)
 {
    if ((!Value) and (Self->Modal)) {
       if (Self->PrevModalID) {
@@ -183,7 +183,7 @@ setting the coordinate fields directly.
 
 *********************************************************************************************************************/
 
-static ERR SET_Movement(extSurface *Self, LONG Flags)
+static ERR SET_Movement(extSurface *Self, int Flags)
 {
    if (Flags IS MOVE_HORIZONTAL) Self->Flags = (Self->Flags & RNF::NO_HORIZONTAL) | RNF::NO_VERTICAL;
    else if (Flags IS MOVE_VERTICAL) Self->Flags = (Self->Flags & RNF::NO_VERTICAL) | RNF::NO_HORIZONTAL;
@@ -218,7 +218,7 @@ static ERR GET_Opacity(extSurface *Self, double *Value)
 
 static ERR SET_Opacity(extSurface *Self, double Value)
 {
-   LONG opacity;
+   int opacity;
 
    // NB: It is OK to set the opacity on a surface object when it does not own its own bitmap, as the aftercopy
    // routines will refer the copy so that it starts from the bitmap owner.
@@ -254,7 +254,7 @@ a surface object.  This behaviour can be switched off by setting a Parent of zer
 
 *********************************************************************************************************************/
 
-static ERR SET_Parent(extSurface *Self, LONG Value)
+static ERR SET_Parent(extSurface *Self, int Value)
 {
    // To change the parent post-initialisation, we have to re-track the surface so that it is correctly repositioned
    // within the surface lists.
@@ -270,7 +270,7 @@ static ERR SET_Parent(extSurface *Self, LONG Value)
 
       const std::lock_guard<std::recursive_mutex> lock(glSurfaceLock);
 
-      LONG index, parent;
+      int index, parent;
       if ((index = find_surface_list(Self)) != -1) {
          if (!Value) parent = 0;
          else for (parent=0; (glSurfaces[parent].SurfaceID) and (glSurfaces[parent].SurfaceID != Self->ParentID); parent++);
@@ -383,14 +383,14 @@ surface object.
 
 *********************************************************************************************************************/
 
-static ERR GET_Visible(extSurface *Self, LONG *Value)
+static ERR GET_Visible(extSurface *Self, int *Value)
 {
    if (Self->visible()) *Value = TRUE;
    else *Value = FALSE;
    return ERR::Okay;
 }
 
-static ERR SET_Visible(extSurface *Self, LONG Value)
+static ERR SET_Visible(extSurface *Self, int Value)
 {
    if (Value) acShow(Self);
    else acHide(Self);

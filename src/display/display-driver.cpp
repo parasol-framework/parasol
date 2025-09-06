@@ -11,8 +11,8 @@ that is distributed with this package.  Please refer to it for further informati
 using namespace display;
 #endif
 
-ERR GET_HDensity(extDisplay *Self, LONG *Value);
-ERR GET_VDensity(extDisplay *Self, LONG *Value);
+ERR GET_HDensity(extDisplay *Self, int *Value);
+ERR GET_VDensity(extDisplay *Self, int *Value);
 
 //********************************************************************************************************************
 
@@ -39,10 +39,10 @@ _XDisplay *XDisplay = 0;
 XVisualInfo glXInfoAlpha;
 bool glX11ShmImage = false;
 bool glXCompositeSupported = false;
-uint8_t KeyHeld[LONG(KEY::LIST_END)];
+uint8_t KeyHeld[int(KEY::LIST_END)];
 uint8_t glTrayIcon = 0, glTaskBar = 1, glStickToFront = 0;
 KQ glKeyFlags = KQ::NIL;
-LONG glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
+int glXFD = -1, glDGAPixelsPerLine = 0, glDGABankSize = 0;
 Atom atomSurfaceID = 0, XWADeleteWindow = 0;
 GC glXGC = 0, glClipXGC = 0;
 XWindowAttributes glRootWindow;
@@ -94,8 +94,8 @@ WinCursor winCursors[24] = {
 OBJECTPTR modAndroid;
 struct AndroidBase *AndroidBase;
 
-static void android_init_window(LONG);
-static void android_term_window(LONG);
+static void android_init_window(int);
+static void android_term_window(int);
 #endif
 
 #include "module_def.c"
@@ -103,7 +103,7 @@ static void android_term_window(LONG);
 //********************************************************************************************************************
 // Note: These values are used as the input masks
 
-const InputType glInputType[LONG(JET::END)] = {
+const InputType glInputType[int(JET::END)] = {
    { JTYPE::NIL, JTYPE::NIL },                                         // UNUSED
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_1
    { JTYPE::BUTTON,                 JTYPE::BUTTON },   // JET::BUTTON_2
@@ -127,7 +127,7 @@ const InputType glInputType[LONG(JET::END)] = {
    { JTYPE::EXT_MOVEMENT,           JTYPE::EXT_MOVEMENT }  // JET::DISPLAY_EDGE
 };
 
-const CSTRING glInputNames[LONG(JET::END)] = {
+const CSTRING glInputNames[int(JET::END)] = {
    "",
    "BUTTON_1",
    "BUTTON_2",
@@ -162,15 +162,15 @@ static EGLDisplay glEGLDisplay = EGL_NO_DISPLAY;
 static EGLint glEGLWidth, glEGLHeight, glEGLDepth;
 static pthread_mutex_t glGraphicsMutex;
 static CSTRING glLastLock = nullptr;
-static LONG glLockCount = 0;
+static int glLockCount = 0;
 static OBJECTID glActiveDisplayID = 0;
 #endif
 
 #ifdef XRANDR_ENABLED
 static XRRScreenSize glCustomSizes[] = { { 640,480,0,0 }, { 800,600,0,0 }, { 1024,768,0,0 }, { 1280,1024,0,0 } };
 static XRRScreenSize *glSizes = glCustomSizes;
-static LONG glSizeCount = std::ssize(glCustomSizes);
-static LONG glActualCount = 0;
+static int glSizeCount = std::ssize(glCustomSizes);
+static int glActualCount = 0;
 #endif
 
 std::recursive_mutex glInputLock;
@@ -189,9 +189,9 @@ TIMER glRefreshPointerTimer = 0;
 extBitmap *glComposite = nullptr;
 static auto glDisplayType = DT::NATIVE;
 double glpRefreshRate = -1, glpGammaRed = 1, glpGammaGreen = 1, glpGammaBlue = 1;
-LONG glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
-LONG glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
-LONG glpMaximise = FALSE, glpFullScreen = FALSE;
+int glpDisplayWidth = 1024, glpDisplayHeight = 768, glpDisplayX = 0, glpDisplayY = 0;
+int glpDisplayDepth = 0; // If zero, the display depth will be based on the hosted desktop's bit depth.
+int glpMaximise = FALSE, glpFullScreen = FALSE;
 SWIN glpWindowType = SWIN::HOST;
 char glpDPMS[20] = "Standby";
 uint8_t *glDemultiply = nullptr;
@@ -207,7 +207,7 @@ THREADVAR OBJECTID tlFreeExpose = 0;
 //********************************************************************************************************************
 // Alpha blending data.
 
-inline uint8_t clipByte(LONG value)
+inline uint8_t clipByte(int value)
 {
    value = (0 & (-(int16_t)(value < 0))) | (value & (-(int16_t)!(value < 0)));
    value = (255 & (-(int16_t)(value > 255))) | (value & (-(int16_t)!(value > 255)));
@@ -226,15 +226,15 @@ void get_resolutions(extDisplay *Self)
       if (!Self->Resolutions.empty()) return;
 
       if (!glActualCount) {
-         for (LONG i=0; i < glSizeCount; i++) {
+         for (int i=0; i < glSizeCount; i++) {
             if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
                glActualCount++;
             }
          }
       }
 
-      auto get_mode = [&Self, &log](LONG Index) {
-         for (LONG i=0; i < glSizeCount; i++) {
+      auto get_mode = [&Self, &log](int Index) {
+         for (int i=0; i < glSizeCount; i++) {
             if ((glSizes[i].width >= 640) and (glSizes[i].height >= 480)) {
                if (!Index) {
                   Self->Resolutions.emplace_back(glSizes[i].width, glSizes[i].height, DefaultDepth(XDisplay, DefaultScreen(XDisplay)));
@@ -245,7 +245,7 @@ void get_resolutions(extDisplay *Self)
          }
       };
 
-      for (LONG i=0; i < glActualCount; i++) {
+      for (int i=0; i < glActualCount; i++) {
          get_mode(i);
       }
    }
@@ -268,20 +268,20 @@ void get_resolutions(extDisplay *Self)
 //********************************************************************************************************************
 
 #ifdef XRANDR_ENABLED
-ERR xr_set_display_mode(LONG *Width, LONG *Height)
+ERR xr_set_display_mode(int *Width, int *Height)
 {
    pf::Log log(__FUNCTION__);
-   LONG count, i;
-   LONG width = *Width;
-   LONG height = *Height;
+   int count, i;
+   int width = *Width;
+   int height = *Height;
 
    XRRScreenSize *sizes;
    if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
       int16_t index    = -1;
-      LONG bestweight = 0x7fffffff;
+      int bestweight = 0x7fffffff;
 
       for (i=0; i < count; i++) {
-         LONG weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
+         int weight = std::abs(sizes[i].width - width) + std::abs(sizes[i].height - height);
          if (weight < bestweight) {
             index = i;
             bestweight = weight;
@@ -318,7 +318,7 @@ ERR xr_set_display_mode(LONG *Width, LONG *Height)
 // GLES specific functions
 
 #ifdef _GLES_
-static LONG nearestPower(LONG value)
+static int nearestPower(int value)
 {
    int i = 1;
 
@@ -422,12 +422,12 @@ int16_t glDGAAvailable = -1; // -1 indicates that we have not tried the setup pr
 #ifdef XDGA_AVAILABLE
 APTR glDGAMemory = nullptr;
 
-LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
+int x11DGAAvailable(APTR *VideoAddress, int *PixelsPerLine, int *BankSize)
 {
    pf::Log log(__FUNCTION__);
    STRING displayname;
 
-   static LONG checked = true;
+   static int checked = true;
    *VideoAddress = NULL;
 
    if (glDGAAvailable IS -1) {
@@ -438,7 +438,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 
       displayname = XDisplayName(nullptr);
       if ((startswith(displayname, ":")) or (startswith(displayname, "unix:")) ) {
-         LONG events, errors, major, minor, screen;
+         int events, errors, major, minor, screen;
 
          if (XDGAQueryExtension(XDisplay, &events, &errors) and XDGAQueryVersion(XDisplay, &major, &minor)) {
             screen = DefaultScreen(XDisplay);
@@ -448,7 +448,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
 
             if (!SetResource(RES::PRIVILEGED_USER, TRUE)) {
                if ((major >= 2) and (XDGAOpenFramebuffer(XDisplay, screen))) { // Success, DGA is enabled
-                  LONG ram;
+                  int ram;
 
                   // Get RAM address, pixels-per-line, bank-size and total amount of video memory
 
@@ -479,7 +479,7 @@ LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
    return glDGAAvailable;
 }
 #else
-LONG x11DGAAvailable(APTR *VideoAddress, LONG *PixelsPerLine, LONG *BankSize)
+int x11DGAAvailable(APTR *VideoAddress, int *PixelsPerLine, int *BankSize)
 {
    glDGAAvailable = FALSE;
    return glDGAAvailable;
@@ -544,7 +544,7 @@ int CatchXIOError(Display *XDisplay)
 //********************************************************************************************************************
 // Resize the pixmap buffer for a window, but only if the new dimensions exceed the existing values.
 
-extern ERR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
+extern ERR resize_pixmap(extDisplay *Self, int Width, int Height)
 {
    auto bmp = (extBitmap *)Self->Bitmap;
    if ((bmp->Flags & BMF::ALPHA_CHANNEL) != BMF::NIL) return ERR::Okay; // Composite window
@@ -572,7 +572,7 @@ extern ERR resize_pixmap(extDisplay *Self, LONG Width, LONG Height)
 
 //********************************************************************************************************************
 
-ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
+ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 {
    pf::Log log(__FUNCTION__);
 
@@ -581,7 +581,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
    if (!Info) return log.warning(ERR::NullArgs);
 
    if (InfoSize != sizeof(DisplayInfoV3)) {
-      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, LONG(sizeof(DisplayInfoV3)));
+      log.error("Invalid InfoSize of %d (V3: %d)", InfoSize, int(sizeof(DisplayInfoV3)));
       return log.warning(ERR::Args);
    }
 
@@ -643,7 +643,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       }
       else {
          XPixmapFormatValues *list;
-         LONG count, i;
+         int count, i;
 
          Info->Width  = glRootWindow.width;
          Info->Height = glRootWindow.height;
@@ -681,7 +681,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
       }
 
 #elif _WIN32
-      LONG width, height, bits, bytes, colours, hdpi, vdpi;
+      int width, height, bits, bytes, colours, hdpi, vdpi;
 
       // TODO: Allow the user to set a custom DPI via style values.
 
@@ -726,7 +726,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, LONG InfoSize)
 
             glDisplayInfo.VDensity = glDisplayInfo.HDensity;
 
-            LONG pixel_format = ANativeWindow_getFormat(window);
+            int pixel_format = ANativeWindow_getFormat(window);
             if ((pixel_format IS WINDOW_FORMAT_RGBA_8888) or (pixel_format IS WINDOW_FORMAT_RGBX_8888)) {
                glDisplayInfo.BytesPerPixel = 32;
                if (pixel_format IS WINDOW_FORMAT_RGBA_8888) glDisplayInfo.BitsPerPixel = 32;
@@ -807,7 +807,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    pf::Log log(__FUNCTION__);
 
    #ifdef __xwindows__
-      LONG shmmajor, shmminor, pixmaps;
+      int shmmajor, shmminor, pixmaps;
    #endif
 
    CoreBase = argCoreBase;
@@ -957,10 +957,10 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
       int16_t i;
       XRRScreenSize *sizes;
       XPixmapFormatValues *list;
-      LONG errors, count;
+      int errors, count;
       char buffer[512];
 
-      LONG events;
+      int events;
       if ((glX11.Manager) and (XRRQueryExtension(XDisplay, &events, &errors))) {
          glXRRAvailable = true;
          if ((sizes = XRRSizes(XDisplay, DefaultScreen(XDisplay), &count)) and (count)) {
@@ -975,7 +975,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
          if (file.ok()) {
             auto write_string = [](objFile *File, CSTRING String) {
-               struct acWrite write = { .Buffer = String, .Length = LONG(strlen(String)) };
+               struct acWrite write = { .Buffer = String, .Length = int(strlen(String)) };
                Action(AC::Write, File, &write);
             };
 
@@ -1015,7 +1015,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
             if (xbytes IS 4) xbpp = 32;
 
-            LONG xcolours;
+            int xcolours;
             switch(xbpp) {
                case 1:  xcolours = 2; break;
                case 8:  xcolours = 256; break;
@@ -1065,7 +1065,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    // Initialise 64K alpha blending table, for cutting down on multiplications.
 
-   LONG i = 0;
+   int i = 0;
    for (int16_t iAlpha=0; iAlpha < 256; iAlpha++) {
       double fAlpha = (double)iAlpha * (1.0 / 255.0);
       for (int16_t iValue=0; iValue < 256; iValue++) {
@@ -1250,7 +1250,7 @@ static ERR MODExpunge(void)
 */
 
 #ifdef _GLES_
-GLenum alloc_texture(LONG Width, LONG Height, GLuint *TextureID)
+GLenum alloc_texture(int Width, int Height, GLuint *TextureID)
 {
    GLenum glerror;
 
@@ -1289,7 +1289,7 @@ ERR init_egl(void)
 {
    pf::Log log(__FUNCTION__);
    EGLint format;
-   LONG depth;
+   int depth;
 
    log.branch("Requested Depth: %d", glEGLPreferredDepth);
 
@@ -1310,7 +1310,7 @@ ERR init_egl(void)
    // process, where we pick the first EGLConfig that matches our criteria
 
    EGLint attribs[20];
-   LONG a = 0;
+   int a = 0;
    attribs[a++] = EGL_SURFACE_TYPE; attribs[a++] = EGL_WINDOW_BIT;
    attribs[a++] = EGL_BLUE_SIZE;    attribs[a++] = (depth IS 16) ? 5 : 8;
    attribs[a++] = EGL_GREEN_SIZE;   attribs[a++] = (depth IS 16) ? 6 : 8;
@@ -1325,7 +1325,7 @@ ERR init_egl(void)
    // EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
    // As soon as we picked a EGLConfig, we can safely reconfigure the ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID.
 
-   LONG redsize, greensize, bluesize, alphasize, bufsize;
+   int redsize, greensize, bluesize, alphasize, bufsize;
    eglGetConfigAttrib(glEGLDisplay, config, EGL_NATIVE_VISUAL_ID, &format);
    eglGetConfigAttrib(glEGLDisplay, config, EGL_RED_SIZE, &redsize);
    eglGetConfigAttrib(glEGLDisplay, config, EGL_GREEN_SIZE, &greensize);
@@ -1429,7 +1429,7 @@ void free_egl(void)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Current Display: $%x", (LONG)glEGLDisplay);
+   log.branch("Current Display: $%x", (int)glEGLDisplay);
 
    glEGLState = EGL_TERMINATED; // The sooner we set this, the better.  It stops other threads from thinking that it's OK to keep using OpenGL.
 
@@ -1458,7 +1458,7 @@ void free_egl(void)
 //********************************************************************************************************************
 // Updates the display using content from a source bitmap.
 
-ERR update_display(extDisplay *Self, extBitmap *Bitmap, LONG X, LONG Y, LONG Width, LONG Height, LONG XDest, LONG YDest)
+ERR update_display(extDisplay *Self, extBitmap *Bitmap, int X, int Y, int Width, int Height, int XDest, int YDest)
 {
 #ifdef _WIN32
    auto dest   = Self->Bitmap;

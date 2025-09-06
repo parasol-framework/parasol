@@ -178,7 +178,7 @@ void sndPan(PlatformData *Sound, float Pan)
    if (!glDirectSound) return;
 
    // Range -10,000 to 10,000 (DSBPAN_LEFT to DSBPAN_RIGHT)
-   LONG pan = LONG(Pan * DSBPAN_RIGHT);
+   int pan = int(Pan * DSBPAN_RIGHT);
    if (pan < DSBPAN_LEFT) pan = DSBPAN_LEFT;
    else if (pan > DSBPAN_RIGHT) pan = DSBPAN_RIGHT;
    if (Sound->SoundBuffer) IDirectSoundBuffer_SetPan(Sound->SoundBuffer, pan);

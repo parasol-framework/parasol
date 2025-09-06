@@ -182,7 +182,7 @@ static ERR SET_Path(extDocument *Self, CSTRING Value)
    // Signal that we are leaving the current page
 
    recursion++;
-   for (auto &trigger : Self->Triggers[LONG(DRT::LEAVING_PAGE)]) {
+   for (auto &trigger : Self->Triggers[int(DRT::LEAVING_PAGE)]) {
       if (trigger.isScript()) {
          sc::Call(trigger, std::to_array<ScriptArg>({ { "OldURI", Self->Path }, { "NewURI", newpath } }));
       }

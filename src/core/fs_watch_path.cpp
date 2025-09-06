@@ -35,7 +35,7 @@ extern "C" void path_monitor(HOSTHANDLE, extFile *);
 
 ERR fs_watch_path(extFile *File)
 {
-   LONG nflags = 0;
+   int nflags = 0;
    if ((File->prvWatch->Flags & MFF::READ) != MFF::NIL) nflags |= IN_ACCESS;
    if ((File->prvWatch->Flags & MFF::MODIFY) != MFF::NIL) nflags |= IN_MODIFY;
    if ((File->prvWatch->Flags & MFF::CREATE) != MFF::NIL) nflags |= IN_CREATE;
@@ -64,12 +64,12 @@ ERR fs_watch_path(extFile *File)
 {
    pf::Log log(__FUNCTION__);
    HOSTHANDLE handle;
-   LONG winflags;
+   int winflags;
    ERR error;
 
    // The path_monitor() function will be called whenever the Path or its content is modified.
 
-   if ((error = winWatchFile(LONG(File->prvWatch->Flags), File->prvResolvedPath.c_str(), (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
+   if ((error = winWatchFile(int(File->prvWatch->Flags), File->prvResolvedPath.c_str(), (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
       File->prvWatch->Handle   = handle;
       File->prvWatch->WinFlags = winflags;
       if ((error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File)) IS ERR::Okay) {
@@ -107,10 +107,10 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
    // Read and process each event in sequence
 
-   LONG result, i;
+   int result, i;
    uint8_t buffer[2048];
-   LONG count = 0;
-   LONG buffersize = 0;
+   int count = 0;
+   int buffersize = 0;
    while (((result = read(FD, buffer+buffersize, sizeof(buffer)-buffersize)) > 0) or (buffersize > 0)) {
       if (result > 0) buffersize += result;
 
@@ -120,7 +120,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 
       // Use the watch descriptor to determine what user routine we are supposed to call.
 
-      for (LONG i=0; i < MAX_FILEMONITOR; i++) {
+      for (int i=0; i < MAX_FILEMONITOR; i++) {
          if (!glFileMonitor[i].UID) continue;
          if (FD != glInotify) continue;
          if (event->wd != glFileMonitor[i].Handle) continue;
@@ -149,7 +149,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
             uint8_t fnbuffer[256];
             if ((path[0] IS '/') and (path[1] IS 0)) path = nullptr;
             else if (((glFileMonitor[i].Flags & MFF::QUALIFY) != MFF::NIL) and (event->mask & IN_ISDIR)) {
-               LONG j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
+               int j = StrCopy(path, fnbuffer, sizeof(fnbuffer)-1);
                fnbuffer[j++] = '/';
                fnbuffer[j] = 0;
                path = fnbuffer;
@@ -187,17 +187,17 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
                      { "File",   glFileMonitor[i].File },
                      { "Path",   path },
                      { "Custom", glFileMonitor[i].Custom },
-                     { "Flags",  LONG(flags) }
+                     { "Flags",  int(flags) }
                   }), error)) error = ERR::Function;
             }
 
             if (error IS ERR::Terminate) Action(fl::Watch::id, glFileMonitor[i].File, nullptr);
          }
-         else log.warning("Flags $%.8x not recognised.", LONG(flags));
+         else log.warning("Flags $%.8x not recognised.", int(flags));
          break;
       }
 
-      LONG event_size = sizeof(struct inotify_event) + event->len;
+      int event_size = sizeof(struct inotify_event) + event->len;
 
       if (buffersize > event_size) copymem(buffer + event_size, buffer, buffersize - event_size);
       buffersize -= event_size;
@@ -233,13 +233,13 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
    ERR error;
    if (File->prvWatch->Handle) {
       char path[256];
-      LONG status;
+      int status;
 
       // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
 
       while ((File->prvWatch) and (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
          if ((File->prvWatch->Flags & MFF::DEEP) IS MFF::NIL) { // Ignore if path is in a sub-folder and the deep option is not enabled.
-            LONG i;
+            int i;
             for (i=0; (path[i]) and (path[i] != '\\'); i++);
             if (path[i] IS '\\') continue;
          }
@@ -247,7 +247,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);
-            auto routine = (ERR (*)(extFile *, CSTRING, int64_t, LONG, APTR))File->prvWatch->Routine.Routine;
+            auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
             error = routine(File, path, File->prvWatch->Custom, status, File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
@@ -264,7 +264,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
       }
    }
    else {
-      auto routine = (ERR (*)(extFile *, CSTRING, int64_t, LONG, APTR))File->prvWatch->Routine.Routine;
+      auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
       pf::SwitchContext context(File->prvWatch->Routine.Context);
       error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 

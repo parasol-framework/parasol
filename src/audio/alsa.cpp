@@ -24,7 +24,7 @@ static ERR init_audio(extAudio *Self)
    snd_mixer_elem_t *elem;
    snd_mixer_selem_id_t *sid;
    snd_pcm_uframes_t periodsize;
-   LONG err, index;
+   int err, index;
    int16_t channel;
    long pmin, pmax;
    int dir;
@@ -138,7 +138,7 @@ static ERR init_audio(extAudio *Self)
 
       volctl[index].Name = snd_mixer_selem_id_get_name(sid);
 
-      for (channel=0; channel < (LONG)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
+      for (channel=0; channel < (int)volctl[index].Channels.size(); channel++) volctl[index].Channels[channel] = -1;
 
       VCF flags = VCF::NIL;
       if (snd_mixer_selem_has_playback_volume(elem))        flags |= VCF::PLAYBACK;
@@ -295,7 +295,7 @@ static ERR init_audio(extAudio *Self)
    // Set buffer sizes.  Note that we will retrieve the period and buffer sizes AFTER telling ALSA what the audio
    // parameters are.
 
-   log.msg("Using period frame size of %d, buffer size of %d", (LONG)periodsize, (LONG)buffersize);
+   log.msg("Using period frame size of %d, buffer size of %d", (int)periodsize, (int)buffersize);
 
    if ((err = snd_pcm_hw_params_set_period_size_near(pcmhandle, hwparams, &periodsize, 0)) < 0) {
       log.warning("Period size failure: %s", snd_strerror(err));
@@ -347,9 +347,9 @@ static ERR init_audio(extAudio *Self)
          auto oldctl = Self->Volumes;
          Self->Volumes = volctl;
 
-         for (LONG i=0; i < (LONG)volctl.size(); i++) {
-            LONG j;
-            for (j=0; j < (LONG)oldctl.size(); j++) {
+         for (int i=0; i < (int)volctl.size(); i++) {
+            int j;
+            for (j=0; j < (int)oldctl.size(); j++) {
                if (volctl[i].Name == oldctl[j].Name) {
                   setvol.Index   = i;
                   setvol.Name    = nullptr;
@@ -365,7 +365,7 @@ static ERR init_audio(extAudio *Self)
 
             // If the user has no volume defined for a mixer, set our own.
 
-            if (j IS (LONG)oldctl.size()) {
+            if (j IS (int)oldctl.size()) {
                setvol.Index   = i;
                setvol.Name    = nullptr;
                setvol.Flags   = SVF::NIL;

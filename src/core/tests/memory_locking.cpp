@@ -19,7 +19,7 @@ CSTRING ProgName = "MemoryLocking";
 static volatile MEMORYID glMemoryID = 0;
 static uint32_t glTotalThreads = 2;
 static uint32_t glLockAttempts = 20;
-static LONG glAccessGap = 2000;
+static int glAccessGap = 2000;
 static bool glTerminateMemory = false;
 static bool glTestAllocation = false;
 
@@ -80,14 +80,14 @@ static void * test_locking(void *Arg)
 //********************************************************************************************************************
 // Allocate and free sets of memory blocks at random intervals.
 
-static const LONG TOTAL_ALLOC = 2000;
+static const int TOTAL_ALLOC = 2000;
 
 static void * test_allocation(void *Arg)
 {
    APTR memory[TOTAL_ALLOC];
 
-   LONG i, j;
-   LONG start = 0;
+   int i, j;
+   int start = 0;
    for (i=0; i < TOTAL_ALLOC; i++) {
       AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], nullptr);
       if (rand() % 10 > 7) {

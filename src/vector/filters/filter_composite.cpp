@@ -27,16 +27,16 @@ class extCompositeFX : public extFilterEffect {
       const uint8_t G = Target->ColourFormat->GreenPos>>3;
       const uint8_t B = Target->ColourFormat->BluePos>>3;
 
-      LONG height = Target->Clip.Bottom - Target->Clip.Top;
-      LONG width  = Target->Clip.Right - Target->Clip.Left;
+      int height = Target->Clip.Bottom - Target->Clip.Top;
+      int width  = Target->Clip.Right - Target->Clip.Left;
       if (InBitmap->Clip.Right - InBitmap->Clip.Left < width) width = InBitmap->Clip.Right - InBitmap->Clip.Left;
       if (InBitmap->Clip.Bottom - InBitmap->Clip.Top < height) height = InBitmap->Clip.Bottom - InBitmap->Clip.Top;
 
-      for (LONG y=0; y < height; y++) {
+      for (int y=0; y < height; y++) {
          auto dp = Dest;
          auto sp = In;
          auto mp = Mix;
-         for (LONG x=0; x < width; x++) {
+         for (int x=0; x < width; x++) {
             CompositeOp::blend(dp, sp, mp, A, R, G, B);
             dp += 4;
             sp += 4;
@@ -239,15 +239,15 @@ struct blend_dodge {
          auto mG = glLinearRGB.convert(M[G]);
          auto mB = glLinearRGB.convert(M[B]);
 
-         LONG d1a  = 0xff - M[A];
-         LONG s1a  = 0xff - S[A];
-         LONG drsa = mG * S[A];
-         LONG dgsa = mB * S[A];
-         LONG dbsa = mB * S[A];
-         LONG srda = sR * M[A];
-         LONG sgda = sG * M[A];
-         LONG sbda = sB * M[A];
-         LONG sada = S[A] * M[A];
+         int d1a  = 0xff - M[A];
+         int s1a  = 0xff - S[A];
+         int drsa = mG * S[A];
+         int dgsa = mB * S[A];
+         int dbsa = mB * S[A];
+         int srda = sR * M[A];
+         int sgda = sG * M[A];
+         int sbda = sB * M[A];
+         int sada = S[A] * M[A];
 
          D[R] = glLinearRGB.invert((srda + drsa >= sada) ?
              (sada + sR * d1a + mR * s1a + 0xff) >> 8 :
@@ -276,12 +276,12 @@ struct blend_contrast {
       auto mG = glLinearRGB.convert(M[G]);
       auto mB = glLinearRGB.convert(M[B]);
 
-      LONG d2a = M[A] >> 1;
+      int d2a = M[A] >> 1;
       uint8_t s2a = S[A] >> 1;
 
-      auto r = LONG((((mR - d2a) * int((sR - s2a)*2 + 0xff)) >> 8) + d2a);
-      auto g = LONG((((mG - d2a) * int((sG - s2a)*2 + 0xff)) >> 8) + d2a);
-      auto b = LONG((((mB - d2a) * int((sB - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto r = int((((mR - d2a) * int((sR - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto g = int((((mG - d2a) * int((sG - s2a)*2 + 0xff)) >> 8) + d2a);
+      auto b = int((((mB - d2a) * int((sB - s2a)*2 + 0xff)) >> 8) + d2a);
 
       r = (r < 0) ? 0 : r;
       g = (g < 0) ? 0 : g;
@@ -338,13 +338,13 @@ struct blend_burn {
 
          const uint8_t d1a = 0xff - D[A];
          const uint8_t s1a = 0xff - S[A];
-         const LONG drsa = mR * S[A];
-         const LONG dgsa = mG * S[A];
-         const LONG dbsa = mB * S[A];
-         const LONG srda = sR * M[A];
-         const LONG sgda = sG * M[A];
-         const LONG sbda = sB * M[A];
-         const LONG sada = S[A] * M[A];
+         const int drsa = mR * S[A];
+         const int dgsa = mG * S[A];
+         const int dbsa = mB * S[A];
+         const int srda = sR * M[A];
+         const int sgda = sG * M[A];
+         const int sbda = sB * M[A];
+         const int sada = S[A] * M[A];
 
          D[R] = glLinearRGB.invert(((srda + drsa <= sada) ?
              sR * d1a + mR * s1a :
@@ -627,8 +627,8 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
       case OP::ARITHMETIC: {
          if (get_source_bitmap(Self->Filter, &inBmp, Self->SourceType, Self->Input, false) IS ERR::Okay) {
             objBitmap *mixBmp;
-            LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
-            LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
+            int height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+            int width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
             if (inBmp->Clip.Right - inBmp->Clip.Left < width) width = inBmp->Clip.Right - inBmp->Clip.Left;
             if (inBmp->Clip.Bottom - inBmp->Clip.Top < height) height = inBmp->Clip.Bottom - inBmp->Clip.Top;
 
@@ -640,11 +640,11 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
             if (get_source_bitmap(Self->Filter, &mixBmp, Self->MixType, Self->Mix, false) IS ERR::Okay) {
                uint8_t *in  = inBmp->Data + (inBmp->Clip.Left * 4) + (inBmp->Clip.Top * inBmp->LineWidth);
                uint8_t *mix = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
-               for (LONG y=0; y < height; y++) {
+               for (int y=0; y < height; y++) {
                   auto dp = dest;
                   auto sp = in;
                   auto mp = mix;
-                  for (LONG x=0; x < width; x++) {
+                  for (int x=0; x < width; x++) {
                      if ((mp[A]) or (sp[A])) {
                         // Scale RGB to 0 - 1.0 and premultiply the values.
                         #define SCALE (1.0 / 255.0)
@@ -665,9 +665,9 @@ static ERR COMPOSITEFX_Draw(extCompositeFX *Self, struct acDraw *Args)
                            if (dA > 1.0) dA = 1.0;
 
                            double demul = 1.0 / dA;
-                           LONG dr = F2T(((Self->K1 * sR * mR) + (Self->K2 * sR) + (Self->K3 * mR) + Self->K4) * demul * DESCALE);
-                           LONG dg = F2T(((Self->K1 * sG * mG) + (Self->K2 * sG) + (Self->K3 * mG) + Self->K4) * demul * DESCALE);
-                           LONG db = F2T(((Self->K1 * sB * mB) + (Self->K2 * sB) + (Self->K3 * mB) + Self->K4) * demul * DESCALE);
+                           int dr = F2T(((Self->K1 * sR * mR) + (Self->K2 * sR) + (Self->K3 * mR) + Self->K4) * demul * DESCALE);
+                           int dg = F2T(((Self->K1 * sG * mG) + (Self->K2 * sG) + (Self->K3 * mG) + Self->K4) * demul * DESCALE);
+                           int db = F2T(((Self->K1 * sB * mB) + (Self->K2 * sB) + (Self->K3 * mB) + Self->K4) * demul * DESCALE);
 
                            if (dr > 0xff) dp[R] = 0xff;
                            else if (dr < 0) dp[R] = 0;

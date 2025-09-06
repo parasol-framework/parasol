@@ -4,9 +4,9 @@ static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
 
 #if defined(DEBUG)
 static void debug_tree(CSTRING Header, OBJECTPTR) __attribute__ ((unused));
-static void debug_branch(CSTRING Header, OBJECTPTR, LONG &Level) __attribute__ ((unused));
+static void debug_branch(CSTRING Header, OBJECTPTR, int &Level) __attribute__ ((unused));
 
-static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
+static void debug_branch(CSTRING Header, OBJECTPTR Vector, int &Level)
 {
    pf::Log log(Header);
 
@@ -32,7 +32,7 @@ static void debug_branch(CSTRING Header, OBJECTPTR Vector, LONG &Level)
 
 static void debug_tree(CSTRING Header, OBJECTPTR Vector)
 {
-   LONG level = 0;
+   int level = 0;
    while (Vector) {
       debug_branch(Header, Vector, level);
       if (Vector->Class->BaseClassID IS CLASSID::VECTOR) {
@@ -138,12 +138,12 @@ static void parse_result(extSVG *Self, objFilterEffect *Effect, std::string Valu
 static void parse_input(extSVG *Self, OBJECTPTR Effect, const std::string Input, FIELD SourceField, FIELD RefField)
 {
    switch (strihash(Input)) {
-      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, LONG(VSF::GRAPHIC)); break;
-      case SVF_SOURCEALPHA:     Effect->set(SourceField, LONG(VSF::ALPHA)); break;
-      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, LONG(VSF::BKGD)); break;
-      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, LONG(VSF::BKGD_ALPHA)); break;
-      case SVF_FILLPAINT:       Effect->set(SourceField, LONG(VSF::FILL)); break;
-      case SVF_STROKEPAINT:     Effect->set(SourceField, LONG(VSF::STROKE)); break;
+      case SVF_SOURCEGRAPHIC:   Effect->set(SourceField, int(VSF::GRAPHIC)); break;
+      case SVF_SOURCEALPHA:     Effect->set(SourceField, int(VSF::ALPHA)); break;
+      case SVF_BACKGROUNDIMAGE: Effect->set(SourceField, int(VSF::BKGD)); break;
+      case SVF_BACKGROUNDALPHA: Effect->set(SourceField, int(VSF::BKGD_ALPHA)); break;
+      case SVF_FILLPAINT:       Effect->set(SourceField, int(VSF::FILL)); break;
+      case SVF_STROKEPAINT:     Effect->set(SourceField, int(VSF::STROKE)); break;
       default:  {
          if (Self->Effects.contains(Input)) {
             Effect->set(RefField, Self->Effects[Input]);
@@ -222,7 +222,7 @@ static CSTRING folder(extSVG *Self)
 
 //********************************************************************************************************************
 
-static void parse_transform(objVector *Vector, const std::string Value, LONG Tag)
+static void parse_transform(objVector *Vector, const std::string Value, int Tag)
 {
    if ((Vector->Class->BaseClassID IS CLASSID::VECTOR) and (!Value.empty())) {
       VectorMatrix *matrix;
@@ -241,16 +241,16 @@ static void parse_transform(objVector *Vector, const std::string Value, LONG Tag
 
 static const std::string uri_name(const std::string Ref)
 {
-   LONG skip = 0;
+   int skip = 0;
    while ((Ref[skip]) and (Ref[skip] <= 0x20)) skip++;
 
    if (Ref[skip] IS '#') {
       return Ref.substr(skip+1);
    }
    else if (startswith("url(#", Ref.c_str() + skip)) {
-      LONG i;
+      int i;
       skip += 5;
-      for (i=0; (Ref[skip+i] != ')') and (skip+i < LONG(Ref.size())); i++);
+      for (i=0; (Ref[skip+i] != ')') and (skip+i < int(Ref.size())); i++);
       return Ref.substr(skip, i);
    }
    else return Ref.substr(skip);
@@ -404,7 +404,7 @@ template <class T = double> std::string_view read_numseq(std::string_view String
 //********************************************************************************************************************
 // Read a sequence of doubles from a string.  Commas, parenthesis and whitespace is ignored.
 
-template<class T = double> std::vector<T> read_array(const std::string Value, LONG Limit = 0x7fffffff)
+template<class T = double> std::vector<T> read_array(const std::string Value, int Limit = 0x7fffffff)
 {
    std::vector<T> result;
 
@@ -430,7 +430,7 @@ template<class T = double> std::vector<T> read_array(const std::string Value, LO
 
 static void parse_ids(extSVG *Self, XMLTag &Tag)
 {
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &name = Tag.Attribs[a].Name;
       if ((name.size() IS 2) and (name[0] IS 'i') and (name[1] IS 'd')) {
          if (Tag.Attribs[a].Value.empty()) continue;
@@ -497,7 +497,7 @@ static ERR parse_svg(extSVG *Self, CSTRING Path, CSTRING Buffer)
          // Set a new working path based on the path
 
          auto last = std::string::npos;
-         for (LONG i=0; Path[i]; i++) {
+         for (int i=0; Path[i]; i++) {
             if ((Path[i] IS '/') or (Path[i] IS '\\') or (Path[i] IS ':')) last = i+1;
          }
          if (last != std::string::npos) {
@@ -568,7 +568,7 @@ static void convert_styles(objXML::TAGS &Tags)
    pf::Log log(__FUNCTION__);
 
    for (auto &tag : Tags) {
-      for (LONG style=1; style < std::ssize(tag.Attribs); style++) {
+      for (int style=1; style < std::ssize(tag.Attribs); style++) {
          if (!iequals("style", tag.Attribs[style].Name)) continue;
 
          // Convert all the style values into real attributes.

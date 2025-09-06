@@ -1,5 +1,5 @@
 
-void process_movement(Window Window, LONG X, LONG Y);
+void process_movement(Window Window, int X, int Y);
 
 static inline OBJECTID get_display(Window Window)
 {
@@ -206,7 +206,7 @@ void handle_button_press(XEvent *xevent)
          }
 
          if (input.Type != JET::NIL) {
-            input.Flags = glInputType[LONG(input.Type)].Flags;
+            input.Flags = glInputType[int(input.Type)].Flags;
             input.Timestamp = PreciseTime();
 
             acDataFeed(pointer, nullptr, DATA::DEVICE_INPUT, &input, sizeof(input));
@@ -259,10 +259,10 @@ void handle_configure_notify(XConfigureEvent *xevent)
 {
    pf::Log log(__FUNCTION__);
 
-   LONG x = xevent->x;
-   LONG y = xevent->y;
-   LONG width = xevent->width;
-   LONG height = xevent->height;
+   int x = xevent->x;
+   int y = xevent->y;
+   int width = xevent->width;
+   int height = xevent->height;
 
    XEvent event;
    while (XCheckTypedWindowEvent(XDisplay, xevent->window, ConfigureNotify, &event) IS True) {
@@ -276,7 +276,7 @@ void handle_configure_notify(XConfigureEvent *xevent)
 
    FUNCTION feedback;
    OBJECTID display_id;
-   LONG absx, absy;
+   int absx, absy;
    if ((display_id = get_display(xevent->window))) {
       if (ScopedObjectLock<extDisplay> display(display_id, 3000); display.granted()) {
          Window childwin;
@@ -554,13 +554,13 @@ void handle_key_press(XEvent *xevent)
    auto flags = KQ::PRESSED;
 
    if (xevent->xkey.state & LockMask) flags |= KQ::CAPS_LOCK;
-   if (((LONG(value) >= LONG(KEY::NP_0)) and (LONG(value) <= LONG(KEY::NP_DIVIDE))) or (value IS KEY::NP_ENTER)) {
+   if (((int(value) >= int(KEY::NP_0)) and (int(value) <= int(KEY::NP_DIVIDE))) or (value IS KEY::NP_ENTER)) {
       flags |= KQ::NUM_PAD;
    }
 
-   if ((value != KEY::NIL) and (LONG(value) < std::ssize(KeyHeld))) {
-      if (KeyHeld[LONG(value)]) flags |= KQ::REPEAT;
-      else KeyHeld[LONG(value)] = 1;
+   if ((value != KEY::NIL) and (int(value) < std::ssize(KeyHeld))) {
+      if (KeyHeld[int(value)]) flags |= KQ::REPEAT;
+      else KeyHeld[int(value)] = 1;
 
       if (value IS KEY::L_COMMAND)      glKeyFlags |= KQ::L_COMMAND;
       else if (value IS KEY::R_COMMAND) glKeyFlags |= KQ::R_COMMAND;
@@ -578,7 +578,7 @@ void handle_key_press(XEvent *xevent)
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
          .Code       = value,
-         .Unicode    = (LONG)unicode
+         .Unicode    = (int)unicode
       };
       BroadcastEvent(&key, sizeof(key));
    }
@@ -628,8 +628,8 @@ void handle_key_release(XEvent *xevent)
    auto value = xkeysym_to_pkey(sym);
    auto flags = KQ::RELEASED;
 
-   if ((value != KEY::NIL) and (LONG(value) < std::ssize(KeyHeld))) {
-      KeyHeld[LONG(value)] = 0;
+   if ((value != KEY::NIL) and (int(value) < std::ssize(KeyHeld))) {
+      KeyHeld[int(value)] = 0;
 
       if (value IS KEY::L_COMMAND)      glKeyFlags &= ~KQ::L_COMMAND;
       else if (value IS KEY::R_COMMAND) glKeyFlags &= ~KQ::R_COMMAND;
@@ -647,7 +647,7 @@ void handle_key_release(XEvent *xevent)
          .EventID    = EVID_IO_KEYBOARD_KEYPRESS,
          .Qualifiers = glKeyFlags|flags,
          .Code       = value,
-         .Unicode    = (LONG)unicode
+         .Unicode    = (int)unicode
       };
       BroadcastEvent(&key, sizeof(key));
    }
@@ -662,7 +662,7 @@ void handle_enter_notify(XCrossingEvent *xevent)
 
 //********************************************************************************************************************
 
-void process_movement(Window Window, LONG X, LONG Y)
+void process_movement(Window Window, int X, int Y)
 {
    if (auto pointer = gfx::AccessPointer()) {
       // Refer to the Pointer class to see how this works

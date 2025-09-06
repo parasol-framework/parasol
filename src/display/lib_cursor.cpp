@@ -20,7 +20,7 @@ using namespace display;
 struct XCursor {
    Cursor XCursor;
    PTC CursorID;
-   LONG XCursorID;
+   int XCursorID;
 };
 
 static XCursor XCursors[] = {
@@ -86,7 +86,7 @@ static Cursor get_x11_cursor(PTC CursorID)
       if (XCursors[i].CursorID IS CursorID) return XCursors[i].XCursor;
    }
 
-   log.warning("Cursor #%d is not a recognised cursor ID.", LONG(CursorID));
+   log.warning("Cursor #%d is not a recognised cursor ID.", int(CursorID));
    return XCursors[0].XCursor;
 }
 
@@ -116,7 +116,7 @@ HCURSOR GetWinCursor(PTC CursorID)
    }
 
    pf::Log log;
-   log.warning("Cursor #%d is not a recognised cursor ID.", LONG(CursorID));
+   log.warning("Cursor #%d is not a recognised cursor ID.", int(CursorID));
    return winCursors[0].WinCursor;
 }
 #endif
@@ -185,7 +185,7 @@ NoSupport: The device does not support a cursor (common for touch screen display
 
 *********************************************************************************************************************/
 
-ERR GetCursorInfo(CursorInfo *Info, LONG Size)
+ERR GetCursorInfo(CursorInfo *Info, int Size)
 {
    if (!Info) return ERR::NullArgs;
 
@@ -258,7 +258,7 @@ AccessObject: Failed to access the SystemPointer object.
 ERR GetRelativeCursorPos(OBJECTID SurfaceID, double *X, double *Y)
 {
    pf::Log log(__FUNCTION__);
-   LONG absx, absy;
+   int absx, absy;
 
    if (get_surface_abs(SurfaceID, &absx, &absy, 0, 0) != ERR::Okay) {
       log.warning("Failed to get info for surface #%d.", SurfaceID);
@@ -414,21 +414,21 @@ ERR SetCursor(OBJECTID ObjectID, CRF Flags, PTC CursorID, CSTRING Name, OBJECTID
 */
    // Validate the cursor ID
 
-   if ((LONG(CursorID) < 0) or (LONG(CursorID) >= LONG(PTC::END))) return log.warning(ERR::OutOfRange);
+   if ((int(CursorID) < 0) or (int(CursorID) >= int(PTC::END))) return log.warning(ERR::OutOfRange);
 
    if (!(pointer = (extPointer *)gfx::AccessPointer())) {
       log.warning("Failed to access the mouse pointer.");
       return ERR::AccessObject;
    }
 
-   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, LONG(Flags), OwnerID, pointer->CursorOwnerID, Name);
-   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, LONG(Flags), OwnerID, pointer->CursorOwnerID, CursorLookup[LONG(CursorID)].Name);
+   if (Name) log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, int(Flags), OwnerID, pointer->CursorOwnerID, Name);
+   else log.traceBranch("Object: %d, Flags: $%.8x, Owner: %d (Current %d), Cursor: %s", ObjectID, int(Flags), OwnerID, pointer->CursorOwnerID, CursorLookup[int(CursorID)].Name);
 
    // Extract the cursor ID from the cursor name if no ID was given
 
    if (CursorID IS PTC::NIL) {
       if (Name) {
-         for (LONG i=0; CursorLookup[i].Name; i++) {
+         for (int i=0; CursorLookup[i].Name; i++) {
             if (iequals(CursorLookup[i].Name, Name)) {
                CursorID = PTC(CursorLookup[i].Value);
                break;
@@ -621,7 +621,7 @@ AccessObject: Failed to access the internally maintained image object.
 
 *********************************************************************************************************************/
 
-ERR SetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, LONG HotX, LONG HotY, OBJECTID OwnerID)
+ERR SetCustomCursor(OBJECTID ObjectID, CRF Flags, objBitmap *Bitmap, int HotX, int HotY, OBJECTID OwnerID)
 {
    // If the driver doesn't support custom cursors then divert to gfx::SetCursor()
    return gfx::SetCursor(ObjectID, Flags, PTC::DEFAULT, nullptr, OwnerID);
@@ -698,7 +698,7 @@ InUse: A drag and drop operation has already been started.
 
 *********************************************************************************************************************/
 
-ERR StartCursorDrag(OBJECTID Source, LONG Item, CSTRING Datatypes, OBJECTID Surface)
+ERR StartCursorDrag(OBJECTID Source, int Item, CSTRING Datatypes, OBJECTID Surface)
 {
    pf::Log log(__FUNCTION__);
 

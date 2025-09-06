@@ -198,7 +198,7 @@ static ERR add_text_to_host(objClipboard *Self, CSTRING String, int Length = 0x7
    }
    utf16[i] = 0;
 
-   auto error = (ERR)winAddClip(LONG(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(uint16_t), false);
+   auto error = (ERR)winAddClip(int(CLIPTYPE::TEXT), utf16.data(), utf16.size() * sizeof(uint16_t), false);
    if (error != ERR::Okay) log.warning(error);
    return error;
 #else

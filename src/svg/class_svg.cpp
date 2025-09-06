@@ -273,8 +273,8 @@ static ERR SVG_Render(extSVG *Self, struct svg::Render *Args)
    if (!Args) return ERR::NullArgs;
 
    objBitmap *bmp = Args->Bitmap;
-   LONG page_width = Args->Width;
-   LONG page_height = Args->Height;
+   int page_width = Args->Width;
+   int page_height = Args->Height;
 
    Self->Scene->setBitmap(bmp);
 
@@ -310,8 +310,8 @@ static ERR SVG_SaveImage(extSVG *Self, struct acSaveImage *Args)
 
    if (!Args) return ERR::NullArgs;
 
-   LONG width = 0;
-   LONG height = 0;
+   int width = 0;
+   int height = 0;
    Self->Scene->get(FID_PageWidth, width);
    Self->Scene->get(FID_PageHeight, height);
 
@@ -350,12 +350,12 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::SVG)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->get(FID_ActionTable, actions) IS ERR::Okay) and (actions)) {
-         if ((actions[LONG(AC::SaveToObject)]) and (actions[LONG(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
-            return actions[LONG(AC::SaveToObject)](Self, Args);
+         if ((actions[int(AC::SaveToObject)]) and (actions[int(AC::SaveToObject)] != (APTR)SVG_SaveToObject)) {
+            return actions[int(AC::SaveToObject)](Self, Args);
          }
-         else if ((actions[LONG(AC::SaveImage)]) and (actions[LONG(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
+         else if ((actions[int(AC::SaveImage)]) and (actions[int(AC::SaveImage)] != (APTR)SVG_SaveImage)) {
             struct acSaveImage saveimage = { .Dest = Args->Dest };
-            return actions[LONG(AC::SaveImage)](Self, &saveimage);
+            return actions[int(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -368,7 +368,7 @@ static ERR SVG_SaveToObject(extSVG *Self, struct acSaveToObject *Args)
          Self->XML = *xml;
 
          ERR error = xml->insertXML(0, XMI::NIL, header, nullptr);
-         LONG index = xml->Tags.back().ID;
+         int index = xml->Tags.back().ID;
 
          XMLTag *tag;
          if ((error = xml->insertStatement(index, XMI::NEXT, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:parasol=\"http://www.parasol.ws/xmlns/svg\"/>", &tag)) IS ERR::Okay) {
@@ -546,7 +546,7 @@ The frame rate only affects animated SVG documents containing SMIL features.  St
 
 *********************************************************************************************************************/
 
-static ERR SET_FrameRate(extSVG *Self, LONG Value)
+static ERR SET_FrameRate(extSVG *Self, int Value)
 {
    if ((Value >= 20) and (Value <= 1000)) {
       Self->FrameRate = Value;

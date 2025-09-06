@@ -14,7 +14,7 @@ private:
    }
 
    inline static uint8_t conv_l2r(double Value) {
-      LONG ix;
+      int ix;
 
       if (Value < 0.0031308) ix = pf::F2T(((Value * 12.92) * 255.0) + 0.5);
       else ix = pf::F2T(((std::pow(Value, 1.0 / 2.4) * 1.055 - 0.055) * 255.0) + 0.5);
@@ -25,7 +25,7 @@ private:
 public:
    inline rgb_to_linear() {
       // Initialise conversion tables
-      for (LONG i=0; i < 256; i++) {
+      for (int i=0; i < 256; i++) {
          r2l[i] = conv_r2l((double)i * (1.0 / 255.0));
          l2r[i] = conv_l2r((double)i * (1.0 / 255.0));
       }

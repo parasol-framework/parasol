@@ -48,10 +48,6 @@ typedef int HOSTHANDLE;    // Unix systems use FD descriptors for handles
 #define PTR_TO_HOST(a) ((int)(intptr_t)(a))
 #endif
 
-#if !defined(_WINDEF_H) && !defined(_WINDEF_)
-typedef int LONG;     // Signed 32-bit quantity
-#endif
-
 typedef void * WINHANDLE;
 
 #undef MAXINT

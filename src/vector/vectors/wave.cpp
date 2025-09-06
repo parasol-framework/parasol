@@ -136,10 +136,10 @@ static void generate_wave(extVectorWave *Vector, agg::path_storage &Path)
 
    if (Vector->wThickness > 0) {
       double x, y;
-      LONG total = Path.total_vertices();
+      int total = Path.total_vertices();
       Path.last_vertex(&x, &y);
       Path.line_to(x, y + Vector->wThickness);
-      for (LONG i=total-1; i >= 0; i--) {
+      for (int i=total-1; i >= 0; i--) {
          Path.vertex(i, &x, &y);
          Path.line_to(x, y + Vector->wThickness);
       }
@@ -402,13 +402,13 @@ By default, waves are generated in the style of a sine wave.  Alternative styles
 
 *********************************************************************************************************************/
 
-static ERR WAVE_GET_Style(extVectorWave *Self, LONG *Value)
+static ERR WAVE_GET_Style(extVectorWave *Self, int *Value)
 {
    *Value = Self->wStyle;
    return ERR::Okay;
 }
 
-static ERR WAVE_SET_Style(extVectorWave *Self, LONG Value)
+static ERR WAVE_SET_Style(extVectorWave *Self, int Value)
 {
    Self->wStyle = Value;
    return ERR::Okay;

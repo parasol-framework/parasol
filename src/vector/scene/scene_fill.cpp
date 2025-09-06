@@ -115,7 +115,7 @@ static void fill_gradient(VectorState &State, const TClipRectangle<double> &Boun
    const agg::trans_affine &Transform, double ViewWidth, double ViewHeight, extVectorGradient &Gradient,
    GRADIENT_TABLE *Table, agg::renderer_base<agg::pixfmt_psl> &RenderBase, agg::rasterizer_scanline_aa<> &Raster)
 {
-   constexpr LONG MAX_SPAN = 256;
+   constexpr int MAX_SPAN = 256;
    typedef agg::span_interpolator_linear<> interpolator_type;
    typedef agg::span_allocator<agg::rgba8> span_allocator_type;
    typedef agg::pod_auto_array<agg::rgba8, MAX_SPAN> color_array_type;

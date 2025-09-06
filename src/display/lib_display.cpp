@@ -111,13 +111,13 @@ Search: There are no more display modes to return that are a match for the Filte
 
 *********************************************************************************************************************/
 
-ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, LONG Size)
+ERR ScanDisplayModes(CSTRING Filter, DISPLAYINFO *Info, int Size)
 {
 #ifdef __snap__
 
    GA_modeInfo modeinfo;
    uint16_t *modes;
-   LONG colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
+   int colours, bytes, i, j, minrefresh, maxrefresh, refresh, display;
    int16_t f_depth, c_depth; // f = filter, c = condition (0 = equal; -1 <, -2 <=; +1 >, +2 >=)
    int16_t f_bytes, c_bytes;
    int16_t f_width, c_width, f_height, c_height;

@@ -7,7 +7,7 @@
 
 static const double DEG2RAD = 0.01745329251994329576923690768489;  // Multiple any angle by this value to convert to radians
 static const double RAD2DEG = 57.295779513082320876798154814105;
-static const LONG MAX_VALUES = 8;
+static const int MAX_VALUES = 8;
 
 //********************************************************************************************************************
 
@@ -131,8 +131,8 @@ public:
    double seek = 0;            // Current seek position, between 0 - 1.0
    double total_dist = 0;      // Total distance between all value nodes
    OBJECTID target_vector = 0;
-   LONG   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
-   LONG   repeat_index = 0; // Current index within the repeat cycle.
+   int   repeat_count = 0; // Repetition count.  Anything < 0 means infinite.
+   int   repeat_index = 0; // Current index within the repeat cycle.
    CMODE  calc_mode    = CMODE::LINEAR;
    RST    restart      = RST::ALWAYS;
    ATT    attrib_type  = ATT::AUTO;

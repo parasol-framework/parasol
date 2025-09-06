@@ -68,8 +68,8 @@ static ERR create_picture_class(void);
 
 //********************************************************************************************************************
 
-static void conv_l2r_row32(uint8_t *Row, LONG Width) {
-   for (LONG x=0; x < Width; x++) {
+static void conv_l2r_row32(uint8_t *Row, int Width) {
+   for (int x=0; x < Width; x++) {
       Row[0] = glLinearRGB.invert(Row[0]);
       Row[1] = glLinearRGB.invert(Row[1]);
       Row[2] = glLinearRGB.invert(Row[2]);
@@ -79,8 +79,8 @@ static void conv_l2r_row32(uint8_t *Row, LONG Width) {
 
 //********************************************************************************************************************
 
-static void conv_l2r_row24(uint8_t *Row, LONG Width) {
-   for (LONG x=0; x < Width; x++) {
+static void conv_l2r_row24(uint8_t *Row, int Width) {
+   for (int x=0; x < Width; x++) {
       Row[0] = glLinearRGB.invert(Row[0]);
       Row[1] = glLinearRGB.invert(Row[1]);
       Row[2] = glLinearRGB.invert(Row[2]);
@@ -179,7 +179,7 @@ static ERR PICTURE_Activate(extPicture *Self)
    // If the image contains a palette, load the palette into our Bitmap
 
    if (info_ptr->valid & PNG_INFO_PLTE) {
-      for (LONG i=0; (i < info_ptr->num_palette) and (i < 256); i++) {
+      for (int i=0; (i < info_ptr->num_palette) and (i < 256); i++) {
          bmp->Palette->Col[i].Red   = info_ptr->palette[i].red;
          bmp->Palette->Col[i].Green = info_ptr->palette[i].green;
          bmp->Palette->Col[i].Blue  = info_ptr->palette[i].blue;
@@ -187,7 +187,7 @@ static ERR PICTURE_Activate(extPicture *Self)
       }
    }
    else if (color_type IS PNG_COLOR_TYPE_GRAY) {
-      for (LONG i=0; i < 256; i++) {
+      for (int i=0; i < 256; i++) {
          bmp->Palette->Col[i].Red   = i;
          bmp->Palette->Col[i].Green = i;
          bmp->Palette->Col[i].Blue  = i;
@@ -401,7 +401,7 @@ static ERR PICTURE_Init(extPicture *Self)
       // Test the given path to see if it matches our supported file format.
 
       if (ResolvePath(Self->prvPath, RSF::APPROXIMATE, &Self->prvPath) IS ERR::Okay) {
-         LONG result;
+         int result;
 
          if (ReadFileToBuffer(Self->prvPath.c_str(), Self->prvHeader, sizeof(Self->prvHeader)-1, &result) IS ERR::Okay) {
             Self->prvHeader[result] = 0;
@@ -614,7 +614,7 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
       png_set_IHDR(write_ptr, info_ptr, bmp->Width, bmp->Height, 8, PNG_COLOR_TYPE_PALETTE, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
       std::vector<png_color> p(bmp->Palette->AmtColours);
-      for (LONG i=0; i < bmp->Palette->AmtColours; i++) {
+      for (int i=0; i < bmp->Palette->AmtColours; i++) {
          p[i] = { bmp->Palette->Col[i].Red, bmp->Palette->Col[i].Green, bmp->Palette->Col[i].Blue };
       }
 
@@ -665,10 +665,10 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          row_pointers = row.get();
          uint8_t *data = bmp->Data;
          uint8_t *mask = Self->Mask->Data;
-         for (LONG y=0; y < bmp->Height; y++) {
-            LONG i = 0;
+         for (int y=0; y < bmp->Height; y++) {
+            int i = 0;
             int16_t maskx = 0;
-            for (LONG x=0; x < bmp->ByteWidth; x+=3) {
+            for (int x=0; x < bmp->ByteWidth; x+=3) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
@@ -692,9 +692,9 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          auto row = std::make_unique<uint8_t[]>(bmp->Width * 4);
          row_pointers = row.get();
          uint8_t *data = bmp->Data;
-         for (LONG y=0; y < bmp->Height; y++) {
-            LONG i = 0;
-            for (LONG x=0; x < (bmp->Width<<2); x+=4) {
+         for (int y=0; y < bmp->Height; y++) {
+            int i = 0;
+            for (int x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
@@ -711,10 +711,10 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          row_pointers = row.get();
          uint8_t *data = bmp->Data;
          uint8_t *mask = Self->Mask->Data;
-         for (LONG y=0; y < bmp->Height; y++) {
-            LONG i = 0;
+         for (int y=0; y < bmp->Height; y++) {
+            int i = 0;
             int16_t maskx = 0;
-            for (LONG x=0; x < (bmp->Width<<2); x+=4) {
+            for (int x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];     // Blue
                row[i++] = data[x+1];     // Green
                row[i++] = data[x+2];     // Red
@@ -730,9 +730,9 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          auto row = std::make_unique<uint8_t[]>(bmp->Width * 3);
          row_pointers = row.get();
          uint8_t *data = bmp->Data;
-         for (LONG y=0; y < bmp->Height; y++) {
+         for (int y=0; y < bmp->Height; y++) {
             i = 0;
-            for (LONG x=0; x < (bmp->Width<<2); x+=4) {
+            for (int x=0; x < (bmp->Width<<2); x+=4) {
                row[i++] = data[x+0];  // Blue
                row[i++] = data[x+1];  // Green
                row[i++] = data[x+2];  // Red
@@ -749,10 +749,10 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          row_pointers = row.get();
          uint16_t *data = (uint16_t *)bmp->Data;
          uint8_t *mask = Self->Mask->Data;
-         for (LONG y=0; y < bmp->Height; y++) {
-            LONG i = 0;
+         for (int y=0; y < bmp->Height; y++) {
+            int i = 0;
             int16_t maskx = 0;
-            for (LONG x=0; x < bmp->Width; x++) {
+            for (int x=0; x < bmp->Width; x++) {
                row[i++] = bmp->unpackBlue(data[x]);
                row[i++] = bmp->unpackGreen(data[x]);
                row[i++] = bmp->unpackRed(data[x]);
@@ -768,9 +768,9 @@ static ERR PICTURE_SaveImage(extPicture *Self, struct acSaveImage *Args)
          auto row = std::make_unique<uint8_t[]>(bmp->Width * 3);
          row_pointers = row.get();
          uint16_t *data = (uint16_t *)bmp->Data;
-         for (LONG y=0; y < bmp->Height; y++) {
-            LONG i = 0;
-            for (LONG x=0; x < bmp->Width; x++) {
+         for (int y=0; y < bmp->Height; y++) {
+            int i = 0;
+            for (int x=0; x < bmp->Width; x++) {
                row[i++] = bmp->unpackBlue(data[x]);
                row[i++] = bmp->unpackGreen(data[x]);
                row[i++] = bmp->unpackRed(data[x]);
@@ -810,13 +810,13 @@ static ERR PICTURE_SaveToObject(extPicture *Self, struct acSaveToObject *Args)
    if ((Args->ClassID != CLASSID::NIL) and (Args->ClassID != CLASSID::PICTURE)) {
       auto mc = (objMetaClass *)FindClass(Args->ClassID);
       if ((mc->get(FID_ActionTable, routine) IS ERR::Okay) and (routine)) {
-         if ((routine[LONG(AC::SaveToObject)]) and (routine[LONG(AC::SaveToObject)] != (APTR)PICTURE_SaveToObject)) {
-            return routine[LONG(AC::SaveToObject)](Self, Args);
+         if ((routine[int(AC::SaveToObject)]) and (routine[int(AC::SaveToObject)] != (APTR)PICTURE_SaveToObject)) {
+            return routine[int(AC::SaveToObject)](Self, Args);
          }
-         else if ((routine[LONG(AC::SaveImage)]) and (routine[LONG(AC::SaveImage)] != (APTR)PICTURE_SaveImage)) {
+         else if ((routine[int(AC::SaveImage)]) and (routine[int(AC::SaveImage)] != (APTR)PICTURE_SaveImage)) {
             struct acSaveImage saveimage;
             saveimage.Dest = Args->Dest;
-            return routine[LONG(AC::SaveImage)](Self, &saveimage);
+            return routine[int(AC::SaveImage)](Self, &saveimage);
          }
          else return log.warning(ERR::NoSupport);
       }
@@ -1122,7 +1122,7 @@ static void write_row_callback(png_structp write_ptr, png_uint_32 row, int pass)
 
 void parasol_read_callback(png_structp png, png_bytep data, png_size_t length)
 {
-   struct acRead read = { data, (LONG)length };
+   struct acRead read = { data, (int)length };
    if ((Action(AC::Read, (OBJECTPTR)png_get_io_ptr(png), &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
@@ -1133,7 +1133,7 @@ void parasol_read_callback(png_structp png, png_bytep data, png_size_t length)
 
 void parasol_write_callback(png_structp png, png_bytep data, png_size_t length)
 {
-   struct acWrite write = { data, (LONG)length };
+   struct acWrite write = { data, (int)length };
    if ((Action(AC::Write, (OBJECTPTR)png_get_io_ptr(png), &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
@@ -1147,7 +1147,7 @@ void png_flush(png_structp png_ptr)
 // These functions are expected by the embedded libpng library
 void png_read_data(png_structp png, png_bytep data, png_size_t length)
 {
-   struct acRead read = { data, (LONG)length };
+   struct acRead read = { data, (int)length };
    if ((Action(AC::Read, (OBJECTPTR)png_get_io_ptr(png), &read) != ERR::Okay) or ((png_size_t)read.Result != length)) {
       png_error(png, "File read error");
    }
@@ -1155,7 +1155,7 @@ void png_read_data(png_structp png, png_bytep data, png_size_t length)
 
 void png_write_data(png_structp png, png_const_bytep data, png_size_t length)
 {
-   struct acWrite write = { data, (LONG)length };
+   struct acWrite write = { data, (int)length };
    if ((Action(AC::Write, (OBJECTPTR)png_get_io_ptr(png), &write) != ERR::Okay) or ((png_size_t)write.Result != length)) {
       png_error(png, "File write error");
    }
@@ -1209,7 +1209,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    uint8_t *row;
    png_bytep row_pointers;
    RGB8 rgb;
-   LONG i;
+   int i;
    pf::Log log(__FUNCTION__);
 
    // Read the image data into our Bitmap
@@ -1220,7 +1220,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
 
    auto interlace_type = png_get_interlace_type(ReadPtr, InfoPtr);
 
-   log.branch("Size: %dx%dx%d, Interlace: %d", (LONG)PngWidth, (LONG)PngHeight, BitDepth, interlace_type);
+   log.branch("Size: %dx%dx%d, Interlace: %d", (int)PngWidth, (int)PngHeight, BitDepth, interlace_type);
 
    auto row_size = png_get_rowbytes(ReadPtr, InfoPtr);
    if ((error = acQuery(Bitmap)) != ERR::Okay) return error;
@@ -1234,7 +1234,7 @@ static ERR decompress_png(extPicture *Self, objBitmap *Bitmap, int BitDepth, int
    if (PngWidth > (png_uint_32)Bitmap->Width) PngWidth = Bitmap->Width;
    if (PngHeight > (png_uint_32)Bitmap->Height) PngHeight = Bitmap->Height;
 
-   LONG passes = 1;
+   int passes = 1;
    if (interlace_type == PNG_INTERLACE_ADAM7) passes = png_set_interlace_handling(ReadPtr);
 
    row_pointers = row;

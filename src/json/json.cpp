@@ -72,7 +72,7 @@ static ActionArray clActions[] = {
    { AC::NIL, nullptr }
 };
 
-static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags);
+static ERR extract_item(int &Line, CSTRING *Input, objXML::TAGS &Tags);
 static ERR txt_to_json(objXML *, CSTRING);
 
 //********************************************************************************************************************
@@ -110,10 +110,10 @@ static ERR MODExpunge(void)
 static void debug_tree(objXML *Self)
 {
    pf::Log log("Tree");
-   LONG i, j;
+   int i, j;
    char buffer[1000];
 
-   for (LONG index=0; index < LONG(Tags.size()); index++) {
+   for (int index=0; index < int(Tags.size()); index++) {
       XMLTag &Tag = Tags[index];
 
       //for (i=0; i < Tag.Branch; i++) buffer[i] = ' '; // Indenting
@@ -156,7 +156,7 @@ static ERR load_file(objXML *Self, CSTRING Path)
 
 //********************************************************************************************************************
 
-static ERR next_item(LONG &Line, CSTRING &Input)
+static ERR next_item(int &Line, CSTRING &Input)
 {
    while ((*Input) and (*Input <= 0x20)) { if (*Input IS '\n') Line++; Input++; }
    if (*Input IS ',') {
@@ -261,7 +261,7 @@ static ERR txt_to_json(objXML *Self, CSTRING Text)
 //********************************************************************************************************************
 // Called by txt_to_json() to extract the next item from a JSON string.  This function also recurses into itself.
 
-static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
+static ERR extract_item(int &Line, CSTRING *Input, objXML::TAGS &Tags)
 {
    pf::Log log(__FUNCTION__);
 
@@ -273,9 +273,9 @@ static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
       return ERR::Syntax;
    }
 
-   LONG line_no = Line;
+   int line_no = Line;
    str++;
-   LONG i = 0;
+   int i = 0;
    std::string item_name;
    while (*str != '"') {
       if (*str IS '\\') {
@@ -310,7 +310,7 @@ static ERR extract_item(LONG &Line, CSTRING *Input, objXML::TAGS &Tags)
    while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Line++; str++; }
 
    if (*str IS '[') {
-      LONG line_start = Line;
+      int line_start = Line;
 
       // Evaluates to:
       //

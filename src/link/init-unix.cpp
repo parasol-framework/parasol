@@ -45,7 +45,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    if (!stat("lib/core.so", &corestat)) {
       // The working directory will form the root path to the Parasol Framework
       if (getcwd(root_path, sizeof(root_path))) {
-         LONG i = strlen(root_path);
+         int i = strlen(root_path);
          if (root_path[i-1] != '/') root_path[i++] = '/';
          root_path[i] = 0;
       }
@@ -58,7 +58,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
       char procfile[48];
       snprintf(procfile, sizeof(procfile), "/proc/%d/exe", getpid());
 
-      LONG path_len;
+      int path_len;
       if ((path_len = readlink(procfile, root_path, sizeof(root_path)-1)) > 0) {
          // Strip the process name
          while ((path_len > 0) and (root_path[path_len-1] != '/')) path_len--;

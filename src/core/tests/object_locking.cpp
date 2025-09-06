@@ -20,7 +20,7 @@ CSTRING ProgName = "ObjectLocking";
 static volatile OBJECTPTR glConfig = nullptr;
 static uint32_t glTotalThreads = 8;
 static uint32_t glLockAttempts = 200;
-static LONG glAccessGap = 200000;
+static int glAccessGap = 200000;
 static bool glTerminateObject = false;
 
 struct thread_info{

@@ -25,14 +25,14 @@ IntegrityLevel get_integrity_level();
 static const char * GetIntegrityLevelString(IntegrityLevel integrity_level);
 
 #ifdef __GNUC__
-static LONG str_copy(const char *String, char *Dest, int Length) __attribute__((unused));
+static int str_copy(const char *String, char *Dest, int Length) __attribute__((unused));
 static ERR set_low_file(LPCWSTR pwszFileName) __attribute__((unused));
 #endif
 
-static LONG str_copy(const char *String, char *Dest, int Length)
+static int str_copy(const char *String, char *Dest, int Length)
 {
    if (Length < 0) return(0);
-   LONG i = 0;
+   int i = 0;
    if ((String) and (Dest)) {
       while ((i < Length) and (*String)) {
          Dest[i++] = *String++;

@@ -14,7 +14,7 @@ This file is in the public domain and may be distributed and modified without re
 
 extern "C" {
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
-DLLCALL LONG WINAPI FreeLibrary(APTR);
+DLLCALL int WINAPI FreeLibrary(APTR);
 }
 typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
 typedef void CLOSECORE(void);
@@ -62,7 +62,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    }
    else {
       static char msgbuf[120];
-      snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Parasol, error code %d.", LONG(info.Error));
+      snprintf(msgbuf, sizeof(msgbuf), "Failed to initialise Parasol, error code %d.", int(info.Error));
       return msgbuf;
    }
 }

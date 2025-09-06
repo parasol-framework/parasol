@@ -45,12 +45,12 @@ extern "C" {
 JUMPTABLE_DISPLAY
 
 static int input_unsubscribe(lua_State *Lua);
-static void focus_event(evFocus *, LONG, lua_State *);
-static void key_event(evKey *, LONG, struct finput *);
+static void focus_event(evFocus *, int, lua_State *);
+static void key_event(evKey *, int, struct finput *);
 
 //********************************************************************************************************************
 
-static ERR consume_input_events(const InputEvent *Events, LONG Handle)
+static ERR consume_input_events(const InputEvent *Events, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -66,7 +66,7 @@ static ERR consume_input_events(const InputEvent *Events, LONG Handle)
       return ERR::NotFound;
    }
 
-   LONG branch = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
+   int branch = GetResource(RES::LOG_DEPTH); // Required as thrown errors cause the debugger to lose its branch position
 
       // For simplicity, a call to the handler is made for each individual input event.
 
@@ -135,7 +135,7 @@ static int input_keyboard(lua_State *Lua)
 
    if ((object_id) and (GetClassID(object_id) != CLASSID::SURFACE)) luaL_argerror(Lua, 1, "Surface object required.");
 
-   LONG function_type = lua_type(Lua, 2);
+   int function_type = lua_type(Lua, 2);
    if ((function_type IS LUA_TFUNCTION) or (function_type IS LUA_TSTRING));
    else {
       luaL_argerror(Lua, 2, "Function reference required.");
@@ -217,7 +217,7 @@ static int input_request_item(lua_State *Lua)
       return 0;
    }
 
-   LONG item = lua_tointeger(Lua, 2);
+   int item = lua_tointeger(Lua, 2);
 
    DATA datatype;
    if (lua_isstring(Lua, 3)) {
@@ -240,7 +240,7 @@ static int input_request_item(lua_State *Lua)
    }
    else {
       datatype = DATA(lua_tointeger(Lua, 3));
-      if (LONG(datatype) <= 0) {
+      if (int(datatype) <= 0) {
          luaL_argerror(Lua, 3, "Datatype invalid");
          return 0;
       }
@@ -292,9 +292,9 @@ static int input_subscribe(lua_State *Lua)
    if ((object = (struct object *)get_meta(Lua, 2, "Fluid.obj"))) object_id = object->UID;
    else object_id = lua_tointeger(Lua, 2);
 
-   LONG device_id = lua_tointeger(Lua, 3); // Optional
+   int device_id = lua_tointeger(Lua, 3); // Optional
 
-   LONG function_type = lua_type(Lua, 4);
+   int function_type = lua_type(Lua, 4);
    if ((function_type IS LUA_TFUNCTION) or (function_type IS LUA_TSTRING));
    else {
       luaL_argerror(Lua, 4, "Function reference required.");
@@ -310,7 +310,7 @@ static int input_subscribe(lua_State *Lua)
       }
    }
 
-   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, LONG(mask), device_id);
+   log.msg("Surface: %d, Mask: $%.8x, Device: %d", object_id, int(mask), device_id);
 
    struct finput *input;
    if ((input = (struct finput *)lua_newuserdata(Lua, sizeof(struct finput)))) {
@@ -412,7 +412,7 @@ static int input_destruct(lua_State *Lua)
 //********************************************************************************************************************
 // Key events should only be received when a monitored surface has the focus.
 
-static void key_event(evKey *Event, LONG Size, struct finput *Input)
+static void key_event(evKey *Event, int Size, struct finput *Input)
 {
    pf::Log log("input.key_event");
    objScript *script = Input->Script;
@@ -425,13 +425,13 @@ static void key_event(evKey *Event, LONG Size, struct finput *Input)
 
    log.traceBranch("Incoming keyboard input");
 
-   LONG depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
-   LONG top = lua_gettop(prv->Lua);
+   int depth = GetResource(RES::LOG_DEPTH); // Required because thrown errors cause the debugger to lose its step position
+   int top = lua_gettop(prv->Lua);
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->Callback); // Get the function reference in Lua and place it on the stack
    lua_rawgeti(prv->Lua, LUA_REGISTRYINDEX, Input->InputValue); // Arg: Input value registered by the client
    lua_pushinteger(prv->Lua, Input->SurfaceID);  // Arg: Surface (if applicable)
    lua_pushinteger(prv->Lua, uint32_t(Event->Qualifiers)); // Arg: Key Flags
-   lua_pushinteger(prv->Lua, LONG(Event->Code));       // Arg: Key Value
+   lua_pushinteger(prv->Lua, int(Event->Code));       // Arg: Key Value
    lua_pushinteger(prv->Lua, Event->Unicode);    // Arg: Unicode character
 
    if (lua_pcall(prv->Lua, 5, 0, 0)) {
@@ -448,7 +448,7 @@ static void key_event(evKey *Event, LONG Size, struct finput *Input)
 //********************************************************************************************************************
 // This is a global function for monitoring the focus of surfaces that we want to filter on for keyboard input.
 
-static void focus_event(evFocus *Event, LONG Size, lua_State *Lua)
+static void focus_event(evFocus *Event, int Size, lua_State *Lua)
 {
    pf::Log log(__FUNCTION__);
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
@@ -466,7 +466,7 @@ static void focus_event(evFocus *Event, LONG Size, lua_State *Lua)
       if (input->KeyEvent) continue;
 
       auto callback = C_FUNCTION(key_event, input);
-      for (LONG i=0; i < Event->TotalWithFocus; i++) {
+      for (int i=0; i < Event->TotalWithFocus; i++) {
          if (input->SurfaceID IS Event->FocusList[i]) {
             log.trace("Focus notification received for key events on surface #%d.", input->SurfaceID);
             SubscribeEvent(EVID_IO_KEYBOARD_KEYPRESS, callback, &input->KeyEvent);
@@ -479,7 +479,7 @@ static void focus_event(evFocus *Event, LONG Size, lua_State *Lua)
       if (input->Mode != FIM_KEYBOARD) continue;
       if (!input->KeyEvent) continue;
 
-      for (LONG i=0; i < Event->TotalLostFocus; i++) {
+      for (int i=0; i < Event->TotalLostFocus; i++) {
          if (input->SurfaceID IS Event->FocusList[Event->TotalWithFocus+i]) {
             log.trace("Lost focus notification received for key events on surface #%d.", input->SurfaceID);
             UnsubscribeEvent(input->KeyEvent);

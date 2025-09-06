@@ -371,7 +371,7 @@ static ERR MODULE_Init(extModule *Self)
          auto it = glStaticModules.find(Self->Name);
          if (it != glStaticModules.end()) table = it->second;
          else {
-            log.warning("Unable to find module '%s' from %d static modules.", Self->Name.c_str(), LONG(glStaticModules.size()));
+            log.warning("Unable to find module '%s' from %d static modules.", Self->Name.c_str(), int(glStaticModules.size()));
             error = ERR::NotFound;
             goto exit;
          }
@@ -641,14 +641,14 @@ APTR build_jump_table(const Function *FList)
 
    pf::Log log(__FUNCTION__);
 
-   LONG size;
+   int size;
    for (size=0; FList[size].Address; size++);
 
    log.trace("%d functions have been detected in the function list.", size);
 
    void **functions;
    if (AllocMemory((size+1) * sizeof(APTR), MEM::NO_CLEAR|MEM::UNTRACKED, (APTR *)&functions, nullptr) IS ERR::Okay) {
-      for (LONG i=0; i < size; i++) functions[i] = FList[i].Address;
+      for (int i=0; i < size; i++) functions[i] = FList[i].Address;
       functions[size] = nullptr;
       return functions;
    }

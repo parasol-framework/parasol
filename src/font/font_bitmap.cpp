@@ -4,7 +4,7 @@
 */
 
 struct winFont {
-   LONG Offset, Size, Point;
+   int Offset, Size, Point;
 };
 
 struct winmz_header_fields {
@@ -102,8 +102,8 @@ public:
 
       clearmem(Chars, sizeof(Chars));
       if (pFace.version IS 0x300) {
-         LONG j = pFace.first_char;
-         for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
+         int j = pFace.first_char;
+         for (int i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
             uint16_t width;
             uint32_t offset;
 
@@ -117,8 +117,8 @@ public:
          }
       }
       else {
-         LONG j = pFace.first_char;
-         for (LONG i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
+         int j = pFace.first_char;
+         for (int i=0; i < pFace.last_char - pFace.first_char + 1; i++) {
             uint16_t width, offset;
             if (fl::ReadLE(pFile, &width) != ERR::Okay) break;
             if (fl::ReadLE(pFile, &offset) != ERR::Okay) break;
@@ -129,10 +129,10 @@ public:
          }
       }
 
-      LONG size = pFace.file_size - pFace.bits_offset;
+      int size = pFace.file_size - pFace.bits_offset;
 
       if (AllocMemory(size, MEM::UNTRACKED, &mData) IS ERR::Okay) {
-         LONG result;
+         int result;
          pFile->seek(pWinFont.Offset + pFace.bits_offset, SEEK::START);
 
          if ((pFile->read(mData, size, &result) IS ERR::Okay) and (result IS size)) {
@@ -141,16 +141,16 @@ public:
             for (int16_t i=0; i < 256; i++) {
                if (!Chars[i].Width) continue;
 
-               LONG sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
+               int sz = ((Chars[i].Width+7)>>3) * pFace.pixel_height;
                if (Chars[i].Width > 8) {
                   auto buffer = std::make_unique<uint8_t[]>(sz);
                   clearmem(buffer.get(), sz);
 
                   uint8_t *gfx = mData + Chars[i].Offset;
-                  LONG bytewidth = (Chars[i].Width + 7)>>3;
-                  LONG pos = 0;
-                  for (LONG k=0; k < pFace.pixel_height; k++) {
-                     for (LONG j=0; j < bytewidth; j++) {
+                  int bytewidth = (Chars[i].Width + 7)>>3;
+                  int pos = 0;
+                  for (int k=0; k < pFace.pixel_height; k++) {
+                     for (int j=0; j < bytewidth; j++) {
                         buffer[pos++] = gfx[k + (j * pFace.pixel_height)];
                      }
                   }
@@ -166,25 +166,25 @@ public:
       if (((StyleFlags & FTF::BOLD) != FTF::NIL) and (Header.weight < 600)) {
          log.msg("Converting base font graphics data to bold.");
 
-         LONG size = 0;
-         for (LONG i=0; i < 256; i++) {
+         int size = 0;
+         for (int i=0; i < 256; i++) {
             if (Chars[i].Width) size += Header.pixel_height * ((Chars[i].Width+8)>>3);
          }
 
          uint8_t *buffer;
          if (AllocMemory(size, MEM::UNTRACKED, &buffer) IS ERR::Okay) {
-            LONG pos = 0;
-            for (LONG i=0; i < 256; i++) {
+            int pos = 0;
+            for (int i=0; i < 256; i++) {
                if (Chars[i].Width) {
                   uint8_t *gfx = mData + Chars[i].Offset;
                   Chars[i].Offset = pos;
 
                   // Copy character graphic to the buffer and embolden it
 
-                  LONG oldwidth = (Chars[i].Width+7)>>3;
-                  LONG newwidth = (Chars[i].Width+8)>>3;
-                  for (LONG y=0; y < Header.pixel_height; y++) {
-                     for (LONG xb=0; xb < oldwidth; xb++) {
+                  int oldwidth = (Chars[i].Width+7)>>3;
+                  int newwidth = (Chars[i].Width+8)>>3;
+                  for (int y=0; y < Header.pixel_height; y++) {
+                     for (int xb=0; xb < oldwidth; xb++) {
                         buffer[pos+xb] |= gfx[xb]|(gfx[xb]>>1);
                         if ((xb < newwidth) and (gfx[xb] & 0x01)) buffer[pos+xb+1] |= 0x80;
                      }
@@ -207,28 +207,28 @@ public:
       if (((StyleFlags & FTF::ITALIC) != FTF::NIL) and (!Header.italic)) {
          log.msg("Converting base font graphics data to italic.");
 
-         LONG size = 0;
-         LONG extra = Header.pixel_height>>2;
+         int size = 0;
+         int extra = Header.pixel_height>>2;
 
-         for (LONG i=0; i < 256; i++) {
+         for (int i=0; i < 256; i++) {
             if (Chars[i].Width) size += Header.pixel_height * ((Chars[i].Width+7+extra)>>3);
          }
 
          uint8_t *buffer;
          if (AllocMemory(size, MEM::UNTRACKED, &buffer) IS ERR::Okay) {
-            LONG pos = 0;
-            for (LONG i=0; i < 256; i++) {
+            int pos = 0;
+            for (int i=0; i < 256; i++) {
                if (Chars[i].Width) {
                   uint8_t *gfx = mData + Chars[i].Offset;
                   Chars[i].Offset = pos;
 
-                  LONG oldwidth = (Chars[i].Width+7)>>3;
-                  LONG newwidth = (Chars[i].Width+7+extra)>>3;
-                  LONG italic = Header.pixel_height;
+                  int oldwidth = (Chars[i].Width+7)>>3;
+                  int newwidth = (Chars[i].Width+7+extra)>>3;
+                  int italic = Header.pixel_height;
                   uint8_t *dest = buffer + pos;
-                  for (LONG y=0; y < Header.pixel_height; y++) {
-                     LONG dx = italic>>2;
-                     for (LONG sx=0; sx < Chars[i].Width; sx++) {
+                  for (int y=0; y < Header.pixel_height; y++) {
+                     int dx = italic>>2;
+                     for (int sx=0; sx < Chars[i].Width; sx++) {
                         if (gfx[sx>>3] & (0x80>>(sx & 0x07))) {
                            dest[dx>>3] |= (0x80>>(dx & 0x07));
                         }
@@ -256,7 +256,7 @@ public:
    {
       if (mOutline) return mOutline;
 
-      LONG size = 0;
+      int size = 0;
       for (int16_t i=0; i < 256; i++) {
          if (Chars[i].Width) size += (Header.pixel_height+2) * ((Chars[i].Width+9)>>3);
       }
@@ -264,21 +264,21 @@ public:
       uint8_t *buffer;
       if (AllocMemory(size, MEM::UNTRACKED, &buffer) != ERR::Okay) return nullptr;
 
-      LONG pos = 0;
+      int pos = 0;
       for (int16_t i=0; i < 256; i++) {
          if (Chars[i].Width) {
             auto gfx = mData + Chars[i].Offset;
             Chars[i].OutlineOffset = pos;
 
-            LONG oldwidth = (Chars[i].Width+7)>>3;
-            LONG newwidth = (Chars[i].Width+9)>>3;
+            int oldwidth = (Chars[i].Width+7)>>3;
+            int newwidth = (Chars[i].Width+9)>>3;
 
             auto dest = buffer + pos;
 
             dest += newwidth; // Start ahead of line 0
-            for (LONG sy=0; sy < Header.pixel_height; sy++) {
-               LONG dx = 1;
-               for (LONG sx=0; sx < Chars[i].Width; sx++) {
+            for (int sy=0; sy < Header.pixel_height; sy++) {
+               int dx = 1;
+               for (int sx=0; sx < Chars[i].Width; sx++) {
                   if (gfx[sx>>3] & (0x80>>(sx & 0x07))) {
                      if ((sx >= Chars[i].Width-1) or (!(gfx[(sx+1)>>3] & (0x80>>((sx+1) & 0x07))))) dest[(dx+1)>>3] |= (0x80>>((dx+1) & 0x07));
                      if ((sx IS 0) or (!(gfx[(sx-1)>>3] & (0x80>>((sx-1) & 0x07))))) dest[(dx-1)>>3] |= (0x80>>((dx-1) & 0x07));
@@ -303,7 +303,7 @@ public:
    ~BitmapCache() {
       if (OpenCount) {
          pf::Log log(__FUNCTION__);
-         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, LONG(StyleFlags), OpenCount);
+         log.warning("Removing \"%s : %d : $%.8x\" with an open count of %d", Path.c_str(), Header.nominal_point_size, int(StyleFlags), OpenCount);
       }
       if (mData) { FreeResource(mData); mData = nullptr; }
       if (mOutline) { FreeResource(mOutline); mOutline = nullptr; }

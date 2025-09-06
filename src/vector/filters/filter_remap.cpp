@@ -95,7 +95,7 @@ class Component {
       }
    }
 
-   void select_discrete(const double *pValues, const LONG pSize) {
+   void select_discrete(const double *pValues, const int pSize) {
       Type = RFT_DISCRETE;
       Table.insert(Table.end(), pValues, pValues + pSize);
 
@@ -110,7 +110,7 @@ class Component {
       }
    }
 
-   void select_table(const double *pValues, const LONG pSize) {
+   void select_table(const double *pValues, const int pSize) {
       Type = RFT_TABLE;
       Table.insert(Table.end(), pValues, pValues + pSize);
 
@@ -119,7 +119,7 @@ class Component {
           double c = double(i) / 255.0;
           auto k = uint32_t(c * (n - 1));
           double v = Table[std::min((k + 1), (n - 1))];
-          LONG val = F2T(255.0 * (Table[k] + (c * (n - 1) - k) * (v - Table[k])));
+          int val = F2T(255.0 * (Table[k] + (c * (n - 1) - k) * (v - Table[k])));
           Lookup[i] = std::max(0, std::min(255, val));
           ILookup[i] = glLinearRGB.invert(Lookup[i]);
       }
@@ -163,8 +163,8 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
    objBitmap *bmp;
    if (get_source_bitmap(Self->Filter, &bmp, Self->SourceType, Self->Input, false) != ERR::Okay) return ERR::Failed;
 
-   LONG height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
-   LONG width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
+   int height = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   int width  = Self->Target->Clip.Right - Self->Target->Clip.Left;
    if (bmp->Clip.Right - bmp->Clip.Left < width) width = bmp->Clip.Right - bmp->Clip.Left;
    if (bmp->Clip.Bottom - bmp->Clip.Top < height) height = bmp->Clip.Bottom - bmp->Clip.Top;
 
@@ -175,12 +175,12 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
 
    uint8_t *in = bmp->Data + (bmp->Clip.Left * 4) + (bmp->Clip.Top * bmp->LineWidth);
    uint8_t *dest = Self->Target->Data + (Self->Target->Clip.Left * 4) + (Self->Target->Clip.Top * Self->Target->LineWidth);
-   for (LONG y=0; y < height; y++) {
+   for (int y=0; y < height; y++) {
       auto dp = (uint32_t *)dest;
       auto sp = in;
 
       if (Self->Filter->ColourSpace IS VCS::LINEAR_RGB) {
-         for (LONG x=0; x < width; x++) {
+         for (int x=0; x < width; x++) {
             if (auto a = sp[A]) {
                uint8_t out[4];
                out[R] = Self->Red.ILookup[glLinearRGB.convert(sp[R])];
@@ -194,7 +194,7 @@ static ERR REMAPFX_Draw(extRemapFX *Self, struct acDraw *Args)
          }
       }
       else {
-         for (LONG x=0; x < width; x++) {
+         for (int x=0; x < width; x++) {
             if (auto a = sp[A]) {
                uint8_t out[4];
                out[R] = Self->Red.Lookup[sp[R]];

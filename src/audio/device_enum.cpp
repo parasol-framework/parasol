@@ -3,7 +3,7 @@
 #include "device_enum.h"
 
 // Core enumeration function - populates device info for a single card
-bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo& info)
+bool ALSADeviceEnumerator::populate_device_info(int card_number, ALSADeviceInfo& info)
 {
    std::string device_name = "hw:" + std::to_string(card_number);
    snd_ctl_t *ctlhandle = nullptr;
@@ -49,7 +49,7 @@ bool ALSADeviceEnumerator::populate_device_info(LONG card_number, ALSADeviceInfo
 std::vector<ALSADeviceInfo> ALSADeviceEnumerator::enumerate_devices()
 {
    std::vector<ALSADeviceInfo> devices;
-   LONG card = -1;
+   int card = -1;
 
    // Iterate through all available cards
    if (snd_card_next(&card) >= 0 and card >= 0) {
@@ -135,7 +135,7 @@ bool ALSADeviceEnumerator::has_genuine_devices()
 }
 
 // Wait for audio devices to become available (with timeout)
-ERR ALSADeviceEnumerator::wait_for_devices(LONG timeout_ms)
+ERR ALSADeviceEnumerator::wait_for_devices(int timeout_ms)
 {
    pf::Log log(__FUNCTION__);
    log.branch("Waiting for audio drivers to start...");

@@ -32,7 +32,7 @@ class extMorphologyFX : public extFilterEffect {
    static constexpr CSTRING CLASS_NAME = "MorphologyFX";
    using create = pf::Create<extMorphologyFX>;
 
-   LONG RadiusX, RadiusY;
+   int RadiusX, RadiusY;
    MOP Operator;
 };
 
@@ -44,8 +44,8 @@ Draw: Render the effect to the target bitmap.
 
 static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 {
-   const LONG canvasWidth = Self->Target->Clip.Right - Self->Target->Clip.Left;
-   const LONG canvasHeight = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   const int canvasWidth = Self->Target->Clip.Right - Self->Target->Clip.Left;
+   const int canvasHeight = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
 
    if (canvasWidth * canvasHeight > 4096 * 4096) return ERR::Failed; // Bail on really large bitmaps.
 
@@ -56,7 +56,7 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
    uint8_t *out_line;
    uint8_t *buffer = nullptr;
-   LONG out_linewidth;
+   int out_linewidth;
    bool buffer_as_input;
 
    // A temporary buffer is required if we are applying the effect on both axis.  Otherwise we can
@@ -136,7 +136,7 @@ static ERR MORPHOLOGYFX_Draw(extMorphologyFX *Self, struct acDraw *Args)
 
       const uint8_t *endinput;
       const uint8_t *inputline;
-      LONG inwidth;
+      int inwidth;
 
       if (buffer_as_input) {
          endinput  = buffer + (radius * (canvasWidth * 4));
@@ -233,13 +233,13 @@ RadiusX: X radius value.
 
 *********************************************************************************************************************/
 
-static ERR MORPHOLOGYFX_GET_RadiusX(extMorphologyFX *Self, LONG *Value)
+static ERR MORPHOLOGYFX_GET_RadiusX(extMorphologyFX *Self, int *Value)
 {
    *Value = Self->RadiusX;
    return ERR::Okay;
 }
 
-static ERR MORPHOLOGYFX_SET_RadiusX(extMorphologyFX *Self, LONG Value)
+static ERR MORPHOLOGYFX_SET_RadiusX(extMorphologyFX *Self, int Value)
 {
    if (Value >= 0) {
       Self->RadiusX = Value;
@@ -255,13 +255,13 @@ RadiusY: Y radius value.
 
 *********************************************************************************************************************/
 
-static ERR MORPHOLOGYFX_GET_RadiusY(extMorphologyFX *Self, LONG *Value)
+static ERR MORPHOLOGYFX_GET_RadiusY(extMorphologyFX *Self, int *Value)
 {
    *Value = Self->RadiusY;
    return ERR::Okay;
 }
 
-static ERR MORPHOLOGYFX_SET_RadiusY(extMorphologyFX *Self, LONG Value)
+static ERR MORPHOLOGYFX_SET_RadiusY(extMorphologyFX *Self, int Value)
 {
    if (Value >= 0) {
       Self->RadiusY = Value;

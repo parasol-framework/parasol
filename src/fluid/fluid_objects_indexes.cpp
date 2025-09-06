@@ -35,7 +35,7 @@ static int object_newindex(lua_State *Lua)
 
 //********************************************************************************************************************
 
-static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values, LONG total)
+static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int Values, int total)
 {
    if (Field->Flags & FD_INT) {
       pf::vector<int> values((size_t)total);
@@ -50,7 +50,7 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
    else if (Field->Flags & FD_STRING) {
       pf::vector<CSTRING> values((size_t)total);
       for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
-         LONG index = lua_tointeger(Lua, -2) - 1;
+         int index = lua_tointeger(Lua, -2) - 1;
          if ((index >= 0) and (index < total)) {
             values[index] = lua_tostring(Lua, -1);
          }
@@ -62,14 +62,14 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
 
       auto prv = (prvFluid *)Lua->Script->ChildPrivate;
       if (auto def = prv->Structs.find(std::string_view((CSTRING)Field->Arg)); def != prv->Structs.end()) {
-         LONG aligned_size = ALIGN64(def->second.Size);
+         int aligned_size = ALIGN64(def->second.Size);
          auto structbuf = std::make_unique<uint8_t[]>(total * aligned_size);
 
          for (lua_pushnil(Lua); lua_next(Lua, Values); lua_pop(Lua, 1)) {
-            LONG index = lua_tointeger(Lua, -2) - 1;
+            int index = lua_tointeger(Lua, -2) - 1;
             if ((index >= 0) and (index < total)) {
                APTR sti = structbuf.get() + (aligned_size * index);
-               LONG type = lua_type(Lua, -1);
+               int type = lua_type(Lua, -1);
                if (type IS LUA_TTABLE) {
                   lua_pop(Lua, 2);
                   return ERR::SetValueNotArray;
@@ -95,17 +95,17 @@ static ERR set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG Values
 
 //********************************************************************************************************************
 
-static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
-   LONG type = lua_type(Lua, ValueIndex);
+   int type = lua_type(Lua, ValueIndex);
 
    if (type IS LUA_TSTRING) { // Treat the source as a CSV field
       return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
    }
    else if (type IS LUA_TTABLE) {
       lua_settop(Lua, ValueIndex);
-      LONG t = lua_gettop(Lua);
-      LONG total = lua_objlen(Lua, t);
+      int t = lua_gettop(Lua);
+      int total = lua_objlen(Lua, t);
 
       if (total < 1024) {
          return set_array(Lua, Object, Field, t, total);
@@ -118,9 +118,9 @@ static ERR object_set_array(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG
    else return ERR::SetValueNotArray;
 }
 
-static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
-   LONG type = lua_type(Lua, ValueIndex);
+   int type = lua_type(Lua, ValueIndex);
    if (type IS LUA_TSTRING) {
       lua_getglobal(Lua, lua_tostring(Lua, ValueIndex));
       auto func = FUNCTION(Lua->Script, luaL_ref(Lua, LUA_REGISTRYINDEX));
@@ -134,7 +134,7 @@ static ERR object_set_function(lua_State *Lua, OBJECTPTR Object, Field *Field, L
    else return ERR::SetValueNotFunction;
 }
 
-static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    if (auto def = (object *)get_meta(Lua, ValueIndex, "Fluid.obj")) {
       if (auto ptr_obj = access_object(def)) {
@@ -147,7 +147,7 @@ static ERR object_set_object(lua_State *Lua, OBJECTPTR Object, Field *Field, LON
    else return Object->set(Field->FieldID, (APTR)nullptr);
 }
 
-static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    auto type = lua_type(Lua, ValueIndex);
 
@@ -176,7 +176,7 @@ static ERR object_set_ptr(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
    else return ERR::SetValueNotPointer;
 }
 
-static ERR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
       case LUA_TNUMBER:
@@ -193,16 +193,16 @@ static ERR object_set_double(lua_State *Lua, OBJECTPTR Object, Field *Field, LON
    }
 }
 
-static ERR object_set_lookup(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_lookup(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
-      case LUA_TNUMBER: return Object->set(Field->FieldID, (LONG)lua_tointeger(Lua, ValueIndex));
+      case LUA_TNUMBER: return Object->set(Field->FieldID, (int)lua_tointeger(Lua, ValueIndex));
       case LUA_TSTRING: return Object->set(Field->FieldID, lua_tostring(Lua, ValueIndex));
       default: return ERR::SetValueNotLookup;
    }
 }
 
-static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
       default:          return ERR::SetValueNotObject;
@@ -232,7 +232,7 @@ static ERR object_set_oid(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG V
    return ERR::SetValueNotObject;
 }
 
-static ERR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, LONG ValueIndex)
+static ERR object_set_number(lua_State *Lua, OBJECTPTR Object, Field *Field, int ValueIndex)
 {
    switch(lua_type(Lua, ValueIndex)) {
       case LUA_TBOOLEAN:
@@ -279,7 +279,7 @@ static int object_get(lua_State *Lua)
          return 1;
       }
       else if (auto field = FindField(obj, strihash(fieldname), &target)) {
-         LONG result = 0;
+         int result = 0;
          if (field->Flags & FD_ARRAY) {
             if (field->Flags & FD_RGB) result = object_get_rgb(Lua, obj_read(0, nullptr, field), def);
             else result = object_get_array(Lua, obj_read(0, nullptr, field), def);
@@ -368,7 +368,7 @@ static int object_set(lua_State *Lua)
    if (!(fieldname = luaL_checkstring(Lua, 1))) return 0;
 
    if (auto obj = access_object(def)) {
-      LONG type = lua_type(Lua, 2);
+      int type = lua_type(Lua, 2);
       auto fieldhash = strihash(fieldname);
 
       ERR error;
@@ -376,7 +376,7 @@ static int object_set(lua_State *Lua)
       else error = obj->set(fieldhash, luaL_optstring(Lua, 2, nullptr));
 
       release_object(def);
-      lua_pushinteger(Lua, LONG(error));
+      lua_pushinteger(Lua, int(error));
       report_action_error(Lua, def, "set", error);
       return 1;
    }
@@ -394,7 +394,7 @@ static int object_setkey(lua_State *Lua)
       if (auto obj = access_object(def)) {
          ERR error = acSetKey(obj, fieldname, value);
          release_object(def);
-         lua_pushinteger(Lua, LONG(error));
+         lua_pushinteger(Lua, int(error));
          report_action_error(Lua, def, "setKey", error);
          return 1;
       }
@@ -405,11 +405,11 @@ static int object_setkey(lua_State *Lua)
 
 //********************************************************************************************************************
 
-static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG ValueIndex)
+static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, int ValueIndex)
 {
    pf::Log log("obj.setfield");
 
-   LONG type = lua_type(Lua, ValueIndex);
+   int type = lua_type(Lua, ValueIndex);
 
    if (FName[0] IS '_') return acSetKey(obj, FName+1, lua_tostring(Lua, ValueIndex));
 
@@ -423,8 +423,8 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
          }
          else if (type IS LUA_TTABLE) {
             lua_settop(Lua, ValueIndex);
-            LONG t = lua_gettop(Lua);
-            LONG total = lua_objlen(Lua, t);
+            int t = lua_gettop(Lua);
+            int total = lua_objlen(Lua, t);
 
             if (total < 1024) {
                return set_array(Lua, target, field, t, total);
@@ -507,7 +507,7 @@ static ERR set_object_field(lua_State *Lua, OBJECTPTR obj, CSTRING FName, LONG V
       else if (field->Flags & (FD_FLAGS|FD_LOOKUP)) {
          switch(type) {
             case LUA_TNUMBER:
-               return target->set(field->FieldID, (LONG)lua_tointeger(Lua, ValueIndex));
+               return target->set(field->FieldID, (int)lua_tointeger(Lua, ValueIndex));
 
             case LUA_TSTRING:
                return target->set(field->FieldID, lua_tostring(Lua, ValueIndex));
@@ -764,7 +764,7 @@ static int object_get_long(lua_State *Lua, const obj_read &Handle, object *Def)
    ERR error;
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
-      LONG result;
+      int result;
       if ((error = obj->get(field->FieldID, result)) IS ERR::Okay) {
          if (field->Flags & FD_OBJECT) push_object_id(Lua, result);
          else lua_pushinteger(Lua, result);
@@ -784,7 +784,7 @@ static int object_get_ulong(lua_State *Lua, const obj_read &Handle, object *Def)
    if (auto obj = access_object(Def)) {
       auto field = (Field *)(Handle.Data);
       uint32_t result;
-      if ((error = obj->get(field->FieldID, (LONG &)result)) IS ERR::Okay) {
+      if ((error = obj->get(field->FieldID, (int &)result)) IS ERR::Okay) {
          lua_pushnumber(Lua, result);
       }
       release_object(Def);

@@ -88,12 +88,12 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
    uint8_t *mix   = mixBmp->Data + (mixBmp->Clip.Left * 4) + (mixBmp->Clip.Top * mixBmp->LineWidth);
    uint8_t *dest  = Self->Target->Data + (Self->Target->Clip.Left * Self->Target->BytesPerPixel) + (Self->Target->Clip.Top * Self->Target->LineWidth);
 
-   const LONG width      = Self->Target->Clip.Right  - Self->Target->Clip.Left;
-   const LONG height     = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
-   const LONG mix_width  = mixBmp->Clip.Right  - mixBmp->Clip.Left;
-   const LONG mix_height = mixBmp->Clip.Bottom - mixBmp->Clip.Top;
-   const LONG in_width   = inBmp->Clip.Right   - inBmp->Clip.Left;
-   const LONG in_height  = inBmp->Clip.Bottom  - inBmp->Clip.Top;
+   const int width      = Self->Target->Clip.Right  - Self->Target->Clip.Left;
+   const int height     = Self->Target->Clip.Bottom - Self->Target->Clip.Top;
+   const int mix_width  = mixBmp->Clip.Right  - mixBmp->Clip.Left;
+   const int mix_height = mixBmp->Clip.Bottom - mixBmp->Clip.Top;
+   const int in_width   = inBmp->Clip.Right   - inBmp->Clip.Left;
+   const int in_height  = inBmp->Clip.Bottom  - inBmp->Clip.Top;
 
    auto &client = Self->Filter->ClientVector;
    const double c_width  = client->Bounds.width();
@@ -115,23 +115,23 @@ static ERR DISPLACEMENTFX_Draw(extDisplacementFX *Self, struct acDraw *Args)
       sy = scale * double(mix_height) * (1.0 / 255.0);
    }
 
-   const uint8_t x_type = RGBA[LONG(Self->XChannel)];
-   const uint8_t y_type = RGBA[LONG(Self->YChannel)];
+   const uint8_t x_type = RGBA[int(Self->XChannel)];
+   const uint8_t y_type = RGBA[int(Self->YChannel)];
 
    //log.warning("W/H: %dx%d; MW/H: %dx%d; IW/H: %dx%d; CW/H: %.2fx%.2f, BBox: %d", width, height, mix_width, mix_height, in_width, in_height, c_width, c_height, Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX);
    //log.warning("X Channel: %d, Y Channel: %d; Scale: %.2f / %.2f -> %.2f,%.2f; WH: %dx%d", Self->XChannel, Self->YChannel, Self->Scale, scale_against, sx, sy, width, height);
 
    static const double HALF8BIT = 255.0 * 0.5;
-   for (LONG y=0; y < height; y++) {
+   for (int y=0; y < height; y++) {
       auto m = mix;
       auto d = (uint32_t *)dest;
-      for (LONG x=0; x < width; x++, m += mixBmp->BytesPerPixel, d++) {
+      for (int x=0; x < width; x++, m += mixBmp->BytesPerPixel, d++) {
          auto dx = m[x_type];
          auto dy = m[y_type];
          // TODO: SVG recommends using interpolation between pixels rather than the dropping the fractional part
          // as done here.
-         const LONG cx = x + F2I(sx * (double(dx) - HALF8BIT));
-         const LONG cy = y + F2I(sy * (double(dy) - HALF8BIT));
+         const int cx = x + F2I(sx * (double(dx) - HALF8BIT));
+         const int cy = y + F2I(sy * (double(dy) - HALF8BIT));
          if ((cx < 0) or (cx >= in_width) or (cy < 0) or (cy >= in_height)) {
             // The source pixel is outside of retrievable bounds
             *d = 0;

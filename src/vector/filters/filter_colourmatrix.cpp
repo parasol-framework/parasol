@@ -91,9 +91,9 @@ public:
 
    void apply(MATRIX mat) {
       MATRIX temp;
-      LONG i = 0;
-      for (LONG y = 0; y < 4; y++) {
-         for (LONG x = 0; x < 5; x++) {
+      int i = 0;
+      for (int y = 0; y < 4; y++) {
+         for (int x = 0; x < 5; x++) {
             temp[i+x] = mat[i] * matrix[x] + mat[(i+1)] * matrix[(x+5)] + mat[(i+2)] * matrix[(x+10)] +
                         mat[(i+3)] * matrix[(x + 15)] + (x == 4 ? mat[(i+4)] : 0);
          }
@@ -245,7 +245,7 @@ public:
       rotateColour(degrees, 1, 0);
    }
 
-   void rotateColour(double degrees, LONG x, LONG y) {
+   void rotateColour(double degrees, int x, int y) {
       degrees *= DEG2RAD;
       auto mat = IDENTITY;
       mat[x + x * 5] = mat[y + y * 5] = cos(degrees);
@@ -266,7 +266,7 @@ public:
       shearColour( 2, 0, red, 1, green );
    }
 
-   void shearColour(LONG x, LONG y1, double d1, LONG y2, double d2) {
+   void shearColour(int x, int y1, double d1, int y2, double d2) {
       MATRIX mat = IDENTITY;
       mat[y1 + x * 5] = d1;
       mat[y2 + x * 5] = d2;
@@ -325,7 +325,7 @@ class extColourFX : public extFilterEffect {
 
    double Values[CM_SIZE];
    ColourMatrix *Matrix;
-   LONG TotalValues;
+   int TotalValues;
    CM Mode;
 };
 
@@ -353,20 +353,20 @@ static ERR COLOURFX_Draw(extColourFX *Self, struct acDraw *Args)
    auto out_line = Self->Target->Data + (Self->Target->Clip.Left<<2) + (Self->Target->Clip.Top * Self->Target->LineWidth);
    auto in_line  = inBmp->Data + (inBmp->Clip.Left<<2) + (inBmp->Clip.Top * inBmp->LineWidth);
 
-   for (LONG y=0; y < inBmp->Clip.Bottom - inBmp->Clip.Top; y++) {
+   for (int y=0; y < inBmp->Clip.Bottom - inBmp->Clip.Top; y++) {
       uint8_t *pixel = in_line;
       uint8_t *out = out_line;
-      for (LONG x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++, pixel += 4, out += 4) {
+      for (int x=0; x < inBmp->Clip.Right - inBmp->Clip.Left; x++, pixel += 4, out += 4) {
          double a = pixel[A];
          if (a) {
             double r = glLinearRGB.convert(pixel[R]);
             double g = glLinearRGB.convert(pixel[G]);
             double b = glLinearRGB.convert(pixel[B]);
 
-            LONG r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
-            LONG g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
-            LONG b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
-            LONG a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
+            int r2 = 0.5 + (r * matrix[0]) + (g * matrix[1]) + (b * matrix[2]) + (a * matrix[3]) + matrix[4];
+            int g2 = 0.5 + (r * matrix[5]) + (g * matrix[6]) + (b * matrix[7]) + (a * matrix[8]) + matrix[9];
+            int b2 = 0.5 + (r * matrix[10]) + (g * matrix[11]) + (b * matrix[12]) + (a * matrix[13]) + matrix[14];
+            int a2 = 0.5 + (r * matrix[15]) + (g * matrix[16]) + (b * matrix[17]) + (a * matrix[18]) + matrix[19];
 
             if (a2 < 0) out[A] = 0;
             else if (a2 > 255) out[A] = 255;
@@ -512,14 +512,14 @@ When values are not defined, they default to 0.
 
 *********************************************************************************************************************/
 
-static ERR COLOURFX_GET_Values(extColourFX *Self, double **Array, LONG *Elements)
+static ERR COLOURFX_GET_Values(extColourFX *Self, double **Array, int *Elements)
 {
    *Array = Self->Values;
    *Elements = Self->TotalValues;
    return ERR::Okay;
 }
 
-static ERR COLOURFX_SET_Values(extColourFX *Self, double *Array, LONG Elements)
+static ERR COLOURFX_SET_Values(extColourFX *Self, double *Array, int Elements)
 {
    if (Elements > std::ssize(Self->Values)) return ERR::InvalidValue;
    if (Array) copymem(Array, Self->Values, Elements * sizeof(double));

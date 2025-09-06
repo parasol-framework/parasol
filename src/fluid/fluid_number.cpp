@@ -111,7 +111,7 @@ static int number_i64(lua_State *Lua)
 
 static int number_i16(lua_State *Lua)
 {
-   LONG i16 = lua_tointeger(Lua, 1);
+   int i16 = lua_tointeger(Lua, 1);
    if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
@@ -125,7 +125,7 @@ static int number_i16(lua_State *Lua)
 
 static int number_i8(lua_State *Lua)
 {
-   LONG i8 = lua_tointeger(Lua, 1);
+   int i8 = lua_tointeger(Lua, 1);
    if (auto num = (fnumber *)lua_newuserdata(Lua, sizeof(struct fnumber))) {
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);

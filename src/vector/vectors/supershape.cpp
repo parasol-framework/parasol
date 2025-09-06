@@ -24,9 +24,9 @@ class extVectorShape : public extVector {
    double Radius;
    double CX, CY;
    double M, N1, N2, N3, A, B, Phi;
-   LONG Vertices;
-   LONG Spiral;
-   LONG Repeat;
+   int Vertices;
+   int Spiral;
+   int Repeat;
    DMF Dimensions;
    bool Close;
    uint8_t Mod;
@@ -65,7 +65,7 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
    const double b = 1.0 / Vector->B;
    double min_x = DBL_MAX, max_x = -DBL_MAX, min_y = DBL_MAX, max_y = -DBL_MAX;
 
-   LONG lx = 0x7fffffff, ly = 0x7fffffff;
+   int lx = 0x7fffffff, ly = 0x7fffffff;
    for (double i=0; i < vertices; i++) {
       const double phi = phi_a * i;
       const double t1 = pow(std::abs(a * cos(m * phi * 0.25)), n2);
@@ -136,7 +136,7 @@ static void generate_supershape(extVectorShape *Vector, agg::path_storage &Path)
 
          agg::path_storage clone(*target);
 
-         for (LONG i=0; i < Vector->Repeat-1; i++) {
+         for (int i=0; i < Vector->Repeat-1; i++) {
             agg::trans_affine transform;
             transform.scale(double(i+1) / double(Vector->Repeat));
             agg::conv_transform<agg::path_storage, agg::trans_affine> scaled_path(clone, transform);
@@ -270,13 +270,13 @@ If TRUE, the shape path will be closed between the beginning and end points.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Close(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Close(extVectorShape *Self, int *Value)
 {
    *Value = Self->Close;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Close(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Close(extVectorShape *Self, int Value)
 {
    Self->Close = Value;
    reset_path(Self);
@@ -357,13 +357,13 @@ generated 'r' value.  Possible values and their effects are:
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Mod(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Mod(extVectorShape *Self, int *Value)
 {
    *Value = Self->Mod;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Mod(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Mod(extVectorShape *Self, int Value)
 {
    Self->Mod = Value;
    reset_path(Self);
@@ -495,13 +495,13 @@ The Repeat value cannot be set in conjunction with #Spiral.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Repeat(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Repeat(extVectorShape *Self, int *Value)
 {
    *Value = Self->Repeat;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Repeat(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Repeat(extVectorShape *Self, int Value)
 {
    if ((Value >= 0) and (Value < 512)) {
       Self->Repeat = Value;
@@ -520,13 +520,13 @@ specified.  For instance, a value of 5 will generate five spirals.
 
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Spiral(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Spiral(extVectorShape *Self, int *Value)
 {
    *Value = Self->Spiral;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Spiral(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Spiral(extVectorShape *Self, int Value)
 {
    if (Value >= 0) {
       Self->Spiral = Value;
@@ -546,13 +546,13 @@ their vertices will always touch the sides of an elliptical area.
 -END-
 *********************************************************************************************************************/
 
-static ERR SUPER_GET_Vertices(extVectorShape *Self, LONG *Value)
+static ERR SUPER_GET_Vertices(extVectorShape *Self, int *Value)
 {
    *Value = Self->Vertices;
    return ERR::Okay;
 }
 
-static ERR SUPER_SET_Vertices(extVectorShape *Self, LONG Value)
+static ERR SUPER_SET_Vertices(extVectorShape *Self, int Value)
 {
    if ((Value >= 3) and (Value < 16384)) {
       Self->Vertices = Value;

@@ -40,8 +40,8 @@ static int object_action_call_args(lua_State *);
 static int object_method_call_args(lua_State *);
 static int object_action_call(lua_State *);
 static int object_method_call(lua_State *);
-static LONG get_results(lua_State *, const FunctionField *, const int8_t *);
-static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, LONG);
+static int get_results(lua_State *, const FunctionField *, const int8_t *);
+static ERR set_object_field(lua_State *, OBJECTPTR, CSTRING, int);
 
 static int object_children(lua_State *);
 static int object_delaycall(lua_State *);
@@ -73,14 +73,14 @@ static int object_get_large(lua_State *, const obj_read &, object *);
 static int object_get_ulong(lua_State *, const obj_read &, object *);
 static int object_get_long(lua_State *, const obj_read &, object *);
 
-static ERR object_set_array(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_function(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_object(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_ptr(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_double(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_lookup(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_oid(lua_State *, OBJECTPTR, Field *, LONG);
-static ERR object_set_number(lua_State *, OBJECTPTR, Field *, LONG);
+static ERR object_set_array(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_function(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_object(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_ptr(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_double(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_lookup(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_oid(lua_State *, OBJECTPTR, Field *, int);
+static ERR object_set_number(lua_State *, OBJECTPTR, Field *, int);
 
 //********************************************************************************************************************
 
@@ -158,15 +158,15 @@ inline void build_read_table(object *Def)
 
    // Every possible action is hashed because both sub-class and base-class actions require support.
 
-   for (LONG code=1; code < LONG(AC::END); code++) {
+   for (int code=1; code < int(AC::END); code++) {
       auto hash = simple_hash(glActions[code].Name, simple_hash("ac"));
       jmp.insert(obj_read(hash, glJumpActions[code]));
    }
 
    MethodEntry *methods;
-   LONG total_methods;
+   int total_methods;
    if (Def->Class->get(FID_Methods, methods, total_methods) IS ERR::Okay) {
-      for (LONG i=1; i < total_methods; i++) {
+      for (int i=1; i < total_methods; i++) {
          if (methods[i].MethodID != AC::NIL) {
             auto hash = simple_hash(methods[i].Name, simple_hash("mt"));
             jmp.insert(obj_read(hash, obj_jump_method, &methods[i]));
@@ -175,11 +175,11 @@ inline void build_read_table(object *Def)
    }
 
    Field *dict;
-   LONG total_dict;
+   int total_dict;
    if (Def->Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
       jmp.insert(obj_read(simple_hash("id"), object_get_id));
 
-      for (LONG i=0; i < total_dict; i++) {
+      for (int i=0; i < total_dict; i++) {
          if (!(dict[i].Flags & FDF_R)) continue;
 
          auto hash = field_hash(dict[i].Name);
@@ -238,9 +238,9 @@ inline WRITE_TABLE * get_write_table(object *Def)
       else {
          WRITE_TABLE jmp;
          Field *dict;
-         LONG total_dict;
+         int total_dict;
          if (Def->Class->get(FID_Dictionary, dict, total_dict) IS ERR::Okay) {
-            for (LONG i=0; i < total_dict; i++) {
+            for (int i=0; i < total_dict; i++) {
                if (dict[i].Flags & (FD_W|FD_I)) {
                   char ch[2] = { dict[i].Name[0], 0 };
                   if ((ch[0] >= 'A') and (ch[0] <= 'Z')) ch[0] = ch[0] - 'A' + 'a';
@@ -324,7 +324,7 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    else {
       auto it = glActionLookup.find(action);
       if (it != glActionLookup.end()) {
-         *Args = glActions[LONG(it->second)].Args;
+         *Args = glActions[int(it->second)].Args;
          return it->second;
       }
    }
@@ -332,10 +332,10 @@ static ACTIONID get_action_info(lua_State *Lua, CLASSID ClassID, CSTRING action,
    *Args = nullptr;
    if (auto mc = FindClass(ClassID)) {
       MethodEntry *table;
-      LONG total_methods;
+      int total_methods;
       ACTIONID action_id;
       if ((mc->get(FID_Methods, table, total_methods) IS ERR::Okay) and (table)) {
-         for (LONG i=1; i < total_methods; i++) {
+         for (int i=1; i < total_methods; i++) {
             if ((table[i].Name) and (iequals(action, table[i].Name))) {
                action_id = table[i].MethodID;
                *Args = table[i].Args;
@@ -373,7 +373,7 @@ static int object_new(lua_State *Lua)
    auto prv = (prvFluid *)Lua->Script->ChildPrivate;
 
    NF objflags = NF::NIL;
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = nullptr;
@@ -413,7 +413,7 @@ static int object_new(lua_State *Lua)
 
          ERR field_error  = ERR::Okay;
          CSTRING field_name = nullptr;
-         LONG failed_type   = LUA_TNONE;
+         int failed_type   = LUA_TNONE;
          lua_pushnil(Lua);  // Access first key for lua_next()
          while (lua_next(Lua, 2) != 0) {
             if ((field_name = luaL_checkstring(Lua, -2))) {
@@ -518,7 +518,7 @@ static int object_newchild(lua_State *Lua)
    CSTRING class_name;
    CLASSID class_id;
    NF objflags = NF::NIL;
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if (type IS LUA_TNUMBER) {
       class_id = CLASSID(lua_tointeger(Lua, 1));
       class_name = nullptr;
@@ -685,9 +685,9 @@ static int object_find(lua_State *Lua)
    CLASSID class_id;
    OBJECTID object_id;
 
-   LONG type = lua_type(Lua, 1);
+   int type = lua_type(Lua, 1);
    if ((type IS LUA_TSTRING) and ((object_name = lua_tostring(Lua, 1)))) {
-      LONG class_type = lua_type(Lua, 2); // Optional
+      int class_type = lua_type(Lua, 2); // Optional
       if (class_type IS LUA_TNUMBER) {
          class_id = CLASSID(lua_tointeger(Lua, 2));
       }
@@ -780,8 +780,8 @@ static int object_children(lua_State *Lua)
 
    pf::vector<ChildEntry> list;
    if (ListChildren(def->UID, &list) IS ERR::Okay) {
-      LONG index = 0;
-      auto id = std::make_unique<LONG[]>(list.size());
+      int index = 0;
+      auto id = std::make_unique<int[]>(list.size());
       for (auto &rec : list) {
          if (class_id != CLASSID::NIL) {
             if (rec.ClassID IS class_id) id[index++] = rec.ObjectID;

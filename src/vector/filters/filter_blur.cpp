@@ -97,7 +97,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    double scale = 1.0;
    if (Self->Filter->ClientVector) scale = Self->Filter->ClientVector->Transform.scale();
 
-   LONG rx, ry;
+   int rx, ry;
    if (Self->Filter->PrimitiveUnits IS VUNIT::BOUNDING_BOX) {
       if (Self->Filter->AspectRatio IS VFA::NONE) {
          // Scaling is applied evenly on both axis.  Uses the same formula as a scaled stroke-width.
@@ -134,10 +134,10 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    uint8_t *dst_pix_ptr;
    agg::rgba8 *stack_pix_ptr;
 
-   const LONG w = (outBmp->Clip.Right - outBmp->Clip.Left);
-   const LONG h = (outBmp->Clip.Bottom - outBmp->Clip.Top);
-   const LONG wm = w - 1;
-   const LONG hm = h - 1;
+   const int w = (outBmp->Clip.Right - outBmp->Clip.Left);
+   const int h = (outBmp->Clip.Bottom - outBmp->Clip.Top);
+   const int wm = w - 1;
+   const int hm = h - 1;
 
    uint8_t A = inBmp->ColourFormat->AlphaPos>>3;
    uint8_t R = inBmp->ColourFormat->RedPos>>3;
@@ -150,7 +150,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
    uint32_t sum_r, sum_g, sum_b, sum_a;
    uint32_t sum_in_r, sum_in_g, sum_in_b, sum_in_a;
    uint32_t sum_out_r, sum_out_g, sum_out_b, sum_out_a;
-   LONG x, y, xp, yp;
+   int x, y, xp, yp;
    uint32_t stack_ptr;
    uint32_t stack_start;
    uint32_t div;
@@ -170,7 +170,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
 
          const uint8_t * src_pix_ptr = in_data + (outBmp->LineWidth * y);
-         for (LONG i=0; i <= rx; i++) {
+         for (int i=0; i <= rx; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
              stack_pix_ptr->g = src_pix_ptr[G];
@@ -186,7 +186,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
              sum_out_a += src_pix_ptr[A];
          }
 
-         for (LONG i=1; i <= rx; i++) {
+         for (int i=1; i <= rx; i++) {
             if (i <= wm) src_pix_ptr += 4;
             stack_pix_ptr = &stack[i + rx];
             stack_pix_ptr->r = src_pix_ptr[R];
@@ -208,7 +208,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          if (xp > wm) xp = wm;
          src_pix_ptr = in_data + (outBmp->LineWidth * y) + (xp<<2);
          dst_pix_ptr = out_data + (outBmp->LineWidth * y);
-         for (LONG x=0; x < w; x++) {
+         for (int x=0; x < w; x++) {
             dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
             dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
             dst_pix_ptr[B] = (sum_b * mul_sum) >> shr_sum;
@@ -280,7 +280,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          sum_r = sum_g = sum_b = sum_a = sum_in_r = sum_in_g = sum_in_b = sum_in_a = sum_out_r = sum_out_g = sum_out_b = sum_out_a = 0;
 
          const uint8_t * src_pix_ptr = in_data + (x<<2);
-         for (LONG i = 0; i <= ry; i++) {
+         for (int i = 0; i <= ry; i++) {
              stack_pix_ptr    = &stack[i];
              stack_pix_ptr->r = src_pix_ptr[R];
              stack_pix_ptr->g = src_pix_ptr[G];
@@ -296,7 +296,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
              sum_out_a += src_pix_ptr[A];
          }
 
-         for (LONG i = 1; i <= ry; i++) {
+         for (int i = 1; i <= ry; i++) {
              if (i <= hm) src_pix_ptr += stride;
              stack_pix_ptr = &stack[i + ry];
              stack_pix_ptr->r = src_pix_ptr[R];
@@ -318,7 +318,7 @@ static ERR BLURFX_Draw(extBlurFX *Self, struct acDraw *Args)
          if (yp > hm) yp = hm;
          src_pix_ptr = in_data + (x<<2) + (outBmp->LineWidth * yp);
          dst_pix_ptr = out_data + (x<<2);
-         for (LONG y = 0; y < h; y++) {
+         for (int y = 0; y < h; y++) {
             dst_pix_ptr[R] = (sum_r * mul_sum) >> shr_sum;
             dst_pix_ptr[G] = (sum_g * mul_sum) >> shr_sum;
             dst_pix_ptr[B] = (sum_b * mul_sum) >> shr_sum;

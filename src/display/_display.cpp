@@ -34,7 +34,7 @@ static objModule *modDriver = nullptr;
 //********************************************************************************************************************
 // Module function list.
 
-static LONG scrUnsupported(void)
+static int scrUnsupported(void)
 {
    pf::Log log("Display");
    log.warning("Unhandled display function called - driver is not complete.");
@@ -115,11 +115,11 @@ Function JumpTable[] = {
 //********************************************************************************************************************
 
 #if defined(__linux__) && !defined(__ANDROID__)
-static LONG test_x11(STRING Path)
+static int test_x11(STRING Path)
 {
    pf::Log log("test_x11_socket");
    struct sockaddr_un sockname;
-   LONG namelen, fd, err;
+   int namelen, fd, err;
    int16_t i;
 
    if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) != -1) {
@@ -162,7 +162,7 @@ static LONG test_x11(STRING Path)
 
 static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
-   LONG i;
+   int i;
    uint8_t display;
    CSTRING displaymod;
    enum {
@@ -255,7 +255,7 @@ static ERROR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 
    Function * drivertable;
    if (!modDriver->get(FID_FunctionList, drivertable)) {
-      for (LONG i=0; drivertable[i].Name; i++) {
+      for (int i=0; drivertable[i].Name; i++) {
          if (drivertable[i].Address) JumpTable[i].Address = drivertable[i].Address;
       }
    }

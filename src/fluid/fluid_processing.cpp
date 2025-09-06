@@ -120,7 +120,7 @@ static int processing_sleep(lua_State *Lua)
    static std::recursive_mutex recursion; // Intentionally accessible to all threads
 
    ERR error;
-   LONG timeout;
+   int timeout;
 
    auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing");
    if (fp) timeout = F2T(fp->Timeout * 1000.0);
@@ -148,7 +148,7 @@ static int processing_sleep(lua_State *Lua)
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
          // Use custom signals provided by the client (or Fluid if no objects were specified).
          auto signal_list_c = std::make_unique<ObjectSignal[]>(fp->Signals->size() + 1);
-         LONG i = 0;
+         int i = 0;
          for (auto &entry : *fp->Signals) signal_list_c[i++] = entry;
          signal_list_c[i].Object = nullptr;
 
@@ -170,7 +170,7 @@ static int processing_sleep(lua_State *Lua)
       error = ERR::Okay;
    }
 
-   lua_pushinteger(Lua, LONG(error));
+   lua_pushinteger(Lua, int(error));
    return 1;
 }
 
@@ -227,7 +227,7 @@ static int processing_get(lua_State *Lua)
 
 static MsgHandler *delayed_call_handle;
 
-static ERR msg_handler(APTR Meta, LONG MsgID, LONG MsgType, APTR Message, LONG MsgSize)
+static ERR msg_handler(APTR Meta, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
    if (MsgSize != sizeof(int)) return pf::Log(__FUNCTION__).warning(ERR::Args);
 

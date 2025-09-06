@@ -58,25 +58,25 @@ This code is based on the work of Jean-loup Gailly and Mark Adler.
 //********************************************************************************************************************
 // Central folder structure for each archived file.  This appears at the end of the zip file.
 
-static const LONG LIST_SIGNATURE      = 0;
-static const LONG LIST_VERSION        = 4;
-static const LONG LIST_OS             = 5;
-static const LONG LIST_REQUIRED_VER   = 6;
-static const LONG LIST_REQUIRED_OS    = 7;
-static const LONG LIST_FLAGS          = 8;
-static const LONG LIST_METHOD         = 10;
-static const LONG LIST_TIMESTAMP      = 12;
-static const LONG LIST_CRC            = 16;  // Checksum
-static const LONG LIST_COMPRESSEDSIZE = 20;
-static const LONG LIST_FILESIZE       = 24;  // Original file size
-static const LONG LIST_NAMELEN        = 28;  // File name
-static const LONG LIST_EXTRALEN       = 30;  // System specific information
-static const LONG LIST_COMMENTLEN     = 32;  // Optional comment
-static const LONG LIST_DISKNO         = 34;  // Disk number start
-static const LONG LIST_IFILE          = 36;  // Internal file attributes (pkzip specific)
-static const LONG LIST_ATTRIB         = 38;  // System specific file attributes
-static const LONG LIST_OFFSET         = 42;  // Relative offset of local header
-static const LONG LIST_LENGTH         = 46;  // END
+static const int LIST_SIGNATURE      = 0;
+static const int LIST_VERSION        = 4;
+static const int LIST_OS             = 5;
+static const int LIST_REQUIRED_VER   = 6;
+static const int LIST_REQUIRED_OS    = 7;
+static const int LIST_FLAGS          = 8;
+static const int LIST_METHOD         = 10;
+static const int LIST_TIMESTAMP      = 12;
+static const int LIST_CRC            = 16;  // Checksum
+static const int LIST_COMPRESSEDSIZE = 20;
+static const int LIST_FILESIZE       = 24;  // Original file size
+static const int LIST_NAMELEN        = 28;  // File name
+static const int LIST_EXTRALEN       = 30;  // System specific information
+static const int LIST_COMMENTLEN     = 32;  // Optional comment
+static const int LIST_DISKNO         = 34;  // Disk number start
+static const int LIST_IFILE          = 36;  // Internal file attributes (pkzip specific)
+static const int LIST_ATTRIB         = 38;  // System specific file attributes
+static const int LIST_OFFSET         = 42;  // Relative offset of local header
+static const int LIST_LENGTH         = 46;  // END
 
 PACK(struct zipentry {
    uint8_t version;
@@ -100,12 +100,12 @@ PACK(struct zipentry {
 
 //********************************************************************************************************************
 
-static const LONG TAIL_FILECOUNT      = 8;
-static const LONG TAIL_TOTALFILECOUNT = 10;
-static const LONG TAIL_FILELISTSIZE   = 12;
-static const LONG TAIL_FILELISTOFFSET = 16;
-static const LONG TAIL_COMMENTLEN     = 20;
-static const LONG TAIL_LENGTH         = 22;
+static const int TAIL_FILECOUNT      = 8;
+static const int TAIL_TOTALFILECOUNT = 10;
+static const int TAIL_FILELISTSIZE   = 12;
+static const int TAIL_FILELISTOFFSET = 16;
+static const int TAIL_COMMENTLEN     = 20;
+static const int TAIL_LENGTH         = 22;
 
 PACK(struct ziptail {
    uint32_t header;
@@ -123,16 +123,16 @@ PACK(struct ziptail {
 // ZIP_PARASOL OS tag).  NOTE: The low order bits aren't used because WinZip, WinRar and so forth assume that
 // those bits have meaning.
 
-static const LONG ZIP_LINK   = 0x00010000; // The entry is a symbolic link
-static const LONG ZIP_UEXEC  = 0x00020000; // Executable-access allowed (user)
-static const LONG ZIP_GEXEC  = 0x00040000; // Executable-access allowed (group)
-static const LONG ZIP_OEXEC  = 0x00080000; // Executable-access allowed (others/everyone)
-static const LONG ZIP_UREAD  = 0x00100000; // Read-access allowed (user)
-static const LONG ZIP_GREAD  = 0x00200000; // Read-access allowed (group)
-static const LONG ZIP_OREAD  = 0x00400000; // Read-access allowed (others/everyone)
-static const LONG ZIP_UWRITE = 0x00800000; // Write-access allowed (user)
-static const LONG ZIP_GWRITE = 0x01000000; // Write-access allowed (group)
-static const LONG ZIP_OWRITE = 0x02000000; // Write-access allowed (others/everyone)
+static const int ZIP_LINK   = 0x00010000; // The entry is a symbolic link
+static const int ZIP_UEXEC  = 0x00020000; // Executable-access allowed (user)
+static const int ZIP_GEXEC  = 0x00040000; // Executable-access allowed (group)
+static const int ZIP_OEXEC  = 0x00080000; // Executable-access allowed (others/everyone)
+static const int ZIP_UREAD  = 0x00100000; // Read-access allowed (user)
+static const int ZIP_GREAD  = 0x00200000; // Read-access allowed (group)
+static const int ZIP_OREAD  = 0x00400000; // Read-access allowed (others/everyone)
+static const int ZIP_UWRITE = 0x00800000; // Write-access allowed (user)
+static const int ZIP_GWRITE = 0x01000000; // Write-access allowed (group)
+static const int ZIP_OWRITE = 0x02000000; // Write-access allowed (others/everyone)
 
 #define ZIP_SECURITY (ZIP_UEXEC | ZIP_GEXEC | ZIP_OEXEC | ZIP_UREAD | ZIP_GREAD | ZIP_OREAD | ZIP_UWRITE | ZIP_GWRITE | ZIP_OWRITE)
 
@@ -141,8 +141,8 @@ struct ZipFile {
    std::string Comment;
    uint32_t  CompressedSize = 0;
    uint32_t  OriginalSize = 0;
-   LONG   Year = 0;
-   LONG   Flags = 0;         // These match the zip 'attrib' value
+   int   Year = 0;
+   int   Flags = 0;         // These match the zip 'attrib' value
    uint32_t  TimeStamp = 0;     // Time stamp information
    uint32_t  CRC = 0;           // CRC validation number
    uint32_t  Offset = 0;        // Byte offset of the file within the archive
@@ -166,19 +166,19 @@ struct ZipFile {
    }
 };
 
-static const LONG SIZE_COMPRESSION_BUFFER = 16384;
+static const int SIZE_COMPRESSION_BUFFER = 16384;
 
 //********************************************************************************************************************
 // File header.  Compressed data is prefixed with this information.
 
-static const LONG HEAD_DEFLATEMETHOD  = 8;
-static const LONG HEAD_TIMESTAMP      = 10;
-static const LONG HEAD_CRC            = 14;
-static const LONG HEAD_COMPRESSEDSIZE = 18;
-static const LONG HEAD_FILESIZE       = 22;
-static const LONG HEAD_NAMELEN        = 26;  // File name
-static const LONG HEAD_EXTRALEN       = 28;  // System specific information
-static const LONG HEAD_LENGTH         = 30;  // END
+static const int HEAD_DEFLATEMETHOD  = 8;
+static const int HEAD_TIMESTAMP      = 10;
+static const int HEAD_CRC            = 14;
+static const int HEAD_COMPRESSEDSIZE = 18;
+static const int HEAD_FILESIZE       = 22;
+static const int HEAD_NAMELEN        = 26;  // File name
+static const int HEAD_EXTRALEN       = 28;  // System specific information
+static const int HEAD_LENGTH         = 30;  // END
 
 class extCompression : public objCompression {
    public:
@@ -198,9 +198,9 @@ class extCompression : public objCompression {
    uint8_t  *Output;
    uint8_t  *Input;
    uint8_t  *OutputBuffer;        // Output buffer for compressed data
-   LONG   OutputSize;           // Size of OutputBuffer
-   LONG   TotalFiles;
-   LONG   FileIndex;
+   int   OutputSize;           // Size of OutputBuffer
+   int   TotalFiles;
+   int   FileIndex;
    int16_t   CompressionCount;  // Counter of times that compression has occurred
    bool   Deflating;
    bool   Inflating;
@@ -271,7 +271,7 @@ static const uint8_t glTail[TAIL_LENGTH] = {
 
 //********************************************************************************************************************
 
-ERR convert_zip_error(struct z_stream_s *Stream, LONG Result)
+ERR convert_zip_error(struct z_stream_s *Stream, int Result)
 {
    pf::Log log;
 
@@ -344,7 +344,7 @@ static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmp::Compress
    Self->Zip.next_out  = (Bytef *)Args->Output + 8;
    Self->Zip.avail_out = Args->OutputSize - 8;
 
-   LONG level = Self->CompressionLevel / 10;
+   int level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
@@ -357,7 +357,7 @@ static ERR COMPRESSION_CompressBuffer(extCompression *Self, struct cmp::Compress
          ((char *)Args->Output)[1] = 'L';
          ((char *)Args->Output)[2] = 'I';
          ((char *)Args->Output)[3] = 'B';
-         ((LONG *)Args->Output)[1] = Self->Zip.total_out;
+         ((int *)Args->Output)[1] = Self->Zip.total_out;
          return ERR::Okay;
       }
       else {
@@ -426,7 +426,7 @@ static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFi
       }
       else path.assign(Args->Path);
 
-      for (LONG i=0; path[i]; i++) {
+      for (int i=0; path[i]; i++) {
          if (path.find_first_of("*?\":|<>") != std::string::npos) {
             log.warning("Illegal characters in path: %s", path.c_str());
             if (Self->OutputID) {
@@ -449,7 +449,7 @@ static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFi
          // This subroutine creates a path custom string if the inclusive folder name option is on, or if the path is
          // missing a terminating slash character.
 
-         LONG inclen = 0, i = 0;
+         int inclen = 0, i = 0;
          if (incdir) {
             i = src.size() - 1;
             while ((i > 0) and (src[i-1] != '/') and (src[i-1] != '\\') and (src[i-1] != ':')) {
@@ -476,7 +476,7 @@ static ERR COMPRESSION_CompressFile(extCompression *Self, struct cmp::CompressFi
    // Check the location string for wildcards, * and ?
 
    bool wildcard = false;
-   LONG pathlen;
+   int pathlen;
    for (pathlen=src.size(); pathlen > 0; pathlen--) {
       if ((src[pathlen-1] IS '*') or (src[pathlen-1] IS '?')) wildcard = true;
       else if ((src[pathlen-1] IS ':') or (src[pathlen-1] IS '/') or (src[pathlen-1] IS '\\')) break;
@@ -539,7 +539,7 @@ static ERR COMPRESSION_CompressStreamStart(extCompression *Self)
       Self->Deflating = false;
    }
 
-   LONG level = Self->CompressionLevel / 10;
+   int level = Self->CompressionLevel / 10;
    if (level < 0) level = 0;
    else if (level > 9) level = 9;
 
@@ -635,7 +635,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
    Self->DeflateStream.avail_in  = Args->Length;
 
    APTR output;
-   LONG err, outputsize;
+   int err, outputsize;
    if ((output = Args->Output)) {
       outputsize = Args->OutputSize;
       if (outputsize < Self->MinOutputSize) {
@@ -681,7 +681,7 @@ static ERR COMPRESSION_CompressStream(extCompression *Self, struct cmp::Compress
 
          if (Args->Callback->isC()) {
             pf::SwitchContext context(Args->Callback->Context);
-            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->Routine;
+            auto routine = (ERR (*)(extCompression *, APTR, int, APTR))Args->Callback->Routine;
             error = routine(Self, output, len, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
@@ -739,7 +739,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
    if (!Self->Deflating) return ERR::Okay;
 
    APTR output;
-   LONG outputsize;
+   int outputsize;
 
    if ((output = Args->Output)) {
       outputsize = Args->OutputSize;
@@ -757,7 +757,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
    Self->DeflateStream.avail_out = 0;
 
    ERR error;
-   LONG err = Z_OK;
+   int err = Z_OK;
    while ((Self->DeflateStream.avail_out IS 0) and (err IS Z_OK)) {
       Self->DeflateStream.next_out  = (Bytef *)output;
       Self->DeflateStream.avail_out = outputsize;
@@ -770,7 +770,7 @@ static ERR COMPRESSION_CompressStreamEnd(extCompression *Self, struct cmp::Compr
 
       if (Args->Callback->isC()) {
          pf::SwitchContext context(Args->Callback->Context);
-         auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR Meta))Args->Callback->Routine;
+         auto routine = (ERR (*)(extCompression *, APTR, int, APTR Meta))Args->Callback->Routine;
          error = routine(Self, output, outputsize - Self->DeflateStream.avail_out, Args->Callback->Meta);
       }
       else if (Args->Callback->isScript()) {
@@ -878,7 +878,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
    if (!Self->Inflating) return ERR::Okay; // Decompression is complete
 
    APTR output;
-   LONG outputsize;
+   int outputsize;
 
    if ((output = Args->Output)) {
       outputsize = Args->OutputSize;
@@ -902,7 +902,7 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
    // Keep looping until Z_STREAM_END or an error is returned
 
    ERR error = ERR::Okay;
-   LONG result = Z_OK;
+   int result = Z_OK;
    while ((result IS Z_OK) and (Self->InflateStream.avail_in > 0)) {
       Self->InflateStream.next_out  = (Bytef *)output;
       Self->InflateStream.avail_out = outputsize;
@@ -917,11 +917,11 @@ static ERR COMPRESSION_DecompressStream(extCompression *Self, struct cmp::Decomp
 
       // Write out the decompressed data
 
-      LONG len = outputsize - Self->InflateStream.avail_out;
+      int len = outputsize - Self->InflateStream.avail_out;
       if (len > 0) {
          if (Args->Callback->isC()) {
             pf::SwitchContext context(Args->Callback->Context);
-            auto routine = (ERR (*)(extCompression *, APTR, LONG, APTR))Args->Callback->Routine;
+            auto routine = (ERR (*)(extCompression *, APTR, int, APTR))Args->Callback->Routine;
             error = routine(Self, output, len, Args->Callback->Meta);
          }
          else if (Args->Callback->isScript()) {
@@ -1012,12 +1012,12 @@ static ERR COMPRESSION_DecompressBuffer(extCompression *Self, struct cmp::Decomp
    }
 
    Self->Zip.next_in   = (Bytef *)Args->Input + 8;
-   Self->Zip.avail_in  = ((LONG *)Args->Input)[1];
+   Self->Zip.avail_in  = ((int *)Args->Input)[1];
    Self->Zip.next_out  = (Bytef *)Args->Output;
    Self->Zip.avail_out = Args->OutputSize;
 
    if (inflateInit2(&Self->Zip, Self->WindowBits) IS Z_OK) {
-      LONG err;
+      int err;
       if ((err = inflate(&Self->Zip, Z_FINISH)) IS Z_STREAM_END) {
          Args->Result = Self->Zip.total_out;
          inflateEnd(&Self->Zip);
@@ -1114,7 +1114,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
    // Search for the file(s) in our archive that match the given name and extract them to the destination folder.
 
-   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, LONG(Self->Permissions));
+   log.branch("%s TO %s, Permissions: $%.8x", Args->Path, Args->Dest, int(Self->Permissions));
 
    std::string destpath(Args->Dest);
    auto dest_len = destpath.size();
@@ -1289,7 +1289,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
             };
 
             if (!file.ok()) {
-               log.warning("Error %d creating file \"%s\".", LONG(file.error), destpath.c_str());
+               log.warning("Error %d creating file \"%s\".", int(file.error), destpath.c_str());
                error = ERR::File;
                goto exit;
             }
@@ -1305,7 +1305,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
                   log.trace("Extracting file without compression.");
 
-                  LONG inputlen = zf.CompressedSize;
+                  int inputlen = zf.CompressedSize;
 
                   struct acRead read = {
                      .Buffer = Self->Input,
@@ -1333,12 +1333,12 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
                   struct acRead read = {
                      .Buffer = Self->Input,
-                     .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
+                     .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (int)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
                   };
 
                   if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                   if (read.Result <= 0) { error = ERR::Read; goto exit; }
-                  LONG inputlen = zf.CompressedSize - read.Result;
+                  int inputlen = zf.CompressedSize - read.Result;
 
                   Self->Zip.next_in   = Self->Input;
                   Self->Zip.avail_in  = read.Result;
@@ -1361,7 +1361,7 @@ static ERR COMPRESSION_DecompressFile(extCompression *Self, struct cmp::Decompre
 
                      struct acWrite write = {
                         .Buffer = Self->Output,
-                        .Length = (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out)
+                        .Length = (int)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out)
                      };
                      if (Action(AC::Write, *file, &write) != ERR::Okay) { error = log.warning(ERR::Write); goto exit; }
 
@@ -1462,7 +1462,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
    if (!Self->FileIO) return log.warning(ERR::MissingPath);
    if (Self->isSubClass()) return ERR::NoSupport; // Object belongs to a Compression sub-class
 
-   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, LONG(Self->Permissions));
+   log.branch("%s TO %p, Permissions: $%.8x", Args->Path, Args->Object, int(Self->Permissions));
 
    bool inflate_end = false;
    Self->FileIndex = 0;
@@ -1471,7 +1471,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
    clearmem(&fb, sizeof(fb));
 
    ERR error = ERR::Okay;
-   LONG total_scanned = 0;
+   int total_scanned = 0;
    for (auto &list : Self->Files) {
       total_scanned++;
       if (!wildcmp(Args->Path, list.Name)) continue;
@@ -1523,7 +1523,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
             if (list.DeflateMethod IS 0) {
                // This routine is used if the file is stored rather than compressed
 
-               LONG inputlen = list.CompressedSize;
+               int inputlen = list.CompressedSize;
 
                struct acRead read = { .Buffer = Self->Input };
                if (inputlen < SIZE_COMPRESSION_BUFFER) read.Length = inputlen;
@@ -1554,7 +1554,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
                auto err = Z_OK;
                if ((error = Action(AC::Read, Self->FileIO, &read)) != ERR::Okay) goto exit;
                if (read.Result <= 0) { error = ERR::Read; goto exit; }
-               LONG inputlen = list.CompressedSize - read.Result;
+               int inputlen = list.CompressedSize - read.Result;
 
                Self->Zip.next_in   = Self->Input;
                Self->Zip.avail_in  = read.Result;
@@ -1574,7 +1574,7 @@ static ERR COMPRESSION_DecompressObject(extCompression *Self, struct cmp::Decomp
 
                   // Write out the decompressed data
 
-                  struct acWrite write = { Self->Output, (LONG)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) };
+                  struct acWrite write = { Self->Output, (int)(SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) };
                   if (Action(AC::Write, Args->Object, &write) != ERR::Okay) { error = ERR::Write; goto exit; }
 
                   // Exit if all data has been written out
@@ -1702,7 +1702,7 @@ static ERR COMPRESSION_Flush(extCompression *Self)
    for (;;) {
       // Write out any bytes that are still left in the compression buffer
 
-      LONG length, zerror;
+      int length, zerror;
       if ((length = SIZE_COMPRESSION_BUFFER - Self->Zip.avail_out) > 0) {
          struct acWrite write = { Self->Output, length };
          if (Action(AC::Write, Self->FileIO, &write) != ERR::Okay) return ERR::Write;
@@ -1814,7 +1814,7 @@ static ERR COMPRESSION_Init(extCompression *Self)
       else error = ERR::DoesNotExist;
 
       if (error IS ERR::Okay) { // Test the given location to see if it matches our supported file format (pkzip).
-         LONG result;
+         int result;
          if (acRead(Self->FileIO, Self->Header, sizeof(Self->Header), &result) != ERR::Okay) return log.warning(ERR::Read);
 
          // If the file is empty then we will accept it as a zip file
@@ -1978,7 +1978,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 
    log.traceBranch("Folder: \"%s\", Filter: \"%s\"", Args->Folder, Args->Filter);
 
-   LONG folder_len = 0;
+   int folder_len = 0;
    if (Args->Folder) {
       folder_len = strlen(Args->Folder);
       if ((folder_len > 0) and (Args->Folder[folder_len-1] IS '/')) folder_len--;
@@ -1997,7 +1997,7 @@ static ERR COMPRESSION_Scan(extCompression *Self, struct cmp::Scan *Args)
 
                // Skip this item if it is within other sub-folders.
 
-               LONG i;
+               int i;
                for (i=folder_len+1; item.Name[i]; i++) {
                   if (item.Name[i] IS '/') break;
                }

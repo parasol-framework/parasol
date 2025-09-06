@@ -199,11 +199,11 @@ inline void camelcase(std::string &s) noexcept {
    return hash;
 }
 
-template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x7fffffff) noexcept
+template <class T> inline int strcopy(T &&Source, STRING Dest, int Length = 0x7fffffff) noexcept
 {
    auto src = to_cstring(Source);
    if ((Length > 0) and (src) and (Dest)) {
-      LONG i = 0;
+      int i = 0;
       while (*src) {
          if (i IS Length) {
             Dest[i-1] = 0;
@@ -220,7 +220,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-sensitive keyword search
 
-[[nodiscard]] inline LONG strsearch(const std::string_view Keyword, CSTRING String) noexcept
+[[nodiscard]] inline int strsearch(const std::string_view Keyword, CSTRING String) noexcept
 {
    size_t i;
    size_t pos = 0;
@@ -235,7 +235,7 @@ template <class T> inline LONG strcopy(T &&Source, STRING Dest, LONG Length = 0x
 
 // Case-insensitive keyword search
 
-[[nodiscard]] inline LONG strisearch(const std::string_view Keyword, CSTRING String) noexcept
+[[nodiscard]] inline int strisearch(const std::string_view Keyword, CSTRING String) noexcept
 {
    size_t i;
    size_t pos = 0;

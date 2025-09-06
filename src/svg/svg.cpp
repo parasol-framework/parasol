@@ -57,9 +57,9 @@ struct svgLink {
 };
 
 struct svgID { // All elements using the 'id' attribute will be registered with one of these structures.
-   LONG TagIndex;
+   int TagIndex;
 
-   svgID(const LONG pTagIndex) {
+   svgID(const int pTagIndex) {
       TagIndex = pTagIndex;
    }
 
@@ -170,7 +170,7 @@ struct svgState {
    double  m_fill_opacity;    // -1 if undefined
    double  m_opacity;         // -1 if undefined
    double  m_stop_opacity;    // -1 if undefined
-   LONG    m_font_weight;     // 0 if undefined
+   int    m_font_weight;     // 0 if undefined
    RQ      m_path_quality;    // RQ::AUTO default
    VLJ     m_line_join;
    VLC     m_line_cap;
@@ -267,9 +267,9 @@ static ERR  init_rsvg(void);
 
 static void process_rule(extSVG *, objXML::TAGS &, KatanaRule *);
 
-static ERR  save_svg_scan(extSVG *, objXML *, objVector *, LONG);
-static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, LONG);
-static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, LONG);
+static ERR  save_svg_scan(extSVG *, objXML *, objVector *, int);
+static ERR  save_svg_defs(extSVG *, objXML *, objVectorScene *, int);
+static ERR  save_svg_scan_std(extSVG *, objXML *, objVector *, int);
 static ERR  save_svg_transform(VectorMatrix *, std::stringstream &);
 
 inline void track_object(extSVG *SVG, OBJECTPTR Object)

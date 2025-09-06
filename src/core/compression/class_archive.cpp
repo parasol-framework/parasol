@@ -32,7 +32,7 @@ reference.  The format is `archive:ArchiveName/path/to/file.ext` and the Fluid e
 
 using namespace pf;
 
-constexpr LONG LEN_ARCHIVE = 8; // "archive:" length
+constexpr int LEN_ARCHIVE = 8; // "archive:" length
 
 struct prvFileArchive {
    ZipFile  Info;
@@ -42,7 +42,7 @@ struct prvFileArchive {
    uint8_t    InputBuffer[SIZE_COMPRESSION_BUFFER];
    uint8_t    OutputBuffer[SIZE_COMPRESSION_BUFFER];
    uint8_t    *ReadPtr;      // Current position within OutputBuffer
-   LONG     InputLength;
+   int     InputLength;
    bool     Inflating;
    bool     InvalidState; // Set to true if the archive is corrupt.
 };
@@ -55,7 +55,7 @@ static ankerl::unordered_dense::map<uint32_t, extCompression *> glArchives;
 
 static ERR close_folder(DirInfo *);
 static ERR open_folder(DirInfo *);
-static ERR get_info(std::string_view, FileInfo *, LONG);
+static ERR get_info(std::string_view, FileInfo *, int);
 static ERR scan_folder(DirInfo *);
 static ERR test_path(std::string &, RSF, LOC *);
 
@@ -316,7 +316,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
       if ((prv->Inflating) and (!prv->Stream.avail_in)) { // Initial setup
          struct acRead read = {
             .Buffer = prv->InputBuffer,
-            .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (LONG)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
+            .Length = (zf.CompressedSize < SIZE_COMPRESSION_BUFFER) ? (int)zf.CompressedSize : SIZE_COMPRESSION_BUFFER
          };
 
          if (Action(AC::Read, prv->FileStream, &read) != ERR::Okay) return ERR::Read;
@@ -333,7 +333,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
       while (true) {
          // Output any buffered data to the client first
          if (prv->ReadPtr < (uint8_t *)prv->Stream.next_out) {
-            LONG len = (LONG)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
+            int len = (int)(prv->Stream.next_out - (Bytef *)prv->ReadPtr);
             if (len > Args->Length) len = Args->Length;
             copymem(prv->ReadPtr, (char *)Args->Buffer + Args->Result, len);
             prv->ReadPtr   += len;
@@ -352,7 +352,7 @@ static ERR ARCHIVE_Read(extFile *Self, struct acRead *Args)
          prv->Stream.next_out  = prv->OutputBuffer;
          prv->Stream.avail_out = SIZE_COMPRESSION_BUFFER;
 
-         LONG result = inflate(&prv->Stream, (prv->Stream.avail_in) ? Z_SYNC_FLUSH : Z_FINISH);
+         int result = inflate(&prv->Stream, (prv->Stream.avail_in) ? Z_SYNC_FLUSH : Z_FINISH);
 
          prv->ReadPtr = prv->OutputBuffer;
 
@@ -394,7 +394,7 @@ static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
    Log log;
    int64_t pos;
 
-   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, LONG(Args->Position));
+   log.traceBranch("Seek to offset %.2f from seek position %d", Args->Offset, int(Args->Position));
 
    if (Args->Position IS SEEK::START) pos = F2T(Args->Offset);
    else if (Args->Position IS SEEK::END) pos = Self->Size - F2T(Args->Offset);
@@ -412,7 +412,7 @@ static ERR ARCHIVE_Seek(extFile *Self, struct acSeek *Args)
 
    uint8_t buffer[2048];
    while (Self->Position < pos) {
-      struct acRead read = { .Buffer = buffer, .Length = (LONG)(pos - Self->Position) };
+      struct acRead read = { .Buffer = buffer, .Length = (int)(pos - Self->Position) };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
       if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
    }
@@ -491,7 +491,7 @@ static ERR scan_folder(DirInfo *Dir)
    auto sep = name.find_first_of("/\\");
    if (sep != std::string::npos) sep++;
 
-   log.traceBranch("Path: \"%s\", Flags: $%.8x", name.data(), LONG(Dir->prvFlags));
+   log.traceBranch("Path: \"%s\", Flags: $%.8x", name.data(), int(Dir->prvFlags));
 
    std::string path(name.data() + sep);
 
@@ -518,7 +518,7 @@ static ERR scan_folder(DirInfo *Dir)
       // Is this item in a sub-folder?  If so, ignore it.
 
       {
-         LONG i;
+         int i;
          for (i=path.size(); (zf.Name[i]) and (zf.Name[i] != '/') and (zf.Name[i] != '\\'); i++);
          if (zf.Name[i]) continue;
       }
@@ -561,7 +561,7 @@ static ERR scan_folder(DirInfo *Dir)
 
          auto offset = zf.Name.find_last_of("/\\");
          if (offset IS std::string::npos) offset = 0;
-         LONG i = strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
+         int i = strcopy(zf.Name.c_str() + offset, Dir->Info->Name, MAX_FILENAME-2);
 
          if ((Dir->prvFlags & RDF::QUALIFY) != RDF::NIL) {
             Dir->Info->Name[i++] = '/';
@@ -591,7 +591,7 @@ static ERR close_folder(DirInfo *Dir)
 
 //********************************************************************************************************************
 
-static ERR get_info(std::string_view Path, FileInfo *Info, LONG InfoSize)
+static ERR get_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {
    Log log(__FUNCTION__);
 

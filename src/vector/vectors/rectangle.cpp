@@ -307,14 +307,14 @@ against the rectangle's diagonal.
 
 *********************************************************************************************************************/
 
-static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, double **Value, LONG *Elements)
+static ERR RECTANGLE_GET_Rounding(extVectorRectangle *Self, double **Value, int *Elements)
 {
    *Value = (double *)Self->rRound.data();
    *Elements = 8;
    return ERR::Okay;
 }
 
-static ERR RECTANGLE_SET_Rounding(extVectorRectangle *Self, double *Value, LONG Elements)
+static ERR RECTANGLE_SET_Rounding(extVectorRectangle *Self, double *Value, int Elements)
 {
    if (Elements >= 8) {
       copymem(Value, Self->rRound.data(), sizeof(double) * 8);

@@ -15,7 +15,7 @@ class font_cache { // Represents a font face.  Stored in glCache
 public:
    std::string Path; // Path to the font source
    FT_Face Face;     // Truetype font face
-   LONG    Usage;    // Counter for usage of the typeface
+   int    Usage;    // Counter for usage of the typeface
 
    font_cache(std::string pPath, FT_Face pFace) : Path(pPath), Face(pFace), Usage(0) { }
 

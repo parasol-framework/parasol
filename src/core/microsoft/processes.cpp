@@ -148,8 +148,8 @@ extern "C" void winResetStdErr(struct winprocess *Process, char *Buffer, DWORD *
 
 //********************************************************************************************************************
 
-extern "C" LONG winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, int8_t Group, int8_t InternalRedirect,
-   struct winprocess **ProcessResult, char HideWindow, char *RedirectStdOut, char *RedirectStdErr, LONG *ProcessID)
+extern "C" int winLaunchProcess(APTR Task, LPSTR commandline, LPSTR InitialDir, int8_t Group, int8_t InternalRedirect,
+   struct winprocess **ProcessResult, char HideWindow, char *RedirectStdOut, char *RedirectStdErr, int *ProcessID)
 {
    SECURITY_ATTRIBUTES sa;
 
@@ -370,7 +370,7 @@ extern "C" ERR winGetExitCodeProcess(struct winprocess *Process, LPDWORD Code)
 
 //********************************************************************************************************************
 
-extern "C" LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
+extern "C" int winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size)
 {
    if (!Buffer) {
       // Close the process' stdin FD
@@ -392,7 +392,7 @@ extern "C" LONG winWriteStd(struct winprocess *Platform, APTR Buffer, DWORD Size
 // Designed for reading from stdin/out/err pipes.  Returns -1 on general error, -2 if the pipe is broken, e.g. child
 // process is dead.
 
-extern "C" LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, DWORD *Size)
+extern "C" int winReadStd(struct winprocess *Platform, int Type, APTR Buffer, DWORD *Size)
 {
    if (!Platform) {
       MSG("winReadStd() No Platform parameter specified.\n");
@@ -451,7 +451,7 @@ extern "C" LONG winReadStd(struct winprocess *Platform, LONG Type, APTR Buffer, 
 
 //********************************************************************************************************************
 
-extern "C" HANDLE winCreateThread(LPTHREAD_START_ROUTINE Function, APTR Arg, LONG StackSize, DWORD *ID)
+extern "C" HANDLE winCreateThread(LPTHREAD_START_ROUTINE Function, APTR Arg, int StackSize, DWORD *ID)
 {
    HANDLE handle;
 

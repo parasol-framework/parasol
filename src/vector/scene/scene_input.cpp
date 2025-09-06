@@ -5,7 +5,7 @@
 // are taken into account through use of BX1,BY1,BX2,BY2.  The list is sorted starting from the background to the
 // foreground.
 
-void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, double X, double Y, LONG Branch)
+void get_viewport_at_xy_node(extVector *Vector, std::vector<std::vector<extVectorViewport *>> &Collection, double X, double Y, int Branch)
 {
    if ((size_t)Branch >= Collection.size()) Collection.resize(Branch+1);
 
@@ -165,7 +165,7 @@ static void send_wheel_event(extVectorScene *Scene, extVector *Vector, const Inp
 // Receiver for input events from the Surface that hosts the scene graph.  Events are distributed to input
 // subscribers.
 
-ERR scene_input_events(const InputEvent *Events, LONG Handle)
+ERR scene_input_events(const InputEvent *Events, int Handle)
 {
    pf::Log log(__FUNCTION__);
 
@@ -379,7 +379,7 @@ ERR scene_input_events(const InputEvent *Events, LONG Handle)
             if (lock.granted()) send_left_event(lock.obj, input, Self->ActiveVectorX, Self->ActiveVectorY);
          }
       }
-      else log.warning("Unrecognised movement type %d", LONG(input->Type));
+      else log.warning("Unrecognised movement type %d", int(input->Type));
    }
 
    if (!Self->ButtonLock) {

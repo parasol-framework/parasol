@@ -7,7 +7,7 @@ typedef void * HANDLE;
 typedef void * HINSTANCE;
 typedef void * WNDPROC;
 typedef void * HCURSOR;
-enum class PTC : LONG;
+enum class PTC : int;
 #endif
 
 struct WinCursor {

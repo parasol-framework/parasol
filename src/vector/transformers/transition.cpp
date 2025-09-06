@@ -44,7 +44,7 @@ void apply_transition(extVectorTransition *Self, double Index, agg::trans_affine
    else {
       // Interpolate between transforms.
 
-      LONG left, right;
+      int left, right;
       for (left=Self->TotalStops-1; (left > 0) and (Index < Self->Stops[left].Offset); left--);
       for (right=left+1; (right < Self->TotalStops) and (Self->Stops[right].Offset < Index); right++);
 
@@ -86,7 +86,7 @@ void apply_transition_xy(extVectorTransition *Self, double Index, double *X, dou
    else {
       // Interpolate between transforms.
 
-      LONG left, right;
+      int left, right;
       for (left=0; (left < Self->TotalStops) and (Index < Self->Stops[left].Offset); left++);
       for (right=left+1; (right < Self->TotalStops) and (Self->Stops[right].Offset < Index); right++);
 
@@ -175,7 +175,7 @@ a transform string.  The Transition structure consists of the following fields:
 
 *********************************************************************************************************************/
 
-static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, LONG Elements)
+static ERR TRANSITION_SET_Stops(extVectorTransition *Self, Transition *Value, int Elements)
 {
    pf::Log log;
    if ((Elements >= 2) and (Elements < MAX_TRANSITION_STOPS)) {

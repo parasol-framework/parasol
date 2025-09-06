@@ -35,8 +35,8 @@ Read
 ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubClassID)
 {
    pf::Log log(__FUNCTION__);
-   LONG i, bytes_read;
-   constexpr LONG HEADER_SIZE = 80;
+   int i, bytes_read;
+   constexpr int HEADER_SIZE = 80;
 
    if ((!Path) or (!ClassID)) return log.warning(ERR::NullArgs);
 
@@ -133,7 +133,7 @@ ERR IdentifyFile(CSTRING Path, CLASSID Filter, CLASSID *ClassID, CLASSID *SubCla
                   }
 
                   header.remove_prefix(1);
-                  LONG offset = svtonum<LONG>(header);
+                  int offset = svtonum<int>(header);
                   if (auto i = header.find(':'); i != std::string::npos) header.remove_prefix(i + 1);
                   else break;
 

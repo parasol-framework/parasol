@@ -63,7 +63,7 @@ ERR RenameVolume(CSTRING Volume, CSTRING Name)
    pf::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmVolumes, 6s}) {
-      LONG i;
+      int i;
       for (i=0; (Volume[i]) and (Volume[i] != ':'); i++);
 
       std::string vol;
@@ -80,7 +80,7 @@ ERR RenameVolume(CSTRING Volume, CSTRING Name)
          copymem(vol.c_str(), evdeleted.get() + sizeof(EVENTID), vol.size() + 1);
          BroadcastEvent(evdeleted.get(), sizeof(EVENTID) + vol.size() + 1);
 
-         LONG namelen = strlen(Name) + 1;
+         int namelen = strlen(Name) + 1;
          auto evcreated = std::make_unique<uint8_t[]>(sizeof(EVENTID) + namelen);
          ((EVENTID *)evcreated.get())[0] = EVID_FILESYSTEM_VOLUME_CREATED;
          copymem(Name, evcreated.get() + sizeof(EVENTID), namelen);
@@ -130,7 +130,7 @@ ERR SetVolume(CSTRING Name, CSTRING Path, CSTRING Icon, CSTRING Label, CSTRING D
 
    std::string name;
 
-   LONG i;
+   int i;
    for (i=0; (Name[i]) and (Name[i] != ':'); i++);
    name.append(Name, 0, i);
 
@@ -193,7 +193,7 @@ Exists: The named volume already exists.
 
 using CALL_CLOSE_DIR       = ERR (*)(DirInfo *);
 using CALL_DELETE          = ERR (*)(std::string_view, FUNCTION *);
-using CALL_GET_INFO        = ERR (*)(std::string_view, FileInfo*, LONG);
+using CALL_GET_INFO        = ERR (*)(std::string_view, FileInfo*, int);
 using CALL_GET_DEVICE_INFO = ERR (*)(std::string_view, objStorageDevice*);
 using CALL_IDENTIFY_FILE   = ERR (*)(std::string_view, CLASSID*, CLASSID*);
 using CALL_IGNORE_FILE     = void (*)(extFile*);
@@ -224,16 +224,16 @@ ERR VirtualVolume(CSTRING Name, ...)
 
    va_list list;
    va_start(list, Name);
-   LONG arg = 0;
-   while (auto tagid = va_arg(list, LONG)) {
+   int arg = 0;
+   while (auto tagid = va_arg(list, int)) {
       switch (VAS(tagid)) {
          case VAS::DEREGISTER:
             glVirtual.erase(id);
             va_end(list);
             return ERR::Okay; // The volume has been removed, so any further tags are redundant.
 
-         case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize    = va_arg(list, LONG); break;
-         case VAS::CASE_SENSITIVE:  glVirtual[id].CaseSensitive = va_arg(list, LONG) ? true : false; break;
+         case VAS::DRIVER_SIZE:     glVirtual[id].DriverSize    = va_arg(list, int); break;
+         case VAS::CASE_SENSITIVE:  glVirtual[id].CaseSensitive = va_arg(list, int) ? true : false; break;
          case VAS::CLOSE_DIR:       glVirtual[id].CloseDir      = va_arg(list, CALL_CLOSE_DIR); break;
          case VAS::DELETE:          glVirtual[id].Delete        = va_arg(list, CALL_DELETE); break;
          case VAS::GET_INFO:        glVirtual[id].GetInfo       = va_arg(list, CALL_GET_INFO); break;

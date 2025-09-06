@@ -13,7 +13,7 @@ void anim_transform::perform()
             POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
 
             if (not values.empty()) {
-               LONG i;
+               int i;
                if (calc_mode IS CMODE::PACED) {
                   const auto dist_pos = seek * get_paired_dist();
                   for (i=0; (i < std::ssize(distances)-2) and (distances[i+1] < dist_pos); i++);
@@ -69,7 +69,7 @@ void anim_transform::perform()
             POINT<double> t_from = { 0, 0 }, t_to = { 0, 0 };
 
             if (not values.empty()) {
-               LONG i;
+               int i;
                if (calc_mode IS CMODE::PACED) {
                   const auto dist_pos = seek * get_paired_dist();
                   for (i=0; (i < std::ssize(distances)-1) and (distances[i+1] < dist_pos); i++);
@@ -134,7 +134,7 @@ void anim_transform::perform()
          case AT::ROTATE: {
             ROTATE r_from, r_to;
             if (not values.empty()) {
-               LONG i;
+               int i;
                if (calc_mode IS CMODE::PACED) {
                   // The get_total_dist() call will calculate the distance between angles as it operates on the first
                   // value of paired coordinates.
@@ -195,7 +195,7 @@ void anim_transform::perform()
             double t_from = 0, t_to = 0;
 
             if (not values.empty()) {
-               LONG vi = F2T((values.size()-1) * seek);
+               int vi = F2T((values.size()-1) * seek);
                if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
 
                read_numseq(values[vi], { &t_from });
@@ -240,7 +240,7 @@ void anim_transform::perform()
             double t_from = 0, t_to = 0;
 
             if (not values.empty()) {
-               LONG vi = F2T((values.size()-1) * seek);
+               int vi = F2T((values.size()-1) * seek);
                if (vi >= std::ssize(values)-1) vi = std::ssize(values) - 2;
 
                read_numseq(values[vi], { &t_from });

@@ -27,7 +27,7 @@
 ERR extXML::find_tag(CSTRING XPath)
 {
    pf::Log log(__FUNCTION__);
-   LONG i;
+   int i;
 
    if ((!XPath[0]) or (XPath[0] != '/')) {
       log.warning("Missing '/' prefix in '%s'.", XPath);
@@ -40,7 +40,7 @@ ERR extXML::find_tag(CSTRING XPath)
    }
 
    bool deepscan = false;
-   LONG pos = [ deepscan, XPath, this ]() mutable {
+   int pos = [ deepscan, XPath, this ]() mutable {
       if (XPath[0] != '/') return 0;
       if (XPath[1] != '/') return 1;
       deepscan = true;
@@ -61,7 +61,7 @@ ERR extXML::find_tag(CSTRING XPath)
 
    std::string attribvalue, attribname;
    bool wild = false;
-   LONG subscript = 0;
+   int subscript = 0;
 
    if ((this->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("XPath: %s, TagName: %s", XPath, tagname.c_str());
 
@@ -82,7 +82,7 @@ ERR extXML::find_tag(CSTRING XPath)
          if (XPath[pos] IS '@') {  // Parse attribute filter such as "[@id='5']"
             pos++;
 
-            LONG len = pos;
+            int len = pos;
             while (((XPath[len] >= 'a') and (XPath[len] <= 'z')) or
                    ((XPath[len] >= 'A') and (XPath[len] <= 'Z')) or
                    (XPath[len] IS '_')) len++;
@@ -105,7 +105,7 @@ ERR extXML::find_tag(CSTRING XPath)
          if ((XPath[pos] IS '\'') or (XPath[pos] IS '"')) {
             const char quote = XPath[pos++];
             bool escattrib = false;
-            LONG end = pos;
+            int end = pos;
             while ((XPath[end]) and (XPath[end] != quote)) {
                if (XPath[end] IS '\\') { // Escape character check
                   auto ch = XPath[end+1];
@@ -136,7 +136,7 @@ ERR extXML::find_tag(CSTRING XPath)
             }
          }
          else {
-            LONG end = pos;
+            int end = pos;
             while ((XPath[end]) and (XPath[end] != endchar)) {
                if (XPath[end] IS '*') wild = true;
                end++;
@@ -165,7 +165,7 @@ ERR extXML::find_tag(CSTRING XPath)
          if ((!attribname.empty()) or (!attribvalue.empty())) {
             if (Cursor->name()) {
                if (!attribname.empty()) { // Match by named attribute value
-                  for (LONG a=1; a < std::ssize(Cursor->Attribs); ++a) {
+                  for (int a=1; a < std::ssize(Cursor->Attribs); ++a) {
                      if (pf::iequals(Cursor->Attribs[a].Name, attribname)) {
                         if (wild) {
                            if ((match = pf::wildcmp(Cursor->Attribs[a].Value, attribvalue))) break;
@@ -218,7 +218,7 @@ ERR extXML::find_tag(CSTRING XPath)
 
          ERR error = ERR::Okay;
          if (Callback.isC()) {
-            auto routine = (ERR (*)(extXML *, LONG, CSTRING, APTR))Callback.Routine;
+            auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))Callback.Routine;
             error = routine(this, Cursor->ID, Attrib.empty() ? nullptr : Attrib.c_str(), Callback.Meta);
          }
          else if (Callback.isScript()) {

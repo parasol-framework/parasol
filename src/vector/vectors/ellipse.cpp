@@ -18,7 +18,7 @@ class extVectorEllipse : public extVector {
    double eCX, eCY;
    double eRadiusX, eRadiusY;
    DMF eDimensions;
-   LONG eVertices;
+   int eVertices;
 };
 
 //********************************************************************************************************************
@@ -314,13 +314,13 @@ Please note that this feature is not part of the SVG standard.
 
 *********************************************************************************************************************/
 
-static ERR ELLIPSE_GET_Vertices(extVectorEllipse *Self, LONG *Value)
+static ERR ELLIPSE_GET_Vertices(extVectorEllipse *Self, int *Value)
 {
    *Value = Self->eVertices;
    return ERR::Okay;
 }
 
-static ERR ELLIPSE_SET_Vertices(extVectorEllipse *Self, LONG Value)
+static ERR ELLIPSE_SET_Vertices(extVectorEllipse *Self, int Value)
 {
    if (((Value >= 3) and (Value < 4096)) or (!Value)) {
       Self->eVertices = Value;

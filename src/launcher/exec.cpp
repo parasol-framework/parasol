@@ -2,7 +2,7 @@
 //********************************************************************************************************************
 // Executes the target.
 
-ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
+ERR exec_source(CSTRING TargetFile, int ShowTime, const std::string Procedure)
 {
    pf::Log log(__FUNCTION__);
    ERR error;
@@ -48,7 +48,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
             else if (GetResource(RES::LOG_LEVEL) >= 3) cmdline << "--log-info";
 
             pf::vector<std::string> &args = *params;
-            for (LONG a=0; a < std::ssize(args); a++) {
+            for (int a=0; a < std::ssize(args); a++) {
                if (pf::iequals("--sandbox", args[a])) continue;
                cmdline << " \"";
                if (args[a].find('"') != std::string::npos) {
@@ -65,7 +65,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
 
             // Temporarily switch off debug messages until the child process returns.
 
-            LONG log_level = GetResource(RES::LOG_LEVEL);
+            int log_level = GetResource(RES::LOG_LEVEL);
             SetResource(RES::LOG_LEVEL, 1);
 
             create_low_process(cmdline.str(), true);
@@ -168,7 +168,7 @@ ERR exec_source(CSTRING TargetFile, LONG ShowTime, const std::string Procedure)
             }
 
             if (glScript->Error != ERR::Okay) {
-               log.msg("Script returned an error code of %d: %s", LONG(glScript->Error), GetErrorMsg(glScript->Error));
+               log.msg("Script returned an error code of %d: %s", int(glScript->Error), GetErrorMsg(glScript->Error));
                return glScript->Error;
             }
 

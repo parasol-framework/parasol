@@ -90,7 +90,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 {
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%s, Flags: $%.8x", pPath.data(), LONG(Flags));
+   log.traceBranch("%s, Flags: $%.8x", pPath.data(), int(Flags));
 
    tlClassLoaded = false;
 
@@ -166,7 +166,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 
    // Keep looping until the volume is resolved
 
-   LONG loop;
+   int loop;
    auto error = ERR::Failed;
    for (loop=10; loop > 0; loop--) {
       error = resolve(src, dest, Flags);
@@ -352,7 +352,7 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
       return resolve_object_path(fullpath, Source, Dest);
    }
 
-   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source.c_str(), fullpath.c_str(), LONG(Flags));
+   log.traceBranch("%s, Resolved Path: %s, Flags: $%.8x", Source.c_str(), fullpath.c_str(), int(Flags));
 
    auto path = std::string_view(fullpath);
 
@@ -404,7 +404,7 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
          j = Dest.find_first_of(":/");
       #endif
 
-      LONG loop;
+      int loop;
       auto error = ERR(-1);
       for (loop=10; loop > 0; loop--) {
          if ((j != std::string::npos) and (j > 1) and (Dest[j] IS ':')) { // Remaining ':' indicates more path resolution is required.

@@ -87,7 +87,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    if (Args->Length <= 0) return ERR::Okay;
 
    uint8_t inputstream[2048];
-   LONG length;
+   int length;
 
    if (acRead(Self->Input, inputstream, sizeof(inputstream), &length) != ERR::Okay) return ERR::Read;
 
@@ -118,7 +118,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    }
 
    APTR output = Args->Buffer;
-   LONG outputsize = Args->Length;
+   int outputsize = Args->Length;
    if (outputsize < MIN_OUTPUT_SIZE) {
       // An internal buffer will need to be allocated if the one supplied to Read() is not large enough.
       outputsize = MIN_OUTPUT_SIZE;
@@ -132,7 +132,7 @@ static ERR CSTREAM_Read(extCompressedStream *Self, struct acRead *Args)
    Self->Stream.avail_in = length;
 
    ERR error = ERR::Okay;
-   LONG result = Z_OK;
+   int result = Z_OK;
    while ((result IS Z_OK) and (Self->Stream.avail_in > 0) and (outputsize > 0)) {
       Self->Stream.next_out  = (Bytef *)output;
       Self->Stream.avail_out = outputsize;
@@ -219,7 +219,7 @@ static ERR CSTREAM_Seek(extCompressedStream *Self, struct acSeek *Args)
 
    uint8_t buffer[1024];
    while (pos > 0) {
-      struct acRead read = { .Buffer = buffer, .Length = (LONG)pos };
+      struct acRead read = { .Buffer = buffer, .Length = (int)pos };
       if ((size_t)read.Length > sizeof(buffer)) read.Length = sizeof(buffer);
       if (Action(AC::Read, Self, &read) != ERR::Okay) return ERR::Decompression;
       pos -= read.Result;
@@ -273,7 +273,7 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
    }
 
    Args->Result = 0;
-   LONG mode;
+   int mode;
    if (Args->Length IS -1) { // A length of -1 is a signal to complete the compression process.
       mode = Z_FINISH;
       Self->Stream.next_in  = Self->OutputBuffer;
@@ -299,7 +299,7 @@ static ERR CSTREAM_Write(extCompressedStream *Self, struct acWrite *Args)
          return ERR::BufferOverflow;
       }
 
-      const LONG len = MIN_OUTPUT_SIZE - Self->Stream.avail_out; // Get number of compressed bytes that were output
+      const int len = MIN_OUTPUT_SIZE - Self->Stream.avail_out; // Get number of compressed bytes that were output
 
       if (len > 0) {
          Self->TotalOutput += len;

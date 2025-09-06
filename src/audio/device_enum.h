@@ -10,7 +10,7 @@
 
 // Device information structure
 struct ALSADeviceInfo {
-   LONG card_number;
+   int card_number;
    std::string card_id;
    std::string card_name;
    std::string device_name;  // "hw:X" format
@@ -41,11 +41,11 @@ public:
    static bool has_genuine_devices();
    
    // Wait for audio devices to become available (with timeout)
-   static ERR wait_for_devices(LONG timeout_ms);
+   static ERR wait_for_devices(int timeout_ms);
 
 private:
    // Core enumeration function - populates device info for a single card
-   static bool populate_device_info(LONG card_number, ALSADeviceInfo& info);
+   static bool populate_device_info(int card_number, ALSADeviceInfo& info);
    
    // Default device selector - chooses device with most mixer controls
    static bool default_selector(const ALSADeviceInfo& candidate, const ALSADeviceInfo& current_best);

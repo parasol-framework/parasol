@@ -94,8 +94,8 @@ namespace fl {
 
 constexpr FieldValue EventCallback(const FUNCTION &Value) { return FieldValue(FID_EventCallback, &Value); }
 constexpr FieldValue EventCallback(APTR Value) { return FieldValue(FID_EventCallback, Value); }
-constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, LONG(Value)); }
-constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, LONG(Value)); }
+constexpr FieldValue EventMask(DEF Value) { return FieldValue(FID_EventMask, int(Value)); }
+constexpr FieldValue Flags(DCF Value) { return FieldValue(FID_Flags, int(Value)); }
 
 }
 ]])

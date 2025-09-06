@@ -48,14 +48,14 @@ const std::vector<GradientStop> svgState::process_gradient_stops(const XMLTag &T
          stop.RGB.Blue  = 0;
          stop.RGB.Alpha = 1.0;
 
-         for (LONG a=1; a < std::ssize(scan.Attribs); a++) {
+         for (int a=1; a < std::ssize(scan.Attribs); a++) {
             auto &name  = scan.Attribs[a].Name;
             auto &value = scan.Attribs[a].Value;
             if (value.empty()) continue;
 
             if (iequals("offset", name)) {
                stop.Offset = strtod(value.c_str(), nullptr);
-               for (LONG j=0; value[j]; j++) {
+               for (int j=0; value[j]; j++) {
                   if (value[j] IS '%') {
                      stop.Offset = stop.Offset * 0.01; // Must be in the range of 0 - 1.0
                      break;
@@ -123,7 +123,7 @@ void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradie
 
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
          break;
@@ -131,7 +131,7 @@ void svgState::parse_lineargradient(const XMLTag &Tag, objVectorGradient *Gradie
    }
 
    bool process_stops = true;
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -206,7 +206,7 @@ void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient &Gradie
 
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient.Units = VUNIT::USERSPACE;
          break;
@@ -214,7 +214,7 @@ void svgState::parse_radialgradient(const XMLTag &Tag, objVectorGradient &Gradie
    }
 
    bool process_stops = true;
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
       log.trace("Processing radial gradient attribute %s = %s", Tag.Attribs[a].Name, val);
@@ -287,7 +287,7 @@ void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradi
 
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
          break;
@@ -295,7 +295,7 @@ void svgState::parse_diamondgradient(const XMLTag &Tag, objVectorGradient *Gradi
    }
 
    bool process_stops = true;
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -360,7 +360,7 @@ void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradi
 
    // Determine the user coordinate system first.
 
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
          if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) Gradient->Units = VUNIT::USERSPACE;
          break;
@@ -368,7 +368,7 @@ void svgState::parse_contourgradient(const XMLTag &Tag, objVectorGradient *Gradi
    }
 
    bool process_stops = true;
-   for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+   for (int a=1; a < std::ssize(Tag.Attribs); a++) {
       auto &val = Tag.Attribs[a].Value;
       if (val.empty()) continue;
 
@@ -584,14 +584,14 @@ ERR svgState::proc_conicgradient(const XMLTag &Tag) noexcept
       // Determine the user coordinate system first.
 
       gradient->Units = VUNIT::BOUNDING_BOX;
-      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      for (int a=1; a < std::ssize(Tag.Attribs); a++) {
          if (iequals("gradientUnits", Tag.Attribs[a].Name)) {
             if (iequals("userSpaceOnUse", Tag.Attribs[a].Value)) gradient->Units = VUNIT::USERSPACE;
             break;
          }
       }
 
-      for (LONG a=1; a < std::ssize(Tag.Attribs); a++) {
+      for (int a=1; a < std::ssize(Tag.Attribs); a++) {
          auto &val = Tag.Attribs[a].Value;
          if (val.empty()) continue;
 

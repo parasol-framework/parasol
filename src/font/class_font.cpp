@@ -100,7 +100,7 @@ static ERR FONT_Free(extFont *Self)
 static ERR FONT_Init(extFont *Self)
 {
    pf::Log log;
-   LONG diff;
+   int diff;
    FTF style;
    ERR error;
    FMETA meta = FMETA::NIL;
@@ -154,7 +154,7 @@ static ERR FONT_Init(extFont *Self)
 
                int16_t size_shift = 0;
                uint16_t font_count = 0;
-               LONG font_offset = 0;
+               int font_offset = 0;
                fl::ReadLE(*file, &size_shift);
 
                int16_t type_id;
@@ -182,7 +182,7 @@ static ERR FONT_Init(extFont *Self)
 
                auto fonts = std::make_unique<winFont[]>(font_count);
 
-               for (LONG i=0; i < font_count; i++) {
+               for (int i=0; i < font_count; i++) {
                   uint16_t offset, size;
                   fl::ReadLE(*file, &offset);
                   fl::ReadLE(*file, &size);
@@ -191,10 +191,10 @@ static ERR FONT_Init(extFont *Self)
                   file->seek(8, SEEK::CURRENT);
                }
 
-               LONG abs = 0x7fff;
-               LONG wfi = 0;
+               int abs = 0x7fff;
+               int wfi = 0;
                winfnt_header_fields face;
-               for (LONG i=0; i < font_count; i++) {
+               for (int i=0; i < font_count; i++) {
                   file->seek((double)fonts[i].Offset, SEEK::START);
 
                   winfnt_header_fields header;
@@ -332,7 +332,7 @@ convenience - we recommend that you set the Style field for determining font sty
 
 *********************************************************************************************************************/
 
-static ERR GET_Bold(extFont *Self, LONG *Value)
+static ERR GET_Bold(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::BOLD) != FTF::NIL) *Value = TRUE;
    else if (pf::strisearch("bold", Self->prvStyle) != -1) *Value = TRUE;
@@ -340,7 +340,7 @@ static ERR GET_Bold(extFont *Self, LONG *Value)
    return ERR::Okay;
 }
 
-static ERR SET_Bold(extFont *Self, LONG Value)
+static ERR SET_Bold(extFont *Self, int Value)
 {
    if (Self->initialised()) {
       // If the font is initialised, setting the bold style is implicit
@@ -401,7 +401,7 @@ static ERR SET_Face(extFont *Self, STRING Value)
          strcopy(final_name, Self->prvFace, std::ssize(Self->prvFace));
       }
 
-      LONG i, j;
+      int i, j;
       for (i=0; Value[i] and Value[i] != ':'; i++);
       if (!Value[i]) return ERR::Okay;
 
@@ -483,7 +483,7 @@ convenience only - we recommend that you set the #Style field for determining fo
 
 *********************************************************************************************************************/
 
-static ERR GET_Italic(extFont *Self, LONG *Value)
+static ERR GET_Italic(extFont *Self, int *Value)
 {
    if ((Self->Flags & FTF::ITALIC) != FTF::NIL) *Value = TRUE;
    else if (pf::strisearch("italic", Self->prvStyle) != -1) *Value = TRUE;
@@ -491,7 +491,7 @@ static ERR GET_Italic(extFont *Self, LONG *Value)
    return ERR::Okay;
 }
 
-static ERR SET_Italic(extFont *Self, LONG Value)
+static ERR SET_Italic(extFont *Self, int Value)
 {
    if (Self->initialised()) {
       // If the font is initialised, setting the italic style is implicit
@@ -516,7 +516,7 @@ this will be taken into account in the resulting figure.
 
 *********************************************************************************************************************/
 
-static ERR GET_LineCount(extFont *Self, LONG *Value)
+static ERR GET_LineCount(extFont *Self, int *Value)
 {
    if (!Self->prvLineCount) calc_lines(Self);
    *Value = Self->prvLineCount;
@@ -645,7 +645,7 @@ static ERR SET_String(extFont *Self, CSTRING Value)
    Self->prvLineCountCR = 1; // Line count (carriage returns only)
 
    if ((Value) and (*Value)) {
-      LONG i;
+      int i;
       for (i=0; Value[i]; i++) if (Value[i] IS '\n') Self->prvLineCountCR++;
 
       Self->prvBuffer.assign(Value);
@@ -701,7 +701,7 @@ this to work, or a width of zero will be returned.
 
 *********************************************************************************************************************/
 
-static ERR GET_Width(extFont *Self, LONG *Value)
+static ERR GET_Width(extFont *Self, int *Value)
 {
    if (!Self->String) {
       *Value = 0;
@@ -749,12 +749,12 @@ the string will be drawn.
 
 *********************************************************************************************************************/
 
-static ERR GET_YOffset(extFont *Self, LONG *Value)
+static ERR GET_YOffset(extFont *Self, int *Value)
 {
    if (Self->prvLineCount < 1) calc_lines(Self);
 
    if ((Self->Align & ALIGN::VERTICAL) != ALIGN::NIL) {
-      LONG offset = (Self->AlignHeight - (Self->Height + (Self->LineSpacing * (Self->prvLineCount-1))))>>1;
+      int offset = (Self->AlignHeight - (Self->Height + (Self->LineSpacing * (Self->prvLineCount-1))))>>1;
       offset += (Self->LineSpacing - Self->MaxHeight)>>1; // Adjust for spacing between each individual line
       *Value = offset;
    }
@@ -775,7 +775,7 @@ static ERR draw_bitmap_font(extFont *Self)
    RGB8 rgb;
    static const uint8_t table[] = { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 };
    uint8_t *xdata, *data;
-   LONG linewidth, offset, charclip, wrapindex, charlen;
+   int linewidth, offset, charclip, wrapindex, charlen;
    uint32_t unicode, ocolour;
    int16_t startx, xpos, ex, ey, sx, sy, xinc;
    int16_t bytewidth, alpha, charwidth;
@@ -790,8 +790,8 @@ static ERR draw_bitmap_font(extFont *Self)
 
    ERR error = ERR::Okay;
    STRING str = Self->String;
-   LONG dxcoord = Self->X;
-   LONG dycoord = Self->Y;
+   int dxcoord = Self->X;
+   int dycoord = Self->Y;
 
    if (!Self->AlignWidth)  Self->AlignWidth  = bitmap->Width;
    if (!Self->AlignHeight) Self->AlignHeight = bitmap->Height;
