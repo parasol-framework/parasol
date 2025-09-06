@@ -874,6 +874,8 @@ void register_struct_class(lua_State *Lua)
    log.trace("Registering struct interface.");
 
    luaL_newmetatable(Lua, "Fluid.struct");
+   lua_pushstring(Lua, "Fluid.struct");
+   lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable

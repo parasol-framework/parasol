@@ -736,6 +736,8 @@ void register_array_class(lua_State *Lua)
    log.trace("Registering array interface.");
 
    luaL_newmetatable(Lua, "Fluid.array");
+   lua_pushstring(Lua, "Fluid.array");
+   lua_setfield(Lua, -2, "__name");    // metatable.__name = "Fluid.array"
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // Push the Fluid.array metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable

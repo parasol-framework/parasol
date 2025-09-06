@@ -186,6 +186,8 @@ void register_number_class(lua_State *Lua)
    log.trace("Registering number interface.");
 
    luaL_newmetatable(Lua, "Fluid.num");
+   lua_pushstring(Lua, "Fluid.num");
+   lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable created earlier
    lua_settable(Lua, -3);   // metatable.__index = metatable

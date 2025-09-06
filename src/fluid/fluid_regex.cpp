@@ -443,6 +443,8 @@ void register_regex_class(lua_State *Lua)
 
    // Create metatable
    luaL_newmetatable(Lua, "Fluid.regex");
+   lua_pushstring(Lua, "Fluid.regex");
+   lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // Push the Fluid.regex metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable

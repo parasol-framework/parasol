@@ -1177,6 +1177,8 @@ void register_object_class(lua_State *Lua)
    log.trace("Registering object interface.");
 
    luaL_newmetatable(Lua, "Fluid.obj");
+   lua_pushstring(Lua, "Fluid.obj");
+   lua_setfield(Lua, -2, "__name");    // metatable.__name = "Fluid.obj"
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable

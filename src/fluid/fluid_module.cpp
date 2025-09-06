@@ -885,6 +885,8 @@ void register_module_class(lua_State *Lua)
    log.trace("Registering module interface.");
 
    luaL_newmetatable(Lua, "Fluid.mod");
+   lua_pushstring(Lua, "Fluid.mod");
+   lua_setfield(Lua, -2, "__name");
    lua_pushstring(Lua, "__index");
    lua_pushvalue(Lua, -2);  // pushes the metatable
    lua_settable(Lua, -3);   // metatable.__index = metatable
