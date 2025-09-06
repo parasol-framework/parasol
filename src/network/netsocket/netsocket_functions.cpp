@@ -608,12 +608,12 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle %" PF64, Self->UID, (MAXINT)FD);
+      log.trace("[NetSocket:%d] Recursion detected on handle %" PRId64, Self->UID, (int64_t)FD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: %" PF64, Self->UID, (MAXINT)FD);
+   log.traceBranch("[NetSocket:%d] Socket: %" PRId64, Self->UID, (int64_t)FD);
 
    Self->InUse++;
    Self->IncomingRecursion++;

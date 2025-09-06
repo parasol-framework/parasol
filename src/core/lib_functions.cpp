@@ -504,7 +504,7 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
       }
    }
 
-   log.function("FD: %" PF64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));
+   log.function("FD: %" PRId64 ", Routine: %p, Flags: $%.2x (New)", (MAXINT)FD, Routine, int(Flags));
 
 #ifdef _WIN32
    // Nothing to do for Win32

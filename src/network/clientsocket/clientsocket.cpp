@@ -245,9 +245,9 @@ static void server_incoming_from_client(HOSTHANDLE Handle, extClientSocket *clie
    Server->InUse++;
    client->ReadCalled = false;
 
-   log.traceBranch("Handle: %" PF64 ", Socket: %d, Client: %d", (int64_t)(MAXINT)Handle, Server->UID, client->UID);
+   log.traceBranch("Handle: %" PRId64 ", Socket: %d, Client: %d", (int64_t)Handle, Server->UID, client->UID);
 
-   ERR error = ERR::Okay;
+   auto error = ERR::Okay;
    if (Server->Incoming.defined()) {
       if (Server->Incoming.isC()) {
          pf::SwitchContext context(Server->Incoming.Context);
@@ -468,8 +468,7 @@ static ERR CLIENTSOCKET_Init(extClientSocket *Self)
                Self->SSLHandle = client_ssl;
                Self->BIOHandle = client_bio;
 
-               auto result = SSL_accept(client_ssl);
-               if (result == 1) {
+               if (auto result = SSL_accept(client_ssl); result == 1) {
                   log.trace("SSL handshake successful.");
                   Self->setState(NTC::CONNECTED);
                }

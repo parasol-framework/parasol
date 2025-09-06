@@ -577,7 +577,7 @@ folder, a forward slash must terminate the string or it will be assumed that a f
 
 The Callback parameter can be set with a function that matches this prototype:
 
-`LONG Callback(struct FileFeedback *)`
+`INT Callback(FileFeedback *)`
 
 For each file that is processed during the copy operation, a &FileFeedback structure is passed that describes the
 source file and its target.  The callback must return a constant value that can potentially affect file processing.
@@ -1611,7 +1611,7 @@ ERR fs_copy(std::string_view Source, std::string_view Dest, FUNCTION *Callback, 
    else result = lstat64(src.c_str(), &stinfo);
 
    if ((!result) and (S_ISLNK(stinfo.st_mode))) {
-      int8_t linkto[512];
+      char linkto[512];
 
       if (srcdir) src.pop_back();
 
@@ -2580,7 +2580,7 @@ ERR fs_makedir(std::string_view Path, PERMIT Permissions)
    if ((Permissions & PERMIT::GROUP) != PERMIT::NIL) Permissions |= PERMIT::GROUP_EXEC;
    if ((Permissions & PERMIT::OTHERS) != PERMIT::NIL) Permissions |= PERMIT::OTHERS_EXEC;
 
-   log.branch("%s, Permissions: $%.8x %s", Path.data(), LONG(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
+   log.branch("%s, Permissions: $%.8x %s", Path.data(), int(Permissions), (glDefaultPermissions != PERMIT::NIL) ? "(forced)" : "");
 
    int secureflags = convert_permissions(Permissions);
 

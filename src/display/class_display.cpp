@@ -645,7 +645,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
       if (!glX11.Manager) {
          // Window creation for running inside a foreign window manager.
 
-         log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PF64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (int64_t)Self->XWindowHandle);
+         log.msg("Creating X11 window %dx%d,%dx%d, Override: %d, XDisplay: %p, Parent: %" PRId64, Self->X, Self->Y, Self->Width, Self->Height, swa.override_redirect, XDisplay, (int64_t)Self->XWindowHandle);
 
          int cwflags   = CWEventMask|CWOverrideRedirect;
          int depth     = CopyFromParent;

@@ -445,7 +445,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>The Source parameter should always clarify the type of location that is being copied.  For example if copying a folder, a forward slash must terminate the string or it will be assumed that a file is the source.</p>
 <p>The Callback parameter can be set with a function that matches this prototype:</p>
 <p>
-<code>LONG Callback(struct FileFeedback *)</code></p>
+<code>INT Callback(FileFeedback *)</code></p>
 <p>For each file that is processed during the copy operation, a &amp;FileFeedback structure is passed that describes the source file and its target.  The callback must return a constant value that can potentially affect file processing. Valid values are <code>FFR::Okay</code> (copy the file), <code>FFR::Skip</code> (do not copy the file) and <code>FFR::Abort</code> (abort the process completely and return <code>ERR::Cancelled</code> as an error code).</p>
     </description>
     <result type="ERR">

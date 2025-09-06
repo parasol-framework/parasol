@@ -26,6 +26,7 @@ This documentation is intended for technical reference and is not suitable as an
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #ifdef _MSC_VER
  #include <io.h>
