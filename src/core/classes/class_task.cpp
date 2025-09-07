@@ -1345,7 +1345,7 @@ static ERR TASK_Init(extTask *Self)
 
       if (auto len = winGetCurrentDirectory(sizeof(buffer), buffer)) {
          Self->Path.assign(buffer, len);
-         if (!Self->Path.ends_with('\\')) Self->Path += '\\';        
+         if (!Self->Path.ends_with('\\')) Self->Path += '\\;';
       }
 
 #elif __unix__
