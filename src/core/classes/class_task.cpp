@@ -1933,7 +1933,9 @@ static ERR SET_Location(extTask *Self, CSTRING Value)
       while ((*Value) and (*Value <= 0x20)) Value++;
       if (*Value IS '"') {
          Value++;
-         while ((*Value) and (*Value != '"')) Self->Location += *Value++;
+         const char* start = Value;
+         while (*Value && *Value != '"') ++Value;
+         Self->Location.assign(start, Value - start);
       }
       else Self->Location.assign(Value);
    }
