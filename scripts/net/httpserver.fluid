@@ -1694,7 +1694,7 @@ httpServer.start = function(Options)
 
    if Options.logMessage then
       if type(Options.logMessage) == 'function' then
-         logMessage = Options.logMessage
+         self.logMessage = Options.logMessage
       else
          error('logMessage option must be a function')
       end

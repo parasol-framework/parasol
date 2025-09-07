@@ -58,7 +58,7 @@ function testPostStringLocal()
    local outgoing_body = 'fname=smith&lname=jones'
 
    local http = obj.new('http', {
-      src        = 'http://127.0.0.1: ' .. SERVER_PORT .. '/post',
+      src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/post',
       method     = 'post',
       flags      = HTF_NO_HEAD,
       contentLength = -1,
