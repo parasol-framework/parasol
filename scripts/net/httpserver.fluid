@@ -6,6 +6,8 @@
 
    include 'network'
    local json = require('json')
+   
+   local glTime = obj.new('time')
 
    local httpServer = { }
 
@@ -134,9 +136,8 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 local function timestamp()
-   local tm = obj.new('time')
-   tm.acQuery()
-   return string.format('%04d-%02d-%02d %02d:%02d:%02d', tm.year, tm.month, tm.day, tm.hour, tm.minute, tm.second)
+   glTime.acQuery()
+   return string.format('%04d-%02d-%02d %02d:%02d:%02d', glTime.year, glTime.month, glTime.day, glTime.hour, glTime.minute, glTime.second)
 end
 
 local function logMessage(self, message)
