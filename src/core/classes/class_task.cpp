@@ -163,7 +163,7 @@ static void task_stdinput_callback(HOSTHANDLE FD, void *Task)
 #ifdef _WIN32
    int bytes_read;
    auto result = winReadStdInput(FD, buffer, sizeof(buffer)-1, &bytes_read);
-   if (!result) error = ERR::Okay;
+   if (not result) error = ERR::Okay;
    else if (result IS 1) return;
    else if (result IS -2) {
       error = ERR::Finished;
@@ -310,7 +310,7 @@ static void task_incoming_stdout(WINHANDLE Handle, extTask *Task)
    thread_local uint8_t recursive = 0;
 
    if (recursive) return;
-   if (!Task->Platform) return;
+   if (not Task->Platform) return;
 
    log.traceBranch();
 
@@ -332,7 +332,7 @@ static void task_incoming_stderr(WINHANDLE Handle, extTask *Task)
    thread_local uint8_t recursive = 0;
 
    if (recursive) return;
-   if (!Task->Platform) return;
+   if (not Task->Platform) return;
 
    log.traceBranch();
 
@@ -401,7 +401,7 @@ static ERR msg_action(APTR Custom, int MsgID, int MsgType, APTR Message, int Msg
    pf::Log log("ProcessMessages");
    ActionMessage *action;
 
-   if (!(action = (ActionMessage *)Message)) {
+   if (not (action = (ActionMessage *)Message)) {
       log.warning("No data attached to MSGID::ACTION message.");
       return ERR::Okay;
    }
@@ -491,7 +491,7 @@ extern "C" ERR validate_process(int ProcessID)
       }
    }
 
-   if (!task_id) return ERR::False;
+   if (not task_id) return ERR::False;
 
    evTaskRemoved task_removed = { GetEventID(EVG::SYSTEM, "task", "removed"), task_id, ProcessID };
    BroadcastEvent(&task_removed, sizeof(task_removed));
@@ -637,7 +637,7 @@ static ERR TASK_Activate(extTask *Self)
 
    if (Self->Location.empty()) return log.warning(ERR::MissingPath);
 
-   if (!glJanitorActive) {
+   if (not glJanitorActive) {
       pf::SwitchContext ctx(glCurrentTask);
       auto call = C_FUNCTION(process_janitor);
       SubscribeTimer(60, &call, &glProcessJanitor);
@@ -647,7 +647,7 @@ static ERR TASK_Activate(extTask *Self)
 #ifdef _WIN32
    // Determine the launch folder
 
-   if (!Self->LaunchPath.empty()) {
+   if (not Self->LaunchPath.empty()) {
       std::string rpath;
       if (ResolvePath(Self->LaunchPath, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
          launchdir.assign(rpath);
@@ -772,14 +772,14 @@ static ERR TASK_Activate(extTask *Self)
    if (Self->ErrorCallback.defined()) internal_redirect |= TSTD_ERR;
    if ((Self->Flags & TSF::PIPE) != TSF::NIL) internal_redirect |= TSTD_IN;
 
-   if (!(winerror = winLaunchProcess(Self, final_buffer.data(), (!launchdir.empty()) ? launchdir.data() : 0, group,
+   if (not (winerror = winLaunchProcess(Self, final_buffer.data(), (!launchdir.empty()) ? launchdir.data() : 0, group,
          internal_redirect, &Self->Platform, hide_output, redirect_stdout.data(), redirect_stderr.data(), &Self->ProcessID))) {
 
       error = ERR::Okay;
       if (((Self->Flags & TSF::WAIT) != TSF::NIL) and (Self->TimeOut > 0)) {
          log.msg("Waiting for process to exit.  TimeOut: %.2f sec", Self->TimeOut);
 
-         //if (!glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
+         //if (not glProcessBreak) glProcessBreak = AllocateID(IDTYPE_MESSAGE);
          glProcessBreak = MSGID::BREAK;
 
          ProcessMessages(PMF::NIL, Self->TimeOut * 1000.0);
@@ -810,7 +810,7 @@ static ERR TASK_Activate(extTask *Self)
 
       buffer << "cd ";
 
-      if (!path) path = Self->Location;
+      if (not path) path = Self->Location;
       std::string rpath;
       if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
          while (rpath.ends_with('/')) rpath.pop_back();
@@ -885,7 +885,7 @@ static ERR TASK_Activate(extTask *Self)
 
    if (Self->OutputCallback.defined()) {
       log.trace("Output will be sent to callback.");
-      if (!pipe(outpipe)) {
+      if (not pipe(outpipe)) {
          out_fd = outpipe[1]; // for writing
          in_fd  = outpipe[0]; // for reading
       }
@@ -903,7 +903,7 @@ static ERR TASK_Activate(extTask *Self)
 
    if (Self->ErrorCallback.defined()) {
       log.trace("Error output will be sent to a callback.");
-      if (!pipe(errpipe)) {
+      if (not pipe(errpipe)) {
          out_errfd = errpipe[1];
          in_errfd  = errpipe[0];
       }
@@ -1044,7 +1044,7 @@ static ERR TASK_Activate(extTask *Self)
    if (in_fd != -1)    close(in_fd);
    if (in_errfd != -1) close(in_errfd);
 
-   if (!privileged) { // Drop privileges so that the program runs as normal
+   if (not privileged) { // Drop privileges so that the program runs as normal
       seteuid(glUID);
       setegid(glGID);
       setuid(glUID);
@@ -1220,7 +1220,7 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
 
       std::string full_path(Args->Name);
       for (auto &key : keys) {
-         if (!full_path.starts_with(key.HKey)) continue;
+         if (not full_path.starts_with(key.HKey)) continue;
 
          auto sep = full_path.find_last_of('\\');
          if (sep IS std::string::npos) return log.warning(ERR::Syntax);
@@ -1228,12 +1228,12 @@ static ERR TASK_GetEnv(extTask *Self, struct task::GetEnv *Args)
          std::string folder = full_path.substr(key.HKey.size(), sep - key.HKey.size() + 1);
 
          APTR keyhandle;
-         if (!RegOpenKeyExA(key.ID, folder.c_str(), 0, KEY_READ, &keyhandle)) {
+         if (not RegOpenKeyExA(key.ID, folder.c_str(), 0, KEY_READ, &keyhandle)) {
             int type;
             int8_t buffer[4096];
             int envlen = sizeof(buffer);
             std::string name = full_path.substr(sep+1);
-            if (!RegQueryValueExA(keyhandle, name.c_str(), 0, &type, buffer, &envlen)) {
+            if (not RegQueryValueExA(keyhandle, name.c_str(), 0, &type, buffer, &envlen)) {
                // Numerical registry types can be converted into strings
 
                switch(type) {
@@ -1329,7 +1329,7 @@ static ERR TASK_Init(extTask *Self)
    pf::Log log;
    int len;
 
-   if (!fs_initialised) { // Perform the following if this is a Task representing the current process
+   if (not fs_initialised) { // Perform the following if this is a Task representing the current process
       Self->ProcessID = glProcessID;
 
 #ifdef _WIN32
@@ -1345,7 +1345,7 @@ static ERR TASK_Init(extTask *Self)
 
       if (auto len = winGetCurrentDirectory(sizeof(buffer), buffer)) {
          Self->Path.assign(buffer, len);
-         if (!Self->Path.ends_with('\\')) Self->Path += '\\;';
+         if (not Self->Path.ends_with('\\')) Self->Path += '\\';
       }
 
 #elif __unix__
@@ -1449,7 +1449,7 @@ static ERR TASK_Quit(extTask *Self)
 
    if ((Self->ProcessID) and (Self->ProcessID != glProcessID)) {
       #ifdef __unix__
-         if (!Self->QuitCalled) { // First call: send SIGTERM for graceful termination
+         if (not Self->QuitCalled) { // First call: send SIGTERM for graceful termination
             log.msg("Sending SIGTERM to process %d (graceful termination)", Self->ProcessID);
             kill(Self->ProcessID, SIGTERM);
             Self->QuitCalled = true;
@@ -1539,9 +1539,9 @@ static ERR TASK_SetEnv(extTask *Self, struct task::SetEnv *Args)
             if (len > 0) {
                std::string path(str, len);
                APTR keyhandle;
-               if (!RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ|KEY_WRITE, &keyhandle)) {
+               if (not RegOpenKeyExA(keys[ki].ID, path.c_str(), 0, KEY_READ|KEY_WRITE, &keyhandle)) {
                   int type;
-                  if (!RegQueryValueExA(keyhandle, str+len+1, 0, &type, nullptr, nullptr)) {
+                  if (not RegQueryValueExA(keyhandle, str+len+1, 0, &type, nullptr, nullptr)) {
                      // Numerical registry types can be converted into strings
 
                      switch(type) {
@@ -1623,7 +1623,7 @@ static ERR TASK_Write(extTask *Task, struct acWrite *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
 #ifdef _WIN32
    if (Task->Platform) {
@@ -1651,7 +1651,7 @@ The Actions field points to a lookup table of !ActionEntry items.  Hooking into 
 index in the table with a pointer to the action routine.  For example:
 
 <pre>
-if (!AccessObject(CurrentTask(), 5000, &task)) {
+if (not AccessObject(CurrentTask(), 5000, &task)) {
    task->get(FID_Actions, actions);
    actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
@@ -2225,7 +2225,7 @@ static ERR GET_ReturnCode(extTask *Self, int *Value)
       return ERR::Okay;
    }
 
-   if (!Self->ProcessID) {
+   if (not Self->ProcessID) {
       log.msg("Task hasn't been launched yet.");
       return ERR::DoesNotExist;
    }
