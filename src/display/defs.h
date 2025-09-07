@@ -467,12 +467,12 @@ ERR init_egl(void);
 void free_egl(void);
 #endif
 
+extern uint8_t glTrayIcon, glTaskBar, glStickToFront;
+
 #ifdef _WIN32
 
 #define DLLCALL // __declspec(dllimport)
 #define WINAPI  __stdcall
-
-extern uint8_t glTrayIcon, glTaskBar, glStickToFront;
 
 extern "C" {
 DLLCALL int WINAPI SetPixelV(APTR, int, int, int);
