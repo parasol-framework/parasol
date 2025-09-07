@@ -148,14 +148,12 @@ static ERR socket_outgoing(objNetSocket *Socket)
 {
    pf::Log log("http_outgoing");
 
-   constexpr int CHUNK_LENGTH_OFFSET = 16;
+   constexpr int CHUNK_LENGTH_OFFSET = 10; // Enough space for an 8-digit hex length + CRLF
 
    auto Self = (extHTTP *)CurrentContext();
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
 
    log.traceBranch("Socket: %p, Object: %d, State: %d", Socket, CurrentContext()->UID, int(Self->CurrentState));
-
-   int total_out = 0;
 
    ERR error = ERR::Okay;
 
@@ -166,13 +164,17 @@ static ERR socket_outgoing(objNetSocket *Socket)
       Self->setCurrentState(HGS::SENDING_CONTENT);
    }
 
+   int client_bytes_written = 0;
+
    if (Self->Outgoing.defined()) {
       if (Self->Outgoing.isC()) {
          auto routine = (ERR (*)(extHTTP *, std::vector<uint8_t> &, APTR))Self->Outgoing.Routine;
+         // NB: Client is expected to append data to the WriteBuffer, not replace it.
          error = routine(Self, Self->WriteBuffer, Self->Outgoing.Meta);
       }
       else if (Self->Outgoing.isScript()) {
-         // For a script to write to the buffer, it needs to make a call to the Write() action.
+         // For a script to write to the buffer, it needs to make a call to the Write() action and this
+         // will append to WriteBuffer.
          if (sc::Call(Self->Outgoing, std::to_array<ScriptArg>({
                { "HTTP", Self, FD_OBJECTPTR },
             }), error) != ERR::Okay) error = ERR::Failed;
@@ -183,21 +185,22 @@ static ERR socket_outgoing(objNetSocket *Socket)
       else error = ERR::InvalidValue;
 
       if (error > ERR::ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
+
+      client_bytes_written = Self->WriteBuffer.size() - (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
    }
    else if (Self->flInput) {
       if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from an Input file.");
 
-      int len;
       int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
       Self->WriteBuffer.resize(Self->BufferSize + offset);
-      error = acRead(Self->flInput, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &len);
-      Self->WriteBuffer.resize(len + offset);
+      error = acRead(Self->flInput, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &client_bytes_written);
+      Self->WriteBuffer.resize(client_bytes_written + offset);
 
       if (error != ERR::Okay) log.warning("Input file read error: %s", GetErrorMsg(error));
 
       int64_t size = Self->flInput->get<int64_t>(FID_Size);
 
-      if ((Self->flInput->Position IS size) or (len IS 0)) {
+      if ((Self->flInput->Position IS size) or (client_bytes_written IS 0)) {
          log.trace("All file content read (%d bytes) - freeing file.", (int)size);
          FreeResource(Self->flInput);
          Self->flInput = nullptr;
@@ -209,11 +212,10 @@ static ERR socket_outgoing(objNetSocket *Socket)
 
       pf::ScopedObjectLock object(Self->InputObjectID, 100);
       if (object.granted()) {
-         int len;
          int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
          Self->WriteBuffer.resize(Self->BufferSize + offset);
-         error = acRead(*object, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &len);
-         Self->WriteBuffer.resize(len + offset);
+         error = acRead(*object, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &client_bytes_written);
+         Self->WriteBuffer.resize(client_bytes_written + offset);
       }
 
       if (error != ERR::Okay) log.warning("Input object read error: %s", GetErrorMsg(error));
@@ -225,58 +227,56 @@ static ERR socket_outgoing(objNetSocket *Socket)
       log.warning("Method %d: No input fields are defined for me to send data to the server.", int(Self->Method));
    }
 
-   if (((error IS ERR::Okay) or (error IS ERR::Terminate)) and (!Self->WriteBuffer.empty())) {
-      int bytes_written;
-      ERR writeerror;
+   if (((error IS ERR::Okay) or (error IS ERR::Terminate)) and (client_bytes_written > 0)) {
+      int bytes_sent;
+      ERR write_error;
 
-      log.trace("Writing %" PF64 " bytes (of expected %" PF64 ") to socket.  Chunked: %d", Self->WriteBuffer.size(), (long long)Self->ContentLength, Self->Chunked);
+      log.trace("Writing %" PRId64 " bytes (of expected %" PRId64 ") to socket.  Chunked: %d", Self->WriteBuffer.size(), Self->ContentLength, Self->Chunked);
 
       if (Self->Chunked) {
          // Chunked encoding requires the length of each chunk to be sent in hexadecimal format followed by CRLF,
          // then the data, then another CRLF.
-         int csize;
          int len = Self->WriteBuffer.size() - CHUNK_LENGTH_OFFSET;
-         if (len & 0xf000)      { csize = 0; std::format_to(Self->WriteBuffer.begin(), "{:04x}\r\n", len); }
-         else if (len & 0x0f00) { csize = 1; std::format_to(Self->WriteBuffer.begin()+1, "{:03x}\r\n", len); }
-         else if (len & 0x00f0) { csize = 2; std::format_to(Self->WriteBuffer.begin()+2, "{:02x}\r\n", len); }
-         else { csize = 3; std::format_to(Self->WriteBuffer.begin()+3, "{:01x}\r\n", len); }
+         std::format_to(Self->WriteBuffer.begin(), "{:08x}\r\n", len); // Use the full 10 bytes allocated earlier
+
+         // Write the trailing CRLF to signal the end of the chunk;
+         // Note that the HTTP packet terminator comes later.
 
          Self->WriteBuffer.push_back('\r');
          Self->WriteBuffer.push_back('\n');
 
          // Note: If the result were to come back as less than the length we intended to write,
          // it would screw up the entire sending process when using chunks.  However we don't
-         // have to worry as the NetSocket will buffer up to 1 MB of data at a time - so we're
-         // safe so long as we're only sending data when the outgoing socket is empty.
+         // have to worry as the NetSocket has its own buffer - we're safe as long as we're only 
+         // sending data when the outgoing socket is ready.
 
-         writeerror = write_socket(Self, Self->WriteBuffer.data() + csize, Self->WriteBuffer.size() - csize, &bytes_written);
+         write_error = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
       }
       else {
-         writeerror = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_written);
-         if (Self->WriteBuffer.size() != unsigned(bytes_written)) log.warning("Only sent %" PF64 " of %d bytes.", (long long)Self->WriteBuffer.size(), bytes_written);
+         write_error = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
+         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PF64 " of %d bytes.", (long long)Self->WriteBuffer.size(), bytes_sent);
       }
 
-      if (writeerror IS ERR::Okay) {
-         Self->setIndex(Self->Index + bytes_written); // Update the index by the amount of actual data sent, not including chunk headers/footers
-         total_out += bytes_written;
-         Self->TotalSent += bytes_written;
+      if (write_error IS ERR::Okay) {
+         if (Self->Chunked) bytes_sent -= CHUNK_LENGTH_OFFSET + 2; // Discount chunk information
+         Self->setIndex(Self->Index + bytes_sent); // Update the index by the amount of actual data sent, not including chunk headers/footers
+         Self->TotalSent += bytes_sent;
       }
       else {
-         log.warning("write_socket() failed: %s", GetErrorMsg(writeerror));
-         error = writeerror;
+         log.warning("write_socket() failed: %s", GetErrorMsg(write_error));
+         error = write_error;
       }
 
       log.trace("Outgoing index now %" PF64 " of %" PF64, (long long)Self->Index, (long long)Self->ContentLength);
    }
    else log.trace("Finishing (an error occurred (%d), or there is no more content to write to socket).", error);
 
-   if ((error != ERR::Okay) and (error != ERR::Terminate)) {
-      if (error != ERR::TimeOut) {
-         Self->setCurrentState(HGS::TERMINATED);
-         SET_ERROR(log, Self, error);
-         return ERR::Terminate;
-      }
-      // ERR::TimeOut: The upload process may continue
+   if ((error != ERR::Okay) and (error != ERR::Terminate) and (error != ERR::TimeOut)) {
+      // In the event of an exception, the connection is immediately dropped and the transmission
+      // is considered irrecoverable.
+      Self->setCurrentState(HGS::TERMINATED);
+      SET_ERROR(log, Self, error);
+      return ERR::Terminate;
    }
    else {
       // Check for multiple input files, open the next one if necessary
@@ -304,12 +304,12 @@ static ERR socket_outgoing(objNetSocket *Socket)
 
          if (Self->Chunked) write_socket(Self, (uint8_t *)"0\r\n\r\n", 5, &result);
 
-         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PF64 " bytes.", (long long)Self->TotalSent);
+         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PRId64 " bytes.", Self->TotalSent);
          Self->setCurrentState(HGS::SEND_COMPLETE);
          return ERR::Terminate;
       }
       else {
-         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sent %" PF64 " bytes of %" PF64, (long long)Self->Index, (long long)Self->ContentLength);
+         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sent %" PRId64 " bytes of %" PRId64, Self->Index, Self->ContentLength);
       }
    }
 
