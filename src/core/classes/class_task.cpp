@@ -1377,7 +1377,7 @@ static ERR TASK_Init(extTask *Self)
             if (getcwd(buffer, sizeof(buffer))) {
                for (len=0; buffer[len]; len++);
                Self->Path.assign(buffer, len);
-               Self->Path.append('/');
+               Self->Path += '/';
             }
          }
 #endif
