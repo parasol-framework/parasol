@@ -202,10 +202,10 @@ static ERR SET_Host(extHTTP *Self, CSTRING Value)
 Incoming: A callback routine can be defined here for incoming data.
 
 Data can be received from an HTTP request by setting a callback routine in the Incoming field.  The format for the
-callback routine is `ERR Function(*HTTP, APTR Data, int Length)`.
+callback routine is `ERR Function(*HTTP, APTR Data, INT Length)`.  For scripts the format is `Function(HTTP, Array)`.
 
-If an error code of `ERR::Terminate` is returned by the callback routine, the currently executing HTTP request will be
-cancelled.
+If an error code of `ERR::Terminate` is returned or raised by the callback routine, the currently executing HTTP 
+request will be cancelled.
 
 *********************************************************************************************************************/
 
@@ -435,12 +435,12 @@ In C++ the function prototype is `ERR Function(*HTTP, std::vector&lt;uint8_t&gt;
 Write content to the `Buffer` and the final size will determine the amount of data sent to the server.
 Alternatively use the Write() action, although this will be less efficient.
 
-For scripting languages like Fluid, the function prototype is `function(HTTP)`.  Use the Write() action to send data
+For scripting languages the function prototype is `function(HTTP)`.  Use the Write() action to send data
 to the server.
 
-If an error code of `ERR::Terminate` is returned by the callback routine, any remaining data will be sent and the transfer
-will be treated as having completed successfully.  Use `ERR::TimeOut` if data cannot be returned in a reasonable time
-frame.  All other error codes apart from `ERR::Okay` indicate failure.
+If an error code of `ERR::Terminate` is returned or raised by the callback routine, any remaining data will be sent 
+and the transfer will be treated as having completed successfully.  Use `ERR::TimeOut` if data cannot be returned in 
+a reasonable time frame.  All other error codes apart from `ERR::Okay` indicate failure.
 
 *********************************************************************************************************************/
 
