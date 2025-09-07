@@ -445,10 +445,10 @@ class extTask : public objTask {
    pf::vector<std::string> Parameters; // Arguments (string array)
    uint64_t AffinityMask;  // CPU affinity mask for process/thread binding
    MEMORYID MessageMID;
-   STRING   LaunchPath;
-   STRING   Path;
-   STRING   ProcessPath;
-   STRING   Location;         // Where to load the task from (string)
+   std::string LaunchPath;
+   std::string Path;
+   std::string ProcessPath;
+   std::string Location;      // Where to load the task from (string)
    char     Name[32];         // Name of the task, if specified (string)
    bool     ReturnCodeSet;    // TRUE if the ReturnCode has been set
    bool     QuitCalled;       // TRUE if TASK_Quit has been called before
@@ -456,14 +456,14 @@ class extTask : public objTask {
    FUNCTION OutputCallback;
    FUNCTION ExitCallback;
    FUNCTION InputCallback;
-   struct MsgHandler *MsgAction;
-   struct MsgHandler *MsgFree;
-   struct MsgHandler *MsgDebug;
-   struct MsgHandler *MsgWaitForObjects;
-   struct MsgHandler *MsgQuit;
-   struct MsgHandler *MsgEvent;
-   struct MsgHandler *MsgThreadCallback;
-   struct MsgHandler *MsgThreadAction;
+   MsgHandler *MsgAction;
+   MsgHandler *MsgFree;
+   MsgHandler *MsgDebug;
+   MsgHandler *MsgWaitForObjects;
+   MsgHandler *MsgQuit;
+   MsgHandler *MsgEvent;
+   MsgHandler *MsgThreadCallback;
+   MsgHandler *MsgThreadAction;
 
    #ifdef __unix__
       int InFD = -1;       // stdin FD for receiving output from launched task
