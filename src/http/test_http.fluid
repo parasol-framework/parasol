@@ -373,11 +373,11 @@ end
         'testIPV6'
       },
       init = function(Path)
-         glPath = Path
+         print('Serving files from ' .. Path)
 
          glServer = hslib.start({
             port    = SERVER_PORT,
-            folder  = glPath,
+            folder  = Path,
             verbose = true,
             routes = {
               { pattern = '/api/test',
