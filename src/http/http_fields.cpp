@@ -107,7 +107,7 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
 
    if ((int(Value) < 0) or (int(Value) >= int(HGS::END))) return log.warning(ERR::OutOfRange);
 
-   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("New State: %s, Currently: %s", clHTTPCurrentState[int(Value)].Name, clHTTPCurrentState[int(Self->CurrentState)].Name);
+   log.detail("New State: %s, Currently: %s", clHTTPCurrentState[int(Value)].Name, clHTTPCurrentState[int(Self->CurrentState)].Name);
 
    if ((Value >= HGS::COMPLETED) and (Self->CurrentState < HGS::COMPLETED)) {
       Self->CurrentState = Value;

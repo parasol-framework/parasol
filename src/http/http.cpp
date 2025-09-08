@@ -683,11 +683,11 @@ static ERR HTTP_Activate(extHTTP *Self)
             cmd << k << ": " << v << CRLF;
          }
       }
-
-      if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("HTTP REQUEST HEADER\n%s", cmd.str().c_str());
    }
 
    cmd << CRLF; // Terminating line feed
+   auto cstr = cmd.str();
+   log.detail("HTTP REQUEST HEADER\n%s", cstr.c_str());
 
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
@@ -728,7 +728,6 @@ static ERR HTTP_Activate(extHTTP *Self)
 
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
 
-   auto cstr = cmd.str();
    if (write_socket(Self, cstr.c_str(), cstr.length(), nullptr) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
          if (auto result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port, 5.0); result IS ERR::Okay) {
