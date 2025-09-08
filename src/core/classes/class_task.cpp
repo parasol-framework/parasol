@@ -810,7 +810,7 @@ static ERR TASK_Activate(extTask *Self)
 
       buffer << "cd ";
 
-      if (not path) path = Self->Location;
+      if (not path) path = Self->Location.c_str();
       std::string rpath;
       if (ResolvePath(path, RSF::APPROXIMATE|RSF::PATH, &rpath) IS ERR::Okay) {
          while (rpath.ends_with('/')) rpath.pop_back();
