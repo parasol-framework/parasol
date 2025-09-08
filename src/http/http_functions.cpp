@@ -49,17 +49,17 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
          return;
       }
       else if (Self->CurrentState IS HGS::READING_HEADER) {
-         SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Disconnected);
+         SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
          log.trace("Received broken header as follows:\n%s", Self->Response.c_str());
          Self->setCurrentState(HGS::TERMINATED);
       }
       else if (Self->CurrentState IS HGS::SEND_COMPLETE) {
          // Disconnection on completion of sending data should be no big deal
-         SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Okay);
+         SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Okay);
          Self->setCurrentState(HGS::COMPLETED);
       }
       else if (Self->CurrentState IS HGS::SENDING_CONTENT) {
-         SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Disconnected);
+         SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
 
          // If the socket is not active, then the disconnection is a result of destroying the object (e.g. due to a redirect).
 
@@ -86,9 +86,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
                }
 
                if (!len) { // No more incoming data
-                  if ((Self->Flags & HTF::DEBUG_SOCKET) != HTF::NIL) {
-                     log.msg("Received %d bytes of content in this content reading session.", len);
-                  }
+                  log.detail("Received %d bytes of content in this content reading session.", len);
                   break;
                }
 
@@ -98,7 +96,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
          }
 
          if (Self->ContentLength IS -1) {
-            if (Socket->Error IS ERR::Okay) {
+            if (Socket->Error <= ERR::ExceptionThreshold) {
                log.msg("Orderly shutdown while streaming data.");
                Self->setCurrentState(HGS::COMPLETED);
             }
@@ -109,7 +107,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
          }
          else if (Self->Index < Self->ContentLength) {
             log.warning("Disconnected before all content was downloaded (%" PF64 " of %" PF64 ")", (long long)Self->Index, (long long)Self->ContentLength);
-            SET_ERROR(log, Self, Socket->Error != ERR::Okay ? Socket->Error : ERR::Disconnected);
+            SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
             Self->setCurrentState(HGS::TERMINATED);
          }
          else {
@@ -189,7 +187,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       client_bytes_written = Self->WriteBuffer.size() - (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
    }
    else if (Self->flInput) {
-      if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from an Input file.");
+      log.detail("Sending content from an Input file.");
 
       int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
       Self->WriteBuffer.resize(Self->BufferSize + offset);
@@ -208,7 +206,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       }
    }
    else if (Self->InputObjectID) {
-      if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sending content from InputObject #%d.", Self->InputObjectID);
+      log.detail("Sending content from InputObject #%d.", Self->InputObjectID);
 
       pf::ScopedObjectLock object(Self->InputObjectID, 100);
       if (object.granted()) {
@@ -271,7 +269,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
    }
    else log.trace("Finishing (an error occurred (%d), or there is no more content to write to socket).", error);
 
-   if ((error != ERR::Okay) and (error != ERR::Terminate) and (error != ERR::TimeOut)) {
+   if ((error > ERR::ExceptionThreshold) and (error != ERR::TimeOut)) {
       // In the event of an exception, the connection is immediately dropped and the transmission
       // is considered irrecoverable.
       Self->setCurrentState(HGS::TERMINATED);
@@ -282,7 +280,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       // Check for multiple input files, open the next one if necessary
 
       if ((Self->MultipleInput) and (!Self->flInput)) {
-         /*if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL)*/ log.msg("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
+         log.detail("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
 
          std::string filepath;
          if (parse_file(Self, filepath) IS ERR::Okay) {
@@ -304,12 +302,12 @@ static ERR socket_outgoing(objNetSocket *Socket)
 
          if (Self->Chunked) write_socket(Self, (uint8_t *)"0\r\n\r\n", 5, &result);
 
-         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Transfer complete - sent %" PRId64 " bytes.", Self->TotalSent);
+         log.detail("Transfer complete - sent %" PRId64 " bytes.", Self->TotalSent);
          Self->setCurrentState(HGS::SEND_COMPLETE);
          return ERR::Terminate;
       }
       else {
-         if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) log.msg("Sent %" PRId64 " bytes of %" PRId64, Self->Index, Self->ContentLength);
+         log.detail("Sent %" PRId64 " bytes of %" PRId64, Self->Index, Self->ContentLength);
       }
    }
 
@@ -351,10 +349,10 @@ static ERR socket_incoming(objNetSocket *Socket)
 
    if (Self->CurrentState IS HGS::SENDING_CONTENT) {
       if (Self->ContentLength IS -1) {
-         log.warning("Incoming data while streaming content - %" PF64 " bytes already written.", (long long)Self->Index);
+         log.warning("Incoming data while streaming content - %" PRId64 " bytes already written.", Self->Index);
       }
       else if (Self->Index < Self->ContentLength) {
-         log.warning("Incoming data while sending content - only %" PF64 "/%" PF64 " bytes written!", (long long)Self->Index, (long long)Self->ContentLength);
+         log.warning("Incoming data while sending content - only %" PRId64 "/%" PRId64 " bytes written!", Self->Index, Self->ContentLength);
       }
    }
 
@@ -473,7 +471,7 @@ static ERR socket_incoming(objNetSocket *Socket)
                   return ERR::Terminate;
                }
 
-               log.msg("Complete response header has been received.  Incoming Content: %" PF64, (long long)Self->ContentLength);
+               log.msg("Complete response header has been received.  Incoming Content: %" PRId64, Self->ContentLength);
 
                if (Self->CurrentState != HGS::READING_CONTENT) {
                   Self->setCurrentState(HGS::READING_CONTENT);
@@ -830,9 +828,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
    Self->Args.clear();
 
-   if ((Self->Flags & HTF::LOG_ALL) != HTF::NIL) {
-      log.msg("HTTP RESPONSE HEADER\n%s", std::string(Response).c_str());
-   }
+   log.detail("HTTP RESPONSE HEADER\n%s", std::string(Response).c_str());
 
    // First line: HTTP/1.1 200 OK
 
@@ -972,11 +968,11 @@ static ERR process_data(extHTTP *Self, APTR Buffer, int Length)
       }
       else error = ERR::InvalidValue;
 
-      if (error != ERR::Okay) SET_ERROR(log, Self, error);
+      if (error > ERR::ExceptionThreshold) SET_ERROR(log, Self, error);
 
-      if (Self->Error IS ERR::Terminate) {
+      if (error IS ERR::Terminate) {
          pf::Log log(__FUNCTION__);
-         log.branch("State changing to HGS::TERMINATED (terminate message received).");
+         log.branch("Client changing state to HGS::TERMINATED.");
          Self->setCurrentState(HGS::TERMINATED);
       }
    }

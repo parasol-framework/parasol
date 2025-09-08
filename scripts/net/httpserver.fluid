@@ -742,19 +742,19 @@ end
 
 local function createErrorPage(statusCode, statusText, message, details)
    local html = '<!DOCTYPE html>\n<html>\n<head>\n'
-   html = html .. '<meta charset="utf-8">\n'
-   html = html .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
-   html = html .. '<style>\n'
-   html = html .. 'body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n'
-   html = html .. '.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n'
-   html = html .. 'h1 { color: #d32f2f; margin-top: 0; }\n'
-   html = html .. 'p { color: #666; line-height: 1.6; }\n'
-   html = html .. '.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }\n'
-   html = html .. '</style>\n'
-   html = html .. '</head>\n<body>\n'
-   html = html .. '<div class="error-container">\n'
-   html = html .. '<h1>' .. statusCode .. ' ' .. statusText .. '</h1>\n'
-   html = html .. '<p>' .. message .. '</p>\n'
+      .. '<meta charset="utf-8">\n'
+      .. '<title>' .. statusCode .. ' ' .. statusText .. '</title>\n'
+      .. '<style>\n'
+      .. 'body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }\n'
+      .. '.error-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }\n'
+      .. 'h1 { color: #d32f2f; margin-top: 0; }\n'
+      .. 'p { color: #666; line-height: 1.6; }\n'
+      .. '.details { background: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0; font-family: monospace; }\n'
+      .. '</style>\n'
+      .. '</head>\n<body>\n'
+      .. '<div class="error-container">\n'
+      .. '<h1>' .. statusCode .. ' ' .. statusText .. '</h1>\n'
+      .. '<p>' .. message .. '</p>\n'
    if details then
       html = html .. '<div class="details">' .. details .. '</div>\n'
    end
@@ -766,7 +766,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 local function serveFile(self, ClientSocket, FilePath, Request)
-   local file = catch(function() return obj.new('file', { path = FilePath, flags = 'READ' }) end)
+   local ex, file = catch(function() return obj.new('file', { path = FilePath, flags = 'READ' }) end)
    if not file then
       local errorBody
       if Request.method != 'HEAD' then
@@ -1145,19 +1145,40 @@ end
 
 -- Add a route with method, pattern, callback, and optional middleware to a server instance
 
-local function addRoute(serverInstance, method, pattern, callback, middleware)
-   if not serverInstance._routes then serverInstance._routes = {} end
+local function addRoute(self, route)
+   if not self._routes then self._routes = {} end
 
-   if not serverInstance._routes[method] then serverInstance._routes[method] = {} end
+   if route.pattern and route.method and route.handler then
+      local method = route.method:upper()
+      local pattern = tostring(route.pattern)
 
-   table.insert(serverInstance._routes[method], {
-      pattern = pattern,
-      callback = callback,
-      middleware = middleware or {}, -- Route-specific middleware
-      compiledRegex = nil -- Will be set when first used
-   })
+      if not self._routes[method] then self._routes[method] = {} end
 
-   msg('Route registered: ' .. method .. ' ' .. pattern)
+      if type(route.handler) == 'function' then
+         -- Validate route-specific middleware
+         if type(route.middleware) == 'table' then
+            for j, mw in ipairs(route.middleware) do
+               if type(mw) != 'function' then
+                  error('Invalid middleware for route ' .. method .. ' ' .. pattern .. ' at index ' .. j .. ' - must be a function')
+               end
+            end
+         end
+
+         table.insert(self._routes[method], {
+            pattern = pattern,
+            callback = route.handler,
+            validateHeader = route.validateHeader,
+            middleware = route.middleware,
+            compiledRegex = nil -- Will be set when first used
+         })
+
+         msg('Route registered: ' .. method .. ' ' .. pattern)
+      else
+         error('Invalid handler for route ' .. method .. ' ' .. pattern .. ' - must be a function')
+      end
+   else
+      error('Invalid route configuration - missing pattern, method, or handler')
+   end
 end
 
 -- Extract parameters from a matched path using route pattern and regex match results
@@ -1288,7 +1309,7 @@ end
 local function serverIncoming(self, ClientSocket)
    local state = ClientSocket._state()
    
-   if not state.initialized then
+   if not state.initialised then
       state.buffer = ''
       state.phase = 'READING_HEADERS'
       state.headers_complete = false
@@ -1296,7 +1317,7 @@ local function serverIncoming(self, ClientSocket)
       state.body_received = 0
       state.start_time = mSys.PreciseTime()
       state.request = nil
-      state.initialized = true
+      state.initialised = true
       state.transfer_encoding = nil
       state.chunk_state = 'SIZE' -- For chunked encoding: SIZE, DATA, TRAILER
       state.chunk_size = 0
@@ -1725,33 +1746,9 @@ httpServer.start = function(Options)
    if Options.routes then
       if type(Options.routes) == 'table' then
          for i, route in ipairs(Options.routes) do
-            if (type(route) == 'table') and route.pattern and route.method and route.handler then
-               -- Validate route configuration
-               local method = tostring(route.method):upper()
-               local pattern = tostring(route.pattern)
-               local handler = route.handler
-               local routeMiddleware = route.middleware or {}
-
-               if type(handler) == 'function' then
-                  -- Validate route-specific middleware
-                  if type(routeMiddleware) == 'table' then
-                     for j, mw in ipairs(routeMiddleware) do
-                        if type(mw) != 'function' then
-                           error('Invalid middleware for route ' .. method .. ' ' .. pattern .. ' at index ' .. j .. ' - must be a function')
-                        end
-                     end
-                  else
-                     error('Route middleware for ' .. method .. ' ' .. pattern .. ' must be a table')
-                  end
-
-                  addRoute(self, method, pattern, handler, routeMiddleware)
-                  routeCount = routeCount + 1
-                  logMessage(self, 'Route configured: ' .. method .. ' ' .. pattern .. ' (with ' .. #routeMiddleware .. ' middleware)')
-               else
-                  error('Invalid handler for route ' .. method .. ' ' .. pattern .. ' - must be a function')
-               end
-            else
-               error('Invalid route configuration at index ' .. i .. ' - missing pattern, method, or handler')
+            if (type(route) == 'table') then
+               addRoute(self, route)
+               routeCount = routeCount + 1
             end
          end
       else
@@ -1785,7 +1782,9 @@ httpServer.start = function(Options)
       flags = 'SERVER|MULTI_CONNECT',
       feedback = function(Server, ClientSocket, State)
          if State == NTC_CONNECTED then
+            -- New client connection
          elseif State == NTC_DISCONNECTED then
+            -- Client disconnected
          end
       end,
       incoming = function(Server, ClientSocket)
@@ -1811,8 +1810,9 @@ httpServer.start = function(Options)
    end
 
    -- Generic route registration with optional middleware
-   self.newRoute = function(method, pattern, callback, middleware)
-      addRoute(self, method:upper(), pattern, callback, middleware or {})
+
+   self.newRoute = function(Route)
+      addRoute(self, Route)
    end
 
    -- Add global middleware
