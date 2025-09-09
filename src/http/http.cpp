@@ -216,15 +216,14 @@ class extHTTP : public objHTTP {
    std::string AuthQOP;
    std::string AuthAlgorithm;
    std::string AuthCNonce;
-   std::vector<char> RecvBuffer; // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
+   std::string RecvBuffer; // Receive buffer - aids downloading if HTF::RECVBUFFER is defined
    std::vector<uint8_t> WriteBuffer;
+   std::vector<uint8_t> Chunk;
    objFile  *flOutput;
    objFile  *flInput;
    objNetSocket *Socket;      // Socket over which the communication is taking place
-   uint8_t  *Chunk;           // Chunk buffer
-   int      ChunkSize;        // Size of the chunk buffer
    int      ChunkBuffered;    // Number of bytes buffered, cannot exceed ChunkSize
-   int      ChunkLen;         // Length of the current chunk being processed (applies when reading the chunk data)
+   int      ChunkRemaining;   // Unprocessed bytes in the current chunk
    int      ChunkIndex;
    TIMER    TimeoutManager;
    int64_t  LastReceipt;      // Last time (microseconds) at which data was received
@@ -309,7 +308,7 @@ static ERR  check_incoming_end(extHTTP *);
 static ERR  parse_file(extHTTP *, std::string &);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
-static ERR  process_data(extHTTP *, APTR, int);
+static ERR  output_incoming_data(extHTTP *, APTR, int);
 static int extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
@@ -821,7 +820,6 @@ static ERR HTTP_Free(extHTTP *Self)
 
    if (Self->flInput)     { FreeResource(Self->flInput);     Self->flInput = nullptr; }
    if (Self->flOutput)    { FreeResource(Self->flOutput);    Self->flOutput = nullptr; }
-   if (Self->Chunk)       { FreeResource(Self->Chunk);       Self->Chunk = nullptr; }
    if (Self->Path)        { FreeResource(Self->Path);        Self->Path = nullptr; }
    if (Self->InputFile)   { FreeResource(Self->InputFile);   Self->InputFile = nullptr; }
    if (Self->OutputFile)  { FreeResource(Self->OutputFile);  Self->OutputFile = nullptr; }
@@ -937,6 +935,7 @@ static ERR HTTP_Write(extHTTP *Self, struct acWrite *Args)
 
 #include "http_fields.cpp"
 #include "http_functions.cpp"
+#include "http_incoming.cpp"
 
 static const FieldArray clFields[] = {
    { "DataTimeout",    FDF_DOUBLE|FDF_RW },

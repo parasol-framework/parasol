@@ -339,7 +339,7 @@ function testIPV6()
          end
       end,
       incoming = function(HTTP, Buffer)
-         if (Buffer) then content = content .. Buffer end
+         content = content .. tostring(Buffer)
       end
    })
 
