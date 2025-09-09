@@ -8,7 +8,7 @@ DLLCALL int WINAPI FindClose(APTR);
 DLLCALL APTR WINAPI FindFirstFileA(STRING, void *);
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
 DLLCALL int WINAPI RegOpenKeyExA(int,CSTRING,int,int,APTR *);
-DLLCALL int WINAPI RegQueryValueExA(APTR,CSTRING,int *,int *,BYTE *,int *);
+DLLCALL int WINAPI RegQueryValueExA(APTR,CSTRING,int *,int *, char *,int *);
 DLLCALL void WINAPI CloseHandle(APTR);
 DLLCALL int  WINAPI MessageBoxA(int,CSTRING,CSTRING,int);
 DLLCALL int WINAPI GetCurrentDirectoryA(int, CSTRING);
@@ -48,7 +48,7 @@ typedef WIN32_FIND_DATAW WIN32_FIND_DATA,*LPWIN32_FIND_DATA;
 
 static APTR find_core(char *PathBuffer, int Size)
 {
-   WORD pos = 0;
+   int16_t pos = 0;
 
    PathBuffer[0] = 0;
 

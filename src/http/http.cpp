@@ -192,6 +192,9 @@ JUMPTABLE_NETWORK
 static OBJECTPTR modNetwork = nullptr;
 static OBJECTPTR clHTTP = nullptr;
 static objProxy *glProxy = nullptr;
+#ifdef DEBUG_SOCKET
+static objFile *glDebugFile = nullptr; // For debugging of traffic
+#endif
 
 extern "C" uint8_t glAuthScript[];
 static int glAuthScriptLength;

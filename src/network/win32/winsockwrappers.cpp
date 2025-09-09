@@ -56,7 +56,7 @@ public:
 
 static std::recursive_mutex csNetLookup;
 static ankerl::unordered_dense::map<WSW_SOCKET, socket_info> glNetLookup;
-static char glSocketsDisabled = false;
+static char glSocketsDisabled = 0; // Thread-safe, only the main thread modifies this
 static HWND glNetWindow = 0;
 static char glNetClassInit = false;
 static char glWinsockInitialised = false;

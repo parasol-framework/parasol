@@ -1,5 +1,7 @@
 // Functions for processing incoming HTTP data.
 
+constexpr int CHUNK_BUFFER_SIZE = 32 * 1024;
+
 //********************************************************************************************************************
 
 static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
@@ -27,6 +29,11 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       }
 
       if (!len) break; // No more incoming data
+      
+      #ifdef DEBUG_SOCKET
+         if (glDebugFile) glDebugFile->write(Self->Response.data() + Self->ResponseIndex, len);
+      #endif
+      
       Self->ResponseIndex += len;
 
       // Advance search for terminated double CRLF
@@ -215,7 +222,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             Self->ChunkIndex = 0; // Number of bytes processed for the current chunk
             Self->ChunkRemaining   = 0;  // Length of the first chunk is unknown at this stage
             Self->ChunkBuffered = len;
-            Self->Chunk.resize(len > 4096 ? len : 4096);
+            Self->Chunk.resize(len > CHUNK_BUFFER_SIZE ? len : CHUNK_BUFFER_SIZE);
             if (len > 0) pf::copymem(Self->Response.data() + i + 4, Self->Chunk.data(), len);
             Self->SearchIndex = 0;
          }
@@ -266,25 +273,27 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 // Data...
 // \r\n (indicates end) or 0\r\n (indicates end of chunks with further HTTP tags following)
 //
-// ChunkIndex:    Current read position within the buffer.
-// ChunkBuffered: Number of bytes currently buffered.
-// ChunkRemaining:      Expected length of the next chunk (decreases as bytes are processed).
+// ChunkIndex:     Current read position within the buffer.
+// ChunkBuffered:  Number of bytes currently buffered.
+// ChunkRemaining: Unprocessed bytes in this chunk (decreases as bytes are processed).
 
 static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 {
    int i, count, len;
-   for (count=2; count > 0; count--) { //while (Self->ChunkIndex < Self->ChunkBuffered) {
-      pf::Log log("http_incoming");
-      log.branch("Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, int(Self->Chunk.size()), Self->ChunkRemaining);
 
-      // Compress the buffer
+   for (count = 2; count > 0; count--) { // Make multiple passes in case there's more data than fits in the buffer
+      pf::Log log("http_incoming");
+      log.traceBranch("Receiving content (chunk mode) Index: %d/%d/%d, Remaining: %d", Self->ChunkIndex, Self->ChunkBuffered, int(Self->Chunk.size()), Self->ChunkRemaining);
+
+      // Compress or clear the buffer
 
       if (Self->ChunkIndex > 0) {
-         log.msg("Compressing the chunk buffer.");
          if (Self->ChunkBuffered > Self->ChunkIndex) {
+            log.trace("Compressing the chunk buffer.");
             pf::copymem(Self->Chunk.data() + Self->ChunkIndex, Self->Chunk.data(), Self->ChunkBuffered - Self->ChunkIndex);
+            Self->ChunkBuffered -= Self->ChunkIndex;
          }
-         Self->ChunkBuffered -= Self->ChunkIndex;
+         else Self->ChunkBuffered = 0;
          Self->ChunkIndex = 0;
       }
 
@@ -292,11 +301,15 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
       if (Self->ChunkBuffered < int(Self->Chunk.size())) {
          Self->Error = acRead(Socket, Self->Chunk.data() + Self->ChunkBuffered, Self->Chunk.size() - Self->ChunkBuffered, &len);
+         
+         #ifdef DEBUG_SOCKET
+            if ((glDebugFile) and (len)) glDebugFile->write(Self->Chunk.data() + Self->ChunkBuffered, len);
+         #endif
 
-         log.msg("Filling the chunk buffer: Read %d bytes.", len);
+         log.trace("Filling the chunk buffer: Read %d bytes.", len);
 
          if (Self->Error IS ERR::Disconnected) {
-            log.msg("Received all chunked content (disconnected by peer).");
+            log.detail("Received all chunked content (disconnected by peer).");
             Self->setCurrentState(HGS::COMPLETED);
             return ERR::Terminate;
          }
@@ -306,14 +319,14 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             return ERR::Terminate;
          }
          else if ((!len) and (Self->ChunkIndex >= Self->ChunkBuffered)) {
-            log.msg("Nothing left to read.");
+            log.detail("Nothing left to read.");
             return ERR::Okay;
          }
          else Self->ChunkBuffered += len;
       }
 
       while (Self->ChunkIndex < Self->ChunkBuffered) {
-         //log.msg("Status: Index: %d/%d, CurrentChunk: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkRemaining);
+         log.trace("Status: Index: %d/%d, CurrentChunk: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->ChunkRemaining);
 
          if (!Self->ChunkRemaining) {
             // Read the next chunk header.  It is assumed that the format is:
@@ -321,10 +334,10 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             // ChunkSize\r\n
             // Data...
 
-            log.msg("Examining chunk header (%d bytes buffered).", Self->ChunkBuffered - Self->ChunkIndex);
+            log.trace("Examining chunk header (%d bytes buffered).", Self->ChunkBuffered - Self->ChunkIndex);
 
             // Search for \r\n, handling split boundaries
-            // Start from ChunkIndex but check up to ChunkBuffered (not ChunkBuffered-1)
+            // Start from ChunkIndex but check up to ChunkBuffered
             // to handle the case where buffer ends with '\r'
             bool found_crlf = false;
             constexpr int MAX_CHUNK_HEADER_SIZE = 128; // Hex chunk size shouldn't exceed this
@@ -336,6 +349,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
                   Self->setCurrentState(HGS::TERMINATED);
                   return ERR::Terminate;
                }
+
                if (Self->Chunk[i] IS '\r') {
                   // Check if we have the next byte
                   if (i + 1 < Self->ChunkBuffered) {
@@ -361,19 +375,19 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
                               // A line of "0\r\n" indicates an end to the chunks, followed by optional data for
                               // interpretation.
 
-                              log.msg("End of chunks reached, optional data follows.");
+                              log.detail("End of chunks reached, optional data follows.");
                               Self->setCurrentState(HGS::COMPLETED);
                               return ERR::Terminate;
                            }
                            else {
                               // We have reached the terminating line (CRLF on an empty line)
-                              log.msg("Received all chunked content.");
+                              log.trace("Received all chunked content.");
                               Self->setCurrentState(HGS::COMPLETED);
                               return ERR::Terminate;
                            }
                         }
 
-                        log.msg("Next chunk length is %d bytes.", Self->ChunkRemaining);
+                        log.trace("Next chunk length is %d bytes.", Self->ChunkRemaining);
                         Self->ChunkIndex = i + 2; // \r\n
                         break;
                      }
@@ -395,7 +409,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             len = Self->ChunkBuffered - Self->ChunkIndex;
             if (len > Self->ChunkRemaining) len = Self->ChunkRemaining; // Cannot process more bytes than the expected chunk length
 
-            log.msg("%d bytes remaining in chunk, outputting %d bytes", Self->ChunkRemaining, len);
+            log.trace("%d bytes yet to process, outputting %d bytes", Self->ChunkRemaining, len);
 
             Self->ChunkRemaining -= len;
             output_incoming_data(Self, Self->Chunk.data() + Self->ChunkIndex, len);
@@ -403,13 +417,13 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             Self->ChunkIndex += len;
 
             if (!Self->ChunkRemaining) { // The end of the chunk binary is followed with a CRLF
-               log.msg("A complete chunk has been processed.");
+               log.trace("A complete chunk has been processed.");
                Self->ChunkRemaining = -2;
             }
          }
 
          if (Self->ChunkRemaining < 0) {
-            log.msg("Skipping %d bytes.", -Self->ChunkRemaining);
+            log.trace("Skipping %d bytes.", -Self->ChunkRemaining);
 
             while ((Self->ChunkRemaining < 0) and (Self->ChunkIndex < Self->ChunkBuffered)) {
                Self->ChunkIndex++;
@@ -445,6 +459,10 @@ static ERR read_incoming_content(extHTTP* Self, objNetSocket* Socket)
       }
 
       if ((Self->Error = acRead(Socket, buffer.data(), len, &len)) != ERR::Okay) {
+         #ifdef DEBUG_SOCKET
+            if (glDebugFile) glDebugFile->write(buffer.data(), len);
+         #endif
+
          if ((Self->Error IS ERR::Disconnected) and (Self->ContentLength IS -1)) {
             log.trace("Received all streamed content (disconnected by peer).");
             Self->setCurrentState(HGS::COMPLETED);
@@ -473,65 +491,6 @@ static ERR read_incoming_content(extHTTP* Self, objNetSocket* Socket)
    else SubscribeTimer(Self->DataTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
 
    if (Self->Error != ERR::Okay) return ERR::Terminate;
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
-// Callback: NetSocket.Incoming
-
-static ERR socket_incoming(objNetSocket *Socket)
-{
-   pf::Log log("http_incoming");
-   int len;
-   auto Self = (extHTTP *)Socket->ClientData;
-
-   log.msg("Context: %d", CurrentContext()->UID);
-
-   if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
-
-restart:
-
-   if (Self->CurrentState >= HGS::COMPLETED) {
-      // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message
-      // will cause the socket object to close the connection to the server so that we stop receiving erroneous data.
-
-      log.warning("Unexpected data incoming from server - terminating socket.");
-      return ERR::Terminate;
-   }
-
-   if (Self->CurrentState IS HGS::SENDING_CONTENT) {
-      if (Self->ContentLength IS -1) {
-         log.warning("Incoming data while streaming content - %" PRId64 " bytes already written.", Self->Index);
-      }
-      else if (Self->Index < Self->ContentLength) {
-         log.warning("Incoming data while sending content - only %" PRId64 "/%" PRId64 " bytes written!", Self->Index, Self->ContentLength);
-      }
-   }
-
-   if ((Self->CurrentState IS HGS::SENDING_CONTENT) or (Self->CurrentState IS HGS::SEND_COMPLETE)) {
-      log.trace("Transition SENDING_CONTENT -> READING_HEADER.");
-      Self->setCurrentState(HGS::READING_HEADER);
-      Self->Index = 0;
-   }
-
-   if ((Self->CurrentState IS HGS::READING_HEADER) or (Self->CurrentState IS HGS::AUTHENTICATING)) {
-      auto error = read_incoming_header(Self, Socket);
-      if (error IS ERR::Okay) goto restart; // Header read, process any remaining data
-      else return error;
-   }
-   else if (Self->CurrentState IS HGS::READING_CONTENT) {
-      if (Self->Chunked) return read_incoming_chunks(Self, Socket);
-      else return read_incoming_content(Self, Socket);
-   }
-   else { // Unexpected data received from HTTP server
-      std::string buffer;
-      buffer.resize(512);
-      if ((acRead(Socket, buffer.data(), buffer.size(), &len) IS ERR::Okay) and (len > 0)) {
-         log.warning("WARNING: Received data whilst in state %d.", int(Self->CurrentState));
-         log.warning("Content (%d bytes) Follows:\n%.80s", len, buffer.c_str());
-      }
-   }
-
    return ERR::Okay;
 }
 
@@ -712,4 +671,68 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
    }
 
    return Self->Error;
+}
+
+//********************************************************************************************************************
+// Callback: NetSocket.Incoming
+
+static ERR socket_incoming(objNetSocket *Socket)
+{
+   pf::Log log("http_incoming");
+
+   auto Self = (extHTTP *)Socket->ClientData;
+
+   if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
+   
+   #ifdef DEBUG_SOCKET
+      if (!glDebugFile) glDebugFile = objFile::create::untracked({ fl::Path("temp:http-incoming-log.raw"), fl::Flags(FL::NEW|FL::WRITE) });
+   #endif
+
+restart:
+
+   if (Self->CurrentState >= HGS::COMPLETED) {
+      // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message
+      // will cause the socket object to close the connection to the server so that we stop receiving erroneous data.
+
+      log.warning("Unexpected data incoming from server - terminating socket.");
+      return ERR::Terminate;
+   }
+
+   if (Self->CurrentState IS HGS::SENDING_CONTENT) {
+      // Sanity check failed - we should not be receiving data while we are sending content to the server.
+      if (Self->ContentLength IS -1) {
+         log.warning("Incoming data while streaming content - %" PRId64 " bytes already written.", Self->Index);
+      }
+      else if (Self->Index < Self->ContentLength) {
+         log.warning("Incoming data while sending content - only %" PRId64 "/%" PRId64 " bytes written!", Self->Index, Self->ContentLength);
+      }
+   }
+
+   if ((Self->CurrentState IS HGS::SENDING_CONTENT) or (Self->CurrentState IS HGS::SEND_COMPLETE)) {
+      log.trace("Transition SENDING_CONTENT -> READING_HEADER.");
+      Self->setCurrentState(HGS::READING_HEADER);
+      Self->Index = 0;
+   }
+
+   if ((Self->CurrentState IS HGS::READING_HEADER) or (Self->CurrentState IS HGS::AUTHENTICATING)) {
+      auto error = read_incoming_header(Self, Socket);
+      if (error IS ERR::Okay) goto restart; // Header read, process any remaining data
+      else return error;
+   }
+   else if (Self->CurrentState IS HGS::READING_CONTENT) {
+      if (Self->Chunked) return read_incoming_chunks(Self, Socket);
+      else return read_incoming_content(Self, Socket);
+   }
+   else { // Unexpected data received from HTTP server
+      std::string buffer;
+      buffer.resize(512);
+      int len;
+      if ((acRead(Socket, buffer.data(), buffer.size(), &len) IS ERR::Okay) and (len > 0)) {
+         log.warning("WARNING: Received data whilst in state %d.", int(Self->CurrentState));
+         log.warning("Content (%d bytes) Follows:\n%.80s", len, buffer.c_str());
+      }
+      return ERR::Terminate;
+   }
+
+   return ERR::Okay;
 }
