@@ -356,9 +356,10 @@ function testIPV6()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
+   if (http.error == ERR_HostNotFound) then print('Unable to test, IPv6 name resolution failed.') return end
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
-   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
+   assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
 
    if #content < 2048 then
        print('Response content:')
