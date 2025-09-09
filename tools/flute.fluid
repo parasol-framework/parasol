@@ -61,7 +61,8 @@ function runTests()
          collectgarbage()
 
          if (status == false) then
-            print(result)
+            if nz(result) then logOutput(result) end
+            print(string.format("FAIL: %.6f sec", totalTime))
          else
             if nz(result) then logOutput(result) end
             print(string.format("PASS: %.6f sec", totalTime))
