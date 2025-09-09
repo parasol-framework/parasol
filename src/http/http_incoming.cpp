@@ -1,6 +1,59 @@
 // Functions for processing incoming HTTP data.
 
 constexpr int CHUNK_BUFFER_SIZE = 32 * 1024;
+constexpr int MAX_CHUNK_HEADER_SIZE = 128;
+
+// Optimized CRLF detection using word-sized comparisons
+
+static inline CSTRING find_crlf_x2(CSTRING data, size_t length)
+{
+   if (length < 4) return nullptr;
+   auto end = data + length - 3;
+   auto ptr = data;
+   while (ptr <= end) {
+      if (ptr[0] IS '\r' and ptr[1] IS '\n' and ptr[2] IS '\r' and ptr[3] IS '\n') return ptr;
+      ptr++;
+   }
+   return nullptr;
+}
+
+//********************************************************************************************************************
+// WWW-Authenticate field extraction
+
+static size_t extract_auth_field(std::string_view Auth, std::string_view Prefix, std::string &Output)
+{
+   if (!Auth.starts_with(Prefix)) return 0;
+
+   size_t start = Prefix.size();
+   if (start >= Auth.size() or Auth[start] != '=') return 0;
+   start++; // Skip '='
+
+   // Skip whitespace
+   while ((start < Auth.size()) and (Auth[start] <= 0x20)) start++;
+
+   if (start >= Auth.size()) return 0;
+
+   size_t end = start;
+   if (Auth[start] IS '"') {
+      // Quoted value
+      start++; // Skip opening quote
+      end = Auth.find('"', start);
+      if (end IS std::string_view::npos) return 0;
+      Output = Auth.substr(start, end - start);
+      end++; // Include closing quote
+   }
+   else { // Unquoted value - find next comma or end
+      end = Auth.find(',', start);
+      if (end IS std::string_view::npos) end = Auth.size();
+      // Trim trailing whitespace
+      while (end > start and Auth[end-1] <= 0x20) end--;
+      Output = Auth.substr(start, end - start);
+   }
+
+   // Skip to next field
+   while (end < Auth.size() and (Auth[end] IS ',' or Auth[end] <= 0x20)) end++;
+   return end;
+}
 
 //********************************************************************************************************************
 
@@ -29,21 +82,20 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       }
 
       if (!len) break; // No more incoming data
-      
+
       #ifdef DEBUG_SOCKET
          if (glDebugFile) glDebugFile->write(Self->Response.data() + Self->ResponseIndex, len);
       #endif
-      
+
       Self->ResponseIndex += len;
 
       // Advance search for terminated double CRLF
       // Start searching from max(0, SearchIndex - 3) to handle "\r\n\r\n" split across read boundaries
 
       int search_start = (Self->SearchIndex >= 3) ? Self->SearchIndex - 3 : 0;
-      for (int i = search_start; i + 4 <= Self->ResponseIndex; i++) {
-         if (strncmp(Self->Response.c_str() + i, "\r\n\r\n", 4)) continue;
-
-         auto response_header = std::string_view(Self->Response.c_str(), i);
+      auto crlf_pos = find_crlf_x2(Self->Response.c_str() + search_start, Self->ResponseIndex - search_start);
+      if (crlf_pos) {
+         auto response_header = std::string_view(Self->Response.c_str(), int(crlf_pos - Self->Response.c_str()));
          if (parse_response(Self, response_header) != ERR::Okay) {
             SET_ERROR(log, Self, log.warning(ERR::InvalidHTTPResponse));
             return ERR::Terminate;
@@ -152,39 +204,45 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                   Self->AuthAlgorithm.clear();
                   Self->AuthDigest = true;
 
-                  int i = 6;
-                  while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
+                  // Skip "Digest" and whitespace
+                  std::string_view auth_data(authenticate);
+                  auth_data.remove_prefix(6); // Remove "Digest"
 
-                  while (authenticate[i]) {
-                     std::string_view auth (authenticate.begin()+i, authenticate.end());
+                  // Trim leading whitespace
+                  while (!auth_data.empty() and auth_data.front() <= 0x20) {
+                     auth_data.remove_prefix(1);
+                  }
 
-                     if (pf::startswith("realm=", auth))       i += extract_value(auth, Self->Realm);
-                     else if (pf::startswith("nonce=", auth))  i += extract_value(auth, Self->AuthNonce);
-                     else if (pf::startswith("opaque=", auth)) i += extract_value(auth, Self->AuthOpaque);
-                     else if (pf::startswith("algorithm=", auth)) i += extract_value(auth, Self->AuthAlgorithm);
-                     else if (pf::startswith("qop=", auth)) {
-                        std::string value;
-                        i += extract_value(auth, value);
-                        if (value.find("auth-int") != std::string::npos) Self->AuthQOP = "auth-int";
-                        else Self->AuthQOP = "auth";
+                  size_t pos = 0;
+                  while (pos < auth_data.size()) {
+                     std::string_view remaining = auth_data.substr(pos);
+
+                     std::string value;
+                     size_t advance = 0;
+
+                     if ((advance = extract_auth_field(remaining, "realm", Self->Realm)) > 0) {
+                        pos += advance;
+                     }
+                     else if ((advance = extract_auth_field(remaining, "nonce", Self->AuthNonce)) > 0) {
+                        pos += advance;
+                     }
+                     else if ((advance = extract_auth_field(remaining, "opaque", Self->AuthOpaque)) > 0) {
+                        pos += advance;
+                     }
+                     else if ((advance = extract_auth_field(remaining, "algorithm", Self->AuthAlgorithm)) > 0) {
+                        pos += advance;
+                     }
+                     else if ((advance = extract_auth_field(remaining, "qop", value)) > 0) {
+                        Self->AuthQOP = (value.find("auth-int") != std::string::npos) ? "auth-int" : "auth";
+                        pos += advance;
                      }
                      else {
-                        while (authenticate[i] > 0x20) {
-                           if (authenticate[i] IS '=') {
-                              i++;
-                              while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
-                              if (authenticate[i] IS '"') {
-                                 i++;
-                                 while ((authenticate[i]) and (authenticate[i] != '"')) i++;
-                                 if (authenticate[i] IS '"') i++;
-                              }
-                              else i++;
-                           }
-                           else i++;
-                        }
-
-                        while (authenticate[i] > 0x20) i++;
-                        while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
+                        // Skip unknown field
+                        size_t comma_pos = remaining.find(',');
+                        if (comma_pos IS std::string_view::npos) break;
+                        pos += comma_pos + 1;
+                        // Skip whitespace after comma
+                        while (pos < auth_data.size() and auth_data[pos] <= 0x20) pos++;
                      }
                   }
                }
@@ -257,12 +315,12 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       Self->SearchIndex = (Self->ResponseIndex >= 3) ? Self->ResponseIndex - 3 : 0;
       log.trace("Partial HTTP header received, awaiting full header...");
    }
-   
+
    return ERR::Continue; // More data needed
 }
 
 //********************************************************************************************************************
-// Data chunk mode.  Store received data in a chunk buffer.  As long as we know the entire size of the chunk, all 
+// Data chunk mode.  Store received data in a chunk buffer.  As long as we know the entire size of the chunk, all
 // data can be immediately passed onto our subscribers.
 //
 // Chunked data is passed as follows:
@@ -301,7 +359,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
       if (Self->ChunkBuffered < int(Self->Chunk.size())) {
          Self->Error = acRead(Socket, Self->Chunk.data() + Self->ChunkBuffered, Self->Chunk.size() - Self->ChunkBuffered, &len);
-         
+
          #ifdef DEBUG_SOCKET
             if ((glDebugFile) and (len)) glDebugFile->write(Self->Chunk.data() + Self->ChunkBuffered, len);
          #endif
@@ -340,8 +398,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             // Start from ChunkIndex but check up to ChunkBuffered
             // to handle the case where buffer ends with '\r'
             bool found_crlf = false;
-            constexpr int MAX_CHUNK_HEADER_SIZE = 128; // Hex chunk size shouldn't exceed this
-            
+
             for (i = Self->ChunkIndex; i < Self->ChunkBuffered; i++) {
                // Check if we've searched too far without finding \r\n (prevent DoS)
                if ((i - Self->ChunkIndex) > MAX_CHUNK_HEADER_SIZE) {
@@ -355,7 +412,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
                   if (i + 1 < Self->ChunkBuffered) {
                      if (Self->Chunk[i + 1] IS '\n') {
                         found_crlf = true;
-                        
+
                         Self->Chunk[i] = 0;
                         int64_t temp_chunk_len = strtoll((CSTRING)Self->Chunk.data() + Self->ChunkIndex, nullptr, 16);
                         Self->Chunk[i] = '\r';
@@ -538,32 +595,41 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    log.msg("HTTP response header received, status code %d", code);
 
    while (!Response.empty()) {
-      auto i = Response.find_first_of(":\r");
+      auto colon_pos = Response.find(':');
+      auto crlf_pos = Response.find("\r\n");
 
-      if (i IS std::string::npos) break;
-      if (Response[i] IS ':') { // Detected "Key: Value"
-         auto field = std::string(Response.substr(0, i));
-         std::transform(field.begin(), field.end(), field.begin(),
-            [](unsigned char c){ return char(std::tolower(c)); });
-
-         i++;
-         while ((i < Response.size()) and (Response[i] <= 0x20)) i++;
-
-         auto end_line = Response.find_first_of("\r", i);
-         std::string_view value;
-         if (end_line IS std::string::npos) {
-            value = Response.substr(i);
-         }
-         else value = Response.substr(i, end_line - i);
-
-         Self->Args[field] = value;
-
-         if (end_line IS std::string::npos) break;
-         Response.remove_prefix(end_line + 2);
+      if (colon_pos IS std::string_view::npos or (crlf_pos != std::string_view::npos and crlf_pos < colon_pos)) {
+         // No more headers or malformed header
+         if (crlf_pos != std::string_view::npos) Response.remove_prefix(crlf_pos + 2);
+         else break;
+         continue;
       }
-      else Response.remove_prefix(i + 2);
+
+      // Extract field name and convert to lowercase
+      auto field_name = Response.substr(0, colon_pos);
+      std::string field;
+      field.reserve(field_name.size());
+      for (char c : field_name) field += char(std::tolower(c));
+
+      // Skip colon and whitespace
+      size_t value_start = colon_pos + 1;
+      while ((value_start < Response.size()) and (Response[value_start] <= 0x20)) value_start++;
+
+      // Find value end
+      auto value_end = Response.find("\r\n", value_start);
+      std::string_view value;
+      if (value_end IS std::string_view::npos) {
+         value = Response.substr(value_start);
+         Self->Args[field] = value;
+         break;
+      }
+      else {
+         value = Response.substr(value_start, value_end - value_start);
+         Self->Args[field] = value;
+         Response.remove_prefix(value_end + 2);
+      }
    }
-   
+
    if (auto it = Self->Args.find("content-length"); it != Self->Args.end()) {
       auto &value = it->second;
       Self->ContentLength = 0;
@@ -683,7 +749,7 @@ static ERR socket_incoming(objNetSocket *Socket)
    auto Self = (extHTTP *)Socket->ClientData;
 
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
-   
+
    #ifdef DEBUG_SOCKET
       if (!glDebugFile) glDebugFile = objFile::create::untracked({ fl::Path("temp:http-incoming-log.raw"), fl::Flags(FL::NEW|FL::WRITE) });
    #endif
