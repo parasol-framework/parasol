@@ -113,7 +113,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
          }
 
          if ((Self->ContentLength IS 0) and (!Self->Chunked)) {
-            log.msg("Reponse header received, no content imminent.");
+            log.msg("Response header received, no content imminent.");
             Self->setCurrentState(HGS::COMPLETED);
             return ERR::Terminate;
          }
