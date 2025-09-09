@@ -227,7 +227,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             Self->SearchIndex = 0;
          }
          else {
-            log.trace("%" PF64 " bytes of content is incoming.  Bytes Buffered: %d, Index: %" PF64, (long long)Self->ContentLength, len, (long long)Self->Index);
+            log.trace("%" PRId64 " bytes of content is incoming.  Bytes Buffered: %d, Index: %" PRId64, Self->ContentLength, len, Self->Index);
 
             if (len > 0) output_incoming_data(Self, Self->Response.data() + i + 4, len);
          }
@@ -640,7 +640,7 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
       else if (Self->Incoming.isScript()) {
          // For speed, the client will receive a direct pointer to the buffer memory via the 'mem' interface.
 
-         log.trace("Calling script procedure %" PF64, (long long)Self->Incoming.ProcedureID);
+         log.trace("Calling script procedure %" PRId64, Self->Incoming.ProcedureID);
 
          if (sc::Call(Self->Incoming, std::to_array<ScriptArg>({
                { "HTTP",       Self,   FD_OBJECTPTR },

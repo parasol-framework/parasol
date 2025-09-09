@@ -621,7 +621,6 @@ static ERR TASK_Activate(extTask *Self)
 {
    pf::Log log;
    int i, j;
-   CSTRING path;
    ERR error;
    #ifdef _WIN32
       std::string launchdir;
@@ -799,7 +798,7 @@ static ERR TASK_Activate(extTask *Self)
 
    // Add a 'cd' command so that the application starts in its own folder
 
-   path = nullptr;
+   CSTRING path = nullptr;
    GET_LaunchPath(Self, &path);
 
    std::ostringstream buffer;
@@ -1327,7 +1326,6 @@ static ERR TASK_GetKey(extTask *Self, struct acGetKey *Args)
 static ERR TASK_Init(extTask *Self)
 {
    pf::Log log;
-   int len;
 
    if (not fs_initialised) { // Perform the following if this is a Task representing the current process
       Self->ProcessID = glProcessID;
@@ -1335,7 +1333,6 @@ static ERR TASK_Init(extTask *Self)
 #ifdef _WIN32
       glTaskLock = get_threadlock(); // This lock can be used by other threads to wake the main task.
 
-      int i;
       char buffer[300];
       if (winGetExeDirectory(sizeof(buffer), buffer)) {
          int len = strlen(buffer);
@@ -1351,7 +1348,7 @@ static ERR TASK_Init(extTask *Self)
 #elif __unix__
 
          char buffer[256], procfile[50];
-         int i;
+         int i, len;
 
          // This method of path retrieval only works on Linux (most types of Unix don't provide any support for this).
 

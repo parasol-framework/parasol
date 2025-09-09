@@ -129,7 +129,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "Operation finished.",
  "Invalid syntax detected.",
  "Object was in an incorrect state for the operation.",
- "The internet host name could not be resolved.",
+ "The Internet host name could not be resolved.",
  "Invalid Uniform Resource Identifier.",
  "The remote host refused the connection.",
  "The network was unreachable.",

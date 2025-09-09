@@ -106,12 +106,12 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
             }
          }
          else if (Self->Index < Self->ContentLength) {
-            log.warning("Disconnected before all content was downloaded (%" PF64 " of %" PF64 ")", (long long)Self->Index, (long long)Self->ContentLength);
+            log.warning("Disconnected before all content was downloaded (%" PRId64 " of %" PRId64 ")", Self->Index, Self->ContentLength);
             SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
             Self->setCurrentState(HGS::TERMINATED);
          }
          else {
-            log.trace("Orderly shutdown, received %" PF64 " of the expected %" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
+            log.trace("Orderly shutdown, received %" PRId64 " of the expected %" PRId64 " bytes.", Self->Index, Self->ContentLength);
             Self->setCurrentState(HGS::COMPLETED);
          }
       }
@@ -177,7 +177,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
                { "HTTP", Self, FD_OBJECTPTR },
             }), error) != ERR::Okay) error = ERR::Failed;
          if (error > ERR::ExceptionThreshold) {
-            log.warning("Procedure %" PF64 " failed, aborting HTTP call.", (long long)Self->Outgoing.ProcedureID);
+            log.warning("Procedure %" PRId64 " failed, aborting HTTP call.", Self->Outgoing.ProcedureID);
          }
       }
       else error = ERR::InvalidValue;
@@ -252,7 +252,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       }
       else {
          write_error = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
-         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PF64 " of %d bytes.", (long long)Self->WriteBuffer.size(), bytes_sent);
+         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", Self->WriteBuffer.size(), bytes_sent);
       }
 
       if (write_error IS ERR::Okay) {
@@ -265,7 +265,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
          error = write_error;
       }
 
-      log.trace("Outgoing index now %" PF64 " of %" PF64, (long long)Self->Index, (long long)Self->ContentLength);
+      log.trace("Outgoing index now %" PRId64 " of %" PRId64, Self->Index, Self->ContentLength);
    }
    else log.trace("Finishing (an error occurred (%d), or there is no more content to write to socket).", error);
 
@@ -280,7 +280,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       // Check for multiple input files, open the next one if necessary
 
       if ((Self->MultipleInput) and (!Self->flInput)) {
-         log.detail("Sequential input stream has uploaded %" PF64 "/%" PF64 " bytes.", (long long)Self->Index, (long long)Self->ContentLength);
+         log.detail("Sequential input stream has uploaded %" PRId64 "/%" PRId64 " bytes.", Self->Index, Self->ContentLength);
 
          std::string filepath;
          if (parse_file(Self, filepath) IS ERR::Okay) {

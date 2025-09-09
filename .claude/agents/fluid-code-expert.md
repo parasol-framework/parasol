@@ -108,7 +108,8 @@ You ensure all Fluid code:
 - Maintains three-space indentation
 - Has no trailing whitespace
 - Uses British English in comments and documentation
-- Uses upper camel-case for function parameters
+- **ALWAYS** use upper camel-case for function parameters
+- **ALWAYS** use lower snake-case for variables within function blocks
 - Global variables are upper camel-case names prefixed with 'gl'
 - Use `local` wherever possible for optimum speed
 - Code is always indented a minimum of three spaces, with the exception of comments and function declarations.  Example:
