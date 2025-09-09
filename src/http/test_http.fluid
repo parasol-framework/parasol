@@ -128,6 +128,11 @@ function testPostStringExt()
    local err = proc.sleep()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    
+   if (http.status == 503) then 
+      print('httpbin.org service unavailable; cannot perform test.')
+      return 
+   end
+
    assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(http.status == 200, 'Unexpected HTTP status: ' .. http.status)
@@ -197,6 +202,7 @@ function testSSLOverProxy()
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+-- curl -v -X GET https://www.google.com
 
 function testHTTPS()
    local content
@@ -263,15 +269,18 @@ end
 
 function testMultiPart()
    local proc = processing.new({ timeout = 5.0 })
-
+   local content = ''
    local boundary = '----------d6sXWGimDGTgb2GDuLZqbR'
 
    local http = obj.new('http', {
-      src         = 'http://parasol.ws/tkr/upload.php',
+      src         = 'http://127.0.0.1/upload',
       method      = 'post',
       outputFile  = glOutFile,
       flags       = HTF_NO_HEADER,
-      contenttype = 'multipart/form-data; boundary=' .. boundary
+      contenttype = 'multipart/form-data; boundary=' .. boundary,
+      incoming = function(HTTP, Buffer)
+         content = content .. tostring(Buffer)
+      end
    } )
 
    local str = ''
@@ -339,7 +348,7 @@ function testIPV6()
          end
       end,
       incoming = function(HTTP, Buffer)
-         if (Buffer) then content = content .. Buffer end
+         content = content .. tostring(Buffer)
       end
    })
 
@@ -347,9 +356,10 @@ function testIPV6()
    assert(err == ERR_Okay, "HTTP object failed to activate.")
 
    err = proc.sleep()
+   if (http.error == ERR_HostNotFound) then print('Unable to test, IPv6 name resolution failed.') return end
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   if (http.error != ERR_Okay) then error('HTTP object returned error: ' .. mSys.GetErrorMsg(http.error)) end
-   if (http.currentState != HGS_COMPLETED) then error('Expected HTTP state of COMPLETED not reached, got ' .. http.currentState) end
+   assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
+   assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
 
    if #content < 2048 then
        print('Response content:')

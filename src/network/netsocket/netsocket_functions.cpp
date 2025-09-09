@@ -658,13 +658,23 @@ restart:
       if (Self->Handle != NOHANDLE) free_socket(Self);
    }
    else if (Self->IncomingRecursion > 1) {
-      // If client_server_incoming() was called again during the callback, there is more
+      // If netsocket_incoming() was called again during the callback, there is more
       // data available and we should repeat our callback so that the client can receive the rest
       // of the data.
 
       Self->IncomingRecursion = 1;
       goto restart;
    }
+#ifndef DISABLE_SSL
+ #ifdef _WIN32
+   else if (Self->SSLHandle and (ssl_has_decrypted_data(Self->SSLHandle) or ssl_has_encrypted_data(Self->SSLHandle))) {
+      // SSL has buffered data that needs processing - continue without waiting for socket notification
+      log.trace("SSL has buffered data, continuing processing");
+      Self->IncomingRecursion = 1;
+      goto restart;
+   }
+ #endif
+#endif
 
    Self->InUse--;
    Self->IncomingRecursion = 0;
