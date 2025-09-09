@@ -275,7 +275,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
    int i, count, len;
    for (count=2; count > 0; count--) { //while (Self->ChunkIndex < Self->ChunkBuffered) {
       pf::Log log("http_incoming");
-      log.branch("Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, Self->Chunk.size(), Self->ChunkRemaining);
+      log.branch("Receiving content (chunk mode) Index: %d/%d/%d, Length: %d", Self->ChunkIndex, Self->ChunkBuffered, int(Self->Chunk.size()), Self->ChunkRemaining);
 
       // Compress the buffer
 
@@ -290,7 +290,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
       // Fill the chunk buffer
 
-      if (Self->ChunkBuffered < Self->Chunk.size()) {
+      if (Self->ChunkBuffered < int(Self->Chunk.size())) {
          Self->Error = acRead(Socket, Self->Chunk.data() + Self->ChunkBuffered, Self->Chunk.size() - Self->ChunkBuffered, &len);
 
          log.msg("Filling the chunk buffer: Read %d bytes.", len);
