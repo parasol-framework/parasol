@@ -1310,6 +1310,7 @@ local function serverIncoming(self, ClientSocket)
       state.request = nil
       state.initialised = true
       state.transfer_encoding = nil
+      state.invalid_header = false
       state.chunk_state = 'SIZE' -- For chunked encoding: SIZE, DATA, TRAILER
       state.chunk_size = 0
       state.chunk_received = 0
@@ -1348,6 +1349,11 @@ local function serverIncoming(self, ClientSocket)
    
    if bytes_read == 0 then return end -- Sometimes happens with SSL sockets
    
+   if state.phase == 'CANCELLED' then 
+      msg('Processing cancelled.')
+      return 
+   end
+
    -- Accumulate data
 
    state.buffer = state.buffer .. buffer:sub(1, bytes_read)  
@@ -1407,6 +1413,43 @@ local function serverIncoming(self, ClientSocket)
       -- Remove processed headers from buffer
       state.buffer = state.buffer:sub(header_end + 4) -- Remove \r\n\r\n as well
       state.headers_complete = true
+      
+      -- Call validateHeader callback if route has one
+      local matchedRoute, params = matchRoute(self, state.request.method, state.request.path)
+      
+      if matchedRoute and matchedRoute.validateHeader then
+         local success, validationResult = pcall(matchedRoute.validateHeader, state.request.headers)
+         
+         if not success then -- validateHeader threw an error
+            logMessage(self, 'validateHeader callback error: ' .. tostring(validationResult))
+            local errorBody = createErrorPage(500, 'Internal Server Error', 'Header validation failed.', 'Internal server error during header validation.')
+            sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", { ['content-type'] = 'text/html' }, errorBody)
+            state.invalid_header = true
+            state.phase = 'CANCELLED'
+         elseif validationResult == false then -- Headers failed validation, send 400 Bad Request
+            local errorBody = createErrorPage(400, 'Bad Request', 'Request headers failed validation.', 'The request headers do not meet server requirements.')
+            sendHttpResponse(self, ClientSocket, 400, "Bad Request", { ['content-type'] = 'text/html' }, errorBody)
+            state.invalid_header = true
+            state.phase = 'CANCELLED'
+         elseif type(validationResult) == 'table' and validationResult.status then
+            -- Custom error response from validateHeader
+            local statusCode = validationResult.status or 400
+            local statusText = validationResult.statusText or 'Bad Request'
+            local message = validationResult.message or 'Request headers failed validation.'
+            local details = validationResult.details or 'The request headers do not meet server requirements.'
+            
+            local errorBody = createErrorPage(statusCode, statusText, message, details)
+            sendHttpResponse(self, ClientSocket, statusCode, statusText, { ['content-type'] = 'text/html' }, errorBody)
+            state.invalid_header = true
+            state.phase = 'CANCELLED'
+         end
+         -- If validateHeader returns true or nil, continue processing
+      end
+      
+      -- If header validation failed, don't continue processing
+      if state.invalid_header or state.phase == 'CANCELLED' then
+         return
+      end
       
       -- Determine if we need to read a body
       state.content_length = tonumber(state.request.headers['content-length'])
