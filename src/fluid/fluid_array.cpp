@@ -45,6 +45,22 @@ extern "C" {
 static int array_copy(lua_State *);
 static int array_concat(lua_State *);
 
+// Helper function to safely calculate type size and prevent overflow
+static int safe_type_size(int FieldType) {
+   if (FieldType & FD_INT)        return sizeof(int);
+   else if (FieldType & FD_WORD)   return sizeof(int16_t);
+   else if (FieldType & FD_BYTE)   return sizeof(int8_t);
+   else if (FieldType & FD_FLOAT)  return sizeof(float);
+   else if (FieldType & FD_DOUBLE) return sizeof(double);
+   else if (FieldType & FD_INT64)  return sizeof(int64_t);
+   else if (FieldType & FD_STRING) {
+      if (FieldType & FD_CPP) return sizeof(std::string);
+      else return sizeof(APTR);
+   }
+   else if (FieldType & FD_POINTER) return sizeof(APTR);
+   return 0; // Unknown type
+}
+
 /*********************************************************************************************************************
 ** If List is NULL and Total > 0, the list will be allocated.
 **
@@ -88,42 +104,42 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
       }
    }
 
-   int type_size = 0;
-   if (FieldType & FD_INT)        type_size = sizeof(int);
-   else if (FieldType & FD_WORD)   type_size = sizeof(int16_t);
-   else if (FieldType & FD_BYTE)   type_size = sizeof(int8_t);
-   else if (FieldType & FD_FLOAT)  type_size = sizeof(float);
-   else if (FieldType & FD_DOUBLE) type_size = sizeof(double);
-   else if (FieldType & FD_INT64)  type_size = sizeof(int64_t);
-   else if (FieldType & FD_STRING) {
-      if (FieldType & FD_CPP) type_size = sizeof(std::string);
-      else type_size = sizeof(APTR);
+   int type_size = safe_type_size(FieldType);
+   if (FieldType & FD_STRUCT) {
+      type_size = sdef->Size;
    }
-   else if (FieldType & FD_POINTER) type_size = sizeof(APTR);
-   else if (FieldType & FD_STRUCT) type_size = sdef->Size; // The length of sequential structs cannot be calculated.
-   else {
+   else if (type_size <= 0) {
+      log.warning("Unknown or invalid field type: $%.8x", FieldType);
       lua_pushnil(Lua);
       return;
    }
 
    // Calculate the array length if the total is unspecified.
+   // Add safety limit to prevent infinite loops or excessive memory consumption
+   const int MAX_AUTO_ARRAY_SIZE = 1000000; // Reasonable limit for auto-sized arrays
 
    if ((List) and (Total < 0)) {
-      if (FieldType & FD_INT)        for (Total=0; ((int *)List)[Total]; Total++);
-      else if (FieldType & FD_WORD)   for (Total=0; ((int16_t *)List)[Total]; Total++);
-      else if (FieldType & FD_BYTE)   for (Total=0; ((int8_t *)List)[Total]; Total++);
-      else if (FieldType & FD_FLOAT)  for (Total=0; ((float *)List)[Total]; Total++);
-      else if (FieldType & FD_DOUBLE) for (Total=0; ((double *)List)[Total]; Total++);
-      else if (FieldType & FD_INT64)  for (Total=0; ((int64_t *)List)[Total]; Total++);
+      if (FieldType & FD_INT)         for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((int *)List)[Total]; Total++);
+      else if (FieldType & FD_WORD)   for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((int16_t *)List)[Total]; Total++);
+      else if (FieldType & FD_BYTE)   for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((int8_t *)List)[Total]; Total++);
+      else if (FieldType & FD_FLOAT)  for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((float *)List)[Total]; Total++);
+      else if (FieldType & FD_DOUBLE) for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((double *)List)[Total]; Total++);
+      else if (FieldType & FD_INT64)  for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((int64_t *)List)[Total]; Total++);
       else if (FieldType & FD_STRING) {
          if (FieldType & FD_CPP) { // Null-terminated std::string lists aren't permitted.
             lua_pushnil(Lua);
             return;
          }
-         else for (Total=0; ((CSTRING *)List)[Total]; Total++);
+         else for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((CSTRING *)List)[Total]; Total++);
       }
-      else if (FieldType & FD_POINTER) for (Total=0; ((APTR *)List)[Total]; Total++);
+      else if (FieldType & FD_POINTER) for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((APTR *)List)[Total]; Total++);
       else if (FieldType & FD_STRUCT) Total = -1; // The length of sequential structs cannot be calculated.
+      
+      // Check if we hit the safety limit
+      if (Total >= MAX_AUTO_ARRAY_SIZE) {
+         log.warning("Array size calculation exceeded safety limit (%d), truncating", MAX_AUTO_ARRAY_SIZE);
+         Total = MAX_AUTO_ARRAY_SIZE;
+      }
    }
 
    int array_size = 0;  // Size of the array in bytes, not including any cached content.
@@ -131,6 +147,13 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
 
    bool alloc = false;
    if (Total > 0) {
+      // Check for integer overflow in size calculations
+      if (Total > INT_MAX / type_size) {
+         log.warning("Array size of %d would overflow", Total);
+         lua_pushnil(Lua);
+         return;
+      }
+      
       cache_size = Total * type_size;
       array_size = Total * type_size;
 
@@ -247,6 +270,15 @@ static int array_new(lua_State *Lua)
          else luaL_argerror(Lua, 1, "A string must be provided if using the 'bytestring' array type.");
       }
       else if (auto total = lua_tointeger(Lua, 1)) {
+         if (total < 0) {
+            luaL_argerror(Lua, 1, "Invalid array size.");
+            return 0;
+         }
+         else if (total > 100000000) {
+            luaL_argerror(Lua, 1, "Array size exceeds maximum allowed size.");
+            return 0;
+         }
+         
          int fieldtype;
          CSTRING s_name = nullptr;
          switch (strihash(type)) {
@@ -315,12 +347,20 @@ static int array_getstring(lua_State *Lua)
 
    if (lua_isnumber(Lua,2)) {
       len = lua_tointeger(Lua, 2);
-      if ((len < 0) or (start+len > a->Total)) {
-         luaL_error(Lua, "Invalid length: Index %d < %d < %d", start, start+len, a->Total);
+      if (len < 0) {
+         luaL_argerror(Lua, 2, "Invalid length");
+         return 0;
+      }
+      // Check for integer overflow in addition
+      if ((start > INT_MAX - len) or (start + len > a->Total)) {
+         luaL_argerror(Lua, 2, "Invalid length");
          return 0;
       }
    }
-   else len = a->Total - start;
+   else {
+      len = a->Total - start;
+      if (len < 0) len = 0; // Safety check
+   }
 
    if (len < 1) lua_pushstring(Lua, "");
    else lua_pushlstring(Lua, (CSTRING)a->ptrByte + start, len);
@@ -492,31 +532,29 @@ static int array_copy(lua_State *Lua)
    int to_index = 1;
    if (lua_isnumber(Lua, 2)) {
       to_index = lua_tointeger(Lua, 2);
-      if (to_index < 1) {
+      if ((to_index < 1) or (to_index > a->Total)) {
          luaL_argerror(Lua, 2, "Invalid destination index.");
          return 0;
       }
    }
 
-   int req_total = -1;
+   int copy_total = -1;
    if (lua_isnumber(Lua, 3)) {
-      req_total = lua_tointeger(Lua, 3);
-      if (req_total < 1) { luaL_argerror(Lua, 3, "Invalid total."); return 0; }
+      copy_total = lua_tointeger(Lua, 3);
+      if (copy_total < 1) { luaL_argerror(Lua, 3, "Invalid total."); return 0; }
    }
 
-   size_t src_total;
-   int8_t *src;
+   size_t src_size;
+   uint8_t *src;
    int src_typesize;
-   if ((src = (int8_t *)luaL_checklstring(Lua, 1, &src_total))) {
+   if ((src = (uint8_t *)luaL_checklstring(Lua, 1, &src_size))) {
       src_typesize = 1;
-      if ((size_t)req_total > src_total) {
-         luaL_argerror(Lua, 3, "Invalid total.");
-         return 0;
-      }
+      if ((size_t)copy_total > src_size) copy_total = (int)src_size;
    }
    else if (auto src_array = (struct array *)get_meta(Lua, 1, "Fluid.array")) {
       src_typesize = src_array->TypeSize;
-      src_total    = src_array->Total;
+      src_size     = src_array->Total;
+      src          = src_array->ptrByte;
    }
    else if (lua_istable(Lua, 1)) {
       luaL_argerror(Lua, 1, "Tables not supported yet.");
@@ -525,16 +563,28 @@ static int array_copy(lua_State *Lua)
    else { luaL_argerror(Lua, 1, "String or array expected."); return 0; }
 
    to_index--; // Lua index to C index
-   if (to_index + src_total > (size_t)a->Total) {
-      luaL_error(Lua, "Invalid index or total (%d+%d > %d).", to_index, src_total, a->Total);
+   
+   // Enhanced bounds checking with overflow protection
+   if ((to_index < 0) or (to_index >= a->Total)) {
+      luaL_error(Lua, "Destination index out of bounds: %d (array size: %d).", to_index + 1, a->Total);
+      return 0;
+   }
+   
+   if ((src_size > SIZE_MAX - to_index) or (to_index + src_size > (size_t)a->Total)) {
+      luaL_error(Lua, "Copy operation would exceed array bounds (%d+%d > %d).", to_index + 1, (int)src_size, a->Total);
       return 0;
    }
 
    if (src_typesize IS a->TypeSize) {
-      copymem(src, a->ptrPointer + (to_index * src_typesize), req_total * src_typesize);
+      if ((copy_total > 0) and (src_typesize > 0) and (copy_total > SIZE_MAX / src_typesize)) {
+         luaL_error(Lua, "Copy size calculation would overflow.");
+         return 0;
+      }
+      copymem(src, a->ptrPointer + (to_index * src_typesize), copy_total * src_typesize);
    }
-   else {
-      for (int i=0; i < req_total; i++) {
+   else { // Type conversion necessary
+      uint8_t *dest_ptr = (uint8_t *)a->ptrPointer + (to_index * a->TypeSize);
+      for (int i=0; i < copy_total; i++) {
          int64_t s;
          switch (src_typesize) {
             case 1: s = ((int8_t *)src)[0]; break;
@@ -545,13 +595,14 @@ static int array_copy(lua_State *Lua)
          }
 
          switch (a->TypeSize) {
-            case 1: ((int8_t *)src)[0]  = s; break;
-            case 2: ((int16_t *)src)[0]  = s; break;
-            case 4: ((int *)src)[0]  = s; break;
-            case 8: ((int64_t *)src)[0] = s; break;
+            case 1: ((int8_t *)dest_ptr)[0]  = s; break;
+            case 2: ((int16_t *)dest_ptr)[0]  = s; break;
+            case 4: ((int *)dest_ptr)[0]  = s; break;
+            case 8: ((int64_t *)dest_ptr)[0] = s; break;
          }
 
          src += src_typesize;
+         dest_ptr += a->TypeSize;
       }
    }
 
