@@ -328,46 +328,6 @@ continue_upload:
 
 //********************************************************************************************************************
 
-static int extract_value(std::string_view String, std::string &Result)
-{
-   if (auto s = String.find_first_of("=,"); s IS std::string::npos) {
-      Result.clear();
-      return String.size();
-   }
-   else if (String[s] IS '=') {
-      s++;
-      if (String[s] IS '"') {
-         s++;
-         if (auto i = String.find('"', s); i != std::string::npos) {
-            Result.assign(String, s, i-s);
-            s = i + 1; // Skip "
-            if (auto comma = String.find(','); comma != std::string::npos) {
-               s = comma + 1;
-               while ((s < String.size()) and (String[s] <= 0x20)) s++;
-            }
-            return s;
-         }
-         else return String.size();
-      }
-      else if (auto i = String.find(','); i IS std::string::npos) {
-         Result.assign(String, s);
-         return String.size();
-      }
-      else {
-         Result.assign(String, s, i-s);
-         s = i + 1;
-         while ((s < String.size()) and (String[s] <= 0x20)) s++;
-         return s;
-      }
-   }
-   else {
-      Result.clear();
-      return s;
-   }
-}
-
-//********************************************************************************************************************
-
 static void writehex(HASH Bin, HASHHEX Hex)
 {
    for (uint32_t i=0; i < HASHLEN; i++) {

@@ -314,7 +314,6 @@ static ERR  parse_file(extHTTP *, std::string &);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
 static ERR  output_incoming_data(extHTTP *, APTR, int);
-static int extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
