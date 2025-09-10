@@ -169,7 +169,6 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
       Self->ResponseIndex += len;
 
-      // Use ranges-based CRLF detection for modern C++20 approach
       std::string_view response_view(Self->Response.c_str(), Self->ResponseIndex);
       auto crlf_iter = find_crlf_x2(response_view);
 
@@ -284,7 +283,6 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                   Self->AuthAlgorithm.clear();
                   Self->AuthDigest = true;
 
-                  // Use C++20 ranges for WWW-Authenticate parsing
                   for (auto [key, value] : parse_auth_fields(authenticate)) {
                      if (key IS "realm") Self->Realm = std::string(value);
                      else if (key IS "nonce") Self->AuthNonce = std::string(value);
@@ -630,21 +628,24 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    // First line: HTTP/1.1 200 OK
 
    if (!Response.starts_with("HTTP/")) {
-      log.warning("Invalid response header, missing 'HTTP/'");
+      log.warning("Unsupported HTTP header.");
       return ERR::InvalidHTTPResponse;
    }
 
-   //int majorv = StrToInt(str); // Currently unused
-   auto b = Response.find_first_of('.');
-   if (b IS std::string::npos) return ERR::InvalidHTTPResponse;
-   b++;
+   Response.remove_prefix(5);
+   if (Response.starts_with("1.1"))      Self->ResponseVersion = 0x11;
+   else if (Response.starts_with("1.0")) Self->ResponseVersion = 0x10;
+   else if (Response.starts_with("2.0")) Self->ResponseVersion = 0x20;
+   else if (Response.starts_with("3.0")) Self->ResponseVersion = 0x30;
+   else return log.warning(ERR::InvalidHTTPResponse);
 
-   //int minorv = StrToInt(str); // Currently unused
-   while ((b < Response.size()) and (Response[b] > 0x20)) b++;
-   while ((b < Response.size()) and (Response[b] <= 0x20)) b++;
+   if (auto pos = Response.find(' '); pos != std::string_view::npos) {
+      Response.remove_prefix(pos + 1); // skip the ' '
+   }
+   else return log.warning(ERR::InvalidHTTPResponse);
 
    int code = 0;
-   auto [ ptr, error ] = std::from_chars(Response.data() + b, Response.data() + Response.size(), code);
+   auto [ ptr, error ] = std::from_chars(Response.data(), Response.data() + Response.size(), code);
    if (error IS std::errc()) Self->Status = HTS(code);
    else Self->Status = HTS::NIL;
 
@@ -692,6 +693,27 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       if (pf::iequals(value, "chunked")) {
          if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = true;
          Self->ContentLength = -1;
+      }
+   }
+   
+   // Determine the keep-alive status according the default HTTP protocol rules and then consider any connection value.
+
+   if (Self->ResponseVersion >= 0x11) Self->KeepAlive = true;
+   else Self->KeepAlive = false;
+
+   if (auto it = Self->Args.find("connection"); it != Self->Args.end()) {
+      // HTTP/1.0 if keep-alive is not specified then the connection is closed by default.
+      // HTTP/1.1 if keep-alive is not specified then the connection is persistent
+      //
+      // If close is specified then the server should disconnect its end first, but
+      // being pro-active and disconnecting our side early will keep things predictable.
+
+      auto &value = it->second;
+      if (pf::iequals(value, "close")) {
+         Self->KeepAlive = false;
+      }
+      else if (pf::iequals(value, "keep-alive")) {
+         Self->KeepAlive = true;
       }
    }
 

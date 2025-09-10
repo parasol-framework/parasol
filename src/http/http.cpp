@@ -237,6 +237,7 @@ class extHTTP : public objHTTP {
    int16_t  InputPos;         // File name parsing position in InputFile
    uint8_t  RedirectCount;
    uint8_t  AuthRetries;
+   uint8_t  ResponseVersion;  // 0x10=HTTP/1.0, 0x11=HTTP/1.1
    uint16_t Connecting:1;
    uint16_t AuthAttempt:1;
    uint16_t AuthPreset:1;
@@ -245,6 +246,7 @@ class extHTTP : public objHTTP {
    uint16_t Tunneling:1;
    uint16_t Chunked:1;
    uint16_t MultipleInput:1;
+   uint16_t KeepAlive:1;
    uint16_t ProxyDefined:1;   // TRUE if the ProxyServer has been manually set by the user
 };
 
@@ -324,18 +326,6 @@ static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
 static void socket_feedback(objNetSocket *, NTC, APTR);
 static ERR  socket_incoming(objNetSocket *);
 static ERR  socket_outgoing(objNetSocket *);
-
-/*   if (Object->UID IS Self->DialogWindow) {
-      Self->DialogWindow = 0;
-      if ((Self->Username) and (Self->Password)) { // Make a second attempt at resolving the HTTP request
-         HTTP_Activate(Self, nullptr);
-      }
-      else {
-         log.msg("No username and password provided, deactivating...");
-         Self->setCurrentState(HGS::TERMINATED);
-      }
-   }
-*/
 
 //********************************************************************************************************************
 
@@ -691,6 +681,12 @@ static ERR HTTP_Activate(extHTTP *Self)
    auto cstr = cmd.str();
    log.detail("HTTP REQUEST HEADER\n%s", cstr.c_str());
 
+   if ((Self->Socket) and (not Self->KeepAlive)) {
+      // Termination of the existing connection is pending and we need to honour it.
+      FreeResource(Self->Socket);
+      Self->Socket = nullptr;
+   }
+
    if (!Self->Socket) {
       // If we're using straight SSL without tunnelling, set the SSL flag now so that SSL is automatically engaged on connection.
 
@@ -897,6 +893,7 @@ static ERR HTTP_NewPlacement(extHTTP *Self)
    Self->BufferSize     = 16 * 1024;
    Self->AuthQOP        = "auth";
    Self->AuthAlgorithm  = "md5";
+   Self->KeepAlive      = true;
    return ERR::Okay;
 }
 

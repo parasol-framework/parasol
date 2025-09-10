@@ -379,6 +379,21 @@ static void clientsocket_outgoing(HOSTHANDLE Void, extClientSocket *ClientSocket
    ClientSocket->OutgoingRecursion--;
 }
 
+/*********************************************************************************************************************
+
+-ACTION-
+Deactivate: Disconnects the socket and changes the #State to `DISCONNECTED`.
+
+*********************************************************************************************************************/
+
+static ERR CLIENTSOCKET_Deactivate(extClientSocket *Self)
+{
+   pf::Log log;
+   log.branch();
+   disconnect(Self);
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 
 static ERR CLIENTSOCKET_Free(extClientSocket *Self)
