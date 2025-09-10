@@ -21,6 +21,12 @@
 
   <actions>
     <action>
+      <name>Deactivate</name>
+      <comment>Disconnects the socket and changes the <fl>State</fl> to <code>DISCONNECTED</code>.</comment>
+      <prototype>ERR acDeactivate(*Object)</prototype>
+    </action>
+
+    <action>
       <name>Read</name>
       <comment>Read incoming data from a client socket.</comment>
       <prototype>ERR acRead(*Object, APTR Buffer, INT Length, INT *Result)</prototype>
