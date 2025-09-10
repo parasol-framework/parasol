@@ -314,11 +314,9 @@ static ERR  parse_file(extHTTP *, std::string &);
 static void parse_file(extHTTP *, std::ostringstream &);
 static ERR  parse_response(extHTTP *, std::string_view);
 static ERR  output_incoming_data(extHTTP *, APTR, int);
-static int extract_value(std::string_view, std::string &);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERR  write_socket(extHTTP *, CPTR, int, int *);
 static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
@@ -421,6 +419,12 @@ static ERR HTTP_Activate(extHTTP *Self)
 {
    pf::Log log;
    int i;
+   static int8_t recursion = 0;
+
+   if (recursion) return log.warning(ERR::Recursion);
+
+   recursion++;
+   auto __cleanup = pf::Defer([&]() { recursion--; });
 
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
@@ -726,7 +730,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
 
-   if (write_socket(Self, cstr.c_str(), cstr.length(), nullptr) IS ERR::Okay) {
+   if (acWrite(Self->Socket, cstr.c_str(), cstr.length()) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
          if (auto result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port, 5.0); result IS ERR::Okay) {
             Self->Connecting = true;

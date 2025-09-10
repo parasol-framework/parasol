@@ -273,7 +273,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             }
 
             std::string &authenticate = Self->Args["WWW-Authenticate"];
-            if (!authenticate.empty()) {
+            if (not authenticate.empty()) {
                if (pf::startswith("Digest", authenticate)) {
                   log.trace("Digest authentication mode.");
 
