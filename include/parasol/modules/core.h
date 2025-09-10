@@ -2432,7 +2432,7 @@ inline void clearmem(APTR Memory, std::size_t Length) {
    if (Memory) memset(Memory, 0, Length);
 }
 
-static THREADVAR int _tlUniqueThreadID = 0;
+static thread_local int _tlUniqueThreadID = 0;
 
 [[nodiscard]] inline int _get_thread_id(void) {
    if (_tlUniqueThreadID) return _tlUniqueThreadID;

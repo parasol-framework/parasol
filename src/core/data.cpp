@@ -128,7 +128,7 @@ int8_t glFDProtected = 0;
 std::atomic_int glUniqueMsgID = 1;
 
 #ifdef __unix__
-  THREADVAR int glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
+  thread_local int glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
 #elif _WIN32
   WINHANDLE glProcessHandle = 0;
   WINHANDLE glTaskLock = 0;
@@ -187,24 +187,24 @@ ankerl::unordered_dense::map<uint32_t, virtual_drive> glVirtual;
 struct FileMonitor *glFileMonitor = nullptr;
 #endif
 
-THREADVAR char tlFieldName[10]; // $12345678\0
-THREADVAR int glForceUID = -1, glForceGID = -1;
-THREADVAR PERMIT glDefaultPermissions = PERMIT::NIL;
-THREADVAR int16_t tlDepth     = 0;
-THREADVAR int16_t tlLogStatus = 1;
-THREADVAR bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
-THREADVAR int16_t tlPreventSleep = 0;
-THREADVAR int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
-THREADVAR int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
+thread_local char tlFieldName[10]; // $12345678\0
+thread_local int glForceUID = -1, glForceGID = -1;
+thread_local PERMIT glDefaultPermissions = PERMIT::NIL;
+thread_local int16_t tlDepth     = 0;
+thread_local int16_t tlLogStatus = 1;
+thread_local bool tlMainThread = false; // Will be set to TRUE on open, any other threads will remain FALSE.
+thread_local int16_t tlPreventSleep = 0;
+thread_local int16_t tlPublicLockCount = 0; // This variable is controlled by GLOBAL_LOCK() and can be used to check if locks are being held prior to sleeping.
+thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 
 Object glDummyObject;
 extObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
-THREADVAR extObjectContext *tlContext = &glTopContext;
+thread_local extObjectContext *tlContext = &glTopContext;
 
 objTime *glTime = nullptr;
 
-THREADVAR int16_t tlMsgRecursion = 0;
-THREADVAR TaskMessage *tlCurrentMsg = nullptr;
+thread_local int16_t tlMsgRecursion = 0;
+thread_local TaskMessage *tlCurrentMsg = nullptr;
 
 ERR (*glMessageHandler)(struct Message *) = nullptr;
 void (*glVideoRecovery)(void) = nullptr;

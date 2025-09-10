@@ -252,7 +252,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       }
       else {
          write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
-         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", Self->WriteBuffer.size(), bytes_sent);
+         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", int64_t(Self->WriteBuffer.size()), bytes_sent);
       }
 
       if (write_error IS ERR::Okay) {

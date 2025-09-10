@@ -159,7 +159,7 @@ ERR _redraw_surface(OBJECTID SurfaceID, const SURFACELIST &list, int index,
    int Left, int Top, int Right, int Bottom, IRF Flags)
 {
    pf::Log log("redraw_surface");
-   static THREADVAR int8_t recursive = 0;
+   static thread_local int8_t recursive = 0;
 
    if ((list[index].Flags & RNF::TOTAL_REDRAW) != RNF::NIL) {
       // If the TOTAL_REDRAW flag is set against the surface then the entire surface must be redrawn regardless
@@ -1290,7 +1290,7 @@ Search: The supplied SurfaceID did not refer to a recognised surface object.
 ERR GetSurfaceInfo(OBJECTID SurfaceID, SURFACEINFO **Info)
 {
    pf::Log log(__FUNCTION__);
-   static THREADVAR SURFACEINFO info;
+   static thread_local SURFACEINFO info;
 
    // Note that a SurfaceID of zero is fine (returns the root surface).
 

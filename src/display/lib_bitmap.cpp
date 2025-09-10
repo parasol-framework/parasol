@@ -1854,7 +1854,7 @@ int Y: The vertical coordinate of the pixel.
 
 void ReadRGBPixel(objBitmap *Bitmap, int X, int Y, RGB8 **Pixel)
 {
-   static THREADVAR RGB8 pixel;
+   static thread_local RGB8 pixel;
    if ((X >= Bitmap->Clip.Right) or (X < Bitmap->Clip.Left) or
        (Y >= Bitmap->Clip.Bottom) or (Y < Bitmap->Clip.Top)) {
       pixel.Red = 0; pixel.Green = 0; pixel.Blue = 0; pixel.Alpha = 0;

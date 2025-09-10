@@ -31,7 +31,7 @@ namespace std {
 }
 
 #ifdef _WIN32
-THREADVAR bool tlMessageBreak = false; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
+thread_local bool tlMessageBreak = false; // This variable is set by ProcessMessages() to allow breaking when Windows sends OS messages
 #endif
 
 //********************************************************************************************************************
@@ -188,7 +188,7 @@ struct WaitLock {
    }
 };
 
-static THREADVAR int16_t glWLIndex = -1; // The current thread's index within glWaitLocks
+static thread_local int16_t glWLIndex = -1; // The current thread's index within glWaitLocks
 static std::vector<WaitLock> glWaitLocks;
 static std::mutex glWaitLockMutex;
 

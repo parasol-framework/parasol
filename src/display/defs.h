@@ -447,8 +447,8 @@ extern std::recursive_mutex glInputLock;
 
 // Thread-specific variables.
 
-extern THREADVAR int16_t tlNoDrawing, tlNoExpose, tlVolatileIndex;
-extern THREADVAR OBJECTID tlFreeExpose;
+extern thread_local int16_t tlNoDrawing, tlNoExpose, tlVolatileIndex;
+extern thread_local OBJECTID tlFreeExpose;
 
 struct InputType {
    JTYPE Flags;  // As many flags as necessary to describe the input type

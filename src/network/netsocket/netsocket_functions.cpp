@@ -443,7 +443,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
 static void free_client(extNetSocket *Socket, objNetClient *Client)
 {
    pf::Log log(__FUNCTION__);
-   static THREADVAR int8_t recursive = 0;
+   static thread_local int8_t recursive = 0;
 
    if (!Client) return;
    if ((Socket->Flags & NSF::SERVER) IS NSF::NIL) return; // Must be a server

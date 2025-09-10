@@ -495,7 +495,7 @@ CSTRING ResolveGroupID(int GroupID)
 {
 #ifdef __unix__
 
-   static THREADVAR char group[40];
+   static thread_local char group[40];
 
    if (auto info = getgrgid(GroupID)) {
       int i;
@@ -532,7 +532,7 @@ CSTRING ResolveUserID(int UserID)
 {
 #ifdef __unix__
 
-   static THREADVAR char user[40];
+   static thread_local char user[40];
 
    if (auto info = getpwuid(UserID)) {
       int i;
@@ -755,7 +755,7 @@ void SetDefaultPermissions(int User, int Group, PERMIT Permissions)
 // Internal function for getting information from files, particularly virtual volumes.  If you know that a path
 // refers directly to the client's filesystem then you can revert to calling fs_getinfo() instead.
 
-static THREADVAR char glNameBuffer[MAX_FILENAME]; // Not thread-safe
+static thread_local char glNameBuffer[MAX_FILENAME]; // Not thread-safe
 
 ERR get_file_info(std::string_view Path, FileInfo *Info, int InfoSize)
 {

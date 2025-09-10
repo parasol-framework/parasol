@@ -48,7 +48,7 @@ using namespace pf;
 
 static OBJECTPTR clPicture = nullptr;
 static OBJECTPTR modDisplay = nullptr;
-static THREADVAR bool tlError = false;
+static thread_local bool tlError = false;
 
 JUMPTABLE_CORE
 JUMPTABLE_DISPLAY

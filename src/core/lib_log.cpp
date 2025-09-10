@@ -55,7 +55,7 @@ static const int COLUMN1 = 30;
 enum { MS_NONE, MS_FUNCTION, MS_MSG };
 enum { EL_NONE=0, EL_MINOR, EL_MAJOR, EL_MAJORBOLD };
 
-static THREADVAR int tlBaseLine = 0;
+static thread_local int tlBaseLine = 0;
 
 /*********************************************************************************************************************
 

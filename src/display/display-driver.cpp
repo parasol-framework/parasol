@@ -201,8 +201,8 @@ std::vector<OBJECTID> glFocusList;
 std::recursive_mutex glFocusLock;
 std::recursive_mutex glSurfaceLock;
 
-THREADVAR int16_t tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
-THREADVAR OBJECTID tlFreeExpose = 0;
+thread_local int16_t tlNoDrawing = 0, tlNoExpose = 0, tlVolatileIndex = 0;
+thread_local OBJECTID tlFreeExpose = 0;
 
 //********************************************************************************************************************
 // Alpha blending data.

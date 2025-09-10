@@ -97,7 +97,7 @@ void path_monitor(HOSTHANDLE FD, extFile *File)
 {
 #if 0
    pf::Log log(__FUNCTION__);
-   static THREADVAR int8_t recursion = FALSE; // Recursion avoidance is essential for correct queuing
+   static thread_local int8_t recursion = FALSE; // Recursion avoidance is essential for correct queuing
    if (recursion) return;
    recursion = TRUE;
 
@@ -222,7 +222,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 {
    pf::Log log(__FUNCTION__);
 
-   static THREADVAR bool recursion = false; // Recursion avoidance is essential for correct queuing
+   static thread_local bool recursion = false; // Recursion avoidance is essential for correct queuing
    if ((recursion) or (!File->prvWatch)) return;
    recursion = true;
 

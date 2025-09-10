@@ -419,7 +419,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 {
    pf::Log log;
    int i;
-   static int8_t recursion = 0;
+   static thread_local uint8_t recursion = 0;
 
    if (recursion) return log.warning(ERR::Recursion);
 

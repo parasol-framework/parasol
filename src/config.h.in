@@ -9,13 +9,6 @@
 #undef _LP64
 #cmakedefine _LP64 1
 #cmakedefine CMAKE_RC_COMPILER_INIT
-
-#if defined(_MSC_VER)
-#define THREADVAR __declspec( thread )
-#else
-#define THREADVAR __thread
-#endif
-
 #cmakedefine REVERSE_BYTEORDER
 
 #ifdef PARASOL_STATIC

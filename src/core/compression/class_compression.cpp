@@ -1658,7 +1658,7 @@ Search
 
 *********************************************************************************************************************/
 
-static THREADVAR CompressedItem glFindMeta;
+static thread_local CompressedItem glFindMeta;
 
 static ERR COMPRESSION_Find(extCompression *Self, struct cmp::Find *Args)
 {

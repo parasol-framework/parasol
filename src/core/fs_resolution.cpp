@@ -84,7 +84,7 @@ Loop:         The volume refers back to itself.
 
 static ERR resolve(std::string &, std::string &, RSF);
 static ERR resolve_path_env(std::string_view, std::string *);
-static THREADVAR bool tlClassLoaded;
+static thread_local bool tlClassLoaded;
 
 ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
 {

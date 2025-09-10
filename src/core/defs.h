@@ -763,17 +763,17 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern THREADVAR class extObjectContext *tlContext;
-extern THREADVAR class TaskMessage *tlCurrentMsg;
-extern THREADVAR bool tlMainThread;
-extern THREADVAR int16_t tlMsgRecursion;
-extern THREADVAR int16_t tlDepth;
-extern THREADVAR int16_t tlLogStatus;
-extern THREADVAR int16_t tlPreventSleep;
-extern THREADVAR int16_t tlPublicLockCount;
-extern THREADVAR int16_t tlPrivateLockCount;
-extern THREADVAR int glForceUID, glForceGID;
-extern THREADVAR PERMIT glDefaultPermissions;
+extern thread_local class extObjectContext *tlContext;
+extern thread_local class TaskMessage *tlCurrentMsg;
+extern thread_local bool tlMainThread;
+extern thread_local int16_t tlMsgRecursion;
+extern thread_local int16_t tlDepth;
+extern thread_local int16_t tlLogStatus;
+extern thread_local int16_t tlPreventSleep;
+extern thread_local int16_t tlPublicLockCount;
+extern thread_local int16_t tlPrivateLockCount;
+extern thread_local int glForceUID, glForceGID;
+extern thread_local PERMIT glDefaultPermissions;
 
 //********************************************************************************************************************
 
@@ -784,12 +784,12 @@ extern void (*glNetProcessMessages)(int, APTR);
 
 #ifdef _WIN32
 extern "C" WINHANDLE glProcessHandle;
-extern THREADVAR bool tlMessageBreak;
+extern thread_local bool tlMessageBreak;
 extern WINHANDLE glTaskLock;
 #endif
 
 #ifdef __unix__
-extern THREADVAR int glSocket;
+extern thread_local int glSocket;
 extern struct FileMonitor *glFileMonitor;
 #endif
 

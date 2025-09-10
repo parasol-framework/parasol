@@ -37,7 +37,7 @@ AllocMemory:
 
 ERR GetDisplayInfo(OBJECTID DisplayID, DISPLAYINFO **Result)
 {
-   static THREADVAR DISPLAYINFO *t_info = nullptr;
+   static thread_local DISPLAYINFO *t_info = nullptr;
 
    if (!Result) return ERR::NullArgs;
 

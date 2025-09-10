@@ -238,7 +238,7 @@ NullArgs: Either the XPath parameter or Result parameter was NULL.
 
 *********************************************************************************************************************/
 
-static THREADVAR int tlXMLCounter;
+static thread_local int tlXMLCounter;
 
 static ERR xml_count(extXML *Self, XMLTag &Tag, CSTRING Attrib)
 {

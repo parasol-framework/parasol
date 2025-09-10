@@ -2121,7 +2121,7 @@ static void create_styled_fonts(extScintilla *Self)
 //********************************************************************************************************************
 // Scintilla initiates drawing instructions through window::InvalidateRectangle()
 
-static THREADVAR objBitmap *glBitmap = nullptr;
+static thread_local objBitmap *glBitmap = nullptr;
 
 static void draw_scintilla(extScintilla *Self, objSurface *Surface, objBitmap *Bitmap)
 {

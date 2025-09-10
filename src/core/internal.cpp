@@ -19,7 +19,7 @@ using namespace pf;
 struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
    // OSX doesn't support anonymous sockets, so we use /tmp instead.
-   static THREADVAR struct sockaddr_un tlSocket;
+   static thread_local struct sockaddr_un tlSocket;
    tlSocket.sun_family = AF_UNIX;
    *Size = sizeof(sa_family_t) + snprintf(tlSocket.sun_path, sizeof(tlSocket.sun_path), "/tmp/parasol.%d", ProcessID) + 1;
    return &tlSocket;
@@ -27,8 +27,8 @@ struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 #elif __unix__
 struct sockaddr_un * get_socket_path(int ProcessID, socklen_t *Size)
 {
-   static THREADVAR struct sockaddr_un tlSocket;
-   static THREADVAR bool init = false;
+   static thread_local struct sockaddr_un tlSocket;
+   static thread_local bool init = false;
 
    if (!init) {
       tlSocket.sun_family = AF_UNIX;
