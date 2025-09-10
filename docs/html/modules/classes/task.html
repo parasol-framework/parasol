@@ -28,7 +28,7 @@
                           <i class="bi bi-dash-circle-fill text-secondary" data-bs-toggle="tooltip" title="Not writeable"></i></td><th class="col-md-1">Actions</th><td class="col-md-1"><span class="text-nowrap">APTR</span></td><td>Used to gain direct access to a task's actions.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Actions" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field provides direct access to the actions of a task, and is intended for use with the active task object returned from <a href="?page=CurrentTask">CurrentTask()</a>.  Hooking into the action table allows the running executable to 'blend-in' with Parasol's object oriented design.</p>
 <p>The Actions field points to a lookup table of ActionEntry items.  Hooking into an action involves writing its <code>AC</code> index in the table with a pointer to the action routine.  For example:</p>
-<pre>if (!AccessObject(CurrentTask(), 5000, &amp;task)) {
+<pre>if (not AccessObject(CurrentTask(), 5000, &amp;task)) {
    task-&gt;get(FID_Actions, actions);
    actions[AC::Seek] = PROGRAM_Seek;
    ReleaseObject(task);
@@ -49,6 +49,12 @@
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Args</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>Command line arguments (string format).</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Args" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>This field allows command line arguments to be set using a single string, whereby each value is separated by whitespace. The string will be disassembled and the arguments will be available to read from the <a data-bs-toggle="tooltip" title="Command line arguments (list format)." href="#tf-Parameters">Parameters</a> field.</p>
 <p>If an argument needs to include whitespace, use double-quotes to encapsulate the value.</p>
+<p>Security Limits: To prevent buffer overflow attacks, the following limits are enforced:</p>
+<ul>
+<li>Maximum total input length: 64KB (65,536 bytes)</li>
+<li>Maximum individual argument length: 8KB (8,192 bytes)</li>
+<li>Malformed quotes are detected and cause <code>ERR::Syntax</code> to be returned.</li>
+</ul>
       
 </div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-ErrorCallback" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-ErrorCallback"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
@@ -180,7 +186,7 @@
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
 <tr><th class="col-md-1">TimeOut</th><td>Can be returned if the <code>WAIT</code> flag is used.  Indicates that the process was launched, but the timeout expired before the process returned.</td></tr>
-<tr><th class="col-md-1">FieldNotSet</th><td>The Location field has not been set.</td></tr>
+<tr><th class="col-md-1">MissingPath</th><td>The Location field has not been set.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tac-GetKey" style="scroll-margin:3em;" id="ta-GetKey" role="button"><td style="width:1%; border-top-style: none; border-bottom-style: none;"><i class="bi bi-chevron-double-right text-secondary"></i></td><th class="col-md-1 text-primary">GetKey</th><td>Retrieves custom key values.</td></tr><tr><td class="hiddenRow" style="width:1%; border-top-style: none; border-bottom-style: none;"></td><td colspan="2" class="hiddenRow"><div id="tac-GetKey" class="collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Key</td><td>The name of a key value.</td></tr>
 <tr><td>Value</td><td>Pointer to a buffer space large enough to hold the retrieved value.</td></tr>
@@ -228,6 +234,8 @@
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Quit" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Quit</th><td id="tm-Quit">Sends a quit message to a task.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Quit" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR task::Quit(OBJECTPTR Object)</samp></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>The Quit() method can be used as a convenient way of sending a task a quit message.  This will normally result in the destruction of the task, so long as it is still functioning correctly and has been coded to respond to the <code>MSGID::QUIT</code> message type.  It is legal for a task to ignore a quit request if it is programmed to stay alive.</p>
+<p>Signal Handling on Unix: When terminating a foreign process on Unix systems, the quit behavior follows a two-stage approach for safe process termination: The first call sends <code>SIGTERM</code> to allow the process to shutdown gracefully; A second call sends <code>SIGKILL</code> to force immediate termination if the process is unresponsive.</p>
+<p>On Windows systems, the method uses <code>winTerminateApp()</code> with a timeout for process termination.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 </tbody></table></div></div></td></tr>

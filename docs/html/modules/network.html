@@ -65,12 +65,14 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="NLF"><h1>NLF Type</h1><p class="lead">Options for NetLookup</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NLF::NO_CACHE</th><td>Contact the name service and do not use the local DNS cache.</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
-<div class="docs-content" style="display:none;" id="NSF"><h1>NSF Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NSF::DISABLE_SERVER_VERIFY</th><td>Disable SSL certificate verification (for testing only).</td></tr>
+<div class="docs-content" style="display:none;" id="NSF"><h1>NSF Type</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NSF::BROADCAST</th><td>Enable broadcast (UDP only).</td></tr>
+<tr><th>NSF::DISABLE_SERVER_VERIFY</th><td>Disable SSL certificate verification (for testing only).</td></tr>
 <tr><th>NSF::LOG_ALL</th><td>Print extra log messages.</td></tr>
 <tr><th>NSF::MULTI_CONNECT</th><td>Allow multiple connections from the same IP when in server mode.</td></tr>
 <tr><th>NSF::SERVER</th><td>Puts the socket into server mode.  In this state the netsocket object will wait for incoming connections from clients.</td></tr>
 <tr><th>NSF::SSL</th><td>Use Secure Sockets Layer for all communication.</td></tr>
 <tr><th>NSF::SYNCHRONOUS</th><td>Use synchronous (blocking) network calls.</td></tr>
+<tr><th>NSF::UDP</th><td>Use UDP (connectionless datagram protocol) instead of TCP.</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 <div class="docs-content" style="display:none;" id="NTC"><h1>NTC Type</h1><p class="lead">NetSocket states</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>NTC::CONNECTED</th><td>There is an active connection at present.</td></tr>
 <tr><th>NTC::CONNECTING</th><td>A connection is being established.</td></tr>
@@ -113,9 +115,9 @@ if (!StrToAddress("127.0.0.1", &amp;addr)) {
 <tr><th>SCV::UNABLE_TO_GET_ISSUER_CERT_LOCALLY</th><td></td></tr>
 <tr><th>SCV::UNABLE_TO_VERIFY_LEAF_SIGNATURE</th><td></td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-IPAddress"><h1>IPAddress Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Data</th><td><span class="text-nowrap">INT</span></td><td>128-bit array for supporting both V4 and V6 IP addresses.</td></tr>
+<div class="docs-content" style="display:none;" id="struct-IPAddress"><h1>IPAddress Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Data</th><td><span class="text-nowrap">INT</span></td><td>128-bit array for supporting both V4 (32-bit host order) and V6 (8-bit byte order) IP addresses.</td></tr>
 <tr><th>Type</th><td><span class="text-nowrap">IPADDR</span></td><td>Identifies the address Data value as a V4 or V6 address type.</td></tr>
-<tr><th>Pad</th><td><span class="text-nowrap">INT</span></td><td>Unused padding for 64-bit alignment</td></tr>
+<tr><th>Port</th><td><span class="text-nowrap">INT</span></td><td>For UDP packets, identifies the client port number in host byte order.</td></tr>
 </tbody></table><div class="footer copyright text-right">Network module documentation © Paul Manias © 2005-2025</div></div>
 </div></div></div><script type="text/javascript" src="../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../js/base.js"></script><script type="text/javascript">
 var glCurrentMethod;
