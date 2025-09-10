@@ -5,6 +5,8 @@
 #include <span>
 #include <optional>
 #include <charconv>
+#include <concepts>
+#include <string_view>
 
 constexpr int CHUNK_BUFFER_SIZE = 32 * 1024;
 constexpr int MAX_CHUNK_HEADER_SIZE = 128;
@@ -12,10 +14,18 @@ constexpr int MAX_CHUNK_HEADER_SIZE = 128;
 namespace ranges = std::ranges;
 namespace views = std::views;
 
-//********************************************************************************************************************
-// CRLF detection
+template<typename T>
+concept StringLike = requires(T t) {
+    { t.data() } -> std::convertible_to<const char*>;
+    { t.size() } -> std::convertible_to<size_t>;
+    { t.empty() } -> std::convertible_to<bool>;
+};
 
-static inline std::string_view::iterator find_crlf_x2(std::string_view data)
+//********************************************************************************************************************
+// CRLF detection with concepts
+
+template<StringLike T>
+constexpr auto find_crlf_x2(T&& data) -> decltype(data.begin())
 {
    constexpr std::array<char, 4> pattern = {'\r', '\n', '\r', '\n'};
    auto result = ranges::search(data, pattern);
@@ -25,7 +35,8 @@ static inline std::string_view::iterator find_crlf_x2(std::string_view data)
 //********************************************************************************************************************
 // Header splitting
 
-static inline std::vector<std::string_view> split_http_headers(std::string_view headers)
+template<StringLike T>
+constexpr std::vector<std::string_view> split_http_headers(T&& headers)
 {
    std::vector<std::string_view> result;
 
@@ -40,7 +51,9 @@ static inline std::vector<std::string_view> split_http_headers(std::string_view 
 //********************************************************************************************************************
 // Field parsing for HTTP headers
 
-static inline std::pair<std::string_view, std::string_view> parse_header_field(std::string_view line)
+template<StringLike T>
+constexpr std::pair<std::string_view, std::string_view> parse_header_field(T&& line) 
+   requires requires(T t) { ranges::find(t, ':'); }
 {
    auto colon_pos = ranges::find(line, ':');
    if (colon_pos IS line.end()) return {std::string_view{}, std::string_view{}};
@@ -86,12 +99,13 @@ static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::
 //********************************************************************************************************************
 // WWW-Authenticate parsing
 
-static inline std::vector<std::pair<std::string_view, std::string_view>> parse_auth_fields(std::string_view auth_header)
+template<StringLike T>
+constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_fields(T&& auth_header)
 {
    std::vector<std::pair<std::string_view, std::string_view>> result;
 
    // Remove "Digest " prefix
-   auto auth_data = auth_header;
+   std::string_view auth_data = auth_header;
    if (auth_data.starts_with("Digest ")) auth_data.remove_prefix(7);
 
    // Split by commas
