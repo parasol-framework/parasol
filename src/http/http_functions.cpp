@@ -248,11 +248,13 @@ static ERR socket_outgoing(objNetSocket *Socket)
          // have to worry as the NetSocket has its own buffer - we're safe as long as we're only
          // sending data when the outgoing socket is ready.
 
-         write_error = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
+         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
       }
       else {
-         write_error = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
-         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", Self->WriteBuffer.size(), bytes_sent);
+         if (not Self->WriteBuffer.empty()) {
+            write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
+            if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", Self->WriteBuffer.size(), bytes_sent);
+         }
       }
 
       if (write_error IS ERR::Okay) {
@@ -261,7 +263,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
          Self->TotalSent += bytes_sent;
       }
       else {
-         log.warning("write_socket() failed: %s", GetErrorMsg(write_error));
+         log.warning("acWrite() failed: %s", GetErrorMsg(write_error));
          error = write_error;
       }
 
@@ -300,7 +302,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       if (((Self->ContentLength > 0) and (Self->Index >= Self->ContentLength)) or (error IS ERR::Terminate)) {
          int result;
 
-         if (Self->Chunked) write_socket(Self, (uint8_t *)"0\r\n\r\n", 5, &result);
+         if (Self->Chunked) acWrite(Self->Socket, (uint8_t *)"0\r\n\r\n", 5, &result);
 
          log.detail("Transfer complete - sent %" PRId64 " bytes.", Self->TotalSent);
          Self->setCurrentState(HGS::SEND_COMPLETE);
@@ -435,33 +437,6 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    writehex(response_hash, Response);
 
    log.trace("%s:%s:%s:%s:%s:%s", HA1, Self->AuthNonce.c_str(), NonceCount, Self->AuthCNonce.c_str(), Self->AuthQOP.c_str(), ha2_hex);
-}
-
-//********************************************************************************************************************
-
-static ERR write_socket(extHTTP *Self, CPTR Buffer, int Length, int *Result)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (Length > 0) {
-      //log.trace("Length: %d", Length);
-
-      if ((Self->Flags & HTF::DEBUG_SOCKET) != HTF::NIL) {
-         log.msg("SOCKET-OUTGOING: LEN: %d", Length);
-         for (int i=0; i < Length; i++) if ((((uint8_t *)Buffer)[i] < 128) and (((uint8_t *)Buffer)[i] >= 10)) {
-            printf("%c", ((STRING)Buffer)[i]);
-         }
-         else printf("?");
-         printf("\n");
-      }
-
-      return acWrite(Self->Socket, Buffer, Length, Result);
-   }
-   else {
-      *Result = 0;
-      log.traceWarning("Warning - empty write_socket() call.");
-      return ERR::Okay;
-   }
 }
 
 //********************************************************************************************************************

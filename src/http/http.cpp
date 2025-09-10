@@ -317,7 +317,6 @@ static ERR  output_incoming_data(extHTTP *, APTR, int);
 static void writehex(HASH, HASHHEX);
 static void digest_calc_ha1(extHTTP *, HASHHEX);
 static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHHEX, HASHHEX);
-static ERR  write_socket(extHTTP *, CPTR, int, int *);
 static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
@@ -725,7 +724,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
    // Buffer the HTTP command string to the socket (will write on connect if we're not connected already).
 
-   if (write_socket(Self, cstr.c_str(), cstr.length(), nullptr) IS ERR::Okay) {
+   if (acWrite(Self->Socket, cstr.c_str(), cstr.length()) IS ERR::Okay) {
       if (Self->Socket->State IS NTC::DISCONNECTED) {
          if (auto result = Self->Socket->connect(Self->ProxyServer ? Self->ProxyServer : Self->Host, Self->ProxyServer ? Self->ProxyPort : Self->Port, 5.0); result IS ERR::Okay) {
             Self->Connecting = true;
