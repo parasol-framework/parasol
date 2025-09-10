@@ -571,13 +571,9 @@ end
 local function sendHttpResponse(self, client, statusCode, statusText, headers, body)
    local response = "HTTP/1.1 " .. statusCode .. " " .. statusText .. "\r\n"
 
-   if not headers['content-length'] and body then
-      headers['content-length'] = tostring(#body)
-   end
+   if (not headers['content-length']) and (body) then headers['content-length'] = tostring(#body)end
 
-   if not headers['connection'] then
-      headers['connection'] = 'close'
-   end
+   if (not headers['connection']) then headers['connection'] = 'close' end
 
    -- Add security headers
    if self.enableCSP then
@@ -601,13 +597,16 @@ local function sendHttpResponse(self, client, statusCode, statusText, headers, b
 
    response = response .. "\r\n"
 
-   if body then
-      response = response .. body
-   end
+   if body then response = response .. body end
 
-   local err = client.acWrite(response)
+   local err, written = client.acWrite(response)
    if err != ERR_Okay then
       logMessage(self, 'Failed to send response: ' .. mSys.GetErrorMsg(err))
+   end
+   
+   if headers['connection'] == 'close' then -- The HTTP server is responsible for socket closure, so do it now. 
+      msg('Closing client socket per connection: close')
+      client.acDeactivate()
    end
 end
 
@@ -783,7 +782,6 @@ local function serveFile(self, ClientSocket, FilePath, Request)
 
    -- For HEAD requests, only send headers without body
    if Request.method == 'HEAD' then
-      file.free()
       sendHttpResponse(self, ClientSocket, 200, "OK", {
          ['content-type'] = mimeType,
          ['content-length'] = tostring(fileSize),
@@ -809,7 +807,6 @@ local function serveFile(self, ClientSocket, FilePath, Request)
 
          if err != ERR_Okay then
             logMessage(self, 'Error streaming file: ' .. mSys.GetErrorMsg(err))
-            file.free()
             return
          end
 
@@ -817,7 +814,6 @@ local function serveFile(self, ClientSocket, FilePath, Request)
             err = ClientSocket.acWrite(buffer:sub(1, bytes_read))
             if err != ERR_Okay then
                logMessage(self, 'Error writing to ClientSocket: ' .. mSys.GetErrorMsg(err))
-               file.free()
                return
             end
             totalSent = totalSent + bytes_read
@@ -825,23 +821,18 @@ local function serveFile(self, ClientSocket, FilePath, Request)
             break
          end
       end
-
-      file.free()
    else
       -- Small files: read all at once
       local buffer = string.alloc(fileSize)
       local err, bytes_read = file.acRead(buffer)
 
       if err != ERR_Okay then
-         file.free()
          local errorBody = createErrorPage(500, 'Internal Server Error', 'Error reading file.', 'Read error: ' .. mSys.GetErrorMsg(err))
          sendHttpResponse(self, ClientSocket, 500, "Internal Server Error", {
             ['content-type'] = 'text/html'
          }, errorBody)
          return
       end
-
-      file.free()
 
       if bytes_read < fileSize then
          logMessage(self, 'Warning: Read ' .. bytes_read .. ' bytes, expected ' .. fileSize)
@@ -1368,7 +1359,7 @@ local function serverIncoming(self, ClientSocket)
       return
    end
    
-   -- Phase 1: Read and parse headers
+   -- Read and parse headers
    if state.phase == 'READING_HEADERS' then
       -- Look for end of headers marker
       local header_end = state.buffer:find('\r\n\r\n')
@@ -1436,7 +1427,7 @@ local function serverIncoming(self, ClientSocket)
       end
    end
    
-   -- Phase 2: Read request body
+   -- Read request body
    if state.phase == 'READING_BODY' then
       if state.transfer_encoding and state.transfer_encoding:lower():find('chunked') then
          if not processChunkedBody(state, self) then
@@ -1479,7 +1470,7 @@ local function serverIncoming(self, ClientSocket)
       state.phase = 'PROCESSING'
    end
    
-   -- Phase 3: Process complete request
+   -- Process complete request
    if state.phase == 'PROCESSING' then
       local request = state.request
       
@@ -1596,8 +1587,6 @@ local function serverIncoming(self, ClientSocket)
          return
       end
 
-      -- For now, only GET and HEAD requests can access static files
-      -- POST/PUT/DELETE will need routing system (Phase 3) to be handled
       if request.method != 'GET' and request.method != 'HEAD' then
          local errorBody = createErrorPage(405, 'Method Not Allowed',
             'This method is not allowed for static file serving. Use routing system for API endpoints.',
