@@ -596,8 +596,8 @@ static int array_copy(lua_State *Lua)
 
          switch (a->TypeSize) {
             case 1: ((int8_t *)dest_ptr)[0]  = s; break;
-            case 2: ((int16_t *)dest_ptr)[0]  = s; break;
-            case 4: ((int *)dest_ptr)[0]  = s; break;
+            case 2: ((int16_t *)dest_ptr)[0] = s; break;
+            case 4: ((int *)dest_ptr)[0]     = s; break;
             case 8: ((int64_t *)dest_ptr)[0] = s; break;
          }
 

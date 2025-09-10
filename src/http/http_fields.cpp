@@ -409,9 +409,6 @@ Method: The HTTP instruction to execute is defined here (defaults to `GET`).
 
 static ERR SET_Method(extHTTP *Self, HTM Value)
 {
-   // Changing/Setting the method results in a reset of the variable fields
-   Self->Args.clear();
-   Self->Headers.clear();
    Self->Method = Value;
    return ERR::Okay;
 }

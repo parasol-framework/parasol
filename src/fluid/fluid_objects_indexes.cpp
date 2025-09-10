@@ -2,7 +2,7 @@
 //********************************************************************************************************************
 // Usage: object.field = newvalue
 //
-// Custom fields can be referenced by using _ as a prefix.
+// Custom key-values can be referenced by using _ as a prefix.
 
 static int object_newindex(lua_State *Lua)
 {
