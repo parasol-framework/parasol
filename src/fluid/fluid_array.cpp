@@ -576,7 +576,7 @@ static int array_copy(lua_State *Lua)
    }
 
    if (src_typesize IS a->TypeSize) {
-      if ((copy_total > 0) and (src_typesize > 0) and (copy_total > SIZE_MAX / src_typesize)) {
+      if ((copy_total > SIZE_MAX - to_index) or (to_index + copy_total > (size_t)a->Total)) {
          luaL_error(Lua, "Copy size calculation would overflow.");
          return 0;
       }
