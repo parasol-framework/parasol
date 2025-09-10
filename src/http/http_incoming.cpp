@@ -635,7 +635,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    Response.remove_prefix(5);
    if (Response.starts_with("1.1"))      Self->ResponseVersion = 0x11;
    else if (Response.starts_with("1.0")) Self->ResponseVersion = 0x10;
-   else if (Response.starts_with("2"))   Self->ResponseVersion = 0x20;
+   else if (Response.starts_with("2.0")) Self->ResponseVersion = 0x20;
    else if (Response.starts_with("3.0")) Self->ResponseVersion = 0x30;
    else return log.warning(ERR::InvalidHTTPResponse);
 
