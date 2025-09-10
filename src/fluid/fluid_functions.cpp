@@ -32,7 +32,7 @@ extern "C" {
 int fcmd_check(lua_State *Lua)
 {
    int param_count = lua_gettop(Lua); // Get the total number of parameters
-   
+
    if (lua_type(Lua, 1) IS LUA_TNUMBER) {
       ERR error = ERR(lua_tointeger(Lua, 1));
       if (int(error) >= int(ERR::ExceptionThreshold)) {
@@ -41,7 +41,7 @@ int fcmd_check(lua_State *Lua)
          luaL_error(Lua, GetErrorMsg(error));
       }
    }
-   
+
    // Return all parameters that were passed in
    return param_count;
 }

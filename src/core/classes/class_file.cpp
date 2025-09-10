@@ -1865,7 +1865,7 @@ ERR SET_Date(extFile *Self, DateTime *Date)
 -FIELD-
 Flags: File flags and options.
 
-Note: If setting flags post-initialisation, the following restrictions apply: 1. The file must not have been 
+Note: If setting flags post-initialisation, the following restrictions apply: 1. The file must not have been
 activated (opened) yet; 2. Only the `NEW`, `READ` and `WRITE` flags can be utilised.
 
 *********************************************************************************************************************/

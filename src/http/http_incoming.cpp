@@ -1,6 +1,139 @@
 // Functions for processing incoming HTTP data.
 
+#include <ranges>
+#include <algorithm>
+#include <span>
+#include <optional>
+#include <charconv>
+#include <concepts>
+#include <string_view>
+
 constexpr int CHUNK_BUFFER_SIZE = 32 * 1024;
+constexpr int MAX_CHUNK_HEADER_SIZE = 128;
+
+namespace ranges = std::ranges;
+namespace views = std::views;
+
+template<typename T>
+concept StringLike = requires(T t) {
+    { t.data() } -> std::convertible_to<const char*>;
+    { t.size() } -> std::convertible_to<size_t>;
+    { t.empty() } -> std::convertible_to<bool>;
+};
+
+//********************************************************************************************************************
+// CRLF detection with concepts
+
+template<StringLike T>
+constexpr auto find_crlf_x2(T&& data) -> decltype(data.begin())
+{
+   constexpr std::array<char, 4> pattern = {'\r', '\n', '\r', '\n'};
+   auto result = ranges::search(data, pattern);
+   return result.begin();
+}
+
+//********************************************************************************************************************
+// Header splitting
+
+template<StringLike T>
+constexpr std::vector<std::string_view> split_http_headers(T && Headers)
+{
+   std::vector<std::string_view> result;
+
+   for (auto line_range : Headers | std::views::split(std::string_view{"\r\n"})) {
+      std::string_view line(line_range.begin(), line_range.end());
+      if (!line.empty()) result.push_back(line);
+   }
+
+   return result;
+}
+
+//********************************************************************************************************************
+// Field parsing for HTTP headers
+
+template<StringLike T>
+constexpr std::pair<std::string_view, std::string_view> parse_header_field(T && Line) 
+   requires requires(T t) { ranges::find(t, ':'); }
+{
+   auto colon_pos = ranges::find(Line, ':');
+   if (colon_pos IS Line.end()) return {std::string_view{}, std::string_view{}};
+
+   auto field_name = std::string_view(Line.begin(), colon_pos);
+   auto value_start = colon_pos + 1;
+
+   // Skip whitespace
+   while ((value_start != Line.end()) and (uint8_t(*value_start) <= 0x20)) ++value_start;
+   auto field_value = std::string_view(value_start, Line.end());
+   return {field_name, field_value};
+}
+
+//********************************************************************************************************************
+// Chunk header parsing
+
+static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::span<const uint8_t> Buffer, size_t Start)
+{
+   if (Start >= Buffer.size()) return std::nullopt;
+
+   auto chunk_view = std::span(Buffer.begin() + Start, Buffer.end());
+   size_t max_scan = std::min(chunk_view.size(), size_t(MAX_CHUNK_HEADER_SIZE));
+   auto chunk_str = std::string_view((char *)chunk_view.data(), max_scan);
+
+   // Find CRLF using ranges
+   constexpr std::array<char, 2> crlf_pattern = {'\r', '\n'};
+   auto crlf_result = ranges::search(chunk_str, crlf_pattern);
+
+   if (crlf_result.begin() IS chunk_str.end()) return std::nullopt; // No CRLF found
+
+   // Extract hex string before CRLF
+   auto hex_str = std::string_view(chunk_str.begin(), crlf_result.begin());
+
+   // Parse hex value
+   int64_t chunk_length = 0;
+   auto [ptr, ec] = std::from_chars(hex_str.data(), hex_str.data() + hex_str.size(), chunk_length, 16);
+
+   if (ec != std::errc{}) return std::nullopt; // Parse error
+   size_t header_end = Start + std::distance(chunk_str.begin(), crlf_result.end());
+   return std::make_pair(chunk_length, header_end);
+}
+
+//********************************************************************************************************************
+// WWW-Authenticate parsing
+
+template<StringLike T>
+constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_fields(T && AuthHeader)
+{
+   std::vector<std::pair<std::string_view, std::string_view>> result;
+
+   // Remove "Digest " prefix
+   std::string_view auth_data = AuthHeader;
+   if (auth_data.starts_with("Digest ")) auth_data.remove_prefix(7);
+
+   // Split by commas
+   for (auto field_range : auth_data | std::views::split(',')) {
+      std::string_view field(field_range.begin(), field_range.end());
+
+      // Trim whitespace
+      while (!field.empty() and uint8_t(field.front()) <= 0x20) field.remove_prefix(1);
+      while (!field.empty() and uint8_t(field.back()) <= 0x20) field.remove_suffix(1);
+
+      if (field.empty()) continue;
+
+      auto eq_pos = ranges::find(field, '=');
+      if (eq_pos IS field.end()) continue;
+
+      auto key = std::string_view(field.begin(), eq_pos);
+      auto value = std::string_view(eq_pos + 1, field.end());
+
+      // Remove quotes if present
+      if (value.size() >= 2 and value.front() IS '"' and value.back() IS '"') {
+         value = value.substr(1, value.size() - 2);
+      }
+
+      result.emplace_back(key, value);
+   }
+
+   return result;
+}
 
 //********************************************************************************************************************
 
@@ -29,20 +162,19 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       }
 
       if (!len) break; // No more incoming data
-      
+
       #ifdef DEBUG_SOCKET
          if (glDebugFile) glDebugFile->write(Self->Response.data() + Self->ResponseIndex, len);
       #endif
-      
+
       Self->ResponseIndex += len;
 
-      // Advance search for terminated double CRLF
-      // Start searching from max(0, SearchIndex - 3) to handle "\r\n\r\n" split across read boundaries
+      // Use ranges-based CRLF detection for modern C++20 approach
+      std::string_view response_view(Self->Response.c_str(), Self->ResponseIndex);
+      auto crlf_iter = find_crlf_x2(response_view);
 
-      int search_start = (Self->SearchIndex >= 3) ? Self->SearchIndex - 3 : 0;
-      for (int i = search_start; i + 4 <= Self->ResponseIndex; i++) {
-         if (strncmp(Self->Response.c_str() + i, "\r\n\r\n", 4)) continue;
-
+      if (crlf_iter != response_view.end()) {
+         int i = int(std::distance(response_view.begin(), crlf_iter)); // Position of the CRLF pattern
          auto response_header = std::string_view(Self->Response.c_str(), i);
          if (parse_response(Self, response_header) != ERR::Okay) {
             SET_ERROR(log, Self, log.warning(ERR::InvalidHTTPResponse));
@@ -152,39 +284,14 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                   Self->AuthAlgorithm.clear();
                   Self->AuthDigest = true;
 
-                  int i = 6;
-                  while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
-
-                  while (authenticate[i]) {
-                     std::string_view auth (authenticate.begin()+i, authenticate.end());
-
-                     if (pf::startswith("realm=", auth))       i += extract_value(auth, Self->Realm);
-                     else if (pf::startswith("nonce=", auth))  i += extract_value(auth, Self->AuthNonce);
-                     else if (pf::startswith("opaque=", auth)) i += extract_value(auth, Self->AuthOpaque);
-                     else if (pf::startswith("algorithm=", auth)) i += extract_value(auth, Self->AuthAlgorithm);
-                     else if (pf::startswith("qop=", auth)) {
-                        std::string value;
-                        i += extract_value(auth, value);
-                        if (value.find("auth-int") != std::string::npos) Self->AuthQOP = "auth-int";
-                        else Self->AuthQOP = "auth";
-                     }
-                     else {
-                        while (authenticate[i] > 0x20) {
-                           if (authenticate[i] IS '=') {
-                              i++;
-                              while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
-                              if (authenticate[i] IS '"') {
-                                 i++;
-                                 while ((authenticate[i]) and (authenticate[i] != '"')) i++;
-                                 if (authenticate[i] IS '"') i++;
-                              }
-                              else i++;
-                           }
-                           else i++;
-                        }
-
-                        while (authenticate[i] > 0x20) i++;
-                        while ((authenticate[i]) and (authenticate[i] <= 0x20)) i++;
+                  // Use C++20 ranges for WWW-Authenticate parsing
+                  for (auto [key, value] : parse_auth_fields(authenticate)) {
+                     if (key IS "realm") Self->Realm = std::string(value);
+                     else if (key IS "nonce") Self->AuthNonce = std::string(value);
+                     else if (key IS "opaque") Self->AuthOpaque = std::string(value);
+                     else if (key IS "algorithm") Self->AuthAlgorithm = std::string(value);
+                     else if (key IS "qop") {
+                        Self->AuthQOP = (value.find("auth-int") != std::string_view::npos) ? "auth-int" : "auth";
                      }
                   }
                }
@@ -215,7 +322,12 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             return error;
          }
 
-         len = Self->ResponseIndex - (i + 4);
+         int header_end = i + 4;
+         if (header_end > Self->ResponseIndex) {
+            log.warning("Invalid header boundary calculation");
+            return ERR::InvalidHTTPResponse;
+         }
+         len = Self->ResponseIndex - header_end;
 
          if (Self->Chunked) {
             log.trace("Content to be received in chunks.");
@@ -223,13 +335,23 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             Self->ChunkRemaining   = 0;  // Length of the first chunk is unknown at this stage
             Self->ChunkBuffered = len;
             Self->Chunk.resize(len > CHUNK_BUFFER_SIZE ? len : CHUNK_BUFFER_SIZE);
-            if (len > 0) pf::copymem(Self->Response.data() + i + 4, Self->Chunk.data(), len);
+            if (len > 0) {
+               if (header_end + len <= std::ssize(Self->Response)) {
+                  pf::copymem(Self->Response.data() + header_end, Self->Chunk.data(), len);
+               }
+               else return log.warning(ERR::BufferOverflow);
+            }
             Self->SearchIndex = 0;
          }
          else {
             log.trace("%" PRId64 " bytes of content is incoming.  Bytes Buffered: %d, Index: %" PRId64, Self->ContentLength, len, Self->Index);
 
-            if (len > 0) output_incoming_data(Self, Self->Response.data() + i + 4, len);
+            if (len > 0) {
+               if (header_end + len <= std::ssize(Self->Response)) {
+                  output_incoming_data(Self, Self->Response.data() + header_end, len);
+               }
+               else return log.warning(ERR::BufferOverflow);
+            }
          }
 
          check_incoming_end(Self);
@@ -257,12 +379,12 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       Self->SearchIndex = (Self->ResponseIndex >= 3) ? Self->ResponseIndex - 3 : 0;
       log.trace("Partial HTTP header received, awaiting full header...");
    }
-   
+
    return ERR::Continue; // More data needed
 }
 
 //********************************************************************************************************************
-// Data chunk mode.  Store received data in a chunk buffer.  As long as we know the entire size of the chunk, all 
+// Data chunk mode.  Store received data in a chunk buffer.  As long as we know the entire size of the chunk, all
 // data can be immediately passed onto our subscribers.
 //
 // Chunked data is passed as follows:
@@ -279,9 +401,13 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
 static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 {
-   int i, count, len;
+   // Adaptive pass limit based on chunk buffer utilization
+   int max_passes = 2;
+   if (Self->ChunkBuffered > (int(Self->Chunk.size()) / 2)) {
+      max_passes = 3; // Allow more passes when buffer is fuller
+   }
 
-   for (count = 2; count > 0; count--) { // Make multiple passes in case there's more data than fits in the buffer
+   for (int count = max_passes; count > 0; count--) { // Make multiple passes in case there's more data than fits in the buffer
       pf::Log log("http_incoming");
       log.traceBranch("Receiving content (chunk mode) Index: %d/%d/%d, Remaining: %d", Self->ChunkIndex, Self->ChunkBuffered, int(Self->Chunk.size()), Self->ChunkRemaining);
 
@@ -300,13 +426,14 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
       // Fill the chunk buffer
 
       if (Self->ChunkBuffered < int(Self->Chunk.size())) {
-         Self->Error = acRead(Socket, Self->Chunk.data() + Self->ChunkBuffered, Self->Chunk.size() - Self->ChunkBuffered, &len);
-         
+         int read_bytes;
+         Self->Error = acRead(Socket, Self->Chunk.data() + Self->ChunkBuffered, Self->Chunk.size() - Self->ChunkBuffered, &read_bytes);
+
          #ifdef DEBUG_SOCKET
-            if ((glDebugFile) and (len)) glDebugFile->write(Self->Chunk.data() + Self->ChunkBuffered, len);
+            if ((glDebugFile) and (read_bytes)) glDebugFile->write(Self->Chunk.data() + Self->ChunkBuffered, read_bytes);
          #endif
 
-         log.trace("Filling the chunk buffer: Read %d bytes.", len);
+         log.trace("Filling the chunk buffer: Read %d bytes.", read_bytes);
 
          if (Self->Error IS ERR::Disconnected) {
             log.detail("Received all chunked content (disconnected by peer).");
@@ -318,11 +445,11 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
             Self->setCurrentState(HGS::COMPLETED);
             return ERR::Terminate;
          }
-         else if ((!len) and (Self->ChunkIndex >= Self->ChunkBuffered)) {
+         else if ((!read_bytes) and (Self->ChunkIndex >= Self->ChunkBuffered)) {
             log.detail("Nothing left to read.");
             return ERR::Okay;
          }
-         else Self->ChunkBuffered += len;
+         else Self->ChunkBuffered += read_bytes;
       }
 
       while (Self->ChunkIndex < Self->ChunkBuffered) {
@@ -336,68 +463,50 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
             log.trace("Examining chunk header (%d bytes buffered).", Self->ChunkBuffered - Self->ChunkIndex);
 
-            // Search for \r\n, handling split boundaries
-            // Start from ChunkIndex but check up to ChunkBuffered
-            // to handle the case where buffer ends with '\r'
-            bool found_crlf = false;
-            constexpr int MAX_CHUNK_HEADER_SIZE = 128; // Hex chunk size shouldn't exceed this
-            
-            for (i = Self->ChunkIndex; i < Self->ChunkBuffered; i++) {
+            std::span<const uint8_t> chunk_buffer(Self->Chunk.data(), Self->ChunkBuffered);
+            auto chunk_result = parse_chunk_header(chunk_buffer, Self->ChunkIndex);
+
+            if (chunk_result.has_value()) {
+               auto [temp_chunk_len, header_end] = chunk_result.value();
+
+               // Validate chunk length
+               if ((temp_chunk_len < 0) or (temp_chunk_len > MAX_CHUNK_LENGTH)) {
+                  if (temp_chunk_len > 0) {
+                     log.warning("Chunk length %d exceeds maximum %d terminating", int(temp_chunk_len), int(MAX_CHUNK_LENGTH));
+                     Self->setCurrentState(HGS::TERMINATED);
+                     return ERR::Terminate;
+                  }
+               }
+               Self->ChunkRemaining = temp_chunk_len;
+
+               if (Self->ChunkRemaining <= 0) {
+                  if (Self->Chunk[Self->ChunkIndex] IS '0') {
+                     // A line of "0\r\n" indicates an end to the chunks, followed by optional data for
+                     // interpretation.
+
+                     log.detail("End of chunks reached, optional data follows.");
+                     Self->setCurrentState(HGS::COMPLETED);
+                     return ERR::Terminate;
+                  }
+                  else {
+                     // We have reached the terminating line (CRLF on an empty line)
+                     log.trace("Received all chunked content.");
+                     Self->setCurrentState(HGS::COMPLETED);
+                     return ERR::Terminate;
+                  }
+               }
+
+               log.trace("Next chunk length is %d bytes.", Self->ChunkRemaining);
+               Self->ChunkIndex = int(header_end); // Move past the header
+            }
+            else {
                // Check if we've searched too far without finding \r\n (prevent DoS)
-               if ((i - Self->ChunkIndex) > MAX_CHUNK_HEADER_SIZE) {
+               if ((Self->ChunkBuffered - Self->ChunkIndex) > MAX_CHUNK_HEADER_SIZE) {
                   log.warning("Chunk header exceeds maximum size of %d bytes", MAX_CHUNK_HEADER_SIZE);
                   Self->setCurrentState(HGS::TERMINATED);
                   return ERR::Terminate;
                }
-
-               if (Self->Chunk[i] IS '\r') {
-                  // Check if we have the next byte
-                  if (i + 1 < Self->ChunkBuffered) {
-                     if (Self->Chunk[i + 1] IS '\n') {
-                        found_crlf = true;
-                        
-                        Self->Chunk[i] = 0;
-                        int64_t temp_chunk_len = strtoll((CSTRING)Self->Chunk.data() + Self->ChunkIndex, nullptr, 16);
-                        Self->Chunk[i] = '\r';
-
-                        // Validate chunk length
-                        if (temp_chunk_len < 0 or temp_chunk_len > MAX_CHUNK_LENGTH) {
-                           if (temp_chunk_len > 0) {
-                              log.warning("Chunk length %d exceeds maximum %d terminating", int(temp_chunk_len), int(MAX_CHUNK_LENGTH));
-                              Self->setCurrentState(HGS::TERMINATED);
-                              return ERR::Terminate;
-                           }
-                        }
-                        Self->ChunkRemaining = temp_chunk_len;
-
-                        if (Self->ChunkRemaining <= 0) {
-                           if (Self->Chunk[Self->ChunkIndex] IS '0') {
-                              // A line of "0\r\n" indicates an end to the chunks, followed by optional data for
-                              // interpretation.
-
-                              log.detail("End of chunks reached, optional data follows.");
-                              Self->setCurrentState(HGS::COMPLETED);
-                              return ERR::Terminate;
-                           }
-                           else {
-                              // We have reached the terminating line (CRLF on an empty line)
-                              log.trace("Received all chunked content.");
-                              Self->setCurrentState(HGS::COMPLETED);
-                              return ERR::Terminate;
-                           }
-                        }
-
-                        log.trace("Next chunk length is %d bytes.", Self->ChunkRemaining);
-                        Self->ChunkIndex = i + 2; // \r\n
-                        break;
-                     }
-                  }
-                  else {
-                     // We have '\r' at the end of the buffer - need more data
-                     // The next read might start with '\n'
-                     break;
-                  }
-               }
+               // No CRLF found, need more data
             }
 
             // Quit the main loop if we still don't have a chunk length (more data needs to be read from the HTTP socket).
@@ -406,7 +515,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
          }
 
          if (Self->ChunkRemaining > 0) {
-            len = Self->ChunkBuffered - Self->ChunkIndex;
+            auto len = Self->ChunkBuffered - Self->ChunkIndex;
             if (len > Self->ChunkRemaining) len = Self->ChunkRemaining; // Cannot process more bytes than the expected chunk length
 
             log.trace("%d bytes yet to process, outputting %d bytes", Self->ChunkRemaining, len);
@@ -440,17 +549,31 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
 //********************************************************************************************************************
 
-static ERR read_incoming_content(extHTTP* Self, objNetSocket* Socket)
+static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
 {
    pf::Log log(__FUNCTION__);
 
    std::vector<char> buffer(BUFFER_READ_SIZE);
 
-   // Maximum number of times that this subroutine can loop (on a fast network we could otherwise download indefinitely).
-   // A limit of 64K per read session is acceptable with a time limit of 1/200 frames.
+   // Adaptive loop limits based on content size and network conditions
+   // For small content, use fewer iterations; for large content or streaming, use more
 
-   int looplimit = (64 * 1024) / BUFFER_READ_SIZE;
-   int64_t timelimit = PreciseTime() + 5000000LL;
+   int base_loop_limit = (64 * 1024) / BUFFER_READ_SIZE;
+   int adaptive_loop_limit;
+
+   if (Self->ContentLength > 0) {
+      // Known content length - calculate optimal iterations
+      int64_t expected_iterations = (Self->ContentLength - Self->Index + BUFFER_READ_SIZE - 1) / BUFFER_READ_SIZE;
+      adaptive_loop_limit = std::min(int64_t(base_loop_limit * 2), std::max(int64_t(4), expected_iterations));
+   } else {
+      // Unknown content length (streaming) - use adaptive approach
+      adaptive_loop_limit = base_loop_limit;
+   }
+
+   // Adaptive time limit based on expected data volume
+   int64_t base_time_limit = 5000000LL; // 5ms
+   int64_t adaptive_time_limit = (Self->ContentLength > 1024 * 1024) ? base_time_limit * 2 : base_time_limit;
+   int64_t timelimit = PreciseTime() + adaptive_time_limit;
 
    while (true) {
       int len = BUFFER_READ_SIZE;
@@ -481,8 +604,8 @@ static ERR read_incoming_content(extHTTP* Self, objNetSocket* Socket)
          return ERR::Terminate;
       }
 
-      if (--looplimit <= 0) break; // Looped many times, need to break
-      if (PreciseTime() > timelimit) break; // Time limit reached
+      if (--adaptive_loop_limit <= 0) break;
+      if (PreciseTime() > timelimit) break;
    }
 
    Self->LastReceipt = PreciseTime();
@@ -537,33 +660,19 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
    log.msg("HTTP response header received, status code %d", code);
 
-   while (!Response.empty()) {
-      auto i = Response.find_first_of(":\r");
+   for (auto header_line : split_http_headers(Response)) {
+      auto [field_name, field_value] = parse_header_field(header_line);
 
-      if (i IS std::string::npos) break;
-      if (Response[i] IS ':') { // Detected "Key: Value"
-         auto field = std::string(Response.substr(0, i));
-         std::transform(field.begin(), field.end(), field.begin(),
-            [](unsigned char c){ return char(std::tolower(c)); });
+      if (field_name.empty()) continue;
 
-         i++;
-         while ((i < Response.size()) and (Response[i] <= 0x20)) i++;
+      // Convert field name to lowercase
+      std::string field_key;
+      field_key.reserve(field_name.size());
+      ranges::transform(field_name, std::back_inserter(field_key), [](char c) { return char(std::tolower(c)); });
 
-         auto end_line = Response.find_first_of("\r", i);
-         std::string_view value;
-         if (end_line IS std::string::npos) {
-            value = Response.substr(i);
-         }
-         else value = Response.substr(i, end_line - i);
-
-         Self->Args[field] = value;
-
-         if (end_line IS std::string::npos) break;
-         Response.remove_prefix(end_line + 2);
-      }
-      else Response.remove_prefix(i + 2);
+      Self->Args[field_key] = std::string(field_value);
    }
-   
+
    if (auto it = Self->Args.find("content-length"); it != Self->Args.end()) {
       auto &value = it->second;
       Self->ContentLength = 0;
@@ -683,7 +792,7 @@ static ERR socket_incoming(objNetSocket *Socket)
    auto Self = (extHTTP *)Socket->ClientData;
 
    if (Self->classID() != CLASSID::HTTP) return log.warning(ERR::SystemCorrupt);
-   
+
    #ifdef DEBUG_SOCKET
       if (!glDebugFile) glDebugFile = objFile::create::untracked({ fl::Path("temp:http-incoming-log.raw"), fl::Flags(FL::NEW|FL::WRITE) });
    #endif

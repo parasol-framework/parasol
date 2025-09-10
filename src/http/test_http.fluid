@@ -83,7 +83,7 @@ function testPostStringLocal()
 
    local err = proc.sleep()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   
+
    assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(nz(content), 'No content received.')
@@ -127,10 +127,10 @@ function testPostStringExt()
 
    local err = proc.sleep()
    assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
-   
-   if (http.status == 503) then 
+
+   if (http.status == 503) then
       print('httpbin.org service unavailable; cannot perform test.')
-      return 
+      return
    end
 
    assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))

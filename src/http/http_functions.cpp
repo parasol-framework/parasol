@@ -245,7 +245,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
 
          // Note: If the result were to come back as less than the length we intended to write,
          // it would screw up the entire sending process when using chunks.  However we don't
-         // have to worry as the NetSocket has its own buffer - we're safe as long as we're only 
+         // have to worry as the NetSocket has its own buffer - we're safe as long as we're only
          // sending data when the outgoing socket is ready.
 
          write_error = write_socket(Self, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
