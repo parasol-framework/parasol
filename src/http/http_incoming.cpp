@@ -36,11 +36,11 @@ constexpr auto find_crlf_x2(T&& data) -> decltype(data.begin())
 // Header splitting
 
 template<StringLike T>
-constexpr std::vector<std::string_view> split_http_headers(T&& headers)
+constexpr std::vector<std::string_view> split_http_headers(T && Headers)
 {
    std::vector<std::string_view> result;
 
-   for (auto line_range : headers | std::views::split(std::string_view{"\r\n"})) {
+   for (auto line_range : Headers | std::views::split(std::string_view{"\r\n"})) {
       std::string_view line(line_range.begin(), line_range.end());
       if (!line.empty()) result.push_back(line);
    }
@@ -52,29 +52,29 @@ constexpr std::vector<std::string_view> split_http_headers(T&& headers)
 // Field parsing for HTTP headers
 
 template<StringLike T>
-constexpr std::pair<std::string_view, std::string_view> parse_header_field(T&& line) 
+constexpr std::pair<std::string_view, std::string_view> parse_header_field(T && Line) 
    requires requires(T t) { ranges::find(t, ':'); }
 {
-   auto colon_pos = ranges::find(line, ':');
-   if (colon_pos IS line.end()) return {std::string_view{}, std::string_view{}};
+   auto colon_pos = ranges::find(Line, ':');
+   if (colon_pos IS Line.end()) return {std::string_view{}, std::string_view{}};
 
-   auto field_name = std::string_view(line.begin(), colon_pos);
+   auto field_name = std::string_view(Line.begin(), colon_pos);
    auto value_start = colon_pos + 1;
 
    // Skip whitespace
-   while ((value_start != line.end()) and (uint8_t(*value_start) <= 0x20)) ++value_start;
-   auto field_value = std::string_view(value_start, line.end());
+   while ((value_start != Line.end()) and (uint8_t(*value_start) <= 0x20)) ++value_start;
+   auto field_value = std::string_view(value_start, Line.end());
    return {field_name, field_value};
 }
 
 //********************************************************************************************************************
 // Chunk header parsing
 
-static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::span<const uint8_t> buffer, size_t start_pos)
+static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::span<const uint8_t> Buffer, size_t Start)
 {
-   if (start_pos >= buffer.size()) return std::nullopt;
+   if (Start >= Buffer.size()) return std::nullopt;
 
-   auto chunk_view = std::span(buffer.begin() + start_pos, buffer.end());
+   auto chunk_view = std::span(Buffer.begin() + Start, Buffer.end());
    size_t max_scan = std::min(chunk_view.size(), size_t(MAX_CHUNK_HEADER_SIZE));
    auto chunk_str = std::string_view((char *)chunk_view.data(), max_scan);
 
@@ -92,7 +92,7 @@ static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::
    auto [ptr, ec] = std::from_chars(hex_str.data(), hex_str.data() + hex_str.size(), chunk_length, 16);
 
    if (ec != std::errc{}) return std::nullopt; // Parse error
-   size_t header_end = start_pos + std::distance(chunk_str.begin(), crlf_result.end());
+   size_t header_end = Start + std::distance(chunk_str.begin(), crlf_result.end());
    return std::make_pair(chunk_length, header_end);
 }
 
@@ -100,12 +100,12 @@ static inline std::optional<std::pair<int64_t, size_t>> parse_chunk_header(std::
 // WWW-Authenticate parsing
 
 template<StringLike T>
-constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_fields(T&& auth_header)
+constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_fields(T && AuthHeader)
 {
    std::vector<std::pair<std::string_view, std::string_view>> result;
 
    // Remove "Digest " prefix
-   std::string_view auth_data = auth_header;
+   std::string_view auth_data = AuthHeader;
    if (auth_data.starts_with("Digest ")) auth_data.remove_prefix(7);
 
    // Split by commas
@@ -549,7 +549,7 @@ static ERR read_incoming_chunks(extHTTP *Self, objNetSocket *Socket)
 
 //********************************************************************************************************************
 
-static ERR read_incoming_content(extHTTP* Self, objNetSocket* Socket)
+static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
 {
    pf::Log log(__FUNCTION__);
 
