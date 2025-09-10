@@ -641,7 +641,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 
    if (auto pos = Response.find(' '); pos != std::string_view::npos) {
       Response.remove_prefix(pos + 1); // skip the ' '
-   } 
+   }
    else return log.warning(ERR::InvalidHTTPResponse);
 
    int code = 0;
