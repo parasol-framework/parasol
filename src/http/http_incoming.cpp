@@ -52,7 +52,7 @@ constexpr std::vector<std::string_view> split_http_headers(T && Headers)
 // Field parsing for HTTP headers
 
 template<StringLike T>
-constexpr std::pair<std::string_view, std::string_view> parse_header_field(T && Line) 
+constexpr std::pair<std::string_view, std::string_view> parse_header_field(T && Line)
    requires requires(T t) { ranges::find(t, ':'); }
 {
    auto colon_pos = ranges::find(Line, ':');
@@ -140,7 +140,7 @@ constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_
 static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 {
    pf::Log log(__FUNCTION__);
-   
+
    if (not ((Self->CurrentState IS HGS::READING_HEADER) or (Self->CurrentState IS HGS::AUTHENTICATING))) {
       return log.warning(ERR::SanityCheckFailed);
    }
@@ -305,7 +305,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             if ((Self->Password.empty()) and ((Self->Flags & HTF::NO_DIALOG) IS HTF::NIL)) {
                // Pop up a dialog requesting the user to authorise himself with the http server.  The user will
                // need to respond to the dialog before we can repost the HTTP request.
-               
+
                Self->setCurrentState(HGS::AUTHENTICATING);
 
                // TODO: Needs a rewrite using the dialog script
@@ -341,7 +341,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                return ERR::NotAuthorised;
             }
          }
-         
+
          if (Self->CurrentState != HGS::READING_CONTENT) {
             Self->setCurrentState(HGS::READING_CONTENT);
          }
@@ -721,7 +721,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
          Self->ContentLength = -1;
       }
    }
-   
+
    // Determine the keep-alive status according the default HTTP protocol rules and then consider any connection value.
 
    if (Self->ResponseVersion >= 0x11) Self->KeepAlive = true;
