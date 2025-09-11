@@ -194,6 +194,7 @@ const CSTRING glMessages[int(ERR::END)+1] = {
  "Task or process execution has failed.",
  "The compression data is invalid or corrupted.",
  "A sanity check has failed.",
+ "Client is not authorised to perform this operation.",
  nullptr // Needs to be null-terminated for Fluid support
 };
 
