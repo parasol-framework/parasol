@@ -124,11 +124,8 @@ constexpr int MAX_PORT_NUMBER = 65535;
 constexpr int BUFFER_READ_SIZE = 16384;  // Dictates how many bytes are read from the network socket at a time.  Do not make this greater than 64k
 constexpr int BUFFER_WRITE_SIZE = 16384; // Dictates how many bytes are written to the network socket at a time.  Do not make this greater than 64k
 
-template <class T> void SET_ERROR(pf::Log log, T http, ERR code) { http->Error = code; log.detail("Set error code %d: %s", int(code), GetErrorMsg(code)); }
-
 static void secure_clear_memory(void* Ptr, size_t Len) {
-   // Use volatile to prevent compiler optimization
-   volatile char *p = (volatile char *)Ptr;
+   auto p = (volatile char *)Ptr; // Use volatile to prevent compiler optimization
    for (size_t i = 0; i < Len; i++) p[i] = 0;
    for (size_t i = 0; i < Len; i++) p[i] = 0xff;
    for (size_t i = 0; i < Len; i++) p[i] = 0;
@@ -240,7 +237,7 @@ class extHTTP : public objHTTP {
    uint8_t  ResponseVersion;  // 0x10=HTTP/1.0, 0x11=HTTP/1.1
    uint16_t Connecting:1;
    uint16_t AuthAttempt:1;
-   uint16_t AuthPreset:1;
+   uint16_t PasswordPreset:1;
    uint16_t AuthDigest:1;
    uint16_t SecurePath:1;
    uint16_t Tunneling:1;
@@ -432,7 +429,7 @@ static ERR HTTP_Activate(extHTTP *Self)
 
    if (Self->TimeoutManager) { UpdateTimer(Self->TimeoutManager, 0); Self->TimeoutManager = 0; }
 
-   SET_ERROR(log, Self, ERR::Okay);
+   Self->Error         = ERR::Okay;
    Self->ResponseIndex = 0;
    Self->SearchIndex   = 0;
    Self->Index         = 0;
@@ -489,7 +486,7 @@ static ERR HTTP_Activate(extHTTP *Self)
          }
          else {
             log.warning("HTTP COPY request requires a destination path.");
-            SET_ERROR(log, Self, ERR::FieldNotSet);
+            Self->Error = ERR::FieldNotSet;
             return Self->Error;
          }
       }
@@ -515,7 +512,7 @@ static ERR HTTP_Activate(extHTTP *Self)
          }
          else {
             log.warning("HTTP MOVE request requires a destination path.");
-            SET_ERROR(log, Self, ERR::FieldNotSet);
+            Self->Error = ERR::FieldNotSet;
             return Self->Error;
          }
       }
@@ -564,14 +561,14 @@ static ERR HTTP_Activate(extHTTP *Self)
                   if (!Self->Size) {
                      Self->flInput->get(FID_Size, Self->ContentLength); // Use the file's size as ContentLength
                      if (!Self->ContentLength) { // If the file is empty or size is indeterminate then assume nothing is being posted
-                        SET_ERROR(log, Self, ERR::NoData);
+                        Self->Error = ERR::NoData;
                         return Self->Error;
                      }
                   }
                   else Self->ContentLength = Self->Size; // Allow the developer to define the ContentLength
                }
                else {
-                  SET_ERROR(log, Self, ERR::File);
+                  Self->Error = ERR::File;
                   return log.warning(Self->Error);
                }
             }
@@ -586,7 +583,7 @@ static ERR HTTP_Activate(extHTTP *Self)
             }
             else {
                log.warning("No data source specified for POST/PUT method.");
-               SET_ERROR(log, Self, ERR::FieldNotSet);
+               Self->Error = ERR::FieldNotSet;
                return Self->Error;
             }
 
@@ -622,7 +619,7 @@ static ERR HTTP_Activate(extHTTP *Self)
       }
       else {
          log.warning("HTTP method no. %d not understood.", int(Self->Method));
-         SET_ERROR(log, Self, ERR::Failed);
+         Self->Error = ERR::Failed;
          return Self->Error;
       }
 
@@ -707,7 +704,7 @@ static ERR HTTP_Activate(extHTTP *Self)
             fl::Incoming(C_FUNCTION(socket_incoming)),
             fl::Feedback(C_FUNCTION(socket_feedback)),
             fl::Flags(flags)))) {
-         SET_ERROR(log, Self, ERR::CreateObject);
+         Self->Error = ERR::CreateObject;
          return log.warning(Self->Error);
       }
    }
@@ -741,18 +738,18 @@ static ERR HTTP_Activate(extHTTP *Self)
             return ERR::Okay;
          }
          else if (result IS ERR::HostNotFound) {
-            SET_ERROR(log, Self, ERR::HostNotFound);
+            Self->Error = ERR::HostNotFound;
             return log.warning(Self->Error);
          }
          else {
-            SET_ERROR(log, Self, ERR::Failed);
+            Self->Error = ERR::ConnectionRefused;
             return log.warning(Self->Error);
          }
       }
       else return ERR::Okay;
    }
    else {
-      SET_ERROR(log, Self, ERR::Write);
+      Self->Error = ERR::Write;
       return log.warning(Self->Error);
    }
 }

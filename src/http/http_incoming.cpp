@@ -140,6 +140,10 @@ constexpr std::vector<std::pair<std::string_view, std::string_view>> parse_auth_
 static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 {
    pf::Log log(__FUNCTION__);
+   
+   if (not ((Self->CurrentState IS HGS::READING_HEADER) or (Self->CurrentState IS HGS::AUTHENTICATING))) {
+      return log.warning(ERR::SanityCheckFailed);
+   }
 
    while (true) {
       if (Self->Response.empty()) Self->Response.resize(512);
@@ -147,7 +151,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
       if (Self->ResponseIndex >= std::ssize(Self->Response)) {
          if (Self->Response.size() >= MAX_HEADER_SIZE) {
             log.warning("HTTP response header exceeds maximum size of %d bytes", MAX_HEADER_SIZE);
-            SET_ERROR(log, Self, ERR::InvalidHTTPResponse);
+            Self->Error = ERR::InvalidHTTPResponse;
             return ERR::Terminate;
          }
          Self->Response.resize(std::min(Self->Response.size() + 1024, size_t(MAX_HEADER_SIZE)));
@@ -176,11 +180,12 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
          int i = int(std::distance(response_view.begin(), crlf_iter)); // Position of the CRLF pattern
          auto response_header = std::string_view(Self->Response.c_str(), i);
          if (parse_response(Self, response_header) != ERR::Okay) {
-            SET_ERROR(log, Self, log.warning(ERR::InvalidHTTPResponse));
+            Self->Error = log.warning(ERR::InvalidHTTPResponse);
+            Self->setCurrentState(HGS::TERMINATED);
             return ERR::Terminate;
          }
 
-         if (Self->Tunneling) {
+         if (Self->Tunneling) { // Proxy tunneling in progress
             if (Self->Status IS HTS::OKAY) {
                // Proxy tunnel established.  Convert the socket to an SSL connection, then send the HTTP command.
 
@@ -190,15 +195,18 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                }
 
                if (net::SetSSL(Socket, "EnableSSL", nullptr) IS ERR::Okay) {
+                  Self->setCurrentState(HGS::COMPLETED);
                   return acActivate(Self);
                }
                else {
-                  SET_ERROR(log, Self, log.warning(ERR::ConnectionAborted));
+                  Self->Error = log.warning(ERR::ConnectionAborted);
+                  Self->setCurrentState(HGS::TERMINATED);
                   return ERR::Terminate;
                }
             }
             else {
-               SET_ERROR(log, Self, log.warning(ERR::ProxySSLTunnel));
+               Self->Error = log.warning(ERR::ProxySSLTunnel);
+               Self->setCurrentState(HGS::TERMINATED);
                return ERR::Terminate;
             }
          }
@@ -224,6 +232,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                   if (pf::startswith("http:", buffer)) Self->setLocation(buffer);
                   else if (pf::startswith("https:", buffer)) Self->setLocation(buffer);
                   else Self->setPath(buffer);
+                  Self->setCurrentState(HGS::COMPLETED);
                   acActivate(Self); // Try again
                   Self->Flags |= HTF::MOVED;
                   return ERR::Okay;
@@ -251,24 +260,20 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
          log.msg("Complete response header has been received.  Incoming Content: %" PRId64, Self->ContentLength);
 
-         if (Self->CurrentState != HGS::READING_CONTENT) {
-            Self->setCurrentState(HGS::READING_CONTENT);
-         }
-
          Self->AuthDigest = false;
          if ((Self->Status IS HTS::UNAUTHORISED) and (Self->AuthRetries < MAX_AUTH_RETRIES)) {
             Self->AuthRetries++;
 
-            if (!Self->Password.empty()) {
+            if (not Self->Password.empty()) {
                // Destroy the current password if it was entered by the user (therefore is invalid) or if it was
                // preset and second authorisation attempt failed (in the case of preset passwords, two
                // authorisation attempts are required in order to receive the 401 from the server first).
 
-               if ((Self->AuthPreset IS false) or (Self->AuthRetries >= 2)) {
-                  if (!Self->Password.empty()) {
+               if ((not Self->PasswordPreset) or (Self->AuthRetries >= 2)) {
+                  if (not Self->Password.empty()) {
                      secure_clear_memory(const_cast<char*>(Self->Password.data()), Self->Password.size());
+                     Self->Password.clear();
                   }
-                  Self->Password.clear();
                }
             }
 
@@ -297,12 +302,11 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
             }
             else log.msg("Authenticate method unknown.");
 
-            Self->setCurrentState(HGS::AUTHENTICATING);
-
-            ERR error = ERR::Okay;
             if ((Self->Password.empty()) and ((Self->Flags & HTF::NO_DIALOG) IS HTF::NIL)) {
                // Pop up a dialog requesting the user to authorise himself with the http server.  The user will
                // need to respond to the dialog before we can repost the HTTP request.
+               
+               Self->setCurrentState(HGS::AUTHENTICATING);
 
                // TODO: Needs a rewrite using the dialog script
                std::string scriptfile((const char *)glAuthScript, 0, glAuthScriptLength);
@@ -310,14 +314,36 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                objScript::create script = { fl::String(scriptfile) };
                if (script.ok()) {
                   AdjustLogLevel(1);
-                  error = script->activate();
+                  auto error = script->activate();
                   AdjustLogLevel(-1);
+                  if (error != ERR::Okay) {
+                     Self->Error = ERR::Activate;
+                     Self->setCurrentState(HGS::TERMINATED);
+                  }
+                  return error;
                }
-               else error = ERR::CreateObject;
+               else {
+                  Self->Error = log.warning(ERR::CreateObject);
+                  Self->setCurrentState(HGS::TERMINATED);
+                  return ERR::CreateObject;
+               }
             }
-            else acActivate(Self);
-
-            return error;
+            else if (not Self->Password.empty()) {
+               pf::Log log(__FUNCTION__);
+               log.branch("Reattempting request with preset password.");
+               Self->setCurrentState(HGS::AUTHENTICATING);
+               // NB: This cancels the reading of any content that followed the header.
+               return acActivate(Self);
+            }
+            else {
+               Self->Error = log.warning(ERR::NotAuthorised);
+               Self->setCurrentState(HGS::COMPLETED);
+               return ERR::NotAuthorised;
+            }
+         }
+         
+         if (Self->CurrentState != HGS::READING_CONTENT) {
+            Self->setCurrentState(HGS::READING_CONTENT);
          }
 
          int header_end = i + 4;
@@ -329,9 +355,9 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
 
          if (Self->Chunked) {
             log.trace("Content to be received in chunks.");
-            Self->ChunkIndex = 0; // Number of bytes processed for the current chunk
-            Self->ChunkRemaining   = 0;  // Length of the first chunk is unknown at this stage
-            Self->ChunkBuffered = len;
+            Self->ChunkIndex     = 0; // Number of bytes processed for the current chunk
+            Self->ChunkRemaining = 0;  // Length of the first chunk is unknown at this stage
+            Self->ChunkBuffered  = len;
             Self->Chunk.resize(len > CHUNK_BUFFER_SIZE ? len : CHUNK_BUFFER_SIZE);
             if (len > 0) {
                if (header_end + len <= std::ssize(Self->Response)) {
@@ -364,7 +390,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                if (Self->Status IS HTS::UNAUTHORISED) log.warning("Exhausted maximum number of retries.");
                else log.warning("Status code %d != 2xx", int(Self->Status));
 
-               SET_ERROR(log, Self, ERR::Failed);
+               Self->Error = ERR::Failed;
                return ERR::Terminate;
             }
             else log.warning("Status code %d != 2xx.  Receiving content...", int(Self->Status));
@@ -751,7 +777,7 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
             Self->setIndex(0);
          }
       }
-      else SET_ERROR(log, Self, ERR::CreateFile);
+      else Self->Error = ERR::CreateFile;
    }
 
    if (Self->flOutput) Self->flOutput->write(Buffer, Length, nullptr);
@@ -781,7 +807,7 @@ static ERR output_incoming_data(extHTTP *Self, APTR Buffer, int Length)
       }
       else error = ERR::InvalidValue;
 
-      if (error > ERR::ExceptionThreshold) SET_ERROR(log, Self, error);
+      if (error > ERR::ExceptionThreshold) Self->Error = error;
 
       if (error IS ERR::Terminate) {
          pf::Log log(__FUNCTION__);
