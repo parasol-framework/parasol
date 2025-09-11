@@ -423,13 +423,13 @@ end
          'testSingleElementConcat',
          'testFormatValidation',
          'testStringArrayUnsupported',
-         // Array safety
+         -- Array safety
          'testArrayBoundsChecking',
          'testArraySizeValidation',
          'testGetStringBounds',
          'testArrayCopyBounds',
          'testArrayWriteBounds',
-         // Table to array copying
+         -- Table to array copying
          'testTableToIntegerArrayCopy',
          'testTableToFloatArrayCopy',
          'testTableToByteArrayCopy',
