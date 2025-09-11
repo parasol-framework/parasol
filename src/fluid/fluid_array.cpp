@@ -546,10 +546,13 @@ static int array_copy(lua_State *Lua)
 
    size_t src_size;
    uint8_t *src;
-   int src_typesize;
-   if ((src = (uint8_t *)luaL_checklstring(Lua, 1, &src_size))) {
+   int src_typesize = 0;
+   if (lua_isstring(Lua, 1)) {
       src_typesize = 1;
-      if ((size_t)copy_total > src_size) copy_total = (int)src_size;
+      if ((src = (uint8_t *)lua_tolstring(Lua, 1, &src_size))) {
+         if ((size_t)copy_total > src_size) copy_total = (int)src_size;
+      }
+      else { luaL_argerror(Lua, 1, "String expected."); return 0; }
    }
    else if (auto src_array = (struct array *)get_meta(Lua, 1, "Fluid.array")) {
       src_typesize = src_array->TypeSize;
@@ -557,8 +560,81 @@ static int array_copy(lua_State *Lua)
       src          = src_array->ptrByte;
    }
    else if (lua_istable(Lua, 1)) {
-      luaL_argerror(Lua, 1, "Tables not supported yet.");
-      return 0;
+      // Get table length for bounds checking
+      int table_len = lua_objlen(Lua, 1);
+      if (table_len < 1) {
+         luaL_argerror(Lua, 1, "Table is empty.");
+         return 0;
+      }
+      
+      if (copy_total < 0) copy_total = table_len;
+      else if (copy_total > table_len) copy_total = table_len;
+      
+      int c_index = to_index - 1; // Convert Lua index to C index
+      
+      // Check bounds for destination array
+      if ((c_index < 0) or (c_index >= a->Total)) {
+         luaL_error(Lua, "Destination index out of bounds: %d (array size: %d).", to_index, a->Total);
+         return 0;
+      }
+      
+      if (c_index + copy_total > a->Total) {
+         luaL_error(Lua, "Table copy would exceed array bounds (%d+%d > %d).", to_index, copy_total, a->Total);
+         return 0;
+      }
+      
+      // Copy table elements using ipairs-style iteration
+      for (int i = 0; i < copy_total; i++) {
+         lua_pushinteger(Lua, i + 1); // Lua tables are 1-indexed
+         lua_gettable(Lua, 1);        // Get table[i+1]
+         
+         int dest_index = c_index + i;
+         
+         // Convert and store based on array type
+         switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
+            case FD_STRING:
+               if (auto str = lua_tostring(Lua, -1)) {
+                  luaL_error(Lua, "Writing to string arrays from tables is not yet supported.");
+                  lua_pop(Lua, 1);
+                  return 0;
+               }
+               break;
+            case FD_POINTER:
+               luaL_error(Lua, "Writing to pointer arrays from tables is not supported.");
+               lua_pop(Lua, 1);
+               return 0;
+            case FD_FLOAT:
+               a->ptrFloat[dest_index] = lua_tonumber(Lua, -1);
+               break;
+            case FD_DOUBLE:
+               a->ptrDouble[dest_index] = lua_tonumber(Lua, -1);
+               break;
+            case FD_INT64:
+               a->ptrLarge[dest_index] = lua_tointeger(Lua, -1);
+               break;
+            case FD_INT:
+               a->ptrLong[dest_index] = lua_tointeger(Lua, -1);
+               break;
+            case FD_WORD:
+               a->ptrWord[dest_index] = lua_tointeger(Lua, -1);
+               break;
+            case FD_BYTE:
+               a->ptrByte[dest_index] = lua_tointeger(Lua, -1);
+               break;
+            case FD_STRUCT:
+               luaL_error(Lua, "Writing to struct arrays from tables is not yet supported.");
+               lua_pop(Lua, 1);
+               return 0;
+            default:
+               luaL_error(Lua, "Unsupported array type $%.8x", a->Type);
+               lua_pop(Lua, 1);
+               return 0;
+         }
+         
+         lua_pop(Lua, 1); // Remove the value from stack
+      }
+      
+      return 0; // Successfully copied table to array
    }
    else { luaL_argerror(Lua, 1, "String or array expected."); return 0; }
 
@@ -576,7 +652,7 @@ static int array_copy(lua_State *Lua)
    }
 
    if (src_typesize IS a->TypeSize) {
-      if ((copy_total > SIZE_MAX - to_index) or (to_index + copy_total > (size_t)a->Total)) {
+      if ((unsigned(copy_total) > SIZE_MAX - to_index) or (to_index + copy_total > a->Total)) {
          luaL_error(Lua, "Copy size calculation would overflow.");
          return 0;
       }
