@@ -129,7 +129,7 @@ static ERR SET_CurrentState(extHTTP *Self, HGS Value)
       }
       else error = ERR::Okay;
 
-      if (error > ERR::ExceptionThreshold) SET_ERROR(log, Self, error);
+      if (error > ERR::ExceptionThreshold) Self->Error = error;
 
       if (error IS ERR::Terminate) {
          if (Self->CurrentState IS HGS::SENDING_CONTENT) {
@@ -174,9 +174,12 @@ The receiving object can identify the data as HTTP information by checking the c
 Error: The error code received for the most recently executed HTTP command.
 
 On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful
-then the value will be zero (`ERR::Okay`). It should be noted that certain error codes may not necessarily indicate
-failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content.  For genuine HTTP
-error codes, see the #Status field.
+then the value will be zero (`ERR::Okay`). It should be noted that certain error codes may not necessarily indicate a
+comms failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content; while
+`ERR::NotAuthorised` is a credentials issue.
+
+The recommended process for error checking is: 1. Check if the #CurrentState is `COMPLETED` or `TERMINATED`;
+2. Check the #Status field for `NIL`; 3. Check the #Error field for the error code.
 
 -FIELD-
 Flags: Optional flags.
@@ -506,7 +509,7 @@ A `401` status code is returned in the event of an authorisation failure.
 static ERR SET_Password(extHTTP *Self, CSTRING Value)
 {
    Self->Password.assign(Value);
-   Self->AuthPreset = true;
+   Self->PasswordPreset = true;
    return ERR::Okay;
 }
 
@@ -681,6 +684,13 @@ static ERR SET_StateChanged(extHTTP *Self, FUNCTION *Value)
 
 -FIELD-
 Status: Indicates the HTTP status code returned on completion of an HTTP request.
+
+The Status value is only valid on completion of an HTTP request.  A value of `200` indicates that the
+request was successful.  Other values indicate either redirection or an error condition.  For a full list of
+HTTP status codes, see https://www.w3.org/Protocols/rfc2616/rfc
+
+If the Status value is `NIL` on completion, the request has failed without a valid response being received from the 
+server.  Refer to the #Error field for more information.
 
 -FIELD-
 UserAgent: Specifies the name of the user-agent string that is sent in HTTP requests.

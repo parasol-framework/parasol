@@ -38,7 +38,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
       if (Self->Connecting) {
          Self->Connecting = false;
 
-         SET_ERROR(log, Self, Socket->Error);
+         Self->Error = Socket->Error;
          log.branch("Deactivating (connect failure message received).");
          Self->setCurrentState(HGS::TERMINATED);
          return;
@@ -49,17 +49,17 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
          return;
       }
       else if (Self->CurrentState IS HGS::READING_HEADER) {
-         SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
+         Self->Error = Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected;
          log.trace("Received broken header as follows:\n%s", Self->Response.c_str());
          Self->setCurrentState(HGS::TERMINATED);
       }
       else if (Self->CurrentState IS HGS::SEND_COMPLETE) {
          // Disconnection on completion of sending data should be no big deal
-         SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Okay);
+         Self->Error = Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Okay;
          Self->setCurrentState(HGS::COMPLETED);
       }
       else if (Self->CurrentState IS HGS::SENDING_CONTENT) {
-         SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
+         Self->Error = Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected;
 
          // If the socket is not active, then the disconnection is a result of destroying the object (e.g. due to a redirect).
 
@@ -76,21 +76,22 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
             std::vector<char> buffer(BUFFER_READ_SIZE);
 
             while (true) {
-               int len = buffer.size();
+               auto len = std::ssize(buffer);
                if (Self->ContentLength != -1) {
                   if (len > Self->ContentLength - Self->Index) len = Self->ContentLength - Self->Index;
                }
 
-               if ((Self->Error = acRead(Socket, buffer.data(), len, &len)) != ERR::Okay) {
+               int bytes_read;
+               if ((Self->Error = acRead(Socket, buffer.data(), len, &bytes_read)) != ERR::Okay) {
                   log.warning("Read() returned error: %s", GetErrorMsg(Self->Error));
                }
 
-               if (!len) { // No more incoming data
-                  log.detail("Received %d bytes of content in this content reading session.", len);
+               if (!bytes_read) { // No more incoming data
+                  log.detail("Received %d bytes of content in this content reading session.", bytes_read);
                   break;
                }
 
-               output_incoming_data(Self, buffer.data(), len);
+               output_incoming_data(Self, buffer.data(), bytes_read);
                if (check_incoming_end(Self) IS ERR::True) break;
             }
          }
@@ -101,13 +102,13 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
                Self->setCurrentState(HGS::COMPLETED);
             }
             else {
-               SET_ERROR(log, Self, Socket->Error);
+               Self->Error = Socket->Error;
                Self->setCurrentState(HGS::TERMINATED);
             }
          }
          else if (Self->Index < Self->ContentLength) {
             log.warning("Disconnected before all content was downloaded (%" PRId64 " of %" PRId64 ")", Self->Index, Self->ContentLength);
-            SET_ERROR(log, Self, Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected);
+            Self->Error = Socket->Error > ERR::ExceptionThreshold ? Socket->Error : ERR::Disconnected;
             Self->setCurrentState(HGS::TERMINATED);
          }
          else {
@@ -117,9 +118,8 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
       }
       else if (Self->CurrentState IS HGS::AUTHENTICATING) {
          if (Self->DialogWindow) {
-            // The HTTP socket was closed because the user is taking too long
-            // to authenticate with the dialog window.  We will close the socket
-            // and create a new one once the user responds to the dialog.
+            // The HTTP socket was closed because the user is taking too long to authenticate with the dialog 
+            // window.  We will close the socket and create a new one once the user responds to the dialog.
 
             Self->Socket->set(FID_Feedback, (APTR)nullptr);
             FreeResource(Socket);
@@ -184,14 +184,14 @@ static ERR socket_outgoing(objNetSocket *Socket)
 
       if (error > ERR::ExceptionThreshold) log.warning("Outgoing callback error: %s", GetErrorMsg(error));
 
-      client_bytes_written = Self->WriteBuffer.size() - (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
+      client_bytes_written = std::ssize(Self->WriteBuffer) - (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
    }
    else if (Self->flInput) {
       log.detail("Sending content from an Input file.");
 
       int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
       Self->WriteBuffer.resize(Self->BufferSize + offset);
-      error = acRead(Self->flInput, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &client_bytes_written);
+      error = acRead(Self->flInput, Self->WriteBuffer.data() + offset, std::ssize(Self->WriteBuffer) - offset, &client_bytes_written);
       Self->WriteBuffer.resize(client_bytes_written + offset);
 
       if (error != ERR::Okay) log.warning("Input file read error: %s", GetErrorMsg(error));
@@ -212,7 +212,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       if (object.granted()) {
          int offset = (Self->Chunked ? CHUNK_LENGTH_OFFSET : 0);
          Self->WriteBuffer.resize(Self->BufferSize + offset);
-         error = acRead(*object, Self->WriteBuffer.data() + offset, Self->WriteBuffer.size() - offset, &client_bytes_written);
+         error = acRead(*object, Self->WriteBuffer.data() + offset, std::ssize(Self->WriteBuffer) - offset, &client_bytes_written);
          Self->WriteBuffer.resize(client_bytes_written + offset);
       }
 
@@ -229,12 +229,12 @@ static ERR socket_outgoing(objNetSocket *Socket)
       int bytes_sent;
       ERR write_error;
 
-      log.trace("Writing %" PRId64 " bytes (of expected %" PRId64 ") to socket.  Chunked: %d", Self->WriteBuffer.size(), Self->ContentLength, Self->Chunked);
+      log.trace("Writing %" PRId64 " bytes (of expected %" PRId64 ") to socket.  Chunked: %d", std::ssize(Self->WriteBuffer), Self->ContentLength, Self->Chunked);
 
       if (Self->Chunked) {
          // Chunked encoding requires the length of each chunk to be sent in hexadecimal format followed by CRLF,
          // then the data, then another CRLF.
-         int len = Self->WriteBuffer.size() - CHUNK_LENGTH_OFFSET;
+         auto len = std::ssize(Self->WriteBuffer) - CHUNK_LENGTH_OFFSET;
          std::format_to(Self->WriteBuffer.begin(), "{:08x}\r\n", len); // Use the full 10 bytes allocated earlier
 
          // Write the trailing CRLF to signal the end of the chunk;
@@ -248,11 +248,11 @@ static ERR socket_outgoing(objNetSocket *Socket)
          // have to worry as the NetSocket has its own buffer - we're safe as long as we're only
          // sending data when the outgoing socket is ready.
 
-         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
+         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), std::ssize(Self->WriteBuffer), &bytes_sent);
       }
       else {
-         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), Self->WriteBuffer.size(), &bytes_sent);
-         if (Self->WriteBuffer.size() != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", int64_t(Self->WriteBuffer.size()), bytes_sent);
+         write_error = acWrite(Self->Socket, Self->WriteBuffer.data(), std::ssize(Self->WriteBuffer), &bytes_sent);
+         if (std::ssize(Self->WriteBuffer) != unsigned(bytes_sent)) log.warning("Only sent %" PRId64 " of %d bytes.", int64_t(std::ssize(Self->WriteBuffer)), bytes_sent);
       }
 
       if (write_error IS ERR::Okay) {
@@ -273,7 +273,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
       // In the event of an exception, the connection is immediately dropped and the transmission
       // is considered irrecoverable.
       Self->setCurrentState(HGS::TERMINATED);
-      SET_ERROR(log, Self, error);
+      Self->Error = error;
       return ERR::Terminate;
    }
    else {
@@ -306,9 +306,7 @@ static ERR socket_outgoing(objNetSocket *Socket)
          Self->setCurrentState(HGS::SEND_COMPLETE);
          return ERR::Terminate;
       }
-      else {
-         log.detail("Sent %" PRId64 " bytes of %" PRId64, Self->Index, Self->ContentLength);
-      }
+      else log.detail("Sent %" PRId64 " bytes of %" PRId64, Self->Index, Self->ContentLength);
    }
 
    // Data timeout when uploading is high due to content buffering
@@ -354,15 +352,15 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
 
    MD5Init(&md5);
 
-   if (!Self->Username.empty()) MD5Update(&md5, (uint8_t *)Self->Username.c_str(), Self->Username.size());
+   if (!Self->Username.empty()) MD5Update(&md5, (uint8_t *)Self->Username.c_str(), std::ssize(Self->Username));
 
    MD5Update(&md5, (uint8_t *)":", 1);
 
-   if (!Self->Realm.empty()) MD5Update(&md5, (uint8_t *)Self->Realm.c_str(), Self->Realm.size());
+   if (!Self->Realm.empty()) MD5Update(&md5, (uint8_t *)Self->Realm.c_str(), std::ssize(Self->Realm));
 
    MD5Update(&md5, (uint8_t *)":", 1);
 
-   if (!Self->Password.empty()) MD5Update(&md5, (uint8_t *)Self->Password.c_str(), Self->Password.size());
+   if (!Self->Password.empty()) MD5Update(&md5, (uint8_t *)Self->Password.c_str(), std::ssize(Self->Password));
 
    MD5Final((uint8_t *)HA1, &md5);
 
@@ -370,9 +368,9 @@ static void digest_calc_ha1(extHTTP *Self, HASHHEX SessionKey)
       MD5Init(&md5);
       MD5Update(&md5, (uint8_t *)HA1, HASHLEN);
       MD5Update(&md5, (uint8_t *)":", 1);
-      if (!Self->AuthNonce.empty()) MD5Update(&md5, (uint8_t *)Self->AuthNonce.c_str(), Self->AuthNonce.size());
+      if (!Self->AuthNonce.empty()) MD5Update(&md5, (uint8_t *)Self->AuthNonce.c_str(), std::ssize(Self->AuthNonce));
       MD5Update(&md5, (uint8_t *)":", 1);
-      MD5Update(&md5, (uint8_t *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
+      MD5Update(&md5, (uint8_t *)Self->AuthCNonce.c_str(), std::ssize(Self->AuthCNonce));
       MD5Final((uint8_t *)HA1, &md5);
    }
 
@@ -418,15 +416,15 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
    MD5Init(&md5);
    MD5Update(&md5, (uint8_t *)HA1, HASHHEXLEN);
    MD5Update(&md5, (uint8_t *)":", 1);
-   MD5Update(&md5, (uint8_t *)Self->AuthNonce.c_str(), Self->AuthNonce.size());
+   MD5Update(&md5, (uint8_t *)Self->AuthNonce.c_str(), std::ssize(Self->AuthNonce));
    MD5Update(&md5, (uint8_t *)":", 1);
 
    if (!Self->AuthQOP.empty()) {
       MD5Update(&md5, (uint8_t *)NonceCount, strlen((CSTRING)NonceCount));
       MD5Update(&md5, (uint8_t *)":", 1);
-      MD5Update(&md5, (uint8_t *)Self->AuthCNonce.c_str(), Self->AuthCNonce.size());
+      MD5Update(&md5, (uint8_t *)Self->AuthCNonce.c_str(), std::ssize(Self->AuthCNonce));
       MD5Update(&md5, (uint8_t *)":", 1);
-      MD5Update(&md5, (uint8_t *)Self->AuthQOP.c_str(), Self->AuthQOP.size());
+      MD5Update(&md5, (uint8_t *)Self->AuthQOP.c_str(), std::ssize(Self->AuthQOP));
       MD5Update(&md5, (uint8_t *)":", 1);
    }
 
@@ -449,7 +447,7 @@ static ERR timeout_manager(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 
    log.warning("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
    Self->TimeoutManager = 0;
-   SET_ERROR(log, Self, ERR::TimeOut);
+   Self->Error = ERR::TimeOut;
    Self->setCurrentState(HGS::TERMINATED);
    return ERR::Terminate;
 }
