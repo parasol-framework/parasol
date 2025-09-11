@@ -211,29 +211,29 @@ alignas(64) static uint32_t crc_table[8][256] = {
 
 static bool glCRCTablesInit = false;
 
-uint32_t GenCRC32(uint32_t crc, APTR Data, uint32_t len) {
+uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) 
+{
    if (!Data) return 0;
    
    if (not glCRCTablesInit) {
       for (int i = 1; i < 8; i++) {
          for (int j = 0; j < 256; j++) {
-            const_cast<uint32_t*>(crc_table[i])[j] = crc_table[i-1][j] >> 8 ^ crc_table[0][crc_table[i-1][j] & 0xff];
+            const_cast<uint32_t *>(crc_table[i])[j] = crc_table[i-1][j] >> 8 ^ crc_table[0][crc_table[i-1][j] & 0xff];
          }
       }
       
       glCRCTablesInit = true;
    }
-
-   auto data = (const uint8_t *)Data;
-
-   crc = ~crc;
    
    // Process 8 bytes at a time using slice-by-8 algorithm
-   while (len >= 8) {
-      const uint32_t one = crc ^ *reinterpret_cast<const uint32_t*>(data);
+
+   auto data = (const uint8_t *)Data;
+   CRC = ~CRC;
+   while (Length >= 8) {
+      const uint32_t one = CRC ^ *reinterpret_cast<const uint32_t*>(data);
       const uint32_t two = *reinterpret_cast<const uint32_t*>(data + 4);
       
-      crc = crc_table[7][(one      ) & 0xff] ^
+      CRC = crc_table[7][(one      ) & 0xff] ^
             crc_table[6][(one >>  8) & 0xff] ^
             crc_table[5][(one >> 16) & 0xff] ^
             crc_table[4][(one >> 24) & 0xff] ^
@@ -243,16 +243,16 @@ uint32_t GenCRC32(uint32_t crc, APTR Data, uint32_t len) {
             crc_table[0][(two >> 24) & 0xff];
       
       data += 8;
-      len -= 8;
+      Length -= 8;
    }
    
    // Process remaining bytes with single-byte table lookup
-   while (len > 0) {
-      crc = crc_table[0][(crc ^ *data++) & 0xff] ^ (crc >> 8);
-      len--;
+   while (Length > 0) {
+      CRC = crc_table[0][(CRC ^ *data++) & 0xff] ^ (CRC >> 8);
+      Length--;
    }
    
-   return ~crc;
+   return ~CRC;
 }
 
 /*********************************************************************************************************************
