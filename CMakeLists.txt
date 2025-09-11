@@ -360,6 +360,10 @@ function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
          endif ()
       endif ()
    endif ()
+
+   # Ensure all modules depend on build_headers to prevent race conditions
+   # where C++ compilation starts before FDL processing completes
+   add_dependencies (${ARG_TARGET} build_headers)
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
