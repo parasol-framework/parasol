@@ -126,13 +126,13 @@ function testPostStringExt()
    assert(http.acActivate() == ERR_Okay, "HTTP object failed to activate.")
 
    local err = proc.sleep()
-   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
 
    if (http.status == 503) then
       print('httpbin.org service unavailable; cannot perform test.')
       return
    end
 
+   assert(err == ERR_Okay, 'Processing failed: ' .. mSys.GetErrorMsg(err))
    assert(http.error == ERR_Okay, 'HTTP object returned error: ' .. mSys.GetErrorMsg(http.error))
    assert(http.currentState == HGS_COMPLETED, 'Expected HTTP state of COMPLETED not reached, got ' .. http.currentState)
    assert(http.status == 200, 'Unexpected HTTP status: ' .. http.status)

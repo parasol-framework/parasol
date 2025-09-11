@@ -131,27 +131,68 @@ static void secure_clear_memory(void* Ptr, size_t Len) {
    for (size_t i = 0; i < Len; i++) p[i] = 0;
 }
 
-// Enhanced URL validation function
+//********************************************************************************************************************
+// Fast URL validation (RFC 3986)
 
-static bool is_valid_url_char(char C, bool AllowReserved = false) {
-   // RFC 3986 unreserved characters
-   if ((C >= 'A' and C <= 'Z') or (C >= 'a' and C <= 'z') or
-       (C >= '0' and C <= '9') or C IS '-' or C IS '.' or C IS '_' or C IS '~') {
-      return true;
+static uint32_t glUnreservedTable[4];
+static uint32_t glReservedTable[4];
+static bool glURLTablesInitialised = false;
+
+static void init_url_tables() {
+   if (glURLTablesInitialised) return;
+
+   // Initialize unreserved characters table
+   // A-Z (0x41-0x5A), a-z (0x61-0x7A), 0-9 (0x30-0x39), -, ., _, ~
+
+   for (char c = 'A'; c <= 'Z'; c++) {
+      auto bit = c & 31;
+      glUnreservedTable[c >> 5] |= (1U << bit);
+   }
+   for (char c = 'a'; c <= 'z'; c++) {
+      auto bit = c & 31;
+      glUnreservedTable[c >> 5] |= (1U << bit);
+   }
+   for (char c = '0'; c <= '9'; c++) {
+      auto bit = c & 31;
+      glUnreservedTable[c >> 5] |= (1U << bit);
    }
 
-   // RFC 3986 reserved characters (when explicitly allowed)
-   if (AllowReserved and (C IS ':' or C IS '/' or C IS '?' or C IS '#' or
-       C IS '[' or C IS ']' or C IS '@' or C IS '!' or C IS '$' or
-       C IS '&' or C IS '\'' or C IS '(' or C IS ')' or C IS '*' or
-       C IS '+' or C IS ',' or C IS ';' or C IS '=')) {
-      return true;
+   // Special unreserved characters
+
+   const char unreserved_special[] = {'-', '.', '_', '~'};
+   for (char c : unreserved_special) {
+      auto bit = c & 31;
+      glUnreservedTable[c >> 5] |= (1U << bit);
    }
 
+   // Initialize reserved characters table
+
+   const char reserved_chars[] = {':', '/', '?', '#', '[', ']', '@', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '='};
+   for (char c : reserved_chars) {
+      auto bit = c & 31;
+      glReservedTable[c >> 5] |= (1U << bit);
+   }
+
+   glURLTablesInitialised = true;
+}
+
+static bool is_valid_url_char(char Char, bool AllowReserved = false) {
+   init_url_tables();
+
+   const auto index = uint8_t(Char);
+   if (index >= 128) return false; // Non-ASCII characters
+
+   const auto table_index = index >> 5;  // Divide by 32
+   const auto bit_index = index & 31;    // Modulo 32
+
+   if (glUnreservedTable[table_index] & (1U << bit_index)) return true;
+   if (AllowReserved and (glReservedTable[table_index] & (1U << bit_index))) return true;
    return false;
 }
 
+//********************************************************************************************************************
 // Enhanced URL encoding with validation
+
 static std::string encode_url_path(const char* Input) {
    if (!Input) return std::string();
 
@@ -181,6 +222,8 @@ static std::string encode_url_path(const char* Input) {
 
    return result;
 }
+
+//********************************************************************************************************************
 
 static ERR create_http_class(void);
 
@@ -865,16 +908,13 @@ static ERR HTTP_Init(extHTTP *Self)
    pf::Log log;
 
    if (!Self->ProxyDefined) {
-      if (glProxy) {
-         if (glProxy->find(Self->Port, true) IS ERR::Okay) {
-            if (Self->ProxyServer) FreeResource(Self->ProxyServer);
-            Self->ProxyServer = pf::strclone(glProxy->Server);
-            Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
+      if ((glProxy) and (glProxy->find(Self->Port, true) IS ERR::Okay)) {
+         if (Self->ProxyServer) FreeResource(Self->ProxyServer);
+         Self->ProxyServer = pf::strclone(glProxy->Server);
+         Self->ProxyPort   = glProxy->ServerPort; // NB: Default is usually 8080
 
-            log.msg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
-         }
+         log.msg("Using preset proxy server '%s:%d'", Self->ProxyServer, Self->ProxyPort);
       }
-      else log.msg("Global proxy configuration object is missing.");
    }
    else log.msg("Proxy pre-defined by user.");
 

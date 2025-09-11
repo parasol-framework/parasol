@@ -134,7 +134,7 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
       }
       else if (FieldType & FD_POINTER) for (Total=0; (Total < MAX_AUTO_ARRAY_SIZE) and ((APTR *)List)[Total]; Total++);
       else if (FieldType & FD_STRUCT) Total = -1; // The length of sequential structs cannot be calculated.
-      
+
       // Check if we hit the safety limit
       if (Total >= MAX_AUTO_ARRAY_SIZE) {
          log.warning("Array size calculation exceeded safety limit (%d), truncating", MAX_AUTO_ARRAY_SIZE);
@@ -153,7 +153,7 @@ void make_array(lua_State *Lua, int FieldType, CSTRING StructName, APTR *List, i
          lua_pushnil(Lua);
          return;
       }
-      
+
       cache_size = Total * type_size;
       array_size = Total * type_size;
 
@@ -278,7 +278,7 @@ static int array_new(lua_State *Lua)
             luaL_argerror(Lua, 1, "Array size exceeds maximum allowed size.");
             return 0;
          }
-         
+
          int fieldtype;
          CSTRING s_name = nullptr;
          switch (strihash(type)) {
@@ -566,30 +566,30 @@ static int array_copy(lua_State *Lua)
          luaL_argerror(Lua, 1, "Table is empty.");
          return 0;
       }
-      
+
       if (copy_total < 0) copy_total = table_len;
       else if (copy_total > table_len) copy_total = table_len;
-      
+
       int c_index = to_index - 1; // Convert Lua index to C index
-      
+
       // Check bounds for destination array
       if ((c_index < 0) or (c_index >= a->Total)) {
          luaL_error(Lua, "Destination index out of bounds: %d (array size: %d).", to_index, a->Total);
          return 0;
       }
-      
+
       if (c_index + copy_total > a->Total) {
          luaL_error(Lua, "Table copy would exceed array bounds (%d+%d > %d).", to_index, copy_total, a->Total);
          return 0;
       }
-      
+
       // Copy table elements using ipairs-style iteration
       for (int i = 0; i < copy_total; i++) {
          lua_pushinteger(Lua, i + 1); // Lua tables are 1-indexed
          lua_gettable(Lua, 1);        // Get table[i+1]
-         
+
          int dest_index = c_index + i;
-         
+
          // Convert and store based on array type
          switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
             case FD_STRING:
@@ -630,22 +630,22 @@ static int array_copy(lua_State *Lua)
                lua_pop(Lua, 1);
                return 0;
          }
-         
+
          lua_pop(Lua, 1); // Remove the value from stack
       }
-      
+
       return 0; // Successfully copied table to array
    }
    else { luaL_argerror(Lua, 1, "String or array expected."); return 0; }
 
    to_index--; // Lua index to C index
-   
+
    // Enhanced bounds checking with overflow protection
    if ((to_index < 0) or (to_index >= a->Total)) {
       luaL_error(Lua, "Destination index out of bounds: %d (array size: %d).", to_index + 1, a->Total);
       return 0;
    }
-   
+
    if ((src_size > SIZE_MAX - to_index) or (to_index + src_size > (size_t)a->Total)) {
       luaL_error(Lua, "Copy operation would exceed array bounds (%d+%d > %d).", to_index + 1, (int)src_size, a->Total);
       return 0;

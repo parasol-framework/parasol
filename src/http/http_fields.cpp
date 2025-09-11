@@ -689,7 +689,7 @@ The Status value is only valid on completion of an HTTP request.  A value of `20
 request was successful.  Other values indicate either redirection or an error condition.  For a full list of
 HTTP status codes, see https://www.w3.org/Protocols/rfc2616/rfc
 
-If the Status value is `NIL` on completion, the request has failed without a valid response being received from the 
+If the Status value is `NIL` on completion, the request has failed without a valid response being received from the
 server.  Refer to the #Error field for more information.
 
 -FIELD-

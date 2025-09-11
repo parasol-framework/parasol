@@ -267,10 +267,10 @@ end
 function testTableToIntegerArrayCopy()
    local arr = array.new(5, "integer")
    local table_data = {10, 20, 30, 40, 50}
-   
+
    -- Test copying entire table to array
    arr.copy(table_data)
-   
+
    -- Verify values were copied correctly
    for i = 1, 5 do
       assert(arr[i] == table_data[i], "Table to integer array copy failed at index " .. i)
@@ -280,9 +280,9 @@ end
 function testTableToFloatArrayCopy()
    local arr = array.new(4, "float")
    local table_data = {1.5, 2.7, 3.14, 4.8}
-   
+
    arr.copy(table_data)
-   
+
    -- Check with small tolerance for float comparison
    for i = 1, 4 do
       local diff = math.abs(arr[i] - table_data[i])
@@ -293,9 +293,9 @@ end
 function testTableToByteArrayCopy()
    local arr = array.new(4, "byte")
    local table_data = {65, 66, 67, 68}  -- ASCII A, B, C, D
-   
+
    arr.copy(table_data)
-   
+
    for i = 1, 4 do
       assert(arr[i] == table_data[i], "Table to byte array copy failed at index " .. i)
    end
@@ -304,9 +304,9 @@ end
 function testTableToDoubleArrayCopy()
    local arr = array.new(3, "double")
    local table_data = {3.141592653589793, 2.718281828459045, 1.414213562373095}
-   
+
    arr.copy(table_data)
-   
+
    for i = 1, 3 do
       local diff = math.abs(arr[i] - table_data[i])
       assert(diff < 0.000000001, "Table to double array copy failed at index " .. i)
@@ -316,9 +316,9 @@ end
 function testTableToWordArrayCopy()
    local arr = array.new(3, "word")
    local table_data = {1000, 2000, 3000}
-   
+
    arr.copy(table_data)
-   
+
    for i = 1, 3 do
       assert(arr[i] == table_data[i], "Table to word array copy failed at index " .. i)
    end
@@ -327,24 +327,24 @@ end
 function testTableCopyWithDestinationIndex()
    local arr = array.new(6, "integer")
    local table_data = {100, 200, 300}
-   
+
    -- Initialize array with different values
    for i = 1, 6 do
       arr[i] = i
    end
-   
+
    -- Copy table starting at index 3
    arr.copy(table_data, 3)
-   
+
    -- Check that first 2 elements are unchanged
    assert(arr[1] == 1, "Element before copy should be unchanged")
    assert(arr[2] == 2, "Element before copy should be unchanged")
-   
+
    -- Check copied elements
    assert(arr[3] == 100, "Copied element 1 incorrect")
    assert(arr[4] == 200, "Copied element 2 incorrect")
    assert(arr[5] == 300, "Copied element 3 incorrect")
-   
+
    -- Check that last element is unchanged
    assert(arr[6] == 6, "Element after copy should be unchanged")
 end
@@ -352,14 +352,14 @@ end
 function testTableCopyWithLimitedTotal()
    local arr = array.new(5, "integer")
    local table_data = {10, 20, 30, 40, 50}
-   
+
    -- Copy only first 3 elements
    arr.copy(table_data, 1, 3)
-   
+
    assert(arr[1] == 10, "Limited copy element 1 incorrect")
    assert(arr[2] == 20, "Limited copy element 2 incorrect")
    assert(arr[3] == 30, "Limited copy element 3 incorrect")
-   
+
    -- Elements 4 and 5 should be uninitialized (0)
    assert(arr[4] == 0, "Element beyond copy should be 0")
    assert(arr[5] == 0, "Element beyond copy should be 0")
@@ -368,19 +368,19 @@ end
 function testTableCopyBoundsChecking()
    local arr = array.new(3, "integer")
    local table_data = {10, 20, 30, 40}  -- Table larger than array
-   
+
    -- Test copying to invalid destination index
    local status = pcall(function()
       arr.copy(table_data, 0)  -- Invalid index (0)
    end)
    assert(not status, "Should reject invalid destination index")
-   
+
    -- Test copying beyond array bounds
    local status2 = pcall(function()
       arr.copy(table_data, 2)  -- Start at 2, table has 4 elements, would exceed array size 3
    end)
    assert(not status2, "Should reject copy that would exceed array bounds")
-   
+
    -- Test with empty table
    local empty_table = {}
    local status3 = pcall(function()
@@ -393,21 +393,21 @@ function testTableCopyTypeConversion()
    -- Test copying integers to float array
    local float_arr = array.new(3, "float")
    local int_table = {1, 2, 3}
-   
+
    float_arr.copy(int_table)
-   
+
    assert(math.abs(float_arr[1] - 1.0) < 0.0001, "Integer to float conversion failed")
    assert(math.abs(float_arr[2] - 2.0) < 0.0001, "Integer to float conversion failed")
    assert(math.abs(float_arr[3] - 3.0) < 0.0001, "Integer to float conversion failed")
-   
+
    -- Test copying floats to integer array (truncation)
    local int_arr = array.new(3, "integer")
    local float_table = {1.7, 2.9, 3.1}
-   
+
    int_arr.copy(float_table)
-   
+
    assert(int_arr[1] == 1, "Float to integer conversion failed")
-   assert(int_arr[2] == 2, "Float to integer conversion failed") 
+   assert(int_arr[2] == 2, "Float to integer conversion failed")
    assert(int_arr[3] == 3, "Float to integer conversion failed")
 end
 

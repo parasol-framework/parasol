@@ -118,7 +118,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
       }
       else if (Self->CurrentState IS HGS::AUTHENTICATING) {
          if (Self->DialogWindow) {
-            // The HTTP socket was closed because the user is taking too long to authenticate with the dialog 
+            // The HTTP socket was closed because the user is taking too long to authenticate with the dialog
             // window.  We will close the socket and create a new one once the user responds to the dialog.
 
             Self->Socket->set(FID_Feedback, (APTR)nullptr);
