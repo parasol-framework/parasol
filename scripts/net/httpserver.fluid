@@ -1061,7 +1061,7 @@ end
 local function loggingMiddleware(request, response, next)
    local startTime = mSys.PreciseTime()
 
-   logMessage(nil, '[' .. timestamp() .. '] ' .. request.method .. ' ' .. request.path .. ' from ' .. (request.ip or 'unknown'))
+   logMessage(response._self, request.method .. ' ' .. request.path .. ' from ' .. (request.ip or 'unknown'))
 
    -- Wrap response.send to log completion
    local originalSend = response.send
@@ -1070,7 +1070,7 @@ local function loggingMiddleware(request, response, next)
 
    local function logResponse()
       local duration = (mSys.PreciseTime() - startTime) / 1000 -- Convert to milliseconds
-      logMessage(nil, '[' .. timestamp() .. '] ' .. response._statusCode .. ' ' .. request.path .. ' (' .. string.format('%.2f', duration) .. 'ms)')
+      logMessage(response._self, response._statusCode .. ' ' .. request.path .. ' (' .. string.format('%.2f', duration) .. 'ms)')
    end
 
    response.send = function(...)
@@ -1383,7 +1383,7 @@ local function serverIncoming(self, ClientSocket)
          return
       end
       
-      logMessage(self, '[' .. timestamp() .. '] ' .. state.request.method .. ' ' .. state.request.path)
+      logMessage(self, state.request.method .. ' ' .. state.request.path)
       if self.verbose then
          logMessage(self, 'Headers:')
          for k, v in pairs(state.request.headers) do
