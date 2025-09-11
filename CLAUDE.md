@@ -201,6 +201,8 @@ For Fluid code, verify:
 - Use three spaces for tabulation in C++ and Fluid code.
 - C++ functions that use global variables must be written with thread safety in mind.
 - Use modern C++ conventions where possible, up to and including C++20 features.
+- C++ global variables are prefixed with `gl` and written in upper camel-case, e.g. `glSomeVariable`
+- Always prefer British English spelling in code and comments.
 
 ### Testing
 
