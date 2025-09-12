@@ -59,8 +59,8 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
             }
          }
 
-         if (Flags & FD_INT)        ((int *)Dest)[i]   = byte;
-         else if (Flags & FD_BYTE)   ((int8_t *)Dest)[i]   = byte;
+         if (Flags & FD_INT)         ((int *)Dest)[i]    = byte;
+         else if (Flags & FD_BYTE)   ((int8_t *)Dest)[i] = byte;
          else if (Flags & FD_FLOAT)  ((float *)Dest)[i]  = byte;
          else if (Flags & FD_DOUBLE) ((double *)Dest)[i] = byte;
          i++;
@@ -72,10 +72,16 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
       char *end;
       int i;
       for (i=0; (i < ArraySize) and (*String); i++) {
-          if (Flags & FD_INT)        ((int *)Dest)[i]   = strtol(String, &end, 0);
-          else if (Flags & FD_BYTE)   ((uint8_t *)Dest)[i]  = strtol(String, &end, 0);
-          else if (Flags & FD_FLOAT)  ((float *)Dest)[i]  = strtod(String, &end);
-          else if (Flags & FD_DOUBLE) ((double *)Dest)[i] = strtod(String, &end);
+          if (Flags & FD_INT)         ((int *)Dest)[i]     = strtol(String, &end, 0);
+          else if (Flags & FD_BYTE)   ((uint8_t *)Dest)[i] = strtol(String, &end, 0);
+          else if (Flags & FD_FLOAT)  ((float *)Dest)[i]   = strtod(String, &end);
+          else if (Flags & FD_DOUBLE) ((double *)Dest)[i]  = strtod(String, &end);
+          else if (Flags & FD_STRING) {
+             // Not feasible to convert a string into an array of strings
+             pf::Log().warning(ERR::InvalidType);
+             return 0;
+          }
+          else return 0;
           String = end;
           while ((*String) and (!std::isdigit(*String)) and (*String != '-')) String++;
       }
