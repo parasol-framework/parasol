@@ -247,7 +247,7 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
       path.resize(256);
       while ((File->prvWatch) and (File->prvWatch->Handle IS Handle)) {
-         ERR read_result = winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path.data(), sizeof(path), &status);
+         ERR read_result = winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path.data(), path.size(), &status);
          if (read_result != ERR::Okay) {
             // If we get an error other than NothingDone, stop monitoring
             if (read_result != ERR::NothingDone) {
