@@ -221,7 +221,8 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type>ERR</type>
       <description>
-<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (<code>ERR::Okay</code>). It should be noted that certain error codes may not necessarily indicate failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content.  For genuine HTTP error codes, see the <fl>Status</fl> field.</p>
+<p>On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful then the value will be zero (<code>ERR::Okay</code>). It should be noted that certain error codes may not necessarily indicate a comms failure - for instance, an <code>ERR::TimeOut</code> error may be received on termination of streamed content; while <code>ERR::NotAuthorised</code> is a credentials issue.</p>
+<p>The recommended process for error checking is: 1. Check if the <fl>CurrentState</fl> is <code>COMPLETED</code> or <code>TERMINATED</code>; 2. Check the <fl>Status</fl> field for <code>NIL</code>; 3. Check the <fl>Error</fl> field for the error code.</p>
       </description>
     </field>
 
@@ -456,6 +457,8 @@ http.acActivate()
       <access read="R" write="W">Read/Write</access>
       <type lookup="HTS">HTS</type>
       <description>
+<p>The Status value is only valid on completion of an HTTP request.  A value of <code>200</code> indicates that the request was successful.  Other values indicate either redirection or an error condition.  For a full list of HTTP status codes, see https://www.w3.org/Protocols/rfc2616/rfc</p>
+<p>If the Status value is <code>NIL</code> on completion, the request has failed without a valid response being received from the server.  Refer to the <fl>Error</fl> field for more information.</p>
 <types lookup="HTS"/>
       </description>
     </field>
