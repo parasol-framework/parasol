@@ -1699,10 +1699,6 @@ static ERR SET_Args(extTask *Self, CSTRING Value)
 {
    if ((!Value) or (!*Value)) return ERR::Okay;
 
-   // Security limits to prevent buffer overflow attacks:
-   // - Maximum total input length: 64KB
-   // - Maximum individual argument length: 8KB
-   // - Proper quote matching validation to prevent malformed input
    const size_t MAX_INPUT_LEN = 65536;
    size_t input_len = strlen(Value);
    if (input_len > MAX_INPUT_LEN) return ERR::BufferOverflow;
@@ -1983,6 +1979,8 @@ pf::vector&lt;std::string&gt; Args = {
    "documents:readme.txt"
 };
 </pre>
+
+NOTE: Scripts should use the #Args field instead.
 
 *********************************************************************************************************************/
 
