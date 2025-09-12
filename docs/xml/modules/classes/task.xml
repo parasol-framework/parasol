@@ -327,6 +327,7 @@
    "documents:readme.txt"
 };
 </pre>
+<p>NOTE: Scripts should use the <fl>Args</fl> field instead.</p>
       </description>
     </field>
 

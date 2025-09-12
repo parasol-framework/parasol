@@ -81,7 +81,11 @@ static int write_array(CSTRING String, int Flags, int16_t ArraySize, APTR Dest)
              pf::Log().warning(ERR::InvalidType);
              return 0;
           }
-          else return 0;
+          else {
+             pf::Log().warning(ERR::InvalidType);
+             return 0;
+          }
+
           String = end;
           while ((*String) and (!std::isdigit(*String)) and (*String != '-')) String++;
       }

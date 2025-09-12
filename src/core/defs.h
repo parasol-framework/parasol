@@ -1163,8 +1163,9 @@ extern "C" int winGetFullPathName(const char *Path, int PathLength, char *Output
 extern "C" int winGetUserFolder(STRING, int);
 extern "C" int winGetUserName(STRING, int);
 extern "C" int winGetWatchBufferSize(void);
+extern "C" int winValidateHandle(WINHANDLE Handle);
 extern "C" int winMoveFile(STRING, STRING);
-extern "C" int winReadChanges(WINHANDLE, APTR, int NotifyFlags, char *, int, int *);
+extern "C" ERR winReadChanges(WINHANDLE, APTR, int NotifyFlags, char *, int, int *);
 extern "C" int winReadKey(CSTRING, CSTRING, STRING, int);
 extern "C" int winReadRootKey(CSTRING, STRING, STRING, int);
 extern "C" int winReadStdInput(WINHANDLE FD, APTR Buffer, int BufferSize, int *Size);
