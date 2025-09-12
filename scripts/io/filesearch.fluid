@@ -1,45 +1,6 @@
 --[[
-The FileSearch interface simplifies the process of searching for files and folders within the file system.  Support is
-provided for both wildcard filters and content searching.
-
-This example searches for text files in the 'documents:' folder that include the word 'tennis':
-
-   file.search('documents:', {
-      nameWild      = true,
-      nameFilter    = '^.*%.xml$',
-      contentFilter = 'tennis',
-      maxDepth      = 2,  -- Only search 2 levels deep
-      matchFeedback = function(Path, FileName, File)
-         print(Path, ' ', FileName)
-      end
-   })
-
-Alternative using compiled regex:
-
-   file.search('documents:', {
-      nameFilter = regex.new('\\.xml$', regex.ICASE),
-      ...
-   })
-
-Valid options to use when defining the search table are as follows:
-
-  nameFilter:     Include file/folder names that match this string or use regex.new() to compile a regex object.
-  nameWild:       Set to true to enable wildcard matching (Lua patterns) in nameFilter.  Ignored if nameFilter is a regex object.
-  contentFilter:  Include files that contain this content.
-  caseSensitive:  Enforces case-sensitive name comparisons if true.
-  matchFeedback:  Call this function each time that a matched file is discovered.  Returning ERR_Terminate will stop the search.  Synopsis: function(Path, File, Attributes)
-  ignoreFeedback: Call this function each time that a file fails to pass filter matches.
-  minSize:        Filter out files that do not meet or exceed this minimum size.
-  maxSize:        Filter out files that exceed this size.
-  minDate:        Filter out files with a modification time less than this timestamp.
-  maxDate:        Filter out files with a modification time exceeding this timestamp.
-  scanLinks:      Allows symbolically linked files and folders to be included in the file search.
-  matchFolders:   Folder names will also be pattern-matched and included in feedback during the search.
-  ignoreFiles:    Do not scan files (useful only in conjunction with matchFolders).
-  maxDepth:       Maximum depth to recurse into sub-folders (0 = current folder, 1 = one sub-folder, etc.).
-
-When searching files for content, it is strongly recommended that a filter or size limit is applied so that only a
-limited number of files are opened for searching.
+The FileSearch interface simplifies the process of searching for files and folders within the file system.
+Refer to the Fluid I/O Wiki page for documentation.
 --]]
 
    require 'common'
@@ -218,6 +179,44 @@ file.search = function(Path, Options)
       collectgarbage()
    end
 
+   local function processPath(Path)
+      msg(string.format('Path: %s, Filter: %s, Regex: %s, Content: %s', Path, Options.nameFilter, tostring(isRegexFilter), Options.contentFilter))
+
+      if file.isFolder(Path) then
+         mSys.AdjustLogLevel(ADJUST_LOG)
+            scanPath(Path, 0)
+         mSys.AdjustLogLevel(-ADJUST_LOG)
+      else
+         -- Single file analysis
+
+         local path, fileName = file.splitPath(Path)
+         local nameMatches = true
+
+         if Options.nameFilter then
+            local cmpName = fileName
+            if not lOptions.caseSensitive then
+               cmpName = cmpName:lower()
+            end
+
+            if isRegexFilter then
+               nameMatches = lOptions.nameFilter.test(cmpName)
+            elseif lOptions.nameWild then
+               nameMatches = (string.find(cmpName, lOptions.nameFilter) != nil)
+            else
+               nameMatches = (cmpName == lOptions.nameFilter)
+            end
+         end
+
+         if nameMatches then
+            if contentMatch(Path) then
+               if lOptions.matchFeedback then
+                  lOptions.matchFeedback(path, fileName, obj.new('file', { path=Path }))
+               end
+            end
+         end
+      end
+   end
+
    -- Entry point for the search
 
    if lOptions.nameFilter and type(lOptions.nameFilter) != 'string' then
@@ -226,8 +225,6 @@ file.search = function(Path, Options)
          isRegexFilter = true
       end
    end
-
-   msg(string.format('Path: %s, Filter: %s, Regex: %s, Content: %s', Path, Options.nameFilter, tostring(isRegexFilter), Options.contentFilter))
 
    if lOptions.maxDate then
       local err, maxDate = mSys.StrReadDate(lOptions.maxDate)
@@ -241,37 +238,11 @@ file.search = function(Path, Options)
       lOptions.minDate = minDate
    end
 
-   if file.isFolder(Path) then
-      mSys.AdjustLogLevel(ADJUST_LOG)
-         scanPath(Path, 0)
-      mSys.AdjustLogLevel(-ADJUST_LOG)
+   if type(Path) == 'table' then
+      for k,v in pairs(Path) do
+         processPath(v)
+      end
    else
-      -- Single file analysis
-
-      local path, fileName = file.splitPath(Path)
-      local nameMatches = true
-
-      if Options.nameFilter then
-         local cmpName = fileName
-         if not lOptions.caseSensitive then
-            cmpName = cmpName:lower()
-         end
-
-         if isRegexFilter then
-            nameMatches = lOptions.nameFilter.test(cmpName)
-         elseif lOptions.nameWild then
-            nameMatches = (string.find(cmpName, lOptions.nameFilter) != nil)
-         else
-            nameMatches = (cmpName == lOptions.nameFilter)
-         end
-      end
-
-      if nameMatches then
-         if contentMatch(Path) then
-            if lOptions.matchFeedback then
-               lOptions.matchFeedback(path, fileName, obj.new('file', { path=Path }))
-            end
-         end
-      end
+      processPath(Path)
    end
 end
