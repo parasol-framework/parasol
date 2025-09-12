@@ -12,8 +12,11 @@ void fs_ignore_file(extFile *File)
 
 void fs_ignore_file(extFile *File)
 {
-   RegisterFD(File->prvWatch->Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, 0, 0); // remove operation
-   winCloseHandle(File->prvWatch->Handle);
+   if ((File->prvWatch) and (File->prvWatch->Handle)) {
+      RegisterFD(File->prvWatch->Handle, RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, 0, 0);
+      winCloseHandle(File->prvWatch->Handle);
+      File->prvWatch->Handle = nullptr;
+   }
 }
 
 #elif __APPLE__
@@ -70,11 +73,15 @@ ERR fs_watch_path(extFile *File)
    // The path_monitor() function will be called whenever the Path or its content is modified.
 
    if ((error = winWatchFile(int(File->prvWatch->Flags), File->prvResolvedPath.c_str(), (File->prvWatch + 1), &handle, &winflags)) IS ERR::Okay) {
-      File->prvWatch->Handle   = handle;
-      File->prvWatch->WinFlags = winflags;
       if ((error = RegisterFD(handle, RFD::READ, (void (*)(HOSTHANDLE, void*))&path_monitor, File)) IS ERR::Okay) {
+         File->prvWatch->Handle   = handle;
+         File->prvWatch->WinFlags = winflags;
       }
-      else log.warning("Failed to register folder handle.");
+      else {
+         log.warning("Failed to register folder handle.");
+         winCloseHandle(handle);
+         File->prvWatch->Handle = nullptr;
+      }
    }
    else log.warning("Failed to watch path %s, %s", File->prvResolvedPath.c_str(), GetErrorMsg(error));
 
@@ -232,46 +239,71 @@ void path_monitor(HOSTHANDLE Handle, extFile *File)
 
    ERR error;
    if (File->prvWatch->Handle) {
-      char path[256];
+      std::string path;
       int status;
 
       // Keep in mind that the state of the File object might change during the loop due to the code in the user's callback.
+      // Validate resources before each iteration to prevent crashes
 
-      while ((File->prvWatch) and (!winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path, sizeof(path), &status))) {
-         if ((File->prvWatch->Flags & MFF::DEEP) IS MFF::NIL) { // Ignore if path is in a sub-folder and the deep option is not enabled.
-            int i;
-            for (i=0; (path[i]) and (path[i] != '\\'); i++);
-            if (path[i] IS '\\') continue;
+      path.resize(256);
+      while ((File->prvWatch) and (File->prvWatch->Handle IS Handle)) {
+         ERR read_result = winReadChanges(File->prvWatch->Handle, (APTR)(File->prvWatch + 1), File->prvWatch->WinFlags, path.data(), path.size(), &status);
+         if (read_result != ERR::Okay) {
+            // If we get an error other than NothingDone, stop monitoring
+            if (read_result != ERR::NothingDone) {
+               log.warning("winReadChanges() failed with error %s", GetErrorMsg(read_result));
+               break;
+            }
+            break; // NothingDone -> no more events
          }
 
+         if ((File->prvWatch->Flags & MFF::DEEP) IS MFF::NIL) { // Ignore if path is in a sub-folder and the deep option is not enabled.
+            if (path.find('\\') != std::string::npos) continue;
+         }
 
          if (File->prvWatch->Routine.isC()) {
             pf::SwitchContext context(File->prvWatch->Routine.Context);
             auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
-            error = routine(File, path, File->prvWatch->Custom, status, File->prvWatch->Routine.Meta);
+            error = routine(File, path.c_str(), File->prvWatch->Custom, status, File->prvWatch->Routine.Meta);
          }
          else if (File->prvWatch->Routine.isScript()) {
             if (sc::Call(File->prvWatch->Routine, std::to_array<ScriptArg>({
                { "File",   File, FD_OBJECTPTR },
-               { "Path",   path },
+               { "Path",   path.c_str() },
                { "Custom", File->prvWatch->Custom },
-               { "Flags",  0 }
+               { "Flags",  status }
             }), error) != ERR::Okay) error = ERR::Function;
          }
          else error = ERR::Terminate;
 
-         if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
+         if (error IS ERR::Terminate) {
+            Action(fl::Watch::id, File, nullptr);
+            break;
+         }
+
+         if (!File->prvWatch) { // Sanity check
+            log.traceWarning("Watch removed during callback.");
+            break;
+         }
       }
    }
    else {
-      auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
-      pf::SwitchContext context(File->prvWatch->Routine.Context);
-      error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
+      if (File->prvWatch->Routine.isC()) {
+         auto routine = (ERR (*)(extFile *, CSTRING, int64_t, int, APTR))File->prvWatch->Routine.Routine;
+         pf::SwitchContext context(File->prvWatch->Routine.Context);
+         error = routine(File, File->Path.c_str(), File->prvWatch->Custom, 0, File->prvWatch->Routine.Meta);
 
-      if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
+         if (error IS ERR::Terminate) Action(fl::Watch::id, File, nullptr);
+      }
    }
 
-   winFindNextChangeNotification(Handle);
+   if (winValidateHandle(Handle)) {
+      winFindNextChangeNotification(Handle);
+   }
+   else {
+      log.warning("Handle invalid, cease monitoring File #%d.", File->UID);
+      Action(fl::Watch::id, File, nullptr);
+   }
 
    recursion = false;
 

@@ -1613,6 +1613,72 @@ extern "C" int winGetWatchBufferSize(void)
 
 //********************************************************************************************************************
 
+extern "C" int winValidateHandle(HANDLE Handle)
+{
+   if (!Handle or (Handle IS INVALID_HANDLE_VALUE)) return 0;
+   
+   DWORD flags;
+   if (GetHandleInformation(Handle, &flags)) return 1;
+   else return 0;
+}
+
+//********************************************************************************************************************
+
+ERR winAnalysePath(CSTRING Path, bool &IsDirectory, bool &IsSymbolicLink)
+{
+   if (!Path) return ERR::NullArgs;
+   
+   IsDirectory = false;
+   IsSymbolicLink = false;
+   
+   WIN32_FILE_ATTRIBUTE_DATA fileData;
+   if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &fileData)) {
+      return ERR::FileNotFound; // Path doesn't exist or access denied
+   }
+   
+   auto attrs = fileData.dwFileAttributes;
+   
+   if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+      IsDirectory = true;
+      
+      // Check for junction/symbolic link
+      if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+         HANDLE hDir = CreateFile(Path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+         if (hDir != INVALID_HANDLE_VALUE) {
+            BYTE reparseBuffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            DWORD bytesReturned;
+            if (DeviceIoControl(hDir, FSCTL_GET_REPARSE_POINT, nullptr, 0, reparseBuffer, sizeof(reparseBuffer), &bytesReturned, nullptr)) {
+               auto reparseData = (REPARSE_GUID_DATA_BUFFER *)reparseBuffer;
+               if (reparseData->ReparseTag IS IO_REPARSE_TAG_MOUNT_POINT) IsSymbolicLink = true; // Technically a junction
+               else if (reparseData->ReparseTag IS IO_REPARSE_TAG_SYMLINK) IsSymbolicLink = true;
+            }
+            CloseHandle(hDir);
+         }
+      }
+   }
+   else { // Is a file
+      // Check for file symbolic link
+      if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
+         HANDLE hFile = CreateFile(Path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+         if (hFile != INVALID_HANDLE_VALUE) {
+            BYTE reparseBuffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            DWORD bytesReturned;
+            if (DeviceIoControl(hFile, FSCTL_GET_REPARSE_POINT, nullptr, 0, reparseBuffer, sizeof(reparseBuffer), &bytesReturned, nullptr)) {
+               auto reparseData = (REPARSE_GUID_DATA_BUFFER *)reparseBuffer;
+               if (reparseData->ReparseTag IS IO_REPARSE_TAG_SYMLINK) {
+                  IsSymbolicLink = true;
+               }
+            }
+            CloseHandle(hFile);
+         }
+      }
+   }
+   
+   return ERR::Okay; // Success
+}
+
+//********************************************************************************************************************
+
 extern "C" void winSetDllDirectory(LPCSTR Path)
 {
    SetDllDirectoryA(Path);
@@ -1622,7 +1688,13 @@ extern "C" void winSetDllDirectory(LPCSTR Path)
 
 extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *Handle, int *WinFlags)
 {
-   if ((!Path) or (!Path[0])) return ERR::Args;
+   if ((!Path) or (!Path[0]) or (!Handle) or (!WinFlags) or (!WatchBuffer)) return ERR::Args;
+
+   *Handle = nullptr;
+   *WinFlags = 0;
+
+   bool is_folder, is_symlink;
+   if (winAnalysePath(Path, is_folder, is_symlink) != ERR::Okay) return ERR::FileNotFound;
 
    int nflags = 0;
    if (Flags & MFF_READ) nflags |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
@@ -1634,71 +1706,152 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
    if (Flags & MFF_CLOSED) nflags |= 0;
    if (Flags & (MFF_MOVED|MFF_RENAME)) nflags |= FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
 
-   if (nflags) {
-      int i;
-      char strip_path[MAX_PATH];
-      for (i=0; (Path[i]) and (i < MAX_PATH-1); i++) strip_path[i] = Path[i];
-      strip_path[i] = 0;
-      if (strip_path[i-1] IS '\\') strip_path[i-1] = 0;
+   if (!nflags) return ERR::NoSupport;
 
-      *Handle = CreateFile(strip_path, FILE_LIST_DIRECTORY, FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
-         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+   std::string monitor_path, resolved_path;
+   
+   if (not is_folder) { // For individual files, monitor the parent directory
+      resolved_path = Path;
+      size_t last_slash = resolved_path.find_last_of('\\');
+      if (last_slash IS std::string::npos) return ERR::Args; // Invalid file path
+      resolved_path = resolved_path.substr(0, last_slash);
+   }
+   else resolved_path = Path;
 
-      if (*Handle != INVALID_HANDLE_VALUE) {
-         // Use ReadDirectoryChanges() to setup an asynchronous monitor on the target folder.
+   monitor_path.assign(resolved_path);
+   if (monitor_path.ends_with('\\')) monitor_path.pop_back();
 
-         auto ovlap = (OVERLAPPED *)WatchBuffer;
-         auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+   DWORD open_flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED;
+   if (is_symlink) {
+      // For reparse points, we may need to follow the link
+      // depending on whether we want to monitor the link itself or the target
+      open_flags |= FILE_FLAG_OPEN_REPARSE_POINT;
+   }
 
-         DWORD empty;
-         if (!ReadDirectoryChangesW(*Handle, fni,
-               sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, // The -1 is to give us room to impose a null byte
-               true, nflags, &empty, ovlap, nullptr)) {
+   *Handle = CreateFile(monitor_path.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, open_flags, nullptr);
 
-            CloseHandle(*Handle);
-            *Handle = nullptr;
-            return ERR::SystemCall;
-         }
+   if (*Handle != INVALID_HANDLE_VALUE) {
+      // Setup asynchronous monitor
+      memset(WatchBuffer, 0, sizeof(OVERLAPPED));
+      auto ovlap = (OVERLAPPED *)WatchBuffer;
+      auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+
+      const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
+      
+      BOOL watch_folders = (is_folder and (Flags & MFF_DEEP)) ? TRUE : FALSE;
+      
+      DWORD empty;
+      if (not ReadDirectoryChangesW(*Handle, fni, buffer_size, watch_folders, nflags, &empty, ovlap, nullptr)) {
+         auto error = GetLastError();
+         CloseHandle(*Handle);
+         *Handle = nullptr;
+         return (error IS ERROR_ACCESS_DENIED) ? ERR::NoPermission : ERR::SystemCall;
       }
-
+      
       *WinFlags = nflags;
       return ERR::Okay;
    }
-   else return ERR::NoSupport;
+   else {
+      *Handle = nullptr;
+      
+      switch (GetLastError()) {
+         case ERROR_FILE_NOT_FOUND: return ERR::FileNotFound;
+         case ERROR_PATH_NOT_FOUND: return ERR::FileNotFound;
+         case ERROR_ACCESS_DENIED:  return ERR::NoPermission;
+         default: return ERR::SystemCall;
+      }
+   }
 }
 
 //********************************************************************************************************************
 
 extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, char *PathOutput, int PathSize, int *Status)
-{
-   DWORD bytes_out;
+{   
+   DWORD bytes_out = 0;
    auto ovlap = (OVERLAPPED *)WatchBuffer;
    auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
+   
+   *Status = 0;
+   PathOutput[0] = '\0';
 
-   if (GetOverlappedResult(Handle, ovlap, &bytes_out, false)) {
-      if (fni->Action) {
-         ((char *)fni)[bytes_out] = 0; // Ensure path is null terminated
-         wcstombs(PathOutput, fni->FileName, PathSize); // Convert to UTF8
-
-         if (fni->Action IS FILE_ACTION_ADDED) *Status = MFF_CREATE;
-         else if (fni->Action IS FILE_ACTION_REMOVED) *Status = MFF_DELETE;
-         else if (fni->Action IS FILE_ACTION_MODIFIED) *Status = MFF_MODIFY|MFF_ATTRIB;
-         else if (fni->Action IS FILE_ACTION_RENAMED_OLD_NAME) *Status = MFF_MOVED;
-         else if (fni->Action IS FILE_ACTION_RENAMED_NEW_NAME) *Status = MFF_MOVED;
-         else *Status = 0;
-
-         fni->Action = 0;
-
-         // Re-subscription is required to receive the next queued notification
-
-         DWORD empty;
-         ReadDirectoryChangesW(Handle, fni, sizeof(FILE_NOTIFY_INFORMATION) + MAX_PATH - 1, true, NotifyFlags, &empty, ovlap, nullptr);
-
-         return ERR::Okay;
+   if (!GetOverlappedResult(Handle, ovlap, &bytes_out, false)) {
+      DWORD error = GetLastError();
+      if (error IS ERROR_IO_INCOMPLETE or error IS ERROR_IO_PENDING) {
+         return ERR::NothingDone;
       }
-      else return ERR::NothingDone;
+      else return ERR::SystemCall;
    }
-   else return ERR::NothingDone;
+
+   // Validate we received enough data for at least the header
+   if (bytes_out < sizeof(FILE_NOTIFY_INFORMATION)) return ERR::NothingDone;
+
+   // Buffer corruption detection - validate the FILE_NOTIFY_INFORMATION structure
+   if (!fni->Action or fni->FileNameLength > (MAX_PATH * sizeof(WCHAR))) {
+      // Clear the buffer and re-subscribe to recover from corruption
+      memset(fni, 0, bytes_out);
+      memset(WatchBuffer, 0, sizeof(OVERLAPPED));
+      
+      DWORD empty;
+      const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
+      ReadDirectoryChangesW(Handle, fni, buffer_size, true, NotifyFlags, &empty, ovlap, nullptr);
+      return ERR::NothingDone;
+   }
+
+   // Validate buffer bounds before accessing filename
+   DWORD required_size = sizeof(FILE_NOTIFY_INFORMATION) + fni->FileNameLength;
+   if (required_size > bytes_out) {
+      return ERR::BufferOverflow;
+   }
+
+   // Process the first notification in the buffer
+   if (fni->FileNameLength > 0) {
+      DWORD filename_length_chars = fni->FileNameLength / sizeof(WCHAR);
+      
+      // Convert Unicode filename to UTF-8 with proper error handling
+      int result = WideCharToMultiByte(CP_UTF8, 0, fni->FileName, filename_length_chars, PathOutput, PathSize - 1, nullptr, nullptr);
+      if (result <= 0 or result >= PathSize) {
+         // Conversion failed or output too large
+         PathOutput[0] = 0;
+         return ERR::StringFormat;
+      }
+      PathOutput[result] = 0;  // Null terminate
+   }
+
+   // Map Windows actions to MFF flags more accurately
+   switch (fni->Action) {
+      case FILE_ACTION_ADDED:             *Status = MFF_CREATE; break;
+      case FILE_ACTION_REMOVED:           *Status = MFF_DELETE; break;
+      case FILE_ACTION_MODIFIED:          *Status = MFF_MODIFY; break;
+      case FILE_ACTION_RENAMED_OLD_NAME:  *Status = MFF_MOVED; break;
+      case FILE_ACTION_RENAMED_NEW_NAME:  *Status = MFF_MOVED; break;
+      default: *Status = 0; break;
+   }
+
+   // Clear the processed notification to prevent reprocessing
+   DWORD action = fni->Action;
+   fni->Action = 0;
+   
+   // Handle multiple notifications in buffer if present
+   if (fni->NextEntryOffset > 0 and fni->NextEntryOffset < bytes_out) {
+      // Move remaining notifications to the beginning of the buffer
+      DWORD remaining_size = bytes_out - fni->NextEntryOffset;
+      if (remaining_size > 0 and remaining_size < bytes_out) {
+         memmove(fni, (BYTE *)fni + fni->NextEntryOffset, remaining_size);
+         memset((BYTE *)fni + remaining_size, 0, bytes_out - remaining_size); // Zero out the rest of the buffer
+      }
+   }
+   else { // No more notifications, clear the buffer and re-subscribe
+      memset(fni, 0, bytes_out);
+      memset(WatchBuffer, 0, sizeof(OVERLAPPED));
+      
+      DWORD empty;
+      const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
+      if (!ReadDirectoryChangesW(Handle, fni, buffer_size, true, NotifyFlags, &empty, ovlap, nullptr)) {
+         return ERR::SystemCall;
+      }
+   }
+
+   return (action != 0) ? ERR::Okay : ERR::NothingDone;
 }
 
 //********************************************************************************************************************
