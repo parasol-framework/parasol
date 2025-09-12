@@ -847,7 +847,7 @@ static ERR TASK_Activate(extTask *Self)
    auto final_buffer = buffer.str();
    for (int i=0; i < std::ssize(final_buffer); i++) if (final_buffer[i] IS '\'') final_buffer[i] = '"';
 
-   log.warning("%s", final_buffer.c_str());
+   log.msg("%s", final_buffer.c_str());
 
    // If we're not going to run in shell mode, create an argument list for passing to the program.
 
