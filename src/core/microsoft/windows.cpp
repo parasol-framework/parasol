@@ -1757,7 +1757,7 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
       switch (GetLastError()) {
          case ERROR_FILE_NOT_FOUND: return ERR::FileNotFound;
          case ERROR_PATH_NOT_FOUND: return ERR::FileNotFound;
-         case ERROR_ACCESS_DENIED: ERR::NoPermission;
+         case ERROR_ACCESS_DENIED:  return ERR::NoPermission;
          default: return ERR::SystemCall;
       }
    }
