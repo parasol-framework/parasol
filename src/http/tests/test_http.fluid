@@ -127,7 +127,7 @@ function testPostStringExt()
 
    local err = proc.sleep()
 
-   if (http.status == 503) then
+   if (http.status >= 500) then
       print('httpbin.org service unavailable; cannot perform test.')
       return
    end

@@ -193,7 +193,8 @@ static bool is_valid_url_char(char Char, bool AllowReserved = false) {
 //********************************************************************************************************************
 // Enhanced URL encoding with validation
 
-static std::string encode_url_path(const char* Input) {
+static std::string encode_url_path(const char* Input) 
+{
    if (!Input) return std::string();
 
    std::string result;
@@ -212,8 +213,7 @@ static std::string encode_url_path(const char* Input) {
          snprintf(encoded, sizeof(encoded), "%%%02X", (unsigned char)(*p));
          result += encoded;
       }
-      else {
-         // Other characters that need encoding
+      else { // Other characters that need encoding
          char encoded[4];
          snprintf(encoded, sizeof(encoded), "%%%02X", (unsigned char)(*p));
          result += encoded;
@@ -245,7 +245,7 @@ class extHTTP : public objHTTP {
    FUNCTION Outgoing;
    FUNCTION AuthCallback;
    FUNCTION StateChanged;
-   ankerl::unordered_dense::map<std::string, std::string> Args;
+   ankerl::unordered_dense::map<std::string, std::string> ResponseKeys;
    ankerl::unordered_dense::map<std::string, std::string> Headers;
    std::string Response;   // Response header buffer
    std::string URI;        // Temporary string, used only when the user reads the URI
@@ -517,11 +517,11 @@ static ERR HTTP_Activate(extHTTP *Self)
       if (Self->Method IS HTM::COPY) {
          // Copies a source (indicated by Path) to a Destination.  The Destination is referenced as an variable field.
 
-         if (Self->Args.contains("Destination")) {
+         if (Self->ResponseKeys.contains("Destination")) {
             set_http_method(Self, "COPY", cmd);
-            cmd << "Destination: http://" << Self->Host << "/" << Self->Args["Destination"] << CRLF;
+            cmd << "Destination: http://" << Self->Host << "/" << Self->ResponseKeys["Destination"] << CRLF;
 
-            auto & overwrite = Self->Args["Overwrite"];
+            auto & overwrite = Self->ResponseKeys["Overwrite"];
             if (!overwrite.empty()) {
                // If the overwrite is 'F' then copy will fail if the destination exists
                cmd << "Overwrite: " << overwrite << CRLF;
@@ -549,9 +549,9 @@ static ERR HTTP_Activate(extHTTP *Self)
       else if (Self->Method IS HTM::MOVE) {
          // Moves a source (indicated by Path) to a Destination.  The Destination is referenced as a variable field.
 
-         if (Self->Args.contains("Destination")) {
+         if (Self->ResponseKeys.contains("Destination")) {
             set_http_method(Self, "MOVE", cmd);
-            cmd << "Destination: http://" << Self->Host << "/" << Self->Args["Destination"] << CRLF;
+            cmd << "Destination: http://" << Self->Host << "/" << Self->ResponseKeys["Destination"] << CRLF;
          }
          else {
             log.warning("HTTP MOVE request requires a destination path.");
@@ -888,8 +888,8 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if (Self->Args.contains(Args->Key)) {
-      pf::strcopy(Self->Args[Args->Key], Args->Value, Args->Size);
+   if (Self->ResponseKeys.contains(Args->Key)) {
+      pf::strcopy(Self->ResponseKeys[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
