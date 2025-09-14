@@ -223,6 +223,9 @@ static ERR object_free(Object *Object)
          for (auto it=glTimers.begin(); it != glTimers.end(); ) {
             if (it->SubscriberID IS Object->UID) {
                log.warning("%s object #%d has an unfreed timer subscription, routine %p, interval %" PF64, mc->ClassName, Object->UID, &it->Routine, (long long)it->Interval);
+               if (it->Routine.isScript()) {
+                  ((objScript *)it->Routine.Context)->derefProcedure(it->Routine);
+               }
                it = glTimers.erase(it);
             }
             else it++;

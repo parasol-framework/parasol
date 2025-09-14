@@ -844,7 +844,6 @@ ERR UpdateTimer(APTR Subscription, double Interval)
             return log.warning(ERR::AlreadyLocked);
          }
 
-         // Store the script context before releasing the lock
          objScript *script_context = nullptr;
          FUNCTION script_routine;
          if (timer->Routine.isScript()) {
@@ -852,7 +851,6 @@ ERR UpdateTimer(APTR Subscription, double Interval)
             script_routine = timer->Routine;
          }
 
-         // Remove from timer list while still holding the lock
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
             if (timer IS &(*it)) {
                glTimers.erase(it);
