@@ -37,6 +37,34 @@ each entry the proxy database.  You may change existing values of any proxy and 
 #endif
 
 //********************************************************************************************************************
+// Global proxy configuration access.  Acquire glProxyMutex before using.
+
+static std::recursive_mutex glProxyMutex;
+static bool glProxyFileChecked = false;
+static objConfig *glProxyConfig = nullptr;
+
+static objConfig * get_proxy_config(void) 
+{
+   std::lock_guard lock(glProxyMutex);
+   if (!glProxyFileChecked) {
+      glProxyConfig = objConfig::create::untracked({ fl::Path("user:config/network/proxies.cfg") });
+      glProxyFileChecked = true;
+   }
+
+   return glProxyConfig;
+}   
+
+static void cleanup_proxy_config(void)
+{
+   std::lock_guard lock(glProxyMutex);
+   if (glProxyConfig) {
+      FreeResource(glProxyConfig);
+      glProxyConfig = nullptr;
+   }
+   glProxyFileChecked = false;
+}
+
+//********************************************************************************************************************
 
 class extProxy : public objProxy {
 public:
@@ -237,8 +265,9 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 
    log.traceBranch("Port: %d, Enabled: %d", (Args) ? Args->Port : 0, (Args) ? Args->Enabled : -1);
 
-   auto config = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
-   if (config.ok()) {
+   const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
+
+   if (auto config = get_proxy_config()) {
       #ifdef _WIN32
          // Remove existing host proxy settings
          ConfigGroups *groups;
@@ -358,9 +387,10 @@ static ERR find_proxy(extProxy *Self)
    pf::Log log(__FUNCTION__);
 
    clear_values(Self);
+   
+   const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
-   auto config = objConfig::create {fl::Path("user:config/network/proxies.cfg") };
-   if (config.ok()) {
+   if (auto config = get_proxy_config()) {
       if (!Self->Find) Self->Find = true; // Start of search
 
       ConfigGroups *groups;
@@ -511,10 +541,10 @@ static ERR PROXY_SaveSettings(extProxy *Self)
 
       return ERR::Okay;
    }
+   
+   const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
-   objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
-
-   if (config.ok()) {
+   if (auto config = get_proxy_config()) {
       if (!Self->GroupName.empty()) config->deleteGroup(Self->GroupName.c_str());
       else { // This is a new proxy
          int id = 0;
@@ -739,10 +769,10 @@ static ERR get_record(extProxy *Self)
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
    Self->Record = std::stoi(Self->GroupName);
+   
+   const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
-   objConfig::create config = { fl::Path("user:config/network/proxies.cfg") };
-
-   if (config.ok()) {
+   if (auto config = get_proxy_config()) {
       std::string str;
       if (config->read(Self->GroupName, "Server", str) IS ERR::Okay) {
          Self->setString(Self->Server, str);

@@ -172,7 +172,7 @@ function testBasicCommunication()
             glTestSteps = glTestSteps + 1
 
          elseif (string.match(msg, 'COMPLETE:')) then
-            print('[Server] Client signaled completion')
+            print('[Server] Client signalled completion')
             glTestSteps = glTestSteps + 1
          end
       end,
