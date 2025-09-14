@@ -991,7 +991,6 @@ static const FieldArray clFields[] = {
    { "OutputFile",     FDF_STRING|FDF_RW, nullptr, SET_OutputFile },
    { "InputFile",      FDF_STRING|FDF_RW, nullptr, SET_InputFile },
    { "UserAgent",      FDF_STRING|FDF_RW, nullptr, SET_UserAgent },
-   { "ClientData",     FDF_POINTER|FDF_RW },
    { "InputObject",    FDF_OBJECTID|FDF_RW },
    { "OutputObject",   FDF_OBJECTID|FDF_RW },
    { "Method",         FDF_INT|FDF_LOOKUP|FDF_RW, nullptr, SET_Method, &clHTTPMethod },

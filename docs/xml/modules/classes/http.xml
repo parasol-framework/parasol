@@ -145,12 +145,6 @@ http.acActivate()
     </field>
 
     <field>
-      <name>ClientData</name>
-      <access read="R" write="W">Read/Write</access>
-      <type>APTR</type>
-    </field>
-
-    <field>
       <name>ConnectTimeout</name>
       <comment>The initial connection timeout value, measured in seconds.</comment>
       <access read="R" write="W">Read/Write</access>
