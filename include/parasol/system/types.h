@@ -36,7 +36,7 @@ struct SCALE : strong_typedef<SCALE, double> {
 // Function structure, typically used for defining callbacks to functions and procedures of any kind (e.g. standard C,
 // Fluid).
 
-enum class CALL : char {
+enum class CALL : uint8_t {
    NIL=0,
    STD_C=1,
    SCRIPT=2
