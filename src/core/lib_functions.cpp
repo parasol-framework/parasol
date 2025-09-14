@@ -844,18 +844,25 @@ ERR UpdateTimer(APTR Subscription, double Interval)
             return log.warning(ERR::AlreadyLocked);
          }
 
-         lock.release();
-
+         // Store the script context before releasing the lock
+         objScript *script_context = nullptr;
+         FUNCTION script_routine;
          if (timer->Routine.isScript()) {
-            ((objScript *)timer->Routine.Context)->derefProcedure(timer->Routine);
+            script_context = (objScript *)timer->Routine.Context;
+            script_routine = timer->Routine;
          }
 
+         // Remove from timer list while still holding the lock
          for (auto it=glTimers.begin(); it != glTimers.end(); it++) {
             if (timer IS &(*it)) {
                glTimers.erase(it);
                break;
             }
          }
+
+         lock.unlock();
+
+         if (script_context) script_context->derefProcedure(script_routine);
 
          return ERR::Okay;
       }
