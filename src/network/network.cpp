@@ -465,6 +465,8 @@ static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
+static void cleanup_proxy_config(void);
+
 static ERR init_netclient(void);
 static ERR init_netsocket(void);
 static ERR init_clientsocket(void);
@@ -541,6 +543,8 @@ static ERR MODOpen(OBJECTPTR Module)
 static ERR MODExpunge(void)
 {
    pf::Log log;
+
+   cleanup_proxy_config();
 
 #ifdef _WIN32
    SetResourcePtr(RES::NET_PROCESSING, nullptr);
@@ -1004,7 +1008,3 @@ static STRUCTS glStructures = {
 
 PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_network_module() { return &ModHeader; }
-
-/*********************************************************************************************************************
-                                                     BACKTRACE IT
-*********************************************************************************************************************/
