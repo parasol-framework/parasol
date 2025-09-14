@@ -96,7 +96,7 @@ static int processing_new(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Usage: err = proc.sleep([Seconds], [WakeOnSignal=true], [ResetState=true])
+// Usage: err = proc.sleep([Seconds], [WakeOnSignal=true])
 //
 // Puts a process to sleep with message processing in the background.  Can be woken early with a signal (i.e.
 // proc.signal()).
@@ -138,11 +138,6 @@ static int processing_sleep(lua_State *Lua)
    if (lua_type(Lua, 3) IS LUA_TBOOLEAN) reset_state = lua_toboolean(Lua, 3);
 
    log.branch("Timeout: %d, WakeOnSignal: %c", timeout, wake_on_signal ? 'Y' : 'N');
-
-   // The Lua signal flag is always reset on entry just in case it has been polluted by prior activity.
-   // All other objects can be pre-signalled legitimately.
-
-   if (reset_state) Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
 
    if (wake_on_signal) {
       if ((fp) and (fp->Signals) and (not fp->Signals->empty())) {
@@ -186,6 +181,17 @@ static int processing_signal(lua_State *Lua)
 }
 
 //********************************************************************************************************************
+// Usage: processing.flush()
+//
+// Flushes any pending signals from the Fluid object.
+
+static int processing_flush(lua_State *Lua)
+{
+   Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+   return 0;
+}
+
+//********************************************************************************************************************
 // Usage: task = processing.task()
 //
 // Returns a Fluid object that references the current task.
@@ -214,7 +220,16 @@ static int processing_get(lua_State *Lua)
          lua_pushcclosure(Lua, &processing_signal, 1);
          return 1;
       }
-      else return luaL_error(Lua, "Unrecognised field name '%s'", fieldname);
+      else if (std::string_view("flush") IS fieldname) {
+         Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+         if (auto fp = (fprocessing *)get_meta(Lua, lua_upvalueindex(1), "Fluid.processing")) {
+            for (auto &entry : *fp->Signals) {
+               entry.Object->Flags &= (~NF::SIGNALLED);
+            }
+         }
+         return 0;
+      }
+      else return luaL_error(Lua, "Unrecognised index '%s'", fieldname);
    }
 
    return 0;
@@ -279,6 +294,7 @@ static const luaL_Reg processinglib_functions[] = {
    { "sleep",   processing_sleep },
    { "signal",  processing_signal },
    { "task",    processing_task },
+   { "flush",   processing_flush },
    { "delayedCall", processing_delayed_call },
    { nullptr, nullptr }
 };
