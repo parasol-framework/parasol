@@ -145,7 +145,7 @@ class objHTTP : public Object {
 
    double   DataTimeout;     // The data timeout value, relevant when receiving or sending data.
    double   ConnectTimeout;  // The initial connection timeout value, measured in seconds.
-   int64_t  Index;           // Indicates download progress in terms of bytes received.
+   int64_t  Index;           // Indicates the total bytes received during content transfer.
    int64_t  ContentLength;   // The byte length of incoming or outgoing content.
    int64_t  Size;            // Set this field to define the length of a data transfer when issuing a POST command.
    STRING   Host;            // The targeted HTTP server is specified here, either by name or IP address.
@@ -153,19 +153,18 @@ class objHTTP : public Object {
    STRING   OutputFile;      // To download HTTP content to a file, set a file path here.
    STRING   InputFile;       // To upload HTTP content from a file, set a file path here.
    STRING   UserAgent;       // Specifies the name of the user-agent string that is sent in HTTP requests.
-   APTR     ClientData;      // This unused field value can be used for storing private data.
    OBJECTID InputObjectID;   // Allows data to be sent from an object on execution of a POST command.
    OBJECTID OutputObjectID;  // Incoming data can be sent to the object referenced in this field.
-   HTM      Method;          // The HTTP instruction to execute is defined here (defaults to GET).
-   int      Port;            // The HTTP port to use when targeting a server.
+   HTM      Method;          // The HTTP instruction to execute (defaults to GET).
+   int      Port;            // The HTTP port to use when targeting a host.
    HOM      ObjectMode;      // The transfer mode used when passing data to a targeted object.
    HTF      Flags;           // Optional flags.
    HTS      Status;          // Indicates the HTTP status code returned on completion of an HTTP request.
    ERR      Error;           // The error code received for the most recently executed HTTP command.
    DATA     Datatype;        // The default datatype format to use when passing data to a target object.
    HGS      CurrentState;    // Indicates the current state of an HTTP object during its interaction with an HTTP server.
-   STRING   ProxyServer;     // The targeted HTTP server is specified here, either by name or IP address.
-   int      ProxyPort;       // The port to use when communicating with the proxy server.
+   STRING   ProxyServer;     // Route the HTTP request through the proxy server defined here.
+   int      ProxyPort;       // The port to use when communicating with a proxy server.
    int      BufferSize;      // Indicates the preferred buffer size for data operations.
 
    // Action stubs
@@ -240,13 +239,13 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setHost(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[22];
+      auto field = &this->Class->Dictionary[23];
       return field->WriteValue(target, field, 0x08800500, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[24];
+      auto field = &this->Class->Dictionary[25];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -264,13 +263,8 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setUserAgent(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[32];
+      auto field = &this->Class->Dictionary[33];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
-   }
-
-   inline ERR setClientData(APTR Value) noexcept {
-      this->ClientData = Value;
-      return ERR::Okay;
    }
 
    inline ERR setInputObject(OBJECTID Value) noexcept {
@@ -285,7 +279,7 @@ class objHTTP : public Object {
 
    inline ERR setMethod(const HTM Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[5];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
@@ -321,13 +315,13 @@ class objHTTP : public Object {
 
    inline ERR setCurrentState(const HGS Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[19];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setProxyServer(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[35];
+      auto field = &this->Class->Dictionary[36];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -338,43 +332,49 @@ class objHTTP : public Object {
 
    inline ERR setBufferSize(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[33];
+      auto field = &this->Class->Dictionary[34];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
+   }
+
+   inline ERR setClientData(APTR Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[18];
+      return field->WriteValue(target, field, 0x08000300, Value, 1);
    }
 
    inline ERR setAuthCallback(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[27];
+      auto field = &this->Class->Dictionary[28];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setContentType(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[34];
+      auto field = &this->Class->Dictionary[35];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setIncoming(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[20];
+      auto field = &this->Class->Dictionary[21];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setLocation(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[21];
+      auto field = &this->Class->Dictionary[22];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    inline ERR setOutgoing(FUNCTION Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_FUNCTION, &Value, 1);
    }
 
    template <class T> inline ERR setRealm(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -386,13 +386,13 @@ class objHTTP : public Object {
 
    template <class T> inline ERR setUsername(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[38];
+      auto field = &this->Class->Dictionary[39];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPassword(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800200, to_cstring(Value), 1);
    }
 

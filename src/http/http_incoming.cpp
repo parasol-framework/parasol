@@ -226,12 +226,12 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                log.warning("Sequential MovedPermanently messages are not supported.");
             }
             else {
-               char buffer[512];
-               if (acGetKey(Self, "Location", buffer, sizeof(buffer)) IS ERR::Okay) {
-                  log.msg("MovedPermanently to %s", buffer);
-                  if (pf::startswith("http:", buffer)) Self->setLocation(buffer);
-                  else if (pf::startswith("https:", buffer)) Self->setLocation(buffer);
-                  else Self->setPath(buffer);
+               if (auto it = Self->ResponseKeys.find("location"); it != Self->ResponseKeys.end()) {
+                  auto &location = it->second;
+                  log.msg("MovedPermanently to %s", location.c_str());
+                  if (location.starts_with("http:")) Self->setLocation(location);
+                  else if (location.starts_with("https:")) Self->setLocation(location);
+                  else Self->setPath(location);
                   Self->setCurrentState(HGS::COMPLETED);
                   acActivate(Self); // Try again
                   Self->Flags |= HTF::MOVED;
@@ -277,7 +277,7 @@ static ERR read_incoming_header(extHTTP *Self, objNetSocket *Socket)
                }
             }
 
-            std::string &authenticate = Self->Args["WWW-Authenticate"];
+            std::string &authenticate = Self->ResponseKeys["WWW-Authenticate"];
             if (not authenticate.empty()) {
                if (pf::startswith("Digest", authenticate)) {
                   log.trace("Digest authentication mode.");
@@ -647,7 +647,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
 {
    pf::Log log(__FUNCTION__);
 
-   Self->Args.clear();
+   Self->ResponseKeys.clear();
 
    log.detail("HTTP RESPONSE HEADER\n%.*s", int(Response.size()), Response.data());
 
@@ -697,10 +697,10 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       field_key.reserve(field_name.size());
       ranges::transform(field_name, std::back_inserter(field_key), [](char c) { return char(std::tolower(c)); });
 
-      Self->Args[field_key] = std::string(field_value);
+      Self->ResponseKeys[field_key] = std::string(field_value);
    }
 
-   if (auto it = Self->Args.find("content-length"); it != Self->Args.end()) {
+   if (auto it = Self->ResponseKeys.find("content-length"); it != Self->ResponseKeys.end()) {
       auto &value = it->second;
       Self->ContentLength = 0;
       int64_t temp_length = 0;
@@ -714,7 +714,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
       }
    }
 
-   if (auto it = Self->Args.find("transfer-encoding"); it != Self->Args.end()) {
+   if (auto it = Self->ResponseKeys.find("transfer-encoding"); it != Self->ResponseKeys.end()) {
       auto &value = it->second;
       if (pf::iequals(value, "chunked")) {
          if ((Self->Flags & HTF::RAW) IS HTF::NIL) Self->Chunked = true;
@@ -727,7 +727,7 @@ static ERR parse_response(extHTTP *Self, std::string_view Response)
    if (Self->ResponseVersion >= 0x11) Self->KeepAlive = true;
    else Self->KeepAlive = false;
 
-   if (auto it = Self->Args.find("connection"); it != Self->Args.end()) {
+   if (auto it = Self->ResponseKeys.find("connection"); it != Self->ResponseKeys.end()) {
       // HTTP/1.0 if keep-alive is not specified then the connection is closed by default.
       // HTTP/1.1 if keep-alive is not specified then the connection is persistent
       //

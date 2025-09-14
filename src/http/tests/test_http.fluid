@@ -127,7 +127,7 @@ function testPostStringExt()
 
    local err = proc.sleep()
 
-   if (http.status == 503) then
+   if (http.status >= 500) then
       print('httpbin.org service unavailable; cannot perform test.')
       return
    end
@@ -152,7 +152,7 @@ function testPostStringFile()
    local content = ''
 
    local http = obj.new('http', {
-      src        = 'http://127.0.0.1: ' .. SERVER_PORT .. '/post',
+      src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/post',
       method     = 'post',
       contentType = 'text/plain',
       flags      = HTF_NO_HEAD,

@@ -193,7 +193,8 @@ static bool is_valid_url_char(char Char, bool AllowReserved = false) {
 //********************************************************************************************************************
 // Enhanced URL encoding with validation
 
-static std::string encode_url_path(const char* Input) {
+static std::string encode_url_path(const char* Input) 
+{
    if (!Input) return std::string();
 
    std::string result;
@@ -212,8 +213,7 @@ static std::string encode_url_path(const char* Input) {
          snprintf(encoded, sizeof(encoded), "%%%02X", (unsigned char)(*p));
          result += encoded;
       }
-      else {
-         // Other characters that need encoding
+      else { // Other characters that need encoding
          char encoded[4];
          snprintf(encoded, sizeof(encoded), "%%%02X", (unsigned char)(*p));
          result += encoded;
@@ -245,7 +245,7 @@ class extHTTP : public objHTTP {
    FUNCTION Outgoing;
    FUNCTION AuthCallback;
    FUNCTION StateChanged;
-   ankerl::unordered_dense::map<std::string, std::string> Args;
+   ankerl::unordered_dense::map<std::string, std::string> ResponseKeys;
    ankerl::unordered_dense::map<std::string, std::string> Headers;
    std::string Response;   // Response header buffer
    std::string URI;        // Temporary string, used only when the user reads the URI
@@ -425,22 +425,21 @@ static void notify_free_auth_callback(OBJECTPTR Object, ACTIONID ActionID, ERR R
 /*********************************************************************************************************************
 
 -ACTION-
-Activate: Executes an HTTP method.
+Activate: Sends an HTTP request to the host.
 
-This action starts an HTTP operation against a target server.  Based on the desired #Method, an HTTP request
-will be sent to the target server and the action will immediately return whilst the HTTP object will wait for a
-response from the server.  If the server fails to respond within the time period indicated by the #ConnectTimeout,
-the HTTP object will be deactivated (for further details, refer to the #Deactivate() action).
+This action sends an HTTP request to the targeted #Host.  Based on the desired #Method, an HTTP request
+will be sent to the host and the action will return whilst the HTTP object waits for a
+response from the server.  If the host fails to respond within the time period indicated by the #ConnectTimeout,
+the HTTP object will be deactivated and the #CurrentState set to `TERMINATED`.
 
-Successful interpretation of the HTTP request at the server will result in a response being received, followed by file
-data (if applicable). The HTTP response code will be stored in the #Status field.  The HTTP object will
-automatically parse the response data and store the received values in the HTTP object as variable fields.  It is
-possible to be alerted to the complete receipt of a response by listening to the #CurrentState field, or waiting for
-the Deactivate action to kick in.
+Successful parsing of the HTTP request at the host will result in a response being received, followed by content
+data (if applicable). The HTTP response code will be stored in the #Status field.  The response will be parsed
+automatically with the header strings stored as key-values.  To receive notice of the parsed response, hook into the
+#StateChanged callback.
 
-Following a response, incoming data can be managed in a number of ways. It may be streamed to an object referenced by
-the #OutputObject field through data feeds.  It can be written to the target object if the #ObjectMode is set to
-`READ_WRITE`.  Finally it can be received through C style callbacks if the #Incoming field is set.
+Incoming HTTP content can be managed in the following ways: It may be streamed to an object 
+referenced by the #OutputObject field through data feeds.  It can be written to the target object if the #ObjectMode 
+is set to `READ_WRITE`.  Or it can be received through the #Incoming callback.
 
 On completion of an HTTP request, the #Deactivate() action is called, regardless of the level of success.
 
@@ -451,6 +450,11 @@ File:   Failed to create a target file if the OutputFile field was set.
 Write:  Failed to write data to the HTTP @NetSocket.
 CreateObject: Failed to create a @NetSocket object.
 HostNotFound: DNS resolution of the domain name in the URI failed.
+Recursion: Function was called recursively.
+NotInitialised: The HTTP object has not been initialised.
+FieldNotSet: Required fields are not set (e.g. destination for COPY/MOVE methods, or data source for POST/PUT methods).
+NoData: Input file is empty or has no data for POST/PUT operations.
+ConnectionRefused: The connection to the server was refused.
 -END-
 
 *********************************************************************************************************************/
@@ -517,11 +521,11 @@ static ERR HTTP_Activate(extHTTP *Self)
       if (Self->Method IS HTM::COPY) {
          // Copies a source (indicated by Path) to a Destination.  The Destination is referenced as an variable field.
 
-         if (Self->Args.contains("Destination")) {
+         if (Self->Headers.contains("Destination")) {
             set_http_method(Self, "COPY", cmd);
-            cmd << "Destination: http://" << Self->Host << "/" << Self->Args["Destination"] << CRLF;
+            cmd << "Destination: http://" << Self->Host << "/" << Self->Headers["Destination"] << CRLF;
 
-            auto & overwrite = Self->Args["Overwrite"];
+            auto & overwrite = Self->Headers["Overwrite"];
             if (!overwrite.empty()) {
                // If the overwrite is 'F' then copy will fail if the destination exists
                cmd << "Overwrite: " << overwrite << CRLF;
@@ -549,9 +553,9 @@ static ERR HTTP_Activate(extHTTP *Self)
       else if (Self->Method IS HTM::MOVE) {
          // Moves a source (indicated by Path) to a Destination.  The Destination is referenced as a variable field.
 
-         if (Self->Args.contains("Destination")) {
+         if (Self->Headers.contains("Destination")) {
             set_http_method(Self, "MOVE", cmd);
-            cmd << "Destination: http://" << Self->Host << "/" << Self->Args["Destination"] << CRLF;
+            cmd << "Destination: http://" << Self->Host << "/" << Self->Headers["Destination"] << CRLF;
          }
          else {
             log.warning("HTTP MOVE request requires a destination path.");
@@ -799,15 +803,13 @@ static ERR HTTP_Activate(extHTTP *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-Deactivate: Cancels the current download.  Can also signal the end to a download if subscribed.
+Deactivate: Ends the current HTTP request.
 
 Following the completion of an HTTP request, the Deactivate() action will be called internally to signal an end to the
-process.  By listening to the Deactivate action(), you are given the opportunity to respond to the end of an HTTP request.
+process.  Subscribing to Deactivate() is an effective means of responding to the end of a single HTTP request.
 
-If child objects are initialised to the HTTP object, they will be activated automatically.  This feature is provided to
-assist scripted usage of the HTTP object.
-
-Active HTTP requests can be manually cancelled by calling the Deactivate() action at any time.
+Active HTTP requests can be manually cancelled by calling Deactivate() at any time.  Deactivation does not necessarily
+result in closure of the socket.
 -END-
 *********************************************************************************************************************/
 
@@ -815,7 +817,7 @@ static ERR HTTP_Deactivate(extHTTP *Self)
 {
    pf::Log log;
 
-   log.branch("Closing connection to server & signaling children.");
+   log.branch("Halting HTTP request.");
 
    if (Self->CurrentState < HGS::COMPLETED) Self->setCurrentState(HGS::TERMINATED);
 
@@ -888,8 +890,8 @@ static ERR HTTP_GetKey(extHTTP *Self, struct acGetKey *Args)
 {
    if (!Args) return ERR::NullArgs;
 
-   if (Self->Args.contains(Args->Key)) {
-      pf::strcopy(Self->Args[Args->Key], Args->Value, Args->Size);
+   if (Self->ResponseKeys.contains(Args->Key)) {
+      pf::strcopy(Self->ResponseKeys[Args->Key], Args->Value, Args->Size);
       return ERR::Okay;
    }
 
@@ -940,7 +942,7 @@ static ERR HTTP_NewPlacement(extHTTP *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-SetKey: Options to pass in the HTTP method header can be set as key-values.
+SetKey: Options for the HTTP header can be set as key-values.
 -END-
 *********************************************************************************************************************/
 
@@ -1011,7 +1013,8 @@ static const FieldArray clFields[] = {
    { "Outgoing",       FDF_FUNCTIONPTR|FDF_RW,   GET_Outgoing, SET_Outgoing },
    { "Realm",          FDF_STRING|FDF_RW,        GET_Realm, SET_Realm },
    { "RecvBuffer",     FDF_ARRAY|FDF_BYTE|FDF_R, GET_RecvBuffer },
-   { "Src",            FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
+   { "Src",            FDF_STRING|FDF_SYNONYM|FD_PRIVATE|FDF_RW, GET_Location, SET_Location }, // Deprecated by URL
+   { "URL",            FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Location, SET_Location },
    { "StateChanged",   FDF_FUNCTIONPTR|FDF_RW,   GET_StateChanged, SET_StateChanged },
    { "Username",       FDF_STRING|FDF_W,         nullptr, SET_Username },
    { "Password",       FDF_STRING|FDF_W,         nullptr, SET_Password },
