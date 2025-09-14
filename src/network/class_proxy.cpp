@@ -45,6 +45,7 @@ static objConfig *glProxyConfig = nullptr;
 
 static objConfig * get_proxy_config(void) 
 {
+   std::lock_guard lock(glProxyMutex);
    if (!glProxyFileChecked) {
       glProxyConfig = objConfig::create::untracked({ fl::Path("user:config/network/proxies.cfg") });
       glProxyFileChecked = true;
