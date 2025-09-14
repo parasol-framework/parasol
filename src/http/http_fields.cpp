@@ -59,8 +59,8 @@ The timeout value is measured in seconds.
 -FIELD-
 ContentLength: The byte length of incoming or outgoing content.
 
-HTTP servers will return a `content-length` value in their response headers when retrieving information.  This 
-value is defined here once the response header is processed.  The ContentLength may be set to `-1` if the content is 
+HTTP servers will return a `content-length` value in their response headers when retrieving information.  This
+value is defined here once the response header is processed.  The ContentLength may be set to `-1` if the content is
 being streamed from the server.
 
 Note that if posting data to a server with an #InputFile or #InputObject as the source, the #Size field will have
@@ -623,7 +623,7 @@ static ERR SET_Realm(extHTTP *Self, CSTRING Value)
 RecvBuffer: Refers to a data buffer that is used to store all incoming content.
 
 If the `RECV_BUFFER` flag is set, all content received from the HTTP server will be stored in a managed buffer
-that is referred to by this field.  This field can be read at any time.  The buffer content is reset whenever the 
+that is referred to by this field.  This field can be read at any time.  The buffer content is reset whenever the
 HTTP object is activated.
 
 *********************************************************************************************************************/
@@ -640,7 +640,7 @@ static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, int *Elements)
 -FIELD-
 Size: Set this field to define the length of a data transfer when issuing a `POST` command.
 
-Prior to the execution of a `POST` command, it is recommended that the Size field is set to the length of the data 
+Prior to the execution of a `POST` command, it is recommended that the Size field is set to the length of the data
 transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of
 the transfer by reading the size from the source file or object.
 

@@ -134,7 +134,7 @@ CSTRING GetErrorMsg(ERR Code)
 GenCRC32: Generates 32-bit CRC checksum values.
 
 This function is used internally for the generation of 32-bit CRC checksums compatible with IEEE 802.3.  It is made
-available to clients to generate CRC values over any length of buffer space.  This function may be called repeatedly 
+available to clients to generate CRC values over any length of buffer space.  This function may be called repeatedly
 by feeding it CRC values in a cycle, making it ideal for processing streamed data.
 
 -INPUT-
@@ -211,20 +211,20 @@ alignas(64) static uint32_t crc_table[8][256] = {
 
 static bool glCRCTablesInit = false;
 
-uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length) 
+uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
 {
    if (!Data) return 0;
-   
+
    if (not glCRCTablesInit) {
       for (int i = 1; i < 8; i++) {
          for (int j = 0; j < 256; j++) {
             const_cast<uint32_t *>(crc_table[i])[j] = crc_table[i-1][j] >> 8 ^ crc_table[0][crc_table[i-1][j] & 0xff];
          }
       }
-      
+
       glCRCTablesInit = true;
    }
-   
+
    // Process 8 bytes at a time using slice-by-8 algorithm
 
    auto data = (const uint8_t *)Data;
@@ -232,7 +232,7 @@ uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
    while (Length >= 8) {
       const uint32_t one = CRC ^ *reinterpret_cast<const uint32_t*>(data);
       const uint32_t two = *reinterpret_cast<const uint32_t*>(data + 4);
-      
+
       CRC = crc_table[7][(one      ) & 0xff] ^
             crc_table[6][(one >>  8) & 0xff] ^
             crc_table[5][(one >> 16) & 0xff] ^
@@ -241,17 +241,17 @@ uint32_t GenCRC32(uint32_t CRC, APTR Data, uint32_t Length)
             crc_table[2][(two >>  8) & 0xff] ^
             crc_table[1][(two >> 16) & 0xff] ^
             crc_table[0][(two >> 24) & 0xff];
-      
+
       data += 8;
       Length -= 8;
    }
-   
+
    // Process remaining bytes with single-byte table lookup
    while (Length > 0) {
       CRC = crc_table[0][(CRC ^ *data++) & 0xff] ^ (CRC >> 8);
       Length--;
    }
-   
+
    return ~CRC;
 }
 
@@ -764,7 +764,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
    if (Callback->Type IS CALL::SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);
    else log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Callback: %p, Interval: %.3fs", Callback->Routine, Interval);
 
-   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+   if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
       auto usInterval = int64_t(Interval * 1000000.0); // Scale the interval to microseconds
       if (usInterval <= 40000) {
          // TODO: Rapid timers should be synchronised with other existing timers to limit the number of
@@ -822,7 +822,7 @@ ERR UpdateTimer(APTR Subscription, double Interval)
 
    log.msg(VLF::DETAIL|VLF::BRANCH|VLF::FUNCTION, "Subscription: %p, Interval: %.4f", Subscription, Interval);
 
-   if (auto lock = std::unique_lock{glmTimer, 200ms}) {
+   if (auto lock = std::unique_lock{glmTimer, 1000ms}) {
       auto timer = (CoreTimer *)Subscription;
       if (Interval < 0) {
          // Special mode: Preserve existing timer settings for the subscriber (ticker values are not reset etc)

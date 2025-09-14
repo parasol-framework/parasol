@@ -1616,7 +1616,7 @@ extern "C" int winGetWatchBufferSize(void)
 extern "C" int winValidateHandle(HANDLE Handle)
 {
    if (!Handle or (Handle IS INVALID_HANDLE_VALUE)) return 0;
-   
+
    DWORD flags;
    if (GetHandleInformation(Handle, &flags)) return 1;
    else return 0;
@@ -1627,20 +1627,20 @@ extern "C" int winValidateHandle(HANDLE Handle)
 ERR winAnalysePath(CSTRING Path, bool &IsDirectory, bool &IsSymbolicLink)
 {
    if (!Path) return ERR::NullArgs;
-   
+
    IsDirectory = false;
    IsSymbolicLink = false;
-   
+
    WIN32_FILE_ATTRIBUTE_DATA fileData;
    if (!GetFileAttributesEx(Path, GetFileExInfoStandard, &fileData)) {
       return ERR::FileNotFound; // Path doesn't exist or access denied
    }
-   
+
    auto attrs = fileData.dwFileAttributes;
-   
+
    if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
       IsDirectory = true;
-      
+
       // Check for junction/symbolic link
       if (attrs & FILE_ATTRIBUTE_REPARSE_POINT) {
          HANDLE hDir = CreateFile(Path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
@@ -1673,7 +1673,7 @@ ERR winAnalysePath(CSTRING Path, bool &IsDirectory, bool &IsSymbolicLink)
          }
       }
    }
-   
+
    return ERR::Okay; // Success
 }
 
@@ -1703,13 +1703,13 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
    if (Flags & MFF_DELETE) nflags |= FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
    if (Flags & MFF_OPENED) nflags |= FILE_NOTIFY_CHANGE_LAST_ACCESS;
    if (Flags & MFF_ATTRIB) nflags |= FILE_NOTIFY_CHANGE_SECURITY | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_ATTRIBUTES;
-   if (Flags & MFF_CLOSED) nflags |= 0;
+   //if (Flags & MFF_CLOSED) nflags |= ?; // Not supported by Windows
    if (Flags & (MFF_MOVED|MFF_RENAME)) nflags |= FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME;
 
    if (!nflags) return ERR::NoSupport;
 
    std::string monitor_path, resolved_path;
-   
+
    if (not is_folder) { // For individual files, monitor the parent directory
       resolved_path = Path;
       size_t last_slash = resolved_path.find_last_of('\\');
@@ -1737,9 +1737,9 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
       auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
 
       const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
-      
+
       BOOL watch_folders = (is_folder and (Flags & MFF_DEEP)) ? TRUE : FALSE;
-      
+
       DWORD empty;
       if (not ReadDirectoryChangesW(*Handle, fni, buffer_size, watch_folders, nflags, &empty, ovlap, nullptr)) {
          auto error = GetLastError();
@@ -1747,13 +1747,13 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
          *Handle = nullptr;
          return (error IS ERROR_ACCESS_DENIED) ? ERR::NoPermission : ERR::SystemCall;
       }
-      
+
       *WinFlags = nflags;
       return ERR::Okay;
    }
    else {
       *Handle = nullptr;
-      
+
       switch (GetLastError()) {
          case ERROR_FILE_NOT_FOUND: return ERR::FileNotFound;
          case ERROR_PATH_NOT_FOUND: return ERR::FileNotFound;
@@ -1766,11 +1766,11 @@ extern "C" ERR winWatchFile(int Flags, CSTRING Path, APTR WatchBuffer, HANDLE *H
 //********************************************************************************************************************
 
 extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, char *PathOutput, int PathSize, int *Status)
-{   
+{
    DWORD bytes_out = 0;
    auto ovlap = (OVERLAPPED *)WatchBuffer;
    auto fni = (FILE_NOTIFY_INFORMATION *)(ovlap + 1);
-   
+
    *Status = 0;
    PathOutput[0] = '\0';
 
@@ -1790,7 +1790,7 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
       // Clear the buffer and re-subscribe to recover from corruption
       memset(fni, 0, bytes_out);
       memset(WatchBuffer, 0, sizeof(OVERLAPPED));
-      
+
       DWORD empty;
       const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
       ReadDirectoryChangesW(Handle, fni, buffer_size, true, NotifyFlags, &empty, ovlap, nullptr);
@@ -1806,7 +1806,7 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
    // Process the first notification in the buffer
    if (fni->FileNameLength > 0) {
       DWORD filename_length_chars = fni->FileNameLength / sizeof(WCHAR);
-      
+
       // Convert Unicode filename to UTF-8 with proper error handling
       int result = WideCharToMultiByte(CP_UTF8, 0, fni->FileName, filename_length_chars, PathOutput, PathSize - 1, nullptr, nullptr);
       if (result <= 0 or result >= PathSize) {
@@ -1830,7 +1830,7 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
    // Clear the processed notification to prevent reprocessing
    DWORD action = fni->Action;
    fni->Action = 0;
-   
+
    // Handle multiple notifications in buffer if present
    if (fni->NextEntryOffset > 0 and fni->NextEntryOffset < bytes_out) {
       // Move remaining notifications to the beginning of the buffer
@@ -1843,7 +1843,7 @@ extern "C" ERR winReadChanges(HANDLE Handle, APTR WatchBuffer, int NotifyFlags, 
    else { // No more notifications, clear the buffer and re-subscribe
       memset(fni, 0, bytes_out);
       memset(WatchBuffer, 0, sizeof(OVERLAPPED));
-      
+
       DWORD empty;
       const DWORD buffer_size = sizeof(FILE_NOTIFY_INFORMATION) + (MAX_PATH * sizeof(WCHAR)) + sizeof(DWORD);
       if (!ReadDirectoryChangesW(Handle, fni, buffer_size, true, NotifyFlags, &empty, ovlap, nullptr)) {

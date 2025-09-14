@@ -43,7 +43,7 @@ static std::recursive_mutex glProxyMutex;
 static bool glProxyFileChecked = false;
 static objConfig *glProxyConfig = nullptr;
 
-static objConfig * get_proxy_config(void) 
+static objConfig * get_proxy_config(void)
 {
    std::lock_guard lock(glProxyMutex);
    if (!glProxyFileChecked) {
@@ -52,7 +52,7 @@ static objConfig * get_proxy_config(void)
    }
 
    return glProxyConfig;
-}   
+}
 
 static void cleanup_proxy_config(void)
 {
@@ -387,7 +387,7 @@ static ERR find_proxy(extProxy *Self)
    pf::Log log(__FUNCTION__);
 
    clear_values(Self);
-   
+
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
    if (auto config = get_proxy_config()) {
@@ -541,7 +541,7 @@ static ERR PROXY_SaveSettings(extProxy *Self)
 
       return ERR::Okay;
    }
-   
+
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
    if (auto config = get_proxy_config()) {
@@ -769,7 +769,7 @@ static ERR get_record(extProxy *Self)
    log.traceBranch("Group: %s", Self->GroupName.c_str());
 
    Self->Record = std::stoi(Self->GroupName);
-   
+
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
    if (auto config = get_proxy_config()) {

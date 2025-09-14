@@ -71,7 +71,7 @@ ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
 
-std::list<CoreTimer> glTimers;
+std::list<CoreTimer> glTimers; // Locked with glmTimer
 std::list<FDRecord> glFDTable;
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;

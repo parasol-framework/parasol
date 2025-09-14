@@ -193,7 +193,7 @@ static bool is_valid_url_char(char Char, bool AllowReserved = false) {
 //********************************************************************************************************************
 // Enhanced URL encoding with validation
 
-static std::string encode_url_path(const char* Input) 
+static std::string encode_url_path(const char* Input)
 {
    if (!Input) return std::string();
 
@@ -437,8 +437,8 @@ data (if applicable). The HTTP response code will be stored in the #Status field
 automatically with the header strings stored as key-values.  To receive notice of the parsed response, hook into the
 #StateChanged callback.
 
-Incoming HTTP content can be managed in the following ways: It may be streamed to an object 
-referenced by the #OutputObject field through data feeds.  It can be written to the target object if the #ObjectMode 
+Incoming HTTP content can be managed in the following ways: It may be streamed to an object
+referenced by the #OutputObject field through data feeds.  It can be written to the target object if the #ObjectMode
 is set to `READ_WRITE`.  Or it can be received through the #Incoming callback.
 
 On completion of an HTTP request, the #Deactivate() action is called, regardless of the level of success.
