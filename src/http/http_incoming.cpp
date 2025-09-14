@@ -850,8 +850,8 @@ restart:
    if (Self->CurrentState >= HGS::COMPLETED) {
       // Erroneous data received from server while we are in a completion/resting state.  Returning a terminate message
       // will cause the socket object to close the connection to the server so that we stop receiving erroneous data.
-
-      log.warning("Unexpected data incoming from server - terminating socket.");
+      // NB: This isn't considered a problem; changing to a completed state is permitted mid transfer.
+      log.detail("Unwanted data remains on socket - terminating.");
       return ERR::Terminate;
    }
 
