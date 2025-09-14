@@ -110,18 +110,17 @@ module({ name="HTTP", copyright="Paul Manias © 2005-2025", version=1.0, timesta
    double ConnectTimeout  # Timeout for initial connection, measured in seconds
    large Index            # Current read/write index, relative to content length so always starts from zero
    large ContentLength    # Content length as reported in the content length response field, -1 if streamed or unknown
-   large Size             # Content size to use when uploading data
+   large Size             # Content size to use when sending data
    str Host               # Host / Domain
    str Path               # Path for file retrieval
    str OutputFile         # Target file for downloaded content
    str InputFile          # Source file for uploads
    str UserAgent          # User agent to pass in the HTTP headers
-   ptr ClientData         # Client-specific data for the HTTP object
    oid InputObject        # An object to send HTTP content
    oid OutputObject       # An object to receive HTTP content
    int(HTM) Method        # HTTP Request: GET, HEAD, POST, PUT..
    int Port               # Socket port number, usually port 80
-   int(HOM) ObjectMode    # Either DataFeed or Write mode
+   int(HOM) ObjectMode    # Type of I/O transfer to objects
    int(HTF) Flags         # Optional flags
    int(HTS) Status        # Status code received in the HTTP response header
    error Error            # Result of the operation

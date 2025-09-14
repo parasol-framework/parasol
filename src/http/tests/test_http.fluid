@@ -152,7 +152,7 @@ function testPostStringFile()
    local content = ''
 
    local http = obj.new('http', {
-      src        = 'http://127.0.0.1: ' .. SERVER_PORT .. '/post',
+      src        = 'http://127.0.0.1:' .. SERVER_PORT .. '/post',
       method     = 'post',
       contentType = 'text/plain',
       flags      = HTF_NO_HEAD,

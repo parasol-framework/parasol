@@ -59,9 +59,9 @@ The timeout value is measured in seconds.
 -FIELD-
 ContentLength: The byte length of incoming or outgoing content.
 
-HTTP servers will return a ContentLength value in their response headers when retrieving information.  This value is
-defined here once the response header is processed.  The ContentLength may be set to `-1` if the content is being
-streamed from the server.
+HTTP servers will return a `content-length` value in their response headers when retrieving information.  This 
+value is defined here once the response header is processed.  The ContentLength may be set to `-1` if the content is 
+being streamed from the server.
 
 Note that if posting data to a server with an #InputFile or #InputObject as the source, the #Size field will have
 priority and override any existing value in ContentLength.  In all other cases the ContentLength can be set
@@ -174,12 +174,12 @@ The receiving object can identify the data as HTTP information by checking the c
 Error: The error code received for the most recently executed HTTP command.
 
 On completion of an HTTP request, the most appropriate error code will be stored here.  If the request was successful
-then the value will be zero (`ERR::Okay`). It should be noted that certain error codes may not necessarily indicate a
+then the value will `ERR::Okay`. It should be noted that certain error codes may not necessarily indicate a
 comms failure - for instance, an `ERR::TimeOut` error may be received on termination of streamed content; while
 `ERR::NotAuthorised` is a credentials issue.
 
 The recommended process for error checking is: 1. Check if the #CurrentState is `COMPLETED` or `TERMINATED`;
-2. Check the #Status field for `NIL`; 3. Check the #Error field for the error code.
+2. Check the #Status field for zero; 3. Check the #Error field for the error code.
 
 -FIELD-
 Flags: Optional flags.
@@ -237,10 +237,10 @@ static ERR SET_Incoming(extHTTP *Self, FUNCTION *Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Index: Indicates download progress in terms of bytes received.
+Index: Indicates the total bytes received during content transfer.
 
 If an HTTP `GET` request is executed, the Index field will reflect the number of bytes that have been received.
-This field is updated continuously until either the download is complete or cancelled.
+This field is updated continuously until all content is received or the process is cancelled.
 
 The Index value will always start from zero when downloading, even in resume mode.
 
@@ -406,7 +406,7 @@ static ERR SET_Location(extHTTP *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Method: The HTTP instruction to execute is defined here (defaults to `GET`).
+Method: The HTTP instruction to execute (defaults to `GET`).
 
 *********************************************************************************************************************/
 
@@ -498,8 +498,8 @@ The provided object ID is not checked for validity until the `POST` command is e
 -FIELD-
 Password: The password to use when authenticating access to the server.
 
-A password may be preset if authorisation is required against the HTTP server for access to a particular resource.
-Note that if authorisation is required and no username and password has been preset, the HTTP object will automatically
+A password may be preset if authorisation is required against the HTTP server for access to a resource.
+Note that if authorisation is required and no username and password has been preset, the HTTP object may
 present a dialog box to the user to request the relevant information.
 
 A `401` status code is returned in the event of an authorisation failure.
@@ -567,19 +567,18 @@ static ERR SET_Path(extHTTP *Self, CSTRING Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Port: The HTTP port to use when targeting a server.
+Port: The HTTP port to use when targeting a host.
 
-The Port to target at the HTTP server is defined here.  The default for HTTP requests is port `80`.  To change the port
-number, set the #Location.
-
--FIELD-
-ProxyPort: The port to use when communicating with the proxy server.
-
-If the ProxyServer field has been set, the ProxyPort must be set to the port number used by the proxy server for all
-requests.  By default the ProxyPort is set to `8080` which is commonly used for proxy communications.
+The Port to target at the HTTP host is defined here and defaults to `80`.
 
 -FIELD-
-ProxyServer: The targeted HTTP server is specified here, either by name or IP address.
+ProxyPort: The port to use when communicating with a proxy server.
+
+If a #ProxyServer has been set, the ProxyPort must define the proxy communication port number.  The default value
+is `8080`.
+
+-FIELD-
+ProxyServer: Route the HTTP request through the proxy server defined here.
 
 If a proxy server will receive the HTTP request, set the name or IP address of the server here.  To specify the port
 that the proxy server uses to receive requests, see the #ProxyPort field.
@@ -624,10 +623,8 @@ static ERR SET_Realm(extHTTP *Self, CSTRING Value)
 RecvBuffer: Refers to a data buffer that is used to store all incoming content.
 
 If the `RECV_BUFFER` flag is set, all content received from the HTTP server will be stored in a managed buffer
-that is referred to by this field.  This field can be read at any time.  It will be set to `NULL` if no data has been
-received. The buffer address and all content is reset whenever the HTTP object is activated.
-
-The buffer is null-terminated if you wish to use it as a string.
+that is referred to by this field.  This field can be read at any time.  The buffer content is reset whenever the 
+HTTP object is activated.
 
 *********************************************************************************************************************/
 
@@ -643,12 +640,12 @@ static ERR GET_RecvBuffer(extHTTP *Self, uint8_t **Value, int *Elements)
 -FIELD-
 Size: Set this field to define the length of a data transfer when issuing a `POST` command.
 
-Prior to the execution of a `POST` command it is recommended that you set the Size field to explicitly define the
-length of the data transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of
+Prior to the execution of a `POST` command, it is recommended that the Size field is set to the length of the data 
+transfer.  If this field is not set, the HTTP object will attempt to determine the byte size of
 the transfer by reading the size from the source file or object.
 
 -FIELD-
-StateChanged: A callback routine can be defined here for monitoring changes to the HTTP state.
+StateChanged: This callback reports changes to the HTTP state.
 
 Define a callback routine in StateChanged in order to receive notifications of any change to the #CurrentState of an
 HTTP object.  The format for the routine is `ERR Function(*HTTP, HGS State)`.
@@ -695,7 +692,7 @@ server.  Refer to the #Error field for more information.
 -FIELD-
 UserAgent: Specifies the name of the user-agent string that is sent in HTTP requests.
 
-This field describe the `user-agent` value that will be sent in HTTP requests.  The default value is `Parasol Client`.
+This field describes the `user-agent` value that will be sent in HTTP requests.  The default value is `Parasol Client`.
 
 *********************************************************************************************************************/
 
@@ -707,9 +704,6 @@ static ERR SET_UserAgent(extHTTP *Self, CSTRING Value)
 }
 
 /*********************************************************************************************************************
-
--FIELD-
-ClientData: This unused field value can be used for storing private data.
 
 -FIELD-
 Username: The username to use when authenticating access to the server.
