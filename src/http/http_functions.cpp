@@ -15,7 +15,7 @@ static void socket_feedback(objNetSocket *Socket, NTC State, APTR Meta)
       log.msg("Waiting for connection...");
 
       if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
-      else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
+      else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(http_timeout), &Self->TimeoutManager);
 
       Self->Connecting = true;
    }
@@ -316,7 +316,7 @@ continue_upload:
    double time_limit = (Self->DataTimeout > 30) ? Self->DataTimeout : 30;
 
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, time_limit);
-   else SubscribeTimer(time_limit, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
+   else SubscribeTimer(time_limit, C_FUNCTION(http_timeout), &Self->TimeoutManager);
 
    Self->WriteBuffer.resize(0);
 
@@ -441,11 +441,15 @@ static void digest_calc_response(extHTTP *Self, std::string Request, CSTRING Non
 // it is not unusual for the client to remain unnotified even in the event of a complete transfer.  Because of this,
 // the client should check if the content is streamed in the event of a timeout and not necessarily assume failure.
 
-static ERR timeout_manager(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
+static ERR http_timeout(extHTTP *Self, int64_t Elapsed, int64_t CurrentTime)
 {
    pf::Log log(__FUNCTION__);
 
-   log.warning("Timeout detected - disconnecting from server (connect %.2fs, data %.2fs).", Self->ConnectTimeout, Self->DataTimeout);
+   if (Self->Socket->State IS NTC::CONNECTED) {
+      log.warning("Data timeout (%gs) - disconnecting from server .", Self->DataTimeout);
+   }
+   else log.warning("Connect timeout (%gs)", Self->ConnectTimeout);
+
    Self->TimeoutManager = 0;
    Self->Error = ERR::TimeOut;
    Self->setCurrentState(HGS::TERMINATED);
