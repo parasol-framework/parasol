@@ -625,7 +625,7 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
                .Error    = error,
                .Callback = Callback
             };
-            SendMessage(MSGID::THREAD_ACTION, MSF::ADD, &msg, sizeof(msg));
+            SendMessage(MSGID::THREAD_ACTION, MSF::NIL, &msg, sizeof(msg));
          }
 
          cleanup();
@@ -640,7 +640,8 @@ ERR AsyncAction(ACTIONID ActionID, OBJECTPTR Object, APTR Parameters, FUNCTION *
 }
 
 //********************************************************************************************************************
-// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  See thread_action() for usage.
+// Called whenever a MSGID::THREAD_ACTION message is caught by ProcessMessages().  Messages are sent by AsyncAction()
+// whenever the Callback parameter has been specified.
 
 ERR msg_threadaction(APTR Custom, int MsgID, int MsgType, APTR Message, int MsgSize)
 {
@@ -1505,7 +1506,7 @@ void NotifySubscribers(OBJECTPTR Object, AC ActionID, APTR Parameters, ERR Error
 QueueAction: Delay the execution of an action by adding the call to the message queue.
 
 Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied `Action` and
-`Args` will be combined into a message for the queue.  This function then returns immediately.
+`Args` will be serialised into a message for the queue.  This function then returns immediately.
 
 The action will be executed on the next cycle of ~ProcessMessages() in line with the FIFO order of queued messages.
 

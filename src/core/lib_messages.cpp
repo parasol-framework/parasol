@@ -90,7 +90,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       if (glWFOList.empty()) {
          log.trace("All objects signalled.");
-         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::WAIT, nullptr, 0); // Will result in ProcessMessages() terminating
+         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::NIL, nullptr, 0); // Will result in ProcessMessages() terminating
       }
    }
 }
@@ -315,6 +315,7 @@ timer_cycle:
 
          glmTimer.unlock();
       }
+      else log.detail("glmTimer lock failed.");
 
       // Consume queued messages
 

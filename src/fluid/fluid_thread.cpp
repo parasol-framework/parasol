@@ -58,7 +58,7 @@ static int thread_script(lua_State *Lua)
 
          // Client callback must be executed in the main thread; send a message to do that.
          if (Callback.isScript()) {
-            SendMessage(MSGID::FLUID_THREAD_CALLBACK, MSF::ADD|MSF::WAIT, &Callback, sizeof(callback));
+            SendMessage(MSGID::FLUID_THREAD_CALLBACK, MSF::NIL, &Callback, sizeof(callback));
          }
       }, script, std::move(callback))));
    }
