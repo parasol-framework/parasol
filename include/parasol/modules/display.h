@@ -601,8 +601,12 @@ class objBitmap : public Object {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
    }
 
+   // Modify the Data pointer to point to a specific pixel offset, return the original Data value which must be restored later.
+
    inline uint8_t * offset(int X, int Y) {
-      return Data + (X * BytesPerPixel) + (Y * LineWidth);
+      auto orig_data = Data;
+      Data += (X * BytesPerPixel) + (Y * LineWidth);
+      return orig_data;
    }
 
    // Colour unpacking routines
