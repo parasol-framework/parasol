@@ -285,7 +285,6 @@ int64_t GetResource(RES Resource)
       case RES::PRIVILEGED:      return glPrivileged;
       case RES::LOG_LEVEL:       return glLogLevel;
       case RES::PROCESS_STATE:   return MAXINT(glTaskState);
-      case RES::MAX_PROCESSES:   return MAX_TASKS;
       case RES::LOG_DEPTH:       return tlDepth;
       case RES::OPEN_INFO:       return (MAXINT)glOpenInfo;
       case RES::JNI_ENV:         return (MAXINT)glJNIEnv;
@@ -465,7 +464,7 @@ combining the read/write flags with `RFD::REMOVE`.
 
 The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX
 compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking
-restrictions do not apply, except to sockets.
+restrictions are not imposed.
 
 Call the `DeregisterFD()` macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.
 
