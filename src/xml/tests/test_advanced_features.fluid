@@ -1,0 +1,289 @@
+-- Tests for advanced XML features and flag combinations
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test XML parsing flags
+
+function testParsingFlags()
+   local xmlWithComments = '<root><!-- Comment --><child/></root>'
+
+   -- Test with comment inclusion
+   local xml1 = obj.new("xml", {
+      statement = xmlWithComments,
+      flags = XMF_INCLUDE_COMMENTS
+   })
+   -- Comments should be preserved when flag is set
+
+   -- Test with comment stripping (default)
+   local xml2 = obj.new("xml", { statement = xmlWithComments })
+   assert(xml2.tags[1].children[1].attribs[1].name == "child", "Comments should be stripped by default")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test whitespace handling
+
+function testWhitespaceHandling()
+   local xmlWithWhitespace = '<root>  \n  <child>  content  </child>  \n  </root>'
+
+   -- Test with whitespace inclusion
+   local xml1 = obj.new("xml", {
+      statement = xmlWithWhitespace,
+      flags = XMF_INCLUDE_WHITESPACE
+   })
+   -- Whitespace should be preserved
+
+   -- Test default whitespace handling
+   local xml2 = obj.new("xml", { statement = xmlWithWhitespace })
+   assert(xml2.tags[1].children[1].attribs[1].name == "child", "Child should be found despite whitespace")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test content stripping
+
+function testContentStripping()
+   local xmlWithContent = '<root><element>Text content</element><empty/></root>'
+
+   -- Test with content stripping
+   local xml = obj.new("xml", {
+      statement = xmlWithContent,
+      flags = XMF_STRIP_CONTENT
+   })
+
+   -- Content should be stripped, only element structure preserved
+   assert(xml.tags[1].children[1].attribs[1].name == "element", "Element structure should remain")
+   assert(#xml.tags[1].children[1].children == 0, "Content should be stripped")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test header stripping
+
+function testHeaderStripping()
+   local xmlWithHeaders = '<?xml version="1.0"?><!DOCTYPE root><root><child/></root>'
+
+   -- Test with header stripping
+   local xml = obj.new("xml", {
+      statement = xmlWithHeaders,
+      flags = XMF_STRIP_HEADERS
+   })
+
+   -- Should only have the root element, no processing instructions
+   assert(xml.tags[1].attribs[1].name == "root", "Root element should be preserved")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test well-formed validation
+
+function testWellFormedValidation()
+   local malformedXML = '<root><unclosed><proper/></root>'
+
+   -- Test without well-formed flag (should parse loosely)
+   local xml1 = obj.new("xml", { statement = malformedXML })
+   -- Should parse in loose mode
+
+   -- Test with well-formed flag (should reject)
+   local ex, xml2 = catch(function() return obj.new("xml", {
+      statement = malformedXML,
+      flags = XMF_WELL_FORMED
+   }) end)
+
+   assert(ex.code != ERR_Okay, "Should reject malformed XML in well-formed mode")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test entity parsing
+
+function testEntityParsing()
+   local xmlWithEntities = '<!DOCTYPE root [<!ENTITY test "replacement">]><root>&test;</root>'
+
+   -- Test with entity parsing enabled
+   local xml = obj.new("xml", {
+      statement = xmlWithEntities,
+      flags = XMF_PARSE_ENTITY
+   })
+   -- Entities should be processed when flag is set
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test no-escape mode
+
+function testNoEscapeMode()
+   local xmlWithEscapes = '<root attr="&lt;&gt;">&amp;content&amp;</root>'
+
+   -- Test with escaping (default)
+   local xml1 = obj.new("xml", { statement = xmlWithEscapes })
+   -- Escapes should be processed
+
+   -- Test without escaping
+   local xml2 = obj.new("xml", {
+      statement = xmlWithEscapes,
+      flags = XMF_NO_ESCAPE
+   })
+   -- Escapes should be left as-is
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test sorting with various flags
+
+function testSortingFlags()
+   local xml = obj.new("xml", {
+      statement = '<root><item sort="z">Z item</item><item sort="a">A item</item><item sort="m">M item</item></root>'
+   })
+
+   -- Test ascending sort
+   local err = xml.mtSort('/root', 'item', XSF_NIL)
+   assert(err == ERR_Okay, "Ascending sort should succeed")
+
+   -- Test descending sort
+   local err = xml.mtSort('/root', 'item', XSF_DESC)
+   assert(err == ERR_Okay, "Descending sort should succeed")
+
+   -- Test sort with check sort flag
+   local err = xml.mtSort('/root', 'item', XSF_CHECK_SORT)
+   assert(err == ERR_Okay, "Sort with check flag should succeed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test serialization flags
+
+function testSerializationFlags()
+   local xml = obj.new("xml", {
+      statement = '<root><child attr="value">Content</child></root>'
+   })
+
+   -- Test readable serialization
+   local err, readable = xml.mtSerialise(0, bit.bor(XMF_READABLE, XMF_INCLUDE_SIBLINGS))
+   assert(err == ERR_Okay, "Readable serialization should succeed")
+   assert(string.find(readable, '\n'), "Readable format should include newlines")
+
+   -- Test compact serialization
+   local err, compact = xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
+   assert(err == ERR_Okay, "Compact serialization should succeed")
+
+   -- Test omit tags serialization
+   local err, content = xml.mtSerialise(0, bit.bor(XMF_OMIT_TAGS, XMF_INCLUDE_SIBLINGS))
+   assert(err == ERR_Okay, "Content-only serialization should succeed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test GetContent vs deep content extraction
+
+function testContentExtraction()
+   local xml = obj.new("xml", {
+      statement = '<root>Before <em>emphasized</em> after <strong>strong</strong> end</root>'
+   })
+
+   local rootId = xml.tags[1].id
+
+   -- Test shallow content extraction
+   local buffer = string.alloc(1000)
+   local err = xml.mtGetContent(rootId, buffer)
+   assert(err == ERR_Okay, "Shallow content extraction should succeed")
+   assert(string.find(buffer, "Before"), "Should include direct text")
+   assert(string.find(buffer, "after"), "Should include direct text")
+   assert(string.find(buffer, "end"), "Should include direct text")
+
+   -- Test deep content extraction via getKey
+   local deepContent = xml.getKey('content:/root')
+   assert(string.find(deepContent, "emphasized"), "Deep extraction should include nested content")
+   assert(string.find(deepContent, "strong"), "Deep extraction should include nested content")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test Count method vs count: getKey
+
+function testCountMethods()
+   local xml = obj.new("xml", {
+      statement = '<root><section><item/><item/></section><section><item/><item/><item/></section></root>'
+   })
+
+   -- Test Count method
+   local err, methodCount = xml.mtCount('//item')
+   assert(err == ERR_Okay, "Count method should succeed")
+   assert(methodCount == 5, "Should count all items: got " .. methodCount)
+
+   -- Test count: getKey
+   local keyCount = tonumber(xml.getKey('count://item'))
+   assert(keyCount == 5, "Should count all items: got " .. keyCount)
+
+   -- Test specific path count
+   local sectionCount = tonumber(xml.getKey('count:/root/section[1]/item'))
+   assert(sectionCount == 2, "Should count items in first section only, got " .. sectionCount)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test Filter method
+
+function testFilterMethod()
+   local xml = obj.new("xml", {
+      statement = '<root><keep><target>Keep this</target><child/></keep><remove><target>Remove this</target></remove></root>'
+   })
+
+   -- Filter to keep only the first 'keep' section
+   local err = xml.mtFilter('/root/keep')
+   assert(err == ERR_Okay, "Filter should succeed")
+
+   -- Should now only have the filtered content
+   local tags = xml.tags
+   assert(#tags == 1, "Should have only 1 root element after filter")
+   assert(tags[1].attribs[1].name == "keep", "Root should be the filtered element")
+   assert(tags[1].children[1].attribs[1].name == "target", "Children should be preserved")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test RemoveXPath with attribute removal
+
+function testRemoveXPathAttributes()
+   local xml = obj.new("xml", {
+      statement = '<root><item id="1" name="first" type="test"/><item id="2" name="second"/></root>'
+   })
+
+   -- Remove specific attribute from all items
+   local err = xml.mtRemoveXPath('//item/@type', 0)
+   assert(err == ERR_Okay, "Attribute removal should succeed")
+
+   -- Verify attribute was removed
+   local item1Id = xml.tags[1].children[1].id
+   local err, value = xml.mtGetAttrib(item1Id, 'type')
+   assert(err == ERR_NotFound, "Type attribute should be removed, got: " .. mSys.GetErrorMsg(err))
+
+   -- Verify other attributes remain
+   local err, value = xml.mtGetAttrib(item1Id, 'name')
+   assert(err == ERR_Okay and value == "first", "Other attributes should remain")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test contentexists: getKey operation
+
+function testContentExists()
+   local xml = obj.new("xml", {
+      statement = '<root><empty/><withContent>Some text</withContent><whitespaceOnly>   \n\t  </whitespaceOnly></root>'
+   })
+
+   -- Test empty element
+   local emptyExists = xml.getKey('contentexists:/root/empty')
+   assert(emptyExists == "0", "Empty element should report no content")
+
+   -- Test element with content
+   local contentExists = xml.getKey('contentexists:/root/withContent')
+   assert(contentExists == "1", "Element with content should report content exists")
+
+   -- Test element with only whitespace
+   local whitespaceExists = xml.getKey('contentexists:/root/whitespaceOnly')
+   assert(whitespaceExists == "0", "Whitespace-only should report no content")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testParsingFlags', 'testWhitespaceHandling', 'testContentStripping', 'testHeaderStripping',
+      'testWellFormedValidation', 'testEntityParsing', 'testNoEscapeMode', 'testSortingFlags',
+      'testSerializationFlags', 'testContentExtraction', 'testCountMethods', 'testFilterMethod',
+      'testRemoveXPathAttributes', 'testContentExists'
+   },
+   init = function(ScriptFolder)
+      -- No global init needed for these tests
+   end,
+   cleanup = function()
+      -- No cleanup needed
+   end
+}

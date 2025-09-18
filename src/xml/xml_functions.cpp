@@ -555,3 +555,30 @@ static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, int Size)
 
    return ERR::Okay;
 }
+
+static ERR get_all_content(extXML *Self, XMLTag &Tag, STRING Buffer, int Size, int &Output)
+{
+   Buffer[0] = 0;
+   Output = 0;
+   if (Tag.Children.empty()) return ERR::Okay;
+
+   int j = 0;
+   for (auto &scan : Tag.Children) {
+      if (not scan.Attribs.empty()) { // Sanity check (there should always be at least 1 attribute)
+         if (scan.Attribs[0].isContent()) {
+            j += pf::strcopy(scan.Attribs[0].Value, Buffer+j, Size-j);
+            if (j >= Size) return ERR::BufferOverflow;
+         }
+      }
+
+      if (not scan.Children.empty()) {
+         int out;
+         ERR error = get_all_content(Self, scan, Buffer+j, Size-j, out);
+         j += out;
+         if ((error IS ERR::BufferOverflow) or (j >= Size)) return ERR::BufferOverflow;
+      }
+   }
+
+   Output = j;
+   return ERR::Okay;
+}
