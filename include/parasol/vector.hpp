@@ -215,6 +215,10 @@ public:
       // Shift existing elements to make space
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + count);
+         // Destroy moved-from objects in the insertion range
+         for (iterator it = target_iter; it != target_iter + count; ++it) {
+            it->~T();
+         }
       }
 
       // Copy new elements into the created space
@@ -322,7 +326,7 @@ private:
    void clearElements() {
    }
 
-   template<typename X> requires (std::is_nothrow_copy_constructible_v<X> && std::is_nothrow_destructible_v<X>)
+   template<typename X> requires (std::is_nothrow_copy_constructible_v<X> and std::is_nothrow_destructible_v<X>)
    void copyAssign(vector<X> &copy) {
       // This function is only used if there is no chance of an exception being
       // thrown during destruction or copy construction of the type T.
@@ -343,7 +347,7 @@ private:
       }
    }
 
-   template<typename X> requires (!(std::is_nothrow_copy_constructible_v<X> && std::is_nothrow_destructible_v<X>))
+   template<typename X> requires (!(std::is_nothrow_copy_constructible_v<X> and std::is_nothrow_destructible_v<X>))
    void copyAssign(vector<X> &copy) {
       vector<T> tmp(copy); // Copy and Swap idiom
       tmp.swap(*this);
