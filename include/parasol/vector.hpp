@@ -42,12 +42,12 @@ private:
 
 public:
    vector(size_type capacity = MIN_CAPACITY) :
-      capacity(capacity), length(0), elements(static_cast<T*>(::operator new(sizeof(T) * capacity)))
+      capacity(capacity), length(0), elements((T*)(::operator new(sizeof(T) * capacity)))
    { }
 
    template<std::input_iterator I> vector(I begin, I end) : capacity(std::distance(begin, end)), length(0) {
       if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-      elements = static_cast<T*>(::operator new(sizeof(T) * capacity));
+      elements = (T*)(::operator new(sizeof(T) * capacity));
       for (auto i = begin; i != end; ++i) {
          pushBackInternal(*i);
       }
@@ -62,13 +62,13 @@ public:
 
    vector(vector const &copy) : capacity(copy.length), length(0) {
       if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-      elements = static_cast<T*>(::operator new(sizeof(T) * capacity));
+      elements = (T*)(::operator new(sizeof(T) * capacity));
       std::uninitialized_copy(copy.elements, copy.elements + copy.length, elements);
       length = copy.length;
    }
 
    vector& operator=(vector const &copy) {
-      if (this == &copy) return *this;
+      if (this IS &copy) return *this;
       vector<T> tmp(copy); // Copy and Swap idiom
       tmp.swap(*this);
       return *this;
@@ -79,7 +79,7 @@ public:
    }
 
    vector& operator=(vector &&move) noexcept {
-      if (this == &move) return *this;
+      if (this IS &move) return *this;
       move.swap(*this);
       return *this;
    }
@@ -91,7 +91,7 @@ public:
    }
 
    inline size_type size() const { return length; }
-   inline bool      empty() const { return length == 0; }
+   inline bool      empty() const { return length IS 0; }
    inline T* data() { return elements; }
    inline const T* data() const { return elements; }
 
@@ -150,9 +150,9 @@ public:
 
    iterator insert(const_iterator pTarget, const T &pValue) {
       size_type index = pTarget - begin();
-      if (length == capacity) {
+      if (length IS capacity) {
          // Re-evaluate index after reallocation
-         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+         reserveCapacity(capacity * 2);
          pTarget = begin() + index;
       }
 
@@ -161,8 +161,6 @@ public:
       // Shift elements from the target to the end one position to the right
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + 1);
-         // Destroy the moved-from object at target position before placement new
-         target_iter->~T();
       }
 
       // Construct the new element at the target position
@@ -174,8 +172,8 @@ public:
 
    iterator insert(const_iterator pTarget, T &&pValue) {
       size_type index = pTarget - begin();
-      if (length == capacity) {
-         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+      if (length IS capacity) {
+         reserveCapacity(capacity * 2);
          pTarget = begin() + index;
       }
 
@@ -183,8 +181,6 @@ public:
 
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + 1);
-         // Destroy the moved-from object at target position before placement new
-         target_iter->~T();
       }
 
       new (target_iter) T(std::move(pValue));
@@ -204,7 +200,7 @@ public:
       if (length + count > capacity) {
          size_type new_capacity = capacity;
          while (new_capacity < length + count) {
-            new_capacity = new_capacity > 0 ? new_capacity * 2 : MIN_CAPACITY;
+            new_capacity = new_capacity * 2;
          }
          reserveCapacity(new_capacity);
          pTarget = begin() + index;
@@ -231,7 +227,7 @@ public:
    bool operator!=(vector const &rhs) const {return !(*this == rhs);}
 
    bool operator==(vector const &rhs) const {
-      return (size() == rhs.size()) and std::equal(begin(), end(), rhs.begin());
+      return (size() IS rhs.size()) and std::equal(begin(), end(), rhs.begin());
    }
 
    void push_back(value_type const &value) {
@@ -269,7 +265,7 @@ public:
 
 private:
    inline void resize_if_required() {
-      if (length == capacity) {
+      if (length IS capacity) {
          reserveCapacity(capacity * 2);
       }
    }
@@ -331,7 +327,7 @@ private:
       // This function is only used if there is no chance of an exception being
       // thrown during destruction or copy construction of the type T.
 
-      if (this == &copy) return;
+      if (this IS &copy) return;
 
       if (capacity <= copy.length) { // Sufficient space available
          clearElements<T>();     // Potentially does nothing but if required will call the destructor of all elements.
