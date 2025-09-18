@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <iterator>
+#include <concepts>
 
 namespace pf {
 
@@ -41,12 +42,12 @@ private:
 
 public:
    vector(size_type capacity = MIN_CAPACITY) :
-      capacity(capacity), length(0), elements(static_cast<T*>(::operator new(sizeof(T) * capacity)))
+      capacity(capacity), length(0), elements((T*)(::operator new(sizeof(T) * capacity)))
    { }
 
-   template<typename I> vector(I begin, I end) : capacity(std::distance(begin, end)), length(0) {
+   template<std::input_iterator I> vector(I begin, I end) : capacity(std::distance(begin, end)), length(0) {
       if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-      elements = static_cast<T*>(::operator new(sizeof(T) * capacity));
+      elements = (T*)(::operator new(sizeof(T) * capacity));
       for (auto i = begin; i != end; ++i) {
          pushBackInternal(*i);
       }
@@ -55,20 +56,19 @@ public:
    vector(std::initializer_list<T> const& list) : vector(std::begin(list), std::end(list)) { }
 
    ~vector() {
-      std::unique_ptr<T, Deleter> deleter(elements, Deleter());
       clearElements<T>();
+      ::operator delete(elements);
    }
 
    vector(vector const &copy) : capacity(copy.length), length(0) {
       if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
-      elements = static_cast<T*>(::operator new(sizeof(T) * capacity));
-      for (size_type i = 0; i < copy.length; ++i) {
-         push_back(copy.elements[i]);
-      }
+      elements = (T*)(::operator new(sizeof(T) * capacity));
+      std::uninitialized_copy(copy.elements, copy.elements + copy.length, elements);
+      length = copy.length;
    }
 
    vector& operator=(vector const &copy) {
-      //copyAssign<T>(copy);
+      if (this == &copy) return *this;
       vector<T> tmp(copy); // Copy and Swap idiom
       tmp.swap(*this);
       return *this;
@@ -79,6 +79,7 @@ public:
    }
 
    vector& operator=(vector &&move) noexcept {
+      if (this == &move) return *this;
       move.swap(*this);
       return *this;
    }
@@ -120,39 +121,38 @@ public:
 
    // Erasure
 
-   inline T * erase(iterator Ref) {
-      erase(Ref, Ref + 1);
-      return Ref;
+   inline iterator erase(const_iterator pos) noexcept {
+      return erase(pos, pos + 1);
    }
 
-   inline T * erase(size_t Index) {
-      erase(from(Index), from(Index + 1));
-      return from(Index);
-   }
-
-   T * erase(iterator Start, iterator Stop) {
-      if (Stop IS end()) {
-         for (auto it = Start; it != Stop; it++) {
-            (*it).~T();
-            length--;
-         }
-      }
-      else {
-         for (auto it=Stop, start=Start; it != end(); it++, start++) {
-            *start = std::move(*it);
-         }
-         auto total_removed = Stop - Start;
-         length -= total_removed;
+   iterator erase(const_iterator first, const_iterator last) noexcept {
+      if (first > last or first < begin() or last > end()) {
+         return const_cast<iterator>(first); // Invalid range, do nothing
       }
 
-      return Start;
+      auto start_pos = const_cast<iterator>(first);
+      auto num_erased = std::distance(first, last);
+
+      if (num_erased > 0) {
+         // Move elements to fill the gap
+         auto new_end = std::move(start_pos + num_erased, end(), start_pos);
+
+         // Destruct the now-moved-from objects at the end
+         for (iterator it = new_end; it != end(); ++it) {
+            it->~T();
+         }
+
+         length -= num_erased;
+      }
+
+      return start_pos;
    }
 
-   iterator insert(const_iterator pTarget, const T &pValue) {
+   iterator insert(const_iterator pTarget, const T &pValue) noexcept {
       size_type index = pTarget - begin();
       if (length == capacity) {
          // Re-evaluate index after reallocation
-         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+         reserveCapacity(capacity * 2);
          pTarget = begin() + index;
       }
 
@@ -170,10 +170,10 @@ public:
       return target_iter;
    }
 
-   iterator insert(const_iterator pTarget, T &&pValue) {
+   iterator insert(const_iterator pTarget, T &&pValue) noexcept {
       size_type index = pTarget - begin();
       if (length == capacity) {
-         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+         reserveCapacity(capacity * 2);
          pTarget = begin() + index;
       }
 
@@ -189,18 +189,18 @@ public:
       return target_iter;
    }
 
-   void insert(const_iterator pTarget, const_iterator pStart, const_iterator pEnd) {
+   void insert(const_iterator pTarget, const_iterator pStart, const_iterator pEnd) noexcept {
       difference_type count = std::distance(pStart, pEnd);
       if (count <= 0) {
          return;
       }
 
       size_type index = pTarget - begin();
-      
+
       if (length + count > capacity) {
          size_type new_capacity = capacity;
          while (new_capacity < length + count) {
-            new_capacity = new_capacity > 0 ? new_capacity * 2 : MIN_CAPACITY;
+            new_capacity = new_capacity * 2;
          }
          reserveCapacity(new_capacity);
          pTarget = begin() + index;
@@ -220,39 +220,39 @@ public:
 
    // Comparison
 
-   bool operator!=(vector const &rhs) const {return !(*this == rhs);}
+   inline bool operator!=(vector const &rhs) const {return !(*this == rhs);}
 
-   bool operator==(vector const &rhs) const {
+   inline bool operator==(vector const &rhs) const {
       return (size() == rhs.size()) and std::equal(begin(), end(), rhs.begin());
    }
 
-   void push_back(value_type const &value) {
+   inline void push_back(value_type const &value) {
       resize_if_required();
       pushBackInternal(value);
    }
 
-   void push_back(value_type &&value) {
+   inline void push_back(value_type &&value) {
       resize_if_required();
       moveBackInternal(std::move(value));
    }
 
    template<typename... Args> T & emplace_back(Args&&... args) {
       resize_if_required();
-      return *new (elements + length++) T(std::move(args)...);
+      return *new (elements + length++) T(std::forward<Args>(args)...);
    }
 
-   void pop_back() {
+   inline void pop_back() {
       --length;
       elements[length].~T();
    }
 
-   void reserve(size_type capacityUpperBound) {
+   inline void reserve(size_type capacityUpperBound) {
       if (capacityUpperBound > capacity) {
          reserveCapacity(capacityUpperBound);
       }
    }
 
-   void clear() {
+   inline void clear() {
       clearElements<T>();
       length = 0;
    }
@@ -266,7 +266,7 @@ private:
       }
    }
 
-   void reserveCapacity(size_type newCapacity) {
+   inline void reserveCapacity(size_type newCapacity) noexcept {
       vector<T> tmpBuffer(newCapacity);
       simpleCopy<T>(tmpBuffer);
       tmpBuffer.swap(*this);
@@ -291,22 +291,22 @@ private:
    //                 ie. When copying integers reuse the elements if we can
    //                 to avoid expensive resource allocation.
 
-   template<typename X> typename std::enable_if<std::is_nothrow_move_constructible<X>::value == false>::type
-      simpleCopy(vector<T>& dst) {
+   template<typename X> requires (!std::is_nothrow_move_constructible_v<X>)
+   void simpleCopy(vector<T>& dst) {
       std::for_each(elements, elements + length, [&dst](T const &v) {
          dst.pushBackInternal(v);
       });
    }
 
-   template<typename X> typename std::enable_if<std::is_nothrow_move_constructible<X>::value == true>::type
-      simpleCopy(vector<T>& dst) {
+   template<typename X> requires std::is_nothrow_move_constructible_v<X>
+   void simpleCopy(vector<T>& dst) {
       std::for_each(elements, elements + length, [&dst](T &v){
          dst.moveBackInternal(std::move(v));
       });
    }
 
-   template<typename X> typename std::enable_if<std::is_trivially_destructible<X>::value == false>::type
-      clearElements() {
+   template<typename X> requires (!std::is_trivially_destructible_v<X>)
+   void clearElements() {
       for (size_type i = 0; i < length; ++i) {
          elements[length - 1 - i].~T();
       }
@@ -314,13 +314,12 @@ private:
 
    // Trivially destructible objects can be reused without using the destructor.
 
-   template<typename X> typename std::enable_if<std::is_trivially_destructible<X>::value == true>::type
-      clearElements() {
+   template<typename X> requires std::is_trivially_destructible_v<X>
+   void clearElements() {
    }
 
-   template<typename X> typename std::enable_if<(std::is_nothrow_copy_constructible<X>::value
-      and std::is_nothrow_destructible<X>::value) == true>::type
-      copyAssign(vector<X> &copy) {
+   template<typename X> requires (std::is_nothrow_copy_constructible_v<X> and std::is_nothrow_destructible_v<X>)
+   void copyAssign(vector<X> &copy) {
       // This function is only used if there is no chance of an exception being
       // thrown during destruction or copy construction of the type T.
 
@@ -340,9 +339,8 @@ private:
       }
    }
 
-   template<typename X> typename std::enable_if<(std::is_nothrow_copy_constructible<X>::value
-      and std::is_nothrow_destructible<X>::value) == false>::type
-      copyAssign(vector<X> &copy) {
+   template<typename X> requires (!(std::is_nothrow_copy_constructible_v<X> and std::is_nothrow_destructible_v<X>))
+   void copyAssign(vector<X> &copy) {
       vector<T> tmp(copy); // Copy and Swap idiom
       tmp.swap(*this);
    }
