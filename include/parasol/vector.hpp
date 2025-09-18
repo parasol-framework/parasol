@@ -68,7 +68,7 @@ public:
    }
 
    vector& operator=(vector const &copy) {
-      if (this IS &copy) return *this;
+      if (this == &copy) return *this;
       vector<T> tmp(copy); // Copy and Swap idiom
       tmp.swap(*this);
       return *this;
@@ -79,7 +79,7 @@ public:
    }
 
    vector& operator=(vector &&move) noexcept {
-      if (this IS &move) return *this;
+      if (this == &move) return *this;
       move.swap(*this);
       return *this;
    }
@@ -91,7 +91,7 @@ public:
    }
 
    inline size_type size() const { return length; }
-   inline bool      empty() const { return length IS 0; }
+   inline bool      empty() const { return length == 0; }
    inline T* data() { return elements; }
    inline const T* data() const { return elements; }
 
@@ -121,11 +121,11 @@ public:
 
    // Erasure
 
-   iterator erase(const_iterator pos) {
+   inline iterator erase(const_iterator pos) noexcept {
       return erase(pos, pos + 1);
    }
 
-   iterator erase(const_iterator first, const_iterator last) {
+   iterator erase(const_iterator first, const_iterator last) noexcept {
       if (first > last or first < begin() or last > end()) {
          return const_cast<iterator>(first); // Invalid range, do nothing
       }
@@ -148,9 +148,9 @@ public:
       return start_pos;
    }
 
-   iterator insert(const_iterator pTarget, const T &pValue) {
+   iterator insert(const_iterator pTarget, const T &pValue) noexcept {
       size_type index = pTarget - begin();
-      if (length IS capacity) {
+      if (length == capacity) {
          // Re-evaluate index after reallocation
          reserveCapacity(capacity * 2);
          pTarget = begin() + index;
@@ -170,9 +170,9 @@ public:
       return target_iter;
    }
 
-   iterator insert(const_iterator pTarget, T &&pValue) {
+   iterator insert(const_iterator pTarget, T &&pValue) noexcept {
       size_type index = pTarget - begin();
-      if (length IS capacity) {
+      if (length == capacity) {
          reserveCapacity(capacity * 2);
          pTarget = begin() + index;
       }
@@ -189,7 +189,7 @@ public:
       return target_iter;
    }
 
-   void insert(const_iterator pTarget, const_iterator pStart, const_iterator pEnd) {
+   void insert(const_iterator pTarget, const_iterator pStart, const_iterator pEnd) noexcept {
       difference_type count = std::distance(pStart, pEnd);
       if (count <= 0) {
          return;
@@ -211,8 +211,6 @@ public:
       // Shift existing elements to make space
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + count);
-         // Objects are now valid at destination, moved-from objects are at the end
-         // No manual destruction needed - placement new will overwrite
       }
 
       // Copy new elements into the created space
@@ -222,18 +220,18 @@ public:
 
    // Comparison
 
-   bool operator!=(vector const &rhs) const {return !(*this == rhs);}
+   inline bool operator!=(vector const &rhs) const {return !(*this == rhs);}
 
-   bool operator==(vector const &rhs) const {
-      return (size() IS rhs.size()) and std::equal(begin(), end(), rhs.begin());
+   inline bool operator==(vector const &rhs) const {
+      return (size() == rhs.size()) and std::equal(begin(), end(), rhs.begin());
    }
 
-   void push_back(value_type const &value) {
+   inline void push_back(value_type const &value) {
       resize_if_required();
       pushBackInternal(value);
    }
 
-   void push_back(value_type &&value) {
+   inline void push_back(value_type &&value) {
       resize_if_required();
       moveBackInternal(std::move(value));
    }
@@ -243,18 +241,18 @@ public:
       return *new (elements + length++) T(std::forward<Args>(args)...);
    }
 
-   void pop_back() {
+   inline void pop_back() {
       --length;
       elements[length].~T();
    }
 
-   void reserve(size_type capacityUpperBound) {
+   inline void reserve(size_type capacityUpperBound) {
       if (capacityUpperBound > capacity) {
          reserveCapacity(capacityUpperBound);
       }
    }
 
-   void clear() {
+   inline void clear() {
       clearElements<T>();
       length = 0;
    }
@@ -263,12 +261,12 @@ public:
 
 private:
    inline void resize_if_required() {
-      if (length IS capacity) {
+      if (length == capacity) {
          reserveCapacity(capacity * 2);
       }
    }
 
-   void reserveCapacity(size_type newCapacity) {
+   inline void reserveCapacity(size_type newCapacity) noexcept {
       vector<T> tmpBuffer(newCapacity);
       simpleCopy<T>(tmpBuffer);
       tmpBuffer.swap(*this);
@@ -325,7 +323,7 @@ private:
       // This function is only used if there is no chance of an exception being
       // thrown during destruction or copy construction of the type T.
 
-      if (this IS &copy) return;
+      if (this == &copy) return;
 
       if (capacity <= copy.length) { // Sufficient space available
          clearElements<T>();     // Potentially does nothing but if required will call the destructor of all elements.
