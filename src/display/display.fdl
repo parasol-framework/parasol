@@ -431,9 +431,7 @@ module({ name="Display", copyright="Paul Manias 2003-2025", version=1.0, status=
    }
 
    inline uint8_t * offset(int X, int Y) {
-      auto r_data = Data;
-      Data += (X * BytesPerPixel) + (Y * LineWidth);
-      return r_data;
+      return Data + (X * BytesPerPixel) + (Y * LineWidth);
    }
 
    // Colour unpacking routines

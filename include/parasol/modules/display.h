@@ -602,9 +602,7 @@ class objBitmap : public Object {
    }
 
    inline uint8_t * offset(int X, int Y) {
-      auto r_data = Data;
-      Data += (X * BytesPerPixel) + (Y * LineWidth);
-      return r_data;
+      return Data + (X * BytesPerPixel) + (Y * LineWidth);
    }
 
    // Colour unpacking routines
