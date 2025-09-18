@@ -290,7 +290,7 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
          DNSEntry *dummy;
          rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, &dummy);
          auto ser = rb.serialise();
-         SendMessage(glResolveAddrMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_addr_receiver()
+         SendMessage(glResolveAddrMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_addr_receiver()
       }, std::move(rb))));
 
       return ERR::Okay;
@@ -342,7 +342,7 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
       DNSEntry *dummy;
       rb.Error = resolve_name(rb.Address.c_str(), &dummy);
       auto ser = rb.serialise();
-      SendMessage(glResolveNameMsgID, MSF::WAIT, ser.data(), ser.size()); // See resolve_name_receiver()
+      SendMessage(glResolveNameMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_name_receiver()
    }, std::move(rb))));
 
    return ERR::Okay;

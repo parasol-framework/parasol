@@ -400,10 +400,10 @@ local function readChunkedRequestBody(client, maxSize, timeoutSeconds)
 
       -- Read trailing CRLF after chunk data
       local crlf = ''
-      local crlfAttempts = 0
-      while #crlf < 2 and crlfAttempts < 2 do
+      local crlf_attempts = 0
+      while #crlf < 2 and crlf_attempts < 2 do
          local err, bytes_read = client.acRead(buffer, 1)
-         crlfAttempts = crlfAttempts + 1
+         crlf_attempts = crlf_attempts + 1
          if err != ERR_Okay then
             if err == ERR_TimeOut then
                return nil, 'timeout', false

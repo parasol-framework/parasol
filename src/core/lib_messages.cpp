@@ -90,7 +90,7 @@ static void notify_signal_wfo(OBJECTPTR Object, ACTIONID ActionID, ERR Result, A
 
       if (glWFOList.empty()) {
          log.trace("All objects signalled.");
-         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::WAIT, nullptr, 0); // Will result in ProcessMessages() terminating
+         SendMessage(MSGID::WAIT_FOR_OBJECTS, MSF::NIL, nullptr, 0); // Will result in ProcessMessages() terminating
       }
    }
 }
@@ -261,7 +261,7 @@ timer_cycle:
             timer->LastCall = current_time;
             timer->Cycle = glTimerCycle;
 
-            //log.trace("Subscriber: %d, Interval: %d, Time: %" PF64, timer->SubscriberID, timer->Interval, current_time);
+            //log.trace("Subscriber: %d, Interval: %d, Time: %" PRId64, timer->SubscriberID, timer->Interval, current_time);
 
             timer->Locked = true; // Prevents termination of the structure irrespective of having a TL_TIMER lock.
 
@@ -315,6 +315,7 @@ timer_cycle:
 
          glmTimer.unlock();
       }
+      else log.detail("glmTimer lock failed.");
 
       // Consume queued messages
 
@@ -1056,7 +1057,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
                handles[total++] = fd.FD;
             }
             else {
-               log.warning("FD %" PF64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (int64_t)fd.FD);
+               log.warning("FD %" PRId64 " has no READ/WRITE/EXCEPT flag setting - de-registering.", (int64_t)fd.FD);
                it = glFDTable.erase(it);
                continue;
             }
@@ -1103,7 +1104,7 @@ ERR sleep_task(int Timeout, int8_t SystemOnly)
          break;
       }
       else if (i IS -2) {
-         log.warning("WaitForObjects() failed, bad handle %" PF64 ".  Deregistering automatically.", (int64_t)handles[0]);
+         log.warning("WaitForObjects() failed, bad handle %" PRId64 ".  Deregistering automatically.", (int64_t)handles[0]);
          RegisterFD((HOSTHANDLE)handles[0], RFD::REMOVE|RFD::READ|RFD::WRITE|RFD::EXCEPT, nullptr, nullptr);
       }
       else if (i IS -4) {

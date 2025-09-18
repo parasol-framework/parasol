@@ -151,15 +151,22 @@ static int processing_sleep(lua_State *Lua)
          error = WaitForObjects(PMF::NIL, timeout, signal_list_c.get());
       }
       else { // Default behaviour: Sleeping can be broken with a signal to the Fluid object.
-         ObjectSignal signal_list_c[2];
-         signal_list_c[0].Object   = Lua->Script;
-         signal_list_c[1].Object   = nullptr;
+         if ((Lua->Script->Object::Flags & NF::SIGNALLED) != NF::NIL) {
+            log.detail("Lua script already in signalled state.");
+            Lua->Script->Object::Flags = Lua->Script->Object::Flags & (~NF::SIGNALLED);
+            error = ERR::Okay;
+         }
+         else {
+            ObjectSignal signal_list_c[2];
+            signal_list_c[0].Object   = Lua->Script;
+            signal_list_c[1].Object   = nullptr;
 
-         std::scoped_lock lock(recursion);
-         error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+            std::scoped_lock lock(recursion);
+            error = WaitForObjects(PMF::NIL, timeout, signal_list_c);
+         }
       }
    }
-   else {
+   else { // Ignore signals, just process messages for the specified time
       std::scoped_lock lock(recursion);
       WaitTime(timeout / 1000.0); // Convert milliseconds to seconds
       error = ERR::Okay;

@@ -1401,7 +1401,7 @@ static ERR TASK_Init(extTask *Self)
       call.Routine = (APTR)msg_threadcallback; // class_thread.c
       AddMsgHandler(MSGID::THREAD_CALLBACK, &call, &Self->MsgThreadCallback);
 
-      call.Routine = (APTR)msg_threadaction; // class_thread.c
+      call.Routine = (APTR)msg_threadaction; // lib_objects.cpp
       AddMsgHandler(MSGID::THREAD_ACTION, &call, &Self->MsgThreadAction);
 
       log.msg("Process Path: %s", Self->ProcessPath.c_str());

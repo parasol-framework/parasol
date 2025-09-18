@@ -635,7 +635,7 @@ static ERR read_incoming_content(extHTTP *Self, objNetSocket *Socket)
    Self->LastReceipt = PreciseTime();
 
    if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->DataTimeout);
-   else SubscribeTimer(Self->DataTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
+   else SubscribeTimer(Self->DataTimeout, C_FUNCTION(http_timeout), &Self->TimeoutManager);
 
    if (Self->Error != ERR::Okay) return ERR::Terminate;
    return ERR::Okay;

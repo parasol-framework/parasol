@@ -431,6 +431,7 @@ static int object_new(lua_State *Lua)
          }
 
          if ((field_error != ERR::Okay) or ((error = InitObject(obj)) != ERR::Okay)) {
+            class_name = obj->className();
             FreeResource(obj);
 
             if (field_error != ERR::Okay) {
@@ -438,7 +439,7 @@ static int object_new(lua_State *Lua)
                luaL_error(Lua, "Failed to set field '%s.%s' with %s, error: %s", class_name, field_name, lua_typename(Lua, failed_type), GetErrorMsg(field_error));
             }
             else {
-               log.warning("Failed to Init() object '%s', error: %s", class_name, GetErrorMsg(error));
+               log.warning("Failed to Init() %s: %s", class_name, GetErrorMsg(error));
                prv->CaughtError = error;
                luaL_error(Lua, GetErrorMsg(error));
             }

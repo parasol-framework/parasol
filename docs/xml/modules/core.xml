@@ -1142,7 +1142,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <param type="APTR" name="Args">The relevant argument structure for the <code>Action</code>, or <code>NULL</code> if not required.</param>
     </input>
     <description>
-<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied <code>Action</code> and <code>Args</code> will be combined into a message for the queue.  This function then returns immediately.</p>
+<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied <code>Action</code> and <code>Args</code> will be serialised into a message for the queue.  This function then returns immediately.</p>
 <p>The action will be executed on the next cycle of <function>ProcessMessages</function> in line with the FIFO order of queued messages.</p>
     </description>
     <result type="ERR">
@@ -2498,11 +2498,8 @@ FreeResource(memory);  // Reference is no longer valid
     </constants>
 
     <constants lookup="MSF" comment="Message flags.">
-      <const name="ADD">The default behaviour - this will add the message to the end of the queue.</const>
-      <const name="MESSAGE_ID">The Type parameter refers to a unique message ID rather than a message type for this call.</const>
       <const name="NO_DUPLICATE">If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</const>
       <const name="UPDATE">If the <code>Type</code> parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</const>
-      <const name="WAIT">Wait before inserting the message if the queue is at maximum capacity.</const>
     </constants>
 
     <constants lookup="MSGID" comment="Reserved message ID's that are handled internally.">

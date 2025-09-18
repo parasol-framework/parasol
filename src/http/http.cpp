@@ -360,7 +360,7 @@ static void digest_calc_response(extHTTP *, std::string, CSTRING, HASHHEX, HASHH
 static void set_http_method(extHTTP *, CSTRING, std::ostringstream &);
 static ERR  SET_Path(extHTTP *, CSTRING);
 static ERR  SET_Location(extHTTP *, CSTRING);
-static ERR  timeout_manager(extHTTP *, int64_t, int64_t);
+static ERR  http_timeout(extHTTP *, int64_t, int64_t);
 static void socket_feedback(objNetSocket *, NTC, APTR);
 static ERR  socket_incoming(objNetSocket *);
 static ERR  socket_outgoing(objNetSocket *);
@@ -780,7 +780,7 @@ static ERR HTTP_Activate(extHTTP *Self)
             Self->Connecting = true;
 
             if (Self->TimeoutManager) UpdateTimer(Self->TimeoutManager, Self->ConnectTimeout);
-            else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(timeout_manager), &Self->TimeoutManager);
+            else SubscribeTimer(Self->ConnectTimeout, C_FUNCTION(http_timeout), &Self->TimeoutManager);
 
             return ERR::Okay;
          }

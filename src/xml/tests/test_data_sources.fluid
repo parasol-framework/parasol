@@ -1,0 +1,236 @@
+-- Tests for different XML data source methods
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test loading from file path
+
+function testPathLoading()
+   -- Create a temporary XML file for testing
+   local testXML = '<?xml version="1.0"?><testRoot><testChild>Path content</testChild></testRoot>'
+   local file = obj.new('file', { path = 'parasol:temp/test_xml_path.xml', flags = 'WRITE|NEW' })
+   file.acWrite(testXML)
+   file = nil
+
+   -- Load XML from file path
+   local xml = obj.new("xml", { path = 'parasol:temp/test_xml_path.xml', flags = XMF_STRIP_HEADERS })
+   local tags = xml.tags
+   assert(tags, "XML should load from file path")
+   assert(tags[1].attribs[1].name == "testRoot", "Root tag should be testRoot; got " .. nz(tags[1].attribs[1].name, 'NIL'))
+   assert(tags[1].children[1].children[1].attribs[1].value == "Path content", "Content should be preserved")
+
+   collectgarbage()
+   mSys.DeleteFile('parasol:temp/test_xml_path.xml')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test loading from object source
+
+function testObjectSource()
+   -- Create a memory object with XML content
+   local testXML = '<sourceRoot><sourceChild>Object content</sourceChild></sourceRoot>'
+   local memory = obj.new('file', { flags = 'READ|WRITE|NEW|BUFFER' })
+   memory.acWrite(testXML)
+   memory.acSeek(0, SEEK_SET)
+
+   -- Load XML from object source
+   local xml = obj.new("xml", { source = memory })
+   local tags = xml.tags
+   assert(tags, "XML should load from object source")
+   assert(tags[1].attribs[1].name == "sourceRoot", "Root tag should be sourceRoot")
+   assert(tags[1].children[1].children[1].attribs[1].value == "Object content", "Content should be preserved")
+
+   memory = nil
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test statement vs path precedence
+
+function testSourcePrecedence()
+   -- Create a file with different content
+   local fileXML = '<fileRoot><fileChild>File content</fileChild></fileRoot>'
+   local file = obj.new('file', { path = 'parasol:temp/test_precedence.xml', flags = 'WRITE|NEW' })
+   file.acWrite(fileXML)
+   file = nil
+
+   -- Set both path and statement - statement should take precedence
+   local statementXML = '<statementRoot><statementChild>Statement content</statementChild></statementRoot>'
+   local xml = obj.new("xml", {
+      path = 'parasol:temp/test_precedence.xml',
+      statement = statementXML
+   })
+
+   local tags = xml.tags
+   assert(tags[1].attribs[1].name == "statementRoot", "Statement should take precedence over path")
+
+   collectgarbage()
+   mSys.DeleteFile('parasol:temp/test_precedence.xml')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test string: path prefix
+
+function testStringPathPrefix()
+   local testXML = '<stringRoot><stringChild>String path content</stringChild></stringRoot>'
+
+   -- Use string: prefix to treat path as XML content
+   local xml = obj.new("xml", { path = 'string:' .. testXML })
+   local tags = xml.tags
+   assert(tags, "string: prefix should parse XML content")
+   assert(tags[1].attribs[1].name == "stringRoot", "Root tag should be stringRoot")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test DataFeed action
+
+function testDataFeed()
+   local xml = obj.new("xml", { statement = '<root><existing>Original</existing></root>' })
+
+   -- Feed additional XML data
+   local err = xml.acDataFeed(nil, DATA_XML, '<added>New content</added>')
+   assert(err == ERR_Okay, "DataFeed should succeed")
+
+   local tags = xml.tags
+   assert(#tags == 2, "Should have 2 root-level elements after DataFeed")
+   assert(tags[2].attribs[1].name == "added", "Added element should be present")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test DataFeed with empty XML
+
+function testDataFeedEmpty()
+   local xml = obj.new("xml") -- Start with empty XML
+
+   -- Feed XML data to empty object
+   local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
+   assert(err == ERR_Okay, "DataFeed to empty XML should succeed")
+
+   local tags = xml.tags
+   assert(tags and #tags == 1, "Should have 1 element after first DataFeed")
+
+   -- Feed more data
+   local err = xml.acDataFeed(nil, DATA_XML, '<second>Second element</second>')
+   assert(err == ERR_Okay, "Second DataFeed should succeed")
+
+   tags = xml.tags
+   assert(#tags == 2, "Should have 2 elements after second DataFeed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test reloading from different sources
+
+function testSourceSwitching()
+   -- Start with statement
+   local xml = obj.new("xml", { statement = '<initial>Statement content</initial>' })
+   assert(xml.tags[1].attribs[1].name == "initial", "Initial load should work")
+
+   -- Switch to different statement
+   xml.statement = '<switched>New statement</switched>'
+   assert(xml.tags[1].attribs[1].name == "switched", "Statement switching should work")
+
+   -- Create file for path switching
+   local fileXML = '<pathSwitched>Path content</pathSwitched>'
+   local file = obj.new('file', { path = 'parasol:temp/test_switch.xml', flags = 'WRITE|NEW' })
+   file.acWrite(fileXML)
+   file = nil
+
+   -- Switch to path
+   xml.path = 'parasol:temp/test_switch.xml'
+   assert(xml.tags[1].attribs[1].name == "pathSwitched", "Path switching should work")
+
+   collectgarbage()
+   mSys.DeleteFile('parasol:temp/test_switch.xml')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test caching behavior with readonly
+
+function testCachingBehavior()
+   -- Create test file
+   local testXML = '<cached><content>Cached content</content></cached>'
+   local file = obj.new('file', { path = 'parasol:temp/test_cache.xml', flags = 'WRITE|NEW' })
+   if file then
+      file.acWrite(testXML)
+      file = nil
+   end
+
+   -- Load with readonly flag for potential caching
+   local xml1 = obj.new("xml", { path = 'parasol:temp/test_cache.xml', readOnly = true })
+   local xml2 = obj.new("xml", { path = 'parasol:temp/test_cache.xml', readOnly = true })
+
+   -- Both should load successfully
+   assert(xml1.tags and xml2.tags, "Both cached XML objects should load")
+   assert(xml1.tags[1].attribs[1].name == "cached", "First cached XML should be correct")
+   assert(xml2.tags[1].attribs[1].name == "cached", "Second cached XML should be correct")
+
+   collectgarbage()
+   mSys.DeleteFile('parasol:temp/test_cache.xml')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test loading large files
+
+function testLargeFileLoading()
+   -- Generate large XML content
+   local parts = {'<largeRoot>'}
+   for i = 1, 500 do
+      table.insert(parts, '<item id="' .. i .. '">Content for item ' .. i .. '</item>')
+   end
+   table.insert(parts, '</largeRoot>')
+   local largeXML = table.concat(parts)
+
+   -- Write to file
+   local file = obj.new('file', { path = 'parasol:temp/test_large.xml', flags = 'WRITE|NEW' })
+   file.acWrite(largeXML)
+   file = nil
+
+   -- Load large file
+   local xml = obj.new("xml", { path = 'parasol:temp/test_large.xml' })
+   assert(xml.tags, "Large XML file should load")
+   assert(#xml.tags[1].children == 500, "All 500 items should be loaded")
+
+   collectgarbage()
+   mSys.DeleteFile('parasol:temp/test_large.xml')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test invalid file handling
+
+function testInvalidFileHandling()
+   -- Try to load non-existent file
+
+   local ex, xml = catch(function() return obj.new("xml", { path = 'parasol:temp/nonexistent.xml' }) end)
+   assert(xml == nil, "Should report error for non-existent file")
+
+   -- Try to load invalid XML file
+   local file = obj.new('file', { path = 'parasol:temp/invalid.xml', flags = 'WRITE|NEW' })
+   file.acWrite("This is not valid XML content")
+   file = nil
+
+   local xml2 = obj.new("xml", { path = 'parasol:temp/invalid.xml' })
+   assert(xml2.parseError != ERR_Okay, "Should report error for invalid XML")
+
+   collectgarbage()
+   mSys.DeleteFile('parasol:temp/invalid.xml')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testPathLoading', 'testObjectSource', 'testSourcePrecedence', 'testStringPathPrefix',
+      'testDataFeed', 'testDataFeedEmpty', 'testSourceSwitching', 'testCachingBehavior',
+      'testLargeFileLoading', 'testInvalidFileHandling'
+   },
+   init = function(ScriptFolder)
+      -- Ensure temp directory exists
+      mSys.CreateFolder('parasol:temp/', bit.bor(PERMIT_READ, PERMIT_WRITE, PERMIT_EXEC))
+   end,
+   cleanup = function()
+      -- Clean up any remaining test files
+      mSys.DeleteFile('parasol:temp/test_xml_path.xml')
+      mSys.DeleteFile('parasol:temp/test_precedence.xml')
+      mSys.DeleteFile('parasol:temp/test_switch.xml')
+      mSys.DeleteFile('parasol:temp/test_cache.xml')
+      mSys.DeleteFile('parasol:temp/test_large.xml')
+      mSys.DeleteFile('parasol:temp/invalid.xml')
+   end
+}

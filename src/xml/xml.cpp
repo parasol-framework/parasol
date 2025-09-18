@@ -81,7 +81,7 @@ class extXML : public objXML {
    bool   StaleMap;         // True if map requires a rebuild
 
    TAGS *CursorParent;  // Parent tag, if any
-   TAGS *CursorTags;    // Tag array to which the Cursor belongs
+   TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    std::string Attrib;
    FUNCTION Callback;
@@ -100,14 +100,14 @@ class extXML : public objXML {
 
    // Return the tag for a particular ID.
 
-   XMLTag * getTag(int ID) {
+   [[nodiscard]] inline XMLTag * getTag(int ID) noexcept {
       auto &map = getMap();
       auto it = map.find(ID);
       if (it IS map.end()) return nullptr;
       else return it->second;
    }
 
-   TAGS * getInsert(int ID, CURSOR &Iterator) {
+   [[nodiscard]] inline TAGS * getInsert(int ID, CURSOR &Iterator) {
       if (auto tag = getTag(ID)) {
          return getInsert(tag, Iterator);
       }
@@ -116,7 +116,7 @@ class extXML : public objXML {
 
    // For a given tag, return its vector array
 
-   TAGS * getTags(XMLTag *Tag) {
+   [[nodiscard]] inline TAGS * getTags(XMLTag *Tag) {
       if (!Tag->ParentID) return &Tags;
       else if (auto parent = getTag(Tag->ParentID)) return &parent->Children;
       else return nullptr;
@@ -124,7 +124,7 @@ class extXML : public objXML {
 
    // For a given tag, return its vector array and cursor position.
 
-   TAGS * getInsert(XMLTag *Tag, CURSOR &Iterator) {
+   [[nodiscard]] TAGS * getInsert(XMLTag *Tag, CURSOR &Iterator) {
       TAGS *tags;
 
       if (Tag->ParentID) {
@@ -134,8 +134,7 @@ class extXML : public objXML {
       }
       else tags = &Tags;
 
-      auto it = tags->begin();
-      for (; it != tags->end(); it++) {
+      for (auto it = tags->begin(); it != tags->end(); it++) {
          if (it->ID IS Tag->ID) {
             Iterator = it;
             return tags;
@@ -145,12 +144,12 @@ class extXML : public objXML {
       return nullptr;
    }
 
-   void modified() {
+   inline void modified() {
       StaleMap = true;
       Modified++;
    }
 
-   ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr) {
+   inline ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr) {
       this->Attrib.clear();
 
       if (pCallback) this->Callback = *pCallback;
@@ -163,9 +162,9 @@ class extXML : public objXML {
    }
 
    private:
-   ERR find_tag(CSTRING XPath);
+   ERR find_tag(std::string_view XPath);
 
-   void updateIDs(TAGS &List, int ParentID) {
+   inline void updateIDs(TAGS &List, int ParentID) {
       for (auto &tag : List) {
          Map[tag.ID] = &tag;
          tag.ParentID = ParentID;
@@ -279,6 +278,13 @@ partial parsing failures do not corrupt previously loaded content.
 
 Attempts to feed data into a read-only XML object will be rejected to maintain document integrity.
 
+Example:
+
+<code>
+local xml = obj.new('xml')
+local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
+</code>
+
 -END-
 *********************************************************************************************************************/
 
@@ -307,6 +313,7 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 
       Self->modified();
    }
+   else return log.warning(ERR::InvalidData);
 
    return ERR::Okay;
 }
@@ -339,7 +346,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
    if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
 
    if (Self->findTag(Args->XPath) IS ERR::Okay) {
-      auto new_tags = TAGS(Self->Cursor, Self->Cursor);
+      auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
       Self->Tags = std::move(new_tags);
       Self->modified();
       return ERR::Okay;
@@ -516,7 +523,6 @@ used interchangeably for lookups and filtering clauses.
 static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
    pf::Log log;
-   int count;
 
    if (!Args) return log.warning(ERR::NullArgs);
    if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
@@ -526,11 +532,14 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    Args->Value[0] = 0;
 
    if (pf::startswith("count:", field)) {
-      if (Self->count(field+6, &count) IS ERR::Okay) {
-         Args->Value[pf::strcopy(std::to_string(count), Args->Value, Args->Size)] = 0;
+      tlXMLCounter = 0;
+      auto call = C_FUNCTION(xml_count);
+      auto error = Self->findTag(field+6, &call);
+      if (error IS ERR::Okay) {
+         Args->Value[pf::strcopy(std::to_string(tlXMLCounter), Args->Value, Args->Size)] = 0;
          return ERR::Okay;
       }
-      else return ERR::Failed;
+      else return error;
    }
    else if (pf::startswith("exists:", field)) {
       Args->Value[0] = '0';
@@ -604,7 +613,8 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
          Args->Value[0] = 0;
          if (extract IS 1) {
-            return get_content(Self, *Self->Cursor, Args->Value, Args->Size);
+            int output;
+            return get_all_content(Self, *Self->Cursor, Args->Value, Args->Size, output);
          }
          else if (extract IS 2) {
             STRING str;
@@ -1137,7 +1147,7 @@ This method is volatile and will destabilise any cached address pointers that ha
 
 -INPUT-
 cstr XPath: An XML path string.
-int Limit: The maximum number of matching tags that should be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all matching tags up to the end of the tree will be affected.
+int Limit: The maximum number of matching tags to delete.  A value of one or zero will remove only the indicated tag and its children.  A value of -1 removes all matching tags.
 
 -ERRORS-
 Okay
@@ -1158,9 +1168,11 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
    if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
 
    auto limit = Args->Limit;
-   if (limit < 0) limit = 0x7fffffff;
+   if (limit IS -1) limit = 0x7fffffff;
+   else if (!limit) limit = 1;
+
    while (limit > 0) {
-      if (Self->findTag(Args->XPath) IS ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
+      if (Self->findTag(Args->XPath) != ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
 
       if (!Self->Attrib.empty()) { // Remove an attribute
          for (int a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
@@ -1812,6 +1824,8 @@ the tag name or a content string if the `Name` is undefined.  The `Children` arr
 Direct read access to the Tags hierarchy is safe and efficient for traversing the document structure.  However,
 modifications should be performed using the XML object's methods (#InsertXML(), #SetAttrib(), #RemoveTag(), etc.) to
 maintain internal consistency and trigger appropriate cache invalidation.
+
+NOTE: Fluid will copy this field on read, caching the value is therefore recommended.
 
 *********************************************************************************************************************/
 
