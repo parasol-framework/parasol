@@ -266,7 +266,7 @@ public:
 private:
    inline void resize_if_required() {
       if (length == capacity) {
-         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+         reserveCapacity(capacity * 2);
       }
    }
 
