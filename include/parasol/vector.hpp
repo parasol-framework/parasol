@@ -211,10 +211,8 @@ public:
       // Shift existing elements to make space
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + count);
-         // Destroy moved-from objects in the insertion range
-         for (iterator it = target_iter; it != target_iter + count; ++it) {
-            it->~T();
-         }
+         // Objects are now valid at destination, moved-from objects are at the end
+         // No manual destruction needed - placement new will overwrite
       }
 
       // Copy new elements into the created space
