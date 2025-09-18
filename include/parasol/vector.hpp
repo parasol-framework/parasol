@@ -148,28 +148,74 @@ public:
       return Start;
    }
 
-   iterator insert(const_iterator pTarget, T &pValue) {
-      if (pTarget == end()) {
-         push_back(pValue);
-         return iterator(pTarget);
+   iterator insert(const_iterator pTarget, const T &pValue) {
+      size_type index = pTarget - begin();
+      if (length == capacity) {
+         // Re-evaluate index after reallocation
+         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+         pTarget = begin() + index;
       }
 
-      resize_if_required();
+      iterator target_iter = const_cast<iterator>(pTarget);
 
-      for (auto it=end(); it != pTarget; it--) {
-         if (it == begin()) break;
-         *it = std::move(*(it-1));
+      // Shift elements from the target to the end one position to the right
+      if (target_iter < end()) {
+         std::move_backward(target_iter, end(), end() + 1);
       }
-      *(iterator(pTarget)) = std::move(pValue);
+
+      // Construct the new element at the target position
+      new (target_iter) T(pValue);
       length++;
-      return iterator(pTarget);
+
+      return target_iter;
    }
 
-   inline void insert(iterator pTarget, iterator pStart, iterator pEnd) {
-      auto tgt = pTarget;
-      for (auto it = pStart; it != pEnd; it++, tgt++) {
-         *tgt = std::move(*it);
+   iterator insert(const_iterator pTarget, T &&pValue) {
+      size_type index = pTarget - begin();
+      if (length == capacity) {
+         reserveCapacity(capacity > 0 ? capacity * 2 : MIN_CAPACITY);
+         pTarget = begin() + index;
       }
+
+      iterator target_iter = const_cast<iterator>(pTarget);
+
+      if (target_iter < end()) {
+         std::move_backward(target_iter, end(), end() + 1);
+      }
+
+      new (target_iter) T(std::move(pValue));
+      length++;
+
+      return target_iter;
+   }
+
+   void insert(const_iterator pTarget, const_iterator pStart, const_iterator pEnd) {
+      difference_type count = std::distance(pStart, pEnd);
+      if (count <= 0) {
+         return;
+      }
+
+      size_type index = pTarget - begin();
+      
+      if (length + count > capacity) {
+         size_type new_capacity = capacity;
+         while (new_capacity < length + count) {
+            new_capacity = new_capacity > 0 ? new_capacity * 2 : MIN_CAPACITY;
+         }
+         reserveCapacity(new_capacity);
+         pTarget = begin() + index;
+      }
+
+      iterator target_iter = const_cast<iterator>(pTarget);
+
+      // Shift existing elements to make space
+      if (target_iter < end()) {
+         std::move_backward(target_iter, end(), end() + count);
+      }
+
+      // Copy new elements into the created space
+      std::uninitialized_copy(pStart, pEnd, target_iter);
+      length += count;
    }
 
    // Comparison
