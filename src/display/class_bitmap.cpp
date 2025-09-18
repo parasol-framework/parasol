@@ -233,6 +233,7 @@ ERR lock_surface(extBitmap *Bitmap, int16_t Access)
       else size = Bitmap->LineWidth * Bitmap->Height;
 
       Bitmap->Data = (uint8_t *)malloc(size);
+      if (!Bitmap->Data) return ERR::AllocMemory;
 
       if ((Bitmap->x11.readable = XCreateImage(XDisplay, CopyFromParent, Bitmap->BitsPerPixel,
            ZPixmap, 0, (char *)Bitmap->Data, Bitmap->Width, Bitmap->Height, alignment, Bitmap->LineWidth))) {
@@ -2139,18 +2140,23 @@ Write: Writes raw image data to a bitmap object.
 
 static ERR BITMAP_Write(extBitmap *Self, struct acWrite *Args)
 {
-   if (Self->Data) {
-      auto Data = (int8_t *)Self->Data + Self->Position;
-      int amt_bytes = 0;
-      while (Args->Length > 0) {
-         Data[amt_bytes] = ((uint8_t *)Args->Buffer)[amt_bytes];
-         Args->Length--;
-         amt_bytes++;
-      }
-      Self->Position += amt_bytes;
-      return ERR::Okay;
-   }
-   else return ERR::NoData;
+   if (!Args) return ERR::NullArgs;
+
+   Args->Result = 0;
+
+   if (!Self->Data) return ERR::NoData;
+   if (Args->Length <= 0) return ERR::Okay;
+   if (!Args->Buffer) return ERR::NullArgs;
+
+   int available = Self->Size - Self->Position;
+   if (available <= 0) return ERR::OutOfSpace;
+   if (Args->Length > available) return ERR::OutOfSpace;
+
+   copymem(Args->Buffer, Self->Data + Self->Position, Args->Length);
+   Self->Position += Args->Length;
+   Args->Result = Args->Length;
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

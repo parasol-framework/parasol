@@ -21,7 +21,6 @@ using namespace std::chrono_literals;
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
-#define PRV_THREAD
 #ifndef __system__
 #define __system__
 #endif
@@ -33,20 +32,11 @@ using namespace std::chrono_literals;
  #include <semaphore.h>
 #endif
 
-#define PRV_METACLASS 1
-#define PRV_MODULE 1
-
 #include "microsoft/windefs.h"
 
 // See the makefile for optional defines
 
-constexpr int MAX_TASKS = 50;  // Maximum number of tasks allowed to run at once
-
-constexpr int SIZE_SYSTEM_PATH = 100;  // Max characters for the Parasol system path
-
 constexpr int MAX_THREADS   = 20;  // Maximum number of threads per process.
-constexpr int MAX_NB_LOCKS  = 20;  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
-constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
 
 #define CLASSDB_HEADER 0x7f887f89
 
@@ -63,8 +53,6 @@ constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit
 #else
 #define WIN32OPEN 0
 #endif
-
-constexpr int LEN_VOLUME_NAME = 40;
 
 constexpr int DRIVETYPE_REMOVABLE = 1;
 constexpr int DRIVETYPE_CDROM     = 2;
@@ -104,15 +92,16 @@ struct RGB8;
 struct pfBase64Decode;
 struct FileInfo;
 struct DirInfo;
+struct ActionTable;
+struct FileFeedback;
+struct ResourceManager;
+struct MsgHandler;
+
 class objFile;
 class objStorageDevice;
 class objConfig;
 class objMetaClass;
 class objTask;
-struct ActionTable;
-struct FileFeedback;
-struct ResourceManager;
-struct MsgHandler;
 
 enum class RES    : int;
 enum class RP     : int;
@@ -143,8 +132,6 @@ enum class ALF    : uint16_t;
 enum class EVG    : int;
 enum class AC     : int;
 enum class MSGID  : int;
-
-#define STAT_FOLDER 0x0001
 
 struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelated to the host platform.
    // Make constructors available
