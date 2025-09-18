@@ -129,22 +129,22 @@ public:
       if (first > last or first < begin() or last > end()) {
          return const_cast<iterator>(first); // Invalid range, do nothing
       }
-      
+
       auto start_pos = const_cast<iterator>(first);
       auto num_erased = std::distance(first, last);
 
       if (num_erased > 0) {
          // Move elements to fill the gap
          auto new_end = std::move(start_pos + num_erased, end(), start_pos);
-         
+
          // Destruct the now-moved-from objects at the end
          for (iterator it = new_end; it != end(); ++it) {
             it->~T();
          }
-         
+
          length -= num_erased;
       }
-      
+
       return start_pos;
    }
 
@@ -161,6 +161,8 @@ public:
       // Shift elements from the target to the end one position to the right
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + 1);
+         // Destroy the moved-from object at target position before placement new
+         target_iter->~T();
       }
 
       // Construct the new element at the target position
@@ -181,6 +183,8 @@ public:
 
       if (target_iter < end()) {
          std::move_backward(target_iter, end(), end() + 1);
+         // Destroy the moved-from object at target position before placement new
+         target_iter->~T();
       }
 
       new (target_iter) T(std::move(pValue));
@@ -196,7 +200,7 @@ public:
       }
 
       size_type index = pTarget - begin();
-      
+
       if (length + count > capacity) {
          size_type new_capacity = capacity;
          while (new_capacity < length + count) {
