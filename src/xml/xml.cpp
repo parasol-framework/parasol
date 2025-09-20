@@ -1021,20 +1021,23 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    auto src_tags = Self->getInsert(Args->Index, it);
    if (!src_tags) return log.warning(ERR::NotFound);
 
+   int total = Args->Total;
    TAGS copy;
-   unsigned s;
-   for (s=0; s < src_tags->size(); s++) {
-      if (src_tags[0][s].ID IS it->ID) {
-         copy = TAGS(src_tags->begin() + s, src_tags->begin() + s + Args->Total);
+   unsigned si;
+   for (si=0; si < src_tags->size(); si++) {
+      if (src_tags[0][si].ID IS it->ID) {
+         if (si + total > src_tags->size()) total = int(src_tags->size() - si);
+         copy = TAGS(src_tags->begin() + si, src_tags->begin() + si + total);
          break;
       }
    }
 
    if (copy.empty()) return log.warning(ERR::SanityCheckFailed);
+   if (si >= src_tags->size()) return log.warning(ERR::SanityCheckFailed);
 
    // Verify that the destination tag is not within the source, making the move impossible.
 
-   if ((dest >= src_tags->begin()) and (dest < src_tags->begin() + Args->Total)) {
+   if ((dest >= src_tags->begin() + si) and (dest < src_tags->begin() + si + total)) {
       return log.warning(ERR::Args);
    }
 
@@ -1069,7 +1072,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
          return log.warning(ERR::Args);
    }
    
-   src_tags->erase(src_tags->begin() + s, src_tags->begin() + s + Args->Total);
+   src_tags->erase(src_tags->begin() + si, src_tags->begin() + si + Args->Total);
 
    Self->modified();
    return ERR::Okay;
