@@ -89,8 +89,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
       // Comments will be stripped - check if this is a comment and skip it if this is the case.
       if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
-         int i;
-         if ((i = pf::strsearch("-->", str)) != -1) {
+         if (auto i = pf::strsearch("-->", str); i != -1) {
             State.Pos = str + i + 3;
             return ERR::NothingDone;
          }
@@ -312,6 +311,10 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    ParseState state;
    CSTRING str;
    for (str=Text; (*str) and (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
+   if (!str[0]) {
+      Self->ParseError = log.warning(ERR::InvalidData);
+      return Self->ParseError;
+   }
    state.Pos = str;
    while ((state.Pos[0] IS '<') and (state.Pos[1] != '/')) {
       ERR error = extract_tag(Self, Tags, state);

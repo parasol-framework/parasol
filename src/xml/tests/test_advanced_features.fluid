@@ -1,5 +1,7 @@
 -- Tests for advanced XML features and flag combinations
 
+   include 'xml'
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XML parsing flags
 

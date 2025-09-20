@@ -13,4 +13,16 @@ set_module_defaults (${MOD} "Xml")
 
 target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp")
 
-flute_test (${MOD}_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test.fluid")
+flute_test (${MOD}_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.fluid")
+flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_features.fluid")
+flute_test (${MOD}_data_sources "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_data_sources.fluid")
+flute_test (${MOD}_manipulation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xml_manipulation.fluid")
+flute_test (${MOD}_xpath "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_queries.fluid")
+flute_test (${MOD}_parsing "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xml_parsing.fluid")
+
+if (INSTALL_TESTS)
+   add_executable (test_xml_count_debug "tests/test_count_debug.cpp")
+   target_link_libraries (test_xml_count_debug PRIVATE ${INIT_LINK})
+   set_target_properties (test_xml_count_debug PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+   install (TARGETS test_xml_count_debug DESTINATION "tests/")
+endif ()

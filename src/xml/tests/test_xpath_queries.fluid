@@ -1,0 +1,252 @@
+-- Comprehensive XPath query tests
+
+   include 'xml'
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test basic XPath navigation
+
+function testBasicXPath()
+   local xml = obj.new("xml", {
+      statement = '<root><level1><level2><target>Found</target></level2></level1></root>'
+   })
+
+   -- Test absolute path
+   local err, targetId = xml.mtFindTag('/root/level1/level2/target')
+   assert(err == ERR_Okay, "Failed to find target with absolute path: " .. mSys.GetErrorMsg(err))
+
+   local err, tag = xml.mtGetTag(targetId)
+   assert(err == ERR_Okay, "Failed to get target tag")
+   assert(tag.children[1].attribs[1].value == "Found", "Target content incorrect")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test attribute matching with [@attribute] syntax
+
+function testAttributeMatching()
+   local xml = obj.new("xml", {
+      statement = '<root><item type="book" title="Guide"/><item type="magazine" title="News"/><item type="book" title="Manual"/></root>'
+   })
+
+   -- Find items with type="book"
+   local bookCount = 0
+   local err, index = xml.mtFindTag('/root/item[@type="book"]', function(XML, TagID, Attrib)
+      bookCount = bookCount + 1
+      local err, tag = xml.mtGetTag(TagID)
+      assert(err == ERR_Okay, "Failed to get book tag")
+
+      local err, typeValue = xml.mtGetAttrib(TagID, 'type')
+      assert(err == ERR_Okay and typeValue == "book", "Book type attribute incorrect")
+   end)
+
+   assert(bookCount == 2, "Expected 2 books, found " .. bookCount)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test indexed access with [position] syntax
+
+function testIndexedAccess()
+   local xml = obj.new("xml", {
+      statement = '<root><item>First</item><item>Second</item><item>Third</item></root>'
+   })
+
+   -- Test first item (1-based indexing)
+   local err, firstId = xml.mtFindTag('/root/item[1]')
+   assert(err == ERR_Okay, "Failed to find first item: " .. mSys.GetErrorMsg(err))
+
+   local err, tag = xml.mtGetTag(firstId)
+   assert(err == ERR_Okay, "Failed to get first tag")
+   assert(tag.children[1].attribs[1].value == "First", "First item content incorrect")
+
+   -- Test third item
+   local err, thirdId = xml.mtFindTag('/root/item[3]')
+   assert(err == ERR_Okay, "Failed to find third item: " .. mSys.GetErrorMsg(err))
+
+   local err, tag = xml.mtGetTag(thirdId)
+   assert(err == ERR_Okay, "Failed to get third tag")
+   assert(tag.children[1].attribs[1].value == "Third", "Third item content incorrect")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test deep scanning with double-slash (//) syntax
+
+function testDeepScanning()
+   local xml = obj.new("xml", {
+      statement = '<root><section><subsection><target id="1"/></subsection></section><othersection><target id="2"/></othersection></root>'
+   })
+
+   -- Find all target elements anywhere in document
+   local targetCount = 0
+   local foundIds = {}
+   local err, index = xml.mtFindTag('//target', function(XML, TagID, Attrib)
+      targetCount = targetCount + 1
+      local err, idValue = xml.mtGetAttrib(TagID, 'id')
+      assert(err == ERR_Okay, "Failed to get target id")
+      table.insert(foundIds, idValue)
+   end)
+
+   assert(targetCount == 2, "Expected 2 targets, found " .. targetCount)
+   assert(table.contains(foundIds, "1") and table.contains(foundIds, "2"), "Target IDs not found correctly")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test wildcard matching with * syntax
+
+function testWildcardMatching()
+   local xml = obj.new("xml", {
+      statement = '<root><item1/><item2/><item3/><other/></root>'
+   })
+
+   -- Find all children of root
+   local childCount = 0
+   local err, index = xml.mtFindTag('/root/*', function(XML, TagID, Attrib)
+      childCount = childCount + 1
+   end)
+
+   assert(childCount == 4, "Expected 4 children, found " .. childCount)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test content matching (Parasol extension)
+
+function testContentMatching()
+   local xml = obj.new("xml", {
+      statement = '<root><item>apple</item><item>banana</item><item>apple pie</item></root>'
+   })
+
+   -- Find items containing "apple"
+   local appleCount = 0
+   local err, index = xml.mtFindTag('/root/item(=apple)', function(XML, TagID, Attrib)
+      appleCount = appleCount + 1
+   end)
+
+   assert(appleCount >= 1, "Expected at least 1 apple item, found " .. appleCount)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test attribute extraction with @ syntax
+
+function testAttributeExtraction()
+   local xml = obj.new("xml", {
+      statement = '<root><book title="Guide" author="Smith"/></root>'
+   })
+
+   -- Extract title attribute value
+   local titleValue = xml.getKey('/root/book/@title')
+   assert(titleValue == "Guide", "Title attribute extraction failed")
+
+   -- Extract author attribute value
+   local authorValue = xml.getKey('/root/book/@author')
+   assert(authorValue == "Smith", "Author attribute extraction failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test count operations
+
+function testCountOperations()
+   local xml = obj.new("xml", {
+      statement = '<root><section><item/><item/><item/></section><section><item/></section></root>'
+   })
+
+   -- Count all items
+   local totalItems = tonumber(xml.getKey('count://item'))
+   assert(totalItems == 4, "Expected 4 total items, got " .. totalItems)
+
+   -- Count items in first section
+   local firstSectionItems = tonumber(xml.getKey('count:/root/section[1]/item'))
+   assert(firstSectionItems == 3, "Expected 3 items in first section, got " .. firstSectionItems)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test exists operations
+
+function testExistsOperations()
+   local xml = obj.new("xml", {
+      statement = '<root><section title="Test"><item/></section></root>'
+   })
+
+   -- Test element existence
+   local sectionExists = xml.getKey('exists:/root/section')
+   assert(sectionExists == "1", "Section should exist")
+
+   local missingExists = xml.getKey('exists:/root/missing')
+   assert(missingExists == "0", "Missing element should not exist")
+
+   -- Test attribute existence
+   local titleExists = xml.getKey('exists:/root/section/@title')
+   assert(titleExists == "1", "Title attribute should exist")
+
+   local missingAttrExists = xml.getKey('exists:/root/section/@missing')
+   assert(missingAttrExists == "0", "Missing attribute should not exist")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test content extraction operations
+
+function testContentExtraction()
+   local xml = obj.new("xml", {
+      statement = '<root><section>Direct content <em>emphasized</em> more content</section></root>'
+   })
+
+   -- Test immediate content extraction (excludes nested tags)
+   local immediateContent = xml.getKey('/root/section')
+   assert(string.find(immediateContent, "Direct content"), "Immediate content not extracted")
+   assert(string.find(immediateContent, "more content"), "Trailing content not extracted")
+
+   -- Test deep content extraction
+   local deepContent = xml.getKey('content:/root/section')
+   assert(string.find(deepContent, "emphasized"), "Deep content not extracted")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test extract operations (XML serialization)
+
+function testExtractOperations()
+   local xml = obj.new("xml", {
+      statement = '<root><section><item id="1">Content</item></section></root>'
+   })
+
+   -- Extract XML for specific element
+   local extractedXML = xml.getKey('extract:/root/section/item')
+   assert(string.find(extractedXML, 'id="1"'), "Extracted XML is missing attributes: " .. nz(extractedXML,'NIL'))
+   assert(string.find(extractedXML, "Content"), "Extracted XML is missing content" .. nz(extractedXML,'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test complex XPath expressions
+
+function testComplexExpressions()
+   local xml = obj.new("xml", {
+      statement = '<root><products><product category="electronics" price="100"/><product category="books" price="20"/><product category="electronics" price="50"/></products></root>'
+   })
+
+   -- Find electronics products
+   local electronicsCount = 0
+   local err, index = xml.mtFindTag('/root/products/product[@category="electronics"]', function(XML, TagID, Attrib)
+      electronicsCount = electronicsCount + 1
+   end)
+
+   assert(electronicsCount == 2, "Expected 2 electronics products, found " .. electronicsCount)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testBasicXPath', 'testAttributeMatching', 'testIndexedAccess', 'testDeepScanning',
+      'testWildcardMatching', 'testContentMatching', 'testAttributeExtraction',
+      'testCountOperations', 'testExistsOperations', 'testContentExtraction',
+      'testExtractOperations', 'testComplexExpressions'
+   },
+   init = function(ScriptFolder)
+      -- Helper function for table.contains
+      table.contains = function(table, element)
+         for _, value in pairs(table) do
+            if value == element then return true end
+         end
+         return false
+      end
+   end,
+   cleanup = function()
+      -- No cleanup needed
+   end
+}
