@@ -1011,11 +1011,15 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if (Args->Total < 1) return log.warning(ERR::Args);
    if (Args->Index IS Args->DestIndex) return ERR::Okay;
+   
+   if ((Args->DestIndex > Args->Index) and (Args->DestIndex < Args->Index + Args->Total)) {
+      return log.warning(ERR::Args);
+   }
 
    auto dest = Self->getTag(Args->DestIndex);
    if (!dest) return log.warning(ERR::NotFound);
 
-   // Extricate the source tag
+   // Take a copy of the source tags
 
    CURSOR it;
    auto src_tags = Self->getInsert(Args->Index, it);
@@ -1034,12 +1038,6 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
 
    if (copy.empty()) return log.warning(ERR::SanityCheckFailed);
    if (si >= src_tags->size()) return log.warning(ERR::SanityCheckFailed);
-
-   // Verify that the destination tag is not within the source, making the move impossible.
-
-   if ((dest >= src_tags->begin() + si) and (dest < src_tags->begin() + si + total)) {
-      return log.warning(ERR::Args);
-   }
 
    switch (Args->Where) {
       case XMI::PREV: {
