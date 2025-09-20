@@ -50,7 +50,7 @@ ERR extXML::find_tag(std::string_view XPath)
    // Check if the path is something like '/@attrib' which means we want the attribute value of the current tag
 
    if ((pos < XPath.size()) and (XPath[pos] IS '@')) Attrib.assign(XPath.substr(pos + 1));
-   
+
    // Parse the tag name
 
    auto start = pos;
@@ -80,10 +80,10 @@ ERR extXML::find_tag(std::string_view XPath)
       pos = (non_space_pos != std::string_view::npos) ? non_space_pos : XPath.size();
 
       if ((pos < XPath.size()) and (XPath[pos] >= '0') and (XPath[pos] <= '9')) { // Parse index
-         subscript = strtol(XPath.data()+pos, nullptr, 0);
+         char *end;
+         subscript = strtol(XPath.data() + pos, &end, 0);
          if (subscript < 1) return ERR::Syntax; // Subscripts start from 1, not 0
-         auto digit_end = XPath.find_first_not_of("0123456789", pos);
-         pos = (digit_end != std::string_view::npos) ? digit_end : XPath.size();
+         pos = end - XPath.data();
       }
       else if ((pos < XPath.size()) and ((XPath[pos] IS '@') or (XPath[pos] IS '='))) {
          if (XPath[pos] IS '@') {  // Parse attribute filter such as "[@id='5']"
@@ -165,7 +165,7 @@ ERR extXML::find_tag(std::string_view XPath)
    }
 
    auto tag_wild = tagname.find('*') != std::string_view::npos;
-   
+
    bool stop = false;
    for (; Cursor != CursorTags->end() and (!stop); Cursor++) {
       bool match = false;
@@ -220,7 +220,7 @@ ERR extXML::find_tag(std::string_view XPath)
 
       if ((not match) and (not flat_scan)) continue;
 
-      if (subscript > 1) { 
+      if (subscript > 1) {
          subscript--;
          continue;
       }

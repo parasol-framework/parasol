@@ -396,7 +396,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 {
    pf::Log log;
 
-   if (!Args) return ERR::NullArgs;
+   if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
 
@@ -506,8 +506,9 @@ and a number of special instructions that we support:
 <type name="count:/menu">Return a count of all menu tags at the root level.</>
 <type name="xml:/menu/window/@title">Return the value of the title attribute from the window tag.</>
 <type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title `foo`.</>
-<type name="extract:/menu/window(@title='bar')">Extract all XML from the window tag which has title `bar`.</>
+<type name="extract:/menu/window(@title='bar')">Extract all XML starting from the window tag that has title `bar`.</>
 <type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside `&lt;menu&gt;` that contains content `apple`.</>
+<type name="extract-under:/menu/window(@title='bar')">Extract all XML underneath the window tag that has title `bar`.</>
 <type name="exists:/menu/@title">Return `1` if a menu with a title attribute can be matched, otherwise `0`.</>
 <type name="contentexists:/menu">Return `1` if if the immediate child tags of the XPath contain text (white space is ignored).</>
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
@@ -584,6 +585,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
             (pf::startswith("xml:", field)) or
             (pf::startswith("content:", field)) or
             (pf::startswith("extract:", field)) or
+            (pf::startswith("extract-under:", field)) or
             (field[0] IS '/')) {
       int j;
       for (j=0; field[j] and (field[j] != '/'); j++) j++;
@@ -609,6 +611,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
          if (pf::startswith("content:", field)) extract = 1; // 'In-Depth' content extract.
          else if (pf::startswith("extract:", field)) extract = 2;
+         else if (pf::startswith("extract-under:", field)) extract = 3;
          else extract = 0;
 
          Args->Value[0] = 0;
@@ -617,6 +620,16 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
             return get_all_content(Self, *Self->Cursor, Args->Value, Args->Size, output);
          }
          else if (extract IS 2) {
+            STRING str;
+            ERR error = Self->serialise(Self->Cursor->ID, XMF::NIL, &str);
+            if (error IS ERR::Okay) {
+               pf::strcopy(str, Args->Value, Args->Size);
+               FreeResource(str);
+            }
+
+            return error;
+         }
+         else if (extract IS 3) {
             STRING str;
             ERR error = Self->serialise(Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
             if (error IS ERR::Okay) {
@@ -745,7 +758,8 @@ static ERR XML_Init(extXML *Self)
    if (Self->Statement) {
       Self->LineNo = 1;
       if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement)) != ERR::Okay) {
-         if ((Self->ParseError IS ERR::InvalidData) or (Self->ParseError IS ERR::NoData)) return ERR::NoSupport;
+         // Return NoSupport to defer parsing to other data handlers
+         if (Self->ParseError IS ERR::InvalidData) return ERR::NoSupport;
 
          log.warning("XML parsing error #%d: %s", int(Self->ParseError), GetErrorMsg(Self->ParseError));
       }
@@ -885,7 +899,7 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
    if (Args->Where IS XMI::NEXT) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) {
-         tags->insert(it, insert.begin(), insert.end());
+         tags->insert(it + 1, insert.begin(), insert.end());
       }
       else return log.warning(ERR::NotFound);
    }
@@ -893,7 +907,7 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) {
         if (it IS tags->begin()) tags->insert(it, insert.begin(), insert.end());
-        else tags->insert(it - 1, insert.begin(), insert.end());
+        else tags->insert(it, insert.begin(), insert.end());
       }
       else return log.warning(ERR::NotFound);
    }
@@ -975,14 +989,15 @@ inserted as a child of the destination by using a `Where` of `XMI::CHILD`.  To i
 
 -INPUT-
 int Index: Index of the source tag to be moved.
-int Total: The total number of sibling tags to be moved from the source index.  Minimum value of 1.
+int Total: The total number of sibling tags (including the targeted tag) to be moved from the source index.  Minimum value of 1.
 int DestIndex: The destination tag index.  If the index exceeds the total number of tags, the value will be automatically limited to the last tag index.
 int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag.  Use `CHILD` for a child insert.
 
 -ERRORS-
 Okay: Tags were moved successfully.
+Args
 NullArgs
-NotFound:
+NotFound
 ReadOnly
 -END-
 
@@ -997,6 +1012,9 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    if (Args->Total < 1) return log.warning(ERR::Args);
    if (Args->Index IS Args->DestIndex) return ERR::Okay;
 
+   auto dest = Self->getTag(Args->DestIndex);
+   if (!dest) return log.warning(ERR::NotFound);
+
    // Extricate the source tag
 
    CURSOR it;
@@ -1008,16 +1026,17 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    for (s=0; s < src_tags->size(); s++) {
       if (src_tags[0][s].ID IS it->ID) {
          copy = TAGS(src_tags->begin() + s, src_tags->begin() + s + Args->Total);
+         break;
       }
    }
 
-   if (copy.empty()) return log.warning(ERR::NotFound);
+   if (copy.empty()) return log.warning(ERR::SanityCheckFailed);
 
-   // Verify that the destination tag exists (if not, the destination is probably within the source
-   // and therefore the move is impossible).
+   // Verify that the destination tag is not within the source, making the move impossible.
 
-   auto dest = Self->getTag(Args->DestIndex);
-   if (!dest) return log.warning(ERR::NotFound);
+   if ((dest >= src_tags->begin()) and (dest < src_tags->begin() + Args->Total)) {
+      return log.warning(ERR::Args);
+   }
 
    switch (Args->Where) {
       case XMI::PREV: {
@@ -1049,9 +1068,8 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
       default:
          return log.warning(ERR::Args);
    }
-
-
-   Self->Tags.erase(Self->Tags.begin() + s, Self->Tags.begin() + s + Args->Total);
+   
+   src_tags->erase(src_tags->begin() + s, src_tags->begin() + s + Args->Total);
 
    Self->modified();
    return ERR::Okay;
