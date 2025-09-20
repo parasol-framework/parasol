@@ -5,6 +5,9 @@
 #include <cctype>
 #include <string_view>
 #include <charconv>
+#include <concepts>
+#include <ranges>
+#include <span>
 
 namespace pf {
 
@@ -67,7 +70,7 @@ inline void camelcase(std::string &s) noexcept {
 {
    if (lhs.size() != rhs.size()) return false;
    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char a, char b) {
-       return std::tolower(static_cast<unsigned char>(a)) IS std::tolower(static_cast<unsigned char>(b));
+       return std::tolower((uint8_t)(a)) IS std::tolower((uint8_t)(b));
    });
 }
 
@@ -100,8 +103,8 @@ inline void camelcase(std::string &s) noexcept {
                   if (Wildcard[w] IS String[s]) break;
                }
                else {
-                  auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w]));
-                  auto char2 = std::tolower(static_cast<unsigned char>(String[s]));
+                  auto char1 = std::tolower((uint8_t)(Wildcard[w]));
+                  auto char2 = std::tolower((uint8_t)(String[s]));
                   if (char1 IS char2) break;
                }
                s++;
@@ -118,8 +121,8 @@ inline void camelcase(std::string &s) noexcept {
             if (Wildcard[w++] != String[s++]) fail = true;
          }
          else {
-            auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w++]));
-            auto char2 = std::tolower(static_cast<unsigned char>(String[s++]));
+            auto char1 = std::tolower((uint8_t)(Wildcard[w++]));
+            auto char2 = std::tolower((uint8_t)(String[s++]));
             if (char1 != char2) fail = true;
          }
       }
@@ -133,8 +136,8 @@ inline void camelcase(std::string &s) noexcept {
             if (Wildcard[w++] != String[s++]) fail = true;
          }
          else {
-            auto char1 = std::tolower(static_cast<unsigned char>(Wildcard[w++]));
-            auto char2 = std::tolower(static_cast<unsigned char>(String[s++]));
+            auto char1 = std::tolower((uint8_t)(Wildcard[w++]));
+            auto char2 = std::tolower((uint8_t)(String[s++]));
             if (char1 != char2) fail = true;
          }
       }
@@ -165,9 +168,8 @@ inline void camelcase(std::string &s) noexcept {
 [[nodiscard]] inline bool startswith(const std::string_view StringA, const std::string_view StringB) noexcept
 {
    if (StringA.size() > StringB.size()) return false;
-   return std::equal(StringA.begin(), StringA.end(), StringB.begin(), [](char a, char b) {
-       return std::tolower(static_cast<unsigned char>(a)) IS std::tolower(static_cast<unsigned char>(b));
-   });
+   return std::ranges::equal(StringA, StringB.substr(0, StringA.size()),
+                            [](char a, char b) { return std::tolower((uint8_t)(a)) IS std::tolower((uint8_t)(b)); });
 }
 
 [[nodiscard]] inline bool startswith(const std::string_view StringA, CSTRING StringB) noexcept
@@ -178,7 +180,7 @@ inline void camelcase(std::string &s) noexcept {
    return true;
 }
 
-// Inline C++ implementations of the StrHash() function
+// Standardised hash functions, case sensitive and insensitive versions
 
 [[nodiscard]] constexpr inline uint32_t strhash(const std::string_view String) noexcept
 {
@@ -199,6 +201,8 @@ inline void camelcase(std::string &s) noexcept {
    return hash;
 }
 
+// Simple string copy
+
 template <class T> inline int strcopy(T &&Source, STRING Dest, int Length = 0x7fffffff) noexcept
 {
    auto src = to_cstring(Source);
@@ -214,6 +218,21 @@ template <class T> inline int strcopy(T &&Source, STRING Dest, int Length = 0x7f
 
       Dest[i] = 0;
       return i;
+   }
+   else return 0;
+}
+
+// String copy using std::span for better memory safety
+
+template <class T, std::size_t N>
+inline int strcopy(T &&Source, std::span<char, N> Dest) noexcept
+{
+   auto src = to_cstring(Source);
+   if (src and not Dest.empty()) {
+      std::size_t i = 0;
+      while (*src and i < Dest.size() - 1) Dest[i++] = *src++;
+      Dest[i] = 0;
+      return int(i);
    }
    else return 0;
 }
@@ -261,7 +280,9 @@ template <class T> inline int strcopy(T &&Source, STRING Dest, int Length = 0x7f
 // std::string_view conversion to numeric type.  Returns zero on error.
 // Leading whitespace is not ignored, unlike strtol() and strtod()
 
-template <class T> [[nodiscard]] T svtonum(const std::string_view String) noexcept {
+template <class T>
+requires std::is_arithmetic_v<T>
+[[nodiscard]] T svtonum(const std::string_view String) noexcept {
    T val;
    auto [ v, error ] = std::from_chars(String.data(), String.data() + String.size(), val);
    if (error IS std::errc()) return val;
