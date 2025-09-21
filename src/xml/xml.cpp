@@ -864,6 +864,7 @@ Okay: The content was successfully inserted and a new content node was created.
 NullArgs: Required parameters were NULL or not properly specified.
 NotFound: The target Index does not correspond to a valid XML element.
 ReadOnly: The XML object is in read-only mode and cannot be modified.
+Args: The Where parameter specifies an invalid insertion position.
 
 *********************************************************************************************************************/
 
@@ -924,10 +925,11 @@ cstr XML: An XML statement to parse.
 
 -ERRORS-
 Okay: The statement was added successfully.
-Args
-NullArgs
-OutOfRange
+Args: The Where parameter specifies an invalid insertion position.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: The target Index does not correspond to a valid XML element.
 ReadOnly: Changes to the XML data are not permitted.
+NoData: The provided XML statement parsed to an empty result.
 
 *********************************************************************************************************************/
 
@@ -1000,9 +1002,10 @@ cstr XML: The statement to process.
 &int Result: The index of the new tag is returned here.
 
 -ERRORS-
-Okay
-NullArgs
-Search: The `XPath` could not be resolved.
+Okay: The XML statement was successfully inserted at the specified XPath location.
+NullArgs: Required parameters were NULL or not properly specified.
+Search: The XPath could not be resolved to a valid location.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 
 *********************************************************************************************************************/
 
@@ -1047,10 +1050,11 @@ int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag
 
 -ERRORS-
 Okay: Tags were moved successfully.
-Args
-NullArgs
-NotFound
-ReadOnly
+Args: Invalid parameter values were provided.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: Either the source or destination tag index does not exist.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
+SanityCheckFailed: An internal consistency check failed during the move operation.
 -END-
 
 *********************************************************************************************************************/
@@ -1192,10 +1196,10 @@ int Index: Reference to the tag that will be removed.
 int Total: The total number of sibling (neighbouring) tags that should also be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all tags up to the end of the branch will be affected.
 
 -ERRORS-
-Okay
-NullArgs
-OutOfRange
-ReadOnly
+Okay: The tag(s) were successfully removed.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: The specified tag Index does not exist in the XML structure.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 -END-
 
 *********************************************************************************************************************/
@@ -1256,9 +1260,10 @@ cstr XPath: An XML path string.
 int Limit: The maximum number of matching tags to delete.  A value of one or zero will remove only the indicated tag and its children.  A value of -1 removes all matching tags.
 
 -ERRORS-
-Okay
-NullArgs
-ReadOnly
+Okay: The matching tag(s) or attribute(s) were successfully removed.
+NullArgs: Required parameters were NULL or not properly specified.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
+NoData: The XML document contains no data to process.
 -END-
 
 *********************************************************************************************************************/
@@ -1441,10 +1446,11 @@ int(XMF) Flags: Use `INCLUDE_SIBLINGS` to include siblings of the tag found at I
 !str Result: The resulting string is returned in this parameter.
 
 -ERRORS-
-Okay: The XML string was retrieved.
-Args:
+Okay: The XML string was successfully serialised.
+NullArgs: Required parameters were NULL or not properly specified.
 NoData: No information has been loaded into the XML object.
-AllocMemory: Failed to allocate an XML string for the result.
+NotFound: The specified tag Index does not exist in the XML structure.
+AllocMemory: Failed to allocate memory for the XML string result.
 
 *********************************************************************************************************************/
 
@@ -1695,10 +1701,9 @@ int(XSF) Flags: Optional flags.
 
 -ERRORS-
 Okay: The XML object was successfully sorted.
-NullArgs
-Search: The provided `XPath` failed to locate a tag.
-ReadOnly
-AllocMemory:
+NullArgs: Required parameters were NULL or not properly specified.
+Search: The provided XPath failed to locate a tag.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 -END-
 
 *********************************************************************************************************************/
