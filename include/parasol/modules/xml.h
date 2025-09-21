@@ -45,8 +45,8 @@ enum class XMF : uint32_t {
    WELL_FORMED = 0x00000001,
    INCLUDE_COMMENTS = 0x00000002,
    STRIP_CONTENT = 0x00000004,
-   INDENT = 0x00000008,
    READABLE = 0x00000008,
+   INDENT = 0x00000008,
    LOCK_REMOVE = 0x00000010,
    STRIP_HEADERS = 0x00000020,
    NEW = 0x00000040,
@@ -57,6 +57,10 @@ enum class XMF : uint32_t {
    LOG_ALL = 0x00000800,
    PARSE_ENTITY = 0x00001000,
    OMIT_TAGS = 0x00002000,
+   NAMESPACE_AWARE = 0x00004000,
+   VALIDATE_NAMESPACES = 0x00008000,
+   PRESERVE_NAMESPACE_PREFIXES = 0x00010000,
+   AUTO_DECLARE_NAMESPACES = 0x00020000,
    INCLUDE_SIBLINGS = 0x80000000,
 };
 
@@ -95,18 +99,19 @@ typedef struct XMLAttrib {
 } XMLATTRIB;
 
 typedef struct XMLTag {
-   int ID;                           // Unique ID assigned to the tag on creation
-   int ParentID;                     // Unique ID of the parent tag
-   int LineNo;                       // Line number on which this tag was encountered
-   XTF Flags;                        // Optional flags
+   int      ID;                      // Unique ID assigned to the tag on creation
+   int      ParentID;                // Unique ID of the parent tag
+   int      LineNo;                  // Line number on which this tag was encountered
+   XTF      Flags;                   // Optional flags
+   uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
    pf::vector<XMLTag> Children;      // Array of child tags
    XMLTag(int pID, int pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0)
       { }
 
    XMLTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -164,6 +169,10 @@ struct Count { CSTRING XPath; int Result; static const AC id = AC(-13); ERR call
 struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolvePrefix { CSTRING Prefix; int TagID; int Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -305,6 +314,28 @@ class objXML : public Object {
    inline ERR getTag(int Index, struct XMLTag ** Result) noexcept {
       struct xml::GetTag args = { Index, (struct XMLTag *)0 };
       ERR error = Action(AC(-18), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR registerNamespace(CSTRING URI, uint32_t * Result) noexcept {
+      struct xml::RegisterNamespace args = { URI, (uint32_t)0 };
+      ERR error = Action(AC(-19), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR getNamespaceURI(uint32_t NamespaceID, CSTRING * Result) noexcept {
+      struct xml::GetNamespaceURI args = { NamespaceID, (CSTRING)0 };
+      ERR error = Action(AC(-20), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR setTagNamespace(int TagID, int NamespaceID) noexcept {
+      struct xml::SetTagNamespace args = { TagID, NamespaceID };
+      return(Action(AC(-21), this, &args));
+   }
+   inline ERR resolvePrefix(CSTRING Prefix, int TagID, int * Result) noexcept {
+      struct xml::ResolvePrefix args = { Prefix, TagID, (int)0 };
+      ERR error = Action(AC(-22), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }

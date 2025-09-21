@@ -56,9 +56,29 @@ ERR extXML::find_tag(std::string_view XPath)
    auto start = pos;
    auto delimiter_pos = XPath.find_first_of("/[(", pos);
    pos = (delimiter_pos != std::string_view::npos) ? delimiter_pos : XPath.size();
-   std::string_view tagname;
-   if (pos > start) tagname = XPath.substr(start, pos - start);
-   else tagname = "*";
+   std::string_view tag_name;
+   if (pos > start) tag_name = XPath.substr(start, pos - start);
+   else tag_name = "*";
+
+   // Parse namespace prefix from tag_name
+   uint32_t target_ns = 0; // 0 means "match any namespace" for unprefixed elements
+   std::string_view local_name = tag_name;
+   bool has_explicit_ns = false;
+
+   if ((this->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+      if (auto colon = tag_name.find(':'); colon != std::string_view::npos) {
+         auto prefix = tag_name.substr(0, colon);
+         local_name = tag_name.substr(colon + 1);
+
+         // Resolve prefix to namespace hash
+         auto it = this->CurrentPrefixMap.find(std::string(prefix));
+         if (it != this->CurrentPrefixMap.end()) {
+            target_ns = it->second;
+            tag_name = local_name;  // Use local name for matching
+            has_explicit_ns = true;
+         }
+      }
+   }
 
    // Parse filter instructions
 
@@ -67,7 +87,7 @@ ERR extXML::find_tag(std::string_view XPath)
    bool wild = false;
    int subscript = 0;
 
-   if ((this->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("XPath: %.*s, TagName: %.*s", int(XPath.size()), XPath.data(), int(tagname.size()), tagname.data());
+   if ((this->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("XPath: %.*s, TagName: %.*s", int(XPath.size()), XPath.data(), int(tag_name.size()), tag_name.data());
 
    char end_char;
    if ((pos < XPath.size()) and ((XPath[pos] IS '[') or (XPath[pos] IS '('))) {
@@ -164,15 +184,30 @@ ERR extXML::find_tag(std::string_view XPath)
       pos++;
    }
 
-   auto tag_wild = tagname.find('*') != std::string_view::npos;
+   auto tag_wild = tag_name.find('*') != std::string_view::npos;
 
    bool stop = false;
    for (; Cursor != CursorTags->end() and (!stop); Cursor++) {
       bool match = false;
       bool tag_matched = false;
 
-      if (tag_wild) tag_matched = pf::wildcmp(tagname, Cursor->name());
-      else tag_matched = pf::iequals(tagname, Cursor->name());
+      // Match both tag name and namespace
+
+      if ((this->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+         // Namespace-aware matching: check both namespace and local name
+         std::string_view cursor_local_name = Cursor->name();
+         if (auto colon = cursor_local_name.find(':'); colon != std::string_view::npos) {
+            cursor_local_name = cursor_local_name.substr(colon + 1);
+         }
+
+         bool name_matches = tag_wild ? pf::wildcmp(tag_name, cursor_local_name) : pf::iequals(tag_name, cursor_local_name);
+         bool namespace_matches = has_explicit_ns ? (Cursor->NamespaceID IS target_ns) : true;
+         tag_matched = name_matches and namespace_matches;
+      } 
+      else { // Traditional matching: just compare full tag names
+         if (tag_wild) tag_matched = pf::wildcmp(tag_name, Cursor->name());
+         else tag_matched = pf::iequals(tag_name, Cursor->name());
+      }
 
       if (tag_matched) { // Desired tag name found.
          if ((!attrib_name.empty()) or (!attrib_value.empty())) {

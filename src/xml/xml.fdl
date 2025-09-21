@@ -28,6 +28,10 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "LOG_ALL: Print extra log messages.",
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
+    "NAMESPACE_AWARE: Enable namespace processing during parsing.",
+    "VALIDATE_NAMESPACES: Validate namespace declarations and references.",
+    "PRESERVE_NAMESPACE_PREFIXES: Keep original prefixes in output.",
+    "AUTO_DECLARE_NAMESPACES: Auto-add namespace declarations when needed.",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (#GetXMLString() only)" })
 
   enum("XMI", { type="int", start=0, comment="Tag insertion options." },
@@ -54,20 +58,21 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
   ]])
 
   struct("XMLTag", { type="XMLTag" }, [[
-    int ID         # Unique ID assigned to the tag on creation
-    int ParentID   # Unique ID of the parent tag
-    int LineNo     # Line number on which this tag was encountered
-    int(XTF) Flags # Optional flags
+    int ID           # Unique ID assigned to the tag on creation
+    int ParentID     # Unique ID of the parent tag
+    int LineNo       # Line number on which this tag was encountered
+    int(XTF) Flags   # Optional flags
+    uint NamespaceID # Hash of namespace URI or 0 for no namespace
     cpp(array(struct(XMLAttrib))) Attribs # Array of attributes for this tag
     cpp(array(struct(XMLTag))) Children   # Array of child tags
   ]],
   [[
    XMLTag(int pID, int pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0)
       { }
 
    XMLTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -118,7 +123,11 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=13, name="Count" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },
-    { id=18, name="GetTag" }
+    { id=18, name="GetTag" },
+    { id=19, name="RegisterNamespace" },
+    { id=20, name="GetNamespaceURI" },
+    { id=21, name="SetTagNamespace" },
+    { id=22, name="ResolvePrefix" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[

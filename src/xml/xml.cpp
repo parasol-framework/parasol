@@ -86,6 +86,11 @@ class extXML : public objXML {
    std::string Attrib;
    FUNCTION Callback;
 
+   // Namespace registry using pf::strhash() values
+   ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash -> URI
+   std::map<std::string, uint32_t> CurrentPrefixMap; // prefix -> hash (current scope)
+   uint32_t DefaultNamespace = 0;
+
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
@@ -159,6 +164,20 @@ class extXML : public objXML {
 
       Cursor = this->Tags.begin();
       return find_tag(XPath);
+   }
+
+   // Namespace utility methods
+
+   inline uint32_t registerNamespace(const std::string &uri) {
+      if (uri.empty()) return 0;
+      auto hash = pf::strhash(uri);
+      NSRegistry[hash] = uri;
+      return hash;
+   }
+
+   inline std::string * getNamespaceURI(uint32_t hash) {
+      auto it = NSRegistry.find(hash);
+      return (it != NSRegistry.end()) ? &it->second : nullptr;
    }
 
    private:
@@ -721,6 +740,39 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
+GetNamespaceURI: Retrieve the namespace URI for a given namespace UID.
+
+This method retrieves the original namespace URI string for a given namespace UID.
+
+-INPUT-
+uint NamespaceID: The UID of the namespace.
+&cstr Result: Pointer to a string pointer that will receive the namespace URI.
+
+-ERRORS-
+Okay: The namespace URI was successfully retrieved.
+NullArgs: Required arguments were not specified correctly.
+Search: No namespace found for the specified UID.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetNamespaceURI(extXML *Self, struct xml::GetNamespaceURI *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   auto uri = Self->getNamespaceURI(Args->NamespaceID);
+   if (!uri) return log.warning(ERR::Search);
+
+   Args->Result = uri->c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 GetTag: Returns a pointer to the !XMLTag structure for a given tag index.
 
 This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid
@@ -1011,7 +1063,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if (Args->Total < 1) return log.warning(ERR::Args);
    if (Args->Index IS Args->DestIndex) return ERR::Okay;
-   
+
    if ((Args->DestIndex > Args->Index) and (Args->DestIndex < Args->Index + Args->Total)) {
       return log.warning(ERR::Args);
    }
@@ -1069,7 +1121,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
       default:
          return log.warning(ERR::Args);
    }
-   
+
    src_tags->erase(src_tags->begin() + si, src_tags->begin() + si + Args->Total);
 
    Self->modified();
@@ -1083,6 +1135,41 @@ static ERR XML_NewPlacement(extXML *Self)
    new (Self) extXML;
    Self->LineNo = 1;
    Self->ParseError = ERR::Okay;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+RegisterNamespace: Register a namespace URI and return its UID.
+
+This method registers a namespace URI and returns a UID that can be used to identify the namespace
+efficiently throughout the XML document.
+
+-INPUT-
+cstr URI: The namespace URI to register. Must not be NULL or empty.
+&uint Result: Pointer to an integer that will receive the UID for the namespace URI.
+
+-ERRORS-
+Okay: The namespace was successfully registered.
+NullArgs: Required arguments were not specified correctly.
+Failed: The URI was empty or invalid.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_RegisterNamespace(extXML *Self, struct xml::RegisterNamespace *Args)
+{
+   pf::Log log;
+
+   if (!Args or !Args->URI) return log.warning(ERR::NullArgs);
+
+   // Register the namespace URI and get its hash
+   auto hash = Self->registerNamespace(Args->URI);
+   if (hash IS 0) return log.warning(ERR::Failed);
+
+   Args->Result = hash;
    return ERR::Okay;
 }
 
@@ -1236,6 +1323,82 @@ Reset: Clears the information held in an XML object.
 static ERR XML_Reset(extXML *Self)
 {
    return acClear(Self);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ResolvePrefix: Resolve a namespace prefix to its hash identifier within a tag's scope.
+
+This method resolves a namespace prefix to its corresponding UID by examining namespace declarations within the 
+specified tag's hierarchical scope. The resolution process:
+
+<list type="ordered">
+<li>First checks the global prefix map for efficiency.</li>
+<li>If not found, walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
+<li>Returns the hash of the first matching namespace URI found.</li>
+</list>
+
+This approach correctly handles nested namespace scopes and prefix redefinitions.
+
+-INPUT-
+cstr Prefix: The namespace prefix to resolve. Use empty string for default namespace.
+int TagID: The tag ID defining the starting scope for namespace resolution.
+&int Result: Pointer to an integer that will receive the resolved namespace hash.
+
+-ERRORS-
+Okay: The prefix was successfully resolved.
+NullArgs: Required arguments were not specified correctly.
+NotFound: The specified tag was not found.
+Search: The prefix could not be resolved in any accessible scope.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
+
+   // First check the current global prefix map (for efficiency in common cases)
+   auto it = Self->CurrentPrefixMap.find(Args->Prefix);
+   if (it != Self->CurrentPrefixMap.end()) {
+      Args->Result = it->second;
+      return ERR::Okay;
+   }
+
+   // If not found globally, walk up the tag hierarchy to find namespace declarations
+   auto tag = Self->getTag(Args->TagID);
+   while (tag) {
+      // Check this tag's attributes for namespace declarations
+      for (size_t i = 1; i < tag->Attribs.size(); i++) {
+         const auto& attrib = tag->Attribs[i];
+
+         // Check for xmlns:prefix="uri" declarations
+         if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
+            std::string declared_prefix = attrib.Name.substr(6);
+            if (declared_prefix IS Args->Prefix) {
+               // Found the prefix declaration, return its namespace hash
+               Args->Result = Self->registerNamespace(attrib.Value);
+               return ERR::Okay;
+            }
+         }
+         // Check for default namespace if looking for empty prefix
+         else if ((attrib.Name IS "xmlns") and (std::string(Args->Prefix).empty())) {
+            Args->Result = Self->registerNamespace(attrib.Value);
+            return ERR::Okay;
+         }
+      }
+
+      // Move to parent tag
+      if (tag->ParentID IS 0) break; // Reached root
+      tag = Self->getTag(tag->ParentID);
+   }
+
+   return log.warning(ERR::Search);
 }
 
 /*********************************************************************************************************************
@@ -1474,6 +1637,41 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
       log.msg("Failed to find '%s'", Args->Key);
       return ERR::Search;
    }
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+SetTagNamespace: Set the namespace for a specific XML tag.
+
+This method assigns a namespace to an XML tag using the namespace's UID.
+
+-INPUT-
+int TagID: The unique identifier of the XML tag.
+int NamespaceID: The UID of the namespace to assign.
+
+-ERRORS-
+Okay: The namespace was successfully assigned to the tag.
+NullArgs: Required arguments were not specified correctly.
+NotFound: The specified tag was not found.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_SetTagNamespace(extXML *Self, struct xml::SetTagNamespace *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   // Find the tag and assign the namespace
+   auto tag = Self->getTag(Args->TagID);
+   if (!tag) return log.warning(ERR::NotFound);
+
+   tag->NamespaceID = Args->NamespaceID;
+   Self->modified();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************

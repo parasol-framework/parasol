@@ -71,7 +71,7 @@ static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 //********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
+static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
 
@@ -208,25 +208,43 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if (*str IS '=') {
          str++;
          while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         std::ostringstream buffer;
+         std::ostringstream attrib_value;
          if (*str IS '"') {
             str++;
-            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
+            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; attrib_value << *str++; }
             if (*str IS '"') str++;
          }
          else if (*str IS '\'') {
             str++;
-            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
+            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; attrib_value << *str++; }
             if (*str IS '\'') str++;
          }
          else {
             while ((*str > 0x20) and (*str != '>')) {
                if ((str[0] IS '/') and (str[1] IS '>')) break;
-               buffer << *str++;
+               attrib_value << *str++;
             }
          }
 
-         tag.Attribs.emplace_back(name, buffer.str());
+         auto val = attrib_value.str();
+
+         tag.Attribs.emplace_back(name, val);
+
+         // Detect and process namespace declarations
+         if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+            if (name.starts_with("xmlns")) {
+               auto ns_hash = Self->registerNamespace(val);
+
+               if (name IS "xmlns") { // Default namespace declaration
+                  Self->DefaultNamespace = ns_hash;
+               } 
+               else if ((name.size() > 6) and (name[5] IS ':')) {
+                  // Prefixed namespace declaration: xmlns:prefix="uri"
+                  std::string prefix = name.substr(6);
+                  Self->CurrentPrefixMap[prefix] = ns_hash;
+               }
+            }
+         }
       }
       else if ((name.empty()) and (*str IS '"')) { // Detect notation value with no name
          str++;
@@ -248,6 +266,24 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       return ERR::Syntax;
    }
 
+   // Resolve prefixed tag names to namespace IDs
+
+   if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+      if (!tag.Attribs[0].Name.empty()) {
+         auto &tag_name = tag.Attribs[0].Name;
+         if (auto colon = tag_name.find(':'); colon != std::string::npos) {
+            std::string prefix = tag_name.substr(0, colon);
+            auto it = Self->CurrentPrefixMap.find(prefix);
+            if (it != Self->CurrentPrefixMap.end()) {
+               tag.NamespaceID = it->second;  // Set namespace hash
+            }
+         }
+         else if (Self->DefaultNamespace) { // Apply default namespace if no prefix
+            tag.NamespaceID = Self->DefaultNamespace;
+         }
+      }
+   }
+
    State.Pos = str;
 
    if ((*State.Pos IS '>') and (!tag.Attribs.empty()) and
@@ -260,7 +296,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
 
       while ((State.Pos[0] IS '<') and (State.Pos[1] != '/')) {
-         error = extract_tag(Self, Tags.back().Children, State);
+         error = parse_tag(Self, Tags.back().Children, State);
 
          if (error IS ERR::NothingDone) {
             // Extract any additional content trapped between tags
@@ -303,10 +339,10 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 {
    pf::Log log(__FUNCTION__);
 
-   // Extract the tag information.  This loop will extract the top-level tags.  The extract_tag() function is recursive
+   // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.
 
-   log.trace("Extracting tag information with extract_tag()");
+   log.trace("Extracting tag information with parse_tag()");
 
    ParseState state;
    CSTRING str;
@@ -317,7 +353,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    }
    state.Pos = str;
    while ((state.Pos[0] IS '<') and (state.Pos[1] != '/')) {
-      ERR error = extract_tag(Self, Tags, state);
+      ERR error = parse_tag(Self, Tags, state);
 
       if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
          log.warning("XML parsing aborted.");
@@ -426,59 +462,6 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
       }
    }
 }
-
-//********************************************************************************************************************
-#if 0
-static void sift_down(ListSort **lookup, int Index, int heapsize)
-{
-   int largest = Index;
-   do {
-      Index = largest;
-      int left	= (Index << 1) + 1;
-      int right	= left + 1;
-
-      if (left < heapsize){
-         if (str_sort(lookup[largest]->String, lookup[left]->String) > 0) largest = left;
-
-         if (right < heapsize) {
-            if (str_sort(lookup[largest]->String, lookup[right]->String) > 0) largest = right;
-         }
-      }
-
-      if (largest != Index) {
-         ListSort *temp = lookup[Index];
-         lookup[Index] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != Index);
-}
-#endif
-//********************************************************************************************************************
-#if 0
-static void sift_up(ListSort **lookup, int i, int heapsize)
-{
-   int largest = i;
-   do {
-      i = largest;
-      int left	= (i << 1) + 1;
-      int right	= left + 1;
-
-      if (left < heapsize){
-         if (str_sort(lookup[largest]->String, lookup[left]->String) < 0) largest = left;
-
-         if (right < heapsize) {
-            if (str_sort(lookup[largest]->String, lookup[right]->String) < 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         ListSort *temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
-}
-#endif
 
 //********************************************************************************************************************
 
