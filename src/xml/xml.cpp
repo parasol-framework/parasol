@@ -174,7 +174,7 @@ class extXML : public objXML {
       this->CursorTags = &this->Tags;
 
       Cursor = this->Tags.begin();
-      return find_tag(XPath);
+      return find_tag(XPath, 0);
    }
 
    // Namespace utility methods
@@ -191,7 +191,7 @@ class extXML : public objXML {
       return (it != NSRegistry.end()) ? &it->second : nullptr;
    }
 
-   ERR find_tag(std::string_view XPath);
+   ERR find_tag(std::string_view XPath, uint32_t);
 
    inline void updateIDs(TAGS &List, int ParentID) {
       for (auto &tag : List) {
