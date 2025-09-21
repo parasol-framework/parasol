@@ -263,6 +263,7 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The content was successfully inserted and a new content node was created.</td></tr>
 <tr><th class="col-md-1">NotFound</th><td>The target Index does not correspond to a valid XML element.</td></tr>
+<tr><th class="col-md-1">Args</th><td>The Where parameter specifies an invalid insertion position.</td></tr>
 <tr><th class="col-md-1">ReadOnly</th><td>The XML object is in read-only mode and cannot be modified.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
@@ -274,10 +275,11 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>The InsertXML() method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is specified in the Index parameter.  An insertion point relative to the target index must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using a <code>Where</code> value of <code>XMI::CHILD</code>.  Use <code>XMI::CHILD_END</code> to insert at the end of the child list.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The statement was added successfully.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">OutOfRange</th><td>A value is outside of the valid range.</td></tr>
+<tr><th class="col-md-1">NotFound</th><td>The target Index does not correspond to a valid XML element.</td></tr>
+<tr><th class="col-md-1">Args</th><td>The Where parameter specifies an invalid insertion position.</td></tr>
+<tr><th class="col-md-1">NoData</th><td>The provided XML statement parsed to an empty result.</td></tr>
 <tr><th class="col-md-1">ReadOnly</th><td>Changes to the XML data are not permitted.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-InsertXPath" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">InsertXPath</th><td id="tm-InsertXPath">Inserts an XML statement in an XML tree.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-InsertXPath" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::InsertXPath(OBJECTPTR Object, CSTRING XPath, XMI Where, CSTRING XML, INT * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>XPath</td><td>An XPath string that refers to the target insertion point.</td></tr>
 <tr><td><a href="?page=XMI">Where</a></td><td>Use <code>PREV</code> or <code>NEXT</code> to insert behind or ahead of the target tag.  Use <code>CHILD</code> for a child insert.</td></tr>
@@ -286,9 +288,10 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid <code>XPath</code> location string.  An insertion point relative to the <code>XPath</code> target must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI::CHILD</code> or <code>XMI::CHILD_END</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">Search</th><td>The <code>XPath</code> could not be resolved.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The XML statement was successfully inserted at the specified XPath location.</td></tr>
+<tr><th class="col-md-1">Search</th><td>The XPath could not be resolved to a valid location.</td></tr>
+<tr><th class="col-md-1">ReadOnly</th><td>The XML object is in read-only mode and cannot be modified.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-MoveTags" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">MoveTags</th><td id="tm-MoveTags">Move an XML tag group to a new position in the XML tree.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-MoveTags" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::MoveTags(OBJECTPTR Object, INT Index, INT Total, INT DestIndex, XMI Where)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Index</td><td>Index of the source tag to be moved.</td></tr>
 <tr><td>Total</td><td>The total number of sibling tags (including the targeted tag) to be moved from the source index.  Minimum value of 1.</td></tr>
@@ -299,10 +302,11 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>An insertion point relative to the target index must be specified in the <code>Where</code> parameter.  The source tag can be inserted as a child of the destination by using a <code>Where</code> of <code>XMI::CHILD</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Tags were moved successfully.</td></tr>
-<tr><th class="col-md-1">NotFound</th><td>A search routine in this function failed.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
-<tr><th class="col-md-1">ReadOnly</th><td>A delete or write operation failed due to read-only status.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<tr><th class="col-md-1">NotFound</th><td>Either the source or destination tag index does not exist.</td></tr>
+<tr><th class="col-md-1">Args</th><td>Invalid parameter values were provided.</td></tr>
+<tr><th class="col-md-1">ReadOnly</th><td>The XML object is in read-only mode and cannot be modified.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
+<tr><th class="col-md-1">SanityCheckFailed</th><td>An internal consistency check failed during the move operation.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-RegisterNamespace" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">RegisterNamespace</th><td id="tm-RegisterNamespace">Register a namespace URI and return its UID.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-RegisterNamespace" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::RegisterNamespace(OBJECTPTR Object, CSTRING URI, UINT * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>URI</td><td>The namespace URI to register. Must not be NULL or empty.</td></tr>
 <tr><td>Result</td><td>Pointer to an integer that will receive the UID for the namespace URI.</td></tr>
@@ -320,10 +324,10 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>This method is capable of deleting multiple tags if the <code>Total</code> parameter is set to a value greater than 1.  Each consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is exhausted. This is useful for mass delete operations.</p>
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">OutOfRange</th><td>A value is outside of the valid range.</td></tr>
-<tr><th class="col-md-1">ReadOnly</th><td>A delete or write operation failed due to read-only status.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The tag(s) were successfully removed.</td></tr>
+<tr><th class="col-md-1">NotFound</th><td>The specified tag Index does not exist in the XML structure.</td></tr>
+<tr><th class="col-md-1">ReadOnly</th><td>The XML object is in read-only mode and cannot be modified.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-RemoveXPath" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">RemoveXPath</th><td id="tm-RemoveXPath">Removes tag(s) from the XML structure, using an xpath lookup.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-RemoveXPath" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::RemoveXPath(OBJECTPTR Object, CSTRING XPath, INT Limit)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>XPath</td><td>An XML path string.</td></tr>
 <tr><td>Limit</td><td>The maximum number of matching tags to delete.  A value of one or zero will remove only the indicated tag and its children.  A value of -1 removes all matching tags.</td></tr>
@@ -333,19 +337,27 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>The removal routine will be repeated so that each tag that matches the XPath will be deleted, or the <code>Limit</code> is reached.</p>
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">ReadOnly</th><td>A delete or write operation failed due to read-only status.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The matching tag(s) or attribute(s) were successfully removed.</td></tr>
+<tr><th class="col-md-1">NoData</th><td>The XML document contains no data to process.</td></tr>
+<tr><th class="col-md-1">ReadOnly</th><td>The XML object is in read-only mode and cannot be modified.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-ResolvePrefix" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ResolvePrefix</th><td id="tm-ResolvePrefix">Resolve a namespace prefix to its hash identifier within a tag's scope.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ResolvePrefix" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::ResolvePrefix(OBJECTPTR Object, CSTRING Prefix, INT TagID, INT * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Prefix</td><td>The namespace prefix to resolve.</td></tr>
-<tr><td>TagID</td><td>The tag ID defining the scope for namespace resolution.</td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-ResolvePrefix" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">ResolvePrefix</th><td id="tm-ResolvePrefix">Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-ResolvePrefix" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::ResolvePrefix(OBJECTPTR Object, CSTRING Prefix, INT TagID, UINT * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Prefix</td><td>The namespace prefix to resolve. Use empty string for default namespace.</td></tr>
+<tr><td>TagID</td><td>The tag ID defining the starting scope for namespace resolution.</td></tr>
 <tr><td>Result</td><td>Pointer to an integer that will receive the resolved namespace hash.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method resolves a namespace prefix to its corresponding 32-bit hash identifier, taking into account the namespace scope at the specified tag's location in the document hierarchy.</p>
+<p>This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the specified tag's hierarchical scope. The resolution process:</p>
+<ol>
+<li>First checks the global prefix map for efficiency.</li>
+<li>If not found, walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
+<li>Returns the hash of the first matching namespace URI found.</li>
+</ol>
+<p>This approach correctly handles nested namespace scopes and prefix redefinitions.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The prefix was successfully resolved.</td></tr>
 <tr><th class="col-md-1">NotFound</th><td>The specified tag was not found.</td></tr>
-<tr><th class="col-md-1">Search</th><td>The prefix could not be resolved in the current scope.</td></tr>
+<tr><th class="col-md-1">Search</th><td>The prefix could not be resolved in any accessible scope.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Required arguments were not specified correctly.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Serialise" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Serialise</th><td id="tm-Serialise">Serialise part of the XML tree to an XML string.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Serialise" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::Serialise(OBJECTPTR Object, INT Index, XMF Flags, STRING * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Index</td><td>Index to a source tag for which serialisation will start.  Set to zero to serialise the entire tree.</td></tr>
@@ -355,10 +367,11 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>The Serialise() method will serialise all or part of the XML data tree to a string.</p>
 <p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
       
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The XML string was retrieved.</td></tr>
-<tr><th class="col-md-1">Args</th><td>Invalid arguments passed to function.</td></tr>
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The XML string was successfully serialised.</td></tr>
+<tr><th class="col-md-1">NotFound</th><td>The specified tag Index does not exist in the XML structure.</td></tr>
 <tr><th class="col-md-1">NoData</th><td>No information has been loaded into the XML object.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>Failed to allocate an XML string for the result.</td></tr>
+<tr><th class="col-md-1">AllocMemory</th><td>Failed to allocate memory for the XML string result.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-SetAttrib" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetAttrib</th><td id="tm-SetAttrib">Adds, updates and removes XML attributes.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetAttrib" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::SetAttrib(OBJECTPTR Object, INT Index, XMS Attrib, CSTRING Name, CSTRING Value)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Index</td><td>Identifies the tag that is to be updated.</td></tr>
 <tr><td><a href="?page=XMS">Attrib</a></td><td>Either the index number of the attribute that is to be updated, or set to <code>NEW</code>, <code>UPDATE</code> or <code>UPDATE_ONLY</code>.</td></tr>
@@ -393,10 +406,9 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>The <code>Sort</code> parameter is used to specify a list of sorting instructions.  The format for the <code>Sort</code> string is <code>Tag:Attrib,Tag:Attrib,...</code>.  The <code>Tag</code> indicates the tag name that should be identified for sorting each node, and child tags are supported for this purpose.  Wildcard filtering is allowed and a <code>Tag</code> value of <code>*</code> will match every tag at the requested <code>XPath</code> level.  The optional <code>Attrib</code> value names the attribute containing the sort string.  To sort on content, do not define an <code>Attrib</code> value (use the format <code>Tag,Tag,...</code>).</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The XML object was successfully sorted.</td></tr>
-<tr><th class="col-md-1">Search</th><td>The provided <code>XPath</code> failed to locate a tag.</td></tr>
-<tr><th class="col-md-1">AllocMemory</th><td>AllocMemory() failed to create a new memory block.</td></tr>
-<tr><th class="col-md-1">ReadOnly</th><td>A delete or write operation failed due to read-only status.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>Function call missing argument value(s)</td></tr>
+<tr><th class="col-md-1">Search</th><td>The provided XPath failed to locate a tag.</td></tr>
+<tr><th class="col-md-1">ReadOnly</th><td>The XML object is in read-only mode and cannot be modified.</td></tr>
+<tr><th class="col-md-1">NullArgs</th><td>Required parameters were NULL or not properly specified.</td></tr>
 </tbody></table></div></div></td></tr>
 </tbody></table><div class="footer copyright text-right">XML class documentation © Paul Manias © 2001-2025</div></div><div class="docs-content" style="display:none;" id="XMF"><h1>XMF Type</h1><p class="lead">Standard flags for the XML class.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>XMF::AUTO_DECLARE_NAMESPACES</th><td>Auto-add namespace declarations when needed.</td></tr>
 <tr><th>XMF::INCLUDE_COMMENTS</th><td>By default, comments are stripped when parsing XML input unless this flag is specified.</td></tr>

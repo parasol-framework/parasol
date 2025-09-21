@@ -172,7 +172,7 @@ struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-18);
 struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ResolvePrefix { CSTRING Prefix; int TagID; int Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -333,8 +333,8 @@ class objXML : public Object {
       struct xml::SetTagNamespace args = { TagID, NamespaceID };
       return(Action(AC(-21), this, &args));
    }
-   inline ERR resolvePrefix(CSTRING Prefix, int TagID, int * Result) noexcept {
-      struct xml::ResolvePrefix args = { Prefix, TagID, (int)0 };
+   inline ERR resolvePrefix(CSTRING Prefix, int TagID, uint32_t * Result) noexcept {
+      struct xml::ResolvePrefix args = { Prefix, TagID, (uint32_t)0 };
       ERR error = Action(AC(-22), this, &args);
       if (Result) *Result = args.Result;
       return(error);

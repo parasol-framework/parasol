@@ -439,15 +439,15 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
     <method>
       <name>ResolvePrefix</name>
-      <comment>Resolve a namespace prefix to its hash identifier within a tag's scope.</comment>
-      <prototype>ERR xml::ResolvePrefix(OBJECTPTR Object, CSTRING Prefix, INT TagID, INT * Result)</prototype>
+      <comment>Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.</comment>
+      <prototype>ERR xml::ResolvePrefix(OBJECTPTR Object, CSTRING Prefix, INT TagID, UINT * Result)</prototype>
       <input>
         <param type="CSTRING" name="Prefix">The namespace prefix to resolve. Use empty string for default namespace.</param>
         <param type="INT" name="TagID">The tag ID defining the starting scope for namespace resolution.</param>
-        <param type="INT *" name="Result">Pointer to an integer that will receive the resolved namespace hash.</param>
+        <param type="UINT *" name="Result">Pointer to an integer that will receive the resolved namespace hash.</param>
       </input>
       <description>
-<p>This method resolves a namespace prefix to its corresponding UID by examining namespace declarations within the specified tag's hierarchical scope. The resolution process:</p>
+<p>This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the specified tag's hierarchical scope. The resolution process:</p>
 <list type="ordered">
 <li>First checks the global prefix map for efficiency.</li>
 <li>If not found, walks up the tag hierarchy from the specified tag to the root.</li>
