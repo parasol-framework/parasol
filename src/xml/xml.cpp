@@ -65,7 +65,15 @@ struct ParseState {
    CSTRING Pos;
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
-   ParseState() : Pos(nullptr), Balance(0) { }
+   // Namespace context for this parsing scope
+   std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
+   uint32_t DefaultNamespace;                  // Default namespace URI hash
+
+   ParseState() : Pos(nullptr), Balance(0), DefaultNamespace(0) { }
+
+   // Copy constructor for inheriting namespace context from parent scope
+   ParseState(const ParseState& parent) : Pos(parent.Pos), Balance(parent.Balance),
+                                          PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace) { }
 };
 
 typedef objXML::TAGS TAGS;
@@ -91,9 +99,6 @@ class extXML : public objXML {
 
    // Link prefixes to namespace URIs
    std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
-
-   std::map<std::string, uint32_t> CurrentPrefixMap; // hash(Prefix) -> hash(URI) [current scope only]
-   uint32_t DefaultNamespace = 0; // [current scope only]
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
@@ -1174,7 +1179,7 @@ static ERR XML_RegisterNamespace(extXML *Self, struct xml::RegisterNamespace *Ar
 
    // Register the namespace URI and get its hash
    auto hash = Self->registerNamespace(Args->URI);
-   if (hash IS 0) return log.warning(ERR::Failed);
+   if (not hash) return log.warning(ERR::Failed);
 
    Args->Result = hash;
    return ERR::Okay;

@@ -80,13 +80,13 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    log.traceBranch("%.30s", State.Pos);
 
    // Save current namespace context to restore later (for proper scoping)
-   auto saved_prefix_map = Self->CurrentPrefixMap;
-   auto saved_default_namespace = Self->DefaultNamespace;
+   auto saved_prefix_map = State.PrefixMap;
+   auto saved_default_namespace = State.DefaultNamespace;
 
    // Use Defer to ensure namespace context is always restored when function exits
    auto restore_namespace = pf::Defer([&]() {
-      Self->CurrentPrefixMap = saved_prefix_map;
-      Self->DefaultNamespace = saved_default_namespace;
+      State.PrefixMap = saved_prefix_map;
+      State.DefaultNamespace = saved_default_namespace;
    });
 
    if (State.Pos[0] != '<') {
@@ -246,13 +246,13 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                auto ns_hash = Self->registerNamespace(val);
 
                if (name IS "xmlns") { // Default namespace declaration
-                  Self->DefaultNamespace = ns_hash;
+                  State.DefaultNamespace = ns_hash;
                }
                else if ((name.size() > 6) and (name[5] IS ':')) {
                   // Prefixed namespace declaration: xmlns:prefix="uri"
                   std::string prefix(name.substr(6));
-                  Self->CurrentPrefixMap[prefix] = ns_hash;
                   Self->Prefixes[prefix] = ns_hash; // Permanent global record of this prefix
+                  State.PrefixMap[prefix] = ns_hash;
                }
             }
          }
@@ -284,13 +284,12 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          auto &tag_name = tag.Attribs[0].Name;
          if (auto colon = tag_name.find(':'); colon != std::string::npos) {
             std::string prefix = tag_name.substr(0, colon);
-            auto it = Self->CurrentPrefixMap.find(prefix);
-            if (it != Self->CurrentPrefixMap.end()) {
-               tag.NamespaceID = it->second;  // Set namespace hash
+            if (auto it = State.PrefixMap.find(prefix); it != State.PrefixMap.end()) {
+               tag.NamespaceID = it->second;
             }
          }
-         else if (Self->DefaultNamespace) { // Apply default namespace if no prefix
-            tag.NamespaceID = Self->DefaultNamespace;
+         else if (State.DefaultNamespace) { // Apply default namespace if no prefix
+            tag.NamespaceID = State.DefaultNamespace;
          }
       }
    }

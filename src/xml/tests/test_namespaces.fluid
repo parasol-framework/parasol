@@ -326,7 +326,7 @@ function testUndefinedPrefix()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test namespace scoping during parsing (GitHub PR issue)
+-- Test namespace scoping during parsing
 -- Verifies that namespace declarations in nested elements don't leak to sibling elements
 
 function testNamespaceScopingDuringParsing()
