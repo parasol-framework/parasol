@@ -302,6 +302,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <result>
         <error code="Okay">The content was successfully inserted and a new content node was created.</error>
         <error code="NotFound">The target Index does not correspond to a valid XML element.</error>
+        <error code="Args">The Where parameter specifies an invalid insertion position.</error>
         <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
         <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
@@ -322,10 +323,11 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       </description>
       <result>
         <error code="Okay">The statement was added successfully.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="OutOfRange">A value is outside of the valid range.</error>
+        <error code="NotFound">The target Index does not correspond to a valid XML element.</error>
+        <error code="Args">The Where parameter specifies an invalid insertion position.</error>
+        <error code="NoData">The provided XML statement parsed to an empty result.</error>
         <error code="ReadOnly">Changes to the XML data are not permitted.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -343,9 +345,10 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>The InsertXPath method is used to translate and insert a new set of XML tags into any position within the XML tree.  A standard XML statement must be provided in the XML parameter and the target insertion point is referenced as a valid <code>XPath</code> location string.  An insertion point relative to the <code>XPath</code> target must be specified in the <code>Where</code> parameter.  The new tags can be inserted as a child of the target by using an Insert value of <code>XMI::CHILD</code> or <code>XMI::CHILD_END</code>.  To insert behind or after the target, use <code>XMI::PREV</code> or <code>XMI::NEXT</code>.</p>
       </description>
       <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="Search">The <code>XPath</code> could not be resolved.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The XML statement was successfully inserted at the specified XPath location.</error>
+        <error code="Search">The XPath could not be resolved to a valid location.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -365,10 +368,11 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       </description>
       <result>
         <error code="Okay">Tags were moved successfully.</error>
-        <error code="NotFound">A search routine in this function failed.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="NotFound">Either the source or destination tag index does not exist.</error>
+        <error code="Args">Invalid parameter values were provided.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
+        <error code="SanityCheckFailed">An internal consistency check failed during the move operation.</error>
       </result>
     </method>
 
@@ -404,10 +408,10 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="OutOfRange">A value is outside of the valid range.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The tag(s) were successfully removed.</error>
+        <error code="NotFound">The specified tag Index does not exist in the XML structure.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -426,9 +430,10 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
-        <error code="Okay">Operation successful.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Okay">The matching tag(s) or attribute(s) were successfully removed.</error>
+        <error code="NoData">The XML document contains no data to process.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -437,17 +442,24 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <comment>Resolve a namespace prefix to its hash identifier within a tag's scope.</comment>
       <prototype>ERR xml::ResolvePrefix(OBJECTPTR Object, CSTRING Prefix, INT TagID, INT * Result)</prototype>
       <input>
-        <param type="CSTRING" name="Prefix">The namespace prefix to resolve.</param>
-        <param type="INT" name="TagID">The tag ID defining the scope for namespace resolution.</param>
+        <param type="CSTRING" name="Prefix">The namespace prefix to resolve. Use empty string for default namespace.</param>
+        <param type="INT" name="TagID">The tag ID defining the starting scope for namespace resolution.</param>
         <param type="INT *" name="Result">Pointer to an integer that will receive the resolved namespace hash.</param>
       </input>
       <description>
-<p>This method resolves a namespace prefix to its corresponding 32-bit hash identifier, taking into account the namespace scope at the specified tag's location in the document hierarchy.</p>
+<p>This method resolves a namespace prefix to its corresponding UID by examining namespace declarations within the specified tag's hierarchical scope. The resolution process:</p>
+<list type="ordered">
+<li>First checks the global prefix map for efficiency.</li>
+<li>If not found, walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
+<li>Returns the hash of the first matching namespace URI found.</li>
+</list>
+<p>This approach correctly handles nested namespace scopes and prefix redefinitions.</p>
       </description>
       <result>
         <error code="Okay">The prefix was successfully resolved.</error>
         <error code="NotFound">The specified tag was not found.</error>
-        <error code="Search">The prefix could not be resolved in the current scope.</error>
+        <error code="Search">The prefix could not be resolved in any accessible scope.</error>
         <error code="NullArgs">Required arguments were not specified correctly.</error>
       </result>
     </method>
@@ -466,10 +478,11 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>The string will be allocated as a memory block and stored in the Result parameter.  It must be freed once the data is no longer required.</p>
       </description>
       <result>
-        <error code="Okay">The XML string was retrieved.</error>
-        <error code="Args">Invalid arguments passed to function.</error>
+        <error code="Okay">The XML string was successfully serialised.</error>
+        <error code="NotFound">The specified tag Index does not exist in the XML structure.</error>
         <error code="NoData">No information has been loaded into the XML object.</error>
-        <error code="AllocMemory">Failed to allocate an XML string for the result.</error>
+        <error code="AllocMemory">Failed to allocate memory for the XML string result.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
@@ -531,10 +544,9 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       </description>
       <result>
         <error code="Okay">The XML object was successfully sorted.</error>
-        <error code="Search">The provided <code>XPath</code> failed to locate a tag.</error>
-        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
-        <error code="ReadOnly">A delete or write operation failed due to read-only status.</error>
-        <error code="NullArgs">Function call missing argument value(s)</error>
+        <error code="Search">The provided XPath failed to locate a tag.</error>
+        <error code="ReadOnly">The XML object is in read-only mode and cannot be modified.</error>
+        <error code="NullArgs">Required parameters were NULL or not properly specified.</error>
       </result>
     </method>
 
