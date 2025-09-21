@@ -98,6 +98,8 @@ class extXML : public objXML {
    ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
 
    // Link prefixes to namespace URIs
+   // NOTE: If the XML document overwrites namespace URIs on the same prefix name (legal!)
+   // then this lookup table returns the most recently assigned URI.
    std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
    extXML() : ReadOnly(false), StaleMap(true) { }
@@ -1376,14 +1378,6 @@ static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
 
    if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
 
-   // First check the current global prefix map (for efficiency in common cases)
-   auto it = Self->Prefixes.find(Args->Prefix);
-   if (it != Self->Prefixes.end()) {
-      Args->Result = it->second;
-      return ERR::Okay;
-   }
-
-   // If not found globally, walk up the tag hierarchy to find namespace declarations
    for (auto tag = Self->getTag(Args->TagID); tag; tag = Self->getTag(tag->ParentID)) {
       // Check this tag's attributes for namespace declarations
       for (size_t i = 1; i < tag->Attribs.size(); i++) {

@@ -57,6 +57,8 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
    XMLAttrib() = default;
   ]])
 
+  -- Note that if a tag specifies a namespace prefix then it will appear in the first XMLAttrib with the name
+
   struct("XMLTag", { type="XMLTag" }, [[
     int ID           # Unique ID assigned to the tag on creation
     int ParentID     # Unique ID of the parent tag

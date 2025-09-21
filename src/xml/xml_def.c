@@ -42,7 +42,7 @@ FDEF maGetTag[] = { { "Index", FD_INT }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_
 FDEF maRegisterNamespace[] = { { "URI", FD_STR }, { "Result", FD_INT|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
 FDEF maGetNamespaceURI[] = { { "NamespaceID", FD_INT|FD_UNSIGNED }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maSetTagNamespace[] = { { "TagID", FD_INT }, { "NamespaceID", FD_INT }, { 0, 0 } };
-FDEF maResolvePrefix[] = { { "Prefix", FD_STR }, { "TagID", FD_INT }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
+FDEF maResolvePrefix[] = { { "Prefix", FD_STR }, { "TagID", FD_INT }, { "Result", FD_INT|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clXMLMethods[] = {
    { AC(-1), (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
