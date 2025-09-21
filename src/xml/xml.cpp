@@ -180,7 +180,6 @@ class extXML : public objXML {
       return (it != NSRegistry.end()) ? &it->second : nullptr;
    }
 
-   private:
    ERR find_tag(std::string_view XPath);
 
    inline void updateIDs(TAGS &List, int ParentID) {
