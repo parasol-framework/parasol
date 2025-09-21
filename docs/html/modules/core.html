@@ -736,7 +736,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <tr><td>Object</td><td>The target object.</td></tr>
 <tr><td>Args</td><td>The relevant argument structure for the <code>Action</code>, or <code>NULL</code> if not required.</td></tr>
 </tbody></table></div></div>
-<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied <code>Action</code> and <code>Args</code> will be combined into a message for the queue.  This function then returns immediately.</p>
+<p>Use QueueAction() to execute an action by way of the local message queue.  This means that the supplied <code>Action</code> and <code>Args</code> will be serialised into a message for the queue.  This function then returns immediately.</p>
 <p>The action will be executed on the next cycle of <a href="?page=ProcessMessages">ProcessMessages()</a> in line with the FIFO order of queued messages.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
 <tr><th class="col-md-1">Failed</th><td>General failure.</td></tr>
@@ -791,7 +791,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  When activity occurs on the descriptor, the callback referenced in <code>Routine</code> will be called.  The callback should read all information from the descriptor, as the process will not be able to sleep if data is back-logged.</p>
 <p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the program to hang if not handled carefully.</p>
 <p>File descriptors support read and write states simultaneously, and a callback routine can be applied to either state. Set the <code>RFD::READ</code> flag to apply the <code>Routine</code> to the read callback and <code>RFD::WRITE</code> for the write callback.  If neither flag is specified, <code>RFD::READ</code> is assumed.  A file descriptor may have up to one subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD::REMOVE</code>.</p>
-<p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
+<p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions are not imposed.</p>
 <p>Call the <code>DeregisterFD()</code> macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     <h3>Error Codes</h3><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The <code>FD</code> was successfully registered.</td></tr>
 <tr><th class="col-md-1">Args</th><td>The <code>FD</code> was set to a value of <code>-1</code>.</td></tr>
@@ -1696,11 +1696,8 @@ FreeResource(memory);  // Reference is no longer valid
 <tr><th>MOVE::RIGHT</th><td></td></tr>
 <tr><th>MOVE::UP</th><td></td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="MSF"><h1>MSF Type</h1><p class="lead">Message flags.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSF::ADD</th><td>The default behaviour - this will add the message to the end of the queue.</td></tr>
-<tr><th>MSF::MESSAGE_ID</th><td>The Type parameter refers to a unique message ID rather than a message type for this call.</td></tr>
-<tr><th>MSF::NO_DUPLICATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</td></tr>
+<div class="docs-content" style="display:none;" id="MSF"><h1>MSF Type</h1><p class="lead">Message flags.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSF::NO_DUPLICATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</td></tr>
 <tr><th>MSF::UPDATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</td></tr>
-<tr><th>MSF::WAIT</th><td>Wait before inserting the message if the queue is at maximum capacity.</td></tr>
 </tbody></table><div class="footer copyright text-right">Core module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="MSGID"><h1>MSGID Type</h1><p class="lead">Reserved message ID's that are handled internally.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSGID::ACTION</th><td></td></tr>
 <tr><th>MSGID::BREAK</th><td></td></tr>
@@ -1846,7 +1843,6 @@ FreeResource(memory);  // Reference is no longer valid
 <tr><th>RES::KEY_STATE</th><td>Maintains the state of key qualifiers such as caps-lock and the shift keys.</td></tr>
 <tr><th>RES::LOG_DEPTH</th><td>The current depth of log messages.</td></tr>
 <tr><th>RES::LOG_LEVEL</th><td>The current level of log detail (larger numbers indicate more detail).</td></tr>
-<tr><th>RES::MAX_PROCESSES</th><td>The maximum number of processes that can be supported at any time.</td></tr>
 <tr><th>RES::MEMORY_USAGE</th><td>The total amount of memory used by the current process, in bytes.</td></tr>
 <tr><th>RES::OPEN_INFO</th><td>Pointer to the OpenInfo structure originally used to initialise the system.</td></tr>
 <tr><th>RES::PRIVILEGED</th><td>This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</td></tr>
