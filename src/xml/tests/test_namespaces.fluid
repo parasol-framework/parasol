@@ -326,6 +326,114 @@ function testUndefinedPrefix()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test namespace scoping during parsing (GitHub PR issue)
+-- Verifies that namespace declarations in nested elements don't leak to sibling elements
+
+function testNamespaceScopingDuringParsing()
+   local xml = obj.new("xml", {
+      flags=XMF_NAMESPACE_AWARE,
+      statement = '<root xmlns:ns="a"><ns:item1/><child xmlns:ns="b"><ns:item2/></child><ns:item3/></root>'
+   })
+
+   assert(xml.tags, "XML should parse successfully")
+
+   -- Get the actual NamespaceID assigned to each element during parsing
+   local function get_tag_namespace_id(xpath)
+      local err, tagId = xml.mtFindTag(xpath)
+      if err == ERR_Okay then
+         local err2, tag = xml.mtGetTag(tagId)
+         if err2 == ERR_Okay then
+            return tag.namespaceID or 0
+         end
+      end
+      return nil
+   end
+
+   local ns_item1_id = get_tag_namespace_id('/root/ns:item1')
+   local ns_item2_id = get_tag_namespace_id('/root/child/ns:item2')
+   local ns_item3_id = get_tag_namespace_id('/root/ns:item3')
+
+   -- Both ns:item1 and ns:item3 should have the same NamespaceID (namespace "a")
+   -- because ns:item3 should not be affected by the xmlns:ns="b" declaration in <child>
+   assert(ns_item1_id and ns_item3_id, "Should find both ns:item1 and ns:item3")
+   assert(ns_item1_id == ns_item3_id, "ns:item1 and ns:item3 should have same NamespaceID (both should resolve to 'a')")
+
+   -- ns:item2 should have a different NamespaceID (namespace "b")
+   assert(ns_item2_id, "Should find ns:item2")
+   assert(ns_item2_id != ns_item1_id, "ns:item2 should have different NamespaceID (should resolve to 'b')")
+
+   -- Verify the actual namespace URIs
+   local function get_namespace_uri(namespaceId)
+      if namespaceId and namespaceId != 0 then
+         local err, uri = xml.mtGetNamespaceURI(namespaceId)
+         if err == ERR_Okay then
+            return uri
+         end
+      end
+      return "none"
+   end
+
+   local ns_item1_uri = get_namespace_uri(ns_item1_id)
+   local ns_item2_uri = get_namespace_uri(ns_item2_id)
+   local ns_item3_uri = get_namespace_uri(ns_item3_id)
+
+   assert(ns_item1_uri == "a", "ns:item1 should resolve to namespace 'a', got: " .. ns_item1_uri)
+   assert(ns_item2_uri == "b", "ns:item2 should resolve to namespace 'b', got: " .. ns_item2_uri)
+   assert(ns_item3_uri == "a", "ns:item3 should resolve to namespace 'a', got: " .. ns_item3_uri)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test namespace resolution during XPath queries (complementary to parsing test)
+
+function testNamespaceScopingDuringResolution()
+   local xml = obj.new("xml", {
+      flags=XMF_NAMESPACE_AWARE,
+      statement = '<root xmlns:ns="a"><ns:item id="1"/><child xmlns:ns="b"><ns:item id="2"/></child><ns:item id="3"/></root>'
+   })
+
+   assert(xml.tags, "XML should parse successfully")
+
+   -- Test prefix resolution for each element using ResolvePrefix method
+   local err1, item1Id = xml.mtFindTag('/root/ns:item[@id="1"]')
+   assert(err1 == ERR_Okay, "Should find first ns:item")
+
+   local err2, item2Id = xml.mtFindTag('/root/child/ns:item[@id="2"]')
+   assert(err2 == ERR_Okay, "Should find second ns:item")
+
+   local err3, item3Id = xml.mtFindTag('/root/ns:item[@id="3"]')
+   assert(err3 == ERR_Okay, "Should find third ns:item")
+
+   -- Test prefix resolution from each context
+   local err4, ns1Hash = xml.mtResolvePrefix("ns", item1Id)
+   assert(err4 == ERR_Okay, "Should resolve ns prefix from item1 context")
+
+   local err5, ns2Hash = xml.mtResolvePrefix("ns", item2Id)
+   assert(err5 == ERR_Okay, "Should resolve ns prefix from item2 context")
+
+   local err6, ns3Hash = xml.mtResolvePrefix("ns", item3Id)
+   assert(err6 == ERR_Okay, "Should resolve ns prefix from item3 context")
+
+   -- Get the actual namespace URIs
+   local err7, uri1 = xml.mtGetNamespaceURI(ns1Hash)
+   assert(err7 == ERR_Okay, "Should get URI for item1 namespace")
+
+   local err8, uri2 = xml.mtGetNamespaceURI(ns2Hash)
+   assert(err8 == ERR_Okay, "Should get URI for item2 namespace")
+
+   local err9, uri3 = xml.mtGetNamespaceURI(ns3Hash)
+   assert(err9 == ERR_Okay, "Should get URI for item3 namespace")
+
+   -- Verify correct namespace resolution
+   assert(uri1 == "a", "Item1 ns prefix should resolve to 'a', got: " .. uri1)
+   assert(uri2 == "b", "Item2 ns prefix should resolve to 'b', got: " .. uri2)
+   assert(uri3 == "a", "Item3 ns prefix should resolve to 'a', got: " .. uri3)
+
+   -- Verify that item1 and item3 resolve to the same namespace (not affected by child's declaration)
+   assert(ns1Hash == ns3Hash, "Item1 and item3 should resolve to same namespace (both 'a')")
+   assert(ns2Hash != ns1Hash, "Item2 should resolve to different namespace ('b')")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Return test suite
 
 return {
@@ -333,6 +441,7 @@ return {
       'testBasicNamespaceRegistration', 'testDefaultNamespace', 'testPrefixedNamespaces',
       'testNestedScopes', 'testNamespaceXPath', 'testSerialization', 'testErrorHandling',
       'testPrefixResolution', 'testNamespaceValidation', 'testExistingNamespaceHandling',
-      'testHierarchicalResolution', 'testDefaultNamespaceHierarchy', 'testUndefinedPrefix'
+      'testHierarchicalResolution', 'testDefaultNamespaceHierarchy', 'testUndefinedPrefix',
+      'testNamespaceScopingDuringParsing', 'testNamespaceScopingDuringResolution'
    }
 }
