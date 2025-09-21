@@ -252,6 +252,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                   // Prefixed namespace declaration: xmlns:prefix="uri"
                   std::string prefix(name.substr(6));
                   Self->CurrentPrefixMap[prefix] = ns_hash;
+                  Self->Prefixes[prefix] = ns_hash; // Permanent global record of this prefix
                }
             }
          }

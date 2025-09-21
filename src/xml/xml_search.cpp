@@ -71,8 +71,8 @@ ERR extXML::find_tag(std::string_view XPath)
          local_name = tag_name.substr(colon + 1);
 
          // Resolve prefix to namespace hash
-         auto it = this->CurrentPrefixMap.find(std::string(prefix));
-         if (it != this->CurrentPrefixMap.end()) {
+         auto it = this->Prefixes.find(std::string(prefix));
+         if (it != this->Prefixes.end()) {
             target_ns = it->second;
             tag_name = local_name;  // Use local name for matching
             has_explicit_ns = true;
