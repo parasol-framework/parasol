@@ -79,6 +79,16 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    log.traceBranch("%.30s", State.Pos);
 
+   // Save current namespace context to restore later (for proper scoping)
+   auto saved_prefix_map = State.PrefixMap;
+   auto saved_default_namespace = State.DefaultNamespace;
+
+   // Use Defer to ensure namespace context is always restored when function exits
+   auto restore_namespace = pf::Defer([&]() {
+      State.PrefixMap = saved_prefix_map;
+      State.DefaultNamespace = saved_default_namespace;
+   });
+
    if (State.Pos[0] != '<') {
       log.warning("Malformed XML statement detected.");
       return ERR::InvalidData;
@@ -187,7 +197,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       // Extract the name of the attribute
 
-      std::string name;
+      std::string_view name;
 
       if (*str IS '"'); // Quoted notation attributes are parsed as content values
       else {
@@ -197,7 +207,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
             if ((str[s] IS '?') and (str[s+1] IS '>')) break;
             s++;
          }
-         name.assign(str, s);
+         name = std::string_view(str, s);
          str += s;
       }
 
@@ -228,7 +238,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
          auto val = attrib_value.str();
 
-         tag.Attribs.emplace_back(name, val);
+         tag.Attribs.emplace_back(std::string(name), val);
 
          // Detect and process namespace declarations
          if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
@@ -236,12 +246,13 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                auto ns_hash = Self->registerNamespace(val);
 
                if (name IS "xmlns") { // Default namespace declaration
-                  Self->DefaultNamespace = ns_hash;
-               } 
+                  State.DefaultNamespace = ns_hash;
+               }
                else if ((name.size() > 6) and (name[5] IS ':')) {
                   // Prefixed namespace declaration: xmlns:prefix="uri"
-                  std::string prefix = name.substr(6);
-                  Self->CurrentPrefixMap[prefix] = ns_hash;
+                  std::string prefix(name.substr(6));
+                  Self->Prefixes[prefix] = ns_hash; // Permanent global record of this prefix
+                  State.PrefixMap[prefix] = ns_hash;
                }
             }
          }
@@ -252,11 +263,11 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          for (s=0; (str[s]) and (str[s] != '"'); s++) {
             if (str[s] IS '\n') Self->LineNo++;
          }
-         tag.Attribs.emplace_back(name, std::string(str, s));
+         tag.Attribs.emplace_back(std::string(name), std::string(str, s));
          str += s;
          if (*str IS '"') str++;
       }
-      else tag.Attribs.emplace_back(name, ""); // Either the tag name or an attribute with no value.
+      else tag.Attribs.emplace_back(std::string(name), ""); // Either the tag name or an attribute with no value.
 
       while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    }
@@ -273,13 +284,12 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          auto &tag_name = tag.Attribs[0].Name;
          if (auto colon = tag_name.find(':'); colon != std::string::npos) {
             std::string prefix = tag_name.substr(0, colon);
-            auto it = Self->CurrentPrefixMap.find(prefix);
-            if (it != Self->CurrentPrefixMap.end()) {
-               tag.NamespaceID = it->second;  // Set namespace hash
+            if (auto it = State.PrefixMap.find(prefix); it != State.PrefixMap.end()) {
+               tag.NamespaceID = it->second;
             }
          }
-         else if (Self->DefaultNamespace) { // Apply default namespace if no prefix
-            tag.NamespaceID = Self->DefaultNamespace;
+         else if (State.DefaultNamespace) { // Apply default namespace if no prefix
+            tag.NamespaceID = State.DefaultNamespace;
          }
       }
    }
@@ -479,38 +489,26 @@ static ERR parse_source(extXML *Self)
    // call to LoadFile(), which can lead our use of LoadFile() to being quite effective.
 
    if (Self->Source) {
-      char *buffer;
-      int64_t size = 64 * 1024;
-      if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-         int pos = 0;
-         Self->ParseError = ERR::Okay;
-         acSeekStart(Self->Source, 0);
-         while (1) {
-            int result;
-            if (acRead(Self->Source, buffer+pos, size-pos, &result) != ERR::Okay) {
-               Self->ParseError = ERR::Read;
-               break;
-            }
-            else if (result <= 0) break;
-
-            pos += result;
-            if (pos >= size-1024) {
-               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, nullptr) != ERR::Okay) {
-                  Self->ParseError = ERR::ReallocMemory;
-                  break;
-               }
-               size = size * 2;
-            }
+      std::string buffer;
+      buffer.resize(64 * 1024);
+      Self->ParseError = ERR::Okay;
+      acSeekStart(Self->Source, 0);
+      int pos = 0;
+      while (true) {
+         int result;
+         if (acRead(Self->Source, buffer.data() + pos, std::ssize(buffer) - pos, &result) != ERR::Okay) {
+            Self->ParseError = ERR::Read;
+            break;
          }
+         else if (result <= 0) break;
 
-         if (Self->ParseError IS ERR::Okay) {
-            buffer[pos] = 0;
-            Self->ParseError = txt_to_xml(Self, Self->Tags, buffer);
-         }
-
-         FreeResource(buffer);
+         pos += result;
+         if (pos >= std::ssize(buffer) - 1024) buffer.resize(std::ssize(buffer) * 2);
       }
-      else Self->ParseError = ERR::AllocMemory;
+
+      if (Self->ParseError IS ERR::Okay) {
+         Self->ParseError = txt_to_xml(Self, Self->Tags, buffer.c_str());
+      }
    }
    else if (LoadFile(Self->Path, LDF::NIL, &filecache) IS ERR::Okay) {
       Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);

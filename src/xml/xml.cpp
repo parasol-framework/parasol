@@ -65,7 +65,15 @@ struct ParseState {
    CSTRING Pos;
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
-   ParseState() : Pos(nullptr), Balance(0) { }
+   // Namespace context for this parsing scope
+   std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
+   uint32_t DefaultNamespace;                  // Default namespace URI hash
+
+   ParseState() : Pos(nullptr), Balance(0), DefaultNamespace(0) { }
+
+   // Copy constructor for inheriting namespace context from parent scope
+   ParseState(const ParseState& parent) : Pos(parent.Pos), Balance(parent.Balance),
+                                          PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace) { }
 };
 
 typedef objXML::TAGS TAGS;
@@ -86,10 +94,11 @@ class extXML : public objXML {
    std::string Attrib;
    FUNCTION Callback;
 
-   // Namespace registry using pf::strhash() values
-   ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash -> URI
-   std::map<std::string, uint32_t> CurrentPrefixMap; // prefix -> hash (current scope)
-   uint32_t DefaultNamespace = 0;
+   // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XMLTag structures.
+   ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
+
+   // Link prefixes to namespace URIs
+   std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
@@ -180,7 +189,6 @@ class extXML : public objXML {
       return (it != NSRegistry.end()) ? &it->second : nullptr;
    }
 
-   private:
    ERR find_tag(std::string_view XPath);
 
    inline void updateIDs(TAGS &List, int ParentID) {
@@ -1171,7 +1179,7 @@ static ERR XML_RegisterNamespace(extXML *Self, struct xml::RegisterNamespace *Ar
 
    // Register the namespace URI and get its hash
    auto hash = Self->registerNamespace(Args->URI);
-   if (hash IS 0) return log.warning(ERR::Failed);
+   if (not hash) return log.warning(ERR::Failed);
 
    Args->Result = hash;
    return ERR::Okay;
@@ -1333,9 +1341,9 @@ static ERR XML_Reset(extXML *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-ResolvePrefix: Resolve a namespace prefix to its hash identifier within a tag's scope.
+ResolvePrefix: Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.
 
-This method resolves a namespace prefix to its corresponding UID by examining namespace declarations within the 
+This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the 
 specified tag's hierarchical scope. The resolution process:
 
 <list type="ordered">
@@ -1350,7 +1358,7 @@ This approach correctly handles nested namespace scopes and prefix redefinitions
 -INPUT-
 cstr Prefix: The namespace prefix to resolve. Use empty string for default namespace.
 int TagID: The tag ID defining the starting scope for namespace resolution.
-&int Result: Pointer to an integer that will receive the resolved namespace hash.
+&uint Result: Pointer to an integer that will receive the resolved namespace hash.
 
 -ERRORS-
 Okay: The prefix was successfully resolved.
@@ -1369,38 +1377,34 @@ static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
    if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
 
    // First check the current global prefix map (for efficiency in common cases)
-   auto it = Self->CurrentPrefixMap.find(Args->Prefix);
-   if (it != Self->CurrentPrefixMap.end()) {
+   auto it = Self->Prefixes.find(Args->Prefix);
+   if (it != Self->Prefixes.end()) {
       Args->Result = it->second;
       return ERR::Okay;
    }
 
    // If not found globally, walk up the tag hierarchy to find namespace declarations
-   auto tag = Self->getTag(Args->TagID);
-   while (tag) {
+   for (auto tag = Self->getTag(Args->TagID); tag; tag = Self->getTag(tag->ParentID)) {
       // Check this tag's attributes for namespace declarations
       for (size_t i = 1; i < tag->Attribs.size(); i++) {
-         const auto& attrib = tag->Attribs[i];
+         const auto &attrib = tag->Attribs[i];
 
          // Check for xmlns:prefix="uri" declarations
          if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
-            std::string declared_prefix = attrib.Name.substr(6);
-            if (declared_prefix IS Args->Prefix) {
+            if (attrib.Name.substr(6) IS Args->Prefix) {
                // Found the prefix declaration, return its namespace hash
-               Args->Result = Self->registerNamespace(attrib.Value);
+               Args->Result = pf::strhash(attrib.Value);
                return ERR::Okay;
             }
          }
          // Check for default namespace if looking for empty prefix
-         else if ((attrib.Name IS "xmlns") and (std::string(Args->Prefix).empty())) {
-            Args->Result = Self->registerNamespace(attrib.Value);
+         else if ((attrib.Name IS "xmlns") and ((not Args->Prefix) or (not Args->Prefix[0]))) {
+            Args->Result = pf::strhash(attrib.Value);
             return ERR::Okay;
          }
       }
 
-      // Move to parent tag
-      if (tag->ParentID IS 0) break; // Reached root
-      tag = Self->getTag(tag->ParentID);
+      if (!tag->ParentID) break; // Reached root
    }
 
    return log.warning(ERR::Search);
