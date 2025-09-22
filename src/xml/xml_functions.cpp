@@ -17,8 +17,10 @@ template <class T> void output_attribvalue(T &&String, std::ostringstream &Outpu
 }
 
 //********************************************************************************************************************
-
 // TODO: Support processing of ENTITY declarations in the doctype.
+//ENTITY       <!ENTITY % textgizmo "fontgizmo">
+//INSTRUCTION  <?XML version="1.0" standalone="yes" ?>
+//NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 static void parse_doctype(extXML *Self, CSTRING Input)
 {

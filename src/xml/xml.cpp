@@ -6,12 +6,17 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-XML: Provides XML data management services for parsing, manipulation and serialisation.
+XML: Provides an interface for the management of structured data.
 
 The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
 It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
 accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation
 and document validation.
+
+The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
+this way, the class not only provides XML support but also serves as Parasol's general-purpose structured 
+data handler.  It also makes it trivial to convert between different structured data formats, and benefit from
+the cross-application use of features, such as applying XPath queries on data originating from YAML.
 
 <header>Data Loading and Parsing</header>
 
@@ -26,9 +31,9 @@ document construction.
 The #Source field provides object-based input, allowing XML data to be sourced from any object supporting the Read
 action.
 
-For batch processing scenarios, the Path or Statement fields can be reset post-initialisation, causing the XML
-object to automatically rebuild itself.  This approach optimises memory usage by reusing existing object instances
-rather than creating new ones.
+For batch processing scenarios, the #Path or #Statement fields can be changed post-initialisation, causing the XML
+object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object 
+instances rather than creating new ones.
 
 <header>Document Structure and Access</header>
 
@@ -37,15 +42,14 @@ structures.  Each XMLTag represents a complete XML element including its attribu
 The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.
 
 C++ developers benefit from direct access to the Tags field, represented as `pf::vector&lt;XMLTag&gt;`.  This provides
-efficient iteration and element access with standard STL semantics.  However, direct modification of the Tags array
-is discouraged as it can destabilise internal object state - developers should use the provided methods for safe
-manipulation.
+efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods
+to do so are provided in the C++ header for `objXML` and `XMLTag`, with additional functions in the `xml` namespace.
+Check the header for details.
+
+Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it 
+should therefore be read only as needed and cached until the XML object is modified.
 
 -END-
-
-ENTITY       <!ENTITY % textgizmo "fontgizmo">
-INSTRUCTION  <?XML version="1.0" standalone="yes" ?>
-NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 *********************************************************************************************************************/
 
