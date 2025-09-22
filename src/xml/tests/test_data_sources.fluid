@@ -6,19 +6,19 @@
 function testPathLoading()
    -- Create a temporary XML file for testing
    local testXML = '<?xml version="1.0"?><testRoot><testChild>Path content</testChild></testRoot>'
-   local file = obj.new('file', { path = 'parasol:temp/test_xml_path.xml', flags = 'WRITE|NEW' })
+   local file = obj.new('file', { path = 'temp:test_xml_path.xml', flags = 'WRITE|NEW' })
    file.acWrite(testXML)
    file = nil
 
    -- Load XML from file path
-   local xml = obj.new("xml", { path = 'parasol:temp/test_xml_path.xml', flags = XMF_STRIP_HEADERS })
+   local xml = obj.new("xml", { path = 'temp:test_xml_path.xml', flags = XMF_STRIP_HEADERS })
    local tags = xml.tags
    assert(tags, "XML should load from file path")
    assert(tags[2].attribs[1].name == "testRoot", "Root tag should be testRoot; got " .. nz(tags[1].attribs[1].name, 'NIL'))
    assert(tags[2].children[1].children[1].attribs[1].value == "Path content", "Content should be preserved")
 
    collectgarbage()
-   mSys.DeleteFile('parasol:temp/test_xml_path.xml')
+   mSys.DeleteFile('temp:test_xml_path.xml')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -104,16 +104,16 @@ function testSourceSwitching()
 
    -- Create file for path switching
    local fileXML = '<pathSwitched>Path content</pathSwitched>'
-   local file = obj.new('file', { path = 'parasol:temp/test_switch.xml', flags = 'WRITE|NEW' })
+   local file = obj.new('file', { path = 'temp:test_switch.xml', flags = 'WRITE|NEW' })
    file.acWrite(fileXML)
    file = nil
 
    -- Switch to path
-   xml.path = 'parasol:temp/test_switch.xml'
+   xml.path = 'temp:test_switch.xml'
    assert(xml.tags[1].attribs[1].name == "pathSwitched", "Path switching should work")
 
    collectgarbage()
-   mSys.DeleteFile('parasol:temp/test_switch.xml')
+   mSys.DeleteFile('temp:test_switch.xml')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -140,7 +140,7 @@ end
 function testInvalidFileHandling()
    -- Try to load non-existent file
 
-   local ex, xml = catch(function() return obj.new("xml", { path = 'parasol:temp/nonexistent.xml' }) end)
+   local ex, xml = catch(function() return obj.new("xml", { path = 'temp:nonexistent.xml' }) end)
    assert(xml == nil, "Should report error for non-existent file")
 
    -- Try to parse invalid XML content.  Throwing an exception is considered acceptable if content is unparseable
@@ -159,12 +159,10 @@ return {
       'testInvalidFileHandling'
    },
    init = function(ScriptFolder)
-      -- Ensure temp directory exists
-      mSys.CreateFolder('parasol:temp/', bit.bor(PERMIT_READ, PERMIT_WRITE, PERMIT_EXEC))
    end,
    cleanup = function()
       -- Clean up any remaining test files
-      mSys.DeleteFile('parasol:temp/test_xml_path.xml')
-      mSys.DeleteFile('parasol:temp/test_switch.xml')
+      mSys.DeleteFile('temp:test_xml_path.xml')
+      mSys.DeleteFile('temp:test_switch.xml')
    end
 }

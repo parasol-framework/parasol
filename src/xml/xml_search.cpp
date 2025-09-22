@@ -24,7 +24,7 @@
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
-ERR extXML::find_tag(std::string_view XPath)
+ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
 {
    pf::Log log(__FUNCTION__);
    int i;
@@ -56,9 +56,19 @@ ERR extXML::find_tag(std::string_view XPath)
    auto start = pos;
    auto delimiter_pos = XPath.find_first_of("/[(", pos);
    pos = (delimiter_pos != std::string_view::npos) ? delimiter_pos : XPath.size();
-   std::string_view tagname;
-   if (pos > start) tagname = XPath.substr(start, pos - start);
-   else tagname = "*";
+   std::string_view tag_name;
+   if (pos > start) tag_name = XPath.substr(start, pos - start);
+   else tag_name = "*";
+
+   // Parse namespace prefix from current tag
+   uint32_t tag_prefix = 0;
+
+   if ((Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+      if (auto colon = tag_name.find(':'); colon != std::string_view::npos) {
+         tag_prefix = pf::strhash(tag_name.substr(0, colon));
+         tag_name = tag_name.substr(colon + 1);
+      }
+   }
 
    // Parse filter instructions
 
@@ -67,7 +77,7 @@ ERR extXML::find_tag(std::string_view XPath)
    bool wild = false;
    int subscript = 0;
 
-   if ((this->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("XPath: %.*s, TagName: %.*s", int(XPath.size()), XPath.data(), int(tagname.size()), tagname.data());
+   if ((Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("XPath: %.*s, TagName: %.*s", int(XPath.size()), XPath.data(), int(tag_name.size()), tag_name.data());
 
    char end_char;
    if ((pos < XPath.size()) and ((XPath[pos] IS '[') or (XPath[pos] IS '('))) {
@@ -164,15 +174,31 @@ ERR extXML::find_tag(std::string_view XPath)
       pos++;
    }
 
-   auto tag_wild = tagname.find('*') != std::string_view::npos;
+   auto tag_wild = tag_name.find('*') != std::string_view::npos;
 
    bool stop = false;
    for (; Cursor != CursorTags->end() and (!stop); Cursor++) {
       bool match = false;
       bool tag_matched = false;
+      uint32_t cursor_prefix = CurrentPrefix;
 
-      if (tag_wild) tag_matched = pf::wildcmp(tagname, Cursor->name());
-      else tag_matched = pf::iequals(tagname, Cursor->name());
+      // Match both tag name and prefix, if applicable
+
+      if ((Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+         std::string_view cursor_local_name = Cursor->name();
+         if (auto colon = cursor_local_name.find(':'); colon != std::string_view::npos) {
+            cursor_prefix = pf::strhash(cursor_local_name.substr(0, colon));
+            cursor_local_name = cursor_local_name.substr(colon + 1);
+         }
+
+         bool name_matches = tag_wild ? pf::wildcmp(tag_name, cursor_local_name) : pf::iequals(tag_name, cursor_local_name);
+         bool prefix_matches = tag_prefix ? cursor_prefix IS tag_prefix : true;
+         tag_matched = name_matches and prefix_matches;
+      } 
+      else { // Traditional matching: just compare full tag names
+         if (tag_wild) tag_matched = pf::wildcmp(tag_name, Cursor->name());
+         else tag_matched = pf::iequals(tag_name, Cursor->name());
+      }
 
       if (tag_matched) { // Desired tag name found.
          if ((!attrib_name.empty()) or (!attrib_value.empty())) {
@@ -208,7 +234,7 @@ ERR extXML::find_tag(std::string_view XPath)
                CursorTags = &Cursor->Children;
                Cursor     = Cursor->Children.begin();
 
-               ERR error = find_tag(XPath);
+               ERR error = find_tag(XPath, cursor_prefix);
                if ((error IS ERR::Okay) and (!Callback.defined())) return ERR::Okay;
 
                Cursor     = save_cursor;
@@ -263,8 +289,8 @@ ERR extXML::find_tag(std::string_view XPath)
          Cursor     = Cursor->Children.begin();
 
          ERR error;
-         if (flat_scan) error = find_tag(XPath); // Continue search from the beginning of the tag name
-         else error = find_tag(XPath.substr(pos));
+         if (flat_scan) error = find_tag(XPath, cursor_prefix); // Continue search from the beginning of the tag name
+         else error = find_tag(XPath.substr(pos), cursor_prefix);
          if ((error IS ERR::Okay) and (!Callback.defined())) return ERR::Okay;
 
          if (error IS ERR::Terminate) return ERR::Terminate;

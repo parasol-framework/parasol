@@ -65,7 +65,15 @@ struct ParseState {
    CSTRING Pos;
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
-   ParseState() : Pos(nullptr), Balance(0) { }
+   // Namespace context for this parsing scope
+   std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
+   uint32_t DefaultNamespace;                  // Default namespace URI hash
+
+   ParseState() : Pos(nullptr), Balance(0), DefaultNamespace(0) { }
+
+   // Copy constructor for inheriting namespace context from parent scope
+   ParseState(const ParseState& parent) : Pos(parent.Pos), Balance(parent.Balance),
+                                          PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace) { }
 };
 
 typedef objXML::TAGS TAGS;
@@ -85,6 +93,14 @@ class extXML : public objXML {
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    std::string Attrib;
    FUNCTION Callback;
+
+   // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XMLTag structures.
+   ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
+
+   // Link prefixes to namespace URIs
+   // NOTE: If the XML document overwrites namespace URIs on the same prefix name (legal!)
+   // then this lookup table returns the most recently assigned URI.
+   std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
@@ -158,11 +174,24 @@ class extXML : public objXML {
       this->CursorTags = &this->Tags;
 
       Cursor = this->Tags.begin();
-      return find_tag(XPath);
+      return find_tag(XPath, 0);
    }
 
-   private:
-   ERR find_tag(std::string_view XPath);
+   // Namespace utility methods
+
+   inline uint32_t registerNamespace(const std::string &uri) {
+      if (uri.empty()) return 0;
+      auto hash = pf::strhash(uri);
+      NSRegistry[hash] = uri;
+      return hash;
+   }
+
+   inline std::string * getNamespaceURI(uint32_t hash) {
+      auto it = NSRegistry.find(hash);
+      return (it != NSRegistry.end()) ? &it->second : nullptr;
+   }
+
+   ERR find_tag(std::string_view XPath, uint32_t);
 
    inline void updateIDs(TAGS &List, int ParentID) {
       for (auto &tag : List) {
@@ -721,6 +750,39 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
+GetNamespaceURI: Retrieve the namespace URI for a given namespace UID.
+
+This method retrieves the original namespace URI string for a given namespace UID.
+
+-INPUT-
+uint NamespaceID: The UID of the namespace.
+&cstr Result: Pointer to a string pointer that will receive the namespace URI.
+
+-ERRORS-
+Okay: The namespace URI was successfully retrieved.
+NullArgs: Required arguments were not specified correctly.
+Search: No namespace found for the specified UID.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetNamespaceURI(extXML *Self, struct xml::GetNamespaceURI *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   auto uri = Self->getNamespaceURI(Args->NamespaceID);
+   if (!uri) return log.warning(ERR::Search);
+
+   Args->Result = uri->c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 GetTag: Returns a pointer to the !XMLTag structure for a given tag index.
 
 This method will return the !XMLTag structure for a given tag `Index`.  The `Index` is checked to ensure it is valid
@@ -812,6 +874,7 @@ Okay: The content was successfully inserted and a new content node was created.
 NullArgs: Required parameters were NULL or not properly specified.
 NotFound: The target Index does not correspond to a valid XML element.
 ReadOnly: The XML object is in read-only mode and cannot be modified.
+Args: The Where parameter specifies an invalid insertion position.
 
 *********************************************************************************************************************/
 
@@ -872,10 +935,11 @@ cstr XML: An XML statement to parse.
 
 -ERRORS-
 Okay: The statement was added successfully.
-Args
-NullArgs
-OutOfRange
+Args: The Where parameter specifies an invalid insertion position.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: The target Index does not correspond to a valid XML element.
 ReadOnly: Changes to the XML data are not permitted.
+NoData: The provided XML statement parsed to an empty result.
 
 *********************************************************************************************************************/
 
@@ -948,9 +1012,10 @@ cstr XML: The statement to process.
 &int Result: The index of the new tag is returned here.
 
 -ERRORS-
-Okay
-NullArgs
-Search: The `XPath` could not be resolved.
+Okay: The XML statement was successfully inserted at the specified XPath location.
+NullArgs: Required parameters were NULL or not properly specified.
+Search: The XPath could not be resolved to a valid location.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 
 *********************************************************************************************************************/
 
@@ -995,10 +1060,11 @@ int(XMI) Where: Use `PREV` or `NEXT` to insert behind or ahead of the target tag
 
 -ERRORS-
 Okay: Tags were moved successfully.
-Args
-NullArgs
-NotFound
-ReadOnly
+Args: Invalid parameter values were provided.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: Either the source or destination tag index does not exist.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
+SanityCheckFailed: An internal consistency check failed during the move operation.
 -END-
 
 *********************************************************************************************************************/
@@ -1011,7 +1077,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if (Args->Total < 1) return log.warning(ERR::Args);
    if (Args->Index IS Args->DestIndex) return ERR::Okay;
-   
+
    if ((Args->DestIndex > Args->Index) and (Args->DestIndex < Args->Index + Args->Total)) {
       return log.warning(ERR::Args);
    }
@@ -1069,7 +1135,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
       default:
          return log.warning(ERR::Args);
    }
-   
+
    src_tags->erase(src_tags->begin() + si, src_tags->begin() + si + Args->Total);
 
    Self->modified();
@@ -1083,6 +1149,41 @@ static ERR XML_NewPlacement(extXML *Self)
    new (Self) extXML;
    Self->LineNo = 1;
    Self->ParseError = ERR::Okay;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+RegisterNamespace: Register a namespace URI and return its UID.
+
+This method registers a namespace URI and returns a UID that can be used to identify the namespace
+efficiently throughout the XML document.
+
+-INPUT-
+cstr URI: The namespace URI to register. Must not be NULL or empty.
+&uint Result: Pointer to an integer that will receive the UID for the namespace URI.
+
+-ERRORS-
+Okay: The namespace was successfully registered.
+NullArgs: Required arguments were not specified correctly.
+Failed: The URI was empty or invalid.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_RegisterNamespace(extXML *Self, struct xml::RegisterNamespace *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->URI)) return log.warning(ERR::NullArgs);
+
+   // Register the namespace URI and get its hash
+   auto hash = Self->registerNamespace(Args->URI);
+   if (not hash) return log.warning(ERR::Args);
+
+   Args->Result = hash;
    return ERR::Okay;
 }
 
@@ -1105,10 +1206,10 @@ int Index: Reference to the tag that will be removed.
 int Total: The total number of sibling (neighbouring) tags that should also be deleted.  A value of one or less will remove only the indicated tag and its children.  The total may exceed the number of tags actually available, in which case all tags up to the end of the branch will be affected.
 
 -ERRORS-
-Okay
-NullArgs
-OutOfRange
-ReadOnly
+Okay: The tag(s) were successfully removed.
+NullArgs: Required parameters were NULL or not properly specified.
+NotFound: The specified tag Index does not exist in the XML structure.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 -END-
 
 *********************************************************************************************************************/
@@ -1169,9 +1270,10 @@ cstr XPath: An XML path string.
 int Limit: The maximum number of matching tags to delete.  A value of one or zero will remove only the indicated tag and its children.  A value of -1 removes all matching tags.
 
 -ERRORS-
-Okay
-NullArgs
-ReadOnly
+Okay: The matching tag(s) or attribute(s) were successfully removed.
+NullArgs: Required parameters were NULL or not properly specified.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
+NoData: The XML document contains no data to process.
 -END-
 
 *********************************************************************************************************************/
@@ -1239,6 +1341,69 @@ static ERR XML_Reset(extXML *Self)
 }
 
 /*********************************************************************************************************************
+
+-METHOD-
+ResolvePrefix: Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.
+
+This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the 
+specified tag's hierarchical scope. The resolution process:
+
+<list type="ordered">
+<li>Walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
+<li>Returns the UID of the first matching namespace URI found.</li>
+</list>
+
+This approach correctly handles nested namespace scopes and prefix redefinitions.
+
+-INPUT-
+cstr Prefix: The namespace prefix to resolve. Use empty string for default namespace.
+int TagID: The tag ID defining the starting scope for namespace resolution.
+&uint Result: Pointer to an integer that will receive the resolved namespace hash.
+
+-ERRORS-
+Okay: The prefix was successfully resolved.
+NullArgs: Required arguments were not specified correctly.
+NotFound: The specified tag was not found.
+Search: The prefix could not be resolved in any accessible scope.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
+
+   for (auto tag = Self->getTag(Args->TagID); tag; tag = Self->getTag(tag->ParentID)) {
+      // Check this tag's attributes for namespace declarations
+      for (size_t i = 1; i < tag->Attribs.size(); i++) {
+         const auto &attrib = tag->Attribs[i];
+
+         // Check for xmlns:prefix="uri" declarations
+         if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
+            if (attrib.Name.substr(6) IS Args->Prefix) {
+               // Found the prefix declaration, return its namespace hash
+               Args->Result = pf::strhash(attrib.Value);
+               return ERR::Okay;
+            }
+         }
+         // Check for default namespace if looking for empty prefix
+         else if ((attrib.Name IS "xmlns") and ((not Args->Prefix) or (not Args->Prefix[0]))) {
+            Args->Result = pf::strhash(attrib.Value);
+            return ERR::Okay;
+         }
+      }
+
+      if (!tag->ParentID) break; // Reached root
+   }
+
+   return log.warning(ERR::Search);
+}
+
+/*********************************************************************************************************************
 -ACTION-
 SaveToObject: Saves XML data to a storage object (e.g. @File).
 -END-
@@ -1278,10 +1443,11 @@ int(XMF) Flags: Use `INCLUDE_SIBLINGS` to include siblings of the tag found at I
 !str Result: The resulting string is returned in this parameter.
 
 -ERRORS-
-Okay: The XML string was retrieved.
-Args:
+Okay: The XML string was successfully serialised.
+NullArgs: Required parameters were NULL or not properly specified.
 NoData: No information has been loaded into the XML object.
-AllocMemory: Failed to allocate an XML string for the result.
+NotFound: The specified tag Index does not exist in the XML structure.
+AllocMemory: Failed to allocate memory for the XML string result.
 
 *********************************************************************************************************************/
 
@@ -1479,6 +1645,41 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 /*********************************************************************************************************************
 
 -METHOD-
+SetTagNamespace: Set the namespace for a specific XML tag.
+
+This method assigns a namespace to an XML tag using the namespace's UID.
+
+-INPUT-
+int TagID: The unique identifier of the XML tag.
+int NamespaceID: The UID of the namespace to assign.
+
+-ERRORS-
+Okay: The namespace was successfully assigned to the tag.
+NullArgs: Required arguments were not specified correctly.
+NotFound: The specified tag was not found.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_SetTagNamespace(extXML *Self, struct xml::SetTagNamespace *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   // Find the tag and assign the namespace
+   auto tag = Self->getTag(Args->TagID);
+   if (!tag) return log.warning(ERR::NotFound);
+
+   tag->NamespaceID = Args->NamespaceID;
+   Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 Sort: Sorts XML tags to your specifications.
 
 The Sort method is used to sort a single branch of XML tags in ascending or descending order.  An `XPath` is required
@@ -1497,10 +1698,9 @@ int(XSF) Flags: Optional flags.
 
 -ERRORS-
 Okay: The XML object was successfully sorted.
-NullArgs
-Search: The provided `XPath` failed to locate a tag.
-ReadOnly
-AllocMemory:
+NullArgs: Required parameters were NULL or not properly specified.
+Search: The provided XPath failed to locate a tag.
+ReadOnly: The XML object is in read-only mode and cannot be modified.
 -END-
 
 *********************************************************************************************************************/

@@ -156,11 +156,8 @@
 <tr><th>MEM::VIDEO</th><td>The memory space is reserved by a video device such as a graphics card for display purposes, e.g. framebuffer.</td></tr>
 <tr><th>MEM::WRITE</th><td>The memory is explicitly marked as writeable.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2025</div></div>
-<div class="docs-content" style="display:none;" id="MSF"><h1>MSF Type</h1><p class="lead">Message flags.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSF::ADD</th><td>The default behaviour - this will add the message to the end of the queue.</td></tr>
-<tr><th>MSF::MESSAGE_ID</th><td>The Type parameter refers to a unique message ID rather than a message type for this call.</td></tr>
-<tr><th>MSF::NO_DUPLICATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</td></tr>
+<div class="docs-content" style="display:none;" id="MSF"><h1>MSF Type</h1><p class="lead">Message flags.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSF::NO_DUPLICATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the new message will not be added and the function will immediately return with <code>ERR::Okay</code>.</td></tr>
 <tr><th>MSF::UPDATE</th><td>If the <code>Type</code> parameter matches a message already inside the queue, the data for that message will be deleted, then the new message will be added to the end of the queue.</td></tr>
-<tr><th>MSF::WAIT</th><td>Wait before inserting the message if the queue is at maximum capacity.</td></tr>
 </tbody></table><div class="footer copyright text-right">CompressedStream module documentation © Paul Manias 1996-2025</div></div>
 <div class="docs-content" style="display:none;" id="MSGID"><h1>MSGID Type</h1><p class="lead">Reserved message ID's that are handled internally.</p><table class="table"><thead><tr><th class="col-md-1">Name</th><th>Description</th></tr></thead><tbody><tr><th>MSGID::ACTION</th><td></td></tr>
 <tr><th>MSGID::BREAK</th><td></td></tr>
@@ -256,7 +253,6 @@
 <tr><th>RES::KEY_STATE</th><td>Maintains the state of key qualifiers such as caps-lock and the shift keys.</td></tr>
 <tr><th>RES::LOG_DEPTH</th><td>The current depth of log messages.</td></tr>
 <tr><th>RES::LOG_LEVEL</th><td>The current level of log detail (larger numbers indicate more detail).</td></tr>
-<tr><th>RES::MAX_PROCESSES</th><td>The maximum number of processes that can be supported at any time.</td></tr>
 <tr><th>RES::MEMORY_USAGE</th><td>The total amount of memory used by the current process, in bytes.</td></tr>
 <tr><th>RES::OPEN_INFO</th><td>Pointer to the OpenInfo structure originally used to initialise the system.</td></tr>
 <tr><th>RES::PRIVILEGED</th><td>This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</td></tr>

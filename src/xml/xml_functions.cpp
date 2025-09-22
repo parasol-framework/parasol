@@ -71,13 +71,23 @@ static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 //********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
-static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
+static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
 
    pf::Log log(__FUNCTION__);
 
    log.traceBranch("%.30s", State.Pos);
+
+   // Save current namespace context to restore later (for proper scoping)
+   auto saved_prefix_map = State.PrefixMap;
+   auto saved_default_namespace = State.DefaultNamespace;
+
+   // Use Defer to ensure namespace context is always restored when function exits
+   auto restore_namespace = pf::Defer([&]() {
+      State.PrefixMap = saved_prefix_map;
+      State.DefaultNamespace = saved_default_namespace;
+   });
 
    if (State.Pos[0] != '<') {
       log.warning("Malformed XML statement detected.");
@@ -187,7 +197,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       // Extract the name of the attribute
 
-      std::string name;
+      std::string_view name;
 
       if (*str IS '"'); // Quoted notation attributes are parsed as content values
       else {
@@ -197,7 +207,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
             if ((str[s] IS '?') and (str[s+1] IS '>')) break;
             s++;
          }
-         name.assign(str, s);
+         name = std::string_view(str, s);
          str += s;
       }
 
@@ -208,25 +218,44 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if (*str IS '=') {
          str++;
          while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         std::ostringstream buffer;
+         std::ostringstream attrib_value;
          if (*str IS '"') {
             str++;
-            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
+            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; attrib_value << *str++; }
             if (*str IS '"') str++;
          }
          else if (*str IS '\'') {
             str++;
-            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; buffer << *str++; }
+            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; attrib_value << *str++; }
             if (*str IS '\'') str++;
          }
          else {
             while ((*str > 0x20) and (*str != '>')) {
                if ((str[0] IS '/') and (str[1] IS '>')) break;
-               buffer << *str++;
+               attrib_value << *str++;
             }
          }
 
-         tag.Attribs.emplace_back(name, buffer.str());
+         auto val = attrib_value.str();
+
+         tag.Attribs.emplace_back(std::string(name), val);
+
+         // Detect and process namespace declarations
+         if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+            if (name.starts_with("xmlns")) {
+               auto ns_hash = Self->registerNamespace(val);
+
+               if (name IS "xmlns") { // Default namespace declaration
+                  State.DefaultNamespace = ns_hash;
+               }
+               else if ((name.size() > 6) and (name[5] IS ':')) {
+                  // Prefixed namespace declaration: xmlns:prefix="uri"
+                  std::string prefix(name.substr(6));
+                  Self->Prefixes[prefix] = ns_hash; // Permanent global record of this prefix
+                  State.PrefixMap[prefix] = ns_hash;
+               }
+            }
+         }
       }
       else if ((name.empty()) and (*str IS '"')) { // Detect notation value with no name
          str++;
@@ -234,11 +263,11 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
          for (s=0; (str[s]) and (str[s] != '"'); s++) {
             if (str[s] IS '\n') Self->LineNo++;
          }
-         tag.Attribs.emplace_back(name, std::string(str, s));
+         tag.Attribs.emplace_back(std::string(name), std::string(str, s));
          str += s;
          if (*str IS '"') str++;
       }
-      else tag.Attribs.emplace_back(name, ""); // Either the tag name or an attribute with no value.
+      else tag.Attribs.emplace_back(std::string(name), ""); // Either the tag name or an attribute with no value.
 
       while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
    }
@@ -246,6 +275,23 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
    if (tag.Attribs.empty()) {
       log.warning("No attributes parsed for tag at line %d", Self->LineNo);
       return ERR::Syntax;
+   }
+
+   // Resolve prefixed tag names to namespace IDs
+
+   if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+      if (!tag.Attribs[0].Name.empty()) {
+         auto &tag_name = tag.Attribs[0].Name;
+         if (auto colon = tag_name.find(':'); colon != std::string::npos) {
+            std::string prefix = tag_name.substr(0, colon);
+            if (auto it = State.PrefixMap.find(prefix); it != State.PrefixMap.end()) {
+               tag.NamespaceID = it->second;
+            }
+         }
+         else if (State.DefaultNamespace) { // Apply default namespace if no prefix
+            tag.NamespaceID = State.DefaultNamespace;
+         }
+      }
    }
 
    State.Pos = str;
@@ -260,7 +306,7 @@ static ERR extract_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
 
       while ((State.Pos[0] IS '<') and (State.Pos[1] != '/')) {
-         error = extract_tag(Self, Tags.back().Children, State);
+         error = parse_tag(Self, Tags.back().Children, State);
 
          if (error IS ERR::NothingDone) {
             // Extract any additional content trapped between tags
@@ -303,10 +349,10 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 {
    pf::Log log(__FUNCTION__);
 
-   // Extract the tag information.  This loop will extract the top-level tags.  The extract_tag() function is recursive
+   // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.
 
-   log.trace("Extracting tag information with extract_tag()");
+   log.trace("Extracting tag information with parse_tag()");
 
    ParseState state;
    CSTRING str;
@@ -317,7 +363,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    }
    state.Pos = str;
    while ((state.Pos[0] IS '<') and (state.Pos[1] != '/')) {
-      ERR error = extract_tag(Self, Tags, state);
+      ERR error = parse_tag(Self, Tags, state);
 
       if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
          log.warning("XML parsing aborted.");
@@ -428,59 +474,6 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 }
 
 //********************************************************************************************************************
-#if 0
-static void sift_down(ListSort **lookup, int Index, int heapsize)
-{
-   int largest = Index;
-   do {
-      Index = largest;
-      int left	= (Index << 1) + 1;
-      int right	= left + 1;
-
-      if (left < heapsize){
-         if (str_sort(lookup[largest]->String, lookup[left]->String) > 0) largest = left;
-
-         if (right < heapsize) {
-            if (str_sort(lookup[largest]->String, lookup[right]->String) > 0) largest = right;
-         }
-      }
-
-      if (largest != Index) {
-         ListSort *temp = lookup[Index];
-         lookup[Index] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != Index);
-}
-#endif
-//********************************************************************************************************************
-#if 0
-static void sift_up(ListSort **lookup, int i, int heapsize)
-{
-   int largest = i;
-   do {
-      i = largest;
-      int left	= (i << 1) + 1;
-      int right	= left + 1;
-
-      if (left < heapsize){
-         if (str_sort(lookup[largest]->String, lookup[left]->String) < 0) largest = left;
-
-         if (right < heapsize) {
-            if (str_sort(lookup[largest]->String, lookup[right]->String) < 0) largest = right;
-         }
-      }
-
-      if (largest != i) {
-         ListSort *temp = lookup[i];
-         lookup[i] = lookup[largest];
-         lookup[largest] = temp;
-      }
-   } while (largest != i);
-}
-#endif
-
-//********************************************************************************************************************
 
 static ERR parse_source(extXML *Self)
 {
@@ -496,38 +489,26 @@ static ERR parse_source(extXML *Self)
    // call to LoadFile(), which can lead our use of LoadFile() to being quite effective.
 
    if (Self->Source) {
-      char *buffer;
-      int64_t size = 64 * 1024;
-      if (AllocMemory(size+1, MEM::STRING|MEM::NO_CLEAR, &buffer) IS ERR::Okay) {
-         int pos = 0;
-         Self->ParseError = ERR::Okay;
-         acSeekStart(Self->Source, 0);
-         while (1) {
-            int result;
-            if (acRead(Self->Source, buffer+pos, size-pos, &result) != ERR::Okay) {
-               Self->ParseError = ERR::Read;
-               break;
-            }
-            else if (result <= 0) break;
-
-            pos += result;
-            if (pos >= size-1024) {
-               if (ReallocMemory(buffer, (size * 2) + 1, (APTR *)&buffer, nullptr) != ERR::Okay) {
-                  Self->ParseError = ERR::ReallocMemory;
-                  break;
-               }
-               size = size * 2;
-            }
+      std::string buffer;
+      buffer.resize(64 * 1024);
+      Self->ParseError = ERR::Okay;
+      acSeekStart(Self->Source, 0);
+      int pos = 0;
+      while (true) {
+         int result;
+         if (acRead(Self->Source, buffer.data() + pos, std::ssize(buffer) - pos, &result) != ERR::Okay) {
+            Self->ParseError = ERR::Read;
+            break;
          }
+         else if (result <= 0) break;
 
-         if (Self->ParseError IS ERR::Okay) {
-            buffer[pos] = 0;
-            Self->ParseError = txt_to_xml(Self, Self->Tags, buffer);
-         }
-
-         FreeResource(buffer);
+         pos += result;
+         if (pos >= std::ssize(buffer) - 1024) buffer.resize(std::ssize(buffer) * 2);
       }
-      else Self->ParseError = ERR::AllocMemory;
+
+      if (Self->ParseError IS ERR::Okay) {
+         Self->ParseError = txt_to_xml(Self, Self->Tags, buffer.c_str());
+      }
    }
    else if (LoadFile(Self->Path, LDF::NIL, &filecache) IS ERR::Okay) {
       Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);
