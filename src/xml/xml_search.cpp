@@ -182,11 +182,9 @@ ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
       bool tag_matched = false;
       uint32_t cursor_prefix = CurrentPrefix;
 
-      // Match both tag name and namespace
+      // Match both tag name and prefix, if applicable
 
       if ((Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
-         // Prefix-aware matching: check both prefix and name
-
          std::string_view cursor_local_name = Cursor->name();
          if (auto colon = cursor_local_name.find(':'); colon != std::string_view::npos) {
             cursor_prefix = pf::strhash(cursor_local_name.substr(0, colon));
@@ -194,8 +192,8 @@ ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
          }
 
          bool name_matches = tag_wild ? pf::wildcmp(tag_name, cursor_local_name) : pf::iequals(tag_name, cursor_local_name);
-         bool namespace_matches = tag_prefix ? cursor_prefix IS tag_prefix : true;
-         tag_matched = name_matches and namespace_matches;
+         bool prefix_matches = tag_prefix ? cursor_prefix IS tag_prefix : true;
+         tag_matched = name_matches and prefix_matches;
       } 
       else { // Traditional matching: just compare full tag names
          if (tag_wild) tag_matched = pf::wildcmp(tag_name, Cursor->name());
