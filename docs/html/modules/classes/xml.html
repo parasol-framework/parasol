@@ -348,10 +348,9 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the specified tag's hierarchical scope. The resolution process:</p>
 <ol>
-<li>First checks the global prefix map for efficiency.</li>
-<li>If not found, walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Walks up the tag hierarchy from the specified tag to the root.</li>
 <li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
-<li>Returns the hash of the first matching namespace URI found.</li>
+<li>Returns the UID of the first matching namespace URI found.</li>
 </ol>
 <p>This approach correctly handles nested namespace scopes and prefix redefinitions.</p>
       

@@ -1177,11 +1177,11 @@ static ERR XML_RegisterNamespace(extXML *Self, struct xml::RegisterNamespace *Ar
 {
    pf::Log log;
 
-   if (!Args or !Args->URI) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->URI)) return log.warning(ERR::NullArgs);
 
    // Register the namespace URI and get its hash
    auto hash = Self->registerNamespace(Args->URI);
-   if (not hash) return log.warning(ERR::Failed);
+   if (not hash) return log.warning(ERR::Args);
 
    Args->Result = hash;
    return ERR::Okay;
@@ -1349,10 +1349,9 @@ This method resolves a namespace prefix to its corresponding URI by examining na
 specified tag's hierarchical scope. The resolution process:
 
 <list type="ordered">
-<li>First checks the global prefix map for efficiency.</li>
-<li>If not found, walks up the tag hierarchy from the specified tag to the root.</li>
+<li>Walks up the tag hierarchy from the specified tag to the root.</li>
 <li>Examines xmlns:prefix and xmlns attributes in each tag to find the declaration.</li>
-<li>Returns the hash of the first matching namespace URI found.</li>
+<li>Returns the UID of the first matching namespace URI found.</li>
 </list>
 
 This approach correctly handles nested namespace scopes and prefix redefinitions.
