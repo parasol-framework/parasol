@@ -29,9 +29,6 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
     "NAMESPACE_AWARE: Enable namespace processing during parsing.",
-    "VALIDATE_NAMESPACES: Validate namespace declarations and references.",
-    "PRESERVE_NAMESPACE_PREFIXES: Keep original prefixes in output.",
-    "AUTO_DECLARE_NAMESPACES: Auto-add namespace declarations when needed.",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (#GetXMLString() only)" })
 
   enum("XMI", { type="int", start=0, comment="Tag insertion options." },

@@ -188,7 +188,7 @@ end
 
 function testNamespaceValidation()
    local xml = obj.new("xml", {
-      flags=XMF_NAMESPACE_AWARE + XMF_VALIDATE_NAMESPACES,
+      flags=XMF_NAMESPACE_AWARE,
       statement = '<root xmlns:valid="http://valid.example.com">' ..
                   '<valid:child>content</valid:child>' ..
                   '<invalid:orphan>orphaned</invalid:orphan>' ..
