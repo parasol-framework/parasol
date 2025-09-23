@@ -36,6 +36,7 @@ class SimpleXPathEvaluator {
    XPathFunctionLibrary function_library;
    XPathContext context;
    AxisEvaluator axis_evaluator;
+   bool expression_unsupported = false;
 
    struct CursorState {
       objXML::TAGS * tags;
@@ -43,6 +44,12 @@ class SimpleXPathEvaluator {
    };
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
+   std::vector<XMLTag *> collect_step_results(const std::vector<XMLTag *> &ContextNodes,
+                                              const std::vector<const XPathNode *> &Steps,
+                                              size_t StepIndex,
+                                              uint32_t CurrentPrefix,
+                                              bool &Unsupported);
+   XPathValue evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
 
    public:
    explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) {}

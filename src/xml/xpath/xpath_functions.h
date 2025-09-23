@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -27,6 +28,7 @@ class XPathValue {
    public:
    XPathValueType type;
    std::vector<XMLTag *> node_set;
+   std::optional<std::string> node_set_string_override;
    bool boolean_value = false;
    double number_value = 0.0;
    std::string string_value;
@@ -36,7 +38,9 @@ class XPathValue {
    explicit XPathValue(bool value) : type(XPathValueType::Boolean), boolean_value(value) {}
    explicit XPathValue(double value) : type(XPathValueType::Number), number_value(value) {}
    explicit XPathValue(std::string value) : type(XPathValueType::String), string_value(std::move(value)) {}
-   explicit XPathValue(const std::vector<XMLTag *> &Nodes) : type(XPathValueType::NodeSet), node_set(Nodes) {}
+   explicit XPathValue(const std::vector<XMLTag *> &Nodes,
+                       std::optional<std::string> NodeSetString = std::nullopt)
+      : type(XPathValueType::NodeSet), node_set(Nodes), node_set_string_override(std::move(NodeSetString)) {}
 
    // Type conversions
    bool to_boolean() const;

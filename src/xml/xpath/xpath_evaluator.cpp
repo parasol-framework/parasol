@@ -1,3 +1,8 @@
+#include <cmath>
+#include <limits>
+#include <optional>
+#include <unordered_set>
+
 // XPath Evaluator Implementation
 
 //********************************************************************************************************************
@@ -457,25 +462,11 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
    const XPathNode *expression = PredicateNode->get_child(0);
    if (!expression) return PredicateResult::Unsupported;
 
-   if (expression->type IS XPathNodeType::Number) {
-      int expected_position = 0;
-      auto conv = std::from_chars(expression->value.data(), expression->value.data() + expression->value.size(), expected_position);
-      if (conv.ec != std::errc()) return PredicateResult::Unsupported;
-      if (expected_position < 1) return PredicateResult::NoMatch;
-
-      return (context.position IS size_t(expected_position)) ? PredicateResult::Match : PredicateResult::NoMatch;
-   }
-
    if (expression->type IS XPathNodeType::BinaryOp) {
       auto *candidate = context.context_node;
       if (!candidate) return PredicateResult::NoMatch;
 
       const std::string &operation = expression->value;
-
-      if ((operation IS "=") or (operation IS "!=")) {
-         auto result_value = evaluate_expression(expression, CurrentPrefix);
-         return result_value.to_boolean() ? PredicateResult::Match : PredicateResult::NoMatch;
-      }
 
       if (operation IS "attribute-exists") {
          if (expression->child_count() IS 0) return PredicateResult::Unsupported;
@@ -530,37 +521,62 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          return PredicateResult::NoMatch;
       }
 
-     if (operation IS "content-equals") {
-        if (expression->child_count() IS 0) return PredicateResult::Unsupported;
+      if (operation IS "content-equals") {
+         if (expression->child_count() IS 0) return PredicateResult::Unsupported;
 
-        const XPathNode *value_node = expression->get_child(0);
-        if (!value_node) return PredicateResult::Unsupported;
+         const XPathNode *value_node = expression->get_child(0);
+         if (!value_node) return PredicateResult::Unsupported;
 
-        const std::string &expected = value_node->value;
-        bool wildcard_value = expected.find('*') != std::string::npos;
+         const std::string &expected = value_node->value;
+         bool wildcard_value = expected.find('*') != std::string::npos;
 
-        if (!candidate->Children.empty()) {
-           auto &first_child = candidate->Children[0];
-           if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
-              const std::string &content = first_child.Attribs[0].Value;
-              if (wildcard_value) {
+         if (!candidate->Children.empty()) {
+            auto &first_child = candidate->Children[0];
+            if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
+               const std::string &content = first_child.Attribs[0].Value;
+               if (wildcard_value) {
                   auto match = pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
                   return match;
-              }
-              else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
-           }
-        }
+               }
+               else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
+            }
+         }
 
          return PredicateResult::NoMatch;
       }
+   }
 
-      pf::Log log(__FUNCTION__);
-      log.msg("TODO: Predicate operation '%s' not yet supported", operation.c_str());
+   auto result_value = evaluate_expression(expression, CurrentPrefix);
+
+   if (expression_unsupported) {
+      expression_unsupported = false;
       return PredicateResult::Unsupported;
    }
 
-   pf::Log log(__FUNCTION__);
-   log.msg("TODO: Predicate node type %d not yet supported", int(expression->type));
+   if (result_value.type IS XPathValueType::NodeSet) {
+      return result_value.node_set.empty() ? PredicateResult::NoMatch : PredicateResult::Match;
+   }
+
+   if (result_value.type IS XPathValueType::Boolean) {
+      return result_value.to_boolean() ? PredicateResult::Match : PredicateResult::NoMatch;
+   }
+
+   if (result_value.type IS XPathValueType::String) {
+      return result_value.to_string().empty() ? PredicateResult::NoMatch : PredicateResult::Match;
+   }
+
+   if (result_value.type IS XPathValueType::Number) {
+      double expected = result_value.to_number();
+      if (std::isnan(expected)) return PredicateResult::NoMatch;
+
+      double integral_part = 0.0;
+      double fractional = std::modf(expected, &integral_part);
+      if (fractional != 0.0) return PredicateResult::NoMatch;
+      if (integral_part < 1.0) return PredicateResult::NoMatch;
+
+      return (context.position IS size_t(integral_part)) ? PredicateResult::Match : PredicateResult::NoMatch;
+   }
+
    return PredicateResult::Unsupported;
 }
 
@@ -568,36 +584,6 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
 // Function and Expression Evaluation (Phase 3 of AST_PLAN.md)
 
 namespace {
-
-std::vector<XMLTag *> collect_child_nodes(extXML *xml,
-                                          XMLTag *context_node,
-                                          std::string_view name_value)
-{
-   std::vector<XMLTag *> matches;
-
-   if (!xml) return matches;
-
-   objXML::TAGS *children = nullptr;
-   if (context_node) children = &context_node->Children;
-   else children = &xml->Tags;
-
-   if (!children) return matches;
-
-   bool wildcard_name = name_value.find('*') != std::string_view::npos;
-
-   for (auto &child : *children) {
-      if (!child.isTag()) continue;
-
-      bool name_matches;
-      if (wildcard_name) name_matches = pf::wildcmp(name_value, child.name());
-      else name_matches = pf::iequals(name_value, child.name());
-
-      if (!name_matches) continue;
-      matches.push_back(&child);
-   }
-
-   return matches;
-}
 
 bool compare_xpath_values(const XPathValue &left_value,
                           const XPathValue &right_value)
@@ -624,46 +610,461 @@ bool compare_xpath_values(const XPathValue &left_value,
 
 } // namespace
 
+std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vector<XMLTag *> &ContextNodes,
+                                                                 const std::vector<const XPathNode *> &Steps,
+                                                                 size_t StepIndex,
+                                                                 uint32_t CurrentPrefix,
+                                                                 bool &Unsupported)
+{
+   std::vector<XMLTag *> results;
+
+   if (Unsupported) return results;
+
+   if (StepIndex >= Steps.size()) {
+      results.insert(results.end(), ContextNodes.begin(), ContextNodes.end());
+      return results;
+   }
+
+   auto step_node = Steps[StepIndex];
+   if ((!step_node) or (step_node->type != XPathNodeType::Step)) {
+      Unsupported = true;
+      return results;
+   }
+
+   const XPathNode *axis_node = nullptr;
+   const XPathNode *node_test = nullptr;
+   std::vector<const XPathNode *> predicate_nodes;
+
+   for (size_t index = 0; index < step_node->child_count(); ++index) {
+      auto *child = step_node->get_child(index);
+      if (!child) continue;
+
+      if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
+      else if (child->type IS XPathNodeType::Predicate) predicate_nodes.push_back(child);
+      else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
+                                 (child->type IS XPathNodeType::Wildcard) or
+                                 (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+   }
+
+   AxisType axis = AxisType::Child;
+   if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
+
+   if (axis IS AxisType::Attribute) {
+      Unsupported = true;
+      return results;
+   }
+
+   if ((axis != AxisType::Child) and (axis != AxisType::DescendantOrSelf) and (axis != AxisType::Self)) {
+      Unsupported = true;
+      return results;
+   }
+
+   auto dispatch_axis = [this, axis](XMLTag *context_node) {
+      std::vector<XMLTag *> axis_results;
+
+      if (axis IS AxisType::Child) {
+         if (!context_node) {
+            for (auto &tag : xml->Tags) {
+               if (tag.isTag()) axis_results.push_back(&tag);
+            }
+         }
+         else axis_results = axis_evaluator.evaluate_axis(AxisType::Child, context_node);
+      }
+      else if (axis IS AxisType::DescendantOrSelf) {
+         if (!context_node) {
+            axis_results.push_back(nullptr);
+            for (auto &tag : xml->Tags) {
+               if (!tag.isTag()) continue;
+               auto branch = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, &tag);
+               axis_results.insert(axis_results.end(), branch.begin(), branch.end());
+            }
+         }
+         else axis_results = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, context_node);
+      }
+      else if (axis IS AxisType::Self) {
+         axis_results.push_back(context_node);
+      }
+
+      return axis_results;
+   };
+
+   bool is_last_step = (StepIndex + 1 >= Steps.size());
+
+   for (auto *context_node : ContextNodes) {
+      auto axis_candidates = dispatch_axis(context_node);
+
+      std::vector<XMLTag *> filtered;
+      filtered.reserve(axis_candidates.size());
+
+      for (auto *candidate : axis_candidates) {
+         if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
+         filtered.push_back(candidate);
+      }
+
+      if (filtered.empty()) continue;
+
+      for (auto *predicate_node : predicate_nodes) {
+         std::vector<XMLTag *> passed;
+         passed.reserve(filtered.size());
+
+         for (size_t index = 0; index < filtered.size(); ++index) {
+            auto *candidate = filtered[index];
+            push_context(candidate, index + 1, filtered.size());
+            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+            pop_context();
+
+            if (predicate_result IS PredicateResult::Unsupported) {
+               Unsupported = true;
+               return {};
+            }
+
+            if (predicate_result IS PredicateResult::Match) passed.push_back(candidate);
+         }
+
+         filtered.swap(passed);
+
+         if (filtered.empty()) break;
+      }
+
+      if (filtered.empty()) continue;
+
+      if (is_last_step) {
+         results.insert(results.end(), filtered.begin(), filtered.end());
+         continue;
+      }
+
+      auto child_results = collect_step_results(filtered, Steps, StepIndex + 1, CurrentPrefix, Unsupported);
+      if (Unsupported) return {};
+      results.insert(results.end(), child_results.begin(), child_results.end());
+   }
+
+   return results;
+}
+
+XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) {
+   if (!PathNode) {
+      expression_unsupported = true;
+      return XPathValue();
+   }
+
+   const XPathNode *location = PathNode;
+   if (PathNode->type IS XPathNodeType::Path) {
+      if (PathNode->child_count() IS 0) return XPathValue();
+      location = PathNode->get_child(0);
+   }
+
+   if ((!location) or (location->type != XPathNodeType::LocationPath)) {
+      expression_unsupported = true;
+      return XPathValue();
+   }
+
+   std::vector<const XPathNode *> steps;
+   std::vector<std::unique_ptr<XPathNode>> synthetic_steps;
+
+   bool has_root = false;
+   bool root_descendant = false;
+
+   for (size_t index = 0; index < location->child_count(); ++index) {
+      auto *child = location->get_child(index);
+      if (!child) continue;
+
+      if ((index IS 0) and (child->type IS XPathNodeType::Root)) {
+         has_root = true;
+         root_descendant = child->value IS "//";
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::Step) steps.push_back(child);
+   }
+
+   if (root_descendant) {
+      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+      steps.insert(steps.begin(), descendant_step.get());
+      synthetic_steps.push_back(std::move(descendant_step));
+   }
+
+   std::vector<XMLTag *> initial_context;
+
+   if (has_root) initial_context.push_back(nullptr);
+   else {
+      if (context.context_node) initial_context.push_back(context.context_node);
+      else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) initial_context.push_back(&(*xml->Cursor));
+      else initial_context.push_back(nullptr);
+   }
+
+   if (steps.empty()) return XPathValue(initial_context);
+
+   const XPathNode *attribute_step = nullptr;
+   const XPathNode *attribute_test = nullptr;
+
+   auto last_step = steps.back();
+   if (last_step) {
+      const XPathNode *axis_node = nullptr;
+      const XPathNode *node_test = nullptr;
+
+      for (size_t index = 0; index < last_step->child_count(); ++index) {
+         auto *child = last_step->get_child(index);
+         if (!child) continue;
+
+         if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
+         else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
+                                    (child->type IS XPathNodeType::Wildcard) or
+                                    (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+      }
+
+      AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::Child;
+      if (axis IS AxisType::Attribute) {
+         attribute_step = last_step;
+         attribute_test = node_test;
+      }
+   }
+
+   std::vector<const XPathNode *> work_steps = steps;
+   if (attribute_step) work_steps.pop_back();
+
+   bool unsupported = false;
+   std::vector<XMLTag *> node_results;
+
+   if (work_steps.empty()) {
+      for (auto *candidate : initial_context) {
+         if (candidate) node_results.push_back(candidate);
+      }
+   }
+   else node_results = collect_step_results(initial_context, work_steps, 0, CurrentPrefix, unsupported);
+
+   if (unsupported) {
+      expression_unsupported = true;
+      return XPathValue();
+   }
+
+   if (attribute_step) {
+      std::vector<std::string> attribute_values;
+      std::vector<XMLTag *> attribute_nodes;
+
+      for (auto *candidate : node_results) {
+         if (!candidate) continue;
+
+         std::string attribute_name;
+         bool wildcard_name = false;
+
+         if (attribute_test) {
+            if (attribute_test->type IS XPathNodeType::Wildcard) wildcard_name = true;
+            else if (attribute_test->type IS XPathNodeType::NodeTypeTest) wildcard_name = true;
+            else attribute_name = attribute_test->value;
+         }
+         else wildcard_name = true;
+
+         for (size_t index = 1; index < candidate->Attribs.size(); ++index) {
+            auto &attrib = candidate->Attribs[index];
+
+            bool name_matches;
+            if (wildcard_name) name_matches = true;
+            else if (attribute_name.find('*') != std::string::npos) name_matches = pf::wildcmp(attribute_name, attrib.Name);
+            else name_matches = pf::iequals(attrib.Name, attribute_name);
+
+            if (!name_matches) continue;
+            attribute_values.push_back(attrib.Value);
+            attribute_nodes.push_back(candidate);
+         }
+      }
+
+      if (attribute_nodes.empty()) return XPathValue(attribute_nodes);
+
+      std::optional<std::string> first_value;
+      if (!attribute_values.empty()) first_value = attribute_values[0];
+      return XPathValue(attribute_nodes, first_value);
+   }
+
+   return XPathValue(node_results);
+}
+
 XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
-   if (!ExprNode) return XPathValue();
+   if (!ExprNode) {
+      expression_unsupported = true;
+      return XPathValue();
+   }
 
    if (ExprNode->type IS XPathNodeType::Number) {
       char *end_ptr = nullptr;
       double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
       if ((end_ptr) and (*end_ptr IS '\0')) return XPathValue(value);
-      return XPathValue(0.0);
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
    }
 
-   if (ExprNode->type IS XPathNodeType::Literal) {
-      auto nodes = collect_child_nodes(xml, context.context_node, ExprNode->value);
-      if (!nodes.empty()) return XPathValue(nodes);
+   if ((ExprNode->type IS XPathNodeType::Literal) or (ExprNode->type IS XPathNodeType::String)) {
       return XPathValue(ExprNode->value);
    }
 
+   if ((ExprNode->type IS XPathNodeType::Path) or (ExprNode->type IS XPathNodeType::LocationPath)) {
+      return evaluate_path_expression_value(ExprNode, CurrentPrefix);
+   }
+
    if (ExprNode->type IS XPathNodeType::FunctionCall) {
-      return evaluate_function_call(ExprNode, CurrentPrefix);
+      auto value = evaluate_function_call(ExprNode, CurrentPrefix);
+      if (expression_unsupported) return XPathValue();
+      return value;
+   }
+
+   if (ExprNode->type IS XPathNodeType::UnaryOp) {
+      if (ExprNode->child_count() IS 0) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
+
+      auto operand = evaluate_expression(ExprNode->get_child(0), CurrentPrefix);
+      if (expression_unsupported) return XPathValue();
+
+      if (ExprNode->value IS "-") {
+         return XPathValue(-operand.to_number());
+      }
+
+      if (ExprNode->value IS "not") {
+         return XPathValue(!operand.to_boolean());
+      }
+
+      expression_unsupported = true;
+      return XPathValue();
    }
 
    if (ExprNode->type IS XPathNodeType::BinaryOp) {
-      if (ExprNode->child_count() < 2) return XPathValue();
+      if (ExprNode->child_count() < 2) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
 
       auto *left_node = ExprNode->get_child(0);
       auto *right_node = ExprNode->get_child(1);
 
-      auto left_value = evaluate_expression(left_node, CurrentPrefix);
-      auto right_value = evaluate_expression(right_node, CurrentPrefix);
+      const std::string &operation = ExprNode->value;
 
-      if (ExprNode->value IS "=") {
+      if (operation IS "and") {
+         auto left_value = evaluate_expression(left_node, CurrentPrefix);
+         if (expression_unsupported) return XPathValue();
+
+         bool left_boolean = left_value.to_boolean();
+         if (!left_boolean) return XPathValue(false);
+
+         auto right_value = evaluate_expression(right_node, CurrentPrefix);
+         if (expression_unsupported) return XPathValue();
+
+         bool right_boolean = right_value.to_boolean();
+         return XPathValue(right_boolean);
+      }
+
+      if (operation IS "or") {
+         auto left_value = evaluate_expression(left_node, CurrentPrefix);
+         if (expression_unsupported) return XPathValue();
+
+         bool left_boolean = left_value.to_boolean();
+         if (left_boolean) return XPathValue(true);
+
+         auto right_value = evaluate_expression(right_node, CurrentPrefix);
+         if (expression_unsupported) return XPathValue();
+
+         bool right_boolean = right_value.to_boolean();
+         return XPathValue(right_boolean);
+      }
+
+      auto left_value = evaluate_expression(left_node, CurrentPrefix);
+      if (expression_unsupported) return XPathValue();
+      auto right_value = evaluate_expression(right_node, CurrentPrefix);
+      if (expression_unsupported) return XPathValue();
+
+      if (operation IS "=") {
          bool equals = compare_xpath_values(left_value, right_value);
          return XPathValue(equals);
       }
 
-      if (ExprNode->value IS "!=") {
+      if (operation IS "!=") {
          bool equals = compare_xpath_values(left_value, right_value);
          return XPathValue(!equals);
       }
+
+      if (operation IS "<") {
+         double left_number = left_value.to_number();
+         double right_number = right_value.to_number();
+         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
+         return XPathValue(left_number < right_number);
+      }
+
+      if (operation IS "<=") {
+         double left_number = left_value.to_number();
+         double right_number = right_value.to_number();
+         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
+         return XPathValue(left_number <= right_number);
+      }
+
+      if (operation IS ">") {
+         double left_number = left_value.to_number();
+         double right_number = right_value.to_number();
+         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
+         return XPathValue(left_number > right_number);
+      }
+
+      if (operation IS ">=") {
+         double left_number = left_value.to_number();
+         double right_number = right_value.to_number();
+         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
+         return XPathValue(left_number >= right_number);
+      }
+
+      if (operation IS "+") {
+         double result = left_value.to_number() + right_value.to_number();
+         return XPathValue(result);
+      }
+
+      if (operation IS "-") {
+         double result = left_value.to_number() - right_value.to_number();
+         return XPathValue(result);
+      }
+
+      if (operation IS "*") {
+         double result = left_value.to_number() * right_value.to_number();
+         return XPathValue(result);
+      }
+
+      if (operation IS "div") {
+         double result = left_value.to_number() / right_value.to_number();
+         return XPathValue(result);
+      }
+
+      if (operation IS "mod") {
+         double left_number = left_value.to_number();
+         double right_number = right_value.to_number();
+         double result = std::fmod(left_number, right_number);
+         return XPathValue(result);
+      }
+
+      if (operation IS "|") {
+         auto left_nodes = left_value.to_node_set();
+         auto right_nodes = right_value.to_node_set();
+
+         std::unordered_set<XMLTag *> seen;
+         seen.reserve(left_nodes.size() + right_nodes.size());
+
+         std::vector<XMLTag *> combined;
+         combined.reserve(left_nodes.size() + right_nodes.size());
+
+         for (auto *node : left_nodes) {
+            if (!seen.insert(node).second) continue;
+            combined.push_back(node);
+         }
+
+         for (auto *node : right_nodes) {
+            if (!seen.insert(node).second) continue;
+            combined.push_back(node);
+         }
+
+         return XPathValue(combined);
+      }
+
+      expression_unsupported = true;
+      return XPathValue();
    }
 
+   expression_unsupported = true;
    return XPathValue();
 }
 
@@ -680,6 +1081,7 @@ XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNod
    for (size_t index = 0; index < FuncNode->child_count(); ++index) {
       auto *argument_node = FuncNode->get_child(index);
       args.push_back(evaluate_expression(argument_node, CurrentPrefix));
+      if (expression_unsupported) return XPathValue();
    }
 
    return function_library.call_function(function_name, args, context);
@@ -847,10 +1249,8 @@ bool SimpleXPathEvaluator::match_tag(const PathInfo &Info, uint32_t CurrentPrefi
             if (pos != std::string::npos) {
                auto num_start = pos + 11; // Length of "position()="
                if (num_start < Info.attrib_value.length()) {
-                  int expected_position = std::stoi(Info.attrib_value.substr(num_start));
-                  // The position context is handled in evaluate_step, but for string-based
-                  // we need to manually track position. This is a limitation we'll note.
-                  // We'll handle this in evaluate_step with position tracking
+                  // Position context is handled in evaluate_step; the string-based fallback
+                  // path cannot evaluate the predicate accurately, so force failure.
                   return false;
                }
             }
