@@ -7,6 +7,7 @@ This document outlines the staged work needed to replace the legacy string-based
 ## Progress Log
 - **Phase 1 (AST Location Path Traversal Backbone)** – Basic traversal implemented in `xpath_evaluator.cpp` (child, self, descendant-or-self axes, callback plumbing). Attribute axis support remains deferred per plan TODO.
 - **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback.
+- **Phase 3 (Function & Expression Wiring)** – Parser/expression scaffolding landed (`XPathParser` emits `BinaryOp` nodes; `evaluate_expression` / `evaluate_function_call` stubs exist) but everything still defers to the legacy evaluator whenever a predicate requires function or boolean handling.
 
 ---
 
@@ -97,29 +98,49 @@ This document outlines the staged work needed to replace the legacy string-based
 ## Phase 3 – Function & Expression Wiring
 **Goal:** Feed correct value types (especially node sets) into the XPath function library so expressions like `count(item)` evaluate properly.
 
+### Status Snapshot
+- `SimpleXPathEvaluator::evaluate_expression` / `evaluate_function_call` currently return empty `XPathValue` instances, so any predicate that reaches this path reports `ERR::Failed` and triggers the legacy fallback.
+- `XPathParser` already builds `BinaryOp` trees for `and`/`or`/`=`/`!=` tokens, but bare identifiers are still emitted as `Literal` nodes; the evaluator therefore never sees a `Path` / node-set primary when parsing `count(item)`.
+- `XPathValue` and `XPathFunctionLibrary` scaffolding exists (`xpath_functions.cpp`), with core conversions implemented and secondary functions (`substring-before`, `translate`, etc.) still tagged with TODO comments for later refinement.
+
 ### Tasks
-1. **Node-Set Primary Expressions**
-   - Teach `parse_primary_expression` / `evaluate_expression` to recognise path expressions and evaluate them to node sets rather than string literals.
-   - Introduce helper functions to execute sub-paths within the current context safely.
+1. **Parser adjustments for node-set operands**
+   - Extend `XPathParser::parse_primary_expr` (and related helpers) so that identifiers followed by path separators (`/`, `//`, `::`, predicates) are wrapped in a `XPathNodeType::Path` child rather than a raw `Literal`.
+   - When parsing function arguments, ensure `parse_function_call` accepts location paths by delegating to `parse_path_expr` instead of treating them as plain strings; keep TODO notes where grammar coverage remains intentionally partial.
+   - Update unit tests or add debug asserts so we can spot cases where predicates still surface as literal strings (a signal that AST parsing fell back to legacy assumptions).
 
-2. **Function Evaluation Context**
-   - Populate `XPathContext` (`position`, `size`, `context_node`) accurately before invoking library routines.
-   - Ensure the library functions (`count`, `sum`, `starts-with`, etc.) receive properly typed arguments.
+2. **Node-set execution helpers**
+   - Introduce a dedicated helper (e.g., `evaluate_path_expression`) that clones the current cursor/context via `push_cursor_state`/`pop_cursor_state` before running `evaluate_step_sequence` on a nested location path, returning a `std::vector<XMLTag *>`.
+   - Ensure this helper preserves document order and deduplicates nodes as required by XPath 1.0, mirroring the behaviour of the legacy evaluator’s `count()`/`exists()` flows.
+   - Record explicit TODOs if namespace-aware comparisons or attribute projections need extra plumbing so future phases can pick them up.
 
-3. **Arithmetic & Comparison Normalisation**
-   - Handle numeric/string coercion per XPath 1.0 rules.
-   - Address divide-by-zero, NaN, and Infinity semantics similarly to the legacy implementation.
+3. **Expression evaluation core**
+   - Implement `SimpleXPathEvaluator::evaluate_expression` to handle at minimum `Number`, `String`, `Literal`, `Path`, `UnaryOp`, `BinaryOp`, and `FunctionCall` nodes. Leverage `XPathValue` conversions for boolean/numeric coercion rather than ad-hoc casts.
+   - Extend `evaluate_predicate` so any predicate child that is not a numeric literal delegates to `evaluate_expression`, interpreting the resulting `XPathValue` using XPath truthiness rules (node-set → true if non-empty, number → true if 1, etc.). Unsupported node types must still surface `PredicateResult::Unsupported` to activate the fallback.
+   - Add guards to prevent runaway recursion and to guarantee cursor/context stacks unwind on all control-flow paths.
 
-4. **Union & Set Operations**
-   - Verify unions (`|`) and boolean operations on node sets behave consistently.
+4. **Function invocation pipeline**
+   - Flesh out `SimpleXPathEvaluator::evaluate_function_call`: evaluate each argument via `evaluate_expression`, pass them to `function_library.call_function`, and propagate the current `XPathContext` (`context_node`, `position`, `size`).
+   - Audit existing `XPathFunctionLibrary` entries to ensure high-priority functions (`count`, `sum`, `string-length`, `boolean`, etc.) return sensible defaults when invoked with malformed arguments. Leave TODO notes on secondary helpers so subsequent phases can prioritise them.
+   - Wire function results back into predicate evaluation (e.g., `[count(item)=3]`, `last()`, `position()`), and confirm we still honour legacy callbacks/attribute extraction semantics.
 
-5. **Testing**
-   - `testFunctionPredicateNodeSets`, `testXPathFunctions`, and arithmetic/operator tests should now pass.
-   - Add new regression tests if edge cases are discovered.
+5. **Comparison, boolean, and arithmetic semantics**
+   - Expand `evaluate_expression` to interpret `BinaryOp` values of `and`, `or`, `=`, `!=`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `div`, and `mod`, following XPath 1.0 conversion rules. Implement short-circuit behaviour for `and`/`or` once boolean operands are available.
+   - Handle `XPathNodeType::UnaryOp` for unary minus and logical negation (in addition to the existing `not()` function), reusing `XPathValue` helpers for conversions.
+   - Explicitly cover divide-by-zero, NaN, and Infinity semantics so `ctest -R xml_xpath` expectations match the legacy path. If behaviour differs from W3C spec, document it inline so reviewers understand the divergence.
+
+6. **Union and node-set hygiene**
+   - Teach the evaluator to process `XPathNodeType::Union` nodes (`|`) by merging node-set results from both operands, removing duplicates, and preserving document order.
+   - Confirm that node-set boolean evaluation aligns with XPath rules when unions feed into predicates (`[count(./item | ./extra)=3]`).
+
+7. **Testing & instrumentation**
+   - Re-enable the disabled sections in `test_xpath_queries.fluid` (`testFunctionPredicateNodeSets`, `testXPathFunctions`, boolean/comparison operator blocks) once their prerequisites pass through the AST path.
+   - Add targeted tests for regression scenarios discovered during development (e.g., nested function calls, multi-step path arguments, zero-length node sets).
+   - Keep verbose logging (`pf::Log`) around the new helpers until the suite is stable so that Phase 4 can diagnose axis issues without reintroducing printf debugging.
 
 ### Exit Criteria
-- All function-related tests in `test_xpath_queries.fluid` (and `test_basic`, etc.) succeed via AST evaluation.
-- No function calls depend on the legacy fallback.
+- All function-related tests in `test_xpath_queries.fluid` (and `test_basic`, etc.) succeed via AST evaluation without dropping to the legacy fallback.
+- No function call or boolean/comparison predicate depends on the string-based evaluator; remaining TODOs are limited to optional XPath 1.0 functions earmarked for later phases.
 
 ---
 
