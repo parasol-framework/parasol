@@ -7,7 +7,7 @@ This document outlines the staged work needed to replace the legacy string-based
 ## Progress Log
 - **Phase 1 (AST Location Path Traversal Backbone)** – Basic traversal implemented in `xpath_evaluator.cpp` (child, self, descendant-or-self axes, callback plumbing). Attribute axis support remains deferred per plan TODO.
 - **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback.
-- **Phase 3 (Function & Expression Wiring)** – Equality comparisons and function calls now flow through `evaluate_expression`, providing node-set arguments to `count()` and similar predicates. Remaining precedence levels (relational, arithmetic, boolean), path expressions, and comprehensive type promotion are still outstanding.
+- **Phase 3 (Function & Expression Wiring)** – Boolean logic, arithmetic, relational comparisons, and path expressions now evaluate through `evaluate_expression`, delivering correctly typed values to functions like `count()` without falling back to the legacy evaluator.
 
 ---
 

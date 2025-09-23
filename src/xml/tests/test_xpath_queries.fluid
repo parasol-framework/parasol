@@ -380,22 +380,20 @@ function testXPathFunctions()
       statement = '<root><item>1</item><item>2</item><item>3</item></root>'
    })
 
-   -- Test position() (should currently fall back to a search error)
    local err, itemId = xml.mtFindTag('/root/item[position()=2]')
    assert(err == ERR_Okay, "/root/item[position()=2] failed")
 
-   -- Test last()
-
-   -- Test position()=last()
-   local err, itemId = xml.mtFindTag('/root/item[position()=last()]')
+   err, itemId = xml.mtFindTag('/root/item[position()=last()]')
    assert(err == ERR_Okay, "/root/item[position()=last()] failed")
 
    err, itemId = xml.mtFindTag('/root/item[last()]')
-   assert(err == ERR_Search, "last() predicate should still be reported as unsupported")
+   assert(err == ERR_Okay, "last() predicate should select the final item")
+   local err2, lastTag = xml.mtGetTag(itemId)
+   assert(err2 == ERR_Okay and lastTag.children[1].attribs[1].value == '3', "last() predicate should locate the third entry")
 
-   -- Test count()
    err, itemId = xml.mtFindTag('/root[count(item)>2]')
-   assert(err == ERR_Search, "count(item)>2 should fail gracefully until AST evaluation is enabled")
+   assert(err == ERR_Okay, "count(item)>2 should succeed when AST evaluation is active")
+   assert(itemId != 0, "count(item)>2 should return a valid node identifier")
 
    -- Test text() node test (XPath 1.0 - not supported yet)
    --local err, itemId = xml.mtFindTag('/root/item[text()="2"]')
@@ -418,49 +416,54 @@ function testNumericPositionPredicates()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 boolean operators (NOT YET SUPPORTED)
 
+-- Test XPath 1.0 boolean operators
 function testBooleanOperators()
    local xml = obj.new("xml", {
       statement = '<root><product price="100" category="electronics"/><product price="50" category="books"/></root>'
    })
 
-   -- Test 'and' operator (XPath 1.0 - not supported yet)
    local err, productId = xml.mtFindTag('/root/product[@price="100" and @category="electronics"]')
-   assert(err != ERR_Okay, "'and' operator should not be supported yet")
+   assert(err == ERR_Okay, "'and' operator should locate the product with matching price and category")
+   local err2, category = xml.mtGetAttrib(productId, 'category')
+   assert(err2 == ERR_Okay and category == 'electronics', "'and' operator should return the electronics product")
 
-   -- Test 'or' operator (XPath 1.0 - not supported yet)
-   local err, productId = xml.mtFindTag('/root/product[@category="books" or @category="electronics"]')
-   assert(err != ERR_Okay, "'or' operator should not be supported yet")
+   err, productId = xml.mtFindTag('/root/product[@category="books" or @category="electronics"]')
+   assert(err == ERR_Okay, "'or' operator should locate a matching product")
+   err2, category = xml.mtGetAttrib(productId, 'category')
+   assert(err2 == ERR_Okay and category == 'electronics', "'or' operator should prioritise the first matching product")
 
-   -- Test 'not()' function (XPath 1.0 - not supported yet)
-   local err, productId = xml.mtFindTag('/root/product[not(@category="books")]')
-   assert(err != ERR_Okay, "'not()' function should not be supported yet")
+   err, productId = xml.mtFindTag('/root/product[not(@category="books")]')
+   assert(err == ERR_Okay, "'not()' should exclude the books category and return the electronics product")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 comparison operators (NOT YET SUPPORTED)
+-- Test XPath 1.0 comparison operators
 
 function testComparisonOperators()
    local xml = obj.new("xml", {
       statement = '<root><item value="10"/><item value="20"/><item value="30"/></root>'
    })
 
-   -- Test greater than operator (XPath 1.0 - not supported yet)
    local err, itemId = xml.mtFindTag('/root/item[@value > 15]')
-   assert(err != ERR_Okay, "Greater than operator should not be supported yet")
+   assert(err == ERR_Okay, "Greater than operator should locate the first item above the threshold")
+   local err2, value = xml.mtGetAttrib(itemId, 'value')
+   assert(err2 == ERR_Okay and value == '20', "@value > 15 should return the item with value 20")
 
-   -- Test less than operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value < 25]')
-   assert(err != ERR_Okay, "Less than operator should not be supported yet")
+   err, itemId = xml.mtFindTag('/root/item[@value < 25]')
+   assert(err == ERR_Okay, "Less than operator should locate an item below the threshold")
+   err2, value = xml.mtGetAttrib(itemId, 'value')
+   assert(err2 == ERR_Okay and value == '10', "@value < 25 should return the item with value 10")
 
-   -- Test greater than or equal operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value >= 20]')
-   assert(err != ERR_Okay, "Greater than or equal operator should not be supported yet")
+   err, itemId = xml.mtFindTag('/root/item[@value >= 20]')
+   assert(err == ERR_Okay, "Greater than or equal operator should locate a matching item")
+   err2, value = xml.mtGetAttrib(itemId, 'value')
+   assert(err2 == ERR_Okay and value == '20', "@value >= 20 should return the item with value 20")
 
-   -- Test not equal operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value != "10"]')
-   assert(err != ERR_Okay, "Not equal operator should not be supported yet")
+   err, itemId = xml.mtFindTag('/root/item[@value != "10"]')
+   assert(err == ERR_Okay, "Not equal operator should locate an item different from the provided value")
+   err2, value = xml.mtGetAttrib(itemId, 'value')
+   assert(err2 == ERR_Okay and value == '20', "@value != 10 should return the first item whose value is not 10")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -482,6 +485,24 @@ function testMathematicalExpressions()
    assert(err == ERR_Okay, 'Multiplication predicate should locate matching item: ' .. mSys.GetErrorMsg(err))
    err2, price = xml.mtGetAttrib(itemId, 'price')
    assert(err2 == ERR_Okay and price == '100', 'Multiplication predicate should return the first item')
+
+   -- Test arithmetic subtraction
+   err, itemId = xml.mtFindTag('/root/item[@price - @tax = 90]')
+   assert(err == ERR_Okay, 'Subtraction predicate should locate matching item: ' .. mSys.GetErrorMsg(err))
+   err2, price = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and price == '100', 'Subtraction predicate should return the first item')
+
+   -- Test arithmetic division
+   err, itemId = xml.mtFindTag('/root/item[@price div 2 = 50]')
+   assert(err == ERR_Okay, 'Division predicate should locate matching item: ' .. mSys.GetErrorMsg(err))
+   err2, price = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and price == '100', 'Division predicate should return the first item')
+
+   -- Test arithmetic modulo
+   err, itemId = xml.mtFindTag('/root/item[@price mod 90 = 10]')
+   assert(err == ERR_Okay, 'Modulo predicate should locate matching item: ' .. mSys.GetErrorMsg(err))
+   err2, price = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and price == '100', 'Modulo predicate should return the first item')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

@@ -89,6 +89,7 @@ class XPathParser {
    XPathToken previous() const;
    bool is_at_end() const;
    void advance();
+   bool is_step_start_token(XPathTokenType type) const;
 
    // Node creation helpers
    std::unique_ptr<XPathNode> create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right);
