@@ -7,6 +7,12 @@
 
 #pragma once
 
+#include <functional>
+#include <map>
+#include <string>
+#include <string_view>
+#include <vector>
+
 //********************************************************************************************************************
 // XPath Value System
 
@@ -64,16 +70,16 @@ using XPathFunction = std::function<XPathValue(const std::vector<XPathValue> &, 
 
 class XPathFunctionLibrary {
    private:
-   std::map<std::string, XPathFunction> functions;
+   std::map<std::string, XPathFunction, std::less<>> functions;
    void register_core_functions();
 
    public:
    XPathFunctionLibrary();
    ~XPathFunctionLibrary() = default;
 
-   bool has_function(const std::string &Name) const;
-   XPathValue call_function(const std::string &Name, const std::vector<XPathValue> &Args, const XPathContext &Context) const;
-   void register_function(const std::string &Name, XPathFunction Func);
+   bool has_function(std::string_view Name) const;
+   XPathValue call_function(std::string_view Name, const std::vector<XPathValue> &Args, const XPathContext &Context) const;
+   void register_function(std::string_view Name, XPathFunction Func);
 
    // Core XPath 1.0 functions
    static XPathValue function_last(const std::vector<XPathValue> &Args, const XPathContext &Context);

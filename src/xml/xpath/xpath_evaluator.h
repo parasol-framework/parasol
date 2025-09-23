@@ -63,7 +63,7 @@ class SimpleXPathEvaluator {
    ERR find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix);
 
    // Helper method to evaluate simple function expressions in string-based evaluation
-   bool evaluate_function_expression(const std::string &Expression);
+   bool evaluate_function_expression(std::string_view Expression);
 
    // Context management for AST evaluation
    void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1);

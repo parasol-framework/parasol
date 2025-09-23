@@ -38,7 +38,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *Contex
    }
 }
 
-AxisType AxisEvaluator::parse_axis_name(const std::string &AxisName) {
+AxisType AxisEvaluator::parse_axis_name(std::string_view AxisName) {
    if (AxisName IS "child") return AxisType::Child;
    else if (AxisName IS "descendant") return AxisType::Descendant;
    else if (AxisName IS "descendant-or-self") return AxisType::DescendantOrSelf;

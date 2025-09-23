@@ -378,7 +378,7 @@ ERR SimpleXPathEvaluator::evaluate_step(std::string_view XPath, PathInfo Info, u
 
    // Check if this predicate contains function calls that need position tracking
    bool has_function_call = false;
-   std::string function_expression;
+   std::string_view function_expression;
    if (!Info.attrib_value.empty()) {
       pf::Log func_log("Function Detection");
       func_log.msg("Checking attrib_value: '%s'", Info.attrib_value.c_str());
@@ -386,7 +386,7 @@ ERR SimpleXPathEvaluator::evaluate_step(std::string_view XPath, PathInfo Info, u
           Info.attrib_value.find("last()") != std::string::npos) {
          has_function_call = true;
          function_expression = Info.attrib_value;
-         func_log.msg("Function call detected: '%s'", function_expression.c_str());
+         func_log.msg("Function call detected: '%.*s'", int(function_expression.size()), function_expression.data());
       }
    }
 
@@ -548,28 +548,34 @@ ERR SimpleXPathEvaluator::evaluate_step(std::string_view XPath, PathInfo Info, u
    else return ERR::Search;
 }
 
-bool SimpleXPathEvaluator::evaluate_function_expression(const std::string &Expression) {
+bool SimpleXPathEvaluator::evaluate_function_expression(std::string_view Expression) {
    // Handle simple function expressions like:
    // "position()=2"
    // "last()"
    // "position()!=1"
 
-   if (Expression.find("position()=") != std::string::npos) {
-      auto pos = Expression.find("position()=");
-      if (pos != std::string::npos) {
-         auto num_start = pos + 11; // Length of "position()="
-         if (num_start < Expression.length()) {
-            int expected_position = std::stoi(Expression.substr(num_start));
-            XPathValue pos_result = function_library.call_function("position", {}, context);
-            return pos_result.to_number() IS expected_position;
+   constexpr std::string_view position_eq = "position()=";
+   if (auto pos = Expression.find(position_eq); pos != std::string_view::npos) {
+      auto num_start = pos + position_eq.size();
+      if (num_start < Expression.size()) {
+         auto number_view = Expression.substr(num_start);
+         while (!number_view.empty() and std::isspace(static_cast<unsigned char>(number_view.front()))) {
+            number_view.remove_prefix(1);
          }
+
+         int expected_position = 0;
+         auto conv = std::from_chars(number_view.data(), number_view.data() + number_view.size(), expected_position);
+         if (conv.ec != std::errc()) return false;
+
+         XPathValue pos_result = function_library.call_function("position", {}, context);
+         return pos_result.to_number() IS expected_position;
       }
    }
    else if (Expression IS "last()") {
       XPathValue last_result = function_library.call_function("last", {}, context);
       return last_result.to_boolean(); // last() itself is truthy
    }
-   else if (Expression.find("last()") != std::string::npos and Expression.find("=") != std::string::npos) {
+   else if (Expression.find("last()") != std::string_view::npos and Expression.find("=") != std::string_view::npos) {
       // Handle expressions like "position()=last()"
       XPathValue pos_result = function_library.call_function("position", {}, context);
       XPathValue last_result = function_library.call_function("last", {}, context);

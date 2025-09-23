@@ -32,10 +32,13 @@
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
+#include <charconv>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <map>
+#include <system_error>
 
 #include "xpath/xpath_ast.h"
 #include "xpath/xpath_functions.h"

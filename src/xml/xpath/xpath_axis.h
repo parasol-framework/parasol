@@ -9,6 +9,7 @@
 
 #include "xpath_ast.h"
 #include <parasol/modules/xml.h>
+#include <string_view>
 #include <vector>
 
 //********************************************************************************************************************
@@ -67,7 +68,7 @@ class AxisEvaluator {
    std::vector<XMLTag *> evaluate_axis(AxisType Axis, XMLTag *ContextNode);
 
    // Utility methods
-   static AxisType parse_axis_name(const std::string &AxisName);
+   static AxisType parse_axis_name(std::string_view AxisName);
    static std::string axis_name_to_string(AxisType Axis);
    static bool is_reverse_axis(AxisType Axis);
 };

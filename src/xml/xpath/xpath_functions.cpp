@@ -133,11 +133,11 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("round", function_round);
 }
 
-bool XPathFunctionLibrary::has_function(const std::string &Name) const {
+bool XPathFunctionLibrary::has_function(std::string_view Name) const {
    return functions.find(Name) != functions.end();
 }
 
-XPathValue XPathFunctionLibrary::call_function(const std::string &Name,
+XPathValue XPathFunctionLibrary::call_function(std::string_view Name,
                                                const std::vector<XPathValue> &Args,
                                                const XPathContext &Context) const {
    auto it = functions.find(Name);
@@ -147,8 +147,8 @@ XPathValue XPathFunctionLibrary::call_function(const std::string &Name,
    return XPathValue(); // Return empty boolean for unknown functions
 }
 
-void XPathFunctionLibrary::register_function(const std::string &Name, XPathFunction Func) {
-   functions[Name] = Func;
+void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func) {
+   functions.insert_or_assign(std::string(Name), std::move(Func));
 }
 
 //********************************************************************************************************************
