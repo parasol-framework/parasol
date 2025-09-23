@@ -156,7 +156,7 @@ function testContentMatching()
    -- Wildcard content match
 
    appleCount = 0
-   err, index = xml.mtFindTag('/root/item(=apple*)', function(XML, TagID, Attrib)
+   err, index = xml.mtFindTag('/root/item[=apple*]', function(XML, TagID, Attrib)
       appleCount = appleCount + 1
    end)
    assert(appleCount == 2, "Wildcard content matching should find 2 items, found " .. appleCount)
@@ -588,6 +588,29 @@ function testComplexNestedPredicates()
 
    local err, content = xml.mtGetTag(chapterId)
    assert(err == ERR_Okay, "Should be able to get chapter tag")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Regression: Round bracket predicates are deprecated
+
+function testRoundBracketAlternatives()
+   local xml = obj.new("xml", {
+      statement = '<root><item type="book">Novel</item><item type="magazine">News</item></root>'
+   })
+
+   -- XPath 1.0 requires predicates to use square brackets; round brackets should fail
+   local err, itemId = xml.mtFindTag('/root/item(@type="book")')
+   assert(err == ERR_Search, "Round bracket predicate should be rejected after deprecation")
+
+   err, itemId = xml.mtFindTag('/root/item(="Novel")')
+   assert(err == ERR_Search, "Round bracket content predicate should be rejected")
+
+   -- Square bracket predicate remains supported and should continue to succeed
+   local squareErr, squareId = xml.mtFindTag('/root/item[@type="book"]')
+   assert(squareErr == ERR_Okay, "Square bracket predicate should remain supported")
+
+   local attribErr, typeValue = xml.mtGetAttrib(squareId, 'type')
+   assert(attribErr == ERR_Okay and typeValue == "book", "Square bracket predicate should locate the correct item")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1051,7 +1074,7 @@ return {
       'testXPathFunctions',
       'testMathematicalExpressions', 
       --'testXPathAxes', 
-      --'testUnionOperator', 
+      'testUnionOperator', 
       --'testVariables',
 
       -- Phase 3 infrastructure verification

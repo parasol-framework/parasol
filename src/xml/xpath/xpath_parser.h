@@ -71,7 +71,6 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_axis_specifier();
    std::unique_ptr<XPathNode> parse_node_test();
    std::unique_ptr<XPathNode> parse_predicate();
-   std::unique_ptr<XPathNode> parse_round_predicate();
    std::string parse_predicate_literal();
    std::unique_ptr<XPathNode> parse_abbreviated_step();
    std::unique_ptr<XPathNode> parse_primary_expr();
