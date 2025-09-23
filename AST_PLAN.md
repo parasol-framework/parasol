@@ -95,31 +95,41 @@ This document outlines the staged work needed to replace the legacy string-based
 ---
 
 ## Phase 3 – Function & Expression Wiring
-**Goal:** Feed correct value types (especially node sets) into the XPath function library so expressions like `count(item)` evaluate properly.
+**Goal:** Feed correct value types (especially node sets) into the XPath function library so predicates, boolean logic, and arithmetic/comparison expressions behave exactly like the legacy evaluator.
 
-### Tasks
-1. **Node-Set Primary Expressions**
-   - Teach `parse_primary_expression` / `evaluate_expression` to recognise path expressions and evaluate them to node sets rather than string literals.
-   - Introduce helper functions to execute sub-paths within the current context safely.
+### Detailed Workstreams
+1. **Parser & AST Enhancements**
+   - Extend the expression grammar to build full binary/unary operator trees:
+     - wire the existing `parse_relational_expr`, `parse_additive_expr`, `parse_multiplicative_expr`, `parse_unary_expr`, and `parse_path_expr` stubs so the precedence chain becomes `or → and → equality → relational → additive → multiplicative → unary → primary`.
+     - Allow `path` expressions (absolute, relative, abbreviations, union) to surface as primary nodes so predicates like `[count(child::*) > 0]` generate the correct AST.
+     - Preserve round-bracket groupings `( … )`, unary minus, and the XPath keywords `div`, `mod`, and `not` as dedicated tokens so evaluation can recognise intent without relying on string matching.
 
-2. **Function Evaluation Context**
-   - Populate `XPathContext` (`position`, `size`, `context_node`) accurately before invoking library routines.
-   - Ensure the library functions (`count`, `sum`, `starts-with`, etc.) receive properly typed arguments.
+2. **Expression Evaluation Engine**
+   - Implement `evaluate_expression` (and helpers such as `evaluate_binary_expression`, `evaluate_unary_expression`, `evaluate_path_expression`) in `xpath_evaluator.cpp` to:
+     - execute sub-paths inside predicates/functions using the AST traversal stack (producing node-set `XPathValue`s without disturbing the caller’s cursor state).
+     - perform XPath 1.0 type promotion rules for booleans, numbers, strings, and node sets when evaluating comparison or arithmetic operators.
+     - honour short-circuit evaluation for `and`/`or`, `not()` semantics, and division/modulo special cases (e.g., divide-by-zero → IEEE Inf/NaN behaviour matching the legacy evaluator).
 
-3. **Arithmetic & Comparison Normalisation**
-   - Handle numeric/string coercion per XPath 1.0 rules.
-   - Address divide-by-zero, NaN, and Infinity semantics similarly to the legacy implementation.
+3. **Function Invocation & Context**
+   - Teach `evaluate_function_call` to evaluate argument expressions through the new pipeline, populate `XPathContext` (`context_node`, `position`, `size`) for each invocation, and convert node-set arguments to the forms expected by `xpath_functions.cpp`.
+   - Add helper hooks (e.g., `evaluate_argument_list`) to ensure functions like `count()` and `starts-with()` receive fully typed `XPathValue` objects.
 
-4. **Union & Set Operations**
-   - Verify unions (`|`) and boolean operations on node sets behave consistently.
+4. **Predicate Integration**
+   - Update `evaluate_predicate` so unsupported branches now pipe into `evaluate_expression`, leveraging the new evaluation engine for comparisons (`=`, `!=`, `<`, `<=`, `>`, `>=`) and boolean combinations (`and`, `or`, `not`).
+   - Ensure round-bracket predicates `( … )` and arithmetic tests (e.g., `[@price + @tax = 110]`) succeed without delegating to the legacy evaluator.
 
-5. **Testing**
-   - `testFunctionPredicateNodeSets`, `testXPathFunctions`, and arithmetic/operator tests should now pass.
-   - Add new regression tests if edge cases are discovered.
+5. **Node-Set Set Operations**
+   - Implement union (`|`) and boolean tests on node sets via the AST pathway, including document-order deduplication where required.
+   - Provide stable helpers to merge node-set results returned by sub-expressions.
+
+6. **Testing & Validation**
+   - Primary suite: `ctest --build-config Release --test-dir build/agents -R xml_xpath` should pass end-to-end with only the known arithmetic tests still gating future work (if any remain).
+   - Add targeted regression cases (Fluid-level) for arithmetic predicates, nested function calls, and node-set unions if gaps are discovered while implementing the above.
 
 ### Exit Criteria
-- All function-related tests in `test_xpath_queries.fluid` (and `test_basic`, etc.) succeed via AST evaluation.
-- No function calls depend on the legacy fallback.
+- AST evaluator executes function calls, boolean logic, and arithmetic/comparison predicates without falling back to the legacy code path.
+- `xml_xpath` and `xml_manipulation` tests that depend on function/arithmetics (e.g., `testFunctionPredicateNodeSets`, `testXPathFunctions`, `testMathematicalExpressions`) pass via the AST evaluator using the agent build.
+- The legacy string evaluator is no longer invoked for expression-only predicates (still present for future phases involving unsupported axes).
 
 ---
 

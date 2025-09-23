@@ -258,14 +258,53 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    bool is_last_step = (StepIndex + 1 >= Steps.size());
 
    for (auto *context_node : ContextNodes) {
-      auto candidates = dispatch_axis(context_node);
-      size_t total_candidates = candidates.size();
-      size_t position = 0;
+      auto axis_candidates = dispatch_axis(context_node);
 
-      for (auto *candidate : candidates) {
-         position++;
+      // Filter by node test first so only viable candidates remain
+      std::vector<XMLTag *> filtered;
+      filtered.reserve(axis_candidates.size());
 
+      for (auto *candidate : axis_candidates) {
          if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
+         filtered.push_back(candidate);
+      }
+
+      if (filtered.empty()) {
+         continue;
+      }
+
+      // Apply predicates sequentially, updating the candidate list each time
+      for (auto *predicate_node : predicate_nodes) {
+         std::vector<XMLTag *> passed;
+         passed.reserve(filtered.size());
+
+         for (size_t index = 0; index < filtered.size(); ++index) {
+            auto *candidate = filtered[index];
+            push_context(candidate, index + 1, filtered.size());
+
+            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+            pop_context();
+
+            if (predicate_result IS PredicateResult::Unsupported) {
+               return ERR::Failed;
+            }
+
+            if (predicate_result IS PredicateResult::Match) {
+               passed.push_back(candidate);
+            }
+         }
+
+         filtered.swap(passed);
+
+         if (filtered.empty()) break;
+      }
+
+      if (filtered.empty()) continue;
+
+      for (size_t index = 0; index < filtered.size(); ++index) {
+         auto *candidate = filtered[index];
+
+         push_context(candidate, index + 1, filtered.size());
 
          push_context(candidate, position, total_candidates);
 
@@ -342,7 +381,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
          push_cursor_state();
 
-         if (candidate) {
+        if (candidate) {
             xml->CursorTags = &candidate->Children;
             xml->Cursor = xml->CursorTags->begin();
          }
@@ -445,7 +484,6 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
       auto conv = std::from_chars(expression->value.data(), expression->value.data() + expression->value.size(), expected_position);
       if (conv.ec != std::errc()) return PredicateResult::Unsupported;
       if (expected_position < 1) return PredicateResult::NoMatch;
-
       return (context.position IS size_t(expected_position)) ? PredicateResult::Match : PredicateResult::NoMatch;
    }
 
