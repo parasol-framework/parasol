@@ -260,47 +260,51 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    for (auto *context_node : ContextNodes) {
       auto axis_candidates = dispatch_axis(context_node);
 
-      // Filter candidates by node test first so position/size only count matches
-      struct candidate_entry {
-         XMLTag *tag;
-      };
-
-      std::vector<candidate_entry> filtered;
+      // Filter by node test first so only viable candidates remain
+      std::vector<XMLTag *> filtered;
       filtered.reserve(axis_candidates.size());
 
       for (auto *candidate : axis_candidates) {
          if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
-         filtered.push_back({ candidate });
+         filtered.push_back(candidate);
       }
 
       if (filtered.empty()) {
          continue;
       }
 
-      for (size_t index = 0; index < filtered.size(); ++index) {
-         auto *candidate = filtered[index].tag;
+      // Apply predicates sequentially, updating the candidate list each time
+      for (auto *predicate_node : predicate_nodes) {
+         std::vector<XMLTag *> passed;
+         passed.reserve(filtered.size());
 
-         push_context(candidate, index + 1, filtered.size());
+         for (size_t index = 0; index < filtered.size(); ++index) {
+            auto *candidate = filtered[index];
+            push_context(candidate, index + 1, filtered.size());
 
-         bool predicates_match = true;
-
-         for (auto *predicate_node : predicate_nodes) {
             auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+            pop_context();
+
             if (predicate_result IS PredicateResult::Unsupported) {
-               pop_context();
                return ERR::Failed;
             }
 
-            if (predicate_result IS PredicateResult::NoMatch) {
-               predicates_match = false;
-               break;
+            if (predicate_result IS PredicateResult::Match) {
+               passed.push_back(candidate);
             }
          }
 
-         if (!predicates_match) {
-            pop_context();
-            continue;
-         }
+         filtered.swap(passed);
+
+         if (filtered.empty()) break;
+      }
+
+      if (filtered.empty()) continue;
+
+      for (size_t index = 0; index < filtered.size(); ++index) {
+         auto *candidate = filtered[index];
+
+         push_context(candidate, index + 1, filtered.size());
 
          if (is_last_step) {
             if (!candidate) {
@@ -353,9 +357,9 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
          std::vector<XMLTag *> child_context;
          child_context.push_back(candidate);
 
-         push_cursor_state();
+        push_cursor_state();
 
-         if (candidate) {
+        if (candidate) {
             xml->CursorTags = &candidate->Children;
             xml->Cursor = xml->CursorTags->begin();
          }
