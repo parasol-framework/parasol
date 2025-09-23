@@ -540,7 +540,6 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
               const std::string &content = first_child.Attribs[0].Value;
               if (wildcard_value) {
                   auto match = pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
-                  std::fprintf(stderr, "content-equals candidate %d expected=%s content='%s' match=%d\n", candidate->ID, expected.c_str(), content.c_str(), int(match));
                   return match;
               }
               else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
