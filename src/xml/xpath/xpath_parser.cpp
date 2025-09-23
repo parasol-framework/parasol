@@ -407,12 +407,19 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
       step->add_child(std::move(node_test));
    }
 
-   // Parse predicates
-   while (check(XPathTokenType::LBRACKET)) {
-      auto predicate = parse_predicate();
-      if (predicate) {
-         step->add_child(std::move(predicate));
+   // Parse predicates (square brackets and round brackets)
+   while (true) {
+      if (check(XPathTokenType::LBRACKET)) {
+         auto predicate = parse_predicate();
+         if (predicate) step->add_child(std::move(predicate));
+         else break;
       }
+      else if (check(XPathTokenType::LPAREN)) {
+         auto predicate = parse_round_predicate();
+         if (predicate) step->add_child(std::move(predicate));
+         else break;
+      }
+      else break;
    }
 
    return step;
@@ -456,9 +463,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
    else if (check(XPathTokenType::EQUALS)) {
       // Content predicate [=value]
       advance(); // consume =
-      if (check(XPathTokenType::STRING) or check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::NUMBER)) {
-         std::string content = peek().value;
-         advance();
+      auto content = parse_predicate_literal();
+      if (!content.empty()) {
          auto content_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "content-equals");
          content_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, content));
          predicate->add_child(std::move(content_test));
@@ -482,14 +488,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
          }
 
          // If '=' follows, parse value comparison, else treat as existence test
-         if (match(XPathTokenType::EQUALS) and
-             (check(XPathTokenType::STRING) or check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::NUMBER))) {
-            std::string attr_value = peek().value;
-            advance();
-            auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-equals");
-            attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
-            attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_value));
-            predicate->add_child(std::move(attr_test));
+         if (match(XPathTokenType::EQUALS)) {
+            auto attr_value = parse_predicate_literal();
+            if (!attr_value.empty()) {
+               auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-equals");
+               attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
+               attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_value));
+               predicate->add_child(std::move(attr_test));
+            }
          } else {
             auto attr_exists = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-exists");
             attr_exists->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
@@ -507,6 +513,58 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
 
    match(XPathTokenType::RBRACKET); // consume closing bracket
    return predicate;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_round_predicate() {
+   if (!match(XPathTokenType::LPAREN)) return nullptr;
+
+   auto predicate = std::make_unique<XPathNode>(XPathNodeType::Predicate);
+
+   if (check(XPathTokenType::NUMBER)) {
+      std::string index = peek().value;
+      advance();
+      predicate->add_child(std::make_unique<XPathNode>(XPathNodeType::Number, index));
+   }
+   else if (check(XPathTokenType::EQUALS)) {
+      advance();
+      auto content = parse_predicate_literal();
+      if (!content.empty()) {
+         auto content_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "content-equals");
+         content_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, content));
+         predicate->add_child(std::move(content_test));
+      }
+   }
+   else {
+      auto expression = parse_expr();
+      if (expression) predicate->add_child(std::move(expression));
+   }
+
+   match(XPathTokenType::RPAREN);
+   return predicate;
+}
+
+std::string XPathParser::parse_predicate_literal() {
+   std::string value;
+
+   if (check(XPathTokenType::STRING)) {
+      value = peek().value;
+      advance();
+      return value;
+   }
+
+   if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::NUMBER)) {
+      value = peek().value;
+      advance();
+
+      while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::WILDCARD)) {
+         value += '*';
+         advance();
+      }
+
+      return value;
+   }
+
+   return value;
 }
 
 // Simplified expression parsing for core functionality

@@ -525,25 +525,27 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          return PredicateResult::NoMatch;
       }
 
-      if (operation IS "content-equals") {
-         if (expression->child_count() IS 0) return PredicateResult::Unsupported;
+     if (operation IS "content-equals") {
+        if (expression->child_count() IS 0) return PredicateResult::Unsupported;
 
-         const XPathNode *value_node = expression->get_child(0);
-         if (!value_node) return PredicateResult::Unsupported;
+        const XPathNode *value_node = expression->get_child(0);
+        if (!value_node) return PredicateResult::Unsupported;
 
-         const std::string &expected = value_node->value;
-         bool wildcard_value = expected.find('*') != std::string::npos;
+        const std::string &expected = value_node->value;
+        bool wildcard_value = expected.find('*') != std::string::npos;
 
-         if (!candidate->Children.empty()) {
-            auto &first_child = candidate->Children[0];
-            if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
-               const std::string &content = first_child.Attribs[0].Value;
-               if (wildcard_value) {
-                  return pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
-               }
-               else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
-            }
-         }
+        if (!candidate->Children.empty()) {
+           auto &first_child = candidate->Children[0];
+           if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
+              const std::string &content = first_child.Attribs[0].Value;
+              if (wildcard_value) {
+                  auto match = pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
+                  std::fprintf(stderr, "content-equals candidate %d expected=%s content='%s' match=%d\n", candidate->ID, expected.c_str(), content.c_str(), int(match));
+                  return match;
+              }
+              else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
+           }
+        }
 
          return PredicateResult::NoMatch;
       }
