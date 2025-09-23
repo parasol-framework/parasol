@@ -614,12 +614,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_and_expr() {
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_equality_expr() {
-   auto left = parse_primary_expr();
+   auto left = parse_relational_expr();
 
    while (check(XPathTokenType::EQUALS) or check(XPathTokenType::NOT_EQUALS)) {
       XPathToken op = peek();
       advance();
-      auto right = parse_primary_expr();
+      auto right = parse_relational_expr();
       left = create_binary_op(std::move(left), op, std::move(right));
    }
 
@@ -643,9 +643,48 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
          return parse_function_call();
       }
 
+      // Check if this looks like a relative path expression (identifier followed by axis separator, slash, etc.)
+      bool looks_like_path = false;
+      if (current_token + 1 < tokens.size()) {
+         auto next_type = tokens[current_token + 1].type;
+         if (next_type IS XPathTokenType::AXIS_SEPARATOR or
+             next_type IS XPathTokenType::SLASH or
+             next_type IS XPathTokenType::DOUBLE_SLASH or
+             next_type IS XPathTokenType::LBRACKET) {
+            looks_like_path = true;
+         }
+      }
+
+      // For identifiers that could be element names (like 'item'), treat them as relative path expressions
+      // unless they're inside a string context. This allows count(item) to work correctly.
+      if (looks_like_path or true) {  // Always treat identifiers as potential paths in expressions
+         // Parse as a relative path expression
+         return parse_path_expr();
+      }
+
       std::string value = peek().value;
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
+   }
+   else if (check(XPathTokenType::SLASH) or check(XPathTokenType::DOUBLE_SLASH)) {
+      // Absolute path expression
+      return parse_path_expr();
+   }
+   else if (check(XPathTokenType::DOT) or check(XPathTokenType::DOUBLE_DOT)) {
+      // Abbreviated path expression
+      return parse_path_expr();
+   }
+   else if (check(XPathTokenType::AT)) {
+      // Attribute axis path expression
+      return parse_path_expr();
+   }
+   else if (check(XPathTokenType::LPAREN)) {
+      advance(); // consume '('
+      auto expr = parse_expr();
+      if (!match(XPathTokenType::RPAREN)) {
+         report_error("Expected ')' after expression");
+      }
+      return expr;
    }
 
    return nullptr;
@@ -682,18 +721,60 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call() {
 // Stubs for remaining grammar rules - implement as needed for AST_PLAN.md phases
 
 std::unique_ptr<XPathNode> XPathParser::parse_relational_expr() {
-   return parse_primary_expr();
+   auto left = parse_additive_expr();
+
+   while (check(XPathTokenType::LESS_THAN) or check(XPathTokenType::LESS_EQUAL) or
+          check(XPathTokenType::GREATER_THAN) or check(XPathTokenType::GREATER_EQUAL)) {
+      XPathToken op = peek();
+      advance();
+      auto right = parse_additive_expr();
+      left = create_binary_op(std::move(left), op, std::move(right));
+   }
+
+   return left;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_additive_expr() {
-   return parse_primary_expr();
+   auto left = parse_multiplicative_expr();
+
+   while (check(XPathTokenType::PLUS) or check(XPathTokenType::MINUS)) {
+      XPathToken op = peek();
+      advance();
+      auto right = parse_multiplicative_expr();
+      left = create_binary_op(std::move(left), op, std::move(right));
+   }
+
+   return left;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_multiplicative_expr() {
-   return parse_primary_expr();
+   auto left = parse_unary_expr();
+
+   while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::DIVIDE) or check(XPathTokenType::MODULO)) {
+      XPathToken op = peek();
+      advance();
+      auto right = parse_unary_expr();
+      left = create_binary_op(std::move(left), op, std::move(right));
+   }
+
+   return left;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() {
+   if (check(XPathTokenType::MINUS)) {
+      XPathToken op = peek();
+      advance();
+      auto operand = parse_unary_expr();
+      return create_unary_op(op, std::move(operand));
+   }
+
+   if (check(XPathTokenType::NOT)) {
+      XPathToken op = peek();
+      advance();
+      auto operand = parse_unary_expr();
+      return create_unary_op(op, std::move(operand));
+   }
+
    return parse_primary_expr();
 }
 
@@ -706,7 +787,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_path_expr() {
-   return parse_location_path();
+   // For expressions, wrap the location path in a Path node to distinguish it from top-level location paths
+   auto path_expr = std::make_unique<XPathNode>(XPathNodeType::Path);
+   auto location_path = parse_location_path();
+   if (location_path) {
+      path_expr->add_child(std::move(location_path));
+   }
+   return path_expr;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_absolute_location_path() {

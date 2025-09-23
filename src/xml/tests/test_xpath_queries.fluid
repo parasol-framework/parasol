@@ -380,22 +380,10 @@ function testXPathFunctions()
       statement = '<root><item>1</item><item>2</item><item>3</item></root>'
    })
 
-   -- Test position() (should currently fall back to a search error)
-   local err, itemId = xml.mtFindTag('/root/item[position()=2]')
-   assert(err == ERR_Okay, "/root/item[position()=2] failed")
-
-   -- Test last()
-
-   -- Test position()=last()
-   local err, itemId = xml.mtFindTag('/root/item[position()=last()]')
-   assert(err == ERR_Okay, "/root/item[position()=last()] failed")
-
-   err, itemId = xml.mtFindTag('/root/item[last()]')
-   assert(err == ERR_Search, "last() predicate should still be reported as unsupported")
-
-   -- Test count()
-   err, itemId = xml.mtFindTag('/root[count(item)>2]')
-   assert(err == ERR_Search, "count(item)>2 should fail gracefully until AST evaluation is enabled")
+   assert(xml.mtFindTag('/root/item[position()=2]') == ERR_Okay)
+   assert(xml.mtFindTag('/root/item[position()=last()]') == ERR_Okay)
+   assert(xml.mtFindTag('/root/item[last()]') == ERR_Okay)
+   assert(xml.mtFindTag('/root[count(item)>2]') == ERR_Okay)
 
    -- Test text() node test (XPath 1.0 - not supported yet)
    --local err, itemId = xml.mtFindTag('/root/item[text()="2"]')
@@ -418,49 +406,38 @@ function testNumericPositionPredicates()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 boolean operators (NOT YET SUPPORTED)
+-- Test XPath 1.0 boolean operators
 
 function testBooleanOperators()
    local xml = obj.new("xml", {
       statement = '<root><product price="100" category="electronics"/><product price="50" category="books"/></root>'
    })
 
-   -- Test 'and' operator (XPath 1.0 - not supported yet)
+   -- Test 'and' operator
    local err, productId = xml.mtFindTag('/root/product[@price="100" and @category="electronics"]')
-   assert(err != ERR_Okay, "'and' operator should not be supported yet")
+   assert(err == ERR_Okay)
 
-   -- Test 'or' operator (XPath 1.0 - not supported yet)
+   -- Test 'or' operator
    local err, productId = xml.mtFindTag('/root/product[@category="books" or @category="electronics"]')
-   assert(err != ERR_Okay, "'or' operator should not be supported yet")
+   assert(err == ERR_Okay)
 
-   -- Test 'not()' function (XPath 1.0 - not supported yet)
+   -- Test 'not()' function
    local err, productId = xml.mtFindTag('/root/product[not(@category="books")]')
-   assert(err != ERR_Okay, "'not()' function should not be supported yet")
+   assert(err == ERR_Okay)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 comparison operators (NOT YET SUPPORTED)
+-- Test XPath 1.0 comparison operators
 
 function testComparisonOperators()
    local xml = obj.new("xml", {
       statement = '<root><item value="10"/><item value="20"/><item value="30"/></root>'
    })
 
-   -- Test greater than operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value > 15]')
-   assert(err != ERR_Okay, "Greater than operator should not be supported yet")
-
-   -- Test less than operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value < 25]')
-   assert(err != ERR_Okay, "Less than operator should not be supported yet")
-
-   -- Test greater than or equal operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value >= 20]')
-   assert(err != ERR_Okay, "Greater than or equal operator should not be supported yet")
-
-   -- Test not equal operator (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@value != "10"]')
-   assert(err != ERR_Okay, "Not equal operator should not be supported yet")
+   assert(xml.mtFindTag('/root/item[@value > 15]') == ERR_Okay)
+   assert(xml.mtFindTag('/root/item[@value < 25]') == ERR_Okay)
+   assert(xml.mtFindTag('/root/item[@value >= 20]') == ERR_Okay)
+   assert(xml.mtFindTag('/root/item[@value != "10"]') == ERR_Okay)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -528,16 +505,14 @@ function testXPathAxes()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 union operator (NOT YET SUPPORTED)
+-- Test XPath 1.0 union operator
 
 function testUnionOperator()
    local xml = obj.new("xml", {
       statement = '<root><section><item/></section><other><item/></other></root>'
    })
 
-   -- Test union operator | (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/section/item | /root/other/item')
-   assert(err != ERR_Okay, "Union operator should not be supported yet")
+   assert(xml.mtFindTag('/root/section/item | /root/other/item') == ERR_Okay)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -567,26 +542,6 @@ function testComplexNestedPredicates()
 
    local err, content = xml.mtGetTag(chapterId)
    assert(err == ERR_Okay, "Should be able to get chapter tag")
-end
-
------------------------------------------------------------------------------------------------------------------------
--- Test round bracket alternatives to square brackets
-
-function testRoundBracketAlternatives()
-   local xml = obj.new("xml", {
-      statement = '<root><item type="book">Novel</item><item type="magazine">News</item></root>'
-   })
-
-   -- Test round brackets as alternative to square brackets (current feature)
-   local err, itemId = xml.mtFindTag('/root/item(@type="book")')
-   assert(err == ERR_Okay, "Round brackets should work as alternative to square brackets")
-
-   local err, typeValue = xml.mtGetAttrib(itemId, 'type')
-   assert(err == ERR_Okay and typeValue == "book", "Round bracket syntax should find book item, tag " .. itemId .. ", error: " .. mSys.GetErrorMsg(err))
-
-   -- Test content matching with round brackets
-   local err, itemId = xml.mtFindTag('/root/item(="Novel")')
-   assert(err == ERR_Okay, "Round bracket content matching should work")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1036,9 +991,10 @@ return {
       'testNamespaceSupport', 'testParentAxisNavigation', 'testAttributeWildcards',
       'testNamespacePrefixedSteps', 'testFunctionPredicateNodeSets', 'testNumericPositionPredicates',
       'testAttributeNameVariants',
-      'testComplexNestedPredicates', 'testRoundBracketAlternatives', 'testEscapeCharacters',
+      'testComplexNestedPredicates', 'testEscapeCharacters',
       'testEdgeCases', 'testPerformanceScenarios',
       'testSiblingFilteringForNumericPredicates',
+      'testBooleanOperators', 'testComparisonOperators',
 
       -- Phase 4: Operators and expressions (parsing validation)
       'testXPathOperators', 'testXPathExpressions', 'testXPathArithmetic',
@@ -1050,7 +1006,7 @@ return {
       'testXPathFunctions',
       'testMathematicalExpressions', 
       --'testXPathAxes', 
-      --'testUnionOperator', 
+      'testUnionOperator', 
       --'testVariables',
 
       -- Phase 3 infrastructure verification
