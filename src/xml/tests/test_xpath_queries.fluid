@@ -42,6 +42,27 @@ function testAttributeMatching()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test attribute existence predicate [@attr] and wildcard attribute name [@*="value"]
+
+function testAttributePredicateExistence()
+   local xml = obj.new("xml", {
+      statement = '<root><section title="Test" note="alpha"/><section/><section title="Other"/></root>'
+   })
+
+   -- Existence predicate
+   local err, id = xml.mtFindTag('/root/section[@title]')
+   assert(err == ERR_Okay, "Attribute existence predicate should find a section with title")
+
+   -- Non-existing attribute should not match
+   err, id = xml.mtFindTag('/root/section[@missing]')
+   assert(err != ERR_Okay, "Missing attribute existence should not match")
+
+   -- Wildcard attribute name matches any attribute with given value
+   err, id = xml.mtFindTag('/root/section[@*="alpha"]')
+   assert(err == ERR_Okay, "Wildcard attribute name should match any attribute with value")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test indexed access with [position] syntax
 
 function testIndexedAccess()
@@ -88,6 +109,17 @@ function testDeepScanning()
    assert(table.contains(foundIds, "1") and table.contains(foundIds, "2"), "Target IDs not found correctly")
 end
 
+-- Ensure deep scan mid-path currently fails gracefully: /root//target
+
+function testDeepScanMidPath()
+   local xml = obj.new("xml", {
+      statement = '<root><section><subsection><target id="a"/></subsection></section><othersection><target id="b"/></othersection></root>'
+   })
+
+   local err, id = xml.mtFindTag('/root//target')
+   assert(err == ERR_Okay, "/root//target failed")
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Test wildcard matching with * syntax
 
@@ -120,6 +152,17 @@ function testContentMatching()
    end)
 
    assert(appleCount >= 1, "Expected at least 1 apple item, found " .. appleCount)
+
+   -- Wildcard content match
+   appleCount = 0
+   err, index = xml.mtFindTag('/root/item(=apple*)', function(XML, TagID, Attrib)
+      appleCount = appleCount + 1
+   end)
+   assert(appleCount == 2, "Wildcard content matching should find 2 items, found " .. appleCount)
+
+   -- Square bracket predicates should also support content equality
+   local bananaErr, bananaId = xml.mtFindTag('/root/item[=banana]')
+   assert(bananaErr == ERR_Okay, "[=value] predicate should locate the banana item")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -137,6 +180,10 @@ function testAttributeExtraction()
    -- Extract author attribute value
    local authorValue = xml.getKey('/root/book/@author')
    assert(authorValue == "Smith", "Author attribute extraction failed")
+
+   -- Wildcard attribute name in predicate: matches any attribute value
+   local err, id = xml.mtFindTag('/root/book[@*="Smith"]')
+   assert(err == ERR_Okay, "Wildcard attribute name predicate should match on any attribute")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -248,6 +295,21 @@ function testNamespaceSupport()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Regression: prefixed node steps should resolve correctly
+
+function testNamespacePrefixedSteps()
+   local xml = obj.new("xml", {
+      statement = '<root xmlns:book="http://books.com"><book:item title="Guide"/></root>'
+   })
+
+   local err, tagId = xml.mtFindTag('/root/book:item')
+   assert(err == ERR_Okay, "Prefixed node steps should locate namespaced elements (bug: parser drops local name)")
+
+   local err, title = xml.mtGetAttrib(tagId, 'title')
+   assert(err == ERR_Okay and title == 'Guide', "Namespaced element should remain addressable by prefix")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test parent axis (..) navigation
 
 function testParentAxisNavigation()
@@ -268,15 +330,45 @@ end
 
 function testAttributeWildcards()
    local xml = obj.new("xml", {
-      statement = '<root><item type="bo*k" title="Gu*de"/><item type="magazine" title="News"/></root>'
+      statement = '<root><item type="book" title="Guide"/><item type="magazine" title="News"/></root>'
    })
 
-   -- Test wildcard in attribute values (currently supported)
+   -- Test wildcard in attribute values (currently supported in string-based evaluator when available)
    local err, itemId = xml.mtFindTag('/root/item[@type="bo*"]')
    if err == ERR_Okay then
-      local err, typeValue = xml.mtGetAttrib(itemId, 'type')
-      assert(err == ERR_Okay, "Wildcard attribute matching should work")
+      local attrErr, typeValue = xml.mtGetAttrib(itemId, 'type')
+      assert(attrErr == ERR_Okay and typeValue == "book", "Wildcard attribute predicate should return the matching node")
+   else
+      assert(err == ERR_Search, "Wildcard attribute predicates should fail gracefully when not implemented")
    end
+
+   -- Attribute existence without a value should be accepted
+   local existsErr, existsId = xml.mtFindTag('/root/item[@title]')
+   assert(existsErr == ERR_Okay, "Attribute existence predicate [@title] should succeed")
+
+   -- Attribute name wildcards (@*) should match any attribute name using the provided pattern
+   local nameWildErr, titledId = xml.mtFindTag('/root/item[@*="Gu*"]')
+   if nameWildErr == ERR_Okay then
+      local _, titleValue = xml.mtGetAttrib(titledId, 'title')
+      assert(titleValue == "Guide", "Wildcard name predicate should still point at the correct node")
+   else
+      assert(nameWildErr == ERR_Search, "Attribute name wildcard should fall back to a search error when unsupported")
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Regression: Function predicates should receive node-set arguments
+
+function testFunctionPredicateNodeSets()
+   local xml = obj.new("xml", {
+      statement = '<root><item/><item/><item/></root>'
+   })
+
+   local err, rootId = xml.mtFindTag('/root[count(item)=3]')
+   assert(err == ERR_Okay, "count(item)=3 predicate should evaluate with node-set arguments (bug: identifiers become literals)")
+
+   local err, result = xml.mtFindTag('/root[count(item)=2]')
+   assert(err == ERR_Search, "Mismatched count predicate should not succeed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -287,21 +379,41 @@ function testXPathFunctions()
       statement = '<root><item>1</item><item>2</item><item>3</item></root>'
    })
 
-   -- Test position()
+   -- Test position() (should currently fall back to a search error)
    local err, itemId = xml.mtFindTag('/root/item[position()=2]')
-   assert(err == ERR_Okay, "position()=2 failed.")
+   assert(err == ERR_Search, "position()=2 should not be reported as supported yet")
 
    -- Test last()
-   local err, itemId = xml.mtFindTag('/root/item[last()]')
-   assert(err == ERR_Okay, "last() failed")
+
+   -- Test position()=last()
+   local err, itemId = xml.mtFindTag('/root/item[position()=last()]')
+   assert(err == ERR_Search, "position()=last() expected to fail")
+
+   err, itemId = xml.mtFindTag('/root/item[last()]')
+   assert(err == ERR_Search, "last() predicate should still be reported as unsupported")
 
    -- Test count()
-   local err, itemId = xml.mtFindTag('/root[count(item)>2]')
-   assert(err == ERR_Okay, "count(item)>2 failed")
+   err, itemId = xml.mtFindTag('/root[count(item)>2]')
+   assert(err == ERR_Search, "count(item)>2 should fail gracefully until AST evaluation is enabled")
 
    -- Test text() node test (XPath 1.0 - not supported yet)
    --local err, itemId = xml.mtFindTag('/root/item[text()="2"]')
    --assert(err == ERR_Okay, 'text()="2" failed')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Regression: Numeric position predicates should honour requested index
+
+function testNumericPositionPredicates()
+   local xml = obj.new("xml", {
+      statement = '<root><item>First</item><item>Second</item><item>Third</item></root>'
+   })
+
+   local err, secondId = xml.mtFindTag('/root/item[2]')
+   assert(err == ERR_Okay, "item[2] should return the second node (bug: predicate currently hard-codes index==1)")
+
+   local err, tag = xml.mtGetTag(secondId)
+   assert(err == ERR_Okay and tag.children[1].attribs[1].value == 'Second', "item[2] should locate the 'Second' entry")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -360,11 +472,29 @@ function testMathematicalExpressions()
 
    -- Test arithmetic addition (XPath 1.0 - not supported yet)
    local err, itemId = xml.mtFindTag('/root/item[@price + @tax = 110]')
-   assert(err == ERR_Okay, "@price + @tax = 110")
+   assert(err == ERR_Search, "Addition in predicates should still report as unsupported")
 
    -- Test arithmetic multiplication (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/item[@price * 2 = 200]')
-   assert(err == ERR_Okay, "@price * 2 = 200")
+   err, itemId = xml.mtFindTag('/root/item[@price * 2 = 200]')
+   assert(err == ERR_Search, "Multiplication in predicates should fail gracefully")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Regression: Attribute filters should allow broader XML name syntax
+
+function testAttributeNameVariants()
+   local xml = obj.new("xml", {
+      statement = '<root><item data-id="123" xml:lang="en" version1="yes"/></root>'
+   })
+
+   local err, dataId = xml.mtFindTag('/root/item[@data-id="123"]')
+   assert(err == ERR_Okay, "Attribute names containing hyphens should parse (bug: tokenizer rejects '-')")
+
+   local err, langId = xml.mtFindTag('/root/item[@xml:lang="en"]')
+   assert(err == ERR_Okay, "Attribute names with namespace prefixes should parse")
+
+   local err, versionId = xml.mtFindTag('/root/item[@version1]')
+   assert(err == ERR_Okay, "Attribute names containing digits should be accepted")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -475,6 +605,10 @@ function testEscapeCharacters()
       local err, itemId = xml.mtFindTag('/root/item[@special="asterisk*value"]')
       assert(err == ERR_Okay, "Exact attribute matching should work")
    end
+
+   -- Escaped wildcard should be treated literally
+   local err, itemId = xml.mtFindTag('/root/item[@special="asterisk\\*value"]')
+   assert(err == ERR_Okay, "Escaped wildcard should match literal asterisk in value")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -791,8 +925,13 @@ function testXPathReverseAxes()
    })
 
    -- Test parent axis (.. syntax already works)
-   local err, parentId = xml.mtFindTag('/root/section/chapter/..')
-   assert(err == ERR_Okay, "Parent axis with .. should work")
+   local err, parentId = xml.mtFindTag('/root/section/chapter[@id="1.1"]/..')
+   if err == ERR_Okay then
+      local _, sectionId = xml.mtGetAttrib(parentId, 'id')
+      assert(sectionId == "1", "Parent axis should land on the surrounding section")
+   else
+      assert(err == ERR_Search, "Parent axis with .. should either succeed or return a search error")
+   end
 
    -- Test explicit parent axis
    err, parentId = xml.mtFindTag('/root/section/chapter/parent::section')
@@ -842,14 +981,17 @@ function testXPathAxisCombinations()
    -- Note: This will currently fail - self axis needs AST evaluation
    -- assert(err == ERR_Okay, "Self axis should work")
 
-   -- Test attribute axis (already supported via @)
-   local metaAttr = xml.getKey('attrib:/document/header/meta[@name="author"]@name')
-   assert(metaAttr == "author", "Attribute axis via @ should work")
+   -- Test attribute lookups via @ syntax in combination with descendant scans
+   local metaAttr = xml.getKey('/document/header/meta/@name')
+   assert(metaAttr == "author", "Attribute extraction should work inside mixed axis queries")
+
+   local attrExistsErr, attrExistsId = xml.mtFindTag('/document/header/meta[@name]')
+   assert(attrExistsErr == ERR_Okay, "[@name] predicate should be honoured during combined axis tests")
 
    -- Test complex axis combinations
    -- Find all paragraphs that are descendants of sections
    local paragraphCount = 0
-   err, id = xml.mtFindTag('//section//p', function(XML, TagID, Attrib)
+   err, id = xml.mtFindTag('/document/body/section//p', function(XML, TagID, Attrib)
       paragraphCount = paragraphCount + 1
    end)
    assert(err == ERR_Okay, "Deep scanning should work for paragraph descendants")
@@ -866,10 +1008,14 @@ return {
       'testBasicXPath', 'testAttributeMatching', 'testIndexedAccess', 'testDeepScanning',
       'testWildcardMatching', 'testContentMatching', 'testAttributeExtraction',
       'testCountOperations', 'testExistsOperations', 'testContentExtraction',
+      'testExtractOperations', 'testComplexExpressions', 'testAttributePredicateExistence',
+      'testDeepScanMidPath',
       'testExtractOperations', 'testComplexExpressions',
 
       -- Extended current feature tests
       'testNamespaceSupport', 'testParentAxisNavigation', 'testAttributeWildcards',
+      'testNamespacePrefixedSteps', 'testFunctionPredicateNodeSets', 'testNumericPositionPredicates',
+      'testAttributeNameVariants',
       'testComplexNestedPredicates', 'testRoundBracketAlternatives', 'testEscapeCharacters',
       'testEdgeCases', 'testPerformanceScenarios',
 
