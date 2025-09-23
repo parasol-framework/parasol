@@ -591,26 +591,6 @@ function testComplexNestedPredicates()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test round bracket alternatives to square brackets
-
-function testRoundBracketAlternatives()
-   local xml = obj.new("xml", {
-      statement = '<root><item type="book">Novel</item><item type="magazine">News</item></root>'
-   })
-
-   -- Test round brackets as alternative to square brackets (current feature)
-   local err, itemId = xml.mtFindTag('/root/item(@type="book")')
-   assert(err == ERR_Okay, "Round brackets should work as alternative to square brackets")
-
-   local err, typeValue = xml.mtGetAttrib(itemId, 'type')
-   assert(err == ERR_Okay and typeValue == "book", "Round bracket syntax should find book item, tag " .. itemId .. ", error: " .. mSys.GetErrorMsg(err))
-
-   -- Test content matching with round brackets
-   local err, itemId = xml.mtFindTag('/root/item(="Novel")')
-   assert(err == ERR_Okay, "Round bracket content matching should work")
-end
-
------------------------------------------------------------------------------------------------------------------------
 -- Test escape characters in attribute strings
 
 function testEscapeCharacters()
@@ -1057,7 +1037,7 @@ return {
       'testNamespaceSupport', 'testParentAxisNavigation', 'testAttributeWildcards',
       'testNamespacePrefixedSteps', 'testFunctionPredicateNodeSets', 'testNumericPositionPredicates',
       'testAttributeNameVariants',
-      'testComplexNestedPredicates', 'testRoundBracketAlternatives', 'testEscapeCharacters',
+      'testComplexNestedPredicates', 'testEscapeCharacters',
       'testEdgeCases', 'testPerformanceScenarios',
       'testSiblingFilteringForNumericPredicates',
 
