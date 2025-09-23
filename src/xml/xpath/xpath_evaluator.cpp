@@ -306,8 +306,6 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
          push_context(candidate, index + 1, filtered.size());
 
-         push_context(candidate, position, total_candidates);
-
          bool predicates_match = true;
 
          for (auto *predicate_node : predicate_nodes) {
