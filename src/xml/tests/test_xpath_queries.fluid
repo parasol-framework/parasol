@@ -471,20 +471,24 @@ function testComparisonOperators()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 mathematical expressions (NOT YET SUPPORTED)
+-- Test XPath 1.0 mathematical expressions
 
 function testMathematicalExpressions()
    local xml = obj.new("xml", {
       statement = '<root><item price="100" tax="10"/><item price="200" tax="20"/></root>'
    })
 
-   -- Test arithmetic addition (XPath 1.0 - not supported yet)
+   -- Test arithmetic addition
    local err, itemId = xml.mtFindTag('/root/item[@price + @tax = 110]')
-   assert(err == ERR_Search, "Addition in predicates should still report as unsupported")
+   assert(err == ERR_Okay, 'Addition predicate should locate matching item: ' .. mSys.GetErrorMsg(err))
+   local err2, price = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and price == '100', 'Addition predicate should return the first item')
 
-   -- Test arithmetic multiplication (XPath 1.0 - not supported yet)
+   -- Test arithmetic multiplication
    err, itemId = xml.mtFindTag('/root/item[@price * 2 = 200]')
-   assert(err == ERR_Search, "Multiplication in predicates should fail gracefully")
+   assert(err == ERR_Okay, 'Multiplication predicate should locate matching item: ' .. mSys.GetErrorMsg(err))
+   err2, price = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and price == '100', 'Multiplication predicate should return the first item')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1014,6 +1018,20 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testSiblingFilteringForNumericPredicates()
+   local xml = obj.new("xml", {
+      statement = '<root><b/><a id="first"/><a id="second"/></root>'
+   })
+
+   local err, secondId = xml.mtFindTag('/root/a[2]')
+   assert(err == ERR_Okay, 'XPath [2] should select the second <a> node: ' .. mSys.GetErrorMsg(err))
+
+   local err2, value = xml.mtGetAttrib(secondId, 'id')
+   assert(err2 == ERR_Okay and value == 'second', 'Second <a> should have been matched')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       -- Current supported features
@@ -1030,6 +1048,7 @@ return {
       'testAttributeNameVariants',
       'testComplexNestedPredicates', 'testRoundBracketAlternatives', 'testEscapeCharacters',
       'testEdgeCases', 'testPerformanceScenarios',
+      'testSiblingFilteringForNumericPredicates',
 
       -- Phase 4: Operators and expressions (parsing validation)
       'testXPathOperators', 'testXPathExpressions', 'testXPathArithmetic',

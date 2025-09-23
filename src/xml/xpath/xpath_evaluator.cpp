@@ -258,16 +258,29 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    bool is_last_step = (StepIndex + 1 >= Steps.size());
 
    for (auto *context_node : ContextNodes) {
-      auto candidates = dispatch_axis(context_node);
-      size_t total_candidates = candidates.size();
-      size_t position = 0;
+      auto axis_candidates = dispatch_axis(context_node);
 
-      for (auto *candidate : candidates) {
-         position++;
+      // Filter candidates by node test first so position/size only count matches
+      struct candidate_entry {
+         XMLTag *tag;
+      };
 
+      std::vector<candidate_entry> filtered;
+      filtered.reserve(axis_candidates.size());
+
+      for (auto *candidate : axis_candidates) {
          if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
+         filtered.push_back({ candidate });
+      }
 
-         push_context(candidate, position, total_candidates);
+      if (filtered.empty()) {
+         continue;
+      }
+
+      for (size_t index = 0; index < filtered.size(); ++index) {
+         auto *candidate = filtered[index].tag;
+
+         push_context(candidate, index + 1, filtered.size());
 
          bool predicates_match = true;
 
