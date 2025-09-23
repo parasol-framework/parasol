@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <limits>
 #include <map>
+#include <memory>
 #include <system_error>
 
 #include "xpath/xpath_ast.h"
