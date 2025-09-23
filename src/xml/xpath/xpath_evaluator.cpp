@@ -306,26 +306,6 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
          push_context(candidate, index + 1, filtered.size());
 
-         bool predicates_match = true;
-
-         for (auto *predicate_node : predicate_nodes) {
-            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
-            if (predicate_result IS PredicateResult::Unsupported) {
-               pop_context();
-               return ERR::Failed;
-            }
-
-            if (predicate_result IS PredicateResult::NoMatch) {
-               predicates_match = false;
-               break;
-            }
-         }
-
-         if (!predicates_match) {
-            pop_context();
-            continue;
-         }
-
          if (is_last_step) {
             if (!candidate) {
                pop_context();
@@ -379,7 +359,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
          push_cursor_state();
 
-        if (candidate) {
+         if (candidate) {
             xml->CursorTags = &candidate->Children;
             xml->Cursor = xml->CursorTags->begin();
          }
@@ -482,6 +462,7 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
       auto conv = std::from_chars(expression->value.data(), expression->value.data() + expression->value.size(), expected_position);
       if (conv.ec != std::errc()) return PredicateResult::Unsupported;
       if (expected_position < 1) return PredicateResult::NoMatch;
+
       return (context.position IS size_t(expected_position)) ? PredicateResult::Match : PredicateResult::NoMatch;
    }
 
@@ -490,6 +471,11 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
       if (!candidate) return PredicateResult::NoMatch;
 
       const std::string &operation = expression->value;
+
+      if ((operation IS "=") or (operation IS "!=")) {
+         auto result_value = evaluate_expression(expression, CurrentPrefix);
+         return result_value.to_boolean() ? PredicateResult::Match : PredicateResult::NoMatch;
+      }
 
       if (operation IS "attribute-exists") {
          if (expression->child_count() IS 0) return PredicateResult::Unsupported;
@@ -544,25 +530,26 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          return PredicateResult::NoMatch;
       }
 
-      if (operation IS "content-equals") {
-         if (expression->child_count() IS 0) return PredicateResult::Unsupported;
+     if (operation IS "content-equals") {
+        if (expression->child_count() IS 0) return PredicateResult::Unsupported;
 
-         const XPathNode *value_node = expression->get_child(0);
-         if (!value_node) return PredicateResult::Unsupported;
+        const XPathNode *value_node = expression->get_child(0);
+        if (!value_node) return PredicateResult::Unsupported;
 
-         const std::string &expected = value_node->value;
-         bool wildcard_value = expected.find('*') != std::string::npos;
+        const std::string &expected = value_node->value;
+        bool wildcard_value = expected.find('*') != std::string::npos;
 
-         if (!candidate->Children.empty()) {
-            auto &first_child = candidate->Children[0];
-            if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
-               const std::string &content = first_child.Attribs[0].Value;
-               if (wildcard_value) {
-                  return pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
-               }
-               else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
-            }
-         }
+        if (!candidate->Children.empty()) {
+           auto &first_child = candidate->Children[0];
+           if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
+              const std::string &content = first_child.Attribs[0].Value;
+              if (wildcard_value) {
+                  auto match = pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
+                  return match;
+              }
+              else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
+           }
+        }
 
          return PredicateResult::NoMatch;
       }
@@ -580,26 +567,121 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
 //********************************************************************************************************************
 // Function and Expression Evaluation (Phase 3 of AST_PLAN.md)
 
-XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
-   // TODO: Phase 3 implementation - expression evaluation with node-set support
+namespace {
 
-   return XPathValue(); // Return empty value for now
+std::vector<XMLTag *> collect_child_nodes(extXML *xml,
+                                          XMLTag *context_node,
+                                          std::string_view name_value)
+{
+   std::vector<XMLTag *> matches;
+
+   if (!xml) return matches;
+
+   objXML::TAGS *children = nullptr;
+   if (context_node) children = &context_node->Children;
+   else children = &xml->Tags;
+
+   if (!children) return matches;
+
+   bool wildcard_name = name_value.find('*') != std::string_view::npos;
+
+   for (auto &child : *children) {
+      if (!child.isTag()) continue;
+
+      bool name_matches;
+      if (wildcard_name) name_matches = pf::wildcmp(name_value, child.name());
+      else name_matches = pf::iequals(name_value, child.name());
+
+      if (!name_matches) continue;
+      matches.push_back(&child);
+   }
+
+   return matches;
+}
+
+bool compare_xpath_values(const XPathValue &left_value,
+                          const XPathValue &right_value)
+{
+   auto left_type = left_value.type;
+   auto right_type = right_value.type;
+
+   if ((left_type IS XPathValueType::Number) or (right_type IS XPathValueType::Number)) {
+      double left_number = left_value.to_number();
+      double right_number = right_value.to_number();
+      return left_number IS right_number;
+   }
+
+   if ((left_type IS XPathValueType::Boolean) or (right_type IS XPathValueType::Boolean)) {
+      bool left_boolean = left_value.to_boolean();
+      bool right_boolean = right_value.to_boolean();
+      return left_boolean IS right_boolean;
+   }
+
+   std::string left_string = left_value.to_string();
+   std::string right_string = right_value.to_string();
+   return pf::iequals(left_string, right_string);
+}
+
+} // namespace
+
+XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
+   if (!ExprNode) return XPathValue();
+
+   if (ExprNode->type IS XPathNodeType::Number) {
+      char *end_ptr = nullptr;
+      double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
+      if ((end_ptr) and (*end_ptr IS '\0')) return XPathValue(value);
+      return XPathValue(0.0);
+   }
+
+   if (ExprNode->type IS XPathNodeType::Literal) {
+      auto nodes = collect_child_nodes(xml, context.context_node, ExprNode->value);
+      if (!nodes.empty()) return XPathValue(nodes);
+      return XPathValue(ExprNode->value);
+   }
+
+   if (ExprNode->type IS XPathNodeType::FunctionCall) {
+      return evaluate_function_call(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::BinaryOp) {
+      if (ExprNode->child_count() < 2) return XPathValue();
+
+      auto *left_node = ExprNode->get_child(0);
+      auto *right_node = ExprNode->get_child(1);
+
+      auto left_value = evaluate_expression(left_node, CurrentPrefix);
+      auto right_value = evaluate_expression(right_node, CurrentPrefix);
+
+      if (ExprNode->value IS "=") {
+         bool equals = compare_xpath_values(left_value, right_value);
+         return XPathValue(equals);
+      }
+
+      if (ExprNode->value IS "!=") {
+         bool equals = compare_xpath_values(left_value, right_value);
+         return XPathValue(!equals);
+      }
+   }
+
+   return XPathValue();
 }
 
 XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
-   // TODO: Phase 3 implementation - function call evaluation using function_library
-
    if (!FuncNode or FuncNode->type != XPathNodeType::FunctionCall) {
       return XPathValue();
    }
 
-   // Extract function name and arguments
    std::string function_name = FuncNode->value;
+
    std::vector<XPathValue> args;
+   args.reserve(FuncNode->child_count());
 
-   // TODO: Evaluate arguments from child nodes
+   for (size_t index = 0; index < FuncNode->child_count(); ++index) {
+      auto *argument_node = FuncNode->get_child(index);
+      args.push_back(evaluate_expression(argument_node, CurrentPrefix));
+   }
 
-   // Call the function library
    return function_library.call_function(function_name, args, context);
 }
 

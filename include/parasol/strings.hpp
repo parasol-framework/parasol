@@ -8,6 +8,7 @@
 #include <concepts>
 #include <ranges>
 #include <span>
+#include <parasol/main.h>
 
 namespace pf {
 
@@ -109,6 +110,8 @@ inline void camelcase(std::string &s) noexcept {
                }
                s++;
             }
+            // If we reached end of string without finding the required character, fail
+            if (s IS String.size()) fail = true;
          }
       }
       else if (Wildcard[w] IS '?') { // Do not compare ? wildcards
@@ -158,9 +161,9 @@ inline void camelcase(std::string &s) noexcept {
       if (w IS Wildcard.size() or Wildcard[w] IS '|') return true;
    }
 
-   if ((w < Wildcard.size()) and (Wildcard[w] IS '*')) return true;
+   while (w < Wildcard.size() && Wildcard[w] == '*') w++;
 
-   return false;
+   return (w == Wildcard.size() && s == String.size());
 }
 
 // A case insensitive alternative to std::string_view.starts_with()
