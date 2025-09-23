@@ -58,6 +58,9 @@ ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t Cur
    pf::Log log(__FUNCTION__);
    log.msg("Enhanced XPath: %.*s", int(XPath.size()), XPath.data());
 
+   // Ensure the document index is up to date so ParentID links are valid during AST traversal
+   (void)xml->getMap();
+
    // Try AST-based parsing first
    XPathTokenizer tokenizer;
    auto tokens = tokenizer.tokenize(XPath);
@@ -208,12 +211,6 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
       }
    }
 
-   if (!predicate_nodes.empty()) {
-      pf::Log log(__FUNCTION__);
-      log.msg("TODO: Predicate support pending Phase 2");
-      return ERR::Failed;
-   }
-
    AxisType axis = AxisType::Child;
    if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
@@ -355,6 +352,18 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
          }
 
          auto result = evaluate_step_sequence(child_context, Steps, StepIndex + 1, CurrentPrefix, Matched);
+
+         if ((result IS ERR::Okay) and (!xml->Callback.defined()) and Matched) {
+            auto matched_tags = xml->CursorTags;
+            auto matched_cursor = xml->Cursor;
+
+            pop_cursor_state();
+            pop_context();
+
+            xml->CursorTags = matched_tags;
+            xml->Cursor = matched_cursor;
+            return ERR::Okay;
+         }
 
          pop_cursor_state();
          pop_context();
