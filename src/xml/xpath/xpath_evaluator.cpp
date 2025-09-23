@@ -306,6 +306,28 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
          push_context(candidate, index + 1, filtered.size());
 
+         push_context(candidate, position, total_candidates);
+
+         bool predicates_match = true;
+
+         for (auto *predicate_node : predicate_nodes) {
+            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+            if (predicate_result IS PredicateResult::Unsupported) {
+               pop_context();
+               return ERR::Failed;
+            }
+
+            if (predicate_result IS PredicateResult::NoMatch) {
+               predicates_match = false;
+               break;
+            }
+         }
+
+         if (!predicates_match) {
+            pop_context();
+            continue;
+         }
+
          if (is_last_step) {
             if (!candidate) {
                pop_context();
@@ -357,7 +379,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
          std::vector<XMLTag *> child_context;
          child_context.push_back(candidate);
 
-        push_cursor_state();
+         push_cursor_state();
 
         if (candidate) {
             xml->CursorTags = &candidate->Children;
@@ -462,7 +484,6 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
       auto conv = std::from_chars(expression->value.data(), expression->value.data() + expression->value.size(), expected_position);
       if (conv.ec != std::errc()) return PredicateResult::Unsupported;
       if (expected_position < 1) return PredicateResult::NoMatch;
-
       return (context.position IS size_t(expected_position)) ? PredicateResult::Match : PredicateResult::NoMatch;
    }
 
