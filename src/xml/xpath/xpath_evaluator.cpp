@@ -270,16 +270,42 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
          if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
 
+         push_context(candidate, position, total_candidates);
+
+         bool predicates_match = true;
+
+         for (auto *predicate_node : predicate_nodes) {
+            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+            if (predicate_result IS PredicateResult::Unsupported) {
+               pop_context();
+               return ERR::Failed;
+            }
+
+            if (predicate_result IS PredicateResult::NoMatch) {
+               predicates_match = false;
+               break;
+            }
+         }
+
+         if (!predicates_match) {
+            pop_context();
+            continue;
+         }
+
          if (is_last_step) {
-            if (!candidate) continue;
+            if (!candidate) {
+               pop_context();
+               continue;
+            }
 
             auto tags = xml->getInsert(candidate, xml->Cursor);
-            if (!tags) continue;
+            if (!tags) {
+               pop_context();
+               continue;
+            }
 
             xml->CursorTags = tags;
             xml->Attrib.clear();
-
-            push_context(candidate, position, total_candidates);
 
             if (!xml->Callback.defined()) {
                Matched = true;
@@ -317,7 +343,6 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
          std::vector<XMLTag *> child_context;
          child_context.push_back(candidate);
 
-         push_context(candidate, position, total_candidates);
          push_cursor_state();
 
          if (candidate) {
@@ -396,10 +421,115 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, XMLTag *Ca
    return false;
 }
 
-bool SimpleXPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
-   // TODO: Phase 2 implementation - predicate evaluation for AST traversal
+SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
+   if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::Predicate)) {
+      return PredicateResult::Unsupported;
+   }
 
-   return false; // Force fallback for now
+   if (PredicateNode->child_count() IS 0) return PredicateResult::Unsupported;
+
+   const XPathNode *expression = PredicateNode->get_child(0);
+   if (!expression) return PredicateResult::Unsupported;
+
+   if (expression->type IS XPathNodeType::Number) {
+      int expected_position = 0;
+      auto conv = std::from_chars(expression->value.data(), expression->value.data() + expression->value.size(), expected_position);
+      if (conv.ec != std::errc()) return PredicateResult::Unsupported;
+      if (expected_position < 1) return PredicateResult::NoMatch;
+
+      return (context.position IS size_t(expected_position)) ? PredicateResult::Match : PredicateResult::NoMatch;
+   }
+
+   if (expression->type IS XPathNodeType::BinaryOp) {
+      auto *candidate = context.context_node;
+      if (!candidate) return PredicateResult::NoMatch;
+
+      const std::string &operation = expression->value;
+
+      if (operation IS "attribute-exists") {
+         if (expression->child_count() IS 0) return PredicateResult::Unsupported;
+
+         const XPathNode *name_node = expression->get_child(0);
+         if (!name_node) return PredicateResult::Unsupported;
+
+         const std::string &attribute_name = name_node->value;
+
+         if (attribute_name IS "*") {
+            return (candidate->Attribs.size() > 1) ? PredicateResult::Match : PredicateResult::NoMatch;
+         }
+
+         for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
+            auto &attrib = candidate->Attribs[index];
+            if (pf::iequals(attrib.Name, attribute_name)) return PredicateResult::Match;
+         }
+
+         return PredicateResult::NoMatch;
+      }
+
+      if (operation IS "attribute-equals") {
+         if (expression->child_count() < 2) return PredicateResult::Unsupported;
+
+         const XPathNode *name_node = expression->get_child(0);
+         const XPathNode *value_node = expression->get_child(1);
+         if ((!name_node) or (!value_node)) return PredicateResult::Unsupported;
+
+         const std::string &attribute_name = name_node->value;
+         const std::string &attribute_value = value_node->value;
+
+         bool wildcard_name = attribute_name.find('*') != std::string::npos;
+         bool wildcard_value = attribute_value.find('*') != std::string::npos;
+
+         for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
+            auto &attrib = candidate->Attribs[index];
+
+            bool name_matches;
+            if (attribute_name IS "*") name_matches = true;
+            else if (wildcard_name) name_matches = pf::wildcmp(attribute_name, attrib.Name);
+            else name_matches = pf::iequals(attrib.Name, attribute_name);
+
+            if (!name_matches) continue;
+
+            bool value_matches;
+            if (wildcard_value) value_matches = pf::wildcmp(attribute_value, attrib.Value);
+            else value_matches = pf::iequals(attrib.Value, attribute_value);
+
+            if (value_matches) return PredicateResult::Match;
+         }
+
+         return PredicateResult::NoMatch;
+      }
+
+      if (operation IS "content-equals") {
+         if (expression->child_count() IS 0) return PredicateResult::Unsupported;
+
+         const XPathNode *value_node = expression->get_child(0);
+         if (!value_node) return PredicateResult::Unsupported;
+
+         const std::string &expected = value_node->value;
+         bool wildcard_value = expected.find('*') != std::string::npos;
+
+         if (!candidate->Children.empty()) {
+            auto &first_child = candidate->Children[0];
+            if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
+               const std::string &content = first_child.Attribs[0].Value;
+               if (wildcard_value) {
+                  return pf::wildcmp(expected, content) ? PredicateResult::Match : PredicateResult::NoMatch;
+               }
+               else return pf::iequals(content, expected) ? PredicateResult::Match : PredicateResult::NoMatch;
+            }
+         }
+
+         return PredicateResult::NoMatch;
+      }
+
+      pf::Log log(__FUNCTION__);
+      log.msg("TODO: Predicate operation '%s' not yet supported", operation.c_str());
+      return PredicateResult::Unsupported;
+   }
+
+   pf::Log log(__FUNCTION__);
+   log.msg("TODO: Predicate node type %d not yet supported", int(expression->type));
+   return PredicateResult::Unsupported;
 }
 
 //********************************************************************************************************************
