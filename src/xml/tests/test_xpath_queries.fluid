@@ -549,16 +549,14 @@ function testXPathAxes()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 union operator (NOT YET SUPPORTED)
+-- Test XPath 1.0 union operator
 
 function testUnionOperator()
    local xml = obj.new("xml", {
       statement = '<root><section><item/></section><other><item/></other></root>'
    })
 
-   -- Test union operator | (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/section/item | /root/other/item')
-   assert(err != ERR_Okay, "Union operator should not be supported yet")
+   assert(xml.mtFindTag('/root/section/item | /root/other/item') == ERR_Okay)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1063,6 +1061,7 @@ return {
       'testComplexNestedPredicates', 'testEscapeCharacters',
       'testEdgeCases', 'testPerformanceScenarios',
       'testSiblingFilteringForNumericPredicates',
+      'testBooleanOperators', 'testComparisonOperators',
 
       -- Phase 4: Operators and expressions (parsing validation)
       'testXPathOperators', 'testXPathExpressions', 'testXPathArithmetic',
