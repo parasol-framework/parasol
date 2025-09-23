@@ -357,9 +357,9 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
          std::vector<XMLTag *> child_context;
          child_context.push_back(candidate);
 
-        push_cursor_state();
+         push_cursor_state();
 
-        if (candidate) {
+         if (candidate) {
             xml->CursorTags = &candidate->Children;
             xml->Cursor = xml->CursorTags->begin();
          }
