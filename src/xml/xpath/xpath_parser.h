@@ -27,18 +27,18 @@ class XPathTokenizer {
    // Token extraction methods
    XPathToken scan_identifier();
    XPathToken scan_number();
-   XPathToken scan_string(char quote_char);
+   XPathToken scan_string(char QuoteChar);
    XPathToken scan_operator();
 
    // Lookahead and utility
    char peek(size_t offset = 0) const;
    void skip_whitespace();
-   bool match(const char* str);
+   bool match(const char *Str);
 
    public:
    XPathTokenizer() : position(0), length(0) {}
 
-   std::vector<XPathToken> tokenize(std::string_view xpath);
+   std::vector<XPathToken> tokenize(std::string_view XPath);
    bool has_more() const;
    char current() const;
    void advance();
@@ -82,23 +82,23 @@ class XPathParser {
    // Utility methods
    bool check(XPathTokenType type) const;
    bool match(XPathTokenType type);
-   XPathToken consume(XPathTokenType type, const std::string& error_message);
+   XPathToken consume(XPathTokenType Type, const std::string &ErrorMessage);
    XPathToken peek() const;
    XPathToken previous() const;
    bool is_at_end() const;
    void advance();
 
    // Node creation helpers
-   std::unique_ptr<XPathNode> create_binary_op(std::unique_ptr<XPathNode> left, const XPathToken& op, std::unique_ptr<XPathNode> right);
-   std::unique_ptr<XPathNode> create_unary_op(const XPathToken& op, std::unique_ptr<XPathNode> operand);
+   std::unique_ptr<XPathNode> create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right);
+   std::unique_ptr<XPathNode> create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand);
 
    public:
    XPathParser() : current_token(0) {}
 
-   std::unique_ptr<XPathNode> parse(const std::vector<XPathToken>& token_list);
+   std::unique_ptr<XPathNode> parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
-   void report_error(const std::string& message);
+   void report_error(const std::string &Message);
    bool has_errors() const;
    std::vector<std::string> get_errors() const;
 

@@ -131,7 +131,7 @@ struct XPathNode {
       children.push_back(std::move(child));
    }
 
-   XPathNode* get_child(size_t index) const {
+   XPathNode * get_child(size_t index) const {
       return index < children.size() ? children[index].get() : nullptr;
    }
 
