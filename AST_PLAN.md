@@ -7,6 +7,7 @@ This document outlines the staged work needed to replace the legacy string-based
 ## Progress Log
 - **Phase 1 (AST Location Path Traversal Backbone)** – Basic traversal implemented in `xpath_evaluator.cpp` (child, self, descendant-or-self axes, callback plumbing). Attribute axis support remains deferred per plan TODO.
 - **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback.
+- **Phase 3 (Function & Expression Wiring)** – Equality comparisons and function calls now flow through `evaluate_expression`, providing node-set arguments to `count()` and similar predicates. Remaining precedence levels (relational, arithmetic, boolean), path expressions, and comprehensive type promotion are still outstanding.
 
 ---
 
@@ -109,6 +110,7 @@ This document outlines the staged work needed to replace the legacy string-based
      - execute sub-paths inside predicates/functions using the AST traversal stack (producing node-set `XPathValue`s without disturbing the caller’s cursor state).
      - perform XPath 1.0 type promotion rules for booleans, numbers, strings, and node sets when evaluating comparison or arithmetic operators.
      - honour short-circuit evaluation for `and`/`or`, `not()` semantics, and division/modulo special cases (e.g., divide-by-zero → IEEE Inf/NaN behaviour matching the legacy evaluator).
+   - ✅ Initial equality comparison and function-call bridging implemented so predicates like `count(item)=3` evaluate via AST.
 
 3. **Function Invocation & Context**
    - Teach `evaluate_function_call` to evaluate argument expressions through the new pipeline, populate `XPathContext` (`context_node`, `position`, `size`) for each invocation, and convert node-set arguments to the forms expected by `xpath_functions.cpp`.
@@ -117,6 +119,7 @@ This document outlines the staged work needed to replace the legacy string-based
 4. **Predicate Integration**
    - Update `evaluate_predicate` so unsupported branches now pipe into `evaluate_expression`, leveraging the new evaluation engine for comparisons (`=`, `!=`, `<`, `<=`, `>`, `>=`) and boolean combinations (`and`, `or`, `not`).
    - Ensure round-bracket predicates `( … )` and arithmetic tests (e.g., `[@price + @tax = 110]`) succeed without delegating to the legacy evaluator.
+   - ✅ Equality predicates (`=`) now dispatch through `evaluate_expression`; other operators still pending.
 
 5. **Node-Set Set Operations**
    - Implement union (`|`) and boolean tests on node sets via the AST pathway, including document-order deduplication where required.
