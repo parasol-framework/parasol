@@ -1,3 +1,14 @@
+//********************************************************************************************************************
+// TODO: Rewrite in-progress - AST evaluator under construction
+// The legacy string-based evaluator is being replaced in stages:
+// 1) Full AST traversal (location paths, descendant handling, callbacks)
+// 2) Predicate parity (indices, attribute filters, Parasol extensions)
+// 3) Function/expression node-set support
+// 4) Axis + node test completion (self/parent/ancestor/etc., namespace-aware)
+// 5) Remove legacy fallback once all behaviours restored
+// Temporary regressions expected; tests referencing unimplemented features may be disabled or adjusted.
+//********************************************************************************************************************
+
 #include <cmath>
 #include <cstdlib>
 #include <limits>
@@ -879,8 +890,8 @@ class XPathTokenizer {
          return parse_string_literal();
       }
 
-      // Numbers
-      if (std::isdigit(ch)) {
+      // Numbers (allow leading dot followed by digit)
+      if (std::isdigit(ch) or (ch IS '.' and position + 1 < input.size() and std::isdigit(input[position + 1]))) {
          return parse_number();
       }
 
@@ -928,9 +939,21 @@ class XPathTokenizer {
       size_t start = position;
       std::string value;
 
-      while (position < input.size() and (std::isdigit(input[position]) or input[position] IS '.')) {
-         value += input[position];
-         position++;
+      bool seen_dot = false;
+      while (position < input.size()) {
+         char current = input[position];
+         if (std::isdigit(current)) {
+            value += current;
+            position++;
+            continue;
+         }
+         if (!seen_dot and current IS '.') {
+            seen_dot = true;
+            value += current;
+            position++;
+            continue;
+         }
+         break;
       }
 
       return XPathToken(XPathTokenType::NUMBER, value, start, position - start);
@@ -1035,6 +1058,19 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_step() {
       auto step = std::make_unique<XPathNode>(XPathNodeType::Step);
 
+      if (peek().type IS XPathTokenType::DOT) {
+         consume();
+         step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "self"));
+         step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+         return step;
+      }
+      if (peek().type IS XPathTokenType::DOUBLE_DOT) {
+         consume();
+         step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "parent"));
+         step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+         return step;
+      }
+
       // Handle explicit axis specifiers (axis::node-test)
       if (peek().type IS XPathTokenType::IDENTIFIER) {
          // Look ahead for axis separator
@@ -1073,23 +1109,17 @@ class XPathParser {
          consume();
          return std::make_unique<XPathNode>(XPathNodeType::Wildcard, "*");
       }
-      else if (peek().type IS XPathTokenType::DOT) {
-         // '.' means self::node()
-         consume();
-         auto step = std::make_unique<XPathNode>(XPathNodeType::Step);
-         step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "self"));
-         step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
-         return step;
-      }
-      else if (peek().type IS XPathTokenType::DOUBLE_DOT) {
-         consume();
-         auto step = std::make_unique<XPathNode>(XPathNodeType::Step);
-         step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "parent"));
-         step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
-         return step;
-      }
       else if (peek().type IS XPathTokenType::IDENTIFIER) {
          std::string name = consume().value;
+
+         if (peek().type IS XPathTokenType::COLON) {
+            if (current + 1 < tokens.size() and tokens[current + 1].type IS XPathTokenType::IDENTIFIER) {
+               consume(); // consume ':'
+               name += ':';
+               name += consume().value;
+            }
+         }
+
          return std::make_unique<XPathNode>(XPathNodeType::NameTest, name);
       }
 
@@ -1112,7 +1142,9 @@ class XPathParser {
       else if (peek().type IS XPathTokenType::EQUALS) {
          // Content predicate [=value]
          consume(); // consume =
-         if (peek().type IS XPathTokenType::STRING) {
+         if (peek().type IS XPathTokenType::STRING or
+             peek().type IS XPathTokenType::IDENTIFIER or
+             peek().type IS XPathTokenType::NUMBER) {
             std::string content = consume().value;
             auto content_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "content-equals");
             content_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, content));
@@ -1125,7 +1157,10 @@ class XPathParser {
          if (peek().type IS XPathTokenType::IDENTIFIER || peek().type IS XPathTokenType::WILDCARD) {
             std::string attr_name = consume().value; // may be "*"
             // If '=' follows, parse value comparison, else treat as existence test
-            if (match(XPathTokenType::EQUALS) and peek().type IS XPathTokenType::STRING) {
+            if (match(XPathTokenType::EQUALS) and
+                (peek().type IS XPathTokenType::STRING or
+                 peek().type IS XPathTokenType::IDENTIFIER or
+                 peek().type IS XPathTokenType::NUMBER)) {
                std::string attr_value = consume().value;
                auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-equals");
                attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
@@ -1493,9 +1528,11 @@ ERR SimpleXPathEvaluator::parse_path(std::string_view XPath, PathInfo &info)
                info.attrib_name = "*";
                len++;
             } else {
-               while ((len < XPath.size()) and (((XPath[len] >= 'a') and (XPath[len] <= 'z')) or
-                      ((XPath[len] >= 'A') and (XPath[len] <= 'Z')) or
-                      (XPath[len] IS '_'))) len++;
+               while (len < XPath.size()) {
+                  char c = XPath[len];
+                  if (std::isalnum(static_cast<unsigned char>(c)) or c IS '_' or c IS '-' or c IS ':' or c IS '.') len++;
+                  else break;
+               }
                info.attrib_name = XPath.substr(info.pos, len - info.pos);
             }
             if (info.attrib_name.empty()) return ERR::Syntax;
@@ -2263,8 +2300,15 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode* node_test, uint32_t 
 
       case XPathNodeType::NameTest:
          {
-            std::string_view tag_name = node_test->value;
+            std::string_view original_name = node_test->value;
+            std::string_view tag_name = original_name;
             bool name_matches = false;
+
+            uint32_t expected_prefix = 0;
+            if (auto colon = tag_name.find(':'); colon != std::string_view::npos) {
+               expected_prefix = pf::strhash(tag_name.substr(0, colon));
+               tag_name = tag_name.substr(colon + 1);
+            }
 
             if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
                std::string_view cursor_local_name = xml->Cursor->name();
@@ -2275,10 +2319,15 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode* node_test, uint32_t 
                   cursor_local_name = cursor_local_name.substr(colon + 1);
                }
 
-               name_matches = pf::iequals(tag_name, cursor_local_name);
+               bool prefix_matches = expected_prefix ? cursor_prefix IS expected_prefix : true;
+               name_matches = prefix_matches and pf::iequals(tag_name, cursor_local_name);
             }
             else {
-               name_matches = pf::iequals(tag_name, xml->Cursor->name());
+               if (expected_prefix != 0) {
+                  name_matches = pf::iequals(original_name, xml->Cursor->name());
+               } else {
+                  name_matches = pf::iequals(tag_name, xml->Cursor->name());
+               }
             }
 
             return name_matches;
@@ -2308,8 +2357,8 @@ bool SimpleXPathEvaluator::evaluate_predicate(const XPathNode* predicate_node, u
          {
             // Index predicate [1], [2], etc.
             int index = std::stoi(child->value);
-            // For now, just accept the first match (simplified)
-            return index IS 1;
+            if (index < 1) return false;
+            return context.position IS static_cast<size_t>(index);
          }
 
       case XPathNodeType::BinaryOp:
