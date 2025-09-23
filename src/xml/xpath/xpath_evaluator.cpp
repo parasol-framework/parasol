@@ -4,27 +4,51 @@
 // Context Management
 
 void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size) {
+   context_stack.push_back(context);
    context.context_node = Node;
    context.position = Position;
    context.size = Size;
 }
 
 void SimpleXPathEvaluator::pop_context() {
-   // TODO: Implement context stack if needed
+   if (context_stack.empty()) {
+      context.context_node = nullptr;
+      context.position = 1;
+      context.size = 1;
+      return;
+   }
+
+   context = context_stack.back();
+   context_stack.pop_back();
 }
 
-void SimpleXPathEvaluator::push_cursor_state(XMLTag *Tag, size_t ChildIndex, size_t TotalChildren) {
-   cursor_stack.push_back({Tag, ChildIndex, TotalChildren});
-   cursor_tags.push_back(Tag);
+void SimpleXPathEvaluator::push_cursor_state() {
+   CursorState state{};
+   state.tags = xml->CursorTags;
+
+   if ((xml->CursorTags) and (xml->CursorTags->begin() != xml->CursorTags->end())) {
+      state.index = size_t(xml->Cursor - xml->CursorTags->begin());
+   }
+   else state.index = 0;
+
+   cursor_stack.push_back(state);
 }
 
 void SimpleXPathEvaluator::pop_cursor_state() {
-   if (!cursor_stack.empty()) {
-      cursor_stack.pop_back();
+   if (cursor_stack.empty()) return;
+
+   auto state = cursor_stack.back();
+   cursor_stack.pop_back();
+
+   xml->CursorTags = state.tags;
+
+   if (!xml->CursorTags) return;
+
+   auto begin = xml->CursorTags->begin();
+   if (state.index >= size_t(xml->CursorTags->size())) {
+      xml->Cursor = xml->CursorTags->end();
    }
-   if (!cursor_tags.empty()) {
-      cursor_tags.pop_back();
-   }
+   else xml->Cursor = begin + state.index;
 }
 
 //********************************************************************************************************************
@@ -84,28 +108,292 @@ ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPr
 }
 
 ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) {
-   // TODO: Phase 1 implementation - location path traversal backbone
-   // This is where the main AST traversal logic will go
+   if ((!PathNode) or (PathNode->type != XPathNodeType::LocationPath)) return ERR::Failed;
 
    pf::Log log(__FUNCTION__);
-   log.msg("evaluate_location_path: Phase 1 - AST Location Path Traversal not yet implemented");
+   log.msg("evaluate_location_path: starting AST traversal");
 
-   return ERR::Failed; // Force fallback to legacy evaluator for now
+   std::vector<const XPathNode *> steps;
+   std::vector<std::unique_ptr<XPathNode>> synthetic_steps;
+
+   bool has_root = false;
+   bool root_descendant = false;
+
+   for (size_t i = 0; i < PathNode->child_count(); ++i) {
+      auto child = PathNode->get_child(i);
+      if (!child) continue;
+
+      if ((i IS 0) and (child->type IS XPathNodeType::Root)) {
+         has_root = true;
+         root_descendant = child->value IS "//";
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::Step) steps.push_back(child);
+   }
+
+   if (root_descendant) {
+      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+      steps.insert(steps.begin(), descendant_step.get());
+      synthetic_steps.push_back(std::move(descendant_step));
+   }
+
+   if (steps.empty()) {
+      log.msg("evaluate_location_path: no steps to process");
+      return ERR::Search;
+   }
+
+   std::vector<XMLTag *> initial_context;
+
+   if (has_root) {
+      initial_context.push_back(nullptr);
+   }
+   else {
+      if (context.context_node) initial_context.push_back(context.context_node);
+      else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) initial_context.push_back(&(*xml->Cursor));
+      else initial_context.push_back(nullptr);
+   }
+
+   bool matched = false;
+   auto result = evaluate_step_sequence(initial_context, steps, 0, CurrentPrefix, matched);
+
+   if ((result != ERR::Okay) and (result != ERR::Search)) return result;
+
+   if (xml->Callback.defined()) return ERR::Okay;
+   if (matched) return ERR::Okay;
+   return ERR::Search;
 }
 
 ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix) {
-   // TODO: Phase 1 implementation - step evaluation with axis dispatcher
+   if (!StepNode) return ERR::Failed;
 
-   pf::Log log(__FUNCTION__);
-   log.msg("evaluate_step_ast: Phase 1 - AST Step Evaluation not yet implemented");
+   std::vector<const XPathNode *> steps;
+   steps.push_back(StepNode);
 
-   return ERR::Failed; // Force fallback to legacy evaluator for now
+   std::vector<XMLTag *> context_nodes;
+   if (context.context_node) context_nodes.push_back(context.context_node);
+   else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) context_nodes.push_back(&(*xml->Cursor));
+   else context_nodes.push_back(nullptr);
+
+   bool matched = false;
+   auto result = evaluate_step_sequence(context_nodes, steps, 0, CurrentPrefix, matched);
+
+   if ((result != ERR::Okay) and (result != ERR::Search)) return result;
+
+   if (xml->Callback.defined()) return ERR::Okay;
+   if (matched) return ERR::Okay;
+   return ERR::Search;
 }
 
-bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, uint32_t CurrentPrefix) {
-   // TODO: Phase 1 implementation - node test matching in AST pipeline
+ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
+   if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
-   return false; // Force fallback for now
+   auto step_node = Steps[StepIndex];
+   if ((!step_node) or (step_node->type != XPathNodeType::Step)) return ERR::Failed;
+
+   const XPathNode *axis_node = nullptr;
+   const XPathNode *node_test = nullptr;
+   std::vector<const XPathNode *> predicate_nodes;
+
+   for (size_t i = 0; i < step_node->child_count(); ++i) {
+      auto child = step_node->get_child(i);
+      if (!child) continue;
+
+      if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
+      else if (child->type IS XPathNodeType::Predicate) predicate_nodes.push_back(child);
+      else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or (child->type IS XPathNodeType::Wildcard) or (child->type IS XPathNodeType::NodeTypeTest))) {
+         node_test = child;
+      }
+   }
+
+   if (!predicate_nodes.empty()) {
+      pf::Log log(__FUNCTION__);
+      log.msg("TODO: Predicate support pending Phase 2");
+      return ERR::Failed;
+   }
+
+   AxisType axis = AxisType::Child;
+   if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
+
+   if ((axis IS AxisType::Attribute)) {
+      pf::Log log(__FUNCTION__);
+      log.msg("TODO: Attribute axis deferred to later phase");
+      return ERR::Failed;
+   }
+
+   if ((axis != AxisType::Child) and (axis != AxisType::DescendantOrSelf) and (axis != AxisType::Self)) {
+      pf::Log log(__FUNCTION__);
+      log.msg("TODO: Axis '%s' not yet supported in AST evaluator", AxisEvaluator::axis_name_to_string(axis).c_str());
+      return ERR::Failed;
+   }
+
+   auto dispatch_axis = [this, axis](XMLTag *context_node) {
+      std::vector<XMLTag *> results;
+
+      if (axis IS AxisType::Child) {
+         if (!context_node) {
+            for (auto &tag : xml->Tags) {
+               if (tag.isTag()) results.push_back(&tag);
+            }
+         }
+         else results = axis_evaluator.evaluate_axis(AxisType::Child, context_node);
+      }
+      else if (axis IS AxisType::DescendantOrSelf) {
+         if (!context_node) {
+            results.push_back(nullptr);
+            for (auto &tag : xml->Tags) {
+               if (!tag.isTag()) continue;
+               auto branch = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, &tag);
+               results.insert(results.end(), branch.begin(), branch.end());
+            }
+         }
+         else results = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, context_node);
+      }
+      else if (axis IS AxisType::Self) {
+         results.push_back(context_node);
+      }
+
+      return results;
+   };
+
+   bool is_last_step = (StepIndex + 1 >= Steps.size());
+
+   for (auto *context_node : ContextNodes) {
+      auto candidates = dispatch_axis(context_node);
+      size_t total_candidates = candidates.size();
+      size_t position = 0;
+
+      for (auto *candidate : candidates) {
+         position++;
+
+         if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
+
+         if (is_last_step) {
+            if (!candidate) continue;
+
+            auto tags = xml->getInsert(candidate, xml->Cursor);
+            if (!tags) continue;
+
+            xml->CursorTags = tags;
+            xml->Attrib.clear();
+
+            push_context(candidate, position, total_candidates);
+
+            if (!xml->Callback.defined()) {
+               Matched = true;
+               pop_context();
+               return ERR::Okay;
+            }
+
+            push_cursor_state();
+
+            ERR callback_error = ERR::Okay;
+            if (xml->Callback.isC()) {
+               auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+               callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+            }
+            else if (xml->Callback.isScript()) {
+               if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+                  { "XML",  xml, FD_OBJECTPTR },
+                  { "Tag",  candidate->ID },
+                  { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+               }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+            }
+            else callback_error = ERR::InvalidValue;
+
+            pop_cursor_state();
+            pop_context();
+
+            Matched = true;
+
+            if (callback_error IS ERR::Terminate) return ERR::Terminate;
+            if (callback_error != ERR::Okay) return callback_error;
+
+            continue;
+         }
+
+         std::vector<XMLTag *> child_context;
+         child_context.push_back(candidate);
+
+         push_context(candidate, position, total_candidates);
+         push_cursor_state();
+
+         if (candidate) {
+            xml->CursorTags = &candidate->Children;
+            xml->Cursor = xml->CursorTags->begin();
+         }
+         else {
+            xml->CursorTags = &xml->Tags;
+            xml->Cursor = xml->CursorTags->begin();
+         }
+
+         auto result = evaluate_step_sequence(child_context, Steps, StepIndex + 1, CurrentPrefix, Matched);
+
+         pop_cursor_state();
+         pop_context();
+
+         if (result IS ERR::Terminate) return ERR::Terminate;
+         if (result IS ERR::Failed) return ERR::Failed;
+
+         if ((result IS ERR::Okay) and (!xml->Callback.defined()) and Matched) return ERR::Okay;
+      }
+   }
+
+   return Matched ? ERR::Okay : ERR::Search;
+}
+
+bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, XMLTag *Candidate, uint32_t CurrentPrefix) {
+   if (!NodeTest) return Candidate != nullptr;
+
+   if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
+      if (NodeTest->value IS "node") return true;
+      if (!Candidate) return false;
+
+      if (NodeTest->value IS "text") return Candidate->isContent();
+      return false;
+   }
+
+   if (!Candidate) return false;
+
+   if (NodeTest->type IS XPathNodeType::Wildcard) return Candidate->isTag();
+
+   if (NodeTest->type IS XPathNodeType::NameTest) {
+      std::string_view test_name = NodeTest->value;
+      if (test_name.empty()) return false;
+
+      std::string_view candidate_name = Candidate->name();
+
+      if (test_name.find('*') != std::string::npos) return pf::wildcmp(test_name, candidate_name);
+
+      if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+         uint32_t expected_prefix = 0;
+         std::string_view expected_local = test_name;
+
+         if (auto colon = test_name.find(':'); colon != std::string::npos) {
+            expected_prefix = pf::strhash(test_name.substr(0, colon));
+            expected_local = test_name.substr(colon + 1);
+         }
+
+         std::string_view candidate_local = candidate_name;
+         uint32_t candidate_prefix = 0;
+
+         if (auto colon = candidate_name.find(':'); colon != std::string::npos) {
+            candidate_prefix = pf::strhash(candidate_name.substr(0, colon));
+            candidate_local = candidate_name.substr(colon + 1);
+         }
+
+         bool name_matches = expected_local.find('*') != std::string::npos ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
+         bool prefix_matches = expected_prefix ? (candidate_prefix IS expected_prefix) : true;
+
+         return name_matches and prefix_matches;
+      }
+
+      return pf::iequals(test_name, candidate_name);
+   }
+
+   return false;
 }
 
 bool SimpleXPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {

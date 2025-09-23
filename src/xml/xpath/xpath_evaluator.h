@@ -31,14 +31,12 @@ class SimpleXPathEvaluator {
    XPathContext context;
    AxisEvaluator axis_evaluator;
 
-   // Stack management for AST traversal (Phase 1)
    struct CursorState {
-      XMLTag * tag;
-      size_t child_index;
-      size_t total_children;
+      objXML::TAGS * tags;
+      size_t index;
    };
    std::vector<CursorState> cursor_stack;
-   std::vector<XMLTag *> cursor_tags;
+   std::vector<XPathContext> context_stack;
 
    public:
    explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) {}
@@ -52,7 +50,8 @@ class SimpleXPathEvaluator {
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
    ERR evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix);
-   bool match_node_test(const XPathNode *NodeTest, uint32_t CurrentPrefix);
+   ERR evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
+   bool match_node_test(const XPathNode *NodeTest, XMLTag *Candidate, uint32_t CurrentPrefix);
    bool evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
 
    // Phase 3 methods (function support)
@@ -71,7 +70,7 @@ class SimpleXPathEvaluator {
    XMLTag * get_context_node() const { return context.context_node; }
 
    // Stack management for deep traversal
-   void push_cursor_state(XMLTag *Tag, size_t ChildIndex, size_t TotalChildren);
+   void push_cursor_state();
    void pop_cursor_state();
    bool has_cursor_state() const { return !cursor_stack.empty(); }
 };
