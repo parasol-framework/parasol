@@ -6,7 +6,7 @@ This document outlines the staged work needed to replace the legacy string-based
 
 ## Progress Log
 - **Phase 1 (AST Location Path Traversal Backbone)** – Basic traversal implemented in `xpath_evaluator.cpp` (child, self, descendant-or-self axes, callback plumbing). Attribute axis support remains deferred per plan TODO.
-- **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback.
+- **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback. Legacy round-bracket predicate syntax has been formally deprecated; only square brackets now parse per XPath 1.0.
 - **Phase 3 (Function & Expression Wiring)** – Boolean logic, arithmetic, relational comparisons, and path expressions now evaluate through `evaluate_expression`, delivering correctly typed values to functions like `count()` without falling back to the legacy evaluator.
 
 ---
@@ -83,7 +83,7 @@ This document outlines the staged work needed to replace the legacy string-based
    - ⬜ Expand predicate evaluation to handle `=`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not` using the AST expression tree (delegating to Phase 3 function wiring for node-set semantics).
 
 4. **Round-Bracket Equivalents**
-   - ⬜ Ensure alternate predicate syntax `( ... )` remains functional once expression evaluation is wired.
+   - ✅ Retired Parasol-only `(...)` predicate syntax; parser now enforces XPath 1.0 square brackets only.
 
 5. **Testing & Regression**
    - 🔄 Continue running `ctest -C Release -R xml_xpath`; update expectations in `test_xpath_queries.fluid` as AST parity improves (boolean/comparison tests still expect fallback errors).
