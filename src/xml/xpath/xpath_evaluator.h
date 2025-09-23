@@ -25,6 +25,12 @@ class SimpleXPathEvaluator {
       int subscript = 0;
    };
 
+   enum class PredicateResult {
+      Match,
+      NoMatch,
+      Unsupported
+   };
+
    private:
    extXML * xml;
    XPathFunctionLibrary function_library;
@@ -52,7 +58,7 @@ class SimpleXPathEvaluator {
    ERR evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix);
    ERR evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
    bool match_node_test(const XPathNode *NodeTest, XMLTag *Candidate, uint32_t CurrentPrefix);
-   bool evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
+   PredicateResult evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
 
    // Phase 3 methods (function support)
    XPathValue evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);

@@ -173,7 +173,7 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar) {
    position++; // Skip opening quote
 
    std::string value;
-   while (position < length and input[position] IS not QuoteChar) {
+   while ((position < length) and (input[position] != QuoteChar)) {
       if (input[position] IS '\\' and position + 1 < length) {
          // Handle escape sequences
          position++;
@@ -470,6 +470,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
       if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
          std::string attr_name = peek().value;
          advance();
+
+         if (match(XPathTokenType::COLON)) {
+            attr_name += ':';
+            if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
+               attr_name += peek().value;
+               advance();
+            } else {
+               report_error("Expected identifier or wildcard after ':' in attribute name");
+            }
+         }
 
          // If '=' follows, parse value comparison, else treat as existence test
          if (match(XPathTokenType::EQUALS) and

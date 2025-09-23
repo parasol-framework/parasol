@@ -6,6 +6,7 @@ This document outlines the staged work needed to replace the legacy string-based
 
 ## Progress Log
 - **Phase 1 (AST Location Path Traversal Backbone)** – Basic traversal implemented in `xpath_evaluator.cpp` (child, self, descendant-or-self axes, callback plumbing). Attribute axis support remains deferred per plan TODO.
+- **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback.
 
 ---
 
@@ -70,26 +71,26 @@ This document outlines the staged work needed to replace the legacy string-based
 
 ### Tasks
 1. **Index Predicates**
-   - Carry position metadata into predicate evaluation (`context.position`, `context.size`).
-   - Implement numeric `[n]` handling inside the AST evaluator instead of returning true only for `n == 1`.
+   - ✅ Carry position metadata into predicate evaluation (`context.position`, `context.size`).
+   - ✅ Implement numeric `[n]` handling inside the AST evaluator. Future work: ensure fractional / out-of-range operands map to XPath 1.0 semantics once expression parsing lands.
 
 2. **Attribute & Content Predicates**
-   - Re-implement `attribute-equals`, `attribute-exists`, `content-equals`, and wildcard attribute logic using AST nodes.
-   - Support both `"value"` and unquoted `[=value]` predicates (Parasol extension).
+   - ✅ Re-implement `attribute-equals`, `attribute-exists`, `content-equals`, and wildcard attribute-name logic using AST nodes. Attribute value wildcards currently flow through `pf::wildcmp`; richer namespace-aware comparisons remain TODO.
+   - ✅ Support both `"value"` and unquoted `[=value]` predicates (Parasol extension). Multi-node text concatenation still delegates to legacy evaluator until Phase 3 expression support is in place.
 
 3. **Boolean / Comparison Operators**
-   - Expand predicate evaluation to handle `=`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not` using the AST expression tree (delegating to Phase 3 function wiring for node-set semantics).
+   - ⬜ Expand predicate evaluation to handle `=`, `!=`, `<`, `<=`, `>`, `>=`, `and`, `or`, `not` using the AST expression tree (delegating to Phase 3 function wiring for node-set semantics).
 
 4. **Round-Bracket Equivalents**
-   - Ensure alternate predicate syntax `( ... )` remains functional.
+   - ⬜ Ensure alternate predicate syntax `( ... )` remains functional once expression evaluation is wired.
 
 5. **Testing & Regression**
-   - Re-enable/verify tests such as `testAttributeWildcards`, `testContentMatching`, `testNamespaceSupport` (predicates relying on namespace prefixes).
+   - 🔄 Continue running `ctest -C Release -R xml_xpath`; update expectations in `test_xpath_queries.fluid` as AST parity improves (boolean/comparison tests still expect fallback errors).
 
 ### Exit Criteria
 - Predicate-heavy tests from `test_xpath_queries.fluid` pass when related functionality is implemented.
-- Indices, attribute filters, and `[=value]` work through AST traversal without falling back.
-- Attribute wildcard behaviour matches the legacy path.
+- Indices, attribute filters, and `[=value]` work through AST traversal without falling back. ✅
+- Attribute wildcard behaviour matches the legacy path. ✅
 
 ---
 
