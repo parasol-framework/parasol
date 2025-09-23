@@ -1,5 +1,6 @@
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <unordered_set>
 
 // XPath Evaluator Implementation
@@ -840,6 +841,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
 
    if (attribute_step) {
       std::vector<std::string> attribute_values;
+      std::vector<XMLTag *> attribute_nodes;
 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
@@ -864,11 +866,15 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
 
             if (!name_matches) continue;
             attribute_values.push_back(attrib.Value);
+            attribute_nodes.push_back(candidate);
          }
       }
 
-      if (attribute_values.empty()) return XPathValue(std::string(""));
-      return XPathValue(attribute_values[0]);
+      if (attribute_nodes.empty()) return XPathValue(attribute_nodes);
+
+      std::optional<std::string> first_value;
+      if (!attribute_values.empty()) first_value = attribute_values[0];
+      return XPathValue(attribute_nodes, first_value);
    }
 
    return XPathValue(node_results);
