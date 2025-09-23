@@ -369,11 +369,11 @@ function testFunctionPredicateNodeSets()
    assert(err == ERR_Okay, "count(item)=3 predicate should evaluate with node-set arguments (bug: identifiers become literals)")
 
    local err, result = xml.mtFindTag('/root[count(item)=2]')
-   assert(err == ERR_Okay, "/root[count(item)=2]")
+   assert(err == ERR_Search, "count(item)=2 predicate should not match when the function result is false")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 functions (NOT YET SUPPORTED - these should fail gracefully)
+-- Test XPath 1.0 functions
 
 function testXPathFunctions()
    local xml = obj.new("xml", {
@@ -382,13 +382,13 @@ function testXPathFunctions()
 
    -- Test position() (should currently fall back to a search error)
    local err, itemId = xml.mtFindTag('/root/item[position()=2]')
-   assert(err == ERR_Search, "position()=2 should not be reported as supported yet")
+   assert(err == ERR_Okay, "/root/item[position()=2] failed")
 
    -- Test last()
 
    -- Test position()=last()
    local err, itemId = xml.mtFindTag('/root/item[position()=last()]')
-   assert(err == ERR_Search, "position()=last() expected to fail")
+   assert(err == ERR_Okay, "/root/item[position()=last()] failed")
 
    err, itemId = xml.mtFindTag('/root/item[last()]')
    assert(err == ERR_Search, "last() predicate should still be reported as unsupported")
