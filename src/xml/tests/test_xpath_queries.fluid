@@ -369,7 +369,7 @@ function testFunctionPredicateNodeSets()
    assert(err == ERR_Okay, "count(item)=3 predicate should evaluate with node-set arguments (bug: identifiers become literals)")
 
    local err, result = xml.mtFindTag('/root[count(item)=2]')
-   assert(err == ERR_Okay, "/root[count(item=2]")
+   assert(err == ERR_Okay, "/root[count(item)=2]")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
