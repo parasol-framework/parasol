@@ -51,7 +51,7 @@ class SimpleXPathEvaluator {
                                        const XPathNode *AttributeTest,
                                        uint32_t CurrentPrefix);
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
-   ERR process_expression_node_set(const std::vector<XMLTag *> &Nodes);
+   ERR process_expression_node_set(const XPathValue &Value);
 
    public:
    explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) { context.document = XML; }

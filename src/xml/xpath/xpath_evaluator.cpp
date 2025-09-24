@@ -1345,7 +1345,8 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
          else if (node_test->type IS XPathNodeType::NodeTypeTest) accepts_attribute = node_test->value IS "node";
 
          if (accepts_attribute) {
-            return XPathValue(node_results, context.attribute_node->Value);
+            std::vector<const XMLAttrib *> attribute_refs(node_results.size(), context.attribute_node);
+            return XPathValue(node_results, context.attribute_node->Value, {}, std::move(attribute_refs));
          }
       }
    }
@@ -1353,6 +1354,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
    if (attribute_step) {
       std::vector<std::string> attribute_values;
       std::vector<XMLTag *> attribute_nodes;
+      std::vector<const XMLAttrib *> attribute_refs;
 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
@@ -1363,6 +1365,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
             if (!match_node_test(attribute_test, AxisType::Attribute, match.node, match.attribute, CurrentPrefix)) continue;
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
+            attribute_refs.push_back(match.attribute);
          }
       }
 
@@ -1370,7 +1373,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
 
       std::optional<std::string> first_value;
       if (!attribute_values.empty()) first_value = attribute_values[0];
-      return XPathValue(attribute_nodes, first_value, std::move(attribute_values));
+      return XPathValue(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
    }
 
    return XPathValue(node_results);
@@ -1413,6 +1416,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
    if (AttributeStep) {
       std::vector<std::string> attribute_values;
       std::vector<XMLTag *> attribute_nodes;
+      std::vector<const XMLAttrib *> attribute_refs;
 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
@@ -1423,6 +1427,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
             if (!match_node_test(AttributeTest, AxisType::Attribute, match.node, match.attribute, CurrentPrefix)) continue;
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
+            attribute_refs.push_back(match.attribute);
          }
       }
 
@@ -1430,7 +1435,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
 
       std::optional<std::string> first_value;
       if (!attribute_values.empty()) first_value = attribute_values[0];
-      return XPathValue(attribute_nodes, first_value, std::move(attribute_values));
+      return XPathValue(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
    }
 
    return XPathValue(node_results);
@@ -1509,11 +1514,19 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       std::vector<std::string> filtered_strings;
       filtered_strings.reserve(working_indices.size());
 
+      std::vector<const XMLAttrib *> filtered_attributes;
+      filtered_attributes.reserve(working_indices.size());
+
       for (size_t index : working_indices) {
          filtered_nodes.push_back(base_value.node_set[index]);
          if (index < base_value.node_set_string_values.size()) {
             filtered_strings.push_back(base_value.node_set_string_values[index]);
          }
+         const XMLAttrib *attribute = nullptr;
+         if (index < base_value.node_set_attributes.size()) {
+            attribute = base_value.node_set_attributes[index];
+         }
+         filtered_attributes.push_back(attribute);
       }
 
       std::optional<std::string> first_value;
@@ -1527,7 +1540,7 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
          }
       }
 
-      return XPathValue(filtered_nodes, first_value, std::move(filtered_strings));
+      return XPathValue(filtered_nodes, first_value, std::move(filtered_strings), std::move(filtered_attributes));
    }
 
    if (ExprNode->type IS XPathNodeType::Path) {
@@ -1746,16 +1759,50 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
    return XPathValue();
 }
 
-ERR SimpleXPathEvaluator::process_expression_node_set(const std::vector<XMLTag *> &Nodes)
+ERR SimpleXPathEvaluator::process_expression_node_set(const XPathValue &Value)
 {
-   std::vector<XMLTag *> ordered = Nodes;
-   axis_evaluator.normalise_node_set(ordered);
+   struct NodeEntry {
+      XMLTag * node = nullptr;
+      const XMLAttrib * attribute = nullptr;
+      size_t original_index = 0;
+   };
+
+   std::vector<NodeEntry> entries;
+   entries.reserve(Value.node_set.size());
+
+   for (size_t index = 0; index < Value.node_set.size(); ++index) {
+      XMLTag *candidate = Value.node_set[index];
+      if (!candidate) continue;
+
+      const XMLAttrib *attribute = nullptr;
+      if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
+
+      entries.push_back({ candidate, attribute, index });
+   }
+
+   if (entries.empty()) {
+      xml->Attrib.clear();
+      return ERR::Search;
+   }
+
+   std::stable_sort(entries.begin(), entries.end(), [this](const NodeEntry &Left, const NodeEntry &Right) {
+      if (Left.node IS Right.node) return Left.original_index < Right.original_index;
+      if (!Left.node) return false;
+      if (!Right.node) return true;
+      return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
+   });
+
+   auto unique_end = std::unique(entries.begin(), entries.end(), [](const NodeEntry &Left, const NodeEntry &Right) {
+      return (Left.node IS Right.node) and (Left.attribute IS Right.attribute);
+   });
+   entries.erase(unique_end, entries.end());
 
    bool matched = false;
 
-   for (size_t index = 0; index < ordered.size(); ++index) {
-      auto *candidate = ordered[index];
-      push_context(candidate, index + 1, ordered.size());
+   for (size_t index = 0; index < entries.size(); ++index) {
+      auto &entry = entries[index];
+      XMLTag *candidate = entry.node;
+      push_context(candidate, index + 1, entries.size(), entry.attribute);
 
       if (!candidate) {
          pop_context();
@@ -1769,7 +1816,8 @@ ERR SimpleXPathEvaluator::process_expression_node_set(const std::vector<XMLTag *
       }
 
       xml->CursorTags = tags;
-      xml->Attrib.clear();
+      if (entry.attribute) xml->Attrib = entry.attribute->Name;
+      else xml->Attrib.clear();
 
       if (!xml->Callback.defined()) {
          pop_context();
@@ -1827,7 +1875,7 @@ ERR SimpleXPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, u
 
    switch (value.type) {
       case XPathValueType::NodeSet:
-         return process_expression_node_set(value.to_node_set());
+         return process_expression_node_set(value);
 
       case XPathValueType::Boolean:
       case XPathValueType::Number:
