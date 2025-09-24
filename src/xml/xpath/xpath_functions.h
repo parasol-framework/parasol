@@ -16,6 +16,7 @@
 
 struct XMLTag;
 struct XMLAttrib;
+class extXML;
 
 //********************************************************************************************************************
 // XPath Value System
@@ -33,6 +34,7 @@ class XPathValue {
    std::vector<XMLTag *> node_set;
    std::optional<std::string> node_set_string_override;
    std::vector<std::string> node_set_string_values;
+   std::vector<const XMLAttrib *> node_set_attributes;
    bool boolean_value = false;
    double number_value = 0.0;
    std::string string_value;
@@ -44,11 +46,13 @@ class XPathValue {
    explicit XPathValue(std::string value) : type(XPathValueType::String), string_value(std::move(value)) {}
    explicit XPathValue(const std::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,
-                       std::vector<std::string> NodeSetStrings = {})
+                       std::vector<std::string> NodeSetStrings = {},
+                       std::vector<const XMLAttrib *> NodeSetAttributes = {})
       : type(XPathValueType::NodeSet),
         node_set(Nodes),
         node_set_string_override(std::move(NodeSetString)),
-        node_set_string_values(std::move(NodeSetStrings)) {}
+        node_set_string_values(std::move(NodeSetStrings)),
+        node_set_attributes(std::move(NodeSetAttributes)) {}
 
    // Type conversions
    bool to_boolean() const;
@@ -59,6 +63,10 @@ class XPathValue {
    // Utility methods
    bool is_empty() const;
    size_t size() const;
+
+   // Helpers exposed for evaluator utilities
+   static std::string node_string_value(XMLTag *Node);
+   static double string_to_number(const std::string &Value);
 };
 
 //********************************************************************************************************************
@@ -70,10 +78,19 @@ struct XPathContext {
    size_t position = 1;
    size_t size = 1;
    std::map<std::string, XPathValue> variables;
+   extXML * document = nullptr;
 
    XPathContext() = default;
-   XPathContext(XMLTag *Node, size_t Pos = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr)
-      : context_node(Node), attribute_node(Attribute), position(Pos), size(Sz) {}
+   XPathContext(XMLTag *Node,
+                size_t Pos = 1,
+                size_t Sz = 1,
+                const XMLAttrib *Attribute = nullptr,
+                extXML *Document = nullptr)
+      : context_node(Node),
+        attribute_node(Attribute),
+        position(Pos),
+        size(Sz),
+        document(Document) {}
 };
 
 //********************************************************************************************************************
