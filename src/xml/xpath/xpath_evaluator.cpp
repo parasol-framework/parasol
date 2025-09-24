@@ -738,22 +738,12 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
    }
 
    if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
-      if (NodeTest->value IS "node") return Candidate ? true : false;
+      if (NodeTest->value IS "node") return true;
       if (!Candidate) return false;
 
       if (NodeTest->value IS "text") {
          if (!Candidate->isContent()) return false;
-
-         bool has_comment_flag = ((Candidate->Flags & XTF::COMMENT) IS XTF::NIL) ? false : true;
-         if (has_comment_flag) return false;
-
-         bool has_instruction_flag = ((Candidate->Flags & XTF::INSTRUCTION) IS XTF::NIL) ? false : true;
-         if (has_instruction_flag) return false;
-
-         bool has_notation_flag = ((Candidate->Flags & XTF::NOTATION) IS XTF::NIL) ? false : true;
-         if (has_notation_flag) return false;
-
-         return true;
+         return ((Candidate->Flags & (XTF::COMMENT | XTF::INSTRUCTION | XTF::NOTATION)) IS XTF::NIL);
       }
 
       if (NodeTest->value IS "comment") {
