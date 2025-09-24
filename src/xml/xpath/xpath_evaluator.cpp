@@ -1400,11 +1400,15 @@ ERR SimpleXPathEvaluator::parse_path(std::string_view XPath, PathInfo &Info) {
       }
    }
 
-   // Parse filter instructions
+   // Parse filter instructions using XPath 1.0 square-bracket predicates only
+   if ((Info.pos < XPath.size()) and (XPath[Info.pos] IS '(')) {
+      log.warning("Round-bracket predicates have been deprecated; use square brackets instead in '%.*s'.", int(XPath.size()), XPath.data());
+      return ERR::Syntax;
+   }
+
    char end_char;
-   if ((Info.pos < XPath.size()) and ((XPath[Info.pos] IS '[') or (XPath[Info.pos] IS '('))) {
-      if (XPath[Info.pos] IS '[') end_char = ']';
-      else end_char = ')';
+   if ((Info.pos < XPath.size()) and (XPath[Info.pos] IS '[')) {
+      end_char = ']';
 
       Info.pos++;
 
