@@ -326,11 +326,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_namespace_axis(XMLTag *Node) {
       namespace_node_storage.push_back(std::move(node));
    };
 
-   auto default_namespace = in_scope.find(std::string());
-   if (default_namespace != in_scope.end()) emit_namespace(default_namespace->first, default_namespace->second);
-
    for (const auto &entry : in_scope) {
-      if (entry.first.empty()) continue;
       emit_namespace(entry.first, entry.second);
    }
 
