@@ -73,6 +73,7 @@ class SimpleXPathEvaluator {
 
    // Utility method to try AST-based parsing first, fall back to string-based
    ERR find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix);
+   ERR find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit);
 
    // Helper method to evaluate simple function expressions in string-based evaluation
    bool evaluate_function_expression(std::string_view Expression);
