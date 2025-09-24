@@ -1,6 +1,8 @@
 // XPath Axis Evaluation System Implementation
 
 #include <algorithm>
+#include <map>
+#include <unordered_set>
 
 //********************************************************************************************************************
 // AxisEvaluator Implementation
@@ -264,8 +266,72 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_attribute_axis(XMLTag *Node) {
 }
 
 std::vector<XMLTag *> AxisEvaluator::evaluate_namespace_axis(XMLTag *Node) {
-   // Namespace nodes are not implemented as separate nodes in Parasol
-   return {};
+   std::vector<XMLTag *> namespaces;
+   namespace_node_storage.clear();
+
+   if (!Node) return namespaces;
+
+   std::map<std::string, std::string, std::less<>> in_scope;
+
+   auto add_namespace = [&](const std::string &Prefix, const std::string &URI) {
+      if (in_scope.find(Prefix) != in_scope.end()) return;
+      in_scope.insert({ Prefix, URI });
+   };
+
+   add_namespace("xml", "http://www.w3.org/XML/1998/namespace");
+
+   std::unordered_set<int> visited_ids;
+   XMLTag *current = Node;
+
+   while (current) {
+      if (visited_ids.insert(current->ID).second) {
+         for (size_t index = 1; index < current->Attribs.size(); ++index) {
+            const auto &attrib = current->Attribs[index];
+
+            if (attrib.Name.rfind("xmlns", 0) != 0) continue;
+
+            std::string prefix;
+            if (attrib.Name.length() IS 5) prefix.clear();
+            else if ((attrib.Name.length() > 6) and (attrib.Name[5] IS ':')) {
+               prefix = attrib.Name.substr(6);
+            }
+            else continue;
+
+            add_namespace(prefix, attrib.Value);
+         }
+      }
+
+      if (!current->ParentID) break;
+      current = find_tag_by_id(current->ParentID);
+   }
+
+   auto emit_namespace = [&](const std::string &Prefix, const std::string &URI) {
+      auto node = std::make_unique<XMLTag>(0);
+      node->Attribs.clear();
+      node->Children.clear();
+      node->Attribs.emplace_back(Prefix, std::string());
+
+      XMLTag content_node(0);
+      content_node.Attribs.clear();
+      content_node.Children.clear();
+      content_node.Attribs.emplace_back(std::string(), URI);
+      node->Children.push_back(content_node);
+
+      node->NamespaceID = xml ? xml->registerNamespace(URI) : 0;
+
+      namespaces.push_back(node.get());
+      namespace_node_storage.push_back(std::move(node));
+   };
+
+   auto default_namespace = in_scope.find(std::string());
+   if (default_namespace != in_scope.end()) emit_namespace(default_namespace->first, default_namespace->second);
+
+   for (const auto &entry : in_scope) {
+      if (entry.first.empty()) continue;
+      emit_namespace(entry.first, entry.second);
+   }
+
+   return namespaces;
 }
 
 std::vector<XMLTag *> AxisEvaluator::evaluate_self_axis(XMLTag *Node) {

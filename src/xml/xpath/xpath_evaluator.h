@@ -47,7 +47,7 @@ class SimpleXPathEvaluator {
    XPathValue evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
 
    public:
-   explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) {}
+   explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) { context.document = XML; }
 
    // Phase 2+ methods (AST-based)
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);

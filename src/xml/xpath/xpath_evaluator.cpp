@@ -83,13 +83,15 @@ std::vector<std::string_view> split_union_paths(std::string_view XPath)
 //********************************************************************************************************************
 // Context Management
 
-void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute) 
+void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
+   auto document = context.document ? context.document : xml;
    context_stack.push_back(context);
    context.context_node = Node;
    context.attribute_node = Attribute;
    context.position = Position;
    context.size = Size;
+   context.document = document;
 }
 
 void SimpleXPathEvaluator::pop_context() 
@@ -99,6 +101,7 @@ void SimpleXPathEvaluator::pop_context()
       context.attribute_node = nullptr;
       context.position = 1;
       context.size = 1;
+      context.document = xml;
       return;
    }
 
@@ -279,6 +282,8 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
       }
 
       case AxisType::Namespace:
+         if (attribute_context) break;
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Namespace, ContextNode));
          break;
    }
 
