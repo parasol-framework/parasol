@@ -1,12 +1,8 @@
 //********************************************************************************************************************
-// TODO: Rewrite in-progress - AST evaluator under construction
-// The legacy string-based evaluator is being replaced in stages:
-// 1) Full AST traversal (location paths, descendant handling, callbacks)
-// 2) Predicate parity (indices, attribute filters, Parasol extensions)
-// 3) Function/expression node-set support
-// 4) Axis + node test completion (self/parent/ancestor/etc., namespace-aware)
-// 5) Remove legacy fallback once all behaviours restored
-// Temporary regressions expected; tests referencing unimplemented features may be disabled or adjusted.
+// Final AST XPath evaluator
+// The legacy string-based evaluator has been retired after completing the staged
+// migration recorded in AST_PLAN.md. All queries now execute through the
+// AST-driven evaluator implemented in xpath/xpath_evaluator.cpp.
 //********************************************************************************************************************
 // XPath Query
 //
@@ -32,14 +28,7 @@
 //   /menu/window/* (First child of the window tag)
 //   /menu/*[@id='5']
 
-#include <charconv>
-#include <cctype>
-#include <cmath>
-#include <cstdlib>
-#include <limits>
-#include <map>
 #include <memory>
-#include <system_error>
 
 #include "xpath/xpath_ast.h"
 #include "xpath/xpath_functions.h"
@@ -68,25 +57,7 @@ ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
    // Create evaluator and delegate to it
    SimpleXPathEvaluator evaluator(this);
 
-   // Use the enhanced evaluator which tries AST first, then falls back to legacy
-   if ((Flags & XMF::PARSE_HTML) IS XMF::NIL) {
-      auto enhanced_result = evaluator.find_tag_enhanced(XPath, CurrentPrefix);
-      log.msg("Enhanced result: %d", int(enhanced_result));
-      if (enhanced_result IS ERR::Okay or enhanced_result IS ERR::Search) {
-         return enhanced_result;
-      }
-   }
-
-   // If enhanced evaluation failed or HTML mode, use legacy path directly
-   SimpleXPathEvaluator::PathInfo info;
-
-   // Parse the path
-   auto parse_result = evaluator.parse_path(XPath, info);
-   if (parse_result != ERR::Okay) return parse_result;
-
-   // Handle simple attribute-only paths like '/@attrib' (already handled in parse_path)
-   if (!Attrib.empty()) return ERR::Okay;
-
-   // Evaluate the XPath step
-   return evaluator.evaluate_step(XPath, info, CurrentPrefix);
+   auto ast_result = evaluator.find_tag_enhanced(XPath, CurrentPrefix);
+   log.msg("AST result: %d", int(ast_result));
+   return ast_result;
 }
