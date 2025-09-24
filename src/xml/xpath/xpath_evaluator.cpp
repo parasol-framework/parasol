@@ -1496,8 +1496,12 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
          for (size_t position = 0; position < working_indices.size(); ++position) {
             size_t base_index = working_indices[position];
             XMLTag *candidate = base_value.node_set[base_index];
+            const XMLAttrib *attribute = nullptr;
+            if (base_index < base_value.node_set_attributes.size()) {
+               attribute = base_value.node_set_attributes[base_index];
+            }
 
-            push_context(candidate, position + 1, working_indices.size());
+            push_context(candidate, position + 1, working_indices.size(), attribute);
             auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
             pop_context();
 
