@@ -56,11 +56,18 @@ std::string XPathValue::to_string() const {
       case XPathValueType::NodeSet: {
          if (node_set_string_override.has_value()) return *node_set_string_override;
          if (node_set.empty()) return "";
+
          XMLTag *tag = node_set[0];
-         if (tag) {
+         if (!tag) return "";
+
+         if (tag->isContent()) {
+            if (!tag->Attribs.empty() && !tag->Attribs[0].Value.empty()) {
+               return tag->Attribs[0].Value;
+            }
             return tag->getContent();
          }
-         return "";
+
+         return tag->getContent();
       }
    }
    return "";
