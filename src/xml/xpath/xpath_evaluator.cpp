@@ -491,7 +491,13 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    bool is_last_step = (StepIndex + 1 >= Steps.size());
 
    for (auto *context_node : ContextNodes) {
-      auto axis_matches = dispatch_axis(axis, context_node);
+      const XMLAttrib *context_attribute = nullptr;
+
+      if ((context_node) and context.attribute_node and (context_node IS context.context_node)) {
+         context_attribute = context.attribute_node;
+      }
+
+      auto axis_matches = dispatch_axis(axis, context_node, context_attribute);
 
       std::vector<AxisMatch> filtered;
       filtered.reserve(axis_matches.size());
