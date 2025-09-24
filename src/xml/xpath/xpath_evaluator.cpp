@@ -1428,6 +1428,26 @@ XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNod
       if (expression_unsupported) return XPathValue();
    }
 
+   if (function_name IS "text") {
+      std::vector<XMLTag *> text_nodes;
+      std::optional<std::string> first_value;
+
+      if (context.context_node) {
+         for (auto &child : context.context_node->Children) {
+            if (!child.isContent()) continue;
+            text_nodes.push_back(&child);
+
+            if ((!first_value.has_value()) and (!child.Attribs.empty())) {
+               first_value = child.Attribs[0].Value;
+            }
+         }
+      }
+
+      if (text_nodes.empty()) return XPathValue(text_nodes);
+      if (first_value.has_value()) return XPathValue(text_nodes, first_value);
+      return XPathValue(text_nodes);
+   }
+
    return function_library.call_function(function_name, args, context);
 }
 
