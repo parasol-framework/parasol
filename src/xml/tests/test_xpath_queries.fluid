@@ -652,7 +652,7 @@ end
 
 function testCommentNodeType()
    local xml = obj.new("xml", {
-      statement = '<root><!-- marker --><item>Value</item><!-- trailer --></root>'
+      statement = '<root><!-- marker --><item>Value</item><!-- trailer --></root>', flags = XMF_INCLUDE_COMMENTS
    })
 
    local err, commentId = xml.mtFindTag('/root/comment()')

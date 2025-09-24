@@ -98,9 +98,10 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    CSTRING str = State.Pos + 1;
 
-   if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
-      // Comments will be stripped - check if this is a comment and skip it if this is the case.
-      if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
+   auto line_no = Self->LineNo;
+
+   if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
+      if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
          if (auto i = pf::strsearch("-->", str); i != -1) {
             State.Pos = str + i + 3;
             return ERR::NothingDone;
@@ -110,9 +111,27 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
             return ERR::InvalidData;
          }
       }
+
+      str += 3;
+      auto comment_start = str;
+      while ((str[0]) and !((str[0] IS '-') and (str[1] IS '-') and (str[2] IS '>'))) {
+         if (str[0] IS '\n') Self->LineNo++;
+         str++;
+      }
+
+      if (!str[0]) {
+         log.warning("Detected malformed comment (missing --> terminator).");
+         return ERR::InvalidData;
+      }
+
+      std::string comment_text(comment_start, size_t(str - comment_start));
+      auto &comment_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, { { "", comment_text } }));
+      comment_tag.Flags |= XTF::COMMENT;
+      State.Pos = str + 3;
+      return ERR::Okay;
    }
 
-   auto line_no = Self->LineNo;
+   line_no = Self->LineNo;
    int8_t raw_content;
 
    if (!strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }

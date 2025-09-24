@@ -41,7 +41,8 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
   flags("XTF", { comment="Standard flags for XMLTag." },
     "CDATA: Tag represents `CDATA`.",
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
-    "NOTATION: Tag represents a notation of the format `<!XML>`.")
+    "NOTATION: Tag represents a notation of the format `<!XML>`.",
+    "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
 
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
