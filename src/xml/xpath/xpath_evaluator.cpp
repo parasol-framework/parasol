@@ -468,6 +468,21 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
 
       const std::string &operation = expression->value;
 
+      // Enhanced direct predicate routing: Send arithmetic and comparison operators directly to evaluate_expression
+      if ((operation IS "=") or (operation IS "!=") or
+          (operation IS "<") or (operation IS "<=") or
+          (operation IS ">") or (operation IS ">=") or
+          (operation IS "and") or (operation IS "or") or
+          (operation IS "+") or (operation IS "-") or
+          (operation IS "*") or (operation IS "div") or (operation IS "mod")) {
+         auto result_value = evaluate_expression(expression, CurrentPrefix);
+         if (expression_unsupported) {
+            expression_unsupported = false;
+            return PredicateResult::Unsupported;
+         }
+         return result_value.to_boolean() ? PredicateResult::Match : PredicateResult::NoMatch;
+      }
+
       if (operation IS "attribute-exists") {
          if (expression->child_count() IS 0) return PredicateResult::Unsupported;
 
@@ -591,21 +606,137 @@ bool compare_xpath_values(const XPathValue &left_value,
    auto left_type = left_value.type;
    auto right_type = right_value.type;
 
+   // XPath 1.0 type promotion rules for equality comparison:
+   // When comparing node-set to boolean, convert node-set to boolean (non-empty = true)
+   if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::Boolean)) {
+      return left_value.to_boolean() IS right_value.boolean_value;
+   }
+   if ((left_type IS XPathValueType::Boolean) and (right_type IS XPathValueType::NodeSet)) {
+      return left_value.boolean_value IS right_value.to_boolean();
+   }
+
+   // When comparing node-set to number, convert node-set to number
+   if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::Number)) {
+      return left_value.to_number() IS right_value.number_value;
+   }
+   if ((left_type IS XPathValueType::Number) and (right_type IS XPathValueType::NodeSet)) {
+      return left_value.number_value IS right_value.to_number();
+   }
+
+   // When comparing node-set to string, compare against string value of each node in the set
+   if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::String)) {
+      for (auto *node : left_value.node_set) {
+         if (node and pf::iequals(node->getContent(), right_value.string_value)) {
+            return true;
+         }
+      }
+      return false;
+   }
+   if ((left_type IS XPathValueType::String) and (right_type IS XPathValueType::NodeSet)) {
+      for (auto *node : right_value.node_set) {
+         if (node and pf::iequals(left_value.string_value, node->getContent())) {
+            return true;
+         }
+      }
+      return false;
+   }
+
+   // When comparing two node-sets, check if they have any nodes with equal string values
+   if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::NodeSet)) {
+      for (auto *left_node : left_value.node_set) {
+         if (!left_node) continue;
+         std::string left_content = left_node->getContent();
+         for (auto *right_node : right_value.node_set) {
+            if (!right_node) continue;
+            if (pf::iequals(left_content, right_node->getContent())) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   // For non-node-set comparisons, follow standard type promotion:
+   // If either operand is a number, convert both to numbers
    if ((left_type IS XPathValueType::Number) or (right_type IS XPathValueType::Number)) {
       double left_number = left_value.to_number();
       double right_number = right_value.to_number();
       return left_number IS right_number;
    }
 
+   // If either operand is a boolean, convert both to booleans
    if ((left_type IS XPathValueType::Boolean) or (right_type IS XPathValueType::Boolean)) {
       bool left_boolean = left_value.to_boolean();
       bool right_boolean = right_value.to_boolean();
       return left_boolean IS right_boolean;
    }
 
+   // Otherwise, compare as strings
    std::string left_string = left_value.to_string();
    std::string right_string = right_value.to_string();
    return pf::iequals(left_string, right_string);
+}
+
+// Helper function for relational comparisons with XPath 1.0 type promotion
+double get_numeric_value_for_comparison(const XPathValue &value) {
+   // XPath 1.0: relational operators always compare numbers
+   return value.to_number();
+}
+
+bool compare_xpath_values_relational(const XPathValue &left_value,
+                                     const XPathValue &right_value,
+                                     const std::string &op)
+{
+   auto left_type = left_value.type;
+   auto right_type = right_value.type;
+
+   // For node-set comparisons, we need to check each combination
+   if (left_type IS XPathValueType::NodeSet) {
+      for (auto *node : left_value.node_set) {
+         if (!node) continue;
+         XPathValue node_value(node->getContent());
+         double left_num = get_numeric_value_for_comparison(node_value);
+         double right_num = get_numeric_value_for_comparison(right_value);
+
+         bool comparison_result = false;
+         if (op IS "<") comparison_result = left_num < right_num;
+         else if (op IS "<=") comparison_result = left_num <= right_num;
+         else if (op IS ">") comparison_result = left_num > right_num;
+         else if (op IS ">=") comparison_result = left_num >= right_num;
+
+         if (comparison_result) return true;
+      }
+      return false;
+   }
+
+   if (right_type IS XPathValueType::NodeSet) {
+      for (auto *node : right_value.node_set) {
+         if (!node) continue;
+         XPathValue node_value(node->getContent());
+         double left_num = get_numeric_value_for_comparison(left_value);
+         double right_num = get_numeric_value_for_comparison(node_value);
+
+         bool comparison_result = false;
+         if (op IS "<") comparison_result = left_num < right_num;
+         else if (op IS "<=") comparison_result = left_num <= right_num;
+         else if (op IS ">") comparison_result = left_num > right_num;
+         else if (op IS ">=") comparison_result = left_num >= right_num;
+
+         if (comparison_result) return true;
+      }
+      return false;
+   }
+
+   // For non-node-set values, convert both to numbers and compare
+   double left_num = get_numeric_value_for_comparison(left_value);
+   double right_num = get_numeric_value_for_comparison(right_value);
+
+   if (op IS "<") return left_num < right_num;
+   else if (op IS "<=") return left_num <= right_num;
+   else if (op IS ">") return left_num > right_num;
+   else if (op IS ">=") return left_num >= right_num;
+
+   return false;
 }
 
 } // namespace
@@ -982,32 +1113,11 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
          return XPathValue(!equals);
       }
 
-      if (operation IS "<") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number < right_number);
-      }
-
-      if (operation IS "<=") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number <= right_number);
-      }
-
-      if (operation IS ">") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number > right_number);
-      }
-
-      if (operation IS ">=") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number >= right_number);
+      // Relational operators
+      if ((operation IS "<") or (operation IS "<=") or
+          (operation IS ">") or (operation IS ">=")) {
+         bool result = compare_xpath_values_relational(left_value, right_value, operation);
+         return XPathValue(result);
       }
 
       if (operation IS "+") {
