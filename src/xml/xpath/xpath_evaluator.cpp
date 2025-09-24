@@ -3,6 +3,80 @@
 #include <optional>
 #include <unordered_set>
 
+namespace {
+
+std::string_view trim_view(std::string_view Value)
+{
+   auto start = Value.find_first_not_of(" \t\r\n");
+   if (start == std::string_view::npos) return std::string_view();
+
+   auto end = Value.find_last_not_of(" \t\r\n");
+   return Value.substr(start, end - start + 1);
+}
+
+std::vector<std::string_view> split_union_paths(std::string_view XPath)
+{
+   std::vector<std::string_view> segments;
+   size_t start = 0;
+   int bracket_depth = 0;
+   int paren_depth = 0;
+   bool in_string = false;
+   char string_delim = '\0';
+
+   for (size_t index = 0; index < XPath.size(); ++index) {
+      char ch = XPath[index];
+
+      if (in_string) {
+         if ((ch IS '\\') and (index + 1 < XPath.size())) {
+            index++;
+            continue;
+         }
+
+         if (ch IS string_delim) in_string = false;
+         continue;
+      }
+
+      if ((ch IS '\'') or (ch IS '"')) {
+         in_string = true;
+         string_delim = ch;
+         continue;
+      }
+
+      if (ch IS '[') {
+         bracket_depth++;
+         continue;
+      }
+
+      if (ch IS ']') {
+         if (bracket_depth > 0) bracket_depth--;
+         continue;
+      }
+
+      if (ch IS '(') {
+         paren_depth++;
+         continue;
+      }
+
+      if (ch IS ')') {
+         if (paren_depth > 0) paren_depth--;
+         continue;
+      }
+
+      if ((ch IS '|') and (bracket_depth IS 0) and (paren_depth IS 0)) {
+         auto segment = trim_view(XPath.substr(start, index - start));
+         if (!segment.empty()) segments.push_back(segment);
+         start = index + 1;
+      }
+   }
+
+   auto tail = trim_view(XPath.substr(start));
+   if (!tail.empty()) segments.push_back(tail);
+
+   return segments;
+}
+
+} // namespace
+
 // XPath Evaluator Implementation
 
 //********************************************************************************************************************
@@ -60,8 +134,55 @@ void SimpleXPathEvaluator::pop_cursor_state() {
 // Enhanced Entry Point (AST + Legacy Fallback)
 
 ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix) {
+   return find_tag_enhanced_internal(XPath, CurrentPrefix, true);
+}
+
+ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
    pf::Log log(__FUNCTION__);
    log.msg("Enhanced XPath: %.*s", int(XPath.size()), XPath.data());
+
+   if (AllowUnionSplit) {
+      auto union_paths = split_union_paths(XPath);
+      if (union_paths.size() > 1) {
+         auto saved_context = context;
+         auto saved_context_stack = context_stack;
+         auto saved_cursor_stack = cursor_stack;
+         auto saved_cursor_tags = xml->CursorTags;
+         auto saved_cursor = xml->Cursor;
+         auto saved_attrib = xml->Attrib;
+         bool saved_expression_unsupported = expression_unsupported;
+
+         ERR last_error = ERR::Search;
+
+         for (auto branch : union_paths) {
+            context = saved_context;
+            context_stack = saved_context_stack;
+            cursor_stack = saved_cursor_stack;
+            xml->CursorTags = saved_cursor_tags;
+            xml->Cursor = saved_cursor;
+            xml->Attrib = saved_attrib;
+            expression_unsupported = saved_expression_unsupported;
+
+            auto result = find_tag_enhanced_internal(branch, CurrentPrefix, false);
+            if ((result IS ERR::Okay) or (result IS ERR::Terminate)) return result;
+
+            if (result != ERR::Search) {
+               last_error = result;
+               break;
+            }
+         }
+
+         context = saved_context;
+         context_stack = saved_context_stack;
+         cursor_stack = saved_cursor_stack;
+         xml->CursorTags = saved_cursor_tags;
+         xml->Cursor = saved_cursor;
+         xml->Attrib = saved_attrib;
+         expression_unsupported = saved_expression_unsupported;
+
+         return last_error;
+      }
+   }
 
    // Ensure the document index is up to date so ParentID links are valid during AST traversal
    (void)xml->getMap();
