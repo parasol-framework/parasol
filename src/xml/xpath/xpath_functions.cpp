@@ -70,6 +70,7 @@ std::string XPathValue::node_string_value(XMLTag *Node)
    if (!Node) return std::string();
 
    if (Node->isContent()) {
+      if (!Node->Children.empty()) return Node->getContent();
       if (!Node->Attribs.empty()) return Node->Attribs[0].Value;
       return std::string();
    }
