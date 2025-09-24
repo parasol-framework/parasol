@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <limits>
 #include <optional>
-#include <unordered_set>
 
 namespace {
 
@@ -946,17 +945,7 @@ std::string node_set_string_value(const XPathValue &Value, size_t Index)
 
    if (Index >= Value.node_set.size()) return std::string();
 
-   XMLTag *tag = Value.node_set[Index];
-   if (!tag) return std::string();
-
-   if (tag->isContent()) {
-      if (!tag->Attribs.empty() and !tag->Attribs[0].Value.empty()) {
-         return tag->Attribs[0].Value;
-      }
-      return tag->getContent();
-   }
-
-   return tag->getContent();
+   return XPathValue::node_string_value(Value.node_set[Index]);
 }
 
 double node_set_number_value(const XPathValue &Value, size_t Index)
@@ -964,13 +953,28 @@ double node_set_number_value(const XPathValue &Value, size_t Index)
    std::string str = node_set_string_value(Value, Index);
    if (str.empty()) return std::numeric_limits<double>::quiet_NaN();
 
-   char *end_ptr = nullptr;
-   double result = std::strtod(str.c_str(), &end_ptr);
-   if ((end_ptr IS str.c_str()) or (*end_ptr != '\0')) {
-      return std::numeric_limits<double>::quiet_NaN();
+   return XPathValue::string_to_number(str);
+}
+
+enum class RelationalOperator {
+   Less,
+   LessOrEqual,
+   Greater,
+   GreaterOrEqual
+};
+
+bool numeric_compare(double Left, double Right, RelationalOperator Operation)
+{
+   if (std::isnan(Left) or std::isnan(Right)) return false;
+
+   switch (Operation) {
+      case RelationalOperator::Less: return Left < Right;
+      case RelationalOperator::LessOrEqual: return Left <= Right;
+      case RelationalOperator::Greater: return Left > Right;
+      case RelationalOperator::GreaterOrEqual: return Left >= Right;
    }
 
-   return result;
+   return false;
 }
 
 bool compare_xpath_values(const XPathValue &left_value,
@@ -1014,7 +1018,7 @@ bool compare_xpath_values(const XPathValue &left_value,
 
             for (size_t right_index = 0; right_index < right_value.node_set.size(); ++right_index) {
                std::string right_string = node_set_string_value(right_value, right_index);
-               if (pf::iequals(left_string, right_string)) return true;
+               if (left_string.compare(right_string) IS 0) return true;
             }
          }
 
@@ -1028,7 +1032,7 @@ bool compare_xpath_values(const XPathValue &left_value,
 
       for (size_t index = 0; index < node_value.node_set.size(); ++index) {
          std::string node_string = node_set_string_value(node_value, index);
-         if (pf::iequals(node_string, comparison_string)) return true;
+         if (node_string.compare(comparison_string) IS 0) return true;
       }
 
       return false;
@@ -1036,7 +1040,58 @@ bool compare_xpath_values(const XPathValue &left_value,
 
    std::string left_string = left_value.to_string();
    std::string right_string = right_value.to_string();
-   return pf::iequals(left_string, right_string);
+   return left_string.compare(right_string) IS 0;
+}
+
+bool compare_xpath_relational(const XPathValue &left_value,
+                              const XPathValue &right_value,
+                              RelationalOperator Operation)
+{
+   auto left_type = left_value.type;
+   auto right_type = right_value.type;
+
+   if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
+      if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::NodeSet)) {
+         for (size_t left_index = 0; left_index < left_value.node_set.size(); ++left_index) {
+            double left_number = node_set_number_value(left_value, left_index);
+            if (std::isnan(left_number)) continue;
+
+            for (size_t right_index = 0; right_index < right_value.node_set.size(); ++right_index) {
+               double right_number = node_set_number_value(right_value, right_index);
+               if (std::isnan(right_number)) continue;
+               if (numeric_compare(left_number, right_number, Operation)) return true;
+            }
+         }
+
+         return false;
+      }
+
+      const XPathValue &node_value = (left_type IS XPathValueType::NodeSet) ? left_value : right_value;
+      const XPathValue &other_value = (left_type IS XPathValueType::NodeSet) ? right_value : left_value;
+
+      if (other_value.type IS XPathValueType::Boolean) {
+         bool node_boolean = node_value.to_boolean();
+         bool other_boolean = other_value.to_boolean();
+         double node_number = node_boolean ? 1.0 : 0.0;
+         double other_number = other_boolean ? 1.0 : 0.0;
+         return numeric_compare(node_number, other_number, Operation);
+      }
+
+      double other_number = other_value.to_number();
+      if (std::isnan(other_number)) return false;
+
+      for (size_t index = 0; index < node_value.node_set.size(); ++index) {
+         double node_number = node_set_number_value(node_value, index);
+         if (std::isnan(node_number)) continue;
+         if (numeric_compare(node_number, other_number, Operation)) return true;
+      }
+
+      return false;
+   }
+
+   double left_number = left_value.to_number();
+   double right_number = right_value.to_number();
+   return numeric_compare(left_number, right_number, Operation);
 }
 
 } // namespace
@@ -1246,6 +1301,8 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
       return XPathValue();
    }
 
+   axis_evaluator.normalise_node_set(node_results);
+
    if (context.attribute_node and (steps.size() IS 1)) {
       const XPathNode *step = steps[0];
       const XPathNode *axis_node = nullptr;
@@ -1405,31 +1462,23 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       }
 
       if (operation IS "<") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number < right_number);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::Less);
+         return XPathValue(result);
       }
 
       if (operation IS "<=") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number <= right_number);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LessOrEqual);
+         return XPathValue(result);
       }
 
       if (operation IS ">") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number > right_number);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::Greater);
+         return XPathValue(result);
       }
 
       if (operation IS ">=") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         if (std::isnan(left_number) or std::isnan(right_number)) return XPathValue(false);
-         return XPathValue(left_number >= right_number);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GreaterOrEqual);
+         return XPathValue(result);
       }
 
       if (operation IS "+") {
@@ -1463,22 +1512,13 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
          auto left_nodes = left_value.to_node_set();
          auto right_nodes = right_value.to_node_set();
 
-         std::unordered_set<XMLTag *> seen;
-         seen.reserve(left_nodes.size() + right_nodes.size());
-
          std::vector<XMLTag *> combined;
          combined.reserve(left_nodes.size() + right_nodes.size());
 
-         for (auto *node : left_nodes) {
-            if (!seen.insert(node).second) continue;
-            combined.push_back(node);
-         }
+         for (auto *node : left_nodes) combined.push_back(node);
+         for (auto *node : right_nodes) combined.push_back(node);
 
-         for (auto *node : right_nodes) {
-            if (!seen.insert(node).second) continue;
-            combined.push_back(node);
-         }
-
+         axis_evaluator.normalise_node_set(combined);
          return XPathValue(combined);
       }
 

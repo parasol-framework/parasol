@@ -373,13 +373,85 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_ancestor_or_self_axis(XMLTag *Node
 // Document Order Utilities
 
 void AxisEvaluator::sort_document_order(std::vector<XMLTag *> &Nodes) {
-   std::sort(Nodes.begin(), Nodes.end(), [this](XMLTag *a, XMLTag *b) {
-      return is_before_in_document_order(a, b);
+   if (Nodes.size() < 2) return;
+
+   std::sort(Nodes.begin(), Nodes.end(), [this](XMLTag *Left, XMLTag *Right) {
+      if (Left IS Right) return false;
+      if (!Left) return false;
+      if (!Right) return true;
+      return is_before_in_document_order(Left, Right);
    });
 }
 
+std::vector<XMLTag *> AxisEvaluator::build_ancestor_path(XMLTag *Node)
+{
+   std::vector<XMLTag *> path;
+   XMLTag *current = Node;
+
+   while (current) {
+      path.push_back(current);
+      if (!current->ParentID) break;
+      current = find_tag_by_id(current->ParentID);
+   }
+
+   std::reverse(path.begin(), path.end());
+   return path;
+}
+
 bool AxisEvaluator::is_before_in_document_order(XMLTag *Node1, XMLTag *Node2) {
-   // TODO: Implement proper document order comparison
-   // For now, use ID comparison as a simple heuristic
-   return Node1->ID < Node2->ID;
+   if ((!Node1) or (!Node2) or (Node1 IS Node2)) return false;
+
+   if ((Node1->ID IS 0) or (Node2->ID IS 0)) {
+      if (Node1->ID IS Node2->ID) return Node1 < Node2;
+      return Node1->ID < Node2->ID;
+   }
+
+   auto path1 = build_ancestor_path(Node1);
+   auto path2 = build_ancestor_path(Node2);
+
+   if (path1.empty() or path2.empty()) return Node1 < Node2;
+
+   size_t max_common = std::min(path1.size(), path2.size());
+   size_t index = 0;
+
+   while ((index < max_common) and (path1[index] IS path2[index])) index++;
+
+   if (index IS max_common) {
+      return path1.size() < path2.size();
+   }
+
+   if (index IS 0) {
+      return path1[index]->ID < path2[index]->ID;
+   }
+
+   XMLTag *parent = path1[index - 1];
+   XMLTag *branch1 = path1[index];
+   XMLTag *branch2 = path2[index];
+
+   for (auto &child : parent->Children) {
+      if (&child IS branch1) return true;
+      if (&child IS branch2) return false;
+   }
+
+   return branch1->ID < branch2->ID;
+}
+
+void AxisEvaluator::normalise_node_set(std::vector<XMLTag *> &Nodes)
+{
+   size_t write_index = 0;
+   for (size_t read_index = 0; read_index < Nodes.size(); ++read_index) {
+      if (!Nodes[read_index]) continue;
+      Nodes[write_index++] = Nodes[read_index];
+   }
+
+   Nodes.resize(write_index);
+   if (Nodes.size() < 2) return;
+
+   sort_document_order(Nodes);
+
+   auto new_end = std::unique(Nodes.begin(), Nodes.end(), [](XMLTag *Left, XMLTag *Right) {
+      return Left IS Right;
+   });
+
+   Nodes.erase(new_end, Nodes.end());
 }

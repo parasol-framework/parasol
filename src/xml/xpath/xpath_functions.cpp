@@ -8,10 +8,39 @@
 #include <cctype>
 #include <cstdlib>
 #include <limits>
+#include <sstream>
 #include <unordered_set>
 
 //********************************************************************************************************************
 // XPathValue Implementation
+
+namespace {
+
+std::string format_xpath_number(double Value)
+{
+   if (std::isnan(Value)) return std::string("NaN");
+   if (std::isinf(Value)) return (Value > 0) ? std::string("Infinity") : std::string("-Infinity");
+   if (Value IS 0.0) return std::string("0");
+
+   std::ostringstream stream;
+   stream.setf(std::ios::fmtflags(0), std::ios::floatfield);
+   stream.precision(15);
+   stream << Value;
+
+   std::string result = stream.str();
+
+   if (!result.empty() and (result[0] IS '+')) result.erase(result.begin());
+
+   auto decimal = result.find('.');
+   if (decimal != std::string::npos) {
+      while ((!result.empty()) and (result.back() IS '0')) result.pop_back();
+      if ((!result.empty()) and (result.back() IS '.')) result.pop_back();
+   }
+
+   return result;
+}
+
+} // namespace
 
 bool XPathValue::to_boolean() const {
    switch (type) {
@@ -23,29 +52,43 @@ bool XPathValue::to_boolean() const {
    return false;
 }
 
+double XPathValue::string_to_number(const std::string &Value)
+{
+   if (Value.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+   char *end_ptr = nullptr;
+   double result = std::strtod(Value.c_str(), &end_ptr);
+   if ((end_ptr IS Value.c_str()) or (*end_ptr != '\0')) {
+      return std::numeric_limits<double>::quiet_NaN();
+   }
+
+   return result;
+}
+
+std::string XPathValue::node_string_value(XMLTag *Node)
+{
+   if (!Node) return std::string();
+
+   if (Node->isContent()) {
+      if (!Node->Attribs.empty()) return Node->Attribs[0].Value;
+      return std::string();
+   }
+
+   return Node->getContent();
+}
+
 double XPathValue::to_number() const {
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? 1.0 : 0.0;
       case XPathValueType::Number: return number_value;
       case XPathValueType::String: {
-         if (string_value.empty()) return std::numeric_limits<double>::quiet_NaN();
-         char* end_ptr = nullptr;
-         double result = std::strtod(string_value.c_str(), &end_ptr);
-         if (end_ptr IS string_value.c_str() or *end_ptr != '\0') {
-            return std::numeric_limits<double>::quiet_NaN();
-         }
-         return result;
+         return string_to_number(string_value);
       }
       case XPathValueType::NodeSet: {
          if (node_set.empty()) return std::numeric_limits<double>::quiet_NaN();
-         std::string str = to_string();
-         if (str.empty()) return std::numeric_limits<double>::quiet_NaN();
-         char* end_ptr = nullptr;
-         double result = std::strtod(str.c_str(), &end_ptr);
-         if (end_ptr IS str.c_str() or *end_ptr != '\0') {
-            return std::numeric_limits<double>::quiet_NaN();
-         }
-         return result;
+         if (node_set_string_override.has_value()) return string_to_number(*node_set_string_override);
+         if (!node_set_string_values.empty()) return string_to_number(node_set_string_values[0]);
+         return string_to_number(node_string_value(node_set[0]));
       }
    }
    return 0.0;
@@ -55,12 +98,7 @@ std::string XPathValue::to_string() const {
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? "true" : "false";
       case XPathValueType::Number: {
-         if (std::isnan(number_value)) return "NaN";
-         if (std::isinf(number_value)) return number_value > 0 ? "Infinity" : "-Infinity";
-         if (number_value IS std::floor(number_value)) {
-            return std::to_string((long long)number_value);
-         }
-         return std::to_string(number_value);
+         return format_xpath_number(number_value);
       }
       case XPathValueType::String: return string_value;
       case XPathValueType::NodeSet: {
@@ -68,17 +106,7 @@ std::string XPathValue::to_string() const {
          if (!node_set_string_values.empty()) return node_set_string_values[0];
          if (node_set.empty()) return "";
 
-         XMLTag *tag = node_set[0];
-         if (!tag) return "";
-
-         if (tag->isContent()) {
-            if (!tag->Attribs.empty() && !tag->Attribs[0].Value.empty()) {
-               return tag->Attribs[0].Value;
-            }
-            return tag->getContent();
-         }
-
-         return tag->getContent();
+         return node_string_value(node_set[0]);
       }
    }
    return "";
