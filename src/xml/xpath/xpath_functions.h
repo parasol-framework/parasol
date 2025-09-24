@@ -16,6 +16,7 @@
 
 struct XMLTag;
 struct XMLAttrib;
+class extXML;
 
 //********************************************************************************************************************
 // XPath Value System
@@ -59,6 +60,10 @@ class XPathValue {
    // Utility methods
    bool is_empty() const;
    size_t size() const;
+
+   // Helpers exposed for evaluator utilities
+   static std::string node_string_value(XMLTag *Node);
+   static double string_to_number(const std::string &Value);
 };
 
 //********************************************************************************************************************
@@ -70,10 +75,19 @@ struct XPathContext {
    size_t position = 1;
    size_t size = 1;
    std::map<std::string, XPathValue> variables;
+   extXML * document = nullptr;
 
    XPathContext() = default;
-   XPathContext(XMLTag *Node, size_t Pos = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr)
-      : context_node(Node), attribute_node(Attribute), position(Pos), size(Sz) {}
+   XPathContext(XMLTag *Node,
+                size_t Pos = 1,
+                size_t Sz = 1,
+                const XMLAttrib *Attribute = nullptr,
+                extXML *Document = nullptr)
+      : context_node(Node),
+        attribute_node(Attribute),
+        position(Pos),
+        size(Sz),
+        document(Document) {}
 };
 
 //********************************************************************************************************************

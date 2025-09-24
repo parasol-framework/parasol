@@ -93,6 +93,7 @@ enum class XPathNodeType {
 
    // Expressions
    Expression,
+   Filter,
    BinaryOp,
    UnaryOp,
    FunctionCall,
