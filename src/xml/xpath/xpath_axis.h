@@ -59,7 +59,6 @@ class AxisEvaluator {
 
    // Document order utilities
    void sort_document_order(std::vector<XMLTag *> &Nodes);
-   bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);
    std::vector<XMLTag *> build_ancestor_path(XMLTag *Node);
 
    // Helper methods for tag lookup
@@ -77,6 +76,7 @@ class AxisEvaluator {
 
    // Node-set utilities
    void normalise_node_set(std::vector<XMLTag *> &Nodes);
+   bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);
 
    // Utility methods
    static AxisType parse_axis_name(std::string_view AxisName);

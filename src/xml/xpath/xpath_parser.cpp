@@ -262,7 +262,7 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
    tokens = TokenList;
    current_token = 0;
    errors.clear();
-   auto location = parse_location_path();
+   auto expression = parse_expr();
 
    if (!is_at_end()) {
       XPathToken token = peek();
@@ -271,9 +271,22 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
       report_error("Unexpected token '" + token_text + "' in XPath expression");
    }
 
-   if (has_errors() or (!location)) return nullptr;
+   if (has_errors() or (!expression)) return nullptr;
 
-   return location;
+   if (expression->type IS XPathNodeType::LocationPath) {
+      return expression;
+   }
+
+   if (expression->type IS XPathNodeType::Path) {
+      if (expression->child_count() IS 1) {
+         auto child = std::move(expression->children[0]);
+         if (child and (child->type IS XPathNodeType::LocationPath)) return child;
+      }
+   }
+
+   auto root = std::make_unique<XPathNode>(XPathNodeType::Expression);
+   root->add_child(std::move(expression));
+   return root;
 }
 
 bool XPathParser::check(XPathTokenType Type) const {
@@ -783,7 +796,57 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr() {
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
-   return parse_primary_expr();
+   auto primary = parse_primary_expr();
+   if (!primary) return nullptr;
+
+   std::unique_ptr<XPathNode> current = std::move(primary);
+
+   bool has_predicate = false;
+   while (check(XPathTokenType::LBRACKET)) {
+      auto predicate = parse_predicate();
+      if (!predicate) return nullptr;
+
+      if (!has_predicate) {
+         auto filter = std::make_unique<XPathNode>(XPathNodeType::Filter);
+         filter->add_child(std::move(current));
+         current = std::move(filter);
+         has_predicate = true;
+      }
+
+      current->add_child(std::move(predicate));
+   }
+
+   while (true) {
+      XPathTokenType slash_type = XPathTokenType::UNKNOWN;
+
+      if (match(XPathTokenType::SLASH)) slash_type = XPathTokenType::SLASH;
+      else if (match(XPathTokenType::DOUBLE_SLASH)) slash_type = XPathTokenType::DOUBLE_SLASH;
+
+      if (slash_type IS XPathTokenType::UNKNOWN) break;
+
+      auto relative = parse_location_path();
+      if (!relative) return nullptr;
+
+      auto path_node = std::make_unique<XPathNode>(XPathNodeType::Path);
+      path_node->add_child(std::move(current));
+
+      if (slash_type IS XPathTokenType::DOUBLE_SLASH) {
+         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
+         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
+         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+         path_node->add_child(std::move(descendant_step));
+      }
+
+      for (auto &child : relative->children) {
+         if (child and (child->type IS XPathNodeType::Step)) {
+            path_node->add_child(std::move(child));
+         }
+      }
+
+      current = std::move(path_node);
+   }
+
+   return current;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {

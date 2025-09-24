@@ -45,6 +45,13 @@ class SimpleXPathEvaluator {
                                               uint32_t CurrentPrefix,
                                               bool &Unsupported);
    XPathValue evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
+   XPathValue evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
+                                       const std::vector<const XPathNode *> &Steps,
+                                       const XPathNode *AttributeStep,
+                                       const XPathNode *AttributeTest,
+                                       uint32_t CurrentPrefix);
+   ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   ERR process_expression_node_set(const XPathValue &Value);
 
    public:
    explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) { context.document = XML; }
