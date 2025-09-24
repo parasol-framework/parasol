@@ -456,6 +456,47 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
    }
    else if (check(XPathTokenType::IDENTIFIER)) {
       std::string name = peek().value;
+
+      bool is_node_type = false;
+      if ((name IS "node") or (name IS "text") or (name IS "comment") or (name IS "processing-instruction")) {
+         if ((current_token + 1 < tokens.size()) and (tokens[current_token + 1].type IS XPathTokenType::LPAREN)) {
+            is_node_type = true;
+         }
+      }
+
+      if (is_node_type) {
+         advance(); // consume identifier
+
+         if (!match(XPathTokenType::LPAREN)) {
+            report_error("Expected '(' after node type test");
+            return nullptr;
+         }
+
+         if (name IS "processing-instruction") {
+            std::string target;
+
+            if (!check(XPathTokenType::RPAREN)) {
+               if (check(XPathTokenType::STRING) or check(XPathTokenType::IDENTIFIER)) {
+                  target = peek().value;
+                  advance();
+               }
+               else report_error("Expected literal target in processing-instruction()");
+            }
+
+            if (!match(XPathTokenType::RPAREN)) {
+               report_error("Expected ')' after processing-instruction() test");
+            }
+
+            return std::make_unique<XPathNode>(XPathNodeType::ProcessingInstructionTest, target);
+         }
+
+         if (!match(XPathTokenType::RPAREN)) {
+            report_error("Expected ')' after node type test");
+         }
+
+         return std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, name);
+      }
+
       advance();
 
       if (check(XPathTokenType::COLON)) {
