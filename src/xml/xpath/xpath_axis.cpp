@@ -1,5 +1,7 @@
 // XPath Axis Evaluation System Implementation
 
+#include <algorithm>
+
 //********************************************************************************************************************
 // AxisEvaluator Implementation
 
@@ -114,11 +116,8 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_child_axis(XMLTag *Node) {
    std::vector<XMLTag *> children;
    if (!Node) return children;
 
-   // Only include actual tag children, not content nodes
    for (auto& child : Node->Children) {
-      if (child.isTag()) { // Use helper method from XMLTag
-         children.push_back(&child);
-      }
+      children.push_back(&child);
    }
    return children;
 }
@@ -127,10 +126,10 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_descendant_axis(XMLTag *Node) {
    std::vector<XMLTag *> descendants;
    if (!Node) return descendants;
 
-   // Only process actual tag children, not content nodes
    for (auto& child : Node->Children) {
+      descendants.push_back(&child);
+
       if (child.isTag()) {
-         descendants.push_back(&child);
          auto child_descendants = evaluate_descendant_axis(&child);
          descendants.insert(descendants.end(), child_descendants.begin(), child_descendants.end());
       }
@@ -171,9 +170,11 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_following_sibling_axis(XMLTag *Nod
 
    bool found_self = false;
    for (auto& child : parent->Children) {
-      if (found_self and child.isTag()) {
+      if (found_self) {
          siblings.push_back(&child);
-      } else if (&child IS Node) {
+      }
+
+      if (&child IS Node) {
          found_self = true;
       }
    }
@@ -192,10 +193,10 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Nod
       if (&child IS Node) {
          break; // Stop when we reach the current node
       }
-      if (child.isTag()) {
-         siblings.push_back(&child);
-      }
+
+      siblings.push_back(&child);
    }
+   std::reverse(siblings.begin(), siblings.end());
    return siblings;
 }
 
@@ -206,8 +207,9 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_following_axis(XMLTag *Node) {
    // Get following siblings and their descendants (document order)
    auto following_siblings = evaluate_following_sibling_axis(Node);
    for (auto *sibling : following_siblings) {
+      following.push_back(sibling);
+
       if (sibling->isTag()) {
-         following.push_back(sibling);
          auto descendants = evaluate_descendant_axis(sibling);
          following.insert(following.end(), descendants.begin(), descendants.end());
       }
@@ -223,6 +225,16 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_following_axis(XMLTag *Node) {
    return following;
 }
 
+void AxisEvaluator::collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output) {
+   if (!Node) return;
+
+   for (auto child = Node->Children.rbegin(); child != Node->Children.rend(); ++child) {
+      collect_subtree_reverse(&(*child), Output);
+   }
+
+   Output.push_back(Node);
+}
+
 std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_axis(XMLTag *Node) {
    std::vector<XMLTag *> preceding;
    if (!Node) return preceding;
@@ -230,11 +242,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_axis(XMLTag *Node) {
    // Get preceding siblings and their descendants (reverse document order)
    auto preceding_siblings = evaluate_preceding_sibling_axis(Node);
    for (auto *sibling : preceding_siblings) {
-      if (sibling->isTag()) {
-         auto descendants = evaluate_descendant_axis(sibling);
-         preceding.insert(preceding.end(), descendants.begin(), descendants.end());
-         preceding.push_back(sibling); // Add sibling after its descendants
-      }
+      collect_subtree_reverse(sibling, preceding);
    }
 
    // Recursively include parent's preceding context
@@ -272,9 +280,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_descendant_or_self_axis(XMLTag *No
    std::vector<XMLTag *> descendants;
    if (!Node) return descendants;
 
-   if (Node->isTag()) {
-      descendants.push_back(Node);
-   }
+   descendants.push_back(Node);
 
    auto child_descendants = evaluate_descendant_axis(Node);
    descendants.insert(descendants.end(), child_descendants.begin(), child_descendants.end());

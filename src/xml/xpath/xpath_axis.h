@@ -53,6 +53,8 @@ class AxisEvaluator {
    std::vector<XMLTag *> evaluate_descendant_or_self_axis(XMLTag *ContextNode);
    std::vector<XMLTag *> evaluate_ancestor_or_self_axis(XMLTag *ContextNode);
 
+   void collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output);
+
    // Document order utilities
    void sort_document_order(std::vector<XMLTag *> &Nodes);
    bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);

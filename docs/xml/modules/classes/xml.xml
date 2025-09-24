@@ -6,7 +6,7 @@
     <name>XML</name>
     <type>class</type>
     <module>XML</module>
-    <comment>Provides XML data management services for parsing, manipulation and serialisation.</comment>
+    <comment>Provides an interface for the management of structured data.</comment>
     <fileExtension>*.xml</fileExtension>
     <fileDescription>Extendable Markup Language (XML)</fileDescription>
     <version>1</version>
@@ -16,15 +16,17 @@
     <copyright>Paul Manias © 2001-2025</copyright>
     <description>
 <p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation and document validation.</p>
+<p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Parasol's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath queries on data originating from YAML.</p>
 <header>Data Loading and Parsing</header>
 <p>XML documents can be loaded into an XML object through multiple mechanisms:</p>
 <p>The <fl>Path</fl> field allows loading from file system sources, with automatic parsing upon initialisation.  The class supports <function module="Core">LoadFile</function> caching for frequently accessed files, improving performance for repeated operations.</p>
 <p>The <fl>Statement</fl> field enables direct parsing of XML strings, supporting dynamic content processing and in-memory document construction.</p>
 <p>The <fl>Source</fl> field provides object-based input, allowing XML data to be sourced from any object supporting the Read action.</p>
-<p>For batch processing scenarios, the Path or Statement fields can be reset post-initialisation, causing the XML object to automatically rebuild itself.  This approach optimises memory usage by reusing existing object instances rather than creating new ones.</p>
+<p>For batch processing scenarios, the <fl>Path</fl> or <fl>Statement</fl> fields can be changed post-initialisation, causing the XML object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object instances rather than creating new ones.</p>
 <header>Document Structure and Access</header>
 <p>Successfully parsed XML data is accessible through the <fl>Tags</fl> field, which contains a hierarchical array of <st>XMLTag</st> structures.  Each XMLTag represents a complete XML element including its attributes, content and child elements. The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.</p>
-<p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XMLTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  However, direct modification of the Tags array is discouraged as it can destabilise internal object state - developers should use the provided methods for safe manipulation.</p></description>
+<p>C++ developers benefit from direct access to the Tags field, represented as <code>pf::vector&lt;XMLTag&gt;</code>.  This provides efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods to do so are provided in the C++ header for <code>objXML</code> and <code>XMLTag</code>, with additional functions in the <code>xml</code> namespace. Check the header for details.</p>
+<p>Fluid developers need to be aware that reading the <fl>Tags</fl> field generates a copy of the entire tag structure - it should therefore be read only as needed and cached until the XML object is modified.</p></description>
     <source>
       <file>xml.cpp</file>
     </source>
@@ -525,6 +527,24 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <error code="Okay">The namespace was successfully assigned to the tag.</error>
         <error code="NotFound">The specified tag was not found.</error>
         <error code="NullArgs">Required arguments were not specified correctly.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>SetVariable</name>
+      <comment>Stores a variable that can be referenced in XPath expressions.</comment>
+      <prototype>ERR xml::SetVariable(OBJECTPTR Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the variable (case sensitive).</param>
+        <param type="CSTRING" name="Value">The string value to store.</param>
+      </input>
+      <description>
+<p>This method allows you to store key-value pairs that can be referenced in XPath expressions using the variable syntax <code>$variableName</code>.  Variables are stored as strings and are made available during XPath evaluation.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="ReadOnly">The XML object is read-only.</error>
+        <error code="NullArgs">The <code>Key</code> parameter was not specified.</error>
       </result>
     </method>
 

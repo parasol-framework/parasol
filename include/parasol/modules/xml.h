@@ -82,6 +82,7 @@ enum class XTF : uint32_t {
    CDATA = 0x00000001,
    INSTRUCTION = 0x00000002,
    NOTATION = 0x00000004,
+   COMMENT = 0x00000008,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(XTF)
@@ -170,6 +171,7 @@ struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC
 struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -335,6 +337,10 @@ class objXML : public Object {
       ERR error = Action(AC(-22), this, &args);
       if (Result) *Result = args.Result;
       return(error);
+   }
+   inline ERR setVariable(CSTRING Key, CSTRING Value) noexcept {
+      struct xml::SetVariable args = { Key, Value };
+      return(Action(AC(-23), this, &args));
    }
 
    // Customised field setting
