@@ -1443,9 +1443,7 @@ XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNod
          }
       }
 
-      if (text_nodes.empty()) return XPathValue(text_nodes);
-      if (first_value.has_value()) return XPathValue(text_nodes, first_value);
-      return XPathValue(text_nodes);
+      return XPathValue(text_nodes, first_value);
    }
 
    return function_library.call_function(function_name, args, context);
