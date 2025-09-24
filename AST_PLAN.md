@@ -9,6 +9,7 @@ This document outlines the staged work needed to replace the legacy string-based
 - **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback. Legacy round-bracket predicate syntax has been formally deprecated; only square brackets now parse per XPath 1.0.
 - **Phase 3 (Function & Expression Wiring)** – Boolean logic, arithmetic, relational comparisons, and path expressions now evaluate through `evaluate_expression`, delivering correctly typed values to functions like `count()` without falling back to the legacy evaluator.
 - **Phase 4 (Axis & Node Test Completion – in progress)** – AST traversal now dispatches every XPath axis (self/parent/ancestor branches, descendant scans, following/preceding, attribute) with attribute callbacks and reverse document order mirroring the legacy evaluator. `test_xpath_queries.fluid` exercises these axes directly; remaining work focuses on surfacing non-tag nodes so `text()`/`comment()` predicates can run through the AST path.
+- **Phase 5 (Legacy Fallback Removal – complete)** – The string-based evaluator has been removed. `extXML::find_tag` always routes through the AST evaluator and associated documentation has been updated to describe the final architecture.
 
 ---
 

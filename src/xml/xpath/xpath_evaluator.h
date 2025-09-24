@@ -1,10 +1,8 @@
 //********************************************************************************************************************
 // XPath Evaluator - Main Evaluation Engine
 //
-// This file contains:
-// - SimpleXPathEvaluator class (both legacy and AST methods)
-// - Path evaluation logic aligned with AST_PLAN.md phases
-// - Integration point for all XPath subsystems
+// This file contains the final AST-only SimpleXPathEvaluator implementation and
+// integrates XPath traversal, predicate, and function support.
 //********************************************************************************************************************
 
 #pragma once
@@ -16,17 +14,6 @@ struct XMLAttrib;
 
 class SimpleXPathEvaluator {
    public:
-   struct PathInfo {
-      bool flat_scan = false;
-      size_t pos = 0;
-      std::string_view tag_name;
-      uint32_t tag_prefix = 0;
-      std::string attrib_value;
-      std::string_view attrib_name;
-      bool wild = false;
-      int subscript = 0;
-   };
-
    enum class PredicateResult {
       Match,
       NoMatch,
@@ -62,11 +49,6 @@ class SimpleXPathEvaluator {
    public:
    explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) {}
 
-   // Phase 1 methods (string-based legacy)
-   ERR parse_path(std::string_view XPath, PathInfo &Info);
-   bool match_tag(const PathInfo &Info, uint32_t CurrentPrefix);
-   ERR evaluate_step(std::string_view XPath, PathInfo Info, uint32_t CurrentPrefix);
-
    // Phase 2+ methods (AST-based)
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -79,12 +61,9 @@ class SimpleXPathEvaluator {
    XPathValue evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
    XPathValue evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix);
 
-   // Utility method to try AST-based parsing first, fall back to string-based
+   // Entry point for AST-only evaluation (retained name for API stability)
    ERR find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix);
    ERR find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit);
-
-   // Helper method to evaluate simple function expressions in string-based evaluation
-   bool evaluate_function_expression(std::string_view Expression);
 
    // Context management for AST evaluation
    void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);
