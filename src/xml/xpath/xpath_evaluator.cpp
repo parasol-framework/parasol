@@ -933,6 +933,10 @@ std::string node_set_string_value(const XPathValue &Value, size_t Index)
       return *Value.node_set_string_override;
    }
 
+   if (Index < Value.node_set_string_values.size()) {
+      return Value.node_set_string_values[Index];
+   }
+
    if (Index >= Value.node_set.size()) return std::string();
 
    XMLTag *tag = Value.node_set[Index];
@@ -1285,7 +1289,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
 
       std::optional<std::string> first_value;
       if (!attribute_values.empty()) first_value = attribute_values[0];
-      return XPathValue(attribute_nodes, first_value);
+      return XPathValue(attribute_nodes, first_value, std::move(attribute_values));
    }
 
    return XPathValue(node_results);

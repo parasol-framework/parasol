@@ -55,6 +55,7 @@ std::string XPathValue::to_string() const {
       case XPathValueType::String: return string_value;
       case XPathValueType::NodeSet: {
          if (node_set_string_override.has_value()) return *node_set_string_override;
+         if (!node_set_string_values.empty()) return node_set_string_values[0];
          if (node_set.empty()) return "";
 
          XMLTag *tag = node_set[0];
