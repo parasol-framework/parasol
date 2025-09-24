@@ -8,6 +8,7 @@ This document outlines the staged work needed to replace the legacy string-based
 - **Phase 1 (AST Location Path Traversal Backbone)** – Basic traversal implemented in `xpath_evaluator.cpp` (child, self, descendant-or-self axes, callback plumbing). Attribute axis support remains deferred per plan TODO.
 - **Phase 2 (Predicate Foundations)** – `evaluate_predicate` now honours numeric position predicates, attribute existence/equality (including `@*` name wildcards) and `[=value]` content checks through the AST pipeline. Unsupported predicate shapes still return `ERR::Failed` to drive the legacy fallback. Legacy round-bracket predicate syntax has been formally deprecated; only square brackets now parse per XPath 1.0.
 - **Phase 3 (Function & Expression Wiring)** – Boolean logic, arithmetic, relational comparisons, and path expressions now evaluate through `evaluate_expression`, delivering correctly typed values to functions like `count()` without falling back to the legacy evaluator.
+- **Phase 4 (Axis & Node Test Completion – in progress)** – AST traversal now dispatches every XPath axis (self/parent/ancestor branches, descendant scans, following/preceding, attribute) with attribute callbacks and reverse document order mirroring the legacy evaluator. `test_xpath_queries.fluid` exercises these axes directly; remaining work focuses on surfacing non-tag nodes so `text()`/`comment()` predicates can run through the AST path.
 
 ---
 
@@ -141,25 +142,27 @@ This document outlines the staged work needed to replace the legacy string-based
 
 ### Tasks
 1. **Axis Support**
-   - Implement explicit axes: `self`, `parent`, `ancestor`, `ancestor-or-self`, `descendant`, `descendant-or-self`, `following`, `following-sibling`, `preceding`, `preceding-sibling`, `attribute`.
-   - Validate document order where relevant (following/preceding).
+   - ✅ Implement explicit axes: `self`, `parent`, `ancestor`, `ancestor-or-self`, `descendant`, `descendant-or-self`, `following`, `following-sibling`, `preceding`, `preceding-sibling`, `attribute`.
+   - ✅ Validate reverse-axis document order (`preceding`, `preceding-sibling`) so results match XPath’s reverse traversal semantics.
 
 2. **Node Tests**
-   - Support node type tests (`node()`, `text()`, `comment()`, etc.) and ensure `*` wildcards work with namespaces.
+   - ✅ Element and attribute name tests (including `node()` wildcard semantics and namespace-prefixed lookups) evaluate through `match_node_test`.
+   - ⬜ Surface non-tag children during axis traversal so node type tests like `text()`/`comment()` and the disabled Fluid assertion in `testXPathFunctions` evaluate against AST results. Ensure whitespace handling matches the legacy path before re-enabling the tests.
 
 3. **Namespace Matching**
-   - Confirm prefix handling uses the namespace registry consistently for both element and attribute nodes.
+   - ✅ Prefix matching for both elements and attributes mirrors the legacy evaluator by hashing namespace prefixes and comparing the resulting identifiers.
 
 4. **Custom Extensions**
-   - Restore Parasol-specific features (e.g., callback semantics, content extraction) to AST evaluation.
+   - ✅ Callback semantics, attribute extraction, and content equality predicates now flow entirely through AST evaluation (see `test_xpath_queries.fluid`).
 
 5. **Exhaustive Testing**
-   - Run entire XML test suite: `ctest -C Release --verbose -L xml` (or the equivalent aggregate target).
-   - Validate performance isn’t significantly degraded.
+   - ✅ Run entire XML test suite: `ctest -C Release --verbose -L xml` (or the equivalent aggregate target).
+   - ✅ Validate performance isn’t significantly degraded (no regressions observed in the refreshed Fluid suites).
 
 ### Exit Criteria
 - All existing XML module tests pass without relying on the legacy evaluator.
 - Manual smoke tests (e.g., sample apps or scripts) demonstrate the same behaviour as before.
+- `text()`, `comment()`, and related node-type predicates are enabled in `test_xpath_queries.fluid` and pass via AST traversal.
 
 ---
 
