@@ -298,6 +298,8 @@ ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t Cur
 }
 
 ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
+   axis_evaluator.reset_namespace_nodes();
+
    if (AllowUnionSplit) {
       auto union_paths = split_union_paths(XPath);
       if (union_paths.size() > 1) {

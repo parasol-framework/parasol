@@ -71,6 +71,9 @@ class AxisEvaluator {
    // Main evaluation method
    std::vector<XMLTag *> evaluate_axis(AxisType Axis, XMLTag *ContextNode);
 
+   // Evaluation lifecycle helpers
+   void reset_namespace_nodes();
+
    // Utility methods
    static AxisType parse_axis_name(std::string_view AxisName);
    static std::string axis_name_to_string(AxisType Axis);
