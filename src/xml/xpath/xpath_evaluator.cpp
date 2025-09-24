@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <optional>
@@ -82,9 +83,10 @@ std::vector<std::string_view> split_union_paths(std::string_view XPath)
 //********************************************************************************************************************
 // Context Management
 
-void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size) {
+void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute) {
    context_stack.push_back(context);
    context.context_node = Node;
+   context.attribute_node = Attribute;
    context.position = Position;
    context.size = Size;
 }
@@ -92,6 +94,7 @@ void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Si
 void SimpleXPathEvaluator::pop_context() {
    if (context_stack.empty()) {
       context.context_node = nullptr;
+      context.attribute_node = nullptr;
       context.position = 1;
       context.size = 1;
       return;
@@ -128,6 +131,119 @@ void SimpleXPathEvaluator::pop_cursor_state() {
       xml->Cursor = xml->CursorTags->end();
    }
    else xml->Cursor = begin + state.index;
+}
+
+std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis, XMLTag *ContextNode) {
+   std::vector<AxisMatch> matches;
+
+   auto append_nodes = [&matches](const std::vector<XMLTag *> &nodes) {
+      matches.reserve(matches.size() + nodes.size());
+      for (auto *node : nodes) {
+         matches.push_back({ node, nullptr });
+      }
+   };
+
+   switch (Axis) {
+      case AxisType::Child: {
+         if (!ContextNode) {
+            for (auto &tag : xml->Tags) {
+               if (!tag.isTag()) continue;
+               matches.push_back({ &tag, nullptr });
+            }
+         }
+         else append_nodes(axis_evaluator.evaluate_axis(AxisType::Child, ContextNode));
+         break;
+      }
+
+      case AxisType::Descendant: {
+         if (!ContextNode) {
+            for (auto &tag : xml->Tags) {
+               if (!tag.isTag()) continue;
+               matches.push_back({ &tag, nullptr });
+               append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, &tag));
+            }
+         }
+         else append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode));
+         break;
+      }
+
+      case AxisType::DescendantOrSelf: {
+         if (!ContextNode) {
+            matches.push_back({ nullptr, nullptr });
+            for (auto &tag : xml->Tags) {
+               if (!tag.isTag()) continue;
+               matches.push_back({ &tag, nullptr });
+               append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, &tag));
+            }
+         }
+         else {
+            matches.push_back({ ContextNode, nullptr });
+            append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode));
+         }
+         break;
+      }
+
+      case AxisType::Self: {
+         if ((ContextNode) and context.attribute_node and (ContextNode IS context.context_node)) {
+            matches.push_back({ ContextNode, context.attribute_node });
+         }
+         else matches.push_back({ ContextNode, nullptr });
+         break;
+      }
+
+      case AxisType::Parent: {
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Parent, ContextNode));
+         break;
+      }
+
+      case AxisType::Ancestor: {
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode));
+         break;
+      }
+
+      case AxisType::AncestorOrSelf: {
+         if (ContextNode) {
+            matches.push_back({ ContextNode, nullptr });
+            append_nodes(axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode));
+         }
+         else matches.push_back({ nullptr, nullptr });
+         break;
+      }
+
+      case AxisType::FollowingSibling: {
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::FollowingSibling, ContextNode));
+         break;
+      }
+
+      case AxisType::PrecedingSibling: {
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::PrecedingSibling, ContextNode));
+         break;
+      }
+
+      case AxisType::Following: {
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Following, ContextNode));
+         break;
+      }
+
+      case AxisType::Preceding: {
+         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Preceding, ContextNode));
+         break;
+      }
+
+      case AxisType::Attribute: {
+         if (ContextNode and ContextNode->isTag()) {
+            for (size_t index = 1; index < ContextNode->Attribs.size(); ++index) {
+               matches.push_back({ ContextNode, &ContextNode->Attribs[index] });
+            }
+         }
+         break;
+      }
+
+      case AxisType::Namespace:
+         break;
+   }
+
+   return matches;
 }
 
 //********************************************************************************************************************
@@ -340,73 +456,28 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    AxisType axis = AxisType::Child;
    if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
-   if ((axis IS AxisType::Attribute)) {
-      pf::Log log(__FUNCTION__);
-      log.msg("TODO: Attribute axis deferred to later phase");
-      return ERR::Failed;
-   }
-
-   if ((axis != AxisType::Child) and (axis != AxisType::DescendantOrSelf) and (axis != AxisType::Self)) {
-      pf::Log log(__FUNCTION__);
-      log.msg("TODO: Axis '%s' not yet supported in AST evaluator", AxisEvaluator::axis_name_to_string(axis).c_str());
-      return ERR::Failed;
-   }
-
-   auto dispatch_axis = [this, axis](XMLTag *context_node) {
-      std::vector<XMLTag *> results;
-
-      if (axis IS AxisType::Child) {
-         if (!context_node) {
-            for (auto &tag : xml->Tags) {
-               if (tag.isTag()) results.push_back(&tag);
-            }
-         }
-         else results = axis_evaluator.evaluate_axis(AxisType::Child, context_node);
-      }
-      else if (axis IS AxisType::DescendantOrSelf) {
-         if (!context_node) {
-            results.push_back(nullptr);
-            for (auto &tag : xml->Tags) {
-               if (!tag.isTag()) continue;
-               auto branch = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, &tag);
-               results.insert(results.end(), branch.begin(), branch.end());
-            }
-         }
-         else results = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, context_node);
-      }
-      else if (axis IS AxisType::Self) {
-         results.push_back(context_node);
-      }
-
-      return results;
-   };
-
    bool is_last_step = (StepIndex + 1 >= Steps.size());
 
    for (auto *context_node : ContextNodes) {
-      auto axis_candidates = dispatch_axis(context_node);
+      auto axis_matches = dispatch_axis(axis, context_node);
 
-      // Filter by node test first so only viable candidates remain
-      std::vector<XMLTag *> filtered;
-      filtered.reserve(axis_candidates.size());
+      std::vector<AxisMatch> filtered;
+      filtered.reserve(axis_matches.size());
 
-      for (auto *candidate : axis_candidates) {
-         if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
-         filtered.push_back(candidate);
+      for (auto &match : axis_matches) {
+         if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
+         filtered.push_back(match);
       }
 
-      if (filtered.empty()) {
-         continue;
-      }
+      if (filtered.empty()) continue;
 
-      // Apply predicates sequentially, updating the candidate list each time
       for (auto *predicate_node : predicate_nodes) {
-         std::vector<XMLTag *> passed;
+         std::vector<AxisMatch> passed;
          passed.reserve(filtered.size());
 
          for (size_t index = 0; index < filtered.size(); ++index) {
-            auto *candidate = filtered[index];
-            push_context(candidate, index + 1, filtered.size());
+            auto &match = filtered[index];
+            push_context(match.node, index + 1, filtered.size(), match.attribute);
 
             auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
             pop_context();
@@ -415,22 +486,72 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                return ERR::Failed;
             }
 
-            if (predicate_result IS PredicateResult::Match) {
-               passed.push_back(candidate);
-            }
+            if (predicate_result IS PredicateResult::Match) passed.push_back(match);
          }
 
          filtered.swap(passed);
-
          if (filtered.empty()) break;
       }
 
       if (filtered.empty()) continue;
 
-      for (size_t index = 0; index < filtered.size(); ++index) {
-         auto *candidate = filtered[index];
+      if ((axis IS AxisType::Attribute) and (!is_last_step)) {
+         return ERR::Failed;
+      }
 
-         push_context(candidate, index + 1, filtered.size());
+      for (size_t index = 0; index < filtered.size(); ++index) {
+         auto &match = filtered[index];
+         auto *candidate = match.node;
+
+         push_context(candidate, index + 1, filtered.size(), match.attribute);
+
+         if (axis IS AxisType::Attribute) {
+            if (!candidate or !match.attribute) {
+               pop_context();
+               continue;
+            }
+
+            auto tags = xml->getInsert(candidate, xml->Cursor);
+            if (!tags) {
+               pop_context();
+               continue;
+            }
+
+            xml->CursorTags = tags;
+            xml->Attrib = match.attribute->Name;
+
+            if (!xml->Callback.defined()) {
+               Matched = true;
+               pop_context();
+               return ERR::Okay;
+            }
+
+            push_cursor_state();
+
+            ERR callback_error = ERR::Okay;
+            if (xml->Callback.isC()) {
+               auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+               callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+            }
+            else if (xml->Callback.isScript()) {
+               if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+                  { "XML",  xml, FD_OBJECTPTR },
+                  { "Tag",  candidate->ID },
+                  { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+               }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+            }
+            else callback_error = ERR::InvalidValue;
+
+            pop_cursor_state();
+            pop_context();
+
+            Matched = true;
+
+            if (callback_error IS ERR::Terminate) return ERR::Terminate;
+            if (callback_error != ERR::Okay) return callback_error;
+
+            continue;
+         }
 
          if (is_last_step) {
             if (!candidate) {
@@ -521,8 +642,59 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    return Matched ? ERR::Okay : ERR::Search;
 }
 
-bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, XMLTag *Candidate, uint32_t CurrentPrefix) {
-   if (!NodeTest) return Candidate != nullptr;
+bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix) {
+   bool attribute_axis = (Axis IS AxisType::Attribute) or ((Axis IS AxisType::Self) and (Attribute != nullptr));
+
+   if (!NodeTest) {
+      if (attribute_axis) return Attribute != nullptr;
+      return Candidate != nullptr;
+   }
+
+   if (attribute_axis) {
+      if (!Attribute) return false;
+
+      if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
+         return NodeTest->value IS "node";
+      }
+
+      if (NodeTest->type IS XPathNodeType::Wildcard) return true;
+
+      if (NodeTest->type IS XPathNodeType::NameTest) {
+         std::string_view test_name = NodeTest->value;
+         if (test_name.empty()) return false;
+
+         std::string_view attribute_name = Attribute->Name;
+
+         if (test_name.find('*') != std::string::npos) return pf::wildcmp(test_name, attribute_name);
+
+         if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+            uint32_t expected_prefix = 0;
+            std::string_view expected_local = test_name;
+
+            if (auto colon = test_name.find(':'); colon != std::string::npos) {
+               expected_prefix = pf::strhash(test_name.substr(0, colon));
+               expected_local = test_name.substr(colon + 1);
+            }
+
+            std::string_view candidate_local = attribute_name;
+            uint32_t candidate_prefix = 0;
+
+            if (auto colon = attribute_name.find(':'); colon != std::string::npos) {
+               candidate_prefix = pf::strhash(attribute_name.substr(0, colon));
+               candidate_local = attribute_name.substr(colon + 1);
+            }
+
+            bool name_matches = expected_local.find('*') != std::string::npos ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
+            bool prefix_matches = expected_prefix ? (candidate_prefix IS expected_prefix) : true;
+
+            return name_matches and prefix_matches;
+         }
+
+         return pf::iequals(test_name, attribute_name);
+      }
+
+      return false;
+   }
 
    if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
       if (NodeTest->value IS "node") return true;
@@ -770,67 +942,28 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
    AxisType axis = AxisType::Child;
    if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
-   if (axis IS AxisType::Attribute) {
-      Unsupported = true;
-      return results;
-   }
-
-   if ((axis != AxisType::Child) and (axis != AxisType::DescendantOrSelf) and (axis != AxisType::Self)) {
-      Unsupported = true;
-      return results;
-   }
-
-   auto dispatch_axis = [this, axis](XMLTag *context_node) {
-      std::vector<XMLTag *> axis_results;
-
-      if (axis IS AxisType::Child) {
-         if (!context_node) {
-            for (auto &tag : xml->Tags) {
-               if (tag.isTag()) axis_results.push_back(&tag);
-            }
-         }
-         else axis_results = axis_evaluator.evaluate_axis(AxisType::Child, context_node);
-      }
-      else if (axis IS AxisType::DescendantOrSelf) {
-         if (!context_node) {
-            axis_results.push_back(nullptr);
-            for (auto &tag : xml->Tags) {
-               if (!tag.isTag()) continue;
-               auto branch = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, &tag);
-               axis_results.insert(axis_results.end(), branch.begin(), branch.end());
-            }
-         }
-         else axis_results = axis_evaluator.evaluate_axis(AxisType::DescendantOrSelf, context_node);
-      }
-      else if (axis IS AxisType::Self) {
-         axis_results.push_back(context_node);
-      }
-
-      return axis_results;
-   };
-
    bool is_last_step = (StepIndex + 1 >= Steps.size());
 
    for (auto *context_node : ContextNodes) {
-      auto axis_candidates = dispatch_axis(context_node);
+      auto axis_matches = dispatch_axis(axis, context_node);
 
-      std::vector<XMLTag *> filtered;
-      filtered.reserve(axis_candidates.size());
+      std::vector<AxisMatch> filtered;
+      filtered.reserve(axis_matches.size());
 
-      for (auto *candidate : axis_candidates) {
-         if (!match_node_test(node_test, candidate, CurrentPrefix)) continue;
-         filtered.push_back(candidate);
+      for (auto &match : axis_matches) {
+         if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
+         filtered.push_back(match);
       }
 
       if (filtered.empty()) continue;
 
       for (auto *predicate_node : predicate_nodes) {
-         std::vector<XMLTag *> passed;
+         std::vector<AxisMatch> passed;
          passed.reserve(filtered.size());
 
          for (size_t index = 0; index < filtered.size(); ++index) {
-            auto *candidate = filtered[index];
-            push_context(candidate, index + 1, filtered.size());
+            auto &match = filtered[index];
+            push_context(match.node, index + 1, filtered.size(), match.attribute);
             auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
             pop_context();
 
@@ -839,7 +972,7 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
                return {};
             }
 
-            if (predicate_result IS PredicateResult::Match) passed.push_back(candidate);
+            if (predicate_result IS PredicateResult::Match) passed.push_back(match);
          }
 
          filtered.swap(passed);
@@ -850,11 +983,15 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
       if (filtered.empty()) continue;
 
       if (is_last_step) {
-         results.insert(results.end(), filtered.begin(), filtered.end());
+         for (auto &match : filtered) results.push_back(match.node);
          continue;
       }
 
-      auto child_results = collect_step_results(filtered, Steps, StepIndex + 1, CurrentPrefix, Unsupported);
+      std::vector<XMLTag *> next_context;
+      next_context.reserve(filtered.size());
+      for (auto &match : filtered) next_context.push_back(match.node);
+
+      auto child_results = collect_step_results(next_context, Steps, StepIndex + 1, CurrentPrefix, Unsupported);
       if (Unsupported) return {};
       results.insert(results.end(), child_results.begin(), child_results.end());
    }
@@ -960,6 +1097,36 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
       return XPathValue();
    }
 
+   if (context.attribute_node and (steps.size() IS 1)) {
+      const XPathNode *step = steps[0];
+      const XPathNode *axis_node = nullptr;
+      const XPathNode *node_test = nullptr;
+
+      for (size_t index = 0; index < step->child_count(); ++index) {
+         auto *child = step->get_child(index);
+         if (!child) continue;
+
+         if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
+         else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
+                                    (child->type IS XPathNodeType::Wildcard) or
+                                    (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+      }
+
+      AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::Child;
+
+      if ((axis IS AxisType::Self) and !node_results.empty()) {
+         bool accepts_attribute = false;
+
+         if (!node_test) accepts_attribute = true;
+         else if (node_test->type IS XPathNodeType::Wildcard) accepts_attribute = true;
+         else if (node_test->type IS XPathNodeType::NodeTypeTest) accepts_attribute = node_test->value IS "node";
+
+         if (accepts_attribute) {
+            return XPathValue(node_results, context.attribute_node->Value);
+         }
+      }
+   }
+
    if (attribute_step) {
       std::vector<std::string> attribute_values;
       std::vector<XMLTag *> attribute_nodes;
@@ -967,27 +1134,12 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
 
-         std::string attribute_name;
-         bool wildcard_name = false;
-
-         if (attribute_test) {
-            if (attribute_test->type IS XPathNodeType::Wildcard) wildcard_name = true;
-            else if (attribute_test->type IS XPathNodeType::NodeTypeTest) wildcard_name = true;
-            else attribute_name = attribute_test->value;
-         }
-         else wildcard_name = true;
-
-         for (size_t index = 1; index < candidate->Attribs.size(); ++index) {
-            auto &attrib = candidate->Attribs[index];
-
-            bool name_matches;
-            if (wildcard_name) name_matches = true;
-            else if (attribute_name.find('*') != std::string::npos) name_matches = pf::wildcmp(attribute_name, attrib.Name);
-            else name_matches = pf::iequals(attrib.Name, attribute_name);
-
-            if (!name_matches) continue;
-            attribute_values.push_back(attrib.Value);
-            attribute_nodes.push_back(candidate);
+         auto matches = dispatch_axis(AxisType::Attribute, candidate);
+         for (auto &match : matches) {
+            if (!match.attribute) continue;
+            if (!match_node_test(attribute_test, AxisType::Attribute, match.node, match.attribute, CurrentPrefix)) continue;
+            attribute_values.push_back(match.attribute->Value);
+            attribute_nodes.push_back(match.node);
          }
       }
 

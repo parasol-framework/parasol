@@ -1,5 +1,7 @@
 // XPath Axis Evaluation System Implementation
 
+#include <algorithm>
+
 //********************************************************************************************************************
 // AxisEvaluator Implementation
 
@@ -196,6 +198,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Nod
          siblings.push_back(&child);
       }
    }
+   std::reverse(siblings.begin(), siblings.end());
    return siblings;
 }
 
@@ -223,6 +226,17 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_following_axis(XMLTag *Node) {
    return following;
 }
 
+void AxisEvaluator::collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output) {
+   if (!Node or !Node->isTag()) return;
+
+   for (auto child = Node->Children.rbegin(); child != Node->Children.rend(); ++child) {
+      if (!child->isTag()) continue;
+      collect_subtree_reverse(&(*child), Output);
+   }
+
+   Output.push_back(Node);
+}
+
 std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_axis(XMLTag *Node) {
    std::vector<XMLTag *> preceding;
    if (!Node) return preceding;
@@ -230,11 +244,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_axis(XMLTag *Node) {
    // Get preceding siblings and their descendants (reverse document order)
    auto preceding_siblings = evaluate_preceding_sibling_axis(Node);
    for (auto *sibling : preceding_siblings) {
-      if (sibling->isTag()) {
-         auto descendants = evaluate_descendant_axis(sibling);
-         preceding.insert(preceding.end(), descendants.begin(), descendants.end());
-         preceding.push_back(sibling); // Add sibling after its descendants
-      }
+      collect_subtree_reverse(sibling, preceding);
    }
 
    // Recursively include parent's preceding context

@@ -247,7 +247,7 @@ function testRemoveXPathAttributes()
    assert(err == ERR_Okay, "Should be able to locate the first item after removal")
 
    local attrErr, value = xml.mtGetAttrib(itemId, 'type')
-   assert(attrErr == ERR_Okay, "Type attribute should remain accessible until removal support lands: " .. mSys.GetErrorMsg(attrErr))
+   assert(attrErr == ERR_Search, "Type attribute should be removed by mtRemoveXPath: " .. mSys.GetErrorMsg(attrErr))
 
    -- Verify other attributes remain
    local nameErr, nameValue = xml.mtGetAttrib(itemId, 'name')

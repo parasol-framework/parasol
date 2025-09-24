@@ -12,6 +12,8 @@
 //********************************************************************************************************************
 // Main XPath Evaluator
 
+struct XMLAttrib;
+
 class SimpleXPathEvaluator {
    public:
    struct PathInfo {
@@ -38,12 +40,18 @@ class SimpleXPathEvaluator {
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
 
+   struct AxisMatch {
+      XMLTag * node = nullptr;
+      const XMLAttrib * attribute = nullptr;
+   };
+
    struct CursorState {
       objXML::TAGS * tags;
       size_t index;
    };
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
+   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode);
    std::vector<XMLTag *> collect_step_results(const std::vector<XMLTag *> &ContextNodes,
                                               const std::vector<const XPathNode *> &Steps,
                                               size_t StepIndex,
@@ -64,7 +72,7 @@ class SimpleXPathEvaluator {
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
    ERR evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix);
    ERR evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
-   bool match_node_test(const XPathNode *NodeTest, XMLTag *Candidate, uint32_t CurrentPrefix);
+   bool match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix);
    PredicateResult evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
 
    // Phase 3 methods (function support)
@@ -79,7 +87,7 @@ class SimpleXPathEvaluator {
    bool evaluate_function_expression(std::string_view Expression);
 
    // Context management for AST evaluation
-   void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1);
+   void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);
    void pop_context();
    XMLTag * get_context_node() const { return context.context_node; }
 

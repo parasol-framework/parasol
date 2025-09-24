@@ -191,6 +191,10 @@ XPathValue XPathFunctionLibrary::function_name(const std::vector<XPathValue> &Ar
 
 XPathValue XPathFunctionLibrary::function_string(const std::vector<XPathValue> &Args, const XPathContext &Context) {
    if (Args.empty()) {
+      if (Context.attribute_node) {
+         return XPathValue(Context.attribute_node->Value);
+      }
+
       if (Context.context_node) {
          std::vector<XMLTag *> nodes = { Context.context_node };
          XPathValue node_set_value(nodes);

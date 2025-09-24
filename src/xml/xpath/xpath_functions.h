@@ -14,6 +14,9 @@
 #include <string_view>
 #include <vector>
 
+struct XMLTag;
+struct XMLAttrib;
+
 //********************************************************************************************************************
 // XPath Value System
 
@@ -58,13 +61,14 @@ class XPathValue {
 
 struct XPathContext {
    XMLTag * context_node = nullptr;
+   const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
    size_t size = 1;
    std::map<std::string, XPathValue> variables;
 
    XPathContext() = default;
-   XPathContext(XMLTag *Node, size_t Pos = 1, size_t Sz = 1)
-      : context_node(Node), position(Pos), size(Sz) {}
+   XPathContext(XMLTag *Node, size_t Pos = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr)
+      : context_node(Node), attribute_node(Attribute), position(Pos), size(Sz) {}
 };
 
 //********************************************************************************************************************
