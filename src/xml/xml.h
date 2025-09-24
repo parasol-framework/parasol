@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <memory>
 
 struct ParseState {
