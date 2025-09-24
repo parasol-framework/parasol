@@ -175,12 +175,15 @@ function testAttributeExtraction()
    })
 
    -- Extract title attribute value
-   local titleValue = xml.getKey('/root/book/@title')
-   assert(titleValue == "Guide", "Title attribute extraction failed")
+   local err, bookId = xml.mtFindTag('/root/book')
+   assert(err == ERR_Okay, "Should locate the book element for attribute extraction")
+
+   local titleErr, titleValue = xml.mtGetAttrib(bookId, 'title')
+   assert(titleErr == ERR_Okay and titleValue == "Guide", "Title attribute extraction failed")
 
    -- Extract author attribute value
-   local authorValue = xml.getKey('/root/book/@author')
-   assert(authorValue == "Smith", "Author attribute extraction failed")
+   local authorErr, authorValue = xml.mtGetAttrib(bookId, 'author')
+   assert(authorErr == ERR_Okay and authorValue == "Smith", "Author attribute extraction failed")
 
    -- Wildcard attribute name in predicate: matches any attribute value
    local err, id = xml.mtFindTag('/root/book[@*="Smith"]')
@@ -212,19 +215,19 @@ function testExistsOperations()
       statement = '<root><section title="Test"><item/></section></root>'
    })
 
-   -- Test element existence
-   local sectionExists = xml.getKey('exists:/root/section')
-   assert(sectionExists == "1", "Section should exist")
+   -- Test element existence via XPath lookup
+   local err, sectionId = xml.mtFindTag('/root/section')
+   assert(err == ERR_Okay, "Section should exist")
 
-   local missingExists = xml.getKey('exists:/root/missing')
-   assert(missingExists == "0", "Missing element should not exist")
+   local missingErr, missingId = xml.mtFindTag('/root/missing')
+   assert(missingErr != ERR_Okay, "Missing element should not exist")
 
    -- Test attribute existence
-   local titleExists = xml.getKey('exists:/root/section/@title')
-   assert(titleExists == "1", "Title attribute should exist")
+   local titleErr, titleValue = xml.mtGetAttrib(sectionId, 'title')
+   assert(titleErr == ERR_Okay and titleValue == "Test", "Title attribute should exist")
 
-   local missingAttrExists = xml.getKey('exists:/root/section/@missing')
-   assert(missingAttrExists == "0", "Missing attribute should not exist")
+   local missingAttrErr, missingAttrValue = xml.mtGetAttrib(sectionId, 'missing')
+   assert(missingAttrErr == ERR_NotFound, "Missing attribute should not exist")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -524,28 +527,37 @@ function testAttributeNameVariants()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 axes (NOT YET SUPPORTED)
+-- Test XPath 1.0 axes
 
 function testXPathAxes()
    local xml = obj.new("xml", {
       statement = '<root><section><item id="1"/><item id="2"/></section><other><item id="3"/></other></root>'
    })
 
-   -- Test following-sibling axis (XPath 1.0 - not supported yet)
+   -- Test following-sibling axis returns the next item in document order
    local err, itemId = xml.mtFindTag('/root/section/item[@id="1"]/following-sibling::item')
-   assert(err != ERR_Okay, "following-sibling axis should not be supported yet")
+   assert(err == ERR_Okay, "following-sibling axis should locate the next sibling item: " .. mSys.GetErrorMsg(err))
+   local err2, siblingId = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and siblingId == '2', "following-sibling::item should return id=2")
 
-   -- Test preceding-sibling axis (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/section/item[@id="2"]/preceding-sibling::item')
-   assert(err != ERR_Okay, "preceding-sibling axis should not be supported yet")
+   -- Test preceding-sibling axis returns the previous sibling
+   err, itemId = xml.mtFindTag('/root/section/item[@id="2"]/preceding-sibling::item')
+   assert(err == ERR_Okay, "preceding-sibling axis should locate the previous sibling item: " .. mSys.GetErrorMsg(err))
+   err2, siblingId = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and siblingId == '1', "preceding-sibling::item should return id=1")
 
-   -- Test ancestor axis (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/section/item/ancestor::root')
-   assert(err != ERR_Okay, "ancestor axis should not be supported yet")
+   -- Test ancestor axis resolves back to the document root
+   local errRoot, rootId = xml.mtFindTag('/root')
+   assert(errRoot == ERR_Okay, "Should be able to resolve /root for ancestor comparison")
+   err, itemId = xml.mtFindTag('/root/section/item/ancestor::root')
+   assert(err == ERR_Okay, "ancestor axis should resolve to the document root: " .. mSys.GetErrorMsg(err))
+   assert(itemId == rootId, "ancestor::root should return the root tag identifier")
 
-   -- Test descendant axis (XPath 1.0 - not supported yet)
-   local err, itemId = xml.mtFindTag('/root/descendant::item[@id="3"]')
-   assert(err != ERR_Okay, "descendant axis should not be supported yet")
+   -- Test descendant axis traverses nested branches
+   err, itemId = xml.mtFindTag('/root/descendant::item[@id="3"]')
+   assert(err == ERR_Okay, "descendant axis should locate nested descendants: " .. mSys.GetErrorMsg(err))
+   err2, siblingId = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and siblingId == '3', "descendant::item[@id=\"3\"] should return id=3")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -780,39 +792,48 @@ function testXPathOperators()
       ]]
    })
 
-   -- Test Boolean Operators (and, or)
-   -- Note: These will currently fail since we need proper AST evaluation for complex expressions
-   -- But we verify the parser doesn't crash
+   -- Test Boolean Operators (and, or, not)
    local err, id = xml.mtFindTag('/root/books/book[@rating="5.0" and @year="2019"]')
-   -- assert(err == ERR_Okay, "Boolean AND operator should work")
+   assert(err == ERR_Okay, "Boolean AND operator should locate the 2019 five-star book: " .. mSys.GetErrorMsg(err))
+   local err2, bookId = xml.mtGetAttrib(id, 'id')
+   assert(err2 == ERR_Okay and bookId == '2', "Boolean AND should return book id=2")
 
    err, id = xml.mtFindTag('/root/books/book[@rating="5.0" or @year="2021"]')
-   -- assert(err == ERR_Okay, "Boolean OR operator should work")
+   assert(err == ERR_Okay, "Boolean OR operator should match a qualifying book: " .. mSys.GetErrorMsg(err))
+   err2, bookId = xml.mtGetAttrib(id, 'id')
+   assert(err2 == ERR_Okay and bookId == '2', "Boolean OR should return the first matching book (id=2)")
+
+   err, id = xml.mtFindTag('/root/status[not(@enabled="false")]')
+   assert(err == ERR_Okay, "not() operator should filter the disabled status: " .. mSys.GetErrorMsg(err))
+   local err3, enabled = xml.mtGetAttrib(id, 'enabled')
+   assert(err3 == ERR_Okay and enabled == 'true', "not() should leave only the enabled status entry")
 
    -- Test Comparison Operators
-   err, id = xml.mtFindTag('/root/books/book[@id!="1"]')
-   -- assert(err == ERR_Okay, "Not equals operator should work")
+   err, id = xml.mtFindTag('/root/books/book[@id != "1"]')
+   assert(err == ERR_Okay, "Not-equal operator should skip the first book: " .. mSys.GetErrorMsg(err))
+   err2, bookId = xml.mtGetAttrib(id, 'id')
+   assert(err2 == ERR_Okay and bookId == '2', "@id != \"1\" should return the second book")
 
-   err, id = xml.mtFindTag('/root/numbers/value[text()>"15"]')
-   -- assert(err == ERR_Okay, "Greater than operator should work")
+   err, id = xml.mtFindTag('/root/books/book[@year > 2020]')
+   assert(err == ERR_Okay, "Greater-than operator should locate later publications: " .. mSys.GetErrorMsg(err))
+   err2, bookId = xml.mtGetAttrib(id, 'id')
+   assert(err2 == ERR_Okay and bookId == '3', "@year > 2020 should return the 2021 release")
 
-   err, id = xml.mtFindTag('/root/numbers/value[text()<="20"]')
-   -- assert(err == ERR_Okay, "Less than or equal operator should work")
+   err, id = xml.mtFindTag('/root/books/book[@year <= 2019]')
+   assert(err == ERR_Okay, "Less-than-or-equal operator should locate early publications: " .. mSys.GetErrorMsg(err))
+   err2, bookId = xml.mtGetAttrib(id, 'id')
+   assert(err2 == ERR_Okay and bookId == '2', "@year <= 2019 should return the 2019 release")
 
-   -- Test Arithmetic Operators (basic parsing validation)
-   -- These should parse without error even if not fully evaluated
-   err, id = xml.mtFindTag('/root/numbers/value[position()+1=2]')
-   -- assert(err == ERR_Okay, "Addition operator should parse")
+   err, id = xml.mtFindTag('/root/books/book[position() + 1 = 3]')
+   assert(err == ERR_Okay, "position()+1 should evaluate arithmetic inside predicates: " .. mSys.GetErrorMsg(err))
+   local err4, plusBook = xml.mtGetAttrib(id, 'id')
+   assert(err4 == ERR_Okay and plusBook == '2', "position()+1=3 should return the second book")
 
-   err, id = xml.mtFindTag('/root/numbers/value[position()-1=0]')
-   -- assert(err == ERR_Okay, "Subtraction operator should parse")
-
-   err, id = xml.mtFindTag('/root/numbers/value[position()*2=4]')
-   -- assert(err == ERR_Okay, "Multiplication operator should parse")
-
-   -- Test that parser accepts these expressions without crashing
-   print("Phase 4 operator parsing tests completed - parser accepts complex expressions")
-end
+   err, id = xml.mtFindTag('/root/books/book[position() * 2 >= 4]')
+   assert(err == ERR_Okay, "position()*2 should honour multiplication semantics: " .. mSys.GetErrorMsg(err))
+   local err5, multBook = xml.mtGetAttrib(id, 'id')
+   assert(err5 == ERR_Okay and multBook == '2', "position()*2>=4 should return the second entry")
+ end
 
 function testXPathExpressions()
    local xml = obj.new("xml", {
@@ -830,18 +851,26 @@ function testXPathExpressions()
       ]]
    })
 
-   -- Test that complex expressions don't crash the parser
+   -- contains() should resolve string functions against attribute values
    local err, id = xml.mtFindTag('/library/section[@name="fiction"]/book[contains(@title,"1984")]')
-   -- Future: should work when function calls are fully integrated
+   assert(err == ERR_Okay, "contains() should match titles within the fiction section: " .. mSys.GetErrorMsg(err))
+   local err2, title = xml.mtGetAttrib(id, 'title')
+   assert(err2 == ERR_Okay and title == '1984', "contains() predicate should return the 1984 novel")
 
-   err, id = xml.mtFindTag('/library/section[position()>1]/book[@pages>"400"]')
-   -- Future: should work when position() and comparison work together
+   -- position() combined with comparison operators should filter later sections
+   err, id = xml.mtFindTag('/library/section[position()>1]/book[@pages > 400]')
+   assert(err == ERR_Okay, "position()>1 should allow filtering second section books: " .. mSys.GetErrorMsg(err))
+   err2, title = xml.mtGetAttrib(id, 'title')
+   assert(err2 == ERR_Okay and title == 'Clean Code', "Filtered query should return the 464-page technical book")
 
-   -- Test union operator syntax (parsing validation)
-   err, id = xml.mtFindTag('/library/section[@name="fiction"]/book | /library/section[@name="technical"]/book')
-   -- Future: union operator should combine node sets
-
-   print("Phase 4 expression parsing tests completed")
+   -- Union operator should execute successfully across multiple branches
+   local unionTitles = {}
+   local unionErr = xml.mtFindTag('/library/section[@name="fiction"]/book | /library/section[@name="technical"]/book', function(XML, TagID, Attrib)
+      local titleErr, unionTitle = xml.mtGetAttrib(TagID, 'title')
+      table.insert(unionTitles, titleErr == ERR_Okay and unionTitle or '')
+   end)
+   assert(unionErr == ERR_Okay, "Union operator should execute successfully")
+   assert(#unionTitles >= 2, "Union should return at least two nodes, found " .. #unionTitles)
 end
 
 function testXPathArithmetic()
@@ -862,18 +891,38 @@ function testXPathArithmetic()
       ]]
    })
 
-   -- Test arithmetic in predicates (syntax validation for now)
+   -- Division and modulo on attribute values
    local err, id = xml.mtFindTag('/math/calculations/result[@value div 3 = 5]')
-   -- Future: division operator should work
+   assert(err == ERR_Okay, "Division operator should evaluate attribute arithmetic: " .. mSys.GetErrorMsg(err))
+   local err2, resultValue = xml.mtGetAttrib(id, 'value')
+   assert(err2 == ERR_Okay and resultValue == '15', "@value div 3 = 5 should target the 15 result node")
 
    err, id = xml.mtFindTag('/math/calculations/result[@value mod 10 = 5]')
-   -- Future: modulo operator should work
+   assert(err == ERR_Okay, "Modulo operator should evaluate attribute arithmetic: " .. mSys.GetErrorMsg(err))
+   err2, resultValue = xml.mtGetAttrib(id, 'value')
+   assert(err2 == ERR_Okay and resultValue == '15', "@value mod 10 = 5 should reuse the 15 result node")
 
-   err, id = xml.mtFindTag('/math/numbers/num[text() + 5 = 25]')
-   -- Future: addition with node values should work
+   err, id = xml.mtFindTag('/math/calculations/result[@value div 20 = 5]')
+   assert(err == ERR_Okay, "Division should also match the 100 result when dividing by 20: " .. mSys.GetErrorMsg(err))
+   err2, resultValue = xml.mtGetAttrib(id, 'value')
+   assert(err2 == ERR_Okay and resultValue == '100', "@value div 20 = 5 should return the 100 result node")
 
-   print("Phase 4 arithmetic parsing tests completed")
-end
+   -- Additional arithmetic on attribute values
+   err, id = xml.mtFindTag('/math/calculations/result[@value + 5 = 20]')
+   assert(err == ERR_Okay, "Addition on attributes should evaluate numerically: " .. mSys.GetErrorMsg(err))
+   local err3, addedValue = xml.mtGetAttrib(id, 'value')
+   assert(err3 == ERR_Okay and addedValue == '15', "@value + 5 = 20 should return the 15 result node")
+
+   err, id = xml.mtFindTag('/math/calculations/result[@value - 80 = 20]')
+   assert(err == ERR_Okay, "Subtraction on attributes should evaluate numerically: " .. mSys.GetErrorMsg(err))
+   local err4, subValue = xml.mtGetAttrib(id, 'value')
+   assert(err4 == ERR_Okay and subValue == '100', "@value - 80 = 20 should return the 100 result node")
+
+   err, id = xml.mtFindTag('/math/calculations/result[@value * 2 = 10]')
+   assert(err == ERR_Okay, "Multiplication on attributes should evaluate numerically: " .. mSys.GetErrorMsg(err))
+   local err5, multValue = xml.mtGetAttrib(id, 'value')
+   assert(err5 == ERR_Okay and multValue == '5', "@value * 2 = 10 should return the 5 result node")
+ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Test Phase 5: XPath Axes
@@ -912,22 +961,30 @@ function testXPathForwardAxes()
    err, id = xml.mtFindTag('/library/child::fiction/child::book', function(XML, TagID, Attrib)
       childCount = childCount + 1
    end)
-   -- Note: This will currently fail as explicit axis support needs AST evaluation
-   -- assert(err == ERR_Okay, "Explicit child axis should work")
+   assert(err == ERR_Okay, "Explicit child axis should iterate children correctly: " .. mSys.GetErrorMsg(err))
+   assert(childCount == 2, "child::book should still find the two fiction books, found " .. childCount)
 
    -- Test descendant axis (all descendants)
    local descendantCount = 0
    err, id = xml.mtFindTag('/library/descendant::book', function(XML, TagID, Attrib)
       descendantCount = descendantCount + 1
    end)
-   -- Note: This will currently fail - descendant axis needs AST evaluation
-   -- assert(descendantCount == 4, "Descendant axis should find all 4 books")
+   assert(err == ERR_Okay, "descendant::book should traverse the entire subtree: " .. mSys.GetErrorMsg(err))
+   assert(descendantCount == 4, "Descendant axis should find all 4 books, found " .. descendantCount)
 
-   -- Test following-sibling axis
-   -- This would test finding siblings after a specific node
-   -- Currently requires AST evaluation for explicit axis syntax
+   -- Test following-sibling axis between top-level sections
+   local errTech, technicalId = xml.mtFindTag('/library/technical')
+   assert(errTech == ERR_Okay, "Should resolve /library/technical for comparison")
 
-   print("Phase 5 forward axes parsing tests completed")
+   err, id = xml.mtFindTag('/library/fiction/following-sibling::technical')
+   assert(err == ERR_Okay, "following-sibling axis should locate the technical section: " .. mSys.GetErrorMsg(err))
+   assert(id == technicalId, "following-sibling::technical should resolve to the technical section id")
+
+   -- Test following axis to find nodes later in document order
+   err, id = xml.mtFindTag('/library/fiction/book[@id="2"]/following::guide')
+   assert(err == ERR_Okay, "following axis should locate guide nodes later in the document: " .. mSys.GetErrorMsg(err))
+   local err2, guideType = xml.mtGetAttrib(id, 'type')
+   assert(err2 == ERR_Okay and guideType == 'tutorial', "following::guide should return the tutorial guide element")
 end
 
 function testXPathReverseAxes()
@@ -954,29 +1011,34 @@ function testXPathReverseAxes()
 
    -- Test parent axis (.. syntax already works)
    local err, parentId = xml.mtFindTag('/root/section/chapter[@id="1.1"]/..')
-   if err == ERR_Okay then
-      local _, sectionId = xml.mtGetAttrib(parentId, 'id')
-      assert(sectionId == "1", "Parent axis should land on the surrounding section")
-   else
-      assert(err == ERR_Search, "Parent axis with .. should either succeed or return a search error")
-   end
+   assert(err == ERR_Okay, "Parent axis via .. should return the owning section: " .. mSys.GetErrorMsg(err))
+   local err2, sectionId = xml.mtGetAttrib(parentId, 'id')
+   assert(err2 == ERR_Okay and sectionId == '1', "Parent axis should land on the section with id=1")
 
    -- Test explicit parent axis
    err, parentId = xml.mtFindTag('/root/section/chapter/parent::section')
-   -- Note: This will currently fail - explicit parent axis needs AST evaluation
-   -- assert(err == ERR_Okay, "Explicit parent axis should work")
+   assert(err == ERR_Okay, "Explicit parent axis should resolve to the enclosing section: " .. mSys.GetErrorMsg(err))
+   err2, sectionId = xml.mtGetAttrib(parentId, 'id')
+   assert(err2 == ERR_Okay and (sectionId == '1' or sectionId == '2'), "parent::section should return a valid section node")
 
    -- Test ancestor axis
+   local errRoot, rootId = xml.mtFindTag('/root')
+   assert(errRoot == ERR_Okay, "Should resolve /root for ancestor comparison")
    err, ancestorId = xml.mtFindTag('/root/section/chapter/paragraph/ancestor::root')
-   -- Note: This will currently fail - ancestor axis needs AST evaluation
-   -- assert(err == ERR_Okay, "Ancestor axis should work")
+   assert(err == ERR_Okay, "Ancestor axis should climb to the document root: " .. mSys.GetErrorMsg(err))
+   assert(ancestorId == rootId, "ancestor::root should return the root tag identifier")
 
    -- Test preceding-sibling axis
-   -- This would find siblings before a specific node
    err, siblingId = xml.mtFindTag('/root/section/chapter[2]/preceding-sibling::chapter')
-   -- Note: This will currently fail - preceding-sibling axis needs AST evaluation
+   assert(err == ERR_Okay, "preceding-sibling::chapter should locate the prior chapter: " .. mSys.GetErrorMsg(err))
+   local err3, siblingChapter = xml.mtGetAttrib(siblingId, 'id')
+   assert(err3 == ERR_Okay and siblingChapter == '1.1', "preceding-sibling::chapter should return chapter 1.1")
 
-   print("Phase 5 reverse axes parsing tests completed")
+   -- Test preceding axis (reverse document order)
+   err, siblingId = xml.mtFindTag('/root/section/chapter[2]/paragraph/preceding::paragraph')
+   assert(err == ERR_Okay, "preceding::paragraph should return earlier paragraphs: " .. mSys.GetErrorMsg(err))
+   local err4, precedingParagraph = xml.mtGetAttrib(siblingId, 'id')
+   assert(err4 == ERR_Okay and precedingParagraph == '1.1.2', "preceding::paragraph should return the nearest preceding paragraph")
 end
 
 function testXPathAxisCombinations()
@@ -1005,13 +1067,18 @@ function testXPathAxisCombinations()
    })
 
    -- Test self axis
-   local err, selfId = xml.mtFindTag('/document/body/self::body')
-   -- Note: This will currently fail - self axis needs AST evaluation
-   -- assert(err == ERR_Okay, "Self axis should work")
+   local err, bodyId = xml.mtFindTag('/document/body')
+   assert(err == ERR_Okay, "Should resolve /document/body for self-axis comparison")
+
+   local errSelf, selfId = xml.mtFindTag('/document/body/self::body')
+   assert(errSelf == ERR_Okay, "self::body should reference the current context node: " .. mSys.GetErrorMsg(errSelf))
+   assert(selfId == bodyId, "self::body should return the same identifier as /document/body")
 
    -- Test attribute lookups via @ syntax in combination with descendant scans
-   local metaAttr = xml.getKey('/document/header/meta/@name')
-   assert(metaAttr == "author", "Attribute extraction should work inside mixed axis queries")
+   local metaErr, metaId = xml.mtFindTag('/document/header/meta')
+   assert(metaErr == ERR_Okay, "Meta element should be reachable for attribute verification")
+   local attrErr, metaAttr = xml.mtGetAttrib(metaId, 'name')
+   assert(attrErr == ERR_Okay and metaAttr == 'author', "Attribute extraction should work inside mixed axis queries")
 
    local attrExistsErr, attrExistsId = xml.mtFindTag('/document/header/meta[@name]')
    assert(attrExistsErr == ERR_Okay, "[@name] predicate should be honoured during combined axis tests")
@@ -1025,7 +1092,16 @@ function testXPathAxisCombinations()
    assert(err == ERR_Okay, "Deep scanning should work for paragraph descendants")
    assert(paragraphCount == 3, "Should find 3 paragraphs in sections, found " .. paragraphCount)
 
-   print("Phase 5 axis combination tests completed")
+   -- Combine following-sibling and descendant axes to locate the aside element
+   err, id = xml.mtFindTag('/document/body/section[@class="intro"]/following-sibling::section/descendant::aside')
+   assert(err == ERR_Okay, "following-sibling::section/descendant::aside should locate the aside element: " .. mSys.GetErrorMsg(err))
+
+   -- Verify ancestor axes in combination with descendant-or-self
+   local errAncestor = xml.mtFindTag('/document/body/section[@class="content"]/aside/ancestor::body')
+   assert(errAncestor == ERR_Okay, "ancestor::body should reach the body element from the aside")
+
+   err, id = xml.mtFindTag('/document/body/section[@class="content"]/descendant-or-self::section')
+   assert(err == ERR_Okay, "descendant-or-self::section should include the current section node")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1063,11 +1139,11 @@ return {
       'testSiblingFilteringForNumericPredicates',
       'testBooleanOperators', 'testComparisonOperators',
 
-      -- Phase 4: Operators and expressions (parsing validation)
+      -- Phase 4: Operators and expressions
       'testXPathOperators', 'testXPathExpressions', 'testXPathArithmetic',
 
-      -- Phase 5: XPath Axes (parsing validation)
-      'testXPathForwardAxes', 'testXPathReverseAxes', 'testXPathAxisCombinations',
+      -- Phase 5: XPath Axes
+      'testXPathAxes', 'testXPathForwardAxes', 'testXPathReverseAxes', 'testXPathAxisCombinations',
 
       -- XPath 1.0 features not yet supported (should fail gracefully)
       'testXPathFunctions',
