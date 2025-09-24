@@ -147,7 +147,7 @@ function testContentMatching()
 
    -- Find items containing "apple"
    local appleCount = 0
-   local err, index = xml.mtFindTag('/root/item(=apple)', function(XML, TagID, Attrib)
+   local err, index = xml.mtFindTag('/root/item[=apple]', function(XML, TagID, Attrib)
       appleCount = appleCount + 1
    end)
 
@@ -610,10 +610,10 @@ function testRoundBracketAlternatives()
 
    -- XPath 1.0 requires predicates to use square brackets; round brackets should fail
    local err, itemId = xml.mtFindTag('/root/item(@type="book")')
-   assert(err == ERR_Search, "Round bracket predicate should be rejected after deprecation")
+   assert(err != ERR_Okay, "Round bracket predicate should be rejected after deprecation, got " .. mSys.GetErrorMsg(err))
 
    err, itemId = xml.mtFindTag('/root/item(="Novel")')
-   assert(err == ERR_Search, "Round bracket content predicate should be rejected")
+   assert(err != ERR_Okay, "Round bracket content predicate should be rejected, got " .. mSys.GetErrorMsg(err))
 
    -- Square bracket predicate remains supported and should continue to succeed
    local squareErr, squareId = xml.mtFindTag('/root/item[@type="book"]')
@@ -621,6 +621,117 @@ function testRoundBracketAlternatives()
 
    local attribErr, typeValue = xml.mtGetAttrib(squareId, 'type')
    assert(attribErr == ERR_Okay and typeValue == "book", "Square bracket predicate should locate the correct item")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Regression: Text nodes participate in axes per XPath 1.0
+
+function testTextNodeAxes()
+   local xml = obj.new("xml", {
+      statement = '<root><a>First</a> Second <b>Third</b></root>'
+   })
+
+   local err, textId = xml.mtFindTag('/root/a/following-sibling::text()')
+   assert(err == ERR_Okay, 'Text nodes should appear on the following-sibling axis')
+
+   local textValue = xml.getKey('/root/a/following-sibling::text()')
+   assert(textValue == ' Second ', 'Whitespace in text nodes should be preserved when navigating axes, got ' .. nz(textValue, 'NIL'))
+
+   err, textId = xml.mtFindTag('/root/descendant::text()')
+   assert(err == ERR_Okay, 'Descendant axis should include text nodes produced by element content')
+
+   err, textId = xml.mtFindTag('/root/b/preceding-sibling::text()')
+   assert(err == ERR_Okay, 'Text nodes should also be available via preceding-sibling axis')
+
+   local precedingValue = xml.getKey('/root/b/preceding-sibling::text()')
+   assert(precedingValue == ' Second ', 'preceding-sibling::text() should expose the whitespace-preserved node, got ' .. nz(precedingValue, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- XPath 1.0 comment() node test (NOT YET SUPPORTED)
+
+function testCommentNodeType()
+   local xml = obj.new("xml", {
+      statement = '<root><!-- marker --><item>Value</item><!-- trailer --></root>'
+   })
+
+   local err, commentId = xml.mtFindTag('/root/comment()')
+   assert(err != ERR_Okay, 'comment() node test should remain unsupported until Phase 4 work lands, err=' .. mSys.GetErrorMsg(err))
+
+   err, commentId = xml.mtFindTag('/root/item/following-sibling::comment()')
+   assert(err != ERR_Okay, 'comment() on following-sibling axis should still report unsupported behaviour, err=' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- XPath 1.0 processing-instruction() node test (NOT YET SUPPORTED)
+
+function testProcessingInstructionNodeType()
+   local xml = obj.new("xml", {
+      statement = '<root><?target data?><item/><?other pi?></root>'
+   })
+
+   local err, piId = xml.mtFindTag('/root/processing-instruction()')
+   assert(err != ERR_Okay, 'processing-instruction() without a target should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+
+   err, piId = xml.mtFindTag('/root/processing-instruction("target")')
+   assert(err != ERR_Okay, 'processing-instruction("target") should remain unsupported until Phase 4 work lands, err=' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- XPath 1.0 node() test (NOT YET SUPPORTED)
+
+function testGenericNodeType()
+   local xml = obj.new("xml", {
+      statement = '<root><child/><other/></root>'
+   })
+
+   local err, nodeId = xml.mtFindTag('/root/node()')
+   assert(err != ERR_Okay, 'node() node test should remain unsupported until parser recognises node-type tests, err=' .. mSys.GetErrorMsg(err))
+
+   err, nodeId = xml.mtFindTag('/root/child/following-sibling::node()')
+   assert(err != ERR_Okay, 'following-sibling::node() should remain unsupported for now, err=' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- XPath 1.0 namespace axis (NOT YET SUPPORTED)
+
+function testNamespaceAxis()
+   local xml = obj.new("xml", {
+      statement = '<root xmlns:ns="http://example.com/ns"><ns:item/></root>'
+   })
+
+   local err, nsId = xml.mtFindTag('/root/namespace::*')
+   assert(err != ERR_Okay, 'namespace::* axis should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+
+   err, nsId = xml.mtFindTag('/root/namespace::ns')
+   assert(err != ERR_Okay, 'namespace::ns should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- XPath 1.0 function library placeholders (NOT YET SUPPORTED)
+
+function testXPathStringFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><item>alpha</item><item>beta</item></root>'
+   })
+
+   local err, itemId = xml.mtFindTag('/root/item[string-length(.) = 5]')
+   assert(err != ERR_Okay, 'string-length(.) predicate should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+
+   err, itemId = xml.mtFindTag('/root/item[normalize-space(.) = "alpha"]')
+   assert(err != ERR_Okay, 'normalize-space(.) predicate should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+end
+
+function testXPathNumberFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><item value="1"/><item value="2"/><item value="3"/></root>'
+   })
+
+   local err, itemId = xml.mtFindTag('/root[sum(item/@value) = 6]')
+   assert(err != ERR_Okay, 'sum() should remain unsupported until numeric function wiring lands, err=' .. mSys.GetErrorMsg(err))
+
+   err, itemId = xml.mtFindTag('/root/item[floor(@value) = 1]')
+   assert(err != ERR_Okay, 'floor() predicate should remain unsupported, err=' .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -1134,7 +1245,7 @@ return {
       'testNamespaceSupport', 'testParentAxisNavigation', 'testAttributeWildcards',
       'testNamespacePrefixedSteps', 'testFunctionPredicateNodeSets', 'testNumericPositionPredicates',
       'testAttributeNameVariants',
-      'testComplexNestedPredicates', 'testEscapeCharacters',
+      'testComplexNestedPredicates', 'testRoundBracketAlternatives', 'testTextNodeAxes', 'testEscapeCharacters',
       'testEdgeCases', 'testPerformanceScenarios',
       'testSiblingFilteringForNumericPredicates',
       'testBooleanOperators', 'testComparisonOperators',
@@ -1148,9 +1259,14 @@ return {
       -- XPath 1.0 features not yet supported (should fail gracefully)
       'testXPathFunctions',
       'testMathematicalExpressions', 
-      --'testXPathAxes', 
       'testUnionOperator', 
       --'testVariables',
+      'testCommentNodeType',
+      'testProcessingInstructionNodeType',
+      'testGenericNodeType',
+      'testNamespaceAxis',
+      'testXPathStringFunctions',
+      'testXPathNumberFunctions',
 
       -- Phase 3 infrastructure verification
       'testPhase3FunctionLibrary'

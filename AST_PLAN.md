@@ -147,7 +147,7 @@ This document outlines the staged work needed to replace the legacy string-based
 
 2. **Node Tests**
    - ✅ Element and attribute name tests (including `node()` wildcard semantics and namespace-prefixed lookups) evaluate through `match_node_test`.
-   - ⬜ Surface non-tag children during axis traversal so node type tests like `text()`/`comment()` and the disabled Fluid assertion in `testXPathFunctions` evaluate against AST results. Ensure whitespace handling matches the legacy path before re-enabling the tests.
+   - ⬜ Surface non-tag children during axis traversal so node type tests like `text()`/`comment()` and the disabled Fluid assertion in `testXPathFunctions` evaluate against AST results. Whitespace semantics must align with XPath 1.0; legacy whitespace trimming behaviours are deprecated and should not be reintroduced when re-enabling the tests.
 
 3. **Namespace Matching**
    - ✅ Prefix matching for both elements and attributes mirrors the legacy evaluator by hashing namespace prefixes and comparing the resulting identifiers.
