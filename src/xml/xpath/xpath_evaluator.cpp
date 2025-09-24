@@ -1,3 +1,4 @@
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -78,12 +79,11 @@ std::vector<std::string_view> split_union_paths(std::string_view XPath)
 
 } // namespace
 
-// XPath Evaluator Implementation
-
 //********************************************************************************************************************
 // Context Management
 
-void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute) {
+void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute) 
+{
    context_stack.push_back(context);
    context.context_node = Node;
    context.attribute_node = Attribute;
@@ -91,7 +91,8 @@ void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Si
    context.size = Size;
 }
 
-void SimpleXPathEvaluator::pop_context() {
+void SimpleXPathEvaluator::pop_context() 
+{
    if (context_stack.empty()) {
       context.context_node = nullptr;
       context.attribute_node = nullptr;
@@ -104,7 +105,8 @@ void SimpleXPathEvaluator::pop_context() {
    context_stack.pop_back();
 }
 
-void SimpleXPathEvaluator::push_cursor_state() {
+void SimpleXPathEvaluator::push_cursor_state() 
+{
    CursorState state{};
    state.tags = xml->CursorTags;
 
@@ -116,7 +118,8 @@ void SimpleXPathEvaluator::push_cursor_state() {
    cursor_stack.push_back(state);
 }
 
-void SimpleXPathEvaluator::pop_cursor_state() {
+void SimpleXPathEvaluator::pop_cursor_state() 
+{
    if (cursor_stack.empty()) return;
 
    auto state = cursor_stack.back();
@@ -133,9 +136,9 @@ void SimpleXPathEvaluator::pop_cursor_state() {
    else xml->Cursor = begin + state.index;
 }
 
-std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis,
-                                                                                XMLTag *ContextNode,
-                                                                                const XMLAttrib *ContextAttribute) {
+std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis, 
+   XMLTag *ContextNode, const XMLAttrib *ContextAttribute) 
+{
    std::vector<AxisMatch> matches;
 
    auto append_nodes = [&matches](const std::vector<XMLTag *> &nodes) {
@@ -289,9 +292,6 @@ ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t Cur
 }
 
 ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
-   pf::Log log(__FUNCTION__);
-   log.msg("Enhanced XPath: %.*s", int(XPath.size()), XPath.data());
-
    if (AllowUnionSplit) {
       auto union_paths = split_union_paths(XPath);
       if (union_paths.size() > 1) {
@@ -336,24 +336,18 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
    }
 
    // Ensure the document index is up to date so ParentID links are valid during AST traversal
+
    (void)xml->getMap();
 
-   // Try AST-based parsing first
    XPathTokenizer tokenizer;
    auto tokens = tokenizer.tokenize(XPath);
 
    XPathParser parser;
-   auto ast = parser.parse(tokens);
-
-   if (ast) {
-      log.msg("AST parsed successfully, evaluating...");
-      auto result = evaluate_ast(ast.get(), CurrentPrefix);
-      log.msg("AST evaluation result: %d", int(result));
-      return result;
+  
+   if (auto ast = parser.parse(tokens); ast) {
+      return evaluate_ast(ast.get(), CurrentPrefix);
    }
-
-   log.msg("AST parsing failed");
-   return ERR::Syntax;
+   else return ERR::Syntax;
 }
 
 //********************************************************************************************************************

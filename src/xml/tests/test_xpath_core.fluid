@@ -281,7 +281,7 @@ function testComplexExpressions()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test namespace support (XPath 1.0 feature)
+-- Test namespace support
 
 function testNamespaceSupport()
    local xml = obj.new("xml", {
@@ -300,7 +300,7 @@ function testNamespaceSupport()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Regression: prefixed node steps should resolve correctly
+-- Prefixed node steps should resolve correctly
 
 function testNamespacePrefixedSteps()
    local xml = obj.new("xml", {
@@ -308,7 +308,7 @@ function testNamespacePrefixedSteps()
    })
 
    local err, tagId = xml.mtFindTag('/root/book:item')
-   assert(err == ERR_Okay, "Prefixed node steps should locate namespaced elements (bug: parser drops local name)")
+   assert(err == ERR_Okay, "Prefixed node steps should locate namespaced elements")
 
    local err, title = xml.mtGetAttrib(tagId, 'title')
    assert(err == ERR_Okay and title == 'Guide', "Namespaced element should remain addressable by prefix")
