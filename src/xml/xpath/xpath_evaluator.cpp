@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <limits>
 #include <optional>
 #include <unordered_set>
@@ -926,22 +927,104 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
 
 namespace {
 
+std::string node_set_string_value(const XPathValue &Value, size_t Index)
+{
+   if (Value.node_set_string_override.has_value() and (Index IS 0)) {
+      return *Value.node_set_string_override;
+   }
+
+   if (Index < Value.node_set_string_values.size()) {
+      return Value.node_set_string_values[Index];
+   }
+
+   if (Index >= Value.node_set.size()) return std::string();
+
+   XMLTag *tag = Value.node_set[Index];
+   if (!tag) return std::string();
+
+   if (tag->isContent()) {
+      if (!tag->Attribs.empty() and !tag->Attribs[0].Value.empty()) {
+         return tag->Attribs[0].Value;
+      }
+      return tag->getContent();
+   }
+
+   return tag->getContent();
+}
+
+double node_set_number_value(const XPathValue &Value, size_t Index)
+{
+   std::string str = node_set_string_value(Value, Index);
+   if (str.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+   char *end_ptr = nullptr;
+   double result = std::strtod(str.c_str(), &end_ptr);
+   if ((end_ptr IS str.c_str()) or (*end_ptr != '\0')) {
+      return std::numeric_limits<double>::quiet_NaN();
+   }
+
+   return result;
+}
+
 bool compare_xpath_values(const XPathValue &left_value,
                           const XPathValue &right_value)
 {
    auto left_type = left_value.type;
    auto right_type = right_value.type;
 
+   if ((left_type IS XPathValueType::Boolean) or (right_type IS XPathValueType::Boolean)) {
+      bool left_boolean = left_value.to_boolean();
+      bool right_boolean = right_value.to_boolean();
+      return left_boolean IS right_boolean;
+   }
+
    if ((left_type IS XPathValueType::Number) or (right_type IS XPathValueType::Number)) {
+      if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
+         const XPathValue &node_value = (left_type IS XPathValueType::NodeSet) ? left_value : right_value;
+         const XPathValue &number_value = (left_type IS XPathValueType::NodeSet) ? right_value : left_value;
+
+         double comparison_number = number_value.to_number();
+         if (std::isnan(comparison_number)) return false;
+
+         for (size_t index = 0; index < node_value.node_set.size(); ++index) {
+            double node_number = node_set_number_value(node_value, index);
+            if (std::isnan(node_number)) continue;
+            if (node_number IS comparison_number) return true;
+         }
+
+         return false;
+      }
+
       double left_number = left_value.to_number();
       double right_number = right_value.to_number();
       return left_number IS right_number;
    }
 
-   if ((left_type IS XPathValueType::Boolean) or (right_type IS XPathValueType::Boolean)) {
-      bool left_boolean = left_value.to_boolean();
-      bool right_boolean = right_value.to_boolean();
-      return left_boolean IS right_boolean;
+   if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
+      if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::NodeSet)) {
+         for (size_t left_index = 0; left_index < left_value.node_set.size(); ++left_index) {
+            std::string left_string = node_set_string_value(left_value, left_index);
+
+            for (size_t right_index = 0; right_index < right_value.node_set.size(); ++right_index) {
+               std::string right_string = node_set_string_value(right_value, right_index);
+               if (pf::iequals(left_string, right_string)) return true;
+            }
+         }
+
+         return false;
+      }
+
+      const XPathValue &node_value = (left_type IS XPathValueType::NodeSet) ? left_value : right_value;
+      const XPathValue &string_value = (left_type IS XPathValueType::NodeSet) ? right_value : left_value;
+
+      std::string comparison_string = string_value.to_string();
+
+      for (size_t index = 0; index < node_value.node_set.size(); ++index) {
+         std::string node_string = node_set_string_value(node_value, index);
+         if (pf::iequals(node_string, comparison_string)) return true;
+      }
+
+      return false;
    }
 
    std::string left_string = left_value.to_string();
@@ -1206,7 +1289,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
 
       std::optional<std::string> first_value;
       if (!attribute_values.empty()) first_value = attribute_values[0];
-      return XPathValue(attribute_nodes, first_value);
+      return XPathValue(attribute_nodes, first_value, std::move(attribute_values));
    }
 
    return XPathValue(node_results);
