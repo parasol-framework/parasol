@@ -51,8 +51,8 @@ class SimpleXPathEvaluator {
    };
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
-   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode);
-   std::vector<XMLTag *> collect_step_results(const std::vector<XMLTag *> &ContextNodes,
+   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
+   std::vector<XMLTag *> collect_step_results(const std::vector<AxisMatch> &ContextNodes,
                                               const std::vector<const XPathNode *> &Steps,
                                               size_t StepIndex,
                                               uint32_t CurrentPrefix,
