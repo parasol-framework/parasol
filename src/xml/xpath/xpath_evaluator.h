@@ -46,6 +46,7 @@ class SimpleXPathEvaluator {
                                               bool &Unsupported);
    XPathValue evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
    XPathValue evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
+                                       const std::vector<const XMLAttrib *> &InitialAttributes,
                                        const std::vector<const XPathNode *> &Steps,
                                        const XPathNode *AttributeStep,
                                        const XPathNode *AttributeTest,

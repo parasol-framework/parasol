@@ -1380,6 +1380,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
 }
 
 XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
+                                                          const std::vector<const XMLAttrib *> &InitialAttributes,
                                                           const std::vector<const XPathNode *> &Steps,
                                                           const XPathNode *AttributeStep,
                                                           const XPathNode *AttributeTest,
@@ -1398,8 +1399,11 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
       std::vector<AxisMatch> initial_matches;
       initial_matches.reserve(InitialContext.size());
 
-      for (auto *candidate : InitialContext) {
-         initial_matches.push_back({ candidate, nullptr });
+      for (size_t index = 0; index < InitialContext.size(); ++index) {
+         auto *candidate = InitialContext[index];
+         const XMLAttrib *attribute = nullptr;
+         if (index < InitialAttributes.size()) attribute = InitialAttributes[index];
+         initial_matches.push_back({ candidate, attribute });
       }
 
       bool unsupported = false;
@@ -1428,6 +1432,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
             attribute_refs.push_back(match.attribute);
+
          }
       }
 
@@ -1594,7 +1599,12 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
          }
       }
 
-      return evaluate_path_from_nodes(base_value.node_set, steps, attribute_step, attribute_test, CurrentPrefix);
+      return evaluate_path_from_nodes(base_value.node_set,
+                                      base_value.node_set_attributes,
+                                      steps,
+                                      attribute_step,
+                                      attribute_test,
+                                      CurrentPrefix);
    }
 
    if (ExprNode->type IS XPathNodeType::FunctionCall) {
