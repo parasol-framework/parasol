@@ -531,6 +531,24 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     </method>
 
     <method>
+      <name>SetVariable</name>
+      <comment>Stores a variable that can be referenced in XPath expressions.</comment>
+      <prototype>ERR xml::SetVariable(OBJECTPTR Object, CSTRING Key, CSTRING Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Key">The name of the variable (case sensitive).</param>
+        <param type="CSTRING" name="Value">The string value to store.</param>
+      </input>
+      <description>
+<p>This method allows you to store key-value pairs that can be referenced in XPath expressions using the variable syntax <code>$variableName</code>.  Variables are stored as strings and are made available during XPath evaluation.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="ReadOnly">The XML object is read-only.</error>
+        <error code="NullArgs">The <code>Key</code> parameter was not specified.</error>
+      </result>
+    </method>
+
+    <method>
       <name>Sort</name>
       <comment>Sorts XML tags to your specifications.</comment>
       <prototype>ERR xml::Sort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</prototype>

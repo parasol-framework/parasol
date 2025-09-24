@@ -1337,6 +1337,18 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       return XPathValue();
    }
 
+   if (ExprNode->type IS XPathNodeType::VariableReference) {
+      // Look up variable in the XML object's variable storage
+      auto it = xml->Variables.find(ExprNode->value);
+      if (it != xml->Variables.end()) {
+         return XPathValue(it->second);
+      }
+      else {
+         // Variable not found - return empty string (XPath standard behavior)
+         return XPathValue(std::string(""));
+      }
+   }
+
    expression_unsupported = true;
    return XPathValue();
 }

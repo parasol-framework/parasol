@@ -40,6 +40,7 @@ FDEF maRegisterNamespace[] = { { "URI", FD_STR }, { "Result", FD_INT|FD_UNSIGNED
 FDEF maGetNamespaceURI[] = { { "NamespaceID", FD_INT|FD_UNSIGNED }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maSetTagNamespace[] = { { "TagID", FD_INT }, { "NamespaceID", FD_INT }, { 0, 0 } };
 FDEF maResolvePrefix[] = { { "Prefix", FD_STR }, { "TagID", FD_INT }, { "Result", FD_INT|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
+FDEF maSetVariable[] = { { "Key", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 
 static const struct MethodEntry clXMLMethods[] = {
    { AC(-1), (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
@@ -61,6 +62,7 @@ static const struct MethodEntry clXMLMethods[] = {
    { AC(-20), (APTR)XML_GetNamespaceURI, "GetNamespaceURI", maGetNamespaceURI, sizeof(struct xml::GetNamespaceURI) },
    { AC(-21), (APTR)XML_SetTagNamespace, "SetTagNamespace", maSetTagNamespace, sizeof(struct xml::SetTagNamespace) },
    { AC(-22), (APTR)XML_ResolvePrefix, "ResolvePrefix", maResolvePrefix, sizeof(struct xml::ResolvePrefix) },
+   { AC(-23), (APTR)XML_SetVariable, "SetVariable", maSetVariable, sizeof(struct xml::SetVariable) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

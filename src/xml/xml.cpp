@@ -98,6 +98,9 @@ class extXML : public objXML {
    std::string Attrib;
    FUNCTION Callback;
 
+   // Variable storage for XPath variable references
+   std::map<std::string, std::string> Variables; // key -> value pairs for XPath variables
+
    // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XMLTag structures.
    ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
 
@@ -1837,6 +1840,46 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
    branch[0] = std::move(new_branch);
 
    Self->modified();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+-METHOD-
+SetVariable: Stores a variable that can be referenced in XPath expressions.
+
+This method allows you to store key-value pairs that can be referenced in XPath expressions using the variable syntax
+`$variableName`.  Variables are stored as strings and are made available during XPath evaluation.
+
+-INPUT-
+cstr Key: The name of the variable (case sensitive).
+cstr Value: The string value to store.
+
+-ERRORS-
+Okay:
+NullArgs: The `Key` parameter was not specified.
+ReadOnly: The XML object is read-only.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
+{
+   pf::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (!Args->Key) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
+
+   log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
+
+   if (Args->Value) {
+      Self->Variables[Args->Key] = Args->Value;
+   }
+   else {
+      // Remove variable if Value is null
+      Self->Variables.erase(Args->Key);
+   }
+
    return ERR::Okay;
 }
 
