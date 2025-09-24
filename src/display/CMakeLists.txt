@@ -74,6 +74,8 @@ int main() {
 
 if (XRANDR_INSTALLED)
    add_definitions ("-DXRANDR_ENABLED")
+else ()
+   message (STATUS "XRandR headers unavailable; building without XRandR support")
 endif ()
 
 if (XDGA_INSTALLED)
@@ -108,6 +110,10 @@ else ()
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
    target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
-   target_link_libraries (${MOD} PRIVATE ${MATH_LINK} Xrender Xrandr Xext X11) # x11/libXxf86dga.a
+   set (DISPLAY_PRIVATE_LIBS ${MATH_LINK} Xrender Xext X11)
+   if (XRANDR_INSTALLED)
+      list (APPEND DISPLAY_PRIVATE_LIBS Xrandr)
+   endif ()
+   target_link_libraries (${MOD} PRIVATE ${DISPLAY_PRIVATE_LIBS}) # x11/libXxf86dga.a
    add_compile_definitions ("__X11DGA__" "__xwindows__")
 endif ()
