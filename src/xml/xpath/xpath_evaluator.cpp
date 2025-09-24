@@ -1432,6 +1432,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
             attribute_refs.push_back(match.attribute);
+
          }
       }
 
