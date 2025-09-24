@@ -9,6 +9,7 @@
 
 #include "xpath_ast.h"
 #include <parasol/modules/xml.h>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -37,6 +38,7 @@ enum class AxisType {
 class AxisEvaluator {
    private:
    extXML * xml;
+   std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
 
    // Helper methods for specific axes
    std::vector<XMLTag *> evaluate_child_axis(XMLTag *ContextNode);
@@ -58,6 +60,7 @@ class AxisEvaluator {
    // Document order utilities
    void sort_document_order(std::vector<XMLTag *> &Nodes);
    bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);
+   std::vector<XMLTag *> build_ancestor_path(XMLTag *Node);
 
    // Helper methods for tag lookup
    XMLTag * find_tag_by_id(int ID);
@@ -68,6 +71,12 @@ class AxisEvaluator {
 
    // Main evaluation method
    std::vector<XMLTag *> evaluate_axis(AxisType Axis, XMLTag *ContextNode);
+
+   // Evaluation lifecycle helpers
+   void reset_namespace_nodes();
+
+   // Node-set utilities
+   void normalise_node_set(std::vector<XMLTag *> &Nodes);
 
    // Utility methods
    static AxisType parse_axis_name(std::string_view AxisName);
