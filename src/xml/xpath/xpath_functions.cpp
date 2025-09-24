@@ -61,8 +61,10 @@ std::string XPathValue::to_string() const {
          if (!tag) return "";
 
          if (tag->isContent()) {
-            if (!tag->Attribs.empty()) return tag->Attribs[0].Value;
-            return "";
+            if (!tag->Attribs.empty() && !tag->Attribs[0].Value.empty()) {
+               return tag->Attribs[0].Value;
+            }
+            return tag->getContent();
          }
 
          return tag->getContent();
