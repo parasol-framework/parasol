@@ -197,7 +197,10 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
       }
 
       case AxisType::Self: {
-         if (attribute_context) matches.push_back({ ContextNode, ContextAttribute });
+         if (attribute_context) {
+            matches.push_back({ ContextNode, ContextAttribute });
+            matches.push_back({ ContextNode, nullptr });
+         }
          else matches.push_back({ ContextNode, nullptr });
          break;
       }
