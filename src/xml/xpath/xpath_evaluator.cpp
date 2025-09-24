@@ -150,6 +150,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
          auto saved_cursor_tags = xml->CursorTags;
          auto saved_cursor = xml->Cursor;
          auto saved_attrib = xml->Attrib;
+         bool saved_expression_unsupported = expression_unsupported;
 
          ERR last_error = ERR::Search;
 
@@ -160,6 +161,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
             xml->CursorTags = saved_cursor_tags;
             xml->Cursor = saved_cursor;
             xml->Attrib = saved_attrib;
+            expression_unsupported = saved_expression_unsupported;
 
             auto result = find_tag_enhanced_internal(branch, CurrentPrefix, false);
             if ((result IS ERR::Okay) or (result IS ERR::Terminate)) return result;
@@ -176,6 +178,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
          xml->CursorTags = saved_cursor_tags;
          xml->Cursor = saved_cursor;
          xml->Attrib = saved_attrib;
+         expression_unsupported = saved_expression_unsupported;
 
          return last_error;
       }
