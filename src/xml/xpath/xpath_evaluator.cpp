@@ -197,7 +197,10 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
       }
 
       case AxisType::Self: {
-         if (attribute_context) matches.push_back({ ContextNode, ContextAttribute });
+         if (attribute_context) {
+            matches.push_back({ ContextNode, ContextAttribute });
+            matches.push_back({ ContextNode, nullptr });
+         }
          else matches.push_back({ ContextNode, nullptr });
          break;
       }
@@ -735,11 +738,46 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
    }
 
    if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
-      if (NodeTest->value IS "node") return true;
+      if (NodeTest->value IS "node") return Candidate ? true : false;
       if (!Candidate) return false;
 
-      if (NodeTest->value IS "text") return Candidate->isContent();
+      if (NodeTest->value IS "text") {
+         if (!Candidate->isContent()) return false;
+
+         bool has_comment_flag = ((Candidate->Flags & XTF::COMMENT) IS XTF::NIL) ? false : true;
+         if (has_comment_flag) return false;
+
+         bool has_instruction_flag = ((Candidate->Flags & XTF::INSTRUCTION) IS XTF::NIL) ? false : true;
+         if (has_instruction_flag) return false;
+
+         bool has_notation_flag = ((Candidate->Flags & XTF::NOTATION) IS XTF::NIL) ? false : true;
+         if (has_notation_flag) return false;
+
+         return true;
+      }
+
+      if (NodeTest->value IS "comment") {
+         bool has_comment_flag = Candidate ? (((Candidate->Flags & XTF::COMMENT) IS XTF::NIL) ? false : true) : false;
+         return Candidate and has_comment_flag;
+      }
+
       return false;
+   }
+
+   if (NodeTest->type IS XPathNodeType::ProcessingInstructionTest) {
+      if (!Candidate) return false;
+      if ((Candidate->Flags & XTF::INSTRUCTION) IS XTF::NIL) return false;
+
+      if (NodeTest->value.empty()) return true;
+
+      std::string_view candidate_name;
+      if (!Candidate->Attribs.empty()) candidate_name = Candidate->Attribs[0].Name;
+
+      if (!candidate_name.empty() and (candidate_name.front() IS '?')) candidate_name.remove_prefix(1);
+      if (candidate_name.empty()) return false;
+
+      std::string candidate_target(candidate_name);
+      return pf::iequals(candidate_target, NodeTest->value);
    }
 
    if (!Candidate) return false;

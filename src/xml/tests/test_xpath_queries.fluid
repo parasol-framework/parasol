@@ -634,8 +634,9 @@ function testTextNodeAxes()
    local err, textId = xml.mtFindTag('/root/a/following-sibling::text()')
    assert(err == ERR_Okay, 'Text nodes should appear on the following-sibling axis')
 
-   local textValue = xml.getKey('/root/a/following-sibling::text()')
-   assert(textValue == ' Second ', 'Whitespace in text nodes should be preserved when navigating axes, got ' .. nz(textValue, 'NIL'))
+   local errTag, textTag = xml.mtGetTag(textId)
+   assert(errTag == ERR_Okay and textTag.attribs[1].value == ' Second ',
+      'Whitespace in text nodes should be preserved when navigating axes, got ' .. nz(textTag.attribs[1].value, 'NIL'))
 
    err, textId = xml.mtFindTag('/root/descendant::text()')
    assert(err == ERR_Okay, 'Descendant axis should include text nodes produced by element content')
@@ -643,12 +644,13 @@ function testTextNodeAxes()
    err, textId = xml.mtFindTag('/root/b/preceding-sibling::text()')
    assert(err == ERR_Okay, 'Text nodes should also be available via preceding-sibling axis')
 
-   local precedingValue = xml.getKey('/root/b/preceding-sibling::text()')
-   assert(precedingValue == ' Second ', 'preceding-sibling::text() should expose the whitespace-preserved node, got ' .. nz(precedingValue, 'NIL'))
+   errTag, textTag = xml.mtGetTag(textId)
+   assert(errTag == ERR_Okay and textTag.attribs[1].value == ' Second ',
+      'preceding-sibling::text() should expose the whitespace-preserved node, got ' .. nz(textTag.attribs[1].value, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- XPath 1.0 comment() node test (NOT YET SUPPORTED)
+-- XPath 1.0 comment() node test
 
 function testCommentNodeType()
    local xml = obj.new("xml", {
@@ -656,14 +658,22 @@ function testCommentNodeType()
    })
 
    local err, commentId = xml.mtFindTag('/root/comment()')
-   assert(err != ERR_Okay, 'comment() node test should remain unsupported until Phase 4 work lands, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'comment() node test should locate the first comment, err=' .. mSys.GetErrorMsg(err))
+
+   local errTag, commentTag = xml.mtGetTag(commentId)
+   assert(errTag == ERR_Okay and commentTag.attribs[1].value == ' marker ',
+       'comment() should expose the comment content, got ' .. nz(commentTag.attribs[1].value, 'NIL'))
 
    err, commentId = xml.mtFindTag('/root/item/following-sibling::comment()')
-   assert(err != ERR_Okay, 'comment() on following-sibling axis should still report unsupported behaviour, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'comment() on following-sibling axis should locate subsequent comments, err=' .. mSys.GetErrorMsg(err))
+
+   errTag, commentTag = xml.mtGetTag(commentId)
+   assert(errTag == ERR_Okay and commentTag.attribs[1].value == ' trailer ',
+       'following-sibling::comment() should expose trailing comment, got ' .. nz(commentTag.attribs[1].value, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- XPath 1.0 processing-instruction() node test (NOT YET SUPPORTED)
+-- XPath 1.0 processing-instruction() node test
 
 function testProcessingInstructionNodeType()
    local xml = obj.new("xml", {
@@ -671,14 +681,20 @@ function testProcessingInstructionNodeType()
    })
 
    local err, piId = xml.mtFindTag('/root/processing-instruction()')
-   assert(err != ERR_Okay, 'processing-instruction() without a target should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'processing-instruction() should locate the first PI node, err=' .. mSys.GetErrorMsg(err))
+
+   local piErr, piTag = xml.mtGetTag(piId)
+   assert(piErr == ERR_Okay and piTag.attribs[1].name == '?target', 'processing-instruction() should expose the PI target name')
 
    err, piId = xml.mtFindTag('/root/processing-instruction("target")')
-   assert(err != ERR_Okay, 'processing-instruction("target") should remain unsupported until Phase 4 work lands, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'processing-instruction("target") should filter by target name, err=' .. mSys.GetErrorMsg(err))
+
+   piErr, piTag = xml.mtGetTag(piId)
+   assert(piErr == ERR_Okay and piTag.attribs[1].name == '?target', 'processing-instruction("target") should return the matching PI node')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- XPath 1.0 node() test (NOT YET SUPPORTED)
+-- XPath 1.0 node() test
 
 function testGenericNodeType()
    local xml = obj.new("xml", {
@@ -686,10 +702,10 @@ function testGenericNodeType()
    })
 
    local err, nodeId = xml.mtFindTag('/root/node()')
-   assert(err != ERR_Okay, 'node() node test should remain unsupported until parser recognises node-type tests, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'node() node test should match any node type at the document root, err=' .. mSys.GetErrorMsg(err))
 
    err, nodeId = xml.mtFindTag('/root/child/following-sibling::node()')
-   assert(err != ERR_Okay, 'following-sibling::node() should remain unsupported for now, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'following-sibling::node() should match subsequent sibling nodes, err=' .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -708,7 +724,7 @@ function testNamespaceAxis()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- XPath 1.0 function library placeholders (NOT YET SUPPORTED)
+-- XPath 1.0 function library predicates
 
 function testXPathStringFunctions()
    local xml = obj.new("xml", {
@@ -716,10 +732,16 @@ function testXPathStringFunctions()
    })
 
    local err, itemId = xml.mtFindTag('/root/item[string-length(.) = 5]')
-   assert(err != ERR_Okay, 'string-length(.) predicate should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'string-length(.) predicate should select five-character strings, err=' .. mSys.GetErrorMsg(err))
+
+   local value = xml.getKey('/root/item[string-length(.) = 5]')
+   assert(value == 'alpha', 'string-length(.) predicate should locate the "alpha" element, got ' .. nz(value, 'NIL'))
 
    err, itemId = xml.mtFindTag('/root/item[normalize-space(.) = "alpha"]')
-   assert(err != ERR_Okay, 'normalize-space(.) predicate should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'normalize-space(.) predicate should evaluate successfully, err=' .. mSys.GetErrorMsg(err))
+
+   value = xml.getKey('/root/item[normalize-space(.) = "alpha"]')
+   assert(value == 'alpha', 'normalize-space(.) predicate should collapse whitespace to "alpha", got ' .. nz(value, 'NIL'))
 end
 
 function testXPathNumberFunctions()
@@ -728,10 +750,13 @@ function testXPathNumberFunctions()
    })
 
    local err, itemId = xml.mtFindTag('/root[sum(item/@value) = 6]')
-   assert(err != ERR_Okay, 'sum() should remain unsupported until numeric function wiring lands, err=' .. mSys.GetErrorMsg(err))
+   assert(err != ERR_Okay, 'sum() should remain unsupported until the function library is fully wired, err=' .. mSys.GetErrorMsg(err))
 
    err, itemId = xml.mtFindTag('/root/item[floor(@value) = 1]')
-   assert(err != ERR_Okay, 'floor() predicate should remain unsupported, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'floor() predicate should evaluate numeric attributes, err=' .. mSys.GetErrorMsg(err))
+
+   local attribErr, attribValue = xml.mtGetAttrib(itemId, 'value')
+   assert(attribErr == ERR_Okay and attribValue == '1', 'floor() predicate should target the item with value="1"')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
