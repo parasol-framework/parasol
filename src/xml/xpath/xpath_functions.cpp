@@ -158,7 +158,7 @@ size_t XPathValue::size() const {
 namespace {
 
 // Walk up the tree to locate a namespace declaration corresponding to the requested prefix.
-std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, const std::string &Prefix)
+std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::string_view Prefix)
 {
    XMLTag *current = Node;
 
@@ -172,7 +172,7 @@ std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, const std::s
          else {
             if (attrib.Name.compare(0, 6, "xmlns:") IS 0) {
                std::string declared = attrib.Name.substr(6);
-               if ((declared.length() IS Prefix.length()) and (declared.compare(Prefix) IS 0)) return attrib.Value;
+               if ((declared.length() IS Prefix.size()) and (declared.compare(Prefix) IS 0)) return attrib.Value;
             }
          }
       }

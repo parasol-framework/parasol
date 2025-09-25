@@ -7,6 +7,11 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
 //********************************************************************************************************************
 // XPath Tokenizer
 
@@ -33,7 +38,7 @@ class XPathTokenizer {
    // Lookahead and utility
    char peek(size_t offset = 0) const;
    void skip_whitespace();
-   bool match(const char *Str);
+   bool match(std::string_view Str);
 
    public:
    XPathTokenizer() : position(0), length(0) {}
@@ -83,9 +88,9 @@ class XPathParser {
    // Utility methods
    bool check(XPathTokenType type) const;
    bool match(XPathTokenType type);
-   XPathToken consume(XPathTokenType Type, const std::string &ErrorMessage);
-   XPathToken peek() const;
-   XPathToken previous() const;
+   XPathToken consume(XPathTokenType Type, std::string_view ErrorMessage);
+   const XPathToken & peek() const;
+   const XPathToken & previous() const;
    bool is_at_end() const;
    void advance();
    bool is_step_start_token(XPathTokenType type) const;
@@ -100,7 +105,7 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
-   void report_error(const std::string &Message);
+   void report_error(std::string_view Message);
    bool has_errors() const;
    std::vector<std::string> get_errors() const;
 

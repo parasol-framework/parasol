@@ -80,6 +80,6 @@ class AxisEvaluator {
 
    // Utility methods
    static AxisType parse_axis_name(std::string_view AxisName);
-   static std::string axis_name_to_string(AxisType Axis);
+   static std::string_view axis_name_to_string(AxisType Axis);
    static bool is_reverse_axis(AxisType Axis);
 };

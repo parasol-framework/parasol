@@ -82,7 +82,7 @@ AxisType AxisEvaluator::parse_axis_name(std::string_view AxisName) {
    else return AxisType::Child; // Default axis
 }
 
-std::string AxisEvaluator::axis_name_to_string(AxisType Axis) {
+std::string_view AxisEvaluator::axis_name_to_string(AxisType Axis) {
    switch (Axis) {
       case AxisType::Child: return "child";
       case AxisType::Descendant: return "descendant";
