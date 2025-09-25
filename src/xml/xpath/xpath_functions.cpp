@@ -432,12 +432,26 @@ XPathValue XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathV
 
    if (!target_node) return XPathValue("");
 
+   std::string prefix;
+   if (!target_node->Attribs.empty()) {
+      std::string_view node_name = target_node->Attribs[0].Name;
+      auto colon = node_name.find(':');
+      if (colon != std::string::npos) prefix = std::string(node_name.substr(0, colon));
+   }
+
+   if (!prefix.empty()) {
+      if (pf::iequals(prefix, "xml")) return XPathValue("http://www.w3.org/XML/1998/namespace");
+      if (pf::iequals(prefix, "xmlns")) return XPathValue("http://www.w3.org/2000/xmlns/");
+   }
+
    if ((target_node->NamespaceID != 0) and Context.document) {
       if (auto uri = Context.document->getNamespaceURI(target_node->NamespaceID)) return XPathValue(*uri);
    }
 
    if (Context.document) {
-      std::string uri = find_in_scope_namespace(target_node, Context.document, std::string());
+      std::string uri;
+      if (!prefix.empty()) uri = find_in_scope_namespace(target_node, Context.document, prefix);
+      else uri = find_in_scope_namespace(target_node, Context.document, std::string());
       return XPathValue(uri);
    }
 
