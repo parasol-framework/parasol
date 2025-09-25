@@ -154,11 +154,63 @@ function testXPathStringFunctions()
    local value = xml.getKey('/root/item[string-length(.) = 5]')
    assert(value == 'alpha', 'string-length(.) predicate should locate the "alpha" element, got ' .. nz(value, 'NIL'))
 
-   err, itemId = xml.mtFindTag('/root/item[normalize-space(.) = "alpha"]')
-   assert(err == ERR_Okay, 'normalize-space(.) predicate should evaluate successfully, err=' .. mSys.GetErrorMsg(err))
+   local xmlWhitespace = obj.new("xml", {
+      statement = '<root><item>  alpha  </item><item>beta</item></root>'
+   })
 
-   value = xml.getKey('/root/item[normalize-space(.) = "alpha"]')
-   assert(value == 'alpha', 'normalize-space(.) predicate should collapse whitespace to "alpha", got ' .. nz(value, 'NIL'))
+   err, itemId = xmlWhitespace.mtFindTag('/root/item[normalize-space(.) = "alpha"]')
+   assert(err == ERR_Okay, 'normalize-space(.) predicate should trim surrounding whitespace, err=' .. mSys.GetErrorMsg(err))
+
+   value = xmlWhitespace.getKey('/root/item[normalize-space(.) = "alpha"]')
+   assert(value == '  alpha  ', 'normalize-space(.) predicate should select the whitespace entry, got ' .. nz(value, 'NIL'))
+end
+
+function testXPathAdditionalStringFunctions()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root>
+            <item id="1" name="AlphaStart" code="pre:post">Alpha Start</item>
+            <item id="2" name="gammaValue" code="mid:tail">Gamma Middle</item>
+            <item id="3" prefix="pre" suffix="fix" code="auxiliary"/>
+            <item id="4" name="delta" code="value"/>
+         </root>
+      ]]
+   })
+
+   local err, itemId = xml.mtFindTag('/root/item[starts-with(@name, "Alpha")]')
+   assert(err == ERR_Okay, 'starts-with() should match the AlphaStart element: ' .. mSys.GetErrorMsg(err))
+   local err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '1', 'starts-with() should select id="1"')
+
+   err, itemId = xml.mtFindTag('/root/item[contains(translate(@name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "gamma")]')
+   assert(err == ERR_Okay, 'translate()+contains() should perform case-insensitive matching: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '2', 'Case-insensitive contains() should select id="2"')
+
+   err, itemId = xml.mtFindTag('/root/item[substring-before(@code, ":") = "pre"]')
+   assert(err == ERR_Okay, 'substring-before() should extract the prefix before the colon: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '1', 'substring-before() should target id="1"')
+
+   err, itemId = xml.mtFindTag('/root/item[substring-after(@code, ":") = "tail"]')
+   assert(err == ERR_Okay, 'substring-after() should extract the suffix after the colon: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '2', 'substring-after() should target id="2"')
+
+   err, itemId = xml.mtFindTag('/root/item[substring(@code, 1, 3) = "pre"]')
+   assert(err == ERR_Okay, 'substring() should honour one-based indexing: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '1', 'substring() should select the prefix-bearing item')
+
+   err, itemId = xml.mtFindTag('/root/item[concat(@prefix, "-", @suffix) = "pre-fix"]')
+   assert(err == ERR_Okay, 'concat() should join attribute values with literal separators: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '3', 'concat() should target the element with prefix/suffix attributes')
+
+   err, itemId = xml.mtFindTag('/root/item[string(@code) = "value"]')
+   assert(err == ERR_Okay, 'string() should coerce attribute values to strings: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == '4', 'string() should select the element whose code equals "value"')
 end
 
 function testXPathNumberFunctions()
@@ -167,13 +219,142 @@ function testXPathNumberFunctions()
    })
 
    local err, itemId = xml.mtFindTag('/root[sum(item/@value) = 6]')
-   assert(err != ERR_Okay, 'sum() should remain unsupported until the function library is fully wired, err=' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'sum() should aggregate numeric attribute values across a node-set: ' .. mSys.GetErrorMsg(err))
 
    err, itemId = xml.mtFindTag('/root/item[floor(@value) = 1]')
    assert(err == ERR_Okay, 'floor() predicate should evaluate numeric attributes, err=' .. mSys.GetErrorMsg(err))
 
    local attribErr, attribValue = xml.mtGetAttrib(itemId, 'value')
    assert(attribErr == ERR_Okay and attribValue == '1', 'floor() predicate should target the item with value="1"')
+end
+
+function testXPathExtendedNumberFunctions()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root>
+            <item value="10" price="1.2"/>
+            <item value="20" price="2.6"/>
+            <item value="30" price="3.0"/>
+         </root>
+      ]]
+   })
+
+   local err, itemId = xml.mtFindTag('/root/item[number(@value) = 20]')
+   assert(err == ERR_Okay, 'number() should convert attribute strings to numbers: ' .. mSys.GetErrorMsg(err))
+   local err2, attrValue = xml.mtGetAttrib(itemId, 'value')
+   assert(err2 == ERR_Okay and attrValue == '20', 'number() should select the item whose value equals 20')
+
+   err, itemId = xml.mtFindTag('/root/item[ceiling(@price) = 3]')
+   assert(err == ERR_Okay, 'ceiling() should round fractional values upward: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and attrValue == '2.6', 'ceiling() should return the element with price="2.6"')
+
+   err, itemId = xml.mtFindTag('/root/item[round(@price) = 3]')
+   assert(err == ERR_Okay, 'round() should return the nearest integer: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'price')
+   assert(err2 == ERR_Okay and attrValue == '3.0', 'round() should select the element with price="3.0"')
+end
+
+function testXPathBooleanFunctions()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root xml:lang="en">
+            <flagged id="A" enabled="1"/>
+            <flagged id="B"/>
+            <section xml:lang="fr">
+               <para id="P1">Texte français</para>
+            </section>
+            <section>
+               <para id="P2">Default language</para>
+            </section>
+         </root>
+      ]]
+   })
+
+   local err, itemId = xml.mtFindTag('/root/flagged[boolean(@enabled)]')
+   assert(err == ERR_Okay, 'boolean() should treat non-empty attributes as true: ' .. mSys.GetErrorMsg(err))
+   local err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'A', 'boolean() should select the enabled flag entry')
+
+   err, itemId = xml.mtFindTag('/root/flagged[not(boolean(@enabled))]')
+   assert(err == ERR_Okay, 'not(boolean()) should detect missing attributes: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'B', 'not(boolean()) should select the disabled flag entry')
+
+   err, itemId = xml.mtFindTag('/root/flagged[boolean(@enabled) = true()]')
+   assert(err == ERR_Okay, 'true() should compare successfully against boolean() results: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'A', 'boolean() = true() should resolve to the enabled element')
+
+   err, itemId = xml.mtFindTag('/root/flagged[boolean(@enabled) = false()]')
+   assert(err == ERR_Okay, 'false() should compare successfully against boolean() results: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'B', 'boolean() = false() should resolve to the disabled element')
+
+   err, itemId = xml.mtFindTag('/root/section/para[lang("fr")]')
+   assert(err == ERR_Okay, 'lang() should honour xml:lang attributes on ancestors: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'P1', 'lang("fr") should select the paragraph in the French section')
+
+   err, itemId = xml.mtFindTag('/root/section/para[lang("en")]')
+   assert(err == ERR_Okay, 'lang() should fall back to root xml:lang when descendants lack overrides: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(itemId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'P2', 'lang("en") should select the paragraph inheriting the root language')
+end
+
+function testXPathIdFunction()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root>
+            <section id="intro">
+               <para>Introduction</para>
+            </section>
+            <section xml:id="target">
+               <para id="child">Target Content</para>
+            </section>
+            <refs>
+               <ref ids="intro target"/>
+            </refs>
+         </root>
+      ]]
+   })
+
+   local err, sectionId = xml.mtFindTag('id("target")')
+   assert(err == ERR_Okay, 'id() should locate elements by xml:id attribute: ' .. mSys.GetErrorMsg(err))
+   local err2, attrValue = xml.mtGetAttrib(sectionId, 'xml:id')
+   assert(err2 == ERR_Okay and attrValue == 'target', 'id("target") should return the xml:id="target" section')
+
+   err, sectionId = xml.mtFindTag('id("intro")')
+   assert(err == ERR_Okay, 'id() should also match plain id attributes: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(sectionId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'intro', 'id("intro") should return the id="intro" section')
+
+   err, sectionId = xml.mtFindTag('id(/root/refs/ref/@ids)/para[@id]')
+   assert(err == ERR_Okay, 'id() should accept node-set arguments containing whitespace separated tokens: ' .. mSys.GetErrorMsg(err))
+   local err3, childId = xml.mtGetAttrib(sectionId, 'id')
+   assert(err3 == ERR_Okay and childId == 'child', 'id() with node-set argument should resolve the referenced child paragraph')
+end
+
+function testXPathNameFunctions()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root xmlns:ns="http://example.com/ns">
+            <ns:item ns:code="X1" data-id="A1">Value</ns:item>
+         </root>
+      ]]
+   })
+
+   local err, itemId = xml.mtFindTag('/root/ns:item[name() = "ns:item"]')
+   assert(err == ERR_Okay, 'name() should return the qualified element name: ' .. mSys.GetErrorMsg(err))
+
+   err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and namespace-uri() = "http://example.com/ns"]')
+   assert(err == ERR_Okay, 'local-name() and namespace-uri() should resolve element namespaces: ' .. mSys.GetErrorMsg(err))
+
+   local attrValue = xml.getKey('/root/ns:item/@ns:code[namespace-uri() = "http://example.com/ns" and local-name() = "code"]')
+   assert(attrValue == 'X1', 'namespace-uri() and local-name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
+
+   attrValue = xml.getKey('/root/ns:item/@data-id[name() = "data-id"]')
+   assert(attrValue == 'A1', 'name() should expose unqualified attribute names, got ' .. nz(attrValue, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -482,10 +663,12 @@ return {
       'testComparisonOperators', 'testMathematicalExpressions',
       'testAttributeNameVariants', 'testVariables',
       'testComplexNestedPredicates', 'testRoundBracketAlternatives',
-      'testXPathStringFunctions', 'testXPathNumberFunctions',
+      'testXPathStringFunctions', 'testXPathAdditionalStringFunctions',
+      'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',
       'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
       'testPhase3FunctionLibrary', 'testXPathOperators',
-      'testXPathExpressions', 'testXPathArithmetic'
+      'testXPathExpressions', 'testXPathArithmetic',
+      'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions'
    },
    init = function(ScriptFolder)
    end,
