@@ -575,10 +575,6 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
       if (filtered.empty()) continue;
 
-      if ((axis IS AxisType::Attribute) and (!is_last_step)) {
-         return ERR::Failed;
-      }
-
       for (size_t index = 0; index < filtered.size(); ++index) {
          auto &match = filtered[index];
          auto *candidate = match.node;
@@ -591,46 +587,48 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                continue;
             }
 
-            auto tags = xml->getInsert(candidate, xml->Cursor);
-            if (!tags) {
+            if (is_last_step) {
+               auto tags = xml->getInsert(candidate, xml->Cursor);
+               if (!tags) {
+                  pop_context();
+                  continue;
+               }
+
+               xml->CursorTags = tags;
+               xml->Attrib = match.attribute->Name;
+
+               if (!xml->Callback.defined()) {
+                  Matched = true;
+                  pop_context();
+                  return ERR::Okay;
+               }
+
+               push_cursor_state();
+
+               ERR callback_error = ERR::Okay;
+               if (xml->Callback.isC()) {
+                  auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+                  callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+               }
+               else if (xml->Callback.isScript()) {
+                  if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+                     { "XML",  xml, FD_OBJECTPTR },
+                     { "Tag",  candidate->ID },
+                     { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+                  }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+               }
+               else callback_error = ERR::InvalidValue;
+
+               pop_cursor_state();
                pop_context();
+
+               Matched = true;
+
+               if (callback_error IS ERR::Terminate) return ERR::Terminate;
+               if (callback_error != ERR::Okay) return callback_error;
+
                continue;
             }
-
-            xml->CursorTags = tags;
-            xml->Attrib = match.attribute->Name;
-
-            if (!xml->Callback.defined()) {
-               Matched = true;
-               pop_context();
-               return ERR::Okay;
-            }
-
-            push_cursor_state();
-
-            ERR callback_error = ERR::Okay;
-            if (xml->Callback.isC()) {
-               auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-               callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-            }
-            else if (xml->Callback.isScript()) {
-               if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-                  { "XML",  xml, FD_OBJECTPTR },
-                  { "Tag",  candidate->ID },
-                  { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-               }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-            }
-            else callback_error = ERR::InvalidValue;
-
-            pop_cursor_state();
-            pop_context();
-
-            Matched = true;
-
-            if (callback_error IS ERR::Terminate) return ERR::Terminate;
-            if (callback_error != ERR::Okay) return callback_error;
-
-            continue;
          }
 
          if (is_last_step) {
@@ -725,6 +723,32 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix) {
    bool attribute_axis = (Axis IS AxisType::Attribute) or ((Axis IS AxisType::Self) and (Attribute != nullptr));
 
+   auto resolve_namespace = [&](std::string_view Prefix, XMLTag *Scope) -> std::optional<uint32_t> {
+      if (!xml) return std::nullopt;
+
+      std::string prefix_string(Prefix);
+      uint32_t namespace_hash = 0;
+      XMLTag *lookup_scope = Scope ? Scope : context.context_node;
+      int tag_id = lookup_scope ? lookup_scope->ID : 0;
+
+      if (xml->resolvePrefix(prefix_string.c_str(), tag_id, &namespace_hash) IS ERR::Okay) {
+         return namespace_hash;
+      }
+
+      if (lookup_scope and context.context_node and (lookup_scope != context.context_node)) {
+         if (xml->resolvePrefix(prefix_string.c_str(), context.context_node->ID, &namespace_hash) IS ERR::Okay) {
+            return namespace_hash;
+         }
+      }
+
+      if (!prefix_string.empty()) {
+         auto it = xml->Prefixes.find(prefix_string);
+         if (it != xml->Prefixes.end()) return it->second;
+      }
+
+      return std::nullopt;
+   };
+
    if (!NodeTest) {
       if (attribute_axis) return Attribute != nullptr;
       return Candidate != nullptr;
@@ -745,29 +769,40 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
 
          std::string_view attribute_name = Attribute->Name;
 
-         if (test_name.find('*') != std::string::npos) return pf::wildcmp(test_name, attribute_name);
+         std::string_view expected_prefix;
+         std::string_view expected_local = test_name;
+
+         if (auto colon = test_name.find(':'); colon != std::string::npos) {
+            expected_prefix = test_name.substr(0, colon);
+            expected_local = test_name.substr(colon + 1);
+         }
+
+         std::string_view candidate_prefix;
+         std::string_view candidate_local = attribute_name;
+
+         if (auto colon = attribute_name.find(':'); colon != std::string::npos) {
+            candidate_prefix = attribute_name.substr(0, colon);
+            candidate_local = attribute_name.substr(colon + 1);
+         }
+
+         bool wildcard_local = expected_local.find('*') != std::string::npos;
+         bool local_matches = wildcard_local ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
+         if (!local_matches) return false;
 
          if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
-            uint32_t expected_prefix = 0;
-            std::string_view expected_local = test_name;
+            bool wildcard_prefix = (!expected_prefix.empty()) and (expected_prefix IS "*");
+            if (wildcard_prefix) return true;
 
-            if (auto colon = test_name.find(':'); colon != std::string::npos) {
-               expected_prefix = pf::strhash(test_name.substr(0, colon));
-               expected_local = test_name.substr(colon + 1);
+            if (!expected_prefix.empty()) {
+               auto expected_hash = resolve_namespace(expected_prefix, Candidate);
+               if (!expected_hash) return false;
+               if (candidate_prefix.empty()) return false;
+               auto candidate_hash = resolve_namespace(candidate_prefix, Candidate);
+               if (!candidate_hash) return false;
+               return *candidate_hash IS *expected_hash;
             }
 
-            std::string_view candidate_local = attribute_name;
-            uint32_t candidate_prefix = 0;
-
-            if (auto colon = attribute_name.find(':'); colon != std::string::npos) {
-               candidate_prefix = pf::strhash(attribute_name.substr(0, colon));
-               candidate_local = attribute_name.substr(colon + 1);
-            }
-
-            bool name_matches = expected_local.find('*') != std::string::npos ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
-            bool prefix_matches = expected_prefix ? (candidate_prefix IS expected_prefix) : true;
-
-            return name_matches and prefix_matches;
+            return candidate_prefix.empty();
          }
 
          return pf::iequals(test_name, attribute_name);
@@ -819,30 +854,42 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
 
       std::string_view candidate_name = Candidate->name();
 
-      if (test_name.find('*') != std::string::npos) return pf::wildcmp(test_name, candidate_name);
-
       if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
-         uint32_t expected_prefix = 0;
+         std::string_view expected_prefix;
          std::string_view expected_local = test_name;
 
          if (auto colon = test_name.find(':'); colon != std::string::npos) {
-            expected_prefix = pf::strhash(test_name.substr(0, colon));
+            expected_prefix = test_name.substr(0, colon);
             expected_local = test_name.substr(colon + 1);
          }
 
+         std::string_view candidate_prefix;
          std::string_view candidate_local = candidate_name;
-         uint32_t candidate_prefix = 0;
 
          if (auto colon = candidate_name.find(':'); colon != std::string::npos) {
-            candidate_prefix = pf::strhash(candidate_name.substr(0, colon));
+            candidate_prefix = candidate_name.substr(0, colon);
             candidate_local = candidate_name.substr(colon + 1);
          }
 
-         bool name_matches = expected_local.find('*') != std::string::npos ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
-         bool prefix_matches = expected_prefix ? (candidate_prefix IS expected_prefix) : true;
+         bool wildcard_local = expected_local.find('*') != std::string::npos;
+         bool name_matches = wildcard_local ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
+         if (!name_matches) return false;
 
-         return name_matches and prefix_matches;
+         if (!expected_prefix.empty()) {
+            bool wildcard_prefix = expected_prefix IS "*";
+            if (wildcard_prefix) return Candidate->isTag();
+
+            auto expected_hash = resolve_namespace(expected_prefix, Candidate);
+            if (!expected_hash) return false;
+            return Candidate->NamespaceID IS *expected_hash;
+         }
+
+         auto default_hash = resolve_namespace(std::string_view(), Candidate);
+         uint32_t expected_namespace = default_hash ? *default_hash : 0u;
+         return Candidate->NamespaceID IS expected_namespace;
       }
+
+      if (test_name.find('*') != std::string::npos) return pf::wildcmp(test_name, candidate_name);
 
       return pf::iequals(test_name, candidate_name);
    }
