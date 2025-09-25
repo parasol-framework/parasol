@@ -876,15 +876,23 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() {
 
 std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
    auto left = parse_path_expr();
+   if (!left) return nullptr;
 
-   while (check(XPathTokenType::PIPE)) {
-      XPathToken op = peek();
-      advance();
-      auto right = parse_path_expr();
-      left = create_binary_op(std::move(left), op, std::move(right));
+   if (!check(XPathTokenType::PIPE)) return left;
+
+   auto union_node = std::make_unique<XPathNode>(XPathNodeType::Union);
+   union_node->add_child(std::move(left));
+
+   while (match(XPathTokenType::PIPE)) {
+      auto branch = parse_path_expr();
+      if (!branch) {
+         report_error("Expected path expression after '|' in union expression");
+         break;
+      }
+      union_node->add_child(std::move(branch));
    }
 
-   return left;
+   return union_node;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_path_expr() {

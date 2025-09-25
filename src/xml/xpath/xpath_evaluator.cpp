@@ -11,7 +11,7 @@
 // match the behaviour expected by downstream engines.
 //
 // This translation unit focuses on execution concerns: stack management for nested contexts, helper
-// routines for handling XPath union expressions, dispatching axes, and interpretation of AST nodes.  A
+// routines for managing evaluation state, AST caching, dispatching axes, and interpretation of AST nodes.  A
 // large portion of the logic is defensive—preserving cursor state for integration with the legacy
 // cursor-based API, falling back gracefully when unsupported expressions are encountered, and
 // honouring namespace prefix resolution rules.  By keeping the evaluator self-contained, the parser
@@ -21,82 +21,25 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <deque>
 #include <limits>
+#include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace {
 
-// Lightweight view-based trim used to split union expressions without allocating.
+// Lightweight view-based trim used for cache key normalisation.
 std::string_view trim_view(std::string_view Value)
 {
    auto start = Value.find_first_not_of(" \t\r\n");
-   if (start == std::string_view::npos) return std::string_view();
+   if (start IS std::string_view::npos) return std::string_view();
 
    auto end = Value.find_last_not_of(" \t\r\n");
    return Value.substr(start, end - start + 1);
-}
-
-// Break a union expression into top-level path fragments while preserving predicate contents.
-std::vector<std::string_view> split_union_paths(std::string_view XPath)
-{
-   std::vector<std::string_view> segments;
-   segments.reserve(4);
-   size_t start = 0;
-   int bracket_depth = 0;
-   int paren_depth = 0;
-   bool in_string = false;
-   char string_delim = '\0';
-
-   for (size_t index = 0; index < XPath.size(); ++index) {
-      char ch = XPath[index];
-
-      if (in_string) {
-         if ((ch IS '\\') and (index + 1 < XPath.size())) {
-            index++;
-            continue;
-         }
-
-         if (ch IS string_delim) in_string = false;
-         continue;
-      }
-
-      if ((ch IS '\'') or (ch IS '"')) {
-         in_string = true;
-         string_delim = ch;
-         continue;
-      }
-
-      if (ch IS '[') {
-         bracket_depth++;
-         continue;
-      }
-
-      if (ch IS ']') {
-         if (bracket_depth > 0) bracket_depth--;
-         continue;
-      }
-
-      if (ch IS '(') {
-         paren_depth++;
-         continue;
-      }
-
-      if (ch IS ')') {
-         if (paren_depth > 0) paren_depth--;
-         continue;
-      }
-
-      if ((ch IS '|') and (bracket_depth IS 0) and (paren_depth IS 0)) {
-         auto segment = trim_view(XPath.substr(start, index - start));
-         if (!segment.empty()) segments.push_back(segment);
-         start = index + 1;
-      }
-   }
-
-   auto tail = trim_view(XPath.substr(start));
-   if (!tail.empty()) segments.push_back(tail);
-
-   return segments;
 }
 
 } // namespace
@@ -331,63 +274,43 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
    // Namespace axis evaluation can allocate transient nodes; ensure we start from a clean slate.
    axis_evaluator.reset_namespace_nodes();
 
-   if (AllowUnionSplit) {
-      // XPath union expressions are evaluated left-to-right; we emulate this by evaluating each arm
-      // independently while preserving the original context state until a match succeeds.
-      auto union_paths = split_union_paths(XPath);
-      if (union_paths.size() > 1) {
-         auto saved_context = context;
-         auto saved_context_stack = context_stack;
-         auto saved_cursor_stack = cursor_stack;
-         auto saved_cursor_tags = xml->CursorTags;
-         auto saved_cursor = xml->Cursor;
-         auto saved_attrib = xml->Attrib;
-         bool saved_expression_unsupported = expression_unsupported;
-
-         ERR last_error = ERR::Search;
-
-         for (auto branch : union_paths) {
-            context = saved_context;
-            context_stack = saved_context_stack;
-            cursor_stack = saved_cursor_stack;
-            xml->CursorTags = saved_cursor_tags;
-            xml->Cursor = saved_cursor;
-            xml->Attrib = saved_attrib;
-            expression_unsupported = saved_expression_unsupported;
-
-            auto result = find_tag_enhanced_internal(branch, CurrentPrefix, false);
-            if ((result IS ERR::Okay) or (result IS ERR::Terminate)) return result;
-
-            if (result != ERR::Search) {
-               last_error = result;
-               break;
-            }
-         }
-
-         context = saved_context;
-         context_stack = saved_context_stack;
-         cursor_stack = saved_cursor_stack;
-         xml->CursorTags = saved_cursor_tags;
-         xml->Cursor = saved_cursor;
-         xml->Attrib = saved_attrib;
-         expression_unsupported = saved_expression_unsupported;
-
-         return last_error;
-      }
-   }
+   (void)AllowUnionSplit;
 
    // Ensure the document index is up to date so ParentID links are valid during AST traversal
    (void)xml->getMap();
+
+   auto cache_key = normalise_cache_key(XPath);
+   std::shared_ptr<XPathNode> cached_ast;
+
+   if (!cache_key.empty()) cached_ast = get_cached_ast(cache_key);
+   if (cached_ast) return evaluate_ast(cached_ast.get(), CurrentPrefix);
 
    XPathTokenizer tokenizer;
    auto tokens = tokenizer.tokenize(XPath);
 
    XPathParser parser;
 
-   if (auto ast = parser.parse(tokens); ast) {
-      return evaluate_ast(ast.get(), CurrentPrefix);
+   auto parsed_ast = parser.parse(tokens);
+   if (!parsed_ast) return ERR::Syntax;
+
+   auto signature = build_ast_signature(parsed_ast.get());
+   std::shared_ptr<XPathNode> ast = cached_ast;
+
+   if (!signature.empty()) {
+      auto signature_entry = ast_signature_cache.find(signature);
+      if (signature_entry != ast_signature_cache.end()) {
+         auto locked = signature_entry->second.lock();
+         if (locked) ast = locked;
+      }
    }
-   else return ERR::Syntax;
+
+   if (!ast) ast = std::shared_ptr<XPathNode>(std::move(parsed_ast));
+
+   if (!signature.empty()) ast_signature_cache[signature] = ast;
+
+   if (!cache_key.empty()) store_cached_ast(cache_key, ast, signature);
+
+   return evaluate_ast(ast.get(), CurrentPrefix);
 }
 
 //********************************************************************************************************************
@@ -403,6 +326,9 @@ ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPr
 
       case XPathNodeType::Step:
          return evaluate_step_ast(Node, CurrentPrefix);
+
+      case XPathNodeType::Union:
+         return evaluate_union(Node, CurrentPrefix);
 
       case XPathNodeType::Path:
          if ((Node->child_count() > 0) and Node->get_child(0) and
@@ -481,6 +407,61 @@ ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint
    if (xml->Callback.defined()) return ERR::Okay;
    if (matched) return ERR::Okay;
    return ERR::Search;
+}
+
+ERR SimpleXPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::Union)) return ERR::Failed;
+
+   auto saved_context = context;
+   auto saved_context_stack = context_stack;
+   auto saved_cursor_stack = cursor_stack;
+   auto saved_cursor_tags = xml->CursorTags;
+   auto saved_cursor = xml->Cursor;
+   auto saved_attrib = xml->Attrib;
+   bool saved_expression_unsupported = expression_unsupported;
+
+   ERR last_error = ERR::Search;
+
+   std::unordered_set<std::string> evaluated_branches;
+   evaluated_branches.reserve(Node->child_count());
+
+   for (size_t index = 0; index < Node->child_count(); ++index) {
+      auto branch = Node->get_child(index);
+      if (!branch) continue;
+
+      auto branch_signature = build_ast_signature(branch);
+      if (!branch_signature.empty()) {
+         auto insert_result = evaluated_branches.insert(branch_signature);
+         if (!insert_result.second) continue;
+      }
+
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      expression_unsupported = saved_expression_unsupported;
+
+      auto result = evaluate_ast(branch, CurrentPrefix);
+      if ((result IS ERR::Okay) or (result IS ERR::Terminate)) return result;
+
+      if (result != ERR::Search) {
+         last_error = result;
+         break;
+      }
+   }
+
+   context = saved_context;
+   context_stack = saved_context_stack;
+   cursor_stack = saved_cursor_stack;
+   xml->CursorTags = saved_cursor_tags;
+   xml->Cursor = saved_cursor;
+   xml->Attrib = saved_attrib;
+   expression_unsupported = saved_expression_unsupported;
+
+   return last_error;
 }
 
 // Evaluate a single step expression against the current context.
@@ -2016,5 +1997,104 @@ XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNod
    }
 
    return function_library.call_function(function_name, args, context);
+}
+
+std::shared_ptr<XPathNode> SimpleXPathEvaluator::get_cached_ast(const std::string &Key)
+{
+   if (Key.empty()) return nullptr;
+
+   auto it = ast_cache.find(Key);
+   if (it IS ast_cache.end()) return nullptr;
+
+   for (auto order_it = ast_cache_order.begin(); order_it != ast_cache_order.end(); ++order_it) {
+      if ((*order_it).compare(Key) IS 0) {
+         ast_cache_order.erase(order_it);
+         break;
+      }
+   }
+
+   ast_cache_order.push_back(Key);
+
+   return it->second.ast;
+}
+
+void SimpleXPathEvaluator::store_cached_ast(const std::string &Key, const std::shared_ptr<XPathNode> &Ast, const std::string &Signature)
+{
+   if (Key.empty() or !Ast) return;
+
+   ast_cache[Key] = { Ast, Signature };
+
+   for (auto order_it = ast_cache_order.begin(); order_it != ast_cache_order.end(); ++order_it) {
+      if ((*order_it).compare(Key) IS 0) {
+         ast_cache_order.erase(order_it);
+         break;
+      }
+   }
+
+   ast_cache_order.push_back(Key);
+
+   prune_ast_cache();
+}
+
+void SimpleXPathEvaluator::prune_ast_cache()
+{
+   while (ast_cache.size() > ast_cache_limit) {
+      if (ast_cache_order.empty()) break;
+
+      auto evict_key = ast_cache_order.front();
+      ast_cache_order.pop_front();
+
+      auto entry_it = ast_cache.find(evict_key);
+      if (entry_it IS ast_cache.end()) continue;
+
+      auto signature = entry_it->second.signature;
+      ast_cache.erase(entry_it);
+
+      if (signature.empty()) continue;
+
+      auto signature_it = ast_signature_cache.find(signature);
+      if (signature_it IS ast_signature_cache.end()) continue;
+
+      if (signature_it->second.expired()) ast_signature_cache.erase(signature_it);
+   }
+}
+
+std::string SimpleXPathEvaluator::normalise_cache_key(std::string_view Expression) const
+{
+   auto trimmed = trim_view(Expression);
+   if (trimmed.empty()) return std::string();
+
+   std::string key(trimmed);
+
+   for (size_t index = 0; index < key.size(); ++index) {
+      char &ch = key[index];
+      if ((ch IS '\n') or (ch IS '\r') or (ch IS '\t')) ch = ' ';
+   }
+
+   return key;
+}
+
+std::string SimpleXPathEvaluator::build_ast_signature(const XPathNode *Node) const
+{
+   if (!Node) return std::string("#");
+
+   std::string signature;
+   signature.reserve(16);
+
+   signature += '(';
+   signature += std::to_string(int(Node->type));
+   signature += '|';
+   signature += Node->value;
+   signature += ':';
+
+   for (size_t index = 0; index < Node->child_count(); ++index) {
+      auto child = Node->get_child(index);
+      signature += build_ast_signature(child);
+      signature += ',';
+   }
+
+   signature += ')';
+
+   return signature;
 }
 
