@@ -273,21 +273,35 @@ void XPathFunctionLibrary::register_core_functions() {
 }
 
 bool XPathFunctionLibrary::has_function(std::string_view Name) const {
-   return functions.find(Name) != functions.end();
+   return find_function(Name) != nullptr;
 }
 
 XPathValue XPathFunctionLibrary::call_function(std::string_view Name,
                                                const std::vector<XPathValue> &Args,
                                                const XPathContext &Context) const {
-   auto it = functions.find(Name);
-   if (it != functions.end()) {
-      return it->second(Args, Context);
+   if (const auto *function_ptr = find_function(Name)) {
+      return (*function_ptr)(Args, Context);
    }
    return XPathValue(); // Return empty boolean for unknown functions
 }
 
 void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func) {
    functions.insert_or_assign(std::string(Name), std::move(Func));
+   function_cache.clear();
+}
+
+const XPathFunction * XPathFunctionLibrary::find_function(std::string_view Name) const {
+   auto cache_it = function_cache.find(Name);
+   if (cache_it != function_cache.end()) return cache_it->second;
+
+   auto iter = functions.find(Name);
+   if (iter != functions.end()) {
+      auto *function_ptr = &iter->second;
+      function_cache.emplace(iter->first, function_ptr);
+      return function_ptr;
+   }
+
+   return nullptr;
 }
 
 //********************************************************************************************************************

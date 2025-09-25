@@ -500,85 +500,150 @@ ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t 
 ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
-   auto step_node = Steps[StepIndex];
-   if ((!step_node) or (step_node->type != XPathNodeType::Step)) return ERR::Failed;
+   std::vector<XMLTag *> current_context(ContextNodes.begin(), ContextNodes.end());
+   std::vector<XMLTag *> next_context;
+   next_context.reserve(current_context.size());
 
-   const XPathNode *axis_node = nullptr;
-   const XPathNode *node_test = nullptr;
-   std::vector<const XPathNode *> predicate_nodes;
+   std::vector<AxisMatch> filtered;
+   filtered.reserve(current_context.size());
+   std::vector<AxisMatch> predicate_buffer;
+   predicate_buffer.reserve(current_context.size());
 
-   for (size_t i = 0; i < step_node->child_count(); ++i) {
-      auto child = step_node->get_child(i);
-      if (!child) continue;
+   for (size_t step_index = StepIndex; step_index < Steps.size(); ++step_index) {
+      if (current_context.empty()) break;
 
-      if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
-      else if (child->type IS XPathNodeType::Predicate) predicate_nodes.push_back(child);
-      else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or (child->type IS XPathNodeType::Wildcard) or (child->type IS XPathNodeType::NodeTypeTest))) {
-         node_test = child;
-      }
-   }
+      auto step_node = Steps[step_index];
+      if ((!step_node) or (step_node->type != XPathNodeType::Step)) return ERR::Failed;
 
-   AxisType axis = AxisType::Child;
-   if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
+      const XPathNode *axis_node = nullptr;
+      const XPathNode *node_test = nullptr;
+      std::vector<const XPathNode *> predicate_nodes;
+      predicate_nodes.reserve(step_node->child_count());
 
-   bool is_last_step = (StepIndex + 1 >= Steps.size());
+      for (size_t i = 0; i < step_node->child_count(); ++i) {
+         auto child = step_node->get_child(i);
+         if (!child) continue;
 
-   for (auto *context_node : ContextNodes) {
-      const XMLAttrib *context_attribute = nullptr;
-
-      if ((context_node) and context.attribute_node and (context_node IS context.context_node)) {
-         context_attribute = context.attribute_node;
-      }
-
-      auto axis_matches = dispatch_axis(axis, context_node, context_attribute);
-
-      std::vector<AxisMatch> filtered;
-      filtered.reserve(axis_matches.size());
-
-      for (auto &match : axis_matches) {
-         if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
-         filtered.push_back(match);
+         if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
+         else if (child->type IS XPathNodeType::Predicate) predicate_nodes.push_back(child);
+         else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or (child->type IS XPathNodeType::Wildcard) or (child->type IS XPathNodeType::NodeTypeTest))) {
+            node_test = child;
+         }
       }
 
-      if (filtered.empty()) continue;
+      AxisType axis = AxisType::Child;
+      if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
-      for (auto *predicate_node : predicate_nodes) {
-         std::vector<AxisMatch> passed;
-         passed.reserve(filtered.size());
+      bool is_last_step = (step_index + 1 >= Steps.size());
+
+      for (auto *context_node : current_context) {
+         const XMLAttrib *context_attribute = nullptr;
+
+         if ((context_node) and context.attribute_node and (context_node IS context.context_node)) {
+            context_attribute = context.attribute_node;
+         }
+
+         auto axis_matches = dispatch_axis(axis, context_node, context_attribute);
+
+         filtered.clear();
+         filtered.reserve(axis_matches.size());
+
+         for (auto &match : axis_matches) {
+            if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
+            filtered.push_back(match);
+         }
+
+         if (filtered.empty()) continue;
+
+         for (auto *predicate_node : predicate_nodes) {
+            predicate_buffer.clear();
+            predicate_buffer.reserve(filtered.size());
+
+            for (size_t index = 0; index < filtered.size(); ++index) {
+               auto &match = filtered[index];
+               push_context(match.node, index + 1, filtered.size(), match.attribute);
+
+               auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+               pop_context();
+
+               if (predicate_result IS PredicateResult::Unsupported) {
+                  return ERR::Failed;
+               }
+
+               if (predicate_result IS PredicateResult::Match) predicate_buffer.push_back(match);
+            }
+
+            filtered.swap(predicate_buffer);
+            if (filtered.empty()) break;
+         }
+
+         if (filtered.empty()) continue;
 
          for (size_t index = 0; index < filtered.size(); ++index) {
             auto &match = filtered[index];
-            push_context(match.node, index + 1, filtered.size(), match.attribute);
+            auto *candidate = match.node;
 
-            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
-            pop_context();
+            push_context(candidate, index + 1, filtered.size(), match.attribute);
 
-            if (predicate_result IS PredicateResult::Unsupported) {
-               return ERR::Failed;
-            }
+            if (axis IS AxisType::Attribute) {
+               if (!candidate or !match.attribute) {
+                  pop_context();
+                  continue;
+               }
 
-            if (predicate_result IS PredicateResult::Match) passed.push_back(match);
-         }
+               if (is_last_step) {
+                  auto tags = xml->getInsert(candidate, xml->Cursor);
+                  if (!tags) {
+                     pop_context();
+                     continue;
+                  }
 
-         filtered.swap(passed);
-         if (filtered.empty()) break;
-      }
+                  xml->CursorTags = tags;
+                  xml->Attrib = match.attribute->Name;
 
-      if (filtered.empty()) continue;
+                  if (!xml->Callback.defined()) {
+                     Matched = true;
+                     pop_context();
+                     return ERR::Okay;
+                  }
 
-      for (size_t index = 0; index < filtered.size(); ++index) {
-         auto &match = filtered[index];
-         auto *candidate = match.node;
+                  push_cursor_state();
 
-         push_context(candidate, index + 1, filtered.size(), match.attribute);
+                  ERR callback_error = ERR::Okay;
+                  if (xml->Callback.isC()) {
+                     auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+                     callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+                  }
+                  else if (xml->Callback.isScript()) {
+                     if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+                        { "XML",  xml, FD_OBJECTPTR },
+                        { "Tag",  candidate->ID },
+                        { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+                     }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+                  }
+                  else callback_error = ERR::InvalidValue;
 
-         if (axis IS AxisType::Attribute) {
-            if (!candidate or !match.attribute) {
+                  pop_cursor_state();
+                  pop_context();
+
+                  Matched = true;
+
+                  if (callback_error IS ERR::Terminate) return ERR::Terminate;
+                  if (callback_error != ERR::Okay) return callback_error;
+
+                  continue;
+               }
+
                pop_context();
                continue;
             }
 
             if (is_last_step) {
+               if (!candidate) {
+                  pop_context();
+                  continue;
+               }
+
                auto tags = xml->getInsert(candidate, xml->Cursor);
                if (!tags) {
                   pop_context();
@@ -586,7 +651,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                }
 
                xml->CursorTags = tags;
-               xml->Attrib = match.attribute->Name;
+               xml->Attrib.clear();
 
                if (!xml->Callback.defined()) {
                   Matched = true;
@@ -595,7 +660,6 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                }
 
                push_cursor_state();
-
                ERR callback_error = ERR::Okay;
                if (xml->Callback.isC()) {
                   auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
@@ -620,92 +684,19 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
                continue;
             }
-         }
 
-         if (is_last_step) {
             if (!candidate) {
                pop_context();
                continue;
             }
 
-            auto tags = xml->getInsert(candidate, xml->Cursor);
-            if (!tags) {
-               pop_context();
-               continue;
-            }
-
-            xml->CursorTags = tags;
-            xml->Attrib.clear();
-
-            if (!xml->Callback.defined()) {
-               Matched = true;
-               pop_context();
-               return ERR::Okay;
-            }
-
-            push_cursor_state();
-
-            ERR callback_error = ERR::Okay;
-            if (xml->Callback.isC()) {
-               auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-               callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-            }
-            else if (xml->Callback.isScript()) {
-               if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-                  { "XML",  xml, FD_OBJECTPTR },
-                  { "Tag",  candidate->ID },
-                  { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-               }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-            }
-            else callback_error = ERR::InvalidValue;
-
-            pop_cursor_state();
+            next_context.push_back(candidate);
             pop_context();
-
-            Matched = true;
-
-            if (callback_error IS ERR::Terminate) return ERR::Terminate;
-            if (callback_error != ERR::Okay) return callback_error;
-
-            continue;
          }
-
-         std::vector<XMLTag *> child_context;
-         child_context.push_back(candidate);
-
-         push_cursor_state();
-
-         if (candidate) {
-            xml->CursorTags = &candidate->Children;
-            xml->Cursor = xml->CursorTags->begin();
-         }
-         else {
-            xml->CursorTags = &xml->Tags;
-            xml->Cursor = xml->CursorTags->begin();
-         }
-
-         auto result = evaluate_step_sequence(child_context, Steps, StepIndex + 1, CurrentPrefix, Matched);
-
-         if ((result IS ERR::Okay) and (!xml->Callback.defined()) and Matched) {
-            auto matched_tags = xml->CursorTags;
-            auto matched_cursor = xml->Cursor;
-
-            pop_cursor_state();
-            pop_context();
-
-            xml->CursorTags = matched_tags;
-            xml->Cursor = matched_cursor;
-            return ERR::Okay;
-         }
-
-         pop_cursor_state();
-         pop_context();
-
-         if (result IS ERR::Terminate) return ERR::Terminate;
-         if (result IS ERR::Failed) return ERR::Failed;
-
-         if ((result IS ERR::Okay) and (!xml->Callback.defined()) and Matched) return ERR::Okay;
       }
+
+      current_context.swap(next_context);
+      next_context.clear();
    }
 
    return Matched ? ERR::Okay : ERR::Search;

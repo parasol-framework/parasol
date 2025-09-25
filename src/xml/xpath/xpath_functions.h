@@ -12,7 +12,28 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
+
+struct TransparentStringHash {
+   using is_transparent = void;
+
+   size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
+   size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
+   size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
+};
+
+struct TransparentStringEqual {
+   using is_transparent = void;
+
+   bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
+   bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+   bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+};
 
 struct XMLTag;
 struct XMLAttrib;
@@ -100,8 +121,10 @@ using XPathFunction = std::function<XPathValue(const std::vector<XPathValue> &, 
 
 class XPathFunctionLibrary {
    private:
-   std::map<std::string, XPathFunction, std::less<>> functions;
+   std::unordered_map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
+   mutable std::unordered_map<std::string, const XPathFunction *, TransparentStringHash, TransparentStringEqual> function_cache;
    void register_core_functions();
+   const XPathFunction * find_function(std::string_view Name) const;
 
    // Size estimation helpers for string operations
    static size_t estimate_concat_size(const std::vector<XPathValue> &Args);
