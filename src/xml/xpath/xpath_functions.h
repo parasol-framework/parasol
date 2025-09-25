@@ -103,6 +103,11 @@ class XPathFunctionLibrary {
    std::map<std::string, XPathFunction, std::less<>> functions;
    void register_core_functions();
 
+   // Size estimation helpers for string operations
+   static size_t estimate_concat_size(const std::vector<XPathValue> &Args);
+   static size_t estimate_normalize_space_size(const std::string &Input);
+   static size_t estimate_translate_size(const std::string &Source, const std::string &From);
+
    public:
    XPathFunctionLibrary();
    ~XPathFunctionLibrary() = default;

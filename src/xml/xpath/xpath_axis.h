@@ -43,6 +43,23 @@ class AxisEvaluator {
    std::unordered_map<int, XMLTag *> id_lookup;
    bool id_cache_built = false;
 
+   // Optimized namespace handling data structures
+   struct NamespaceDeclaration {
+      std::string prefix;
+      std::string uri;
+
+      bool operator<(const NamespaceDeclaration &other) const {
+         return prefix < other.prefix;
+      }
+   };
+
+   // Reusable storage for namespace processing to avoid allocations
+   std::vector<NamespaceDeclaration> namespace_declarations;
+   std::vector<int> visited_node_ids;
+
+   // Namespace node pool for reuse to reduce allocations
+   std::vector<std::unique_ptr<XMLTag>> namespace_node_pool;
+
    // Helper methods for specific axes
    std::vector<XMLTag *> evaluate_child_axis(XMLTag *ContextNode);
    std::vector<XMLTag *> evaluate_descendant_axis(XMLTag *ContextNode);
@@ -59,6 +76,13 @@ class AxisEvaluator {
    std::vector<XMLTag *> evaluate_ancestor_or_self_axis(XMLTag *ContextNode);
 
    void collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output);
+
+   // Optimized namespace collection
+   void collect_namespace_declarations(XMLTag *Node, std::vector<NamespaceDeclaration> &declarations);
+
+   // Namespace node pooling helpers
+   XMLTag * acquire_namespace_node();
+   void recycle_namespace_nodes();
 
    // Document order utilities
    void sort_document_order(std::vector<XMLTag *> &Nodes);
@@ -85,4 +109,7 @@ class AxisEvaluator {
    static AxisType parse_axis_name(std::string_view AxisName);
    static std::string_view axis_name_to_string(AxisType Axis);
    static bool is_reverse_axis(AxisType Axis);
+
+   // Capacity estimation helper
+   size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
 };
