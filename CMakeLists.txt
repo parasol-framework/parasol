@@ -487,8 +487,7 @@ include(ExternalProject)
 
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
-# Only build freetype if font-related modules are enabled
-if (NOT DISABLE_FONT AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_SVG AND NOT DISABLE_SCINTILLA AND NOT DISABLE_DOCUMENT)
+if (NOT DISABLE_FONT)
    add_subdirectory (3rdparty/freetype-2.13.2)
 endif()
 
@@ -582,7 +581,7 @@ if (NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
    list (APPEND LIB_LIST picture)
 endif ()
 
-if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE AND NOT DISABLE_DISPLAY)
    add_subdirectory (src/picture_jpeg)
    list (APPEND LIB_LIST jpeg)
 endif ()
