@@ -131,9 +131,38 @@ class extXML : public objXML {
       return hash;
    }
 
-   inline std::string * getNamespaceURI(uint32_t Hash) {
+   [[nodiscard]] inline std::string * getNamespaceURI(uint32_t Hash) {
       auto it = NSRegistry.find(Hash);
       return (it != NSRegistry.end()) ? &it->second : nullptr;
+   }
+
+   // Fast implementation of ResolvePrefix() for internal use,
+
+   [[nodiscard]] inline ERR resolvePrefix(const std::string_view Prefix, int TagID, uint32_t &Result) {
+      for (auto tag = getTag(TagID); tag; tag = getTag(tag->ParentID)) {
+         // Check this tag's attributes for namespace declarations
+         for (size_t i = 1; i < tag->Attribs.size(); i++) {
+            const auto &attrib = tag->Attribs[i];
+
+            // Check for xmlns:prefix="uri" declarations
+            if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
+               if (attrib.Name.substr(6) IS Prefix) {
+                  // Found the prefix declaration, return its namespace hash
+                  Result = pf::strhash(attrib.Value);
+                  return ERR::Okay;
+               }
+            }
+            // Check for default namespace if looking for empty prefix
+            else if ((attrib.Name IS "xmlns") and (Prefix.empty())) {
+               Result = pf::strhash(attrib.Value);
+               return ERR::Okay;
+            }
+         }
+
+         if (!tag->ParentID) break; // Reached root
+      }
+
+      return ERR::Search;
    }
 
    // XPath 1.0 Implementation for Parasol
