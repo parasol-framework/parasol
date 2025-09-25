@@ -309,8 +309,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 
 static ERR XML_Free(extXML *Self)
 {
-   if (Self->Path)      { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->~extXML();
    return ERR::Okay;
 }
@@ -681,18 +680,16 @@ static ERR XML_Init(extXML *Self)
 
    if (Self->isSubClass()) return ERR::Okay; // Break here for sub-classes to perform initialisation
 
-   if (Self->Statement) {
+   if (not Self->Statement.empty()) {
       Self->LineNo = 1;
-      if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement)) != ERR::Okay) {
+      if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement.c_str())) != ERR::Okay) {
          // Return NoSupport to defer parsing to other data handlers
          if (Self->ParseError IS ERR::InvalidData) return ERR::NoSupport;
 
          log.warning("XML parsing error #%d: %s", int(Self->ParseError), GetErrorMsg(Self->ParseError));
       }
 
-      FreeResource(Self->Statement);
-      Self->Statement = nullptr;
-
+      Self->Statement.clear();
       return Self->ParseError;
    }
    else if ((Self->Path) or (Self->Source)) {
@@ -1743,7 +1740,7 @@ static ERR SET_Path(extXML *Self, CSTRING Value)
 {
    if (Self->Source) SET_Source(Self, nullptr);
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   Self->Statement.clear();
 
    if (pf::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
@@ -1811,7 +1808,7 @@ automatically.
 static ERR SET_Source(extXML *Self, OBJECTPTR Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   Self->Statement.clear();
 
    if (Value) {
       Self->Source = Value;
@@ -1855,7 +1852,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
    pf::Log log;
 
    if (!Self->initialised()) {
-      if (Self->Statement) {
+      if (not Self->Statement.empty()) {
          *Value = pf::strclone(Self->Statement);
          return ERR::Okay;
       }
@@ -1887,7 +1884,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 static ERR SET_Statement(extXML *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   Self->Statement.clear();
 
    if ((Value) and (*Value)) {
       if (Self->initialised()) {
@@ -1896,8 +1893,10 @@ static ERR SET_Statement(extXML *Self, CSTRING Value)
          Self->ParseError = txt_to_xml(Self, Self->Tags, Value);
          return Self->ParseError;
       }
-      else if ((Self->Statement = pf::strclone(Value))) return ERR::Okay;
-      else return ERR::AllocMemory;
+      else  {
+         Self->Statement = Value;
+         return ERR::Okay;
+      }
    }
    else {
       if (Self->initialised()) {

@@ -292,7 +292,16 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
    XPathParser parser;
 
    auto parsed_ast = parser.parse(tokens);
-   if (!parsed_ast) return ERR::Syntax;
+   if (!parsed_ast) {
+      if (parser.has_errors()) {
+         auto errors = parser.get_errors();
+         for (auto &msg : errors) {
+            if (!xml->ErrorMsg.empty()) xml->ErrorMsg.append("\n");
+            xml->ErrorMsg.append(msg);
+         }
+      }
+      return ERR::Syntax;
+   }
 
    auto signature = build_ast_signature(parsed_ast.get());
    std::shared_ptr<XPathNode> ast = cached_ast;

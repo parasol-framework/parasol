@@ -573,6 +573,16 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
   <fields>
     <field>
+      <name>ErrorMsg</name>
+      <comment>A textual description of the last parse error.</comment>
+      <access read="G">Get</access>
+      <type>STRING</type>
+      <description>
+<p>This field may provide a textual description of the last parse error that occurred, in conjunction with the most recently received error code.  Issues parsing malformed XPath expressions may also be reported here.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Flags</name>
       <comment>Controls XML parsing behaviour and processing options.</comment>
       <access read="R" write="W">Read/Write</access>

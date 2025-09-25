@@ -26,7 +26,8 @@ typedef objXML::CURSOR CURSOR;
 class extXML : public objXML {
    public:
    ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
-   STRING Statement;
+   std::string ErrorMsg;    // The most recent error message for an activity, e.g. XPath parsing error
+   std::string Statement;
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
 
@@ -205,6 +206,8 @@ static ERR SET_Source(extXML *, OBJECTPTR);
 
 inline ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
 {
+   ErrorMsg.clear();
+
    if ((!CursorTags) or (CursorTags->empty())) {
       return pf::Log(__FUNCTION__).warning(ERR::SanityCheckFailed);
    }
