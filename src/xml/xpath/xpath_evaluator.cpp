@@ -305,7 +305,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
       }
    }
 
-   if (!ast) ast = std::shared_ptr<XPathNode>(std::move(parsed_ast));
+   if (!ast) ast = std::move(parsed_ast);
 
    if (!signature.empty()) ast_signature_cache[signature] = ast;
 
