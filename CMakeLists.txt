@@ -87,6 +87,7 @@ option (DISABLE_CPACK     "Disable CPack Windows packaging support" OFF)
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED True)
 set (CMAKE_POSITION_INDEPENDENT_CODE ON) # Enables -fPIC and -fPIE in gcc
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set (BUILD_RPATH_USE_ORIGIN TRUE)
 
@@ -486,48 +487,53 @@ include(ExternalProject)
 
 add_subdirectory (3rdparty/zlib-1.2.11) # Note that when upgrading, the CMakeLists.txt is customised
 
-add_subdirectory (3rdparty/freetype-2.13.2)
+# Only build freetype if font-related modules are enabled
+if (NOT DISABLE_FONT AND NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_SVG AND NOT DISABLE_SCINTILLA AND NOT DISABLE_DOCUMENT)
+   add_subdirectory (3rdparty/freetype-2.13.2)
+endif()
 
 # --------------------------------------------------------------------------------------------------------------------
-# Build libjpeg-turbo as an external project
+# Build libjpeg-turbo as an external project (only if JPEG and Picture support is enabled)
 
-if (MSVC)
-   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/jpeg-static.lib")
-else ()
-   set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
-endif ()
+if (NOT DISABLE_JPEG AND NOT DISABLE_PICTURE)
+   if (MSVC)
+      set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/jpeg-static.lib")
+   else ()
+      set(LIBJPEG_TURBO_LIB_PATH "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo/lib/libjpeg.a")
+   endif ()
 
-ExternalProject_Add(libjpeg-turbo-project
-   URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
-   URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
-   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-   PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
-   INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
-   BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
-   CMAKE_ARGS
-      -DENABLE_SHARED=OFF
-      -DENABLE_STATIC=ON
-      -DWITH_TURBOJPEG=ON
-      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-      -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
-      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-   BUILD_ALWAYS FALSE
-)
+   ExternalProject_Add(libjpeg-turbo-project
+      URL https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.1.tar.gz
+      URL_HASH SHA512=4937b63a27818cdb5087091b2d78837f7f385fd6b4d3e3fcaf4d9ad2944fed4a00020dcacb33e9c2fd4b0f9d9851fb4051ed3da86f606aca5167357262a73e89
+      DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+      PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+      INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo"
+      BUILD_BYPRODUCTS ${LIBJPEG_TURBO_LIB_PATH}
+      CMAKE_ARGS
+         -DENABLE_SHARED=OFF
+         -DENABLE_STATIC=ON
+         -DWITH_TURBOJPEG=ON
+         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+         -DCMAKE_INSTALL_LIBDIR=<INSTALL_DIR>/lib
+         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      BUILD_ALWAYS FALSE
+   )
 
-ExternalProject_Get_Property(libjpeg-turbo-project install_dir)
-set(LIBJPEG_TURBO_INCLUDE_DIRS "${install_dir}/include")
+   ExternalProject_Get_Property(libjpeg-turbo-project install_dir)
+   set(LIBJPEG_TURBO_INCLUDE_DIRS "${install_dir}/include")
 
-# Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
-file(MAKE_DIRECTORY ${LIBJPEG_TURBO_INCLUDE_DIRS})
+   # Create the directory so changing INTERFACE_INCLUDE_DIRECTORIES doesn't fail
+   file(MAKE_DIRECTORY ${LIBJPEG_TURBO_INCLUDE_DIRS})
 
-add_library(libjpeg-turbo STATIC IMPORTED)
+   add_library(libjpeg-turbo STATIC IMPORTED)
 
-set_target_properties(libjpeg-turbo PROPERTIES
-   IMPORTED_LOCATION ${LIBJPEG_TURBO_LIB_PATH}
-   INTERFACE_INCLUDE_DIRECTORIES ${LIBJPEG_TURBO_INCLUDE_DIRS})
+   set_target_properties(libjpeg-turbo PROPERTIES
+      IMPORTED_LOCATION ${LIBJPEG_TURBO_LIB_PATH}
+      INTERFACE_INCLUDE_DIRECTORIES ${LIBJPEG_TURBO_INCLUDE_DIRS})
 
-add_dependencies(libjpeg-turbo libjpeg-turbo-project)
+   add_dependencies(libjpeg-turbo libjpeg-turbo-project)
+endif()
 
 # --------------------------------------------------------------------------------------------------------------------
 

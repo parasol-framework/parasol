@@ -67,4 +67,9 @@ set_target_properties(${MOD} PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
 
 target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PUBLIC linear_rgb)
-target_link_libraries (${MOD} PRIVATE ${MATH_LINK} freetype)
+target_link_libraries (${MOD} PRIVATE ${MATH_LINK})
+
+# Only link freetype if font support is enabled
+if (NOT DISABLE_FONT)
+   target_link_libraries (${MOD} PRIVATE freetype)
+endif()
