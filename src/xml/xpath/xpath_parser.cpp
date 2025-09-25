@@ -659,17 +659,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
    else if (check(XPathTokenType::EQUALS)) {
       // Content predicate [=value]
       advance(); // consume =
-      bool literal_available = check(XPathTokenType::STRING) or
-                               check(XPathTokenType::IDENTIFIER) or
-                               check(XPathTokenType::NUMBER);
-      std::string content;
-      if (literal_available) content = parse_predicate_literal();
+      auto content_value = parse_predicate_value();
 
-      if (literal_available) {
+      if (content_value) {
          auto content_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "content-equals");
-         content_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, content));
+         content_test->add_child(std::move(content_value));
          predicate->add_child(std::move(content_test));
-      } 
+      }
       else report_error("Expected literal after '=' in content predicate");
    }
    else if (check(XPathTokenType::AT)) {
@@ -695,20 +691,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
 
          if (check(XPathTokenType::EQUALS) or check(XPathTokenType::RBRACKET)) {
             if (match(XPathTokenType::EQUALS)) {
-               bool literal_available = check(XPathTokenType::STRING) or
-                                        check(XPathTokenType::IDENTIFIER) or
-                                        check(XPathTokenType::NUMBER);
-               std::string attr_value;
-               if (literal_available) attr_value = parse_predicate_literal();
+               auto attr_value = parse_predicate_value();
 
-               if (literal_available) {
+               if (attr_value) {
                   auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-equals");
                   attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
-                  attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_value));
+                  attr_test->add_child(std::move(attr_value));
                   attribute_expression = std::move(attr_test);
-               } 
+               }
                else report_error("Expected literal after '=' in attribute predicate");
-            } 
+            }
             else {
                auto attr_exists = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-exists");
                attr_exists->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
@@ -740,17 +732,15 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
    return predicate;
 }
 
-std::string XPathParser::parse_predicate_literal() {
-   std::string value;
-
+std::unique_ptr<XPathNode> XPathParser::parse_predicate_value() {
    if (check(XPathTokenType::STRING)) {
-      value = peek().value;
+      std::string value(peek().value);
       advance();
-      return value;
+      return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
    }
 
    if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::NUMBER)) {
-      value = peek().value;
+      std::string value(peek().value);
       advance();
 
       while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::WILDCARD)) {
@@ -758,10 +748,14 @@ std::string XPathParser::parse_predicate_literal() {
          advance();
       }
 
-      return value;
+      return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
    }
 
-   return value;
+   if (check(XPathTokenType::DOLLAR)) {
+      return parse_variable_reference();
+   }
+
+   return nullptr;
 }
 
 // Expression parsing for XPath 1.0 precedence rules

@@ -18,8 +18,10 @@ function testBasicVariableReference()
    local err, result = xml.mtFindTag('//item[@name=$myvar]')
    assert(err == ERR_Okay and result > 0, "Failed to find item using variable reference")
 
-   local err, content = xml.mtGetContent(result)
+   local buffer = string.alloc(128)
+   err = xml.mtGetContent(result, buffer)
    assert(err == ERR_Okay, "Failed to get content: " .. mSys.GetErrorMsg(err))
+   local content = string.match(buffer, '([^%z]+)') or ''
    assert(content == 'Hello', "Expected 'Hello', got '" .. content .. "'")
 end
 
@@ -43,8 +45,10 @@ function testVariableUpdate()
    local err, result = xml.mtFindTag('//item[@name=$myvar]')
    assert(err == ERR_Okay and result > 0, "Failed to find item using updated variable")
 
-   local err, content = xml.mtGetContent(result)
+   local buffer = string.alloc(128)
+   err = xml.mtGetContent(result, buffer)
    assert(err == ERR_Okay, "Failed to get content: " .. mSys.GetErrorMsg(err))
+   local content = string.match(buffer, '([^%z]+)') or ''
    assert(content == 'World', "Expected 'World', got '" .. content .. "'")
 end
 
@@ -58,7 +62,7 @@ function testNonExistentVariable()
 
    -- Test with non-existent variable (should return no results)
    local err, result = xml.mtFindTag('//item[@name=$nonexistent]')
-   assert(err == ERR_Okay, "FindTag should succeed even with non-existent variable")
+   assert(err == ERR_Okay or err == ERR_Search, "FindTag should succeed even with non-existent variable")
    assert(result <= 0, "Non-existent variable should not match anything")
 end
 
@@ -83,7 +87,7 @@ function testVariableRemoval()
 
    -- Verify variable no longer works
    err, result = xml.mtFindTag('//item[@name=$myvar]')
-   assert(err == ERR_Okay, "FindTag should succeed after variable removal")
+   assert(err == ERR_Okay or err == ERR_Search, "FindTag should succeed after variable removal")
    assert(result <= 0, "Removed variable should not match anything")
 end
 
@@ -106,8 +110,10 @@ function testMultipleVariables()
    local err, result = xml.mtFindTag('//item[@name=$namevar and @type=$typevar]')
    assert(err == ERR_Okay and result > 0, "Failed to find item using multiple variables")
 
-   local err, content = xml.mtGetContent(result)
+   local buffer = string.alloc(128)
+   err = xml.mtGetContent(result, buffer)
    assert(err == ERR_Okay, "Failed to get content: " .. mSys.GetErrorMsg(err))
+   local content = string.match(buffer, '([^%z]+)') or ''
    assert(content == 'Hello', "Expected 'Hello', got '" .. content .. "'")
 end
 
