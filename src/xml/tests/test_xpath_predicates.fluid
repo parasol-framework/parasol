@@ -165,6 +165,8 @@ function testXPathStringFunctions()
    assert(value == '  alpha  ', 'normalize-space(.) predicate should select the whitespace entry, got ' .. nz(value, 'NIL'))
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testXPathAdditionalStringFunctions()
    local xml = obj.new("xml", {
       statement = [[
@@ -213,6 +215,8 @@ function testXPathAdditionalStringFunctions()
    assert(err2 == ERR_Okay and attrValue == '4', 'string() should select the element whose code equals "value"')
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testXPathNumberFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item value="1"/><item value="2"/><item value="3"/></root>'
@@ -229,6 +233,8 @@ function testXPathNumberFunctions()
    local err, itemId = xml.mtFindTag('/root[sum(item/@value) = 6]')
    assert(err == ERR_Okay, 'sum() should aggregate numeric attribute values across a node-set: ' .. mSys.GetErrorMsg(err))
 end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testXPathExtendedNumberFunctions()
    local xml = obj.new("xml", {
@@ -258,6 +264,8 @@ function testXPathExtendedNumberFunctions()
    err2, attrValue = xml.mtGetAttrib(itemId, 'price')
    assert(err2 == ERR_Okay and attrValue == '2.6', 'round() should select the element with price="2.6", got ' .. nz(attrValue,'NIL'))
 end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testXPathBooleanFunctions()
    local xml = obj.new("xml", {
@@ -306,6 +314,8 @@ function testXPathBooleanFunctions()
    assert(err2 == ERR_Okay and attrValue == 'P2', 'lang("en") should select the paragraph inheriting the root language')
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testXPathIdFunction()
    local xml = obj.new("xml", {
       statement = [[
@@ -339,6 +349,8 @@ function testXPathIdFunction()
    assert(err3 == ERR_Okay and childId == 'child', 'id() with node-set argument should resolve the referenced child paragraph')
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testXPathNameFunctions()
    local xml = obj.new("xml", {
       statement = [[
@@ -351,12 +363,18 @@ function testXPathNameFunctions()
    local err, itemId = xml.mtFindTag('/root/ns:item[name() = "ns:item"]')
    assert(err == ERR_Okay, 'name() should return the qualified element name: ' .. mSys.GetErrorMsg(err))
 
-   err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and namespace-uri() = "http://example.com/ns"]')
+   local attrValue = xml.getKey('/root/ns:item/@ns:code[local-name() = "code" and name() = "ns:code"]')
+   assert(attrValue == 'X1', 'local-name() and name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
+   
+   local err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and name() = "ns:item"]')
+   assert(err == ERR_Okay, 'local-name() and name() should resolve element names correctly: ' .. mSys.GetErrorMsg(err))
+   
+   local err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and namespace-uri() = "http://example.com/ns"]')
    assert(err == ERR_Okay, 'local-name() and namespace-uri() should resolve element namespaces: ' .. mSys.GetErrorMsg(err))
-
+   
    local attrValue = xml.getKey('/root/ns:item/@ns:code[namespace-uri() = "http://example.com/ns" and local-name() = "code"]')
    assert(attrValue == 'X1', 'namespace-uri() and local-name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
-
+   
    attrValue = xml.getKey('/root/ns:item/@data-id[name() = "data-id"]')
    assert(attrValue == 'A1', 'name() should expose unqualified attribute names, got ' .. nz(attrValue, 'NIL'))
 end
@@ -569,7 +587,9 @@ function testXPathOperators()
    assert(err == ERR_Okay, "position()*2 should honour multiplication semantics: " .. mSys.GetErrorMsg(err))
    local err5, multBook = xml.mtGetAttrib(id, 'id')
    assert(err5 == ERR_Okay and multBook == '2', "position()*2>=4 should return the second entry")
- end
+end
+ 
+-----------------------------------------------------------------------------------------------------------------------
 
 function testXPathExpressions()
    local xml = obj.new("xml", {
@@ -608,6 +628,8 @@ function testXPathExpressions()
    assert(unionErr == ERR_Okay, "Union operator should execute successfully")
    assert(#unionTitles >= 2, "Union should return at least two nodes, found " .. #unionTitles)
 end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testXPathArithmetic()
    local xml = obj.new("xml", {
