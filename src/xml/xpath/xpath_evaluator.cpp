@@ -19,6 +19,7 @@
 // independently of XML parsing.
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <deque>
@@ -41,6 +42,113 @@ std::string_view trim_view(std::string_view Value)
 
    auto end = Value.find_last_not_of(" \t\r\n");
    return Value.substr(start, end - start + 1);
+}
+
+bool is_name_start_char(char Character)
+{
+   return std::isalpha((unsigned char)Character) or Character IS '_';
+}
+
+bool is_name_char(char Character)
+{
+   return is_name_start_char(Character) or std::isdigit((unsigned char)Character) or Character IS '-' or Character IS '.' or Character IS ':';
+}
+
+std::string build_xpath_literal(const std::string &Value)
+{
+   if (Value.find('\'') IS std::string::npos) {
+      std::string Literal;
+      Literal.reserve(Value.size() + 2);
+      Literal += '\'';
+      Literal += Value;
+      Literal += '\'';
+      return Literal;
+   }
+
+   std::string Literal = "concat(";
+   size_t Position = 0;
+   bool First = true;
+
+   while (true) {
+      size_t Quote = Value.find('\'', Position);
+      if (!First) Literal += ", ";
+      Literal += '\'';
+      if (Quote IS std::string::npos) {
+         Literal += Value.substr(Position);
+         Literal += '\'';
+         break;
+      }
+
+      Literal += Value.substr(Position, Quote - Position);
+      Literal += '\'';
+      Literal += ", \"'\"";
+      Position = Quote + 1;
+      First = false;
+   }
+
+   Literal += ')';
+   return Literal;
+}
+
+template <typename Resolver>
+std::string expand_xpath_variables(std::string_view Expression, Resolver Lookup)
+{
+   std::string Expanded;
+   Expanded.reserve(Expression.size());
+
+   bool in_single_quote = false;
+   bool in_double_quote = false;
+
+   static const std::string empty_value;
+
+   for (size_t index = 0; index < Expression.size(); ++index) {
+      char character = Expression[index];
+
+      if ((character IS '\'') and (!in_double_quote)) {
+         in_single_quote = !in_single_quote;
+         Expanded += character;
+         continue;
+      }
+
+      if ((character IS '"') and (!in_single_quote)) {
+         in_double_quote = !in_double_quote;
+         Expanded += character;
+         continue;
+      }
+
+      if ((character IS '$') and (!in_single_quote) and (!in_double_quote)) {
+         size_t name_start = index + 1;
+         if (name_start >= Expression.size()) {
+            Expanded += character;
+            continue;
+         }
+
+         char first = Expression[name_start];
+         if (!is_name_start_char(first)) {
+            Expanded += character;
+            continue;
+         }
+
+         size_t name_end = name_start + 1;
+         while (name_end < Expression.size()) {
+            char next = Expression[name_end];
+            if (!is_name_char(next)) break;
+            ++name_end;
+         }
+
+         std::string variable_name(Expression.substr(name_start, name_end - name_start));
+         const std::string *value = Lookup(variable_name);
+         if (!value) value = &empty_value;
+
+         Expanded += build_xpath_literal(*value);
+         index = name_end - 1;
+         continue;
+      }
+
+      Expanded += character;
+   }
+
+   return Expanded;
 }
 
 } // namespace
@@ -280,14 +388,22 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
    // Ensure the document index is up to date so ParentID links are valid during AST traversal
    (void)xml->getMap();
 
-   auto cache_key = normalise_cache_key(XPath);
+   std::string expanded_expression = expand_xpath_variables(XPath, [this](const std::string &Name) -> const std::string * {
+      auto iterator = xml->Variables.find(Name);
+      if (iterator != xml->Variables.end()) return &iterator->second;
+      else return nullptr;
+   });
+
+   std::string_view expression_view(expanded_expression);
+
+   auto cache_key = normalise_cache_key(expression_view);
    std::shared_ptr<XPathNode> cached_ast;
 
    if (!cache_key.empty()) cached_ast = get_cached_ast(cache_key);
    if (cached_ast) return evaluate_ast(cached_ast.get(), CurrentPrefix);
 
    XPathTokenizer tokenizer;
-   auto tokens = tokenizer.tokenize(XPath);
+   auto tokens = tokenizer.tokenize(expression_view);
 
    XPathParser parser;
 
