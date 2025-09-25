@@ -27,12 +27,12 @@ class XPathTokenizer {
    static void initialize_interned_strings();
 
    // Character classification
-   bool is_alpha(char c) const;
-   bool is_digit(char c) const;
-   bool is_alnum(char c) const;
-   bool is_whitespace(char c) const;
-   bool is_name_start_char(char c) const;
-   bool is_name_char(char c) const;
+   [[nodiscard]] inline bool is_alpha(char c) const;
+   [[nodiscard]] inline bool is_digit(char c) const;
+   [[nodiscard]] inline bool is_alnum(char c) const;
+   [[nodiscard]] inline bool is_whitespace(char c) const;
+   [[nodiscard]] inline bool is_name_start_char(char c) const;
+   [[nodiscard]] inline bool is_name_char(char c) const;
 
    // Token extraction methods
    XPathToken scan_identifier();
@@ -41,16 +41,16 @@ class XPathTokenizer {
    XPathToken scan_operator();
 
    // Lookahead and utility
-   char peek(size_t offset = 0) const;
-   void skip_whitespace();
-   bool match(std::string_view Str);
+   [[nodiscard]] inline char peek(size_t offset = 0) const;
+   inline void skip_whitespace();
+   [[nodiscard]] inline bool match(std::string_view Str);
 
    public:
    XPathTokenizer() : position(0), length(0) {}
 
    std::vector<XPathToken> tokenize(std::string_view XPath);
    bool has_more() const;
-   char current() const;
+   [[nodiscard]]  char current() const;
    void advance();
 };
 
@@ -93,7 +93,6 @@ class XPathParser {
    // Utility methods
    bool check(XPathTokenType type) const;
    bool match(XPathTokenType type);
-   XPathToken consume(XPathTokenType Type, std::string_view ErrorMessage);
    const XPathToken & peek() const;
    const XPathToken & previous() const;
    bool is_at_end() const;

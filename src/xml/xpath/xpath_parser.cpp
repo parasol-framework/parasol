@@ -1,6 +1,5 @@
 //********************************************************************************************************************
 // XPath Tokenizer and Parser Implementation
-//********************************************************************************************************************
 //
 // The parser transforms raw XPath source into the structured representation consumed by the evaluator.
 // It begins with a character-level tokenizer that understands XPath's contextual grammar—treating the
@@ -13,18 +12,13 @@
 // parser can make nuanced decisions based on how tokens were generated, and the evaluator benefits
 // from a consistent interpretation of ambiguous constructs.
 
-//********************************************************************************************************************
-// XPathTokenizer Implementation
-
 #include <cctype>
+#include <mutex>
 
 // Static string interning storage
 std::unordered_map<std::string_view, std::string> XPathTokenizer::interned_strings;
 
 void XPathTokenizer::initialize_interned_strings() {
-   static bool initialized = false;
-   if (initialized) return;
-
    // Common XPath keywords and operators
    interned_strings["and"] = "and";
    interned_strings["or"] = "or";
@@ -75,8 +69,6 @@ void XPathTokenizer::initialize_interned_strings() {
    interned_strings["floor"] = "floor";
    interned_strings["ceiling"] = "ceiling";
    interned_strings["round"] = "round";
-
-   initialized = true;
 }
 
 bool XPathTokenizer::is_alpha(char c) const {
@@ -131,9 +123,12 @@ bool XPathTokenizer::has_more() const {
    return position < length;
 }
 
+//********************************************************************************************************************
 // Produce a token stream while preserving context so operators like '*' are classified correctly.
+
 std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
-   initialize_interned_strings();
+   static std::once_flag is_once;
+   std::call_once(is_once, &XPathTokenizer::initialize_interned_strings);
 
    input = XPath;
    position = 0;
@@ -205,6 +200,8 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
    return tokens;
 }
 
+//********************************************************************************************************************
+
 XPathToken XPathTokenizer::scan_identifier() {
    size_t start = position;
 
@@ -225,6 +222,8 @@ XPathToken XPathTokenizer::scan_identifier() {
    // Use string_view directly - no copying
    return XPathToken(type, identifier, start, position - start);
 }
+
+//********************************************************************************************************************
 
 XPathToken XPathTokenizer::scan_number() {
    size_t start = position;
@@ -247,6 +246,8 @@ XPathToken XPathTokenizer::scan_number() {
    // Use string_view directly - no copying for numbers
    return XPathToken(XPathTokenType::NUMBER, number_view, start, position - start);
 }
+
+//********************************************************************************************************************
 
 XPathToken XPathTokenizer::scan_string(char QuoteChar) {
    size_t start = position;
@@ -285,24 +286,26 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar) {
          char escaped = input[position];
          if (escaped IS QuoteChar or escaped IS '\\' or escaped IS '*') {
             value += escaped;
-         } else {
+         } 
+         else {
             value += '\\';
             value += escaped;
          }
-      } else {
-         value += input[position];
-      }
+      } 
+      else value += input[position];
+
       position++;
    }
 
-   if (position < length) {
-      position++; // Skip closing quote
-   }
+   if (position < length) position++; // Skip closing quote
 
    return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
 }
 
-XPathToken XPathTokenizer::scan_operator() {
+//********************************************************************************************************************
+
+XPathToken XPathTokenizer::scan_operator() 
+{
    size_t start = position;
    char ch = input[position];
 
@@ -364,7 +367,8 @@ XPathToken XPathTokenizer::scan_operator() {
 //********************************************************************************************************************
 // XPathParser Implementation
 
-std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &TokenList) {
+std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &TokenList) 
+{
    tokens = TokenList;
    current_token = 0;
    errors.clear();
@@ -395,6 +399,8 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
    return root;
 }
 
+//********************************************************************************************************************
+
 bool XPathParser::check(XPathTokenType Type) const {
    return peek().type IS Type;
 }
@@ -407,30 +413,28 @@ bool XPathParser::match(XPathTokenType Type) {
    return false;
 }
 
-XPathToken XPathParser::consume(XPathTokenType Type, std::string_view ErrorMessage) {
-   if (check(Type)) return previous();
-
-   report_error(ErrorMessage);
-   return peek();
-}
-
-const XPathToken & XPathParser::peek() const {
+const XPathToken & XPathParser::peek() const 
+{
    return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
 }
 
-const XPathToken & XPathParser::previous() const {
+const XPathToken & XPathParser::previous() const 
+{
    return tokens[current_token - 1];
 }
 
-bool XPathParser::is_at_end() const {
+bool XPathParser::is_at_end() const 
+{
    return peek().type IS XPathTokenType::END_OF_INPUT;
 }
 
-void XPathParser::advance() {
+void XPathParser::advance() 
+{
    if (!is_at_end()) current_token++;
 }
 
-bool XPathParser::is_step_start_token(XPathTokenType type) const {
+bool XPathParser::is_step_start_token(XPathTokenType type) const 
+{
    switch (type) {
       case XPathTokenType::DOT:
       case XPathTokenType::DOUBLE_DOT:
@@ -443,19 +447,23 @@ bool XPathParser::is_step_start_token(XPathTokenType type) const {
    }
 }
 
-void XPathParser::report_error(std::string_view Message) {
+void XPathParser::report_error(std::string_view Message) 
+{
    errors.emplace_back(Message);
 }
 
-bool XPathParser::has_errors() const {
+bool XPathParser::has_errors() const 
+{
    return !errors.empty();
 }
 
-std::vector<std::string> XPathParser::get_errors() const {
+std::vector<std::string> XPathParser::get_errors() const 
+{
    return errors;
 }
 
-std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right) {
+std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right) 
+{
    auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, std::string(Op.value));
    binary_op->add_child(std::move(Left));
    binary_op->add_child(std::move(Right));
@@ -468,8 +476,8 @@ std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, st
    return unary_op;
 }
 
-// Grammar implementation follows - this is a simplified parser focusing on the core features
-// needed for the AST_PLAN.md phases
+//********************************************************************************************************************
+// Grammar implementation
 
 std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
    auto path = std::make_unique<XPathNode>(XPathNodeType::LocationPath);
@@ -515,6 +523,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
    return path;
 }
 
+//********************************************************************************************************************
+
 std::unique_ptr<XPathNode> XPathParser::parse_step() {
    auto step = std::make_unique<XPathNode>(XPathNodeType::Step);
 
@@ -525,6 +535,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
       step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
       return step;
    }
+
    if (check(XPathTokenType::DOUBLE_DOT)) {
       advance();
       step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "parent"));
@@ -543,17 +554,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
          step->add_child(std::move(axis));
       }
    }
-   // Handle attribute axis (@)
-   else if (match(XPathTokenType::AT)) {
+   else if (match(XPathTokenType::AT)) { // Handle attribute axis (@)
       auto axis = std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "attribute");
       step->add_child(std::move(axis));
    }
 
    // Parse node test
    auto node_test = parse_node_test();
-   if (node_test) {
-      step->add_child(std::move(node_test));
-   }
+   if (node_test) step->add_child(std::move(node_test));
 
    // Parse predicates (square brackets and round brackets)
    while (true) {
@@ -567,6 +575,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
 
    return step;
 }
+
+//********************************************************************************************************************
 
 std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
    if (check(XPathTokenType::WILDCARD)) {
@@ -633,6 +643,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
    return nullptr;
 }
 
+//********************************************************************************************************************
+
 std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
    if (!match(XPathTokenType::LBRACKET)) return nullptr;
 
@@ -657,7 +669,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
          auto content_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "content-equals");
          content_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, content));
          predicate->add_child(std::move(content_test));
-      } else report_error("Expected literal after '=' in content predicate");
+      } 
+      else report_error("Expected literal after '=' in content predicate");
    }
    else if (check(XPathTokenType::AT)) {
       size_t attribute_token_index = current_token;
@@ -693,8 +706,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
                   attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
                   attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_value));
                   attribute_expression = std::move(attr_test);
-               } else report_error("Expected literal after '=' in attribute predicate");
-            } else {
+               } 
+               else report_error("Expected literal after '=' in attribute predicate");
+            } 
+            else {
                auto attr_exists = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-exists");
                attr_exists->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
                attribute_expression = std::move(attr_exists);
@@ -750,6 +765,7 @@ std::string XPathParser::parse_predicate_literal() {
 }
 
 // Expression parsing for XPath 1.0 precedence rules
+
 std::unique_ptr<XPathNode> XPathParser::parse_expr() {
    return parse_or_expr();
 }
@@ -796,10 +812,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_equality_expr() {
 std::unique_ptr<XPathNode> XPathParser::parse_relational_expr() {
    auto left = parse_additive_expr();
 
-   while (check(XPathTokenType::LESS_THAN) or
-          check(XPathTokenType::LESS_EQUAL) or
-          check(XPathTokenType::GREATER_THAN) or
-          check(XPathTokenType::GREATER_EQUAL)) {
+   while (check(XPathTokenType::LESS_THAN) or check(XPathTokenType::LESS_EQUAL) or
+          check(XPathTokenType::GREATER_THAN) or check(XPathTokenType::GREATER_EQUAL)) {
       XPathToken op = peek();
       advance();
       auto right = parse_additive_expr();
@@ -825,8 +839,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_additive_expr() {
 std::unique_ptr<XPathNode> XPathParser::parse_multiplicative_expr() {
    auto left = parse_unary_expr();
 
-   while (check(XPathTokenType::MULTIPLY) or
-          check(XPathTokenType::DIVIDE) or
+   while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::DIVIDE) or
           check(XPathTokenType::MODULO)) {
       XPathToken op = peek();
       advance();
@@ -852,9 +865,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() {
       if (match(XPathTokenType::LPAREN)) {
          operand = parse_expr();
          match(XPathTokenType::RPAREN);
-      } else {
-         operand = parse_unary_expr();
-      }
+      } 
+      else operand = parse_unary_expr();
 
       return create_unary_op(op, std::move(operand));
    }
@@ -1033,7 +1045,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_argument() {
    return parse_expr();
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_number() {
+std::unique_ptr<XPathNode> XPathParser::parse_number() 
+{
    if (check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
       advance();
@@ -1042,7 +1055,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_number() {
    return nullptr;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_literal() {
+std::unique_ptr<XPathNode> XPathParser::parse_literal() 
+{
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
@@ -1051,7 +1065,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_literal() {
    return nullptr;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_variable_reference() {
+std::unique_ptr<XPathNode> XPathParser::parse_variable_reference() 
+{
    if (check(XPathTokenType::DOLLAR)) {
       advance();
       if (check(XPathTokenType::IDENTIFIER)) {
