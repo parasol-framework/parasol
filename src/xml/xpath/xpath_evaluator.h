@@ -69,6 +69,7 @@ class SimpleXPathEvaluator {
                                        uint32_t CurrentPrefix);
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR process_expression_node_set(const XPathValue &Value);
+   XPathValue evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
    std::shared_ptr<XPathNode> get_cached_ast(const std::string &Key);
    void store_cached_ast(const std::string &Key, const std::shared_ptr<XPathNode> &Ast, const std::string &Signature);
