@@ -40,6 +40,7 @@ std::string_view trim_view(std::string_view Value)
 std::vector<std::string_view> split_union_paths(std::string_view XPath)
 {
    std::vector<std::string_view> segments;
+   segments.reserve(4);
    size_t start = 0;
    int bracket_depth = 0;
    int paren_depth = 0;

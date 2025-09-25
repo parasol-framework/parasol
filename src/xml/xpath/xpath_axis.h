@@ -11,6 +11,7 @@
 #include <parasol/modules/xml.h>
 #include <memory>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 //********************************************************************************************************************
@@ -39,6 +40,8 @@ class AxisEvaluator {
    private:
    extXML * xml;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
+   std::unordered_map<int, XMLTag *> id_lookup;
+   bool id_cache_built = false;
 
    // Helper methods for specific axes
    std::vector<XMLTag *> evaluate_child_axis(XMLTag *ContextNode);
@@ -62,8 +65,8 @@ class AxisEvaluator {
    std::vector<XMLTag *> build_ancestor_path(XMLTag *Node);
 
    // Helper methods for tag lookup
+   void build_id_cache();
    XMLTag * find_tag_by_id(int ID);
-   XMLTag * find_tag_recursive(XMLTag &Tag, int ID);
 
    public:
    explicit AxisEvaluator(extXML *XML) : xml(XML) {}
@@ -80,6 +83,6 @@ class AxisEvaluator {
 
    // Utility methods
    static AxisType parse_axis_name(std::string_view AxisName);
-   static std::string axis_name_to_string(AxisType Axis);
+   static std::string_view axis_name_to_string(AxisType Axis);
    static bool is_reverse_axis(AxisType Axis);
 };

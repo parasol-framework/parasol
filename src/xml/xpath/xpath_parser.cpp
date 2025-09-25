@@ -16,6 +16,8 @@
 //********************************************************************************************************************
 // XPathTokenizer Implementation
 
+#include <cctype>
+
 bool XPathTokenizer::is_alpha(char c) const {
    return std::isalpha((unsigned char)(c));
 }
@@ -51,10 +53,9 @@ void XPathTokenizer::skip_whitespace() {
    }
 }
 
-bool XPathTokenizer::match(const char *Str) {
-   size_t len = std::strlen(Str);
-   if (position + len > length) return false;
-   return input.substr(position, len) IS Str;
+bool XPathTokenizer::match(std::string_view Str) {
+   if (position + Str.size() > length) return false;
+   return input.compare(position, Str.size(), Str) IS 0;
 }
 
 char XPathTokenizer::current() const {
@@ -75,6 +76,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
    position = 0;
    length = input.size();
    std::vector<XPathToken> tokens;
+   tokens.reserve(XPath.size() + 1);
    int bracket_depth = 0; // '[' and ']'
    int paren_depth = 0;   // '(' and ')'
 
@@ -140,46 +142,43 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
 
 XPathToken XPathTokenizer::scan_identifier() {
    size_t start = position;
-   std::string value;
 
    while (position < length and is_name_char(input[position])) {
-      value += input[position];
       position++;
    }
 
+   auto identifier = input.substr(start, position - start);
+
    // Check for keywords
    XPathTokenType type = XPathTokenType::IDENTIFIER;
-   if (value IS "and") type = XPathTokenType::AND;
-   else if (value IS "or") type = XPathTokenType::OR;
-   else if (value IS "not") type = XPathTokenType::NOT;
-   else if (value IS "div") type = XPathTokenType::DIVIDE;
-   else if (value IS "mod") type = XPathTokenType::MODULO;
+   if (identifier IS "and") type = XPathTokenType::AND;
+   else if (identifier IS "or") type = XPathTokenType::OR;
+   else if (identifier IS "not") type = XPathTokenType::NOT;
+   else if (identifier IS "div") type = XPathTokenType::DIVIDE;
+   else if (identifier IS "mod") type = XPathTokenType::MODULO;
 
-   return XPathToken(type, value, start, position - start);
+   return XPathToken(type, std::string(identifier), start, position - start);
 }
 
 XPathToken XPathTokenizer::scan_number() {
    size_t start = position;
-   std::string value;
-
    bool seen_dot = false;
    while (position < length) {
       char current = input[position];
       if (is_digit(current)) {
-         value += current;
          position++;
          continue;
       }
       if (!seen_dot and current IS '.') {
          seen_dot = true;
-         value += current;
          position++;
          continue;
       }
       break;
    }
 
-   return XPathToken(XPathTokenType::NUMBER, value, start, position - start);
+   auto number_view = input.substr(start, position - start);
+   return XPathToken(XPathTokenType::NUMBER, std::string(number_view), start, position - start);
 }
 
 XPathToken XPathTokenizer::scan_string(char QuoteChar) {
@@ -217,7 +216,7 @@ XPathToken XPathTokenizer::scan_operator() {
 
    // Two-character operators
    if (position + 1 < length) {
-      std::string two_char = std::string(input.substr(position, 2));
+      std::string_view two_char = input.substr(position, 2);
       if (two_char IS "//") {
          position += 2;
          return XPathToken(XPathTokenType::DOUBLE_SLASH, "//", start, 2);
@@ -315,18 +314,18 @@ bool XPathParser::match(XPathTokenType Type) {
    return false;
 }
 
-XPathToken XPathParser::consume(XPathTokenType Type, const std::string &ErrorMessage) {
+XPathToken XPathParser::consume(XPathTokenType Type, std::string_view ErrorMessage) {
    if (check(Type)) return previous();
 
    report_error(ErrorMessage);
    return peek();
 }
 
-XPathToken XPathParser::peek() const {
+const XPathToken & XPathParser::peek() const {
    return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
 }
 
-XPathToken XPathParser::previous() const {
+const XPathToken & XPathParser::previous() const {
    return tokens[current_token - 1];
 }
 
@@ -351,8 +350,8 @@ bool XPathParser::is_step_start_token(XPathTokenType type) const {
    }
 }
 
-void XPathParser::report_error(const std::string &Message) {
-   errors.push_back(Message);
+void XPathParser::report_error(std::string_view Message) {
+   errors.emplace_back(Message);
 }
 
 bool XPathParser::has_errors() const {
