@@ -89,19 +89,6 @@ function testAttributeNameVariants()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test XPath 1.0 variables
-
-function testVariables()
-   local xml = obj.new("xml", {
-      statement = '<root><item id="test"/></root>'
-   })
-
-   -- Test variable reference
-   local err, itemId = xml.mtFindTag('/root/item[@id=$testvar]')
-   assert(err != ERR_Okay, "Variable references should not be supported yet")
-end
-
------------------------------------------------------------------------------------------------------------------------
 -- Test complex nested predicates
 
 function testComplexNestedPredicates()
@@ -687,7 +674,7 @@ function testXPathArithmetic()
 return {
    tests = {
       'testComparisonOperators', 'testMathematicalExpressions',
-      'testAttributeNameVariants', 'testVariables',
+      'testAttributeNameVariants',
       'testComplexNestedPredicates', 'testRoundBracketAlternatives',
       'testXPathStringFunctions', 'testXPathAdditionalStringFunctions',
       'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',

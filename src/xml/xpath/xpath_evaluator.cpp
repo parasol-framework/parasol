@@ -344,7 +344,6 @@ ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPr
       case XPathNodeType::UnaryOp:
       case XPathNodeType::FunctionCall:
       case XPathNodeType::Literal:
-      case XPathNodeType::VariableReference:
       case XPathNodeType::Number:
       case XPathNodeType::String:
          return evaluate_top_level_expression(Node, CurrentPrefix);
@@ -1959,19 +1958,6 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       return XPathValue();
    }
 
-   if (ExprNode->type IS XPathNodeType::VariableReference) {
-      // Look up variable in the XML object's variable storage
-      auto it = xml->Variables.find(ExprNode->value);
-      if (it != xml->Variables.end()) {
-         return XPathValue(it->second);
-      }
-      else {
-         // Variable not found - XPath 1.0 spec requires this to be an error
-         expression_unsupported = true;
-         return XPathValue();
-      }
-   }
-
    expression_unsupported = true;
    return XPathValue();
 }
@@ -2239,4 +2225,3 @@ std::string SimpleXPathEvaluator::build_ast_signature(const XPathNode *Node) con
 
    return signature;
 }
-

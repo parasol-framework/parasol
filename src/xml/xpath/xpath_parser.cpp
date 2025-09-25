@@ -357,7 +357,6 @@ XPathToken XPathTokenizer::scan_operator()
       case '+': position++; return XPathToken(XPathTokenType::PLUS, single_char, start, 1);
       case '-': position++; return XPathToken(XPathTokenType::MINUS, single_char, start, 1);
       case ':': position++; return XPathToken(XPathTokenType::COLON, single_char, start, 1);
-      case '$': position++; return XPathToken(XPathTokenType::DOLLAR, single_char, start, 1);
    }
 
    // Unknown token
@@ -994,10 +993,6 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
       return std::make_unique<XPathNode>(XPathNodeType::Number, value);
    }
 
-   if (check(XPathTokenType::DOLLAR)) {
-      return parse_variable_reference();
-   }
-
    if (check(XPathTokenType::IDENTIFIER)) {
       if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
          return parse_function_call();
@@ -1069,19 +1064,6 @@ std::unique_ptr<XPathNode> XPathParser::parse_literal()
       std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::String, value);
-   }
-   return nullptr;
-}
-
-std::unique_ptr<XPathNode> XPathParser::parse_variable_reference() 
-{
-   if (check(XPathTokenType::DOLLAR)) {
-      advance();
-      if (check(XPathTokenType::IDENTIFIER)) {
-         std::string name(peek().value);
-         advance();
-         return std::make_unique<XPathNode>(XPathNodeType::VariableReference, name);
-      }
    }
    return nullptr;
 }

@@ -62,9 +62,6 @@ enum class XPathTokenType {
    AXIS_SEPARATOR,    // ::
    COLON,             // :
 
-   // Variables and functions
-   DOLLAR,            // $
-
    // Special tokens
    END_OF_INPUT,
    UNKNOWN
@@ -108,7 +105,6 @@ enum class XPathNodeType {
    UnaryOp,
    FunctionCall,
    Literal,
-   VariableReference,
 
    // Node tests
    NameTest,

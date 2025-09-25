@@ -88,7 +88,6 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_argument();
    std::unique_ptr<XPathNode> parse_number();
    std::unique_ptr<XPathNode> parse_literal();
-   std::unique_ptr<XPathNode> parse_variable_reference();
 
    // Utility methods
    bool check(XPathTokenType type) const;

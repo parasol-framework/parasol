@@ -77,7 +77,6 @@ struct XPathContext {
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
    size_t size = 1;
-   std::map<std::string, XPathValue> variables;
    extXML * document = nullptr;
 
    XPathContext() = default;
