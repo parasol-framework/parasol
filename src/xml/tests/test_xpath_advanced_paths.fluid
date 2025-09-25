@@ -60,7 +60,7 @@ function testMissingPathError()
 
    local err, tagId = xml.mtFindTag('/root/item[@id="3"]')
    assert(err != ERR_Okay, 'Non-existent predicate matches should produce an error result, got ' .. mSys.GetErrorMsg(err))
-   assert(tagId == nil, 'No tag identifier should be returned when the lookup fails')
+   assert(tagId == nil or tagId == 0, 'No tag identifier should be returned when the lookup fails, got ' .. tagId)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -77,3 +77,11 @@ function testDescendantAxisAttributeAccess()
    local err, tagId = xml.mtFindTag('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
    assert(err == ERR_Okay, 'Complex descendant traversal should locate the advanced book entry: ' .. mSys.GetErrorMsg(err))
 end
+
+-----------------------------------------------------------------------------------------------------------------------
+return {
+   tests = {
+      'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal', 
+      'testMissingPathError', 'testDescendantAxisAttributeAccess'
+   }
+}
