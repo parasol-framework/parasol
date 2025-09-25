@@ -1968,8 +1968,9 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
          return XPathValue(it->second);
       }
       else {
-         // Variable not found - return empty string (XPath standard behavior)
-         return XPathValue(std::string(""));
+         // Variable not found - XPath 1.0 spec requires this to be an error
+         expression_unsupported = true;
+         return XPathValue();
       }
    }
 
