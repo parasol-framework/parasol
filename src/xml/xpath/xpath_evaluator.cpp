@@ -1,3 +1,22 @@
+//********************************************************************************************************************
+// XPath Evaluation Engine
+//********************************************************************************************************************
+//
+// The evaluator coordinates the complete XPath execution pipeline for Parasol's XML subsystem.  It
+// receives token sequences from the tokenizer, constructs an AST via the parser, and then walks that
+// AST to resolve node-sets, scalar values, and boolean predicates against the in-memory document
+// model.  Beyond expression evaluation, the class maintains the implicit evaluation context defined by
+// the XPath specification (context node, size, position, and active attribute), marshals axis
+// traversal through AxisEvaluator, and carefully mirrors document order semantics so that results
+// match the behaviour expected by downstream engines.
+//
+// This translation unit focuses on execution concerns: stack management for nested contexts, helper
+// routines for handling XPath union expressions, dispatching axes, and interpretation of AST nodes.  A
+// large portion of the logic is defensive—preserving cursor state for integration with the legacy
+// cursor-based API, falling back gracefully when unsupported expressions are encountered, and
+// honouring namespace prefix resolution rules.  By keeping the evaluator self-contained, the parser
+// and tokenizer remain ignorant of runtime data structures, and testing of the evaluator can be done
+// independently of XML parsing.
 
 #include <algorithm>
 #include <cmath>
@@ -7,6 +26,7 @@
 
 namespace {
 
+// Lightweight view-based trim used to split union expressions without allocating.
 std::string_view trim_view(std::string_view Value)
 {
    auto start = Value.find_first_not_of(" \t\r\n");
@@ -16,6 +36,7 @@ std::string_view trim_view(std::string_view Value)
    return Value.substr(start, end - start + 1);
 }
 
+// Break a union expression into top-level path fragments while preserving predicate contents.
 std::vector<std::string_view> split_union_paths(std::string_view XPath)
 {
    std::vector<std::string_view> segments;
@@ -82,6 +103,7 @@ std::vector<std::string_view> split_union_paths(std::string_view XPath)
 //********************************************************************************************************************
 // Context Management
 
+// Preserve the current evaluation context and establish a new one for nested expressions.
 void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
    auto document = context.document ? context.document : xml;
@@ -93,7 +115,8 @@ void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Si
    context.document = document;
 }
 
-void SimpleXPathEvaluator::pop_context() 
+// Restore the previous context when unwinding recursive evaluation.
+void SimpleXPathEvaluator::pop_context()
 {
    if (context_stack.empty()) {
       context.context_node = nullptr;
@@ -108,7 +131,8 @@ void SimpleXPathEvaluator::pop_context()
    context_stack.pop_back();
 }
 
-void SimpleXPathEvaluator::push_cursor_state() 
+// Snapshot cursor state so legacy cursor-based APIs can be restored after XPath evaluation.
+void SimpleXPathEvaluator::push_cursor_state()
 {
    CursorState state{};
    state.tags = xml->CursorTags;
@@ -121,7 +145,8 @@ void SimpleXPathEvaluator::push_cursor_state()
    cursor_stack.push_back(state);
 }
 
-void SimpleXPathEvaluator::pop_cursor_state() 
+// Reinstate any saved cursor state.
+void SimpleXPathEvaluator::pop_cursor_state()
 {
    if (cursor_stack.empty()) return;
 
@@ -139,8 +164,9 @@ void SimpleXPathEvaluator::pop_cursor_state()
    else xml->Cursor = begin + state.index;
 }
 
-std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis, 
-   XMLTag *ContextNode, const XMLAttrib *ContextAttribute) 
+// Convert an axis selection into a list of node or attribute matches relative to the active context.
+std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis,
+   XMLTag *ContextNode, const XMLAttrib *ContextAttribute)
 {
    std::vector<AxisMatch> matches;
 
@@ -291,14 +317,18 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
 //********************************************************************************************************************
 // Enhanced Entry Point (AST Evaluation)
 
+// Public entry point that evaluates an XPath expression and moves the XML cursor accordingly.
 ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix) {
    return find_tag_enhanced_internal(XPath, CurrentPrefix, true);
 }
 
 ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
+   // Namespace axis evaluation can allocate transient nodes; ensure we start from a clean slate.
    axis_evaluator.reset_namespace_nodes();
 
    if (AllowUnionSplit) {
+      // XPath union expressions are evaluated left-to-right; we emulate this by evaluating each arm
+      // independently while preserving the original context state until a match succeeds.
       auto union_paths = split_union_paths(XPath);
       if (union_paths.size() > 1) {
          auto saved_context = context;
@@ -342,7 +372,6 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
    }
 
    // Ensure the document index is up to date so ParentID links are valid during AST traversal
-
    (void)xml->getMap();
 
    XPathTokenizer tokenizer;
@@ -359,6 +388,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
 //********************************************************************************************************************
 // AST Evaluation Methods
 
+// Dispatch AST nodes to the appropriate evaluation routine.
 ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) {
    if (!Node) return ERR::Failed;
 
@@ -392,6 +422,7 @@ ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPr
    }
 }
 
+// Execute a full location path expression, managing implicit root handling and cursor updates.
 ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) {
    if ((!PathNode) or (PathNode->type != XPathNodeType::LocationPath)) return ERR::Failed;
 
@@ -451,6 +482,7 @@ ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint
    return ERR::Search;
 }
 
+// Evaluate a single step expression against the current context.
 ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix) {
    if (!StepNode) return ERR::Failed;
 
@@ -472,6 +504,7 @@ ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t 
    return ERR::Search;
 }
 
+// Recursive driver that iterates through each step in a location path.
 ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
