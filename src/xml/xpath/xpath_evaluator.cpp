@@ -923,10 +923,26 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          if ((!name_node) or (!value_node)) return PredicateResult::Unsupported;
 
          const std::string &attribute_name = name_node->value;
-         const std::string &attribute_value = value_node->value;
+
+         std::string attribute_value;
+         bool wildcard_value = false;
+
+         if (value_node->type IS XPathNodeType::Literal) {
+            attribute_value = value_node->value;
+            wildcard_value = attribute_value.find('*') != std::string::npos;
+         }
+         else {
+            bool saved_expression_unsupported = expression_unsupported;
+            auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
+            bool evaluation_failed = expression_unsupported;
+            expression_unsupported = saved_expression_unsupported;
+            if (evaluation_failed) return PredicateResult::NoMatch;
+
+            attribute_value = evaluated_value.to_string();
+            wildcard_value = attribute_value.find('*') != std::string::npos;
+         }
 
          bool wildcard_name = attribute_name.find('*') != std::string::npos;
-         bool wildcard_value = attribute_value.find('*') != std::string::npos;
 
          for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
             auto &attrib = candidate->Attribs[index];
@@ -954,8 +970,23 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          const XPathNode *value_node = expression->get_child(0);
          if (!value_node) return PredicateResult::Unsupported;
 
-         const std::string &expected = value_node->value;
-         bool wildcard_value = expected.find('*') != std::string::npos;
+         std::string expected;
+         bool wildcard_value = false;
+
+         if (value_node->type IS XPathNodeType::Literal) {
+            expected = value_node->value;
+            wildcard_value = expected.find('*') != std::string::npos;
+         }
+         else {
+            bool saved_expression_unsupported = expression_unsupported;
+            auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
+            bool evaluation_failed = expression_unsupported;
+            expression_unsupported = saved_expression_unsupported;
+            if (evaluation_failed) return PredicateResult::NoMatch;
+
+            expected = evaluated_value.to_string();
+            wildcard_value = expected.find('*') != std::string::npos;
+         }
 
          if (!candidate->Children.empty()) {
             auto &first_child = candidate->Children[0];
