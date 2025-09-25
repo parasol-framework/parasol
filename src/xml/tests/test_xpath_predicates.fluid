@@ -217,15 +217,17 @@ function testXPathNumberFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item value="1"/><item value="2"/><item value="3"/></root>'
    })
-
-   local err, itemId = xml.mtFindTag('/root[sum(item/@value) = 6]')
-   assert(err == ERR_Okay, 'sum() should aggregate numeric attribute values across a node-set: ' .. mSys.GetErrorMsg(err))
-
-   err, itemId = xml.mtFindTag('/root/item[floor(@value) = 1]')
+   
+   local err, itemId = xml.mtFindTag('/root/item[floor(@value) = 1]')
    assert(err == ERR_Okay, 'floor() predicate should evaluate numeric attributes, err=' .. mSys.GetErrorMsg(err))
 
    local attribErr, attribValue = xml.mtGetAttrib(itemId, 'value')
    assert(attribErr == ERR_Okay and attribValue == '1', 'floor() predicate should target the item with value="1"')
+
+   -- The expectation is that the root tag is selected if the sum of child item values equals 6
+
+   local err, itemId = xml.mtFindTag('/root[sum(item/@value) = 6]')
+   assert(err == ERR_Okay, 'sum() should aggregate numeric attribute values across a node-set: ' .. mSys.GetErrorMsg(err))
 end
 
 function testXPathExtendedNumberFunctions()
@@ -249,10 +251,12 @@ function testXPathExtendedNumberFunctions()
    err2, attrValue = xml.mtGetAttrib(itemId, 'price')
    assert(err2 == ERR_Okay and attrValue == '2.6', 'ceiling() should return the element with price="2.6"')
 
+   -- Note that there are two matching nodes, FindTag() will return the first.
+
    err, itemId = xml.mtFindTag('/root/item[round(@price) = 3]')
    assert(err == ERR_Okay, 'round() should return the nearest integer: ' .. mSys.GetErrorMsg(err))
    err2, attrValue = xml.mtGetAttrib(itemId, 'price')
-   assert(err2 == ERR_Okay and attrValue == '3.0', 'round() should select the element with price="3.0"')
+   assert(err2 == ERR_Okay and attrValue == '2.6', 'round() should select the element with price="2.6", got ' .. nz(attrValue,'NIL'))
 end
 
 function testXPathBooleanFunctions()

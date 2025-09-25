@@ -675,14 +675,38 @@ XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Arg
    if (Args.size() != 1) return XPathValue(0.0);
    if (Args[0].type != XPathValueType::NodeSet) return XPathValue(0.0);
 
+   const auto &nodeset = Args[0];
    double sum = 0.0;
-   for (XMLTag *node : Args[0].node_set) {
-      if (node) {
-         std::vector<XMLTag *> single_node = { node };
-         XPathValue node_value(single_node);
-         double value = node_value.to_number();
+
+   // Handle attribute nodes if present
+   if (!nodeset.node_set_attributes.empty()) {
+      for (const XMLAttrib *attr : nodeset.node_set_attributes) {
+         if (attr) {
+            double value = XPathValue::string_to_number(attr->Value);
+            if (!std::isnan(value)) {
+               sum += value;
+            }
+         }
+      }
+   }
+   // Handle string values if present
+   else if (!nodeset.node_set_string_values.empty()) {
+      for (const std::string &str : nodeset.node_set_string_values) {
+         double value = XPathValue::string_to_number(str);
          if (!std::isnan(value)) {
             sum += value;
+         }
+      }
+   }
+   // Handle regular element nodes
+   else {
+      for (XMLTag *node : nodeset.node_set) {
+         if (node) {
+            std::string node_content = XPathValue::node_string_value(node);
+            double value = XPathValue::string_to_number(node_content);
+            if (!std::isnan(value)) {
+               sum += value;
+            }
          }
       }
    }
