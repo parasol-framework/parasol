@@ -72,12 +72,22 @@ enum class XPathTokenType {
 
 struct XPathToken {
    XPathTokenType type;
-   std::string value;
+   std::string_view value;
    size_t position;
    size_t length;
 
+   // For tokens that need string storage (e.g., processed strings with escapes)
+   std::string stored_value;
+
+   // Constructor for string_view tokens (no copying)
+   XPathToken(XPathTokenType t, std::string_view v, size_t pos = 0, size_t len = 0)
+      : type(t), value(v), position(pos), length(len) {}
+
+   // Constructor for tokens requiring string storage
    XPathToken(XPathTokenType t, std::string v, size_t pos = 0, size_t len = 0)
-      : type(t), value(std::move(v)), position(pos), length(len) {}
+      : type(t), position(pos), length(len), stored_value(std::move(v)) {
+      value = stored_value;
+   }
 };
 
 //********************************************************************************************************************

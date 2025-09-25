@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 
 //********************************************************************************************************************
 // XPath Tokenizer
@@ -20,6 +21,10 @@ class XPathTokenizer {
    std::string_view input;
    size_t position;
    size_t length;
+
+   // String interning for frequently used identifiers
+   static std::unordered_map<std::string_view, std::string> interned_strings;
+   static void initialize_interned_strings();
 
    // Character classification
    bool is_alpha(char c) const;

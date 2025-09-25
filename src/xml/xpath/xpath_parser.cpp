@@ -18,6 +18,67 @@
 
 #include <cctype>
 
+// Static string interning storage
+std::unordered_map<std::string_view, std::string> XPathTokenizer::interned_strings;
+
+void XPathTokenizer::initialize_interned_strings() {
+   static bool initialized = false;
+   if (initialized) return;
+
+   // Common XPath keywords and operators
+   interned_strings["and"] = "and";
+   interned_strings["or"] = "or";
+   interned_strings["not"] = "not";
+   interned_strings["div"] = "div";
+   interned_strings["mod"] = "mod";
+
+   // Common node type tests
+   interned_strings["node"] = "node";
+   interned_strings["text"] = "text";
+   interned_strings["comment"] = "comment";
+   interned_strings["processing-instruction"] = "processing-instruction";
+
+   // Common axis names
+   interned_strings["child"] = "child";
+   interned_strings["parent"] = "parent";
+   interned_strings["ancestor"] = "ancestor";
+   interned_strings["descendant"] = "descendant";
+   interned_strings["following"] = "following";
+   interned_strings["preceding"] = "preceding";
+   interned_strings["following-sibling"] = "following-sibling";
+   interned_strings["preceding-sibling"] = "preceding-sibling";
+   interned_strings["attribute"] = "attribute";
+   interned_strings["namespace"] = "namespace";
+   interned_strings["self"] = "self";
+   interned_strings["descendant-or-self"] = "descendant-or-self";
+   interned_strings["ancestor-or-self"] = "ancestor-or-self";
+
+   // Common function names
+   interned_strings["last"] = "last";
+   interned_strings["position"] = "position";
+   interned_strings["count"] = "count";
+   interned_strings["name"] = "name";
+   interned_strings["local-name"] = "local-name";
+   interned_strings["namespace-uri"] = "namespace-uri";
+   interned_strings["string"] = "string";
+   interned_strings["concat"] = "concat";
+   interned_strings["starts-with"] = "starts-with";
+   interned_strings["contains"] = "contains";
+   interned_strings["substring"] = "substring";
+   interned_strings["substring-before"] = "substring-before";
+   interned_strings["substring-after"] = "substring-after";
+   interned_strings["normalize-space"] = "normalize-space";
+   interned_strings["translate"] = "translate";
+   interned_strings["boolean"] = "boolean";
+   interned_strings["number"] = "number";
+   interned_strings["sum"] = "sum";
+   interned_strings["floor"] = "floor";
+   interned_strings["ceiling"] = "ceiling";
+   interned_strings["round"] = "round";
+
+   initialized = true;
+}
+
 bool XPathTokenizer::is_alpha(char c) const {
    return std::isalpha((unsigned char)(c));
 }
@@ -72,6 +133,8 @@ bool XPathTokenizer::has_more() const {
 
 // Produce a token stream while preserving context so operators like '*' are classified correctly.
 std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
+   initialize_interned_strings();
+
    input = XPath;
    position = 0;
    length = input.size();
@@ -107,7 +170,8 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
                if (prev_is_operand and !prev_forces_wild) type = XPathTokenType::MULTIPLY;
             }
          }
-         tokens.emplace_back(type, "*", start, 1);
+         auto wildcard_char = input.substr(start, 1);
+         tokens.emplace_back(type, wildcard_char, start, 1);
       }
       else {
          XPathToken token = scan_operator();
@@ -121,8 +185,9 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
             } else {
                // Unknown character
                size_t start = position;
+               auto unknown_char = input.substr(start, 1);
                advance();
-               token = XPathToken(XPathTokenType::UNKNOWN, std::string(1, input[start]), start, 1);
+               token = XPathToken(XPathTokenType::UNKNOWN, unknown_char, start, 1);
             }
          }
 
@@ -136,7 +201,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
       }
    }
 
-   tokens.emplace_back(XPathTokenType::END_OF_INPUT, "", position, 0);
+   tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(""), position, 0);
    return tokens;
 }
 
@@ -157,7 +222,8 @@ XPathToken XPathTokenizer::scan_identifier() {
    else if (identifier IS "div") type = XPathTokenType::DIVIDE;
    else if (identifier IS "mod") type = XPathTokenType::MODULO;
 
-   return XPathToken(type, std::string(identifier), start, position - start);
+   // Use string_view directly - no copying
+   return XPathToken(type, identifier, start, position - start);
 }
 
 XPathToken XPathTokenizer::scan_number() {
@@ -178,14 +244,40 @@ XPathToken XPathTokenizer::scan_number() {
    }
 
    auto number_view = input.substr(start, position - start);
-   return XPathToken(XPathTokenType::NUMBER, std::string(number_view), start, position - start);
+   // Use string_view directly - no copying for numbers
+   return XPathToken(XPathTokenType::NUMBER, number_view, start, position - start);
 }
 
 XPathToken XPathTokenizer::scan_string(char QuoteChar) {
    size_t start = position;
    position++; // Skip opening quote
+   size_t content_start = position;
 
+   // First pass: check if string contains escape sequences
+   bool has_escapes = false;
+   size_t scan_pos = position;
+   while ((scan_pos < length) and (input[scan_pos] != QuoteChar)) {
+      if (input[scan_pos] IS '\\') {
+         has_escapes = true;
+         break;
+      }
+      scan_pos++;
+   }
+
+   if (!has_escapes) {
+      // Fast path: no escape sequences, use string_view directly
+      size_t content_end = scan_pos;
+      position = scan_pos;
+      if (position < length) position++; // Skip closing quote
+
+      auto string_content = input.substr(content_start, content_end - content_start);
+      return XPathToken(XPathTokenType::STRING, string_content, start, position - start);
+   }
+
+   // Slow path: process escape sequences
    std::string value;
+   value.reserve(scan_pos - content_start + 10); // Reserve with some buffer for escapes
+
    while ((position < length) and (input[position] != QuoteChar)) {
       if (input[position] IS '\\' and position + 1 < length) {
          // Handle escape sequences
@@ -207,7 +299,7 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar) {
       position++; // Skip closing quote
    }
 
-   return XPathToken(XPathTokenType::STRING, value, start, position - start);
+   return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
 }
 
 XPathToken XPathTokenizer::scan_operator() {
@@ -219,53 +311,54 @@ XPathToken XPathTokenizer::scan_operator() {
       std::string_view two_char = input.substr(position, 2);
       if (two_char IS "//") {
          position += 2;
-         return XPathToken(XPathTokenType::DOUBLE_SLASH, "//", start, 2);
+         return XPathToken(XPathTokenType::DOUBLE_SLASH, two_char, start, 2);
       }
       else if (two_char IS "..") {
          position += 2;
-         return XPathToken(XPathTokenType::DOUBLE_DOT, "..", start, 2);
+         return XPathToken(XPathTokenType::DOUBLE_DOT, two_char, start, 2);
       }
       else if (two_char IS "::") {
          position += 2;
-         return XPathToken(XPathTokenType::AXIS_SEPARATOR, "::", start, 2);
+         return XPathToken(XPathTokenType::AXIS_SEPARATOR, two_char, start, 2);
       }
       else if (two_char IS "!=") {
          position += 2;
-         return XPathToken(XPathTokenType::NOT_EQUALS, "!=", start, 2);
+         return XPathToken(XPathTokenType::NOT_EQUALS, two_char, start, 2);
       }
       else if (two_char IS "<=") {
          position += 2;
-         return XPathToken(XPathTokenType::LESS_EQUAL, "<=", start, 2);
+         return XPathToken(XPathTokenType::LESS_EQUAL, two_char, start, 2);
       }
       else if (two_char IS ">=") {
          position += 2;
-         return XPathToken(XPathTokenType::GREATER_EQUAL, ">=", start, 2);
+         return XPathToken(XPathTokenType::GREATER_EQUAL, two_char, start, 2);
       }
    }
 
-   // Single character operators
+   // Single character operators - use string_view to avoid copying
+   auto single_char = input.substr(position, 1);
    switch (ch) {
-      case '/': position++; return XPathToken(XPathTokenType::SLASH, "/", start, 1);
-      case '.': position++; return XPathToken(XPathTokenType::DOT, ".", start, 1);
-      case '*': position++; return XPathToken(XPathTokenType::WILDCARD, "*", start, 1);
-      case '[': position++; return XPathToken(XPathTokenType::LBRACKET, "[", start, 1);
-      case ']': position++; return XPathToken(XPathTokenType::RBRACKET, "]", start, 1);
-      case '(': position++; return XPathToken(XPathTokenType::LPAREN, "(", start, 1);
-      case ')': position++; return XPathToken(XPathTokenType::RPAREN, ")", start, 1);
-      case '@': position++; return XPathToken(XPathTokenType::AT, "@", start, 1);
-      case ',': position++; return XPathToken(XPathTokenType::COMMA, ",", start, 1);
-      case '|': position++; return XPathToken(XPathTokenType::PIPE, "|", start, 1);
-      case '=': position++; return XPathToken(XPathTokenType::EQUALS, "=", start, 1);
-      case '<': position++; return XPathToken(XPathTokenType::LESS_THAN, "<", start, 1);
-      case '>': position++; return XPathToken(XPathTokenType::GREATER_THAN, ">", start, 1);
-      case '+': position++; return XPathToken(XPathTokenType::PLUS, "+", start, 1);
-      case '-': position++; return XPathToken(XPathTokenType::MINUS, "-", start, 1);
-      case ':': position++; return XPathToken(XPathTokenType::COLON, ":", start, 1);
-      case '$': position++; return XPathToken(XPathTokenType::DOLLAR, "$", start, 1);
+      case '/': position++; return XPathToken(XPathTokenType::SLASH, single_char, start, 1);
+      case '.': position++; return XPathToken(XPathTokenType::DOT, single_char, start, 1);
+      case '*': position++; return XPathToken(XPathTokenType::WILDCARD, single_char, start, 1);
+      case '[': position++; return XPathToken(XPathTokenType::LBRACKET, single_char, start, 1);
+      case ']': position++; return XPathToken(XPathTokenType::RBRACKET, single_char, start, 1);
+      case '(': position++; return XPathToken(XPathTokenType::LPAREN, single_char, start, 1);
+      case ')': position++; return XPathToken(XPathTokenType::RPAREN, single_char, start, 1);
+      case '@': position++; return XPathToken(XPathTokenType::AT, single_char, start, 1);
+      case ',': position++; return XPathToken(XPathTokenType::COMMA, single_char, start, 1);
+      case '|': position++; return XPathToken(XPathTokenType::PIPE, single_char, start, 1);
+      case '=': position++; return XPathToken(XPathTokenType::EQUALS, single_char, start, 1);
+      case '<': position++; return XPathToken(XPathTokenType::LESS_THAN, single_char, start, 1);
+      case '>': position++; return XPathToken(XPathTokenType::GREATER_THAN, single_char, start, 1);
+      case '+': position++; return XPathToken(XPathTokenType::PLUS, single_char, start, 1);
+      case '-': position++; return XPathToken(XPathTokenType::MINUS, single_char, start, 1);
+      case ':': position++; return XPathToken(XPathTokenType::COLON, single_char, start, 1);
+      case '$': position++; return XPathToken(XPathTokenType::DOLLAR, single_char, start, 1);
    }
 
    // Unknown token
-   return XPathToken(XPathTokenType::UNKNOWN, "", start, 0);
+   return XPathToken(XPathTokenType::UNKNOWN, std::string_view(""), start, 0);
 }
 
 //********************************************************************************************************************
@@ -279,7 +372,7 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
 
    if (!is_at_end()) {
       XPathToken token = peek();
-      std::string token_text = token.value;
+      std::string token_text(token.value);
       if (token_text.empty()) token_text = "<unexpected>";
       report_error("Unexpected token '" + token_text + "' in XPath expression");
    }
@@ -363,14 +456,14 @@ std::vector<std::string> XPathParser::get_errors() const {
 }
 
 std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right) {
-   auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, Op.value);
+   auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, std::string(Op.value));
    binary_op->add_child(std::move(Left));
    binary_op->add_child(std::move(Right));
    return binary_op;
 }
 
 std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand) {
-   auto unary_op = std::make_unique<XPathNode>(XPathNodeType::UnaryOp, Op.value);
+   auto unary_op = std::make_unique<XPathNode>(XPathNodeType::UnaryOp, std::string(Op.value));
    unary_op->add_child(std::move(Operand));
    return unary_op;
 }
@@ -443,7 +536,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
    if (check(XPathTokenType::IDENTIFIER)) {
       // Look ahead for axis separator
       if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::AXIS_SEPARATOR) {
-         std::string axis_name = peek().value;
+         std::string axis_name(peek().value);
          advance(); // consume axis name
          advance(); // consume "::"
          auto axis = std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, axis_name);
@@ -481,7 +574,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
       return std::make_unique<XPathNode>(XPathNodeType::Wildcard, "*");
    }
    else if (check(XPathTokenType::IDENTIFIER)) {
-      std::string name = peek().value;
+      std::string name(peek().value);
 
       bool is_node_type = false;
       if ((name IS "node") or (name IS "text") or (name IS "comment") or (name IS "processing-instruction")) {
@@ -547,7 +640,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
 
    if (check(XPathTokenType::NUMBER)) {
       // Index predicate [1], [2], etc.
-      std::string index = peek().value;
+      std::string index(peek().value);
       advance();
       predicate->add_child(std::make_unique<XPathNode>(XPathNodeType::Number, index));
    }
@@ -574,7 +667,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
       std::unique_ptr<XPathNode> attribute_expression;
 
       if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
-         std::string attr_name = peek().value;
+         std::string attr_name(peek().value);
          advance();
 
          if (match(XPathTokenType::COLON)) {
@@ -870,13 +963,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
    }
 
    if (check(XPathTokenType::STRING)) {
-      std::string value = peek().value;
+      std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
    }
 
    if (check(XPathTokenType::NUMBER)) {
-      std::string value = peek().value;
+      std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::Number, value);
    }
@@ -890,7 +983,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
          return parse_function_call();
       }
 
-      std::string value = peek().value;
+      std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
    }
@@ -901,7 +994,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
 std::unique_ptr<XPathNode> XPathParser::parse_function_call() {
    if (!check(XPathTokenType::IDENTIFIER)) return nullptr;
 
-   std::string function_name = peek().value;
+   std::string function_name(peek().value);
    advance();
 
    if (!match(XPathTokenType::LPAREN)) return nullptr;
@@ -942,7 +1035,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_argument() {
 
 std::unique_ptr<XPathNode> XPathParser::parse_number() {
    if (check(XPathTokenType::NUMBER)) {
-      std::string value = peek().value;
+      std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::Number, value);
    }
@@ -951,7 +1044,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_number() {
 
 std::unique_ptr<XPathNode> XPathParser::parse_literal() {
    if (check(XPathTokenType::STRING)) {
-      std::string value = peek().value;
+      std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::String, value);
    }
@@ -962,7 +1055,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference() {
    if (check(XPathTokenType::DOLLAR)) {
       advance();
       if (check(XPathTokenType::IDENTIFIER)) {
-         std::string name = peek().value;
+         std::string name(peek().value);
          advance();
          return std::make_unique<XPathNode>(XPathNodeType::VariableReference, name);
       }

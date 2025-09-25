@@ -19,6 +19,7 @@
 #include "../xml.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cctype>
 #include <cstdlib>
@@ -290,6 +291,47 @@ void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunctio
 }
 
 //********************************************************************************************************************
+// Size Estimation Helpers for String Operations
+
+size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathValue> &Args) {
+   size_t total = 0;
+   for (const auto &arg : Args) {
+      // Conservative estimate based on type
+      switch (arg.type) {
+         case XPathValueType::String:
+            total += arg.string_value.length();
+            break;
+         case XPathValueType::Number:
+            total += 32; // Conservative estimate for number formatting
+            break;
+         case XPathValueType::Boolean:
+            total += 5; // "false" is longest
+            break;
+         case XPathValueType::NodeSet:
+            if (arg.node_set_string_override.has_value()) {
+               total += arg.node_set_string_override->length();
+            } else if (!arg.node_set_string_values.empty()) {
+               total += arg.node_set_string_values[0].length();
+            } else {
+               total += 64; // Conservative estimate for node content
+            }
+            break;
+      }
+   }
+   return total;
+}
+
+size_t XPathFunctionLibrary::estimate_normalize_space_size(const std::string &Input) {
+   // Worst case: no whitespace collapsing needed
+   return Input.length();
+}
+
+size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, const std::string &From) {
+   // Best case: no characters removed, worst case: same size as source
+   return Source.length();
+}
+
+//********************************************************************************************************************
 // Core XPath 1.0 Function Implementations
 
 XPathValue XPathFunctionLibrary::function_last(const std::vector<XPathValue> &Args, const XPathContext &Context) {
@@ -513,10 +555,23 @@ XPathValue XPathFunctionLibrary::function_string(const std::vector<XPathValue> &
 }
 
 XPathValue XPathFunctionLibrary::function_concat(const std::vector<XPathValue> &Args, const XPathContext &Context) {
-   std::string result;
+   // Pre-calculate total length to avoid quadratic behavior
+   size_t total_length = 0;
+   std::vector<std::string> arg_strings;
+   arg_strings.reserve(Args.size());
+
    for (const auto &arg : Args) {
-      result += arg.to_string();
+      arg_strings.emplace_back(arg.to_string());
+      total_length += arg_strings.back().length();
    }
+
+   std::string result;
+   result.reserve(total_length);
+
+   for (const auto &str : arg_strings) {
+      result += str;
+   }
+
    return XPathValue(result);
 }
 
@@ -566,8 +621,9 @@ XPathValue XPathFunctionLibrary::function_substring(const std::vector<XPathValue
    if (Args.size() < 2 or Args.size() > 3) return XPathValue("");
 
    std::string str = Args[0].to_string();
-   double start_pos = Args[1].to_number();
+   if (str.empty()) return XPathValue("");
 
+   double start_pos = Args[1].to_number();
    if (std::isnan(start_pos) or std::isinf(start_pos)) return XPathValue("");
 
    // XPath uses 1-based indexing
@@ -578,10 +634,18 @@ XPathValue XPathFunctionLibrary::function_substring(const std::vector<XPathValue
    if (Args.size() IS 3) {
       double length = Args[2].to_number();
       if (std::isnan(length) or std::isinf(length) or length <= 0) return XPathValue("");
+
       int len = (int)std::round(length);
+      int remaining = (int)str.length() - start_index;
+      if (len > remaining) len = remaining;
+
+      // For small substrings, avoid extra allocation overhead
+      if (len <= 0) return XPathValue("");
+
       return XPathValue(str.substr(start_index, len));
    }
 
+   // Return substring from start_index to end
    return XPathValue(str.substr(start_index));
 }
 
@@ -620,6 +684,7 @@ XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPat
 
    // Collapse internal whitespace
    std::string result;
+   result.reserve(estimate_normalize_space_size(str));
    bool in_whitespace = false;
    for (char c : str) {
       if (c IS ' ' or c IS '\t' or c IS '\n' or c IS '\r') {
@@ -643,17 +708,44 @@ XPathValue XPathFunctionLibrary::function_translate(const std::vector<XPathValue
    std::string from = Args[1].to_string();
    std::string to = Args[2].to_string();
 
+   if (source.empty()) return XPathValue("");
+
+   // Pre-size result string based on input length (worst case: no characters removed)
    std::string result;
    result.reserve(source.size());
 
-   for (char ch : source) {
-      size_t index = from.find(ch);
-      if (index IS std::string::npos) {
-         result.push_back(ch);
-         continue;
+   // Build character mapping for faster lookups if worth it
+   if (from.size() > 10) {
+      // Use array mapping for better performance with larger translation sets
+      std::array<int, 256> char_map;
+      char_map.fill(-1);
+
+      for (size_t i = 0; i < from.size() and i < 256; ++i) {
+         unsigned char ch = (unsigned char)from[i];
+         if (char_map[ch] IS -1) { // First occurrence takes precedence
+            char_map[ch] = (int)i;
+         }
       }
 
-      if (index < to.length()) result.push_back(to[index]);
+      for (char ch : source) {
+         unsigned char uch = (unsigned char)ch;
+         int index = char_map[uch];
+         if (index IS -1) {
+            result.push_back(ch);
+         } else if (index < (int)to.length()) {
+            result.push_back(to[index]);
+         }
+      }
+   } else {
+      // Use simple find for small translation sets
+      for (char ch : source) {
+         size_t index = from.find(ch);
+         if (index IS std::string::npos) {
+            result.push_back(ch);
+         } else if (index < to.length()) {
+            result.push_back(to[index]);
+         }
+      }
    }
 
    return XPathValue(result);
