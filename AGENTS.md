@@ -35,6 +35,12 @@ Key build options (use with `-D` flag):
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
 - `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in debug builds (has no effect on release builds).
 
+If you are running in a cloud session then disabling unnecessary modules like Audio and Display features will speed up the build.  You should include the following with your CMake build configuration:
+- `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_MP3=ON -DDISABLE_SCINTILLA=ON`
+
+If you are running in a cloud session and you are exclusively working on networking or data features, you can also disable the graphics modules:
+- `-DDISABLE_DOCUMENT=ON -DDISABLE_FONT=ON -DDISABLE_PICTURE=ON -DDISABLE_JPEG=ON -DDISABLE_SVG=ON -DDISABLE_VECTOR=ON`
+
 ## Architecture Overview
 
 ### Core Framework Structure
