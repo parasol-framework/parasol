@@ -14,7 +14,7 @@ accommodate various XML formats.  The class includes comprehensive support for X
 and document validation.
 
 The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
-this way, the class not only provides XML support but also serves as Parasol's general-purpose structured 
+this way, the class not only provides XML support but also serves as Parasol's general-purpose structured
 data handler.  It also makes it trivial to convert between different structured data formats, and benefit from
 the cross-application use of features, such as applying XPath queries on data originating from YAML.
 
@@ -32,7 +32,7 @@ The #Source field provides object-based input, allowing XML data to be sourced f
 action.
 
 For batch processing scenarios, the #Path or #Statement fields can be changed post-initialisation, causing the XML
-object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object 
+object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object
 instances rather than creating new ones.
 
 <header>Document Structure and Access</header>
@@ -46,7 +46,7 @@ efficient iteration and element access with standard STL semantics.  Altering ta
 to do so are provided in the C++ header for `objXML` and `XMLTag`, with additional functions in the `xml` namespace.
 Check the header for details.
 
-Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it 
+Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it
 should therefore be read only as needed and cached until the XML object is modified.
 
 -END-
@@ -1209,7 +1209,7 @@ static ERR XML_Reset(extXML *Self)
 -METHOD-
 ResolvePrefix: Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.
 
-This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the 
+This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the
 specified tag's hierarchical scope. The resolution process:
 
 <list type="ordered">

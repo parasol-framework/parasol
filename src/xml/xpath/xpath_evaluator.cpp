@@ -379,7 +379,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
    auto tokens = tokenizer.tokenize(XPath);
 
    XPathParser parser;
-  
+
    if (auto ast = parser.parse(tokens); ast) {
       return evaluate_ast(ast.get(), CurrentPrefix);
    }

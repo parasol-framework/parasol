@@ -170,7 +170,7 @@ function testProcessingInstructionNodeType()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- XPath 1.0 node() test
+-- XPath 1.0 node()
 
 function testGenericNodeType()
    local xml = obj.new("xml", {
@@ -185,7 +185,7 @@ function testGenericNodeType()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- XPath 1.0 namespace axis (NOT YET SUPPORTED)
+-- XPath 1.0 namespace axis
 
 function testNamespaceAxis()
    local xml = obj.new("xml", {
@@ -200,7 +200,7 @@ function testNamespaceAxis()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test Phase 5: XPath Axes
+-- XPath Axes
 
 function testXPathForwardAxes()
    local xml = obj.new("xml", {
@@ -262,6 +262,8 @@ function testXPathForwardAxes()
    assert(err2 == ERR_Okay and guideType == 'tutorial', "following::guide should return the tutorial guide element")
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testXPathReverseAxes()
    local xml = obj.new("xml", {
       statement = [[
@@ -316,6 +318,8 @@ function testXPathReverseAxes()
    assert(err4 == ERR_Okay and precedingParagraph == '1.1.2', "preceding::paragraph should return the nearest preceding paragraph")
 end
 
+-----------------------------------------------------------------------------------------------------------------------
+
 function testAncestorOrSelfAxis()
    local xml = obj.new("xml", {
       statement = [[
@@ -344,6 +348,8 @@ function testAncestorOrSelfAxis()
    err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
    assert(err2 == ERR_Okay and attrValue == 'inner', 'ancestor-or-self::section should treat the current section as a match')
 end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testXPathAxisCombinations()
    local xml = obj.new("xml", {

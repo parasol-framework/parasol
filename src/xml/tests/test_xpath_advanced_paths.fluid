@@ -81,7 +81,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
-      'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal', 
+      'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
       'testMissingPathError', 'testDescendantAxisAttributeAccess'
    }
 }

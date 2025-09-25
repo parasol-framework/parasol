@@ -221,7 +221,7 @@ function testXPathNumberFunctions()
    local xml = obj.new("xml", {
       statement = '<root><item value="1"/><item value="2"/><item value="3"/></root>'
    })
-   
+
    local err, itemId = xml.mtFindTag('/root/item[floor(@value) = 1]')
    assert(err == ERR_Okay, 'floor() predicate should evaluate numeric attributes, err=' .. mSys.GetErrorMsg(err))
 
@@ -365,16 +365,16 @@ function testXPathNameFunctions()
 
    local attrValue = xml.getKey('/root/ns:item/@ns:code[local-name() = "code" and name() = "ns:code"]')
    assert(attrValue == 'X1', 'local-name() and name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
-   
+
    local err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and name() = "ns:item"]')
    assert(err == ERR_Okay, 'local-name() and name() should resolve element names correctly: ' .. mSys.GetErrorMsg(err))
-   
+
    local err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and namespace-uri() = "http://example.com/ns"]')
    assert(err == ERR_Okay, 'local-name() and namespace-uri() should resolve element namespaces: ' .. mSys.GetErrorMsg(err))
-   
+
    local attrValue = xml.getKey('/root/ns:item/@ns:code[namespace-uri() = "http://example.com/ns" and local-name() = "code"]')
    assert(attrValue == 'X1', 'namespace-uri() and local-name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
-   
+
    attrValue = xml.getKey('/root/ns:item/@data-id[name() = "data-id"]')
    assert(attrValue == 'A1', 'name() should expose unqualified attribute names, got ' .. nz(attrValue, 'NIL'))
 end
@@ -472,7 +472,7 @@ end
 -- Function Library Infrastructure
 -- These tests verify basic functionality without requiring full AST evaluation
 
-function testPhase3FunctionLibrary()
+function testFunctionLibrary()
    local xml = obj.new("xml", {
       statement = [[
          <library>
@@ -490,7 +490,7 @@ function testPhase3FunctionLibrary()
       ]]
    })
 
-   -- Test that basic XPath functionality continues to work with Phase 3 infrastructure
+   -- Test that basic XPath functionality continues to work with infrastructure
 
    local bookContent = xml.getKey('content:/library/books/book[@id="2"]')
    assert(bookContent, "Book should have content")
@@ -588,7 +588,7 @@ function testXPathOperators()
    local err5, multBook = xml.mtGetAttrib(id, 'id')
    assert(err5 == ERR_Okay and multBook == '2', "position()*2>=4 should return the second entry")
 end
- 
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function testXPathExpressions()
@@ -692,7 +692,7 @@ return {
       'testXPathStringFunctions', 'testXPathAdditionalStringFunctions',
       'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',
       'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
-      'testPhase3FunctionLibrary', 'testXPathOperators',
+      'testFunctionLibrary', 'testXPathOperators',
       'testXPathExpressions', 'testXPathArithmetic',
       'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions'
    },
