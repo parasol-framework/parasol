@@ -7,6 +7,14 @@
 
 #pragma once
 
+#include <deque>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
 //********************************************************************************************************************
 // Main XPath Evaluator
 
@@ -38,6 +46,14 @@ class SimpleXPathEvaluator {
    };
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
+   struct CachedAstEntry {
+      std::shared_ptr<XPathNode> ast;
+      std::string signature;
+   };
+   std::unordered_map<std::string, CachedAstEntry> ast_cache;
+   std::unordered_map<std::string, std::weak_ptr<XPathNode>> ast_signature_cache;
+   std::deque<std::string> ast_cache_order;
+   static constexpr size_t ast_cache_limit = 32;
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    std::vector<XMLTag *> collect_step_results(const std::vector<AxisMatch> &ContextNodes,
                                               const std::vector<const XPathNode *> &Steps,
@@ -53,6 +69,13 @@ class SimpleXPathEvaluator {
                                        uint32_t CurrentPrefix);
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR process_expression_node_set(const XPathValue &Value);
+   XPathValue evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix);
+   ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
+   std::shared_ptr<XPathNode> get_cached_ast(const std::string &Key);
+   void store_cached_ast(const std::string &Key, const std::shared_ptr<XPathNode> &Ast, const std::string &Signature);
+   void prune_ast_cache();
+   std::string normalise_cache_key(std::string_view Expression) const;
+   std::string build_ast_signature(const XPathNode *Node) const;
 
    public:
    explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) { context.document = XML; }
