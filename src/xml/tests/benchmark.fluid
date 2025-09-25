@@ -109,7 +109,7 @@ function benchmarkUnionOperations()
 end
 
 function benchmarkComplexPredicates()
-   local err, id = glXML.mtFindTag('//product[@price>100 and @instock="true" and contains(@name,"Premium")]')
+   local err, id = glXML.mtFindTag('//product[@price>100 and @instock="true" and contains(@name,"Ultra")]')
    assert(err == ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
 end
 
@@ -151,7 +151,7 @@ function benchmarkStringManipulation()
 end
 
 function benchmarkNumericFunctions()
-   local err, id = glXML.mtFindTag('//product[floor(@price div 100) = 5]')
+   local err, id = glXML.mtFindTag('//product[floor(@price div 100) = 12]')
    assert(err == ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
 end
 
@@ -161,7 +161,7 @@ function benchmarkBooleanLogic()
 end
 
 function benchmarkComplexExpressions()
-   local err, id = glXML.mtFindTag('//product[@price * 0.8 > 400 and position() mod 2 = 0]')
+   local err, id = glXML.mtFindTag('//product[@price * 0.5 > 70 and position() mod 2 = 0]')
    assert(err == ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
 end
 
