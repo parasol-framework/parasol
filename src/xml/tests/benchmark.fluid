@@ -1,0 +1,303 @@
+-- XML/XPath Performance Benchmark Suite
+-- Designed to measure and compare the performance of XPath queries on large XML documents
+
+include 'xml'
+
+local glXML = nil
+local benchmarkResults = {}
+local totalTests = 0
+local passedTests = 0
+
+local glSelf = obj.find('self')
+local glPath = glSelf.workingPath
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Utility functions for benchmarking
+
+function measureTime(func, iterations)
+   local startTime = mSys.PreciseTime()
+   for i = 1, iterations do
+      func()
+   end
+   local endTime = mSys.PreciseTime()
+   return (endTime - startTime) / iterations
+end
+
+function benchmarkTest(testName, testFunc, iterations)
+   iterations = iterations or 100
+
+   local success, errorMsg = pcall(function()
+      local avgTime = measureTime(testFunc, iterations)
+      benchmarkResults[testName] = avgTime
+      passedTests = passedTests + 1
+   end)
+
+   if not success then
+      print('  ERROR: ' .. errorMsg)
+      benchmarkResults[testName] = -1
+   end
+
+   totalTests = totalTests + 1
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Basic XPath Navigation Benchmarks
+
+function benchmarkBasicNavigation()
+   local err, id = glXML.mtFindTag('/catalog/categories/category[1]/products/product[1]')
+   assert(err == ERR_Okay, "Basic navigation failed")
+end
+
+function benchmarkAttributeMatching()
+   local err, id = glXML.mtFindTag('/catalog/categories/category[@name="electronics"]')
+   assert(err == ERR_Okay, "Attribute matching failed")
+end
+
+function benchmarkDeepScanning()
+   local count = 0
+   local err, id = glXML.mtFindTag('//product[@price>500]', function(XML, TagID, Attrib)
+      count = count + 1
+   end)
+   assert(err == ERR_Okay, "Deep scanning failed")
+end
+
+function benchmarkWildcardMatching()
+   local count = 0
+   local err, id = glXML.mtFindTag('/catalog/categories/*', function(XML, TagID, Attrib)
+      count = count + 1
+   end)
+   assert(err == ERR_Okay, "Wildcard matching failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Complex Predicate Benchmarks
+
+function benchmarkNumericComparisons()
+   local err, id = glXML.mtFindTag('//product[@price>=100 and @price<=1000]')
+   assert(err == ERR_Okay, "Numeric comparisons failed")
+end
+
+function benchmarkFunctionPredicates()
+   local err, id = glXML.mtFindTag('/catalog/categories/category[count(products/product)>10]')
+   assert(err == ERR_Okay, "Function predicates failed")
+end
+
+function benchmarkStringFunctions()
+   local err, id = glXML.mtFindTag('//product[contains(@name,"Pro")]')
+   assert(err == ERR_Okay, "String function failed")
+end
+
+function benchmarkPositionFunctions()
+   local err, id = glXML.mtFindTag('//category/products/product[position()=last()]')
+   assert(err == ERR_Okay, "Position function failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Advanced XPath Features Benchmarks
+
+function benchmarkAxesTraversal()
+   local err, id = glXML.mtFindTag('//product[@id="prod-1"]/ancestor::category[@name]')
+   assert(err == ERR_Okay, "Axes traversal failed")
+end
+
+function benchmarkUnionOperations()
+   local count = 0
+   local err, id = glXML.mtFindTag('//category[@name="electronics"] | //category[@name="clothing"]', function(XML, TagID, Attrib)
+      count = count + 1
+   end)
+   assert(err == ERR_Okay, "Union operations failed")
+end
+
+function benchmarkComplexPredicates()
+   local err, id = glXML.mtFindTag('//product[@price>100 and @instock="true" and contains(@name,"Premium")]')
+   assert(err == ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
+end
+
+function benchmarkNestedFunctions()
+   local err, id = glXML.mtFindTag('//category[string-length(@name)>5 and count(products/product)>=3]')
+   assert(err == ERR_Okay, "Nested functions failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Large Document Scanning Benchmarks
+
+function benchmarkLargeDeepScan()
+   local count = 0
+   local err, id = glXML.mtFindTag('//product', function(XML, TagID, Attrib)
+      count = count + 1
+   end)
+   assert(err == ERR_Okay, "Large deep scan failed")
+end
+
+function benchmarkAttributeScanning()
+   local count = 0
+   local err, id = glXML.mtFindTag('//@price', function(XML, TagID, Attrib)
+      count = count + 1
+   end)
+   assert(err == ERR_Okay, "Attribute scanning failed")
+end
+
+function benchmarkConditionalCounting()
+   local totalProducts = tonumber(glXML.getKey('count://product'))
+   assert(totalProducts > 0, "Conditional counting failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- XPath Function Library Benchmarks
+
+function benchmarkStringManipulation()
+   local err, id = glXML.mtFindTag('//product[starts-with(@name,"Ultra") and substring(@name,1,5)="Ultra"]')
+   assert(err == ERR_Okay, "String manipulation failed")
+end
+
+function benchmarkNumericFunctions()
+   local err, id = glXML.mtFindTag('//product[floor(@price div 100) = 5]')
+   assert(err == ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
+end
+
+function benchmarkBooleanLogic()
+   local err, id = glXML.mtFindTag('//product[@instock="true" and not(@discontinued="true")]')
+   assert(err == ERR_Okay, "Boolean logic failed")
+end
+
+function benchmarkComplexExpressions()
+   local err, id = glXML.mtFindTag('//product[@price * 0.8 > 400 and position() mod 2 = 0]')
+   assert(err == ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Content and Structure Benchmarks
+
+function benchmarkContentExtraction()
+   local content = glXML.getKey('content://product[@id="prod-1"]')
+   assert(content, "Content extraction failed")
+end
+
+function benchmarkTextNodeAccess()
+   local err, id = glXML.mtFindTag('//product/description[text()="High-performance device"]')
+   assert(err == ERR_Okay, "Text node access failed")
+end
+
+function benchmarkMixedContentTraversal()
+   local count = 0
+   local err, id = glXML.mtFindTag('//category[products/product and @name]', function(XML, TagID, Attrib)
+      count = count + 1
+   end)
+   assert(err == ERR_Okay, "Mixed content traversal failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Performance Comparison Tests
+
+function benchmarkSimpleVsComplexPaths()
+   -- Simple path
+   local err1, id1 = glXML.mtFindTag('/catalog/categories/category[1]')
+   assert(err1 == ERR_Okay, "Simple path failed")
+
+   -- Complex equivalent path
+   local err2, id2 = glXML.mtFindTag('/catalog/descendant::categories/child::category[position()=1]')
+   assert(err2 == ERR_Okay, "Complex path failed")
+end
+
+function benchmarkIndexedVsPredicateAccess()
+   -- Indexed access
+   local err1, id1 = glXML.mtFindTag('//product[5]')
+   assert(err1 == ERR_Okay, "Indexed access failed")
+
+   -- Predicate equivalent
+   local err2, id2 = glXML.mtFindTag('//product[position()=5]')
+   assert(err2 == ERR_Okay, "Predicate access failed")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Initialisation and main benchmark runner
+
+   print('=== XML/XPath Performance Benchmark Suite ===')
+   print('')
+
+   print('Loading benchmark data...')
+
+   local dataFile = glPath .. 'benchmark_data.xml'
+
+   glXML = obj.new("xml", { path = dataFile })
+
+   print('Benchmark data loaded successfully')
+   print('Document root: ' .. nz(glXML.getKey('/catalog/@name'), 'Unknown'))
+   print('Total products: ' .. nz(glXML.getKey('count://product'), '0'))
+   print('')
+
+   -- Basic navigation tests (many iterations for reliable timing)
+   benchmarkTest('Basic Navigation', benchmarkBasicNavigation, 1000)
+   benchmarkTest('Attribute Matching', benchmarkAttributeMatching, 1000)
+   benchmarkTest('Wildcard Matching', benchmarkWildcardMatching, 500)
+
+   -- Deep scanning tests (fewer iterations due to complexity)
+   benchmarkTest('Deep Scanning', benchmarkDeepScanning, 100)
+   benchmarkTest('Large Deep Scan', benchmarkLargeDeepScan, 50)
+   benchmarkTest('Attribute Scanning', benchmarkAttributeScanning, 100)
+
+   -- Predicate and function tests
+   benchmarkTest('Numeric Comparisons', benchmarkNumericComparisons, 500)
+   benchmarkTest('Function Predicates', benchmarkFunctionPredicates, 200)
+   benchmarkTest('String Functions', benchmarkStringFunctions, 300)
+   benchmarkTest('Position Functions', benchmarkPositionFunctions, 300)
+
+   -- Advanced XPath features
+   benchmarkTest('Axes Traversal', benchmarkAxesTraversal, 200)
+   benchmarkTest('Union Operations', benchmarkUnionOperations, 100)
+   benchmarkTest('Complex Predicates', benchmarkComplexPredicates, 200)
+   benchmarkTest('Nested Functions', benchmarkNestedFunctions, 200)
+
+   -- Function library tests
+   benchmarkTest('String Manipulation', benchmarkStringManipulation, 300)
+   benchmarkTest('Numeric Functions', benchmarkNumericFunctions, 300)
+   benchmarkTest('Boolean Logic', benchmarkBooleanLogic, 400)
+   benchmarkTest('Complex Expressions', benchmarkComplexExpressions, 200)
+
+   -- Content access tests
+   benchmarkTest('Content Extraction', benchmarkContentExtraction, 500)
+   benchmarkTest('Text Node Access', benchmarkTextNodeAccess, 300)
+   benchmarkTest('Mixed Content Traversal', benchmarkMixedContentTraversal, 200)
+   benchmarkTest('Conditional Counting', benchmarkConditionalCounting, 300)
+
+   -- Performance comparison tests
+   benchmarkTest('Simple vs Complex Paths', benchmarkSimpleVsComplexPaths, 500)
+   benchmarkTest('Indexed vs Predicate Access', benchmarkIndexedVsPredicateAccess, 500)
+
+   -- Print summary
+   print('')
+   print('=== Benchmark Results Summary ===')
+   print('Tests completed: ' .. passedTests .. '/' .. totalTests)
+   print('')
+
+   -- Sort results by name (fastest first)
+   local sortedResults = {}
+   for testName, time in pairs(benchmarkResults) do
+      if time >= 0 then
+         table.insert(sortedResults, {name = testName, time = time})
+      end
+   end
+
+   table.sort(sortedResults, function(a, b) return a.name < b.name end)
+
+   for i, result in ipairs(sortedResults) do
+      print(string.format('%2d. %-25s %6.3fms', i, result.name, result.time))
+--      print(string.format('%-25s %6.3fms', testName, time))
+   end
+
+   print('')
+   print('Failed tests:')
+   local failedCount = 0
+   for testName, time in pairs(benchmarkResults) do
+      if time < 0 then
+         print('  - ' .. testName)
+         failedCount = failedCount + 1
+      end
+   end
+
+   if failedCount == 0 then
+      print('  None - all tests passed!')
+   end
+
+   print('')
+   print('Benchmark completed.')

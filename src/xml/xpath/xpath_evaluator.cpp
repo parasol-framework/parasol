@@ -428,7 +428,6 @@ ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint
    if ((!PathNode) or (PathNode->type != XPathNodeType::LocationPath)) return ERR::Failed;
 
    pf::Log log(__FUNCTION__);
-   log.msg("evaluate_location_path: starting AST traversal");
 
    std::vector<const XPathNode *> steps;
    std::vector<std::unique_ptr<XPathNode>> synthetic_steps;
@@ -457,10 +456,7 @@ ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint
       synthetic_steps.push_back(std::move(descendant_step));
    }
 
-   if (steps.empty()) {
-      log.msg("evaluate_location_path: no steps to process");
-      return ERR::Search;
-   }
+   if (steps.empty()) return ERR::Search;
 
    std::vector<XMLTag *> initial_context;
 
