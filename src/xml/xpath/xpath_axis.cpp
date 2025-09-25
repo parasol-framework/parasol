@@ -18,8 +18,42 @@
 // by adding document order caches or debugging hooks).
 
 #include <algorithm>
+#include <array>
 #include <map>
+#include <ranges>
 #include <unordered_set>
+
+namespace {
+
+struct AxisNameMapping {
+   AxisType Type;
+   std::string_view Name;
+};
+
+constexpr std::array axis_mappings{
+   AxisNameMapping{ AxisType::Child, "child" },
+   AxisNameMapping{ AxisType::Descendant, "descendant" },
+   AxisNameMapping{ AxisType::DescendantOrSelf, "descendant-or-self" },
+   AxisNameMapping{ AxisType::Following, "following" },
+   AxisNameMapping{ AxisType::FollowingSibling, "following-sibling" },
+   AxisNameMapping{ AxisType::Parent, "parent" },
+   AxisNameMapping{ AxisType::Ancestor, "ancestor" },
+   AxisNameMapping{ AxisType::AncestorOrSelf, "ancestor-or-self" },
+   AxisNameMapping{ AxisType::Preceding, "preceding" },
+   AxisNameMapping{ AxisType::PrecedingSibling, "preceding-sibling" },
+   AxisNameMapping{ AxisType::Self, "self" },
+   AxisNameMapping{ AxisType::Attribute, "attribute" },
+   AxisNameMapping{ AxisType::Namespace, "namespace" }
+};
+
+constexpr std::array reverse_axes{
+   AxisType::Ancestor,
+   AxisType::AncestorOrSelf,
+   AxisType::Preceding,
+   AxisType::PrecedingSibling
+};
+
+}
 
 //********************************************************************************************************************
 // AxisEvaluator Implementation
@@ -66,77 +100,76 @@ void AxisEvaluator::reset_namespace_nodes() {
 }
 
 AxisType AxisEvaluator::parse_axis_name(std::string_view AxisName) {
-   if (AxisName IS "child") return AxisType::Child;
-   else if (AxisName IS "descendant") return AxisType::Descendant;
-   else if (AxisName IS "descendant-or-self") return AxisType::DescendantOrSelf;
-   else if (AxisName IS "following") return AxisType::Following;
-   else if (AxisName IS "following-sibling") return AxisType::FollowingSibling;
-   else if (AxisName IS "parent") return AxisType::Parent;
-   else if (AxisName IS "ancestor") return AxisType::Ancestor;
-   else if (AxisName IS "ancestor-or-self") return AxisType::AncestorOrSelf;
-   else if (AxisName IS "preceding") return AxisType::Preceding;
-   else if (AxisName IS "preceding-sibling") return AxisType::PrecedingSibling;
-   else if (AxisName IS "self") return AxisType::Self;
-   else if (AxisName IS "attribute") return AxisType::Attribute;
-   else if (AxisName IS "namespace") return AxisType::Namespace;
-   else return AxisType::Child; // Default axis
+   auto match = std::ranges::find_if(axis_mappings, [AxisName](const AxisNameMapping &Entry) {
+      return AxisName IS Entry.Name;
+   });
+
+   if (match != axis_mappings.end()) return match->Type;
+   return AxisType::Child;
 }
 
 std::string_view AxisEvaluator::axis_name_to_string(AxisType Axis) {
-   switch (Axis) {
-      case AxisType::Child: return "child";
-      case AxisType::Descendant: return "descendant";
-      case AxisType::DescendantOrSelf: return "descendant-or-self";
-      case AxisType::Following: return "following";
-      case AxisType::FollowingSibling: return "following-sibling";
-      case AxisType::Parent: return "parent";
-      case AxisType::Ancestor: return "ancestor";
-      case AxisType::AncestorOrSelf: return "ancestor-or-self";
-      case AxisType::Preceding: return "preceding";
-      case AxisType::PrecedingSibling: return "preceding-sibling";
-      case AxisType::Self: return "self";
-      case AxisType::Attribute: return "attribute";
-      case AxisType::Namespace: return "namespace";
-      default: return "child";
-   }
+   auto match = std::ranges::find_if(axis_mappings, [Axis](const AxisNameMapping &Entry) {
+      return Axis IS Entry.Type;
+   });
+
+   if (match != axis_mappings.end()) return match->Name;
+   return "child";
 }
 
 bool AxisEvaluator::is_reverse_axis(AxisType Axis) {
-   switch (Axis) {
-      case AxisType::Ancestor:
-      case AxisType::AncestorOrSelf:
-      case AxisType::Preceding:
-      case AxisType::PrecedingSibling:
-         return true;
-      default:
-         return false;
-   }
+   return std::ranges::any_of(reverse_axes, [Axis](AxisType Candidate) {
+      return Candidate IS Axis;
+   });
 }
 
 //********************************************************************************************************************
 // Helper Methods for Specific Axes
 
-// Perform an ID-based lookup by scanning the document tree.  This conservative approach ensures that
-// axis evaluation works even before any fast lookup structures are prepared.
-XMLTag * AxisEvaluator::find_tag_by_id(int ID) {
-   if (ID IS 0) return nullptr;
-
-   // Search through the entire document tree using the Tags vector
-   for (auto& tag : xml->Tags) {
-      auto found = find_tag_recursive(tag, ID);
-      if (found) return found;
+// Build or refresh a cache that maps XML node IDs to their corresponding tags.
+void AxisEvaluator::build_id_cache() {
+   id_lookup.clear();
+   if (!xml) {
+      id_cache_built = true;
+      return;
    }
-   return nullptr;
+
+   std::vector<XMLTag *> stack;
+   stack.reserve(xml->Tags.size());
+
+   for (auto &root_tag : xml->Tags) {
+      stack.push_back(&root_tag);
+
+      while (!stack.empty()) {
+         XMLTag *current = stack.back();
+         stack.pop_back();
+
+         id_lookup[current->ID] = current;
+
+         if (current->Children.empty()) continue;
+
+         for (auto child = current->Children.rbegin(); child != current->Children.rend(); ++child) {
+            stack.push_back(&(*child));
+         }
+      }
+   }
+
+   id_cache_built = true;
 }
 
-// Depth-first helper used by find_tag_by_id.
-XMLTag * AxisEvaluator::find_tag_recursive(XMLTag &Tag, int ID) {
-   if (Tag.ID IS ID) return &Tag;
+// Perform an ID-based lookup with caching to avoid repeated depth-first scans.
+XMLTag * AxisEvaluator::find_tag_by_id(int ID) {
+   if ((ID IS 0) or (!xml)) return nullptr;
 
-   for (auto& child : Tag.Children) {
-      auto found = find_tag_recursive(child, ID);
-      if (found) return found;
-   }
+   if (!id_cache_built) build_id_cache();
+
+   auto iter = id_lookup.find(ID);
+   if (iter != id_lookup.end()) return iter->second;
+
+   build_id_cache();
+   iter = id_lookup.find(ID);
+   if (iter != id_lookup.end()) return iter->second;
+
    return nullptr;
 }
 
@@ -156,14 +189,26 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_descendant_axis(XMLTag *Node) {
    std::vector<XMLTag *> descendants;
    if (!Node) return descendants;
 
-   for (auto& child : Node->Children) {
-      descendants.push_back(&child);
+   std::vector<XMLTag *> stack;
+   stack.reserve(Node->Children.size());
 
-      if (child.isTag()) {
-         auto child_descendants = evaluate_descendant_axis(&child);
-         descendants.insert(descendants.end(), child_descendants.begin(), child_descendants.end());
+   for (auto &child : Node->Children) {
+      auto *child_ptr = &child;
+      descendants.push_back(child_ptr);
+      if (child.isTag()) stack.push_back(child_ptr);
+   }
+
+   while (!stack.empty()) {
+      XMLTag *current = stack.back();
+      stack.pop_back();
+
+      for (auto &grandchild : current->Children) {
+         auto *grandchild_ptr = &grandchild;
+         descendants.push_back(grandchild_ptr);
+         if (grandchild.isTag()) stack.push_back(grandchild_ptr);
       }
    }
+
    return descendants;
 }
 
@@ -471,13 +516,7 @@ bool AxisEvaluator::is_before_in_document_order(XMLTag *Node1, XMLTag *Node2) {
 // Remove null entries, enforce document order, and deduplicate the node-set to satisfy XPath rules.
 void AxisEvaluator::normalise_node_set(std::vector<XMLTag *> &Nodes)
 {
-   size_t write_index = 0;
-   for (size_t read_index = 0; read_index < Nodes.size(); ++read_index) {
-      if (!Nodes[read_index]) continue;
-      Nodes[write_index++] = Nodes[read_index];
-   }
-
-   Nodes.resize(write_index);
+   std::erase_if(Nodes, [](XMLTag *Node) { return !Node; });
    if (Nodes.size() < 2) return;
 
    sort_document_order(Nodes);
