@@ -85,4 +85,7 @@ class AxisEvaluator {
    static AxisType parse_axis_name(std::string_view AxisName);
    static std::string_view axis_name_to_string(AxisType Axis);
    static bool is_reverse_axis(AxisType Axis);
+
+   // Capacity estimation helper
+   size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
 };

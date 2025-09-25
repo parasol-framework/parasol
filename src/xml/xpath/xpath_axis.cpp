@@ -134,6 +134,10 @@ void AxisEvaluator::build_id_cache() {
       return;
    }
 
+   // Reserve cache space based on estimated node count (conservative estimate)
+   size_t estimated_nodes = xml->Tags.size() * 8; // Assume average 8 nodes per root tag
+   id_lookup.reserve(estimated_nodes);
+
    std::vector<XMLTag *> stack;
    stack.reserve(xml->Tags.size());
 
@@ -173,10 +177,58 @@ XMLTag * AxisEvaluator::find_tag_by_id(int ID) {
    return nullptr;
 }
 
+// Estimate the likely result size for an axis to enable optimal vector pre-sizing.
+size_t AxisEvaluator::estimate_result_size(AxisType Axis, XMLTag *ContextNode) {
+   if (!ContextNode) return 0;
+
+   switch (Axis) {
+      case AxisType::Child:
+         return ContextNode->Children.size();
+
+      case AxisType::Descendant:
+      case AxisType::DescendantOrSelf:
+         // Conservative estimate: depth * average children per node
+         return ContextNode->Children.size() * 4;
+
+      case AxisType::Parent:
+      case AxisType::Self:
+         return 1;
+
+      case AxisType::Ancestor:
+      case AxisType::AncestorOrSelf:
+         // Typical XML depth estimate
+         return 10;
+
+      case AxisType::FollowingSibling:
+      case AxisType::PrecedingSibling: {
+         XMLTag *parent = find_tag_by_id(ContextNode->ParentID);
+         return parent ? parent->Children.size() : 0;
+      }
+
+      case AxisType::Following:
+      case AxisType::Preceding:
+         // Conservative estimate for document-order traversal
+         return 20;
+
+      case AxisType::Attribute:
+         return ContextNode->Attribs.size();
+
+      case AxisType::Namespace:
+         // Typical namespace count estimate
+         return 5;
+
+      default:
+         return 4; // Conservative fallback
+   }
+}
+
 // Standard child-axis traversal: collect direct children in document order.
 std::vector<XMLTag *> AxisEvaluator::evaluate_child_axis(XMLTag *Node) {
    std::vector<XMLTag *> children;
    if (!Node) return children;
+
+   // Pre-size vector to avoid reallocations during child collection
+   children.reserve(Node->Children.size());
 
    for (auto& child : Node->Children) {
       children.push_back(&child);
@@ -188,6 +240,11 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_child_axis(XMLTag *Node) {
 std::vector<XMLTag *> AxisEvaluator::evaluate_descendant_axis(XMLTag *Node) {
    std::vector<XMLTag *> descendants;
    if (!Node) return descendants;
+
+   // Heuristic-based reserve: estimate descendants based on depth * average children
+   // Use a conservative estimate assuming average of 3 children per level and depth of 4
+   size_t estimated_size = Node->Children.size() * 4;
+   descendants.reserve(estimated_size);
 
    std::vector<XMLTag *> stack;
    stack.reserve(Node->Children.size());
@@ -229,6 +286,9 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_ancestor_axis(XMLTag *Node) {
    std::vector<XMLTag *> ancestors;
    if (!Node) return ancestors;
 
+   // Reserve based on estimated tree depth (typical XML depth is 8-12 levels)
+   ancestors.reserve(10);
+
    XMLTag *parent = find_tag_by_id(Node->ParentID);
    while (parent) {
       ancestors.push_back(parent);
@@ -244,6 +304,9 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_following_sibling_axis(XMLTag *Nod
    // Find parent and locate this node in parent's children
    XMLTag *parent = find_tag_by_id(Node->ParentID);
    if (!parent) return siblings;
+
+   // Reserve based on sibling count (worst case is all siblings follow this node)
+   siblings.reserve(parent->Children.size());
 
    bool found_self = false;
    for (auto& child : parent->Children) {
@@ -265,6 +328,9 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Nod
    // Find parent and locate this node in parent's children
    XMLTag *parent = find_tag_by_id(Node->ParentID);
    if (!parent) return siblings;
+
+   // Reserve based on sibling count (worst case is all siblings precede this node)
+   siblings.reserve(parent->Children.size());
 
    for (auto& child : parent->Children) {
       if (&child IS Node) {

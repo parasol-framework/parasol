@@ -171,6 +171,10 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
 {
    std::vector<AxisMatch> matches;
 
+   // Pre-size result container based on axis type and context
+   size_t estimated_capacity = axis_evaluator.estimate_result_size(Axis, ContextNode);
+   matches.reserve(estimated_capacity);
+
    auto append_nodes = [&matches](const std::vector<XMLTag *> &nodes) {
       matches.reserve(matches.size() + nodes.size());
       for (auto *node : nodes) {
