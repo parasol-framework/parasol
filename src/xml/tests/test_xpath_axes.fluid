@@ -89,6 +89,30 @@ function testAttributeAxisHandling()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Regression: Attribute axis steps should support parent and ancestor navigation
+
+function testAttributeAxisContinuation()
+   local xml = obj.new("xml", {
+      statement = '<root>' ..
+                  '<section id="section-1"><item id="item-a"/></section>' ..
+                  '<section id="section-2"><item id="item-b" code="branch"/></section>' ..
+                  '</root>'
+   })
+
+   local errItem, itemId = xml.mtFindTag('//@id/parent::*[@id="item-b"]')
+   assert(errItem == ERR_Okay, 'Parent axis should resolve owning element from attribute context: ' .. mSys.GetErrorMsg(errItem))
+
+   local errAttrib, value = xml.mtGetAttrib(itemId, 'id')
+   assert(errAttrib == ERR_Okay and value == 'item-b', 'Attribute parent navigation should locate id="item-b", got ' .. nz(value, 'NIL'))
+
+   local errSection, sectionId = xml.mtFindTag('//@code/ancestor::section[@id="section-2"]')
+   assert(errSection == ERR_Okay, 'Ancestor axis should operate on attribute contexts: ' .. mSys.GetErrorMsg(errSection))
+
+   local errSectionAttrib, sectionValue = xml.mtGetAttrib(sectionId, 'id')
+   assert(errSectionAttrib == ERR_Okay and sectionValue == 'section-2', 'Ancestor traversal from attribute should reach section-2, got ' .. nz(sectionValue, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 union operator
 
 function testUnionOperator()
@@ -432,7 +456,7 @@ end
 
 return {
    tests = {
-      'testParentAxisNavigation', 'testXPathAxes', 'testAttributeAxisHandling',
+      'testParentAxisNavigation', 'testXPathAxes', 'testAttributeAxisHandling', 'testAttributeAxisContinuation',
       'testUnionOperator', 'testTextNodeAxes',
       'testCommentNodeType', 'testProcessingInstructionNodeType',
       'testGenericNodeType', 'testNamespaceAxis',

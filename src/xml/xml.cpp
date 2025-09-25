@@ -1241,30 +1241,7 @@ static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
 
    if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
 
-   for (auto tag = Self->getTag(Args->TagID); tag; tag = Self->getTag(tag->ParentID)) {
-      // Check this tag's attributes for namespace declarations
-      for (size_t i = 1; i < tag->Attribs.size(); i++) {
-         const auto &attrib = tag->Attribs[i];
-
-         // Check for xmlns:prefix="uri" declarations
-         if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
-            if (attrib.Name.substr(6) IS Args->Prefix) {
-               // Found the prefix declaration, return its namespace hash
-               Args->Result = pf::strhash(attrib.Value);
-               return ERR::Okay;
-            }
-         }
-         // Check for default namespace if looking for empty prefix
-         else if ((attrib.Name IS "xmlns") and ((not Args->Prefix) or (not Args->Prefix[0]))) {
-            Args->Result = pf::strhash(attrib.Value);
-            return ERR::Okay;
-         }
-      }
-
-      if (!tag->ParentID) break; // Reached root
-   }
-
-   return log.warning(ERR::Search);
+   return Self->resolvePrefix(Args->Prefix, Args->TagID, Args->Result);
 }
 
 /*********************************************************************************************************************
