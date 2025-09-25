@@ -96,7 +96,7 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *Contex
 
 // Clear any synthetic namespace nodes created by namespace axis evaluation.
 void AxisEvaluator::reset_namespace_nodes() {
-   namespace_node_storage.clear();
+   recycle_namespace_nodes();
 }
 
 AxisType AxisEvaluator::parse_axis_name(std::string_view AxisName) {
@@ -380,6 +380,114 @@ void AxisEvaluator::collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> 
    Output.push_back(Node);
 }
 
+// Collect namespace declarations using optimized flat vector approach
+void AxisEvaluator::collect_namespace_declarations(XMLTag *Node, std::vector<NamespaceDeclaration> &declarations) {
+   if (!Node) return;
+
+   // Reuse storage vectors to avoid allocations
+   visited_node_ids.clear();
+   visited_node_ids.reserve(10); // Typical tree depth
+
+   declarations.clear();
+   declarations.reserve(8); // Typical namespace count
+
+   // Add default xml namespace
+   declarations.push_back({"xml", "http://www.w3.org/XML/1998/namespace"});
+
+   XMLTag *current = Node;
+   while (current) {
+      // Check if we've already processed this node to avoid cycles
+      bool already_visited = false;
+      for (int visited_id : visited_node_ids) {
+         if (visited_id IS current->ID) {
+            already_visited = true;
+            break;
+         }
+      }
+
+      if (!already_visited) {
+         visited_node_ids.push_back(current->ID);
+
+         // Scan attributes for namespace declarations
+         for (size_t index = 1; index < current->Attribs.size(); ++index) {
+            const auto &attrib = current->Attribs[index];
+
+            if (attrib.Name.rfind("xmlns", 0) != 0) continue;
+
+            std::string prefix;
+            if (attrib.Name.length() IS 5) {
+               prefix.clear(); // Default namespace
+            }
+            else if ((attrib.Name.length() > 6) and (attrib.Name[5] IS ':')) {
+               prefix = attrib.Name.substr(6);
+            }
+            else continue;
+
+            // Check if prefix already exists (inner scopes override outer)
+            bool found_existing = false;
+            for (const auto &existing : declarations) {
+               if (existing.prefix IS prefix) {
+                  found_existing = true;
+                  break;
+               }
+            }
+
+            if (!found_existing) {
+               declarations.push_back({std::move(prefix), attrib.Value});
+            }
+         }
+      }
+
+      if (!current->ParentID) break;
+      current = find_tag_by_id(current->ParentID);
+   }
+
+   // Sort declarations by prefix for consistent ordering and deduplication
+   std::sort(declarations.begin(), declarations.end());
+
+   // Remove any duplicates (shouldn't happen but ensures correctness)
+   auto new_end = std::unique(declarations.begin(), declarations.end(),
+      [](const NamespaceDeclaration &a, const NamespaceDeclaration &b) {
+         return a.prefix IS b.prefix;
+      });
+   declarations.erase(new_end, declarations.end());
+}
+
+// Acquire a namespace node from the pool or create a new one
+XMLTag * AxisEvaluator::acquire_namespace_node() {
+   if (!namespace_node_pool.empty()) {
+      auto node = std::move(namespace_node_pool.back());
+      namespace_node_pool.pop_back();
+
+      // Reset the node for reuse
+      node->Attribs.clear();
+      node->Children.clear();
+
+      XMLTag *raw_ptr = node.get();
+      namespace_node_storage.push_back(std::move(node));
+      return raw_ptr;
+   }
+
+   // Create new node if pool is empty
+   auto node = std::make_unique<XMLTag>(0);
+   XMLTag *raw_ptr = node.get();
+   namespace_node_storage.push_back(std::move(node));
+   return raw_ptr;
+}
+
+// Recycle namespace nodes back to the pool for reuse
+void AxisEvaluator::recycle_namespace_nodes() {
+   // Move nodes from storage back to pool for reuse
+   for (auto &node : namespace_node_storage) {
+      if (node) {
+         node->Attribs.clear();
+         node->Children.clear();
+         namespace_node_pool.push_back(std::move(node));
+      }
+   }
+   namespace_node_storage.clear();
+}
+
 // Preceding axis mirrors the following axis but in reverse.
 std::vector<XMLTag *> AxisEvaluator::evaluate_preceding_axis(XMLTag *Node) {
    std::vector<XMLTag *> preceding;
@@ -410,65 +518,35 @@ std::vector<XMLTag *> AxisEvaluator::evaluate_attribute_axis(XMLTag *Node) {
 }
 
 // Namespace axis is modelled with transient nodes that expose in-scope prefix mappings.
+// Optimized version using flat vector approach and node pooling.
 std::vector<XMLTag *> AxisEvaluator::evaluate_namespace_axis(XMLTag *Node) {
    std::vector<XMLTag *> namespaces;
 
    if (!Node) return namespaces;
 
-   std::map<std::string, std::string, std::less<>> in_scope;
+   // Use optimized flat vector approach for namespace collection
+   collect_namespace_declarations(Node, namespace_declarations);
 
-   auto add_namespace = [&](const std::string &Prefix, const std::string &URI) {
-      if (in_scope.find(Prefix) != in_scope.end()) return;
-      in_scope.insert({ Prefix, URI });
-   };
+   // Pre-size result vector
+   namespaces.reserve(namespace_declarations.size());
 
-   add_namespace("xml", "http://www.w3.org/XML/1998/namespace");
-
-   std::unordered_set<int> visited_ids;
-   XMLTag *current = Node;
-
-   while (current) {
-      if (visited_ids.insert(current->ID).second) {
-         for (size_t index = 1; index < current->Attribs.size(); ++index) {
-            const auto &attrib = current->Attribs[index];
-
-            if (attrib.Name.rfind("xmlns", 0) != 0) continue;
-
-            std::string prefix;
-            if (attrib.Name.length() IS 5) prefix.clear();
-            else if ((attrib.Name.length() > 6) and (attrib.Name[5] IS ':')) {
-               prefix = attrib.Name.substr(6);
-            }
-            else continue;
-
-            add_namespace(prefix, attrib.Value);
-         }
-      }
-
-      if (!current->ParentID) break;
-      current = find_tag_by_id(current->ParentID);
-   }
-
+   // Create namespace nodes using pooling
    auto emit_namespace = [&](const std::string &Prefix, const std::string &URI) {
-      auto node = std::make_unique<XMLTag>(0);
-      node->Attribs.clear();
-      node->Children.clear();
+      XMLTag *node = acquire_namespace_node();
+
       node->Attribs.emplace_back(Prefix, std::string());
 
       XMLTag content_node(0);
-      content_node.Attribs.clear();
-      content_node.Children.clear();
       content_node.Attribs.emplace_back(std::string(), URI);
-      node->Children.push_back(content_node);
+      node->Children.push_back(std::move(content_node));
 
       node->NamespaceID = xml ? xml->registerNamespace(URI) : 0;
 
-      namespaces.push_back(node.get());
-      namespace_node_storage.push_back(std::move(node));
+      namespaces.push_back(node);
    };
 
-   for (const auto &entry : in_scope) {
-      emit_namespace(entry.first, entry.second);
+   for (const auto &declaration : namespace_declarations) {
+      emit_namespace(declaration.prefix, declaration.uri);
    }
 
    return namespaces;
