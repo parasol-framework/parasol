@@ -1,4 +1,17 @@
+//********************************************************************************************************************
 // XPath Tokenizer and Parser Implementation
+//********************************************************************************************************************
+//
+// The parser transforms raw XPath source into the structured representation consumed by the evaluator.
+// It begins with a character-level tokenizer that understands XPath's contextual grammar—treating the
+// asterisk differently depending on predicate state, tracking bracket and parenthesis depth, and
+// recognising identifiers, literals, and operators.  The resulting token stream feeds a recursive
+// descent parser that builds an explicit AST mirroring the production rules handled by the evaluator.
+//
+// The code is split between lightweight lexical helpers (contained in the tokenizer) and the parsing
+// routines that emit XPathNode instances.  Keeping both stages together simplifies debugging: the
+// parser can make nuanced decisions based on how tokens were generated, and the evaluator benefits
+// from a consistent interpretation of ambiguous constructs.
 
 //********************************************************************************************************************
 // XPathTokenizer Implementation
@@ -56,6 +69,7 @@ bool XPathTokenizer::has_more() const {
    return position < length;
 }
 
+// Produce a token stream while preserving context so operators like '*' are classified correctly.
 std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
    input = XPath;
    position = 0;

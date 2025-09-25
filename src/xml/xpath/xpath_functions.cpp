@@ -1,4 +1,19 @@
+//********************************************************************************************************************
 // XPath Function Library and Value System Implementation
+//********************************************************************************************************************
+//
+// XPath expressions depend on a rich set of standard functions and a loosely typed value model.  This
+// file provides both: XPathValue encapsulates conversions between node-sets, numbers, booleans, and
+// strings, while the function registry offers implementations of the core function library required by
+// the evaluator.  The code emphasises fidelity to the XPath 1.0 specification—string coercions mirror
+// the spec's edge cases, numeric conversions preserve NaN semantics, and node-set operations respect
+// document order guarantees enforced elsewhere in the module.
+//
+// The implementation is intentionally self-contained.  The evaluator interacts with XPathValue to
+// manipulate intermediate results and delegates built-in function invocations to the routines defined
+// below.  Keeping the behaviour consolidated here simplifies future extensions (for example, adding
+// namespace-aware functions or performance-focused helpers) without polluting the evaluator with
+// coercion details.
 
 #include "xpath_functions.h"
 #include "../xml.h"
@@ -16,6 +31,7 @@
 
 namespace {
 
+// Format a double according to XPath 1.0 number-to-string rules.
 std::string format_xpath_number(double Value)
 {
    if (std::isnan(Value)) return std::string("NaN");
@@ -52,6 +68,7 @@ bool XPathValue::to_boolean() const {
    return false;
 }
 
+// Convert a string to a number using XPath's relaxed numeric parsing rules.
 double XPathValue::string_to_number(const std::string &Value)
 {
    if (Value.empty()) return std::numeric_limits<double>::quiet_NaN();
@@ -65,6 +82,7 @@ double XPathValue::string_to_number(const std::string &Value)
    return result;
 }
 
+// Obtain the string-value of a node, following XPath's definition for text and element nodes.
 std::string XPathValue::node_string_value(XMLTag *Node)
 {
    if (!Node) return std::string();
@@ -139,6 +157,7 @@ size_t XPathValue::size() const {
 
 namespace {
 
+// Walk up the tree to locate a namespace declaration corresponding to the requested prefix.
 std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, const std::string &Prefix)
 {
    XMLTag *current = Node;
