@@ -55,6 +55,42 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 -- Test XPath 1.0 union operator
 
+function testAttributeAxisHandling()
+   local xml = obj.new("xml", {
+      statement = '<root><item id="one" category="fiction" data-extra="x"/></root>'
+   })
+
+   local attrValue = xml.getKey('/root/item/@category')
+   assert(attrValue == 'fiction', '@category should retrieve the category attribute value, got ' .. nz(attrValue, 'NIL'))
+
+   attrValue = xml.getKey('/root/item/attribute::category')
+   assert(attrValue == 'fiction', 'attribute::category should expose the same value as @category, got ' .. nz(attrValue, 'NIL'))
+
+   local attributeNames = {}
+   local err = xml.mtFindTag('/root/item/attribute::*', function(XML, TagID, Attrib)
+      table.insert(attributeNames, Attrib)
+   end)
+   assert(err == ERR_Okay, 'attribute::* should enumerate attribute nodes: ' .. mSys.GetErrorMsg(err))
+
+   local foundCategory, foundId = false, false
+   for index = 1, #attributeNames do
+      if attributeNames[index] == 'category' then foundCategory = true end
+      if attributeNames[index] == 'id' then foundId = true end
+   end
+
+   assert(foundCategory, 'attribute::* should include the category attribute name')
+   assert(foundId, 'attribute::* should include the id attribute name')
+
+   local errAttr = xml.mtFindTag('/root/item/@*[starts-with(name(), "data")]')
+   assert(errAttr == ERR_Okay, '@* should support function predicates on attribute names: ' .. mSys.GetErrorMsg(errAttr))
+
+   attrValue = xml.getKey('/root/item/@*[starts-with(name(), "data")]')
+   assert(attrValue == 'x', 'starts-with(name()) should retrieve the data-extra attribute value, got ' .. nz(attrValue, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Test XPath 1.0 union operator
+
 function testUnionOperator()
    local xml = obj.new("xml", {
       statement = '<root><section><item/></section><other><item/></other></root>'
@@ -280,6 +316,35 @@ function testXPathReverseAxes()
    assert(err4 == ERR_Okay and precedingParagraph == '1.1.2', "preceding::paragraph should return the nearest preceding paragraph")
 end
 
+function testAncestorOrSelfAxis()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root>
+            <section id="outer">
+               <section id="inner">
+                  <item id="leaf"/>
+               </section>
+            </section>
+         </root>
+      ]]
+   })
+
+   local err, nodeId = xml.mtFindTag('/root/section/section/item/ancestor-or-self::section[@id="inner"]')
+   assert(err == ERR_Okay, 'ancestor-or-self::section should include the nearest ancestor: ' .. mSys.GetErrorMsg(err))
+   local err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'inner', 'ancestor-or-self::section should return the inner section node')
+
+   err, nodeId = xml.mtFindTag('/root/section/section/item/ancestor-or-self::section[@id="outer"]')
+   assert(err == ERR_Okay, 'ancestor-or-self::section should climb to the outer ancestor: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'outer', 'ancestor-or-self::section should locate the outer section node')
+
+   err, nodeId = xml.mtFindTag('/root/section/section/ancestor-or-self::section[@id="inner"]')
+   assert(err == ERR_Okay, 'ancestor-or-self should include the context node itself: ' .. mSys.GetErrorMsg(err))
+   err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
+   assert(err2 == ERR_Okay and attrValue == 'inner', 'ancestor-or-self::section should treat the current section as a match')
+end
+
 function testXPathAxisCombinations()
    local xml = obj.new("xml", {
       statement = [[
@@ -361,11 +426,11 @@ end
 
 return {
    tests = {
-      'testParentAxisNavigation', 'testXPathAxes',
+      'testParentAxisNavigation', 'testXPathAxes', 'testAttributeAxisHandling',
       'testUnionOperator', 'testTextNodeAxes',
       'testCommentNodeType', 'testProcessingInstructionNodeType',
       'testGenericNodeType', 'testNamespaceAxis',
-      'testXPathForwardAxes', 'testXPathReverseAxes',
+      'testXPathForwardAxes', 'testXPathReverseAxes', 'testAncestorOrSelfAxis',
       'testXPathAxisCombinations', 'testSiblingFilteringForNumericPredicates'
    },
    init = function(ScriptFolder)
