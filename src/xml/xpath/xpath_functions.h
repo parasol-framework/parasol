@@ -41,7 +41,8 @@ enum class XPathValueType {
    String
 };
 
-class XPathValue {
+class XPathValue 
+{
    public:
    XPathValueType type;
    std::vector<XMLTag *> node_set;
@@ -85,28 +86,21 @@ class XPathValue {
 //********************************************************************************************************************
 // XPath Evaluation Context
 
-struct XPathContext {
+struct XPathContext 
+{
    XMLTag * context_node = nullptr;
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
    size_t size = 1;
    std::map<std::string, XPathValue> variables;
    extXML * document = nullptr;
-   bool * expression_unsupported_flag = nullptr;
+   bool * expression_unsupported = nullptr;
 
    XPathContext() = default;
-   XPathContext(XMLTag *Node,
-                size_t Pos = 1,
-                size_t Sz = 1,
-                const XMLAttrib *Attribute = nullptr,
-                extXML *Document = nullptr,
-                bool *UnsupportedFlag = nullptr)
-      : context_node(Node),
-        attribute_node(Attribute),
-        position(Pos),
-        size(Sz),
-        document(Document),
-        expression_unsupported_flag(UnsupportedFlag) {}
+   XPathContext(XMLTag *Node, size_t Pos = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
+                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr)
+      : context_node(Node), attribute_node(Attribute), position(Pos), size(Sz), document(Document),
+        expression_unsupported(UnsupportedFlag) {}
 };
 
 //********************************************************************************************************************

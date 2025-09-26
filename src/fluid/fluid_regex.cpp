@@ -1,7 +1,7 @@
 /*********************************************************************************************************************
 
 This source code implements compiled regex objects for Fluid, providing high-performance regular expression
-capabilities through C++ std::regex.
+capabilities through the optimized SRELL regex library.
 
 Features:
 
@@ -11,6 +11,7 @@ Features:
 - String replacement with backreferences
 - Pattern-based string splitting
 - Comprehensive error handling for invalid patterns
+- C++20 optimized SRELL backend for superior performance
 
 Examples:
 
@@ -26,7 +27,7 @@ Examples:
 #include <parasol/main.h>
 #include <parasol/modules/fluid.h>
 #include <parasol/strings.hpp>
-#include <regex>
+#include "../link/srell/srell.hpp"
 #include <string>
 
 extern "C" {
@@ -38,15 +39,17 @@ extern "C" {
 #include "defs.h"
 
 // Regex flag constants
-const int REGEX_ICASE     = 1;   // Case insensitive
-const int REGEX_MULTILINE = 2;   // ^ and $ match line boundaries
-const int REGEX_DOTALL    = 4;   // . matches newlines
-const int REGEX_EXTENDED  = 8;   // Allow whitespace and comments
+const int REGEX_ICASE     = 1<<0;   // Case insensitive
+const int REGEX_MULTILINE = 1<<1;   // ^ and $ match line boundaries
+const int REGEX_DOTALL    = 1<<2;   // . matches newlines
+const int REGEX_EXTENDED  = 1<<3;   // Allow whitespace and comments
+const int REGEX_AWK       = 1<<4;
+const int REGEX_GREP      = 1<<5;
 
 //********************************************************************************************************************
-// Convert std::smatch results to Lua table
+// Convert srell::smatch results to Lua table
 
-static int push_match_table(lua_State *Lua, const std::smatch &matches)
+static int push_match_table(lua_State *Lua, const srell::smatch &matches)
 {
    if (matches.empty()) {
       lua_pushnil(Lua);
@@ -83,17 +86,12 @@ static int regex_new(lua_State *Lua)
    if (auto r = (struct fregex *)lua_newuserdata(Lua, sizeof(struct fregex))) {
       new (r) fregex(pattern, flags);
 
-      auto reg_flags = std::regex_constants::ECMAScript; // Default syntax
-      if (flags & REGEX_ICASE) reg_flags |= std::regex_constants::icase;
-      if (flags & REGEX_EXTENDED) {
-#ifdef __GNUC__
-         // NB: GCC's std::regex implementation has known bugs when combining
-         // icase and extended flags, causing crashes in some versions.
-         log.warning("2025-08-25 REGEX_EXTENDED flag disabled on GCC builds due to std::regex implementation bugs.");
-#else
-         reg_flags |= std::regex_constants::extended;
-#endif
-      }
+      auto reg_flags = srell::regex_constants::ECMAScript; // Default syntax
+      if (flags & REGEX_ICASE) reg_flags |= srell::regex_constants::icase;
+      if (flags & REGEX_EXTENDED) reg_flags |= srell::regex_constants::extended;
+      if (flags & REGEX_MULTILINE) reg_flags |= srell::regex_constants::multiline;
+      if (flags & REGEX_AWK) reg_flags |= srell::regex_constants::awk;
+      if (flags & REGEX_GREP) reg_flags |= srell::regex_constants::grep;
 
       // Simple pattern validation - check for basic regex syntax errors
       bool has_error = false;
@@ -161,7 +159,7 @@ static int regex_new(lua_State *Lua)
          luaL_error(Lua, "Regex validation failed: %s", error_msg.c_str());
       }
       else {
-         r->regex_obj = new (std::nothrow) std::regex(pattern, reg_flags);
+         r->regex_obj = new (std::nothrow) srell::regex(pattern, reg_flags);
          if (!r->regex_obj) luaL_error(Lua, "Regex compilation failed");
       }
 
@@ -183,7 +181,7 @@ static int regex_test(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    const char *text = luaL_checkstring(Lua, 1);
 
-   bool matches = std::regex_search(text, *r->regex_obj);
+   bool matches = srell::regex_search(text, *r->regex_obj);
    lua_pushboolean(Lua, matches);
    return 1;
 }
@@ -196,10 +194,10 @@ static int regex_match(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    const char *text = luaL_checkstring(Lua, 1);
 
-   std::smatch matches;
+   srell::smatch matches;
    std::string text_str(text);
 
-   if (std::regex_search(text_str, matches, *r->regex_obj)) {
+   if (srell::regex_search(text_str, matches, *r->regex_obj)) {
       return push_match_table(Lua, matches);
    }
    else {
@@ -221,11 +219,11 @@ static int regex_matchAll(lua_State *Lua)
    lua_createtable(Lua, 0, 0); // Result table
    int match_index = 1;
 
-   auto begin = std::sregex_iterator(text_str.begin(), text_str.end(), *r->regex_obj);
-   auto end = std::sregex_iterator();
+   auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *r->regex_obj);
+   auto end = srell::sregex_iterator();
 
-   for (std::sregex_iterator i = begin; i != end; ++i) {
-      const std::smatch &match = *i;
+   for (srell::sregex_iterator i = begin; i != end; ++i) {
+      const srell::smatch &match = *i;
 
       lua_pushinteger(Lua, match_index++);
 
@@ -260,10 +258,10 @@ static int regex_replace(lua_State *Lua)
    std::string replacement_str(replacement);
 
    // Replace first occurrence only
-   std::smatch match;
-   if (std::regex_search(text_str, match, *r->regex_obj)) {
+   srell::smatch match;
+   if (srell::regex_search(text_str, match, *r->regex_obj)) {
       std::string result = match.prefix().str() +
-                          std::regex_replace(match.str(), *r->regex_obj, replacement_str) +
+                          srell::regex_replace(match.str(), *r->regex_obj, replacement_str) +
                           match.suffix().str();
 
       lua_pushlstring(Lua, result.c_str(), result.length());
@@ -290,7 +288,7 @@ static int regex_replaceAll(lua_State *Lua)
    std::string replacement_str(replacement);
 
    // Replace all occurrences
-   std::string result = std::regex_replace(text_str, *r->regex_obj, replacement_str);
+   std::string result = srell::regex_replace(text_str, *r->regex_obj, replacement_str);
 
    lua_pushlstring(Lua, result.c_str(), result.length());
    return 1;
@@ -310,8 +308,8 @@ static int regex_split(lua_State *Lua)
    int part_index = 1;
 
    // Use sregex_token_iterator for splitting
-   std::sregex_token_iterator iter(text_str.begin(), text_str.end(), *r->regex_obj, -1);
-   std::sregex_token_iterator end;
+   srell::sregex_token_iterator iter(text_str.begin(), text_str.end(), *r->regex_obj, -1);
+   srell::sregex_token_iterator end;
 
    for (; iter != end; ++iter) {
       std::string token = iter->str();
@@ -467,6 +465,12 @@ void register_regex_class(lua_State *Lua)
 
       lua_pushinteger(Lua, REGEX_EXTENDED);
       lua_setfield(Lua, -2, "EXTENDED");
+
+      lua_pushinteger(Lua, REGEX_AWK);
+      lua_setfield(Lua, -2, "AWK");
+
+      lua_pushinteger(Lua, REGEX_GREP);
+      lua_setfield(Lua, -2, "GREP");
    }
    lua_pop(Lua, 1); // Remove regex table from stack
 }

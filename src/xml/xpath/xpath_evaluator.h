@@ -53,7 +53,7 @@ class XPathEvaluator {
    public:
    explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) {
       context.document = XML;
-      context.expression_unsupported_flag = &expression_unsupported;
+      context.expression_unsupported = &expression_unsupported;
    }
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
