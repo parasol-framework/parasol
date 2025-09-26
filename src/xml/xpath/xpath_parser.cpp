@@ -294,6 +294,12 @@ XPathToken XPathTokenizer::scan_identifier() {
    else if (identifier IS "not") type = XPathTokenType::NOT;
    else if (identifier IS "div") type = XPathTokenType::DIVIDE;
    else if (identifier IS "mod") type = XPathTokenType::MODULO;
+   else if (identifier IS "eq") type = XPathTokenType::EQ;
+   else if (identifier IS "ne") type = XPathTokenType::NE;
+   else if (identifier IS "lt") type = XPathTokenType::LT;
+   else if (identifier IS "le") type = XPathTokenType::LE;
+   else if (identifier IS "gt") type = XPathTokenType::GT;
+   else if (identifier IS "ge") type = XPathTokenType::GE;
 
    // Use string_view directly - no copying
    return XPathToken(type, identifier, start, position - start);
@@ -869,7 +875,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_and_expr() {
 std::unique_ptr<XPathNode> XPathParser::parse_equality_expr() {
    auto left = parse_relational_expr();
 
-   while (check(XPathTokenType::EQUALS) or check(XPathTokenType::NOT_EQUALS)) {
+   while (check(XPathTokenType::EQUALS) or check(XPathTokenType::NOT_EQUALS) or
+          check(XPathTokenType::EQ) or check(XPathTokenType::NE)) {
       XPathToken op = peek();
       advance();
       auto right = parse_relational_expr();
@@ -883,7 +890,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_relational_expr() {
    auto left = parse_additive_expr();
 
    while (check(XPathTokenType::LESS_THAN) or check(XPathTokenType::LESS_EQUAL) or
-          check(XPathTokenType::GREATER_THAN) or check(XPathTokenType::GREATER_EQUAL)) {
+          check(XPathTokenType::GREATER_THAN) or check(XPathTokenType::GREATER_EQUAL) or
+          check(XPathTokenType::LT) or check(XPathTokenType::LE) or
+          check(XPathTokenType::GT) or check(XPathTokenType::GE)) {
       XPathToken op = peek();
       advance();
       auto right = parse_additive_expr();

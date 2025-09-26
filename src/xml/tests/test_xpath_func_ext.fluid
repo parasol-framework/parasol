@@ -72,13 +72,66 @@ function testMathFunctions()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Validate date and time helper functions
+
+function testDateTimeFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><item id="a"/></root>'
+   })
+
+   local errDate, dateNode = xml.mtFindTag('/root/item[matches(current-date(), "^[0-9]{4}-[0-9]{2}-[0-9]{2}$")]')
+   assert(errDate == ERR_Okay, 'current-date() should yield an ISO8601 date string: ' .. mSys.GetErrorMsg(errDate))
+
+   local errTime, timeNode = xml.mtFindTag('/root/item[matches(current-time(), "^[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")]')
+   assert(errTime == ERR_Okay, 'current-time() should yield an ISO8601 time with Z suffix: ' .. mSys.GetErrorMsg(errTime))
+
+   local errDateTime, dateTimeNode = xml.mtFindTag('/root/item[matches(current-dateTime(), "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")]')
+   assert(errDateTime == ERR_Okay, 'current-dateTime() should yield a combined timestamp: ' .. mSys.GetErrorMsg(errDateTime))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Check value comparison operators (eq, ne, lt, le, gt, ge)
+
+function testValueComparisonOperators()
+   local xml = obj.new("xml", {
+      statement = '<root><value amount="10"/><value amount="20"/><value amount="30"/></root>'
+   })
+
+   local errEq, eqId = xml.mtFindTag('/root/value[@amount eq 20]')
+   assert(errEq == ERR_Okay, 'eq should match the exact attribute value: ' .. mSys.GetErrorMsg(errEq))
+
+   local errNe, neId = xml.mtFindTag('/root/value[@amount ne 20][@amount = 10]')
+   assert(errNe == ERR_Okay and neId != nil, 'ne should exclude the middle value while leaving the first entry')
+
+   local errLt, ltId = xml.mtFindTag('/root/value[@amount lt 15]')
+   assert(errLt == ERR_Okay, 'lt should identify nodes smaller than the threshold: ' .. mSys.GetErrorMsg(errLt))
+   local _, ltAmount = xml.mtGetAttrib(ltId, 'amount')
+   assert(ltAmount == '10', 'lt should select the smallest amount')
+
+   local errLe, leId = xml.mtFindTag('/root/value[@amount le 20][@amount = 20]')
+   assert(errLe == ERR_Okay, 'le should include boundary values: ' .. mSys.GetErrorMsg(errLe))
+
+   local errGt, gtId = xml.mtFindTag('/root/value[@amount gt 20]')
+   assert(errGt == ERR_Okay, 'gt should locate the largest entry: ' .. mSys.GetErrorMsg(errGt))
+   local _, gtAmount = xml.mtGetAttrib(gtId, 'amount')
+   assert(gtAmount == '30', 'gt should select the highest amount')
+
+   local errGe, geId = xml.mtFindTag('/root/value[@amount ge 30]')
+   assert(errGe == ERR_Okay, 'ge should accept values equal to the boundary: ' .. mSys.GetErrorMsg(errGe))
+   local _, geAmount = xml.mtGetAttrib(geId, 'amount')
+   assert(geAmount == '30', 'ge should return the maximum amount when equal to the comparison value')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testStringCaseFunctions',
       'testUriEncodingFunctions',
       'testRegexFunctions',
-      'testMathFunctions'
+      'testMathFunctions',
+      'testDateTimeFunctions',
+      'testValueComparisonOperators'
    },
    init = function(ScriptFolder)
    end,

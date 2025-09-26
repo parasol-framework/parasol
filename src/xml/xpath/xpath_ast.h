@@ -41,6 +41,12 @@ enum class XPathTokenType {
    LESS_EQUAL,        // <=
    GREATER_THAN,      // >
    GREATER_EQUAL,     // >=
+   EQ,                // eq
+   NE,                // ne
+   LT,                // lt
+   LE,                // le
+   GT,                // gt
+   GE,                // ge
 
    // Boolean operators
    AND,               // and

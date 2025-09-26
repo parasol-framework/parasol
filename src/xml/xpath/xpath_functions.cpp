@@ -20,9 +20,12 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -197,7 +200,10 @@ static void append_numbers_from_value(const XPathValue &Value, std::vector<doubl
       case XPathValueType::Number:
          if (not std::isnan(Value.number_value)) Numbers.push_back(Value.number_value);
          break;
-      case XPathValueType::String: {
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime: {
          double number = XPathValue::string_to_number(Value.string_value);
          if (not std::isnan(number)) Numbers.push_back(number);
          break;
@@ -217,7 +223,11 @@ bool XPathValue::to_boolean() const {
    switch (type) {
       case XPathValueType::Boolean: return boolean_value;
       case XPathValueType::Number: return number_value != 0.0 and !std::isnan(number_value);
-      case XPathValueType::String: return !string_value.empty();
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime:
+         return !string_value.empty();
       case XPathValueType::NodeSet: return !node_set.empty();
    }
    return false;
@@ -255,7 +265,10 @@ double XPathValue::to_number() const {
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? 1.0 : 0.0;
       case XPathValueType::Number: return number_value;
-      case XPathValueType::String: {
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime: {
          return string_to_number(string_value);
       }
       case XPathValueType::NodeSet: {
@@ -274,7 +287,11 @@ std::string XPathValue::to_string() const {
       case XPathValueType::Number: {
          return format_xpath_number(number_value);
       }
-      case XPathValueType::String: return string_value;
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime:
+         return string_value;
       case XPathValueType::NodeSet: {
          if (node_set_string_override.has_value()) return *node_set_string_override;
          if (not node_set_string_values.empty()) return node_set_string_values[0];
@@ -297,7 +314,11 @@ bool XPathValue::is_empty() const {
    switch (type) {
       case XPathValueType::Boolean: return false;
       case XPathValueType::Number: return false;
-      case XPathValueType::String: return string_value.empty();
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime:
+         return string_value.empty();
       case XPathValueType::NodeSet: return node_set.empty();
    }
    return true;
@@ -306,6 +327,11 @@ bool XPathValue::is_empty() const {
 size_t XPathValue::size() const {
    switch (type) {
       case XPathValueType::NodeSet: return node_set.size();
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime:
+         return is_empty() ? 0 : 1;
       default: return is_empty() ? 0 : 1;
    }
 }
@@ -436,6 +462,11 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("min", function_min);
    register_function("max", function_max);
    register_function("avg", function_avg);
+
+   // Date and Time Functions
+   register_function("current-date", function_current_date);
+   register_function("current-time", function_current_time);
+   register_function("current-dateTime", function_current_date_time);
 }
 
 bool XPathFunctionLibrary::has_function(std::string_view Name) const {
@@ -478,6 +509,9 @@ size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathValue> 
       // Conservative estimate based on type
       switch (arg.type) {
          case XPathValueType::String:
+         case XPathValueType::Date:
+         case XPathValueType::Time:
+         case XPathValueType::DateTime:
             total += arg.string_value.length();
             break;
          case XPathValueType::Number:
@@ -562,6 +596,9 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
          }
 
          case XPathValueType::String:
+         case XPathValueType::Date:
+         case XPathValueType::Time:
+         case XPathValueType::DateTime:
             add_tokens(Value.string_value);
             break;
 
@@ -1255,4 +1292,71 @@ XPathValue XPathFunctionLibrary::function_avg(const std::vector<XPathValue> &Arg
    for (double value : numbers) total += value;
 
    return XPathValue(total / (double)numbers.size());
+}
+
+namespace {
+
+std::chrono::system_clock::time_point current_utc_time_point()
+{
+   auto now = std::chrono::system_clock::now();
+   return std::chrono::time_point_cast<std::chrono::seconds>(now);
+}
+
+std::tm make_utc_tm(std::chrono::system_clock::time_point TimePoint)
+{
+   std::time_t raw_time = std::chrono::system_clock::to_time_t(TimePoint);
+   std::tm utc{};
+#if defined(_WIN32)
+   gmtime_s(&utc, &raw_time);
+#else
+   gmtime_r(&raw_time, &utc);
+#endif
+   return utc;
+}
+
+std::string format_utc_date(const std::tm &Tm)
+{
+   char buffer[32];
+   std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d", Tm.tm_year + 1900, Tm.tm_mon + 1, Tm.tm_mday);
+   return std::string(buffer);
+}
+
+std::string format_utc_time(const std::tm &Tm)
+{
+   char buffer[32];
+   std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", Tm.tm_hour, Tm.tm_min, Tm.tm_sec);
+   return std::string(buffer);
+}
+
+} // namespace
+
+XPathValue XPathFunctionLibrary::function_current_date(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   auto now = current_utc_time_point();
+   auto tm = make_utc_tm(now);
+   return XPathValue(XPathValueType::Date, format_utc_date(tm));
+}
+
+XPathValue XPathFunctionLibrary::function_current_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   auto now = current_utc_time_point();
+   auto tm = make_utc_tm(now);
+   std::string time = format_utc_time(tm);
+   time.push_back('Z');
+   return XPathValue(XPathValueType::Time, std::move(time));
+}
+
+XPathValue XPathFunctionLibrary::function_current_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   auto now = current_utc_time_point();
+   auto tm = make_utc_tm(now);
+   std::string date = format_utc_date(tm);
+   std::string time = format_utc_time(tm);
+   std::string combined;
+   combined.reserve(date.length() + time.length() + 2);
+   combined.append(date);
+   combined.push_back('T');
+   combined.append(time);
+   combined.push_back('Z');
+   return XPathValue(XPathValueType::DateTime, std::move(combined));
 }

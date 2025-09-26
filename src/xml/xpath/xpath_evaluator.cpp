@@ -37,7 +37,7 @@
 namespace {
 
 // Lightweight view-based trim used for cache key normalisation.
-std::string_view trim_view(std::string_view Value)
+[[maybe_unused]] std::string_view trim_view(std::string_view Value)
 {
    auto start = Value.find_first_not_of(" \t\r\n");
    if (start IS std::string_view::npos) return std::string_view();
@@ -1140,6 +1140,16 @@ double node_set_number_value(const XPathValue &Value, size_t Index)
    return XPathValue::string_to_number(str);
 }
 
+std::optional<XPathValue> promote_value_comparison_operand(const XPathValue &Value)
+{
+   if (Value.type IS XPathValueType::NodeSet) {
+      if (Value.node_set.empty()) return std::nullopt;
+      return XPathValue(Value.to_string());
+   }
+
+   return Value;
+}
+
 bool compare_xpath_values(const XPathValue &left_value, const XPathValue &right_value)
 {
    auto left_type = left_value.type;
@@ -1991,6 +2001,22 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          return XPathValue(!equals);
       }
 
+      if (operation IS "eq") {
+         auto left_scalar = promote_value_comparison_operand(left_value);
+         auto right_scalar = promote_value_comparison_operand(right_value);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         bool equals = compare_xpath_values(*left_scalar, *right_scalar);
+         return XPathValue(equals);
+      }
+
+      if (operation IS "ne") {
+         auto left_scalar = promote_value_comparison_operand(left_value);
+         auto right_scalar = promote_value_comparison_operand(right_value);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         bool equals = compare_xpath_values(*left_scalar, *right_scalar);
+         return XPathValue(!equals);
+      }
+
       if (operation IS "<") {
          bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS);
          return XPathValue(result);
@@ -2008,6 +2034,38 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       if (operation IS ">=") {
          bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER_OR_EQUAL);
+         return XPathValue(result);
+      }
+
+      if (operation IS "lt") {
+         auto left_scalar = promote_value_comparison_operand(left_value);
+         auto right_scalar = promote_value_comparison_operand(right_value);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS);
+         return XPathValue(result);
+      }
+
+      if (operation IS "le") {
+         auto left_scalar = promote_value_comparison_operand(left_value);
+         auto right_scalar = promote_value_comparison_operand(right_value);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS_OR_EQUAL);
+         return XPathValue(result);
+      }
+
+      if (operation IS "gt") {
+         auto left_scalar = promote_value_comparison_operand(left_value);
+         auto right_scalar = promote_value_comparison_operand(right_value);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER);
+         return XPathValue(result);
+      }
+
+      if (operation IS "ge") {
+         auto left_scalar = promote_value_comparison_operand(left_value);
+         auto right_scalar = promote_value_comparison_operand(right_value);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER_OR_EQUAL);
          return XPathValue(result);
       }
 
@@ -2180,6 +2238,9 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
       case XPathValueType::Boolean:
       case XPathValueType::Number:
       case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime:
          xml->Attrib = value.to_string();
          return ERR::Okay;
    }
