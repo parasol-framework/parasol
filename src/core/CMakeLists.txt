@@ -163,15 +163,22 @@ flute_test (core_config "tests/config.fluid")
 flute_test (core_time "tests/test_time.fluid")
 
 if (INSTALL_TESTS)
-   add_executable (test_objlocking "tests/object_locking.cpp")
-   add_executable (test_memlocking "tests/memory_locking.cpp")
+   # Windows-compatible tests
    add_executable (test_pf_vector "tests/pf_vector.cpp")
    add_executable (test_wildcmp "tests/wildcmp.cpp")
 
-   target_link_libraries (test_objlocking PRIVATE ${INIT_LINK})
-   target_link_libraries (test_memlocking PRIVATE ${INIT_LINK})
+   set_target_properties (test_pf_vector test_wildcmp PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+   install (TARGETS test_pf_vector test_wildcmp DESTINATION "tests/")
 
-   set_target_properties (test_memlocking test_objlocking test_pf_vector test_wildcmp PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+   # Unix-only tests (require pthread)
+   if (NOT WIN32)
+      add_executable (test_objlocking "tests/object_locking.cpp")
+      add_executable (test_memlocking "tests/memory_locking.cpp")
 
-   install (TARGETS test_objlocking test_memlocking test_pf_vector test_wildcmp DESTINATION "tests/")
+      target_link_libraries (test_objlocking PRIVATE ${INIT_LINK})
+      target_link_libraries (test_memlocking PRIVATE ${INIT_LINK})
+
+      set_target_properties (test_memlocking test_objlocking PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+      install (TARGETS test_objlocking test_memlocking DESTINATION "tests/")
+   endif ()
 endif ()
