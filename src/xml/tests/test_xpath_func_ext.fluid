@@ -1,0 +1,87 @@
+-- XPath 2.0 function extensions smoke tests
+
+   include 'xml'
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify string casing helpers
+
+function testStringCaseFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><item>Alpha Beta</item><item attr="MixedCase"/></root>'
+   })
+
+   local err, uppercaseId = xml.mtFindTag('/root/item[upper-case(.) = "ALPHA BETA"]')
+   assert(err == ERR_Okay, "upper-case(.) should transform content to uppercase: " .. mSys.GetErrorMsg(err))
+
+   local err2, attributeId = xml.mtFindTag('/root/item[@attr and lower-case(@attr) = "mixedcase"]')
+   assert(err2 == ERR_Okay, "lower-case(@attr) should normalise attribute values")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Check URI encoding helpers
+
+function testUriEncodingFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><item path="docs/file one" link="a&b?c"/></root>'
+   })
+
+   local err, nodeId = xml.mtFindTag('/root/item[encode-for-uri(@path) = "docs%2Ffile%20one"]')
+   assert(err == ERR_Okay, "encode-for-uri(@path) should percent-encode separators")
+
+   local err2, nodeId2 = xml.mtFindTag('/root/item[escape-html-uri(@link) = "a&amp;b%3Fc"]')
+   assert(err2 == ERR_Okay, "escape-html-uri(@link) should provide HTML safe output")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Validate regular expression helpers
+
+function testRegexFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><code>id123</code><code>ALPHA-001</code><csv>alpha,beta,gamma</csv></root>'
+   })
+
+   local err, firstCode = xml.mtFindTag('/root/code[matches(., "^id[0-9]+$", "i")]')
+   assert(err == ERR_Okay, "matches() should support case-insensitive matching")
+
+   local err2, secondCode = xml.mtFindTag('/root/code[replace(., "-", "") = "ALPHA001"]')
+   assert(err2 == ERR_Okay, "replace() should rewrite substrings")
+
+   local err3, csvNode = xml.mtFindTag('/root/csv[tokenize(., ",")[2] = "beta" and count(tokenize(., ",")) = 3]')
+   assert(err3 == ERR_Okay, "tokenize() should expose individual fields")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Exercise numeric helper functions
+
+function testMathFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root><value amount="10" delta="-5"/><value amount="20" delta="5"/><value amount="30" delta="0"/></root>'
+   })
+
+   local err, absNode = xml.mtFindTag('/root/value[abs(number(@delta)) = 5]')
+   assert(err == ERR_Okay, "abs() should return absolute numeric value")
+
+   local err2, minNode = xml.mtFindTag('/root/value[@amount = min(/root/value/@amount)]')
+   assert(err2 == ERR_Okay, "min() should locate the smallest attribute value")
+
+   local err3, maxNode = xml.mtFindTag('/root/value[@amount = max(/root/value/@amount)]')
+   assert(err3 == ERR_Okay, "max() should locate the largest attribute value")
+
+   local err4, avgNode = xml.mtFindTag('/root/value[@amount = round(avg(/root/value/@amount))]')
+   assert(err4 == ERR_Okay, "avg() should locate the middle item")
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testStringCaseFunctions',
+      'testUriEncodingFunctions',
+      'testRegexFunctions',
+      'testMathFunctions'
+   },
+   init = function(ScriptFolder)
+   end,
+   cleanup = function()
+   end
+}

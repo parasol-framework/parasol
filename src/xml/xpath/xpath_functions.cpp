@@ -24,7 +24,9 @@
 #include <cctype>
 #include <cstdlib>
 #include <limits>
+#include <regex>
 #include <sstream>
+#include <string_view>
 #include <unordered_set>
 
 //********************************************************************************************************************
@@ -55,6 +57,155 @@ std::string format_xpath_number(double Value)
    }
 
    return result;
+}
+
+bool is_unreserved_uri_character(unsigned char Code)
+{
+   if ((Code >= 'A' and Code <= 'Z') or (Code >= 'a' and Code <= 'z') or (Code >= '0' and Code <= '9')) return true;
+
+   switch (Code) {
+      case '-':
+      case '_':
+      case '.':
+      case '!':
+      case '~':
+      case '*':
+      case '\'':
+      case '(':
+      case ')':
+         return true;
+   }
+
+   return false;
+}
+
+std::string encode_for_uri_impl(const std::string &Value)
+{
+   std::string result;
+   result.reserve(Value.length() * 3);
+
+   for (char ch : Value) {
+      unsigned char code = (unsigned char)ch;
+      if (is_unreserved_uri_character(code)) {
+         result.push_back((char)code);
+      }
+      else {
+         static const char hex_digits[] = "0123456789ABCDEF";
+         result.push_back('%');
+         result.push_back(hex_digits[(code >> 4) & 0x0F]);
+         result.push_back(hex_digits[code & 0x0F]);
+      }
+   }
+
+   return result;
+}
+
+void replace_all(std::string &Text, std::string_view From, std::string_view To)
+{
+   if (From.empty()) return;
+
+   size_t position = 0;
+   while (true) {
+      position = Text.find(From, position);
+      if (position IS std::string::npos) break;
+      Text.replace(position, From.length(), To);
+      position += To.length();
+   }
+}
+
+std::string escape_html_uri_impl(const std::string &Value)
+{
+   std::string encoded = encode_for_uri_impl(Value);
+
+   replace_all(encoded, "%26", "&amp;");
+   replace_all(encoded, "%3C", "&lt;");
+   replace_all(encoded, "%3E", "&gt;");
+   replace_all(encoded, "%22", "&quot;");
+   replace_all(encoded, "%27", "&apos;");
+
+   return encoded;
+}
+
+std::string apply_string_case(const std::string &Value, bool Upper)
+{
+   std::string result = Value;
+   std::transform(result.begin(), result.end(), result.begin(), [Upper](char Ch) {
+      unsigned char code = (unsigned char)Ch;
+      return Upper ? (char)std::toupper(code) : (char)std::tolower(code);
+   });
+   return result;
+}
+
+std::regex_constants::syntax_option_type build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
+{
+   std::regex_constants::syntax_option_type options = std::regex_constants::ECMAScript;
+
+   for (char flag : Flags) {
+      unsigned char code = (unsigned char)flag;
+      char normalised = (char)std::tolower(code);
+
+      if (normalised IS 'i') {
+         options = (std::regex_constants::syntax_option_type)(options | std::regex_constants::icase);
+      }
+      else {
+         if (UnsupportedFlag) *UnsupportedFlag = true;
+      }
+   }
+
+   return options;
+}
+
+void append_numbers_from_nodeset(const XPathValue &Value, std::vector<double> &Numbers)
+{
+   if (Value.node_set_string_override.has_value()) {
+      double number = XPathValue::string_to_number(*Value.node_set_string_override);
+      if (!std::isnan(number)) Numbers.push_back(number);
+      return;
+   }
+
+   if (!Value.node_set_attributes.empty()) {
+      for (const XMLAttrib *attribute : Value.node_set_attributes) {
+         if (!attribute) continue;
+         double number = XPathValue::string_to_number(attribute->Value);
+         if (!std::isnan(number)) Numbers.push_back(number);
+      }
+      return;
+   }
+
+   if (!Value.node_set_string_values.empty()) {
+      for (const std::string &entry : Value.node_set_string_values) {
+         double number = XPathValue::string_to_number(entry);
+         if (!std::isnan(number)) Numbers.push_back(number);
+      }
+      return;
+   }
+
+   for (XMLTag *node : Value.node_set) {
+      if (!node) continue;
+      std::string content = XPathValue::node_string_value(node);
+      double number = XPathValue::string_to_number(content);
+      if (!std::isnan(number)) Numbers.push_back(number);
+   }
+}
+
+void append_numbers_from_value(const XPathValue &Value, std::vector<double> &Numbers)
+{
+   switch (Value.type) {
+      case XPathValueType::Number:
+         if (!std::isnan(Value.number_value)) Numbers.push_back(Value.number_value);
+         break;
+      case XPathValueType::String: {
+         double number = XPathValue::string_to_number(Value.string_value);
+         if (!std::isnan(number)) Numbers.push_back(number);
+         break;
+      }
+      case XPathValueType::Boolean:
+         Numbers.push_back(Value.boolean_value ? 1.0 : 0.0);
+         break;
+      case XPathValueType::NodeSet:
+         append_numbers_from_nodeset(Value, Numbers);
+         break;
+   }
 }
 
 } // namespace
@@ -256,6 +407,14 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("string-length", function_string_length);
    register_function("normalize-space", function_normalize_space);
    register_function("translate", function_translate);
+   register_function("upper-case", function_upper_case);
+   register_function("lower-case", function_lower_case);
+   register_function("encode-for-uri", function_encode_for_uri);
+   register_function("escape-html-uri", function_escape_html_uri);
+
+   register_function("matches", function_matches);
+   register_function("replace", function_replace);
+   register_function("tokenize", function_tokenize);
 
    // Boolean Functions
    register_function("boolean", function_boolean);
@@ -270,6 +429,10 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("floor", function_floor);
    register_function("ceiling", function_ceiling);
    register_function("round", function_round);
+   register_function("abs", function_abs);
+   register_function("min", function_min);
+   register_function("max", function_max);
+   register_function("avg", function_avg);
 }
 
 bool XPathFunctionLibrary::has_function(std::string_view Name) const {
@@ -768,7 +931,141 @@ XPathValue XPathFunctionLibrary::function_translate(const std::vector<XPathValue
    return XPathValue(result);
 }
 
-XPathValue XPathFunctionLibrary::function_boolean(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_upper_case(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   std::string input;
+
+   if (Args.empty()) {
+      if (Context.attribute_node) input = Context.attribute_node->Value;
+      else if (Context.context_node) {
+         std::vector<XMLTag *> nodes = { Context.context_node };
+         XPathValue node_value(nodes);
+         input = node_value.to_string();
+      }
+      else input = std::string();
+   }
+   else input = Args[0].to_string();
+
+   return XPathValue(apply_string_case(input, true));
+}
+
+XPathValue XPathFunctionLibrary::function_lower_case(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   std::string input;
+
+   if (Args.empty()) {
+      if (Context.attribute_node) input = Context.attribute_node->Value;
+      else if (Context.context_node) {
+         std::vector<XMLTag *> nodes = { Context.context_node };
+         XPathValue node_value(nodes);
+         input = node_value.to_string();
+      }
+      else input = std::string();
+   }
+   else input = Args[0].to_string();
+
+   return XPathValue(apply_string_case(input, false));
+}
+
+XPathValue XPathFunctionLibrary::function_encode_for_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   std::string input;
+
+   if (Args.empty()) {
+      if (Context.attribute_node) input = Context.attribute_node->Value;
+      else if (Context.context_node) {
+         std::vector<XMLTag *> nodes = { Context.context_node };
+         XPathValue node_value(nodes);
+         input = node_value.to_string();
+      }
+      else input = std::string();
+   }
+   else input = Args[0].to_string();
+
+   return XPathValue(encode_for_uri_impl(input));
+}
+
+XPathValue XPathFunctionLibrary::function_escape_html_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   std::string input;
+
+   if (Args.empty()) {
+      if (Context.attribute_node) input = Context.attribute_node->Value;
+      else if (Context.context_node) {
+         std::vector<XMLTag *> nodes = { Context.context_node };
+         XPathValue node_value(nodes);
+         input = node_value.to_string();
+      }
+      else input = std::string();
+   }
+   else input = Args[0].to_string();
+
+   return XPathValue(escape_html_uri_impl(input));
+}
+
+XPathValue XPathFunctionLibrary::function_matches(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2 or Args.size() > 3) return XPathValue(false);
+
+   std::string input = Args[0].to_string();
+   std::string pattern = Args[1].to_string();
+   std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
+
+   std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
+   std::regex compiled(pattern, options);
+
+   return XPathValue(std::regex_search(input, compiled));
+}
+
+XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 3 or Args.size() > 4) return XPathValue("");
+
+   std::string input = Args[0].to_string();
+   std::string pattern = Args[1].to_string();
+   std::string replacement = Args[2].to_string();
+   std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
+
+   std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
+   std::regex compiled(pattern, options);
+
+   return XPathValue(std::regex_replace(input, compiled, replacement));
+}
+
+XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2 or Args.size() > 3) return XPathValue(std::vector<XMLTag *>());
+
+   std::string input = Args[0].to_string();
+   std::string pattern = Args[1].to_string();
+   std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
+
+   std::vector<std::string> tokens;
+
+   if (pattern.empty()) {
+      for (size_t index = 0; index < input.length(); ++index) {
+         tokens.emplace_back(input.substr(index, 1));
+      }
+   }
+   else {
+      std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
+      std::regex compiled(pattern, options);
+
+      std::sregex_token_iterator iter(input.begin(), input.end(), compiled, -1);
+      std::sregex_token_iterator end;
+
+      for (; iter != end; ++iter) {
+         tokens.emplace_back(iter->str());
+      }
+
+      if (!tokens.empty() and tokens.back().empty()) tokens.pop_back();
+   }
+
+   std::vector<XMLTag *> placeholders(tokens.size(), nullptr);
+   return XPathValue(placeholders, std::nullopt, tokens);
+}
+
+XPathValue XPathFunctionLibrary::function_boolean(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(false);
    return XPathValue(Args[0].to_boolean());
@@ -877,10 +1174,75 @@ XPathValue XPathFunctionLibrary::function_ceiling(const std::vector<XPathValue> 
    return XPathValue(std::ceil(value));
 }
 
-XPathValue XPathFunctionLibrary::function_round(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_round(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(std::numeric_limits<double>::quiet_NaN());
    double value = Args[0].to_number();
    if (std::isnan(value) or std::isinf(value)) return XPathValue(value);
    return XPathValue(std::round(value));
+}
+
+XPathValue XPathFunctionLibrary::function_abs(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() != 1) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = Args[0].to_number();
+   if (std::isnan(value) or std::isinf(value)) return XPathValue(value);
+
+   return XPathValue(std::fabs(value));
+}
+
+XPathValue XPathFunctionLibrary::function_min(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   std::vector<double> numbers;
+   numbers.reserve(Args.size());
+
+   for (const auto &arg : Args) append_numbers_from_value(arg, numbers);
+
+   if (numbers.empty()) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double minimum = numbers[0];
+   for (size_t index = 1; index < numbers.size(); ++index) {
+      if (numbers[index] < minimum) minimum = numbers[index];
+   }
+
+   return XPathValue(minimum);
+}
+
+XPathValue XPathFunctionLibrary::function_max(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   std::vector<double> numbers;
+   numbers.reserve(Args.size());
+
+   for (const auto &arg : Args) append_numbers_from_value(arg, numbers);
+
+   if (numbers.empty()) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double maximum = numbers[0];
+   for (size_t index = 1; index < numbers.size(); ++index) {
+      if (numbers[index] > maximum) maximum = numbers[index];
+   }
+
+   return XPathValue(maximum);
+}
+
+XPathValue XPathFunctionLibrary::function_avg(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   std::vector<double> numbers;
+   numbers.reserve(Args.size());
+
+   for (const auto &arg : Args) append_numbers_from_value(arg, numbers);
+
+   if (numbers.empty()) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double total = 0.0;
+   for (double value : numbers) total += value;
+
+   return XPathValue(total / (double)numbers.size());
 }

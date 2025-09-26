@@ -151,6 +151,10 @@ class XPathFunctionLibrary {
    static XPathValue function_string_length(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_normalize_space(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_translate(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_upper_case(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_lower_case(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_encode_for_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_escape_html_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_boolean(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_not(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_true(const std::vector<XPathValue> &Args, const XPathContext &Context);
@@ -161,4 +165,11 @@ class XPathFunctionLibrary {
    static XPathValue function_floor(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_ceiling(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_round(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_abs(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_min(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_max(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_avg(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_matches(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_replace(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_tokenize(const std::vector<XPathValue> &Args, const XPathContext &Context);
 };
