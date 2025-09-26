@@ -704,6 +704,44 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testXPathMultiplicationOutsidePredicates()
+   local xml = obj.new("xml", {
+      statement = '<root><item price="3" tax="4"><value>2</value></item><rates><exchangeRate>2</exchangeRate></rates></root>'
+   })
+
+   local err = xml.mtFindTag('3 * 4')
+   assert(err == ERR_Okay, 'Top-level multiplication should parse correctly: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('3 * 4 = 12')
+   assert(err == ERR_Okay, '3 * 4 should evaluate to 12 outside predicates: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('number(/root/item/@price) * number(/root/item/@tax) = 12')
+   assert(err == ERR_Okay, 'Attribute multiplication outside predicates should evaluate: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('substring("abcdef", 2 * 1, 3) = "bcd"')
+   assert(err == ERR_Okay, 'Function argument multiplication should parse: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('3 * -4 = -12')
+   assert(err == ERR_Okay, 'Top-level multiplication should handle unary minus operands: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('/root/item[number(@price) * -2 = -6]')
+   assert(err == ERR_Okay, 'Predicate multiplication should permit unary minus operands: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('/root/item[@price * /root/rates/exchangeRate = 6]')
+   assert(err == ERR_Okay, 'Predicate multiplication should treat absolute paths as operands: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('/root/item[./value * 3 = 6]')
+   assert(err == ERR_Okay, 'Predicate multiplication should treat relative paths starting with "." as operands: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('/root/item[number(@price) * ../rates/exchangeRate = 6]')
+   assert(err == ERR_Okay, 'Predicate multiplication should treat ".." path prefixes as operands: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('3 * //exchangeRate = 6')
+   assert(err == ERR_Okay, 'Top-level multiplication should accept descendant paths as operands: ' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testComparisonOperators', 'testMathematicalExpressions',
