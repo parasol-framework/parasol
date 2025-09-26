@@ -195,7 +195,6 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
             if (before IS '(' or before IS '[') return true;
             if (before IS '@' or before IS '$' or before IS ',' or before IS ':') return true;
             if (before IS '+' or before IS '-' or before IS '*' or before IS '/' or before IS '|' or before IS '!' or before IS '<' or before IS '>' or before IS '=') return true;
-            if (before IS '/') return true;
             return false;
          };
 
