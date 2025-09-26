@@ -300,6 +300,12 @@ XPathToken XPathTokenizer::scan_identifier() {
    else if (identifier IS "le") type = XPathTokenType::LE;
    else if (identifier IS "gt") type = XPathTokenType::GT;
    else if (identifier IS "ge") type = XPathTokenType::GE;
+   else if (identifier IS "if") type = XPathTokenType::IF;
+   else if (identifier IS "then") type = XPathTokenType::THEN;
+   else if (identifier IS "else") type = XPathTokenType::ELSE;
+   else if (identifier IS "for") type = XPathTokenType::FOR;
+   else if (identifier IS "in") type = XPathTokenType::IN;
+   else if (identifier IS "return") type = XPathTokenType::RETURN;
 
    // Use string_view directly - no copying
    return XPathToken(type, identifier, start, position - start);
@@ -1054,7 +1060,79 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
    return current;
 }
 
+std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
+   if (!match(XPathTokenType::IF)) return nullptr;
+
+   if (!match(XPathTokenType::LPAREN)) {
+      report_error("Expected '(' after 'if'");
+   }
+
+   auto condition = parse_expr();
+
+   if (!match(XPathTokenType::RPAREN)) {
+      report_error("Expected ')' after condition in if expression");
+   }
+
+   if (!match(XPathTokenType::THEN)) {
+      report_error("Expected 'then' in if expression");
+   }
+
+   auto then_branch = parse_expr();
+
+   if (!match(XPathTokenType::ELSE)) {
+      report_error("Expected 'else' in if expression");
+   }
+
+   auto else_branch = parse_expr();
+
+   auto conditional = std::make_unique<XPathNode>(XPathNodeType::CONDITIONAL);
+   conditional->add_child(std::move(condition));
+   conditional->add_child(std::move(then_branch));
+   conditional->add_child(std::move(else_branch));
+   return conditional;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
+   if (!match(XPathTokenType::FOR)) return nullptr;
+
+   if (!match(XPathTokenType::DOLLAR)) {
+      report_error("Expected '$' after 'for'");
+   }
+
+   std::string variable_name;
+   if (check(XPathTokenType::IDENTIFIER)) {
+      variable_name = peek().value;
+      advance();
+   }
+   else report_error("Expected variable name after '$' in for expression");
+
+   if (!match(XPathTokenType::IN)) {
+      report_error("Expected 'in' in for expression");
+   }
+
+   auto sequence_expr = parse_expr();
+
+   if (!match(XPathTokenType::RETURN)) {
+      report_error("Expected 'return' in for expression");
+   }
+
+   auto return_expr = parse_expr();
+
+   auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION, variable_name);
+   for_node->add_child(std::move(sequence_expr));
+   for_node->add_child(std::move(return_expr));
+   return for_node;
+}
+
 std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
+   if (check(XPathTokenType::IF)) {
+      return parse_if_expr();
+   }
+
+   if (check(XPathTokenType::FOR)) {
+      return parse_for_expr();
+   }
+
    if (match(XPathTokenType::LPAREN)) {
       auto expr = parse_expr();
       match(XPathTokenType::RPAREN);

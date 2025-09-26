@@ -53,6 +53,14 @@ enum class XPathTokenType {
    OR,                // or
    NOT,               // not
 
+   // Flow keywords
+   IF,                // if
+   THEN,              // then
+   ELSE,              // else
+   FOR,               // for
+   IN,                // in
+   RETURN,            // return
+
    // Arithmetic operators
    PLUS,              // +
    MINUS,             // -
@@ -108,6 +116,8 @@ enum class XPathNodeType {
    FILTER,
    BINARY_OP,
    UNARY_OP,
+   CONDITIONAL,
+   FOR_EXPRESSION,
    FUNCTION_CALL,
    LITERAL,
    VARIABLE_REFERENCE,
