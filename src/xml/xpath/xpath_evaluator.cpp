@@ -1835,7 +1835,9 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       std::vector<const XMLAttrib *> combined_attributes;
       std::optional<std::string> combined_override;
 
-      for (size_t index = 0; index < sequence_value.node_set.size(); ++index) {
+      size_t sequence_size = sequence_value.node_set.size();
+
+      for (size_t index = 0; index < sequence_size; ++index) {
          XMLTag *item_node = sequence_value.node_set[index];
          const XMLAttrib *item_attribute = nullptr;
          if (index < sequence_value.node_set_attributes.size()) {
@@ -1858,7 +1860,10 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
          context.variables[variable_name] = bound_value;
 
+         push_context(item_node, index + 1, sequence_size, item_attribute);
+         
          auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
+         pop_context();
          if (expression_unsupported) {
             restore_variable();
             return XPathValue();
