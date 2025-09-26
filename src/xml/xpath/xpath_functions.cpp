@@ -287,9 +287,7 @@ XPathValue XPathFunctionLibrary::call_function(std::string_view Name, const std:
 
    if (Context.document) {
       if (!Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
-      std::string message("Unsupported XPath function: ");
-      message.append(Name);
-      Context.document->ErrorMsg.append(message);
+      Context.document->ErrorMsg.append("Unsupported XPath function: ").append(Name);
    }
 
    return XPathValue();
