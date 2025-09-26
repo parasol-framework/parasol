@@ -1070,6 +1070,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
       report_error("Expected '(' after 'if'");
       return nullptr;
    }
+      report_error("Expected '(' after 'if'");
+      return nullptr;
+   }
 
    auto condition = parse_expr();
 
@@ -1087,6 +1090,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
 
    if (!match(XPathTokenType::ELSE)) {
       report_error("Expected 'else' in if expression");
+      return nullptr;
       return nullptr;
       return nullptr;
    }
