@@ -35,8 +35,12 @@ Key build options (use with `-D` flag):
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
 - `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in debug builds (has no effect on release builds).
 
+### Development in the Cloud (Temporary Sessions)
+
 If you are running in a cloud session then disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
 - `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
+
+Performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
 
 ## Architecture Overview
 
@@ -77,6 +81,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 - Callback-driven architecture for event handling
 - Fluid APIs and reference manuals are available in multiple files at `docs/wiki/Fluid-*.md`.
 - The Fluid object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
+- Fluid scripts are executed with the `parasol` executable, which has a dependency on the project being built and installed.
 
 #### Fluid Script Execution Model
 
