@@ -15,6 +15,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "xpath_arena.h"
+
 //********************************************************************************************************************
 // Main XPath Evaluator
 
@@ -33,12 +35,8 @@ class SimpleXPathEvaluator {
    XPathFunctionLibrary function_library;
    XPathContext context;
    AxisEvaluator axis_evaluator;
+   XPathArena arena;
    bool expression_unsupported = false;
-
-   struct AxisMatch {
-      XMLTag * node = nullptr;
-      const XMLAttrib * attribute = nullptr;
-   };
 
    struct CursorState {
       objXML::TAGS * tags;
@@ -54,8 +52,8 @@ class SimpleXPathEvaluator {
    std::unordered_map<std::string, std::weak_ptr<XPathNode>> ast_signature_cache;
    std::deque<std::string> ast_cache_order;
    static constexpr size_t ast_cache_limit = 32;
-   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
-   std::vector<XMLTag *> collect_step_results(const std::vector<AxisMatch> &ContextNodes,
+   std::vector<XPathAxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
+   std::vector<XMLTag *> collect_step_results(const std::vector<XPathAxisMatch> &ContextNodes,
                                               const std::vector<const XPathNode *> &Steps,
                                               size_t StepIndex,
                                               uint32_t CurrentPrefix,
