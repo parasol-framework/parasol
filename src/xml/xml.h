@@ -181,6 +181,7 @@ class extXML : public objXML {
    // [=...] Match on encapsulated content (Not an XPath standard but we support it)
    // The use of \ as an escape character in attribute strings is supported, but keep in mind that this is not an official
    // feature of the XPath standard.
+   // Wildcards are legal only in the context of string comparisons, e.g. a node or attribute lookup
    //
    // Examples:
    //   /menu/submenu
@@ -191,6 +192,7 @@ class extXML : public objXML {
    //   /menu//window
    //   /menu/window/* (First child of the window tag)
    //   /menu/*[@id='5']
+   //   /root/section[@*="alpha"] (Match any attribute with value "alpha")
 
    ERR find_tag(std::string_view XPath, uint32_t CurrentPrefix);
 
