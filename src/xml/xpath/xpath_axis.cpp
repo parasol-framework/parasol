@@ -595,19 +595,70 @@ void AxisEvaluator::sort_document_order(std::vector<XMLTag *> &Nodes) {
 
 // Construct the chain of ancestors from the root to the specified node.  The resulting path enables
 // relative ordering checks for arbitrarily distant nodes.
-std::vector<XMLTag *> AxisEvaluator::build_ancestor_path(XMLTag *Node)
+
+AxisEvaluator::AncestorPathView AxisEvaluator::build_ancestor_path(XMLTag *Node)
 {
-   std::vector<XMLTag *> path;
+   if (!Node) return {};
+
+   bool cacheable = !(Node->ID IS 0);
+
+   if (cacheable) {
+      auto cached = ancestor_path_cache.find(Node);
+      if (!(cached IS ancestor_path_cache.end())) {
+         return { std::span<XMLTag *const>(*cached->second), cached->second, true };
+      }
+   }
+
+   std::vector<XMLTag *> *storage = nullptr;
+
+   if (cacheable) {
+      ancestor_path_storage.push_back(std::make_unique<std::vector<XMLTag *>>());
+      storage = ancestor_path_storage.back().get();
+   } else {
+      storage = &arena.acquire_node_vector();
+   }
+
+   storage->clear();
+
    XMLTag *current = Node;
 
    while (current) {
-      path.push_back(current);
+      storage->push_back(current);
       if (!current->ParentID) break;
       current = find_tag_by_id(current->ParentID);
    }
 
-   std::reverse(path.begin(), path.end());
-   return path;
+   std::reverse(storage->begin(), storage->end());
+
+   if (cacheable) {
+      ancestor_path_cache[Node] = storage;
+   }
+
+   return { std::span<XMLTag *const>(*storage), storage, cacheable };
+}
+
+void AxisEvaluator::release_ancestor_path(AncestorPathView &View)
+{
+   if (!View.Storage) return;
+
+   if (!View.Cached) {
+      arena.release_node_vector(*View.Storage);
+   }
+
+   View.Storage = nullptr;
+   View.Path = {};
+   View.Cached = false;
+}
+
+uint64_t AxisEvaluator::make_document_order_key(XMLTag *Left, XMLTag *Right)
+{
+   if ((!Left) or (!Right)) return 0;
+
+   uintptr_t left_value = !(Left->ID IS 0) ? uintptr_t(Left->ID) : uintptr_t(Left);
+   uintptr_t right_value = !(Right->ID IS 0) ? uintptr_t(Right->ID) : uintptr_t(Right);
+
+   uint64_t combined = (uint64_t(left_value) << 1) ^ uint64_t(right_value);
+   return combined;
 }
 
 // Evaluate whether Node1 precedes Node2 in document order, handling synthetic nodes gracefully.
@@ -619,34 +670,60 @@ bool AxisEvaluator::is_before_in_document_order(XMLTag *Node1, XMLTag *Node2) {
       return Node1->ID < Node2->ID;
    }
 
-   auto path1 = build_ancestor_path(Node1);
-   auto path2 = build_ancestor_path(Node2);
+   uint64_t cache_key = make_document_order_key(Node1, Node2);
+   auto cached = document_order_cache.find(cache_key);
+   if (!(cached IS document_order_cache.end())) return cached->second;
 
-   if (path1.empty() or path2.empty()) return Node1 < Node2;
+   auto path1_view = build_ancestor_path(Node1);
+   auto path2_view = build_ancestor_path(Node2);
 
-   size_t max_common = std::min(path1.size(), path2.size());
-   size_t index = 0;
+   auto path1 = path1_view.Path;
+   auto path2 = path2_view.Path;
 
-   while ((index < max_common) and (path1[index] IS path2[index])) index++;
+   bool result = false;
 
-   if (index IS max_common) {
-      return path1.size() < path2.size();
+   if (path1.empty() or path2.empty()) {
+      result = Node1 < Node2;
+   } else {
+      size_t max_common = std::min(path1.size(), path2.size());
+      size_t index = 0;
+
+      while ((index < max_common) and (path1[index] IS path2[index])) index++;
+
+      if (index IS max_common) {
+         result = path1.size() < path2.size();
+      } else if (index IS 0) {
+         result = path1[index]->ID < path2[index]->ID;
+      } else {
+         XMLTag *parent = path1[index - 1];
+         XMLTag *branch1 = path1[index];
+         XMLTag *branch2 = path2[index];
+
+         bool resolved = false;
+         for (auto &child : parent->Children) {
+            if (&child IS branch1) {
+               result = true;
+               resolved = true;
+               break;
+            }
+            if (&child IS branch2) {
+               result = false;
+               resolved = true;
+               break;
+            }
+         }
+
+         if (!resolved) result = branch1->ID < branch2->ID;
+      }
    }
 
-   if (index IS 0) {
-      return path1[index]->ID < path2[index]->ID;
-   }
+   release_ancestor_path(path1_view);
+   release_ancestor_path(path2_view);
 
-   XMLTag *parent = path1[index - 1];
-   XMLTag *branch1 = path1[index];
-   XMLTag *branch2 = path2[index];
+   document_order_cache[cache_key] = result;
+   document_order_cache[make_document_order_key(Node2, Node1)] = !result;
 
-   for (auto &child : parent->Children) {
-      if (&child IS branch1) return true;
-      if (&child IS branch2) return false;
-   }
-
-   return branch1->ID < branch2->ID;
+   return result;
 }
 
 // Remove null entries, enforce document order, and deduplicate the node-set to satisfy XPath rules.
