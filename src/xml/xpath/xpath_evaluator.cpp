@@ -595,20 +595,24 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
             push_context(candidate, index + 1, filtered.size(), match.attribute);
 
             if (axis IS AxisType::Attribute) {
-               if (!candidate or !match.attribute) {
+               AxisMatch next_match{};
+               next_match.node = candidate;
+               next_match.attribute = match.attribute;
+
+               if (!next_match.node or !next_match.attribute) {
                   pop_context();
                   continue;
                }
 
                if (is_last_step) {
-                  auto tags = xml->getInsert(candidate, xml->Cursor);
+                  auto tags = xml->getInsert(next_match.node, xml->Cursor);
                   if (!tags) {
                      pop_context();
                      continue;
                   }
 
                   xml->CursorTags = tags;
-                  xml->Attrib = match.attribute->Name;
+                  xml->Attrib = next_match.attribute->Name;
 
                   if (!xml->Callback.defined()) {
                      Matched = true;
@@ -621,12 +625,12 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                   ERR callback_error = ERR::Okay;
                   if (xml->Callback.isC()) {
                      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-                     callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+                     callback_error = routine(xml, next_match.node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
                   }
                   else if (xml->Callback.isScript()) {
                      if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
                         { "XML",  xml, FD_OBJECTPTR },
-                        { "Tag",  candidate->ID },
+                        { "Tag",  next_match.node->ID },
                         { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
                      }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
                   }
@@ -643,7 +647,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                   continue;
                }
 
-               next_context.push_back({ candidate, match.attribute });
+               next_context.push_back(next_match);
                pop_context();
                continue;
             }

@@ -122,7 +122,6 @@ using XPathFunction = std::function<XPathValue(const std::vector<XPathValue> &, 
 class XPathFunctionLibrary {
    private:
    std::unordered_map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
-   mutable std::unordered_map<std::string, const XPathFunction *, TransparentStringHash, TransparentStringEqual> function_cache;
    void register_core_functions();
    const XPathFunction * find_function(std::string_view Name) const;
 

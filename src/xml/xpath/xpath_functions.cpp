@@ -287,19 +287,11 @@ XPathValue XPathFunctionLibrary::call_function(std::string_view Name,
 
 void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func) {
    functions.insert_or_assign(std::string(Name), std::move(Func));
-   function_cache.clear();
 }
 
 const XPathFunction * XPathFunctionLibrary::find_function(std::string_view Name) const {
-   auto cache_it = function_cache.find(Name);
-   if (cache_it != function_cache.end()) return cache_it->second;
-
    auto iter = functions.find(Name);
-   if (iter != functions.end()) {
-      auto *function_ptr = &iter->second;
-      function_cache.emplace(iter->first, function_ptr);
-      return function_ptr;
-   }
+   if (iter != functions.end()) return &iter->second;
 
    return nullptr;
 }
