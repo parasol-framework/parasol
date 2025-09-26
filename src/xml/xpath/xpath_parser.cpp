@@ -220,7 +220,6 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
             type = XPathTokenType::MULTIPLY;
          }
 
-
          auto wildcard_char = input.substr(start, 1);
          tokens.emplace_back(type, wildcard_char, start, 1);
       }
