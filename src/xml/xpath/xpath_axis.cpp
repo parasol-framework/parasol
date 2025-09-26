@@ -23,7 +23,10 @@
 #include <array>
 #include <map>
 #include <ranges>
+#include <string_view>
 #include <unordered_set>
+
+#include <parasol/strings.hpp>
 
 namespace {
 
@@ -654,11 +657,19 @@ uint64_t AxisEvaluator::make_document_order_key(XMLTag *Left, XMLTag *Right)
 {
    if ((!Left) or (!Right)) return 0;
 
-   uintptr_t left_value = !(Left->ID IS 0) ? uintptr_t(Left->ID) : uintptr_t(Left);
-   uintptr_t right_value = !(Right->ID IS 0) ? uintptr_t(Right->ID) : uintptr_t(Right);
+   auto encode_node = [](XMLTag *Node) -> uint32_t {
+      if (!Node) return 0;
+      if (!(Node->ID IS 0)) return uint32_t(Node->ID);
 
-   uint64_t combined = (uint64_t(left_value) << 1) ^ uint64_t(right_value);
-   return combined;
+      uintptr_t pointer_value = uintptr_t(Node);
+      std::string_view pointer_bytes((char *)&pointer_value, sizeof(pointer_value));
+      return pf::strhash(pointer_bytes);
+   };
+
+   uint32_t left_key = encode_node(Left);
+   uint32_t right_key = encode_node(Right);
+
+   return (uint64_t(left_key) << 32) | uint64_t(right_key);
 }
 
 // Evaluate whether Node1 precedes Node2 in document order, handling synthetic nodes gracefully.
