@@ -33,6 +33,8 @@
 #ifndef SRELL_REGEX_TEMPLATE_LIBRARY
 #define SRELL_REGEX_TEMPLATE_LIBRARY
 
+#define SRELL_NO_THROW 1
+
 #include <stdexcept>
 #include <climits>
 #include <cwchar>
@@ -1043,7 +1045,7 @@ public:
 		: buffer_(static_cast<pointer>(std::malloc(initsize * sizeof (ElemT)))), size_(initsize), capacity_p1_(initsize + 1)
 	{
 		if (buffer_ == NULL)
-			throw std::bad_alloc();
+			abort();
 	}
 
 	simple_array(const simple_array &right)
@@ -1395,7 +1397,7 @@ protected:
 			size_ = 0;
 			capacity_p1_ = 1;
 		}
-		throw std::bad_alloc();
+		abort();
 	}
 
 	void move_forwards_(const size_type pos, const size_type count)
@@ -1615,7 +1617,7 @@ private:
 		if (buffer_ != NULL)
 			return;
 
-		throw std::bad_alloc();
+		abort();
 	}
 
 	static const std::size_t bitmask_ = base_type::bits_per_elem_ - 1;
