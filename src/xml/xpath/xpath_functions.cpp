@@ -25,6 +25,7 @@
 #include <cstdlib>
 #include <limits>
 #include <regex>
+#include <regex.h>
 #include <sstream>
 #include <string_view>
 #include <unordered_set>
@@ -134,6 +135,31 @@ std::string apply_string_case(const std::string &Value, bool Upper)
       return Upper ? (char)std::toupper(code) : (char)std::tolower(code);
    });
    return result;
+}
+
+bool regex_pattern_is_valid(const std::string &Pattern, std::regex_constants::syntax_option_type Options)
+{
+   int flags = REG_EXTENDED;
+   if ((Options & std::regex_constants::icase) != 0) flags |= REG_ICASE;
+
+   regex_t compiled;
+   int status = regcomp(&compiled, Pattern.c_str(), flags);
+   if (status != 0) return false;
+
+   regfree(&compiled);
+   return true;
+}
+
+bool compile_regex_pattern(const std::string &Pattern, std::regex_constants::syntax_option_type Options,
+   std::regex &Compiled, bool *UnsupportedFlag)
+{
+   if (!regex_pattern_is_valid(Pattern, Options)) {
+      if (UnsupportedFlag) *UnsupportedFlag = true;
+      return false;
+   }
+
+   Compiled = std::regex(Pattern, Options);
+   return true;
 }
 
 std::regex_constants::syntax_option_type build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
@@ -1012,7 +1038,10 @@ XPathValue XPathFunctionLibrary::function_matches(const std::vector<XPathValue> 
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
    std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-   std::regex compiled(pattern, options);
+   std::regex compiled;
+   if (!compile_regex_pattern(pattern, options, compiled, Context.expression_unsupported_flag)) {
+      return XPathValue(false);
+   }
 
    return XPathValue(std::regex_search(input, compiled));
 }
@@ -1027,7 +1056,10 @@ XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> 
    std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
 
    std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-   std::regex compiled(pattern, options);
+   std::regex compiled;
+   if (!compile_regex_pattern(pattern, options, compiled, Context.expression_unsupported_flag)) {
+      return XPathValue(input);
+   }
 
    return XPathValue(std::regex_replace(input, compiled, replacement));
 }
@@ -1049,16 +1081,17 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
    }
    else {
       std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-      std::regex compiled(pattern, options);
+      std::regex compiled;
+      if (compile_regex_pattern(pattern, options, compiled, Context.expression_unsupported_flag)) {
+         std::sregex_token_iterator iter(input.begin(), input.end(), compiled, -1);
+         std::sregex_token_iterator end;
 
-      std::sregex_token_iterator iter(input.begin(), input.end(), compiled, -1);
-      std::sregex_token_iterator end;
+         for (; iter != end; ++iter) {
+            tokens.emplace_back(iter->str());
+         }
 
-      for (; iter != end; ++iter) {
-         tokens.emplace_back(iter->str());
+         if (!tokens.empty() and tokens.back().empty()) tokens.pop_back();
       }
-
-      if (!tokens.empty() and tokens.back().empty()) tokens.pop_back();
    }
 
    std::vector<XMLTag *> placeholders(tokens.size(), nullptr);
