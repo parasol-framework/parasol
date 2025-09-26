@@ -1063,6 +1063,7 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
 
       pf::Regex compiled;
       if (not compiled.compile(pattern, options)) {
+         Context.expression_unsupported = true;
          return XPathValue(std::vector<XMLTag *>());
       }
 
