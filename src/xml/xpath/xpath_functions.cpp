@@ -281,7 +281,18 @@ XPathValue XPathFunctionLibrary::call_function(std::string_view Name, const std:
    if (const auto *function_ptr = find_function(Name)) {
       return (*function_ptr)(Args, Context);
    }
-   return XPathValue(); // Return empty boolean for unknown functions
+   if (Context.expression_unsupported_flag) {
+      *Context.expression_unsupported_flag = true;
+   }
+
+   if (Context.document) {
+      if (!Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
+      std::string message("Unsupported XPath function: ");
+      message.append(Name);
+      Context.document->ErrorMsg.append(message);
+   }
+
+   return XPathValue();
 }
 
 void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func) {

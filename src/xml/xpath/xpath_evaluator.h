@@ -73,7 +73,10 @@ class XPathEvaluator {
    std::string build_ast_signature(const XPathNode *Node) const;
 
    public:
-   explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) { context.document = XML; }
+   explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) {
+      context.document = XML;
+      context.expression_unsupported_flag = &expression_unsupported;
+   }
 
    // Phase 2+ methods (AST-based)
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
