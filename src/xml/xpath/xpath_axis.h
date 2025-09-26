@@ -19,19 +19,19 @@
 // XPath Axis Types
 
 enum class AxisType {
-   Child,
-   Descendant,
-   Parent,
-   Ancestor,
-   FollowingSibling,
-   PrecedingSibling,
-   Following,
-   Preceding,
-   Attribute,
-   Namespace,
-   Self,
-   DescendantOrSelf,
-   AncestorOrSelf
+   CHILD,
+   DESCENDANT,
+   PARENT,
+   ANCESTOR,
+   FOLLOWING_SIBLING,
+   PRECEDING_SIBLING,
+   FOLLOWING,
+   PRECEDING,
+   ATTRIBUTE,
+   NAMESPACE,
+   SELF,
+   DESCENDANT_OR_SELF,
+   ANCESTOR_OR_SELF
 };
 
 //********************************************************************************************************************

@@ -188,9 +188,9 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
 
          // Track bracket/paren depth for context
          if (token.type IS XPathTokenType::LBRACKET) bracket_depth++;
-         else if (token.type IS XPathTokenType::RBRACKET && bracket_depth > 0) bracket_depth--;
+         else if (token.type IS XPathTokenType::RBRACKET and bracket_depth > 0) bracket_depth--;
          else if (token.type IS XPathTokenType::LPAREN) paren_depth++;
-         else if (token.type IS XPathTokenType::RPAREN && paren_depth > 0) paren_depth--;
+         else if (token.type IS XPathTokenType::RPAREN and paren_depth > 0) paren_depth--;
 
          tokens.push_back(std::move(token));
       }
@@ -383,18 +383,18 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
 
    if (has_errors() or (!expression)) return nullptr;
 
-   if (expression->type IS XPathNodeType::LocationPath) {
+   if (expression->type IS XPathNodeType::LOCATION_PATH) {
       return expression;
    }
 
-   if (expression->type IS XPathNodeType::Path) {
+   if (expression->type IS XPathNodeType::PATH) {
       if (expression->child_count() IS 1) {
          auto child = std::move(expression->children[0]);
-         if (child and (child->type IS XPathNodeType::LocationPath)) return child;
+         if (child and (child->type IS XPathNodeType::LOCATION_PATH)) return child;
       }
    }
 
-   auto root = std::make_unique<XPathNode>(XPathNodeType::Expression);
+   auto root = std::make_unique<XPathNode>(XPathNodeType::EXPRESSION);
    root->add_child(std::move(expression));
    return root;
 }
@@ -464,14 +464,14 @@ std::vector<std::string> XPathParser::get_errors() const
 
 std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right) 
 {
-   auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, std::string(Op.value));
+   auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, std::string(Op.value));
    binary_op->add_child(std::move(Left));
    binary_op->add_child(std::move(Right));
    return binary_op;
 }
 
 std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand) {
-   auto unary_op = std::make_unique<XPathNode>(XPathNodeType::UnaryOp, std::string(Op.value));
+   auto unary_op = std::make_unique<XPathNode>(XPathNodeType::UNARY_OP, std::string(Op.value));
    unary_op->add_child(std::move(Operand));
    return unary_op;
 }
@@ -480,16 +480,16 @@ std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, st
 // Grammar implementation
 
 std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
-   auto path = std::make_unique<XPathNode>(XPathNodeType::LocationPath);
+   auto path = std::make_unique<XPathNode>(XPathNodeType::LOCATION_PATH);
 
    bool is_absolute = false;
    if (match(XPathTokenType::SLASH)) {
       is_absolute = true;
-      path->add_child(std::make_unique<XPathNode>(XPathNodeType::Root, "/"));
+      path->add_child(std::make_unique<XPathNode>(XPathNodeType::ROOT, "/"));
    }
    else if (match(XPathTokenType::DOUBLE_SLASH)) {
       is_absolute = true;
-      path->add_child(std::make_unique<XPathNode>(XPathNodeType::Root, "//"));
+      path->add_child(std::make_unique<XPathNode>(XPathNodeType::ROOT, "//"));
    }
 
    // Parse steps
@@ -510,9 +510,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
       if (match(XPathTokenType::SLASH)) continue;
 
       if (match(XPathTokenType::DOUBLE_SLASH)) {
-         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
+         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
          path->add_child(std::move(descendant_step));
          continue;
       }
@@ -526,20 +526,20 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
 //********************************************************************************************************************
 
 std::unique_ptr<XPathNode> XPathParser::parse_step() {
-   auto step = std::make_unique<XPathNode>(XPathNodeType::Step);
+   auto step = std::make_unique<XPathNode>(XPathNodeType::STEP);
 
    // Handle abbreviated steps
    if (check(XPathTokenType::DOT)) {
       advance();
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "self"));
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+      step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "self"));
+      step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
       return step;
    }
 
    if (check(XPathTokenType::DOUBLE_DOT)) {
       advance();
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "parent"));
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+      step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "parent"));
+      step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
       return step;
    }
 
@@ -550,12 +550,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
          std::string axis_name(peek().value);
          advance(); // consume axis name
          advance(); // consume "::"
-         auto axis = std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, axis_name);
+         auto axis = std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, axis_name);
          step->add_child(std::move(axis));
       }
    }
    else if (match(XPathTokenType::AT)) { // Handle attribute axis (@)
-      auto axis = std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "attribute");
+      auto axis = std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "attribute");
       step->add_child(std::move(axis));
    }
 
@@ -581,7 +581,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
 std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
    if (check(XPathTokenType::WILDCARD)) {
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::Wildcard, "*");
+      return std::make_unique<XPathNode>(XPathNodeType::WILDCARD, "*");
    }
    else if (check(XPathTokenType::IDENTIFIER)) {
       std::string name(peek().value);
@@ -616,14 +616,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
                report_error("Expected ')' after processing-instruction() test");
             }
 
-            return std::make_unique<XPathNode>(XPathNodeType::ProcessingInstructionTest, target);
+            return std::make_unique<XPathNode>(XPathNodeType::PROCESSING_INSTRUCTION_TEST, target);
          }
 
          if (!match(XPathTokenType::RPAREN)) {
             report_error("Expected ')' after node type test");
          }
 
-         return std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, name);
+         return std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, name);
       }
 
       advance();
@@ -637,7 +637,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
          }
       }
 
-      return std::make_unique<XPathNode>(XPathNodeType::NameTest, name);
+      return std::make_unique<XPathNode>(XPathNodeType::NAME_TEST, name);
    }
 
    return nullptr;
@@ -648,13 +648,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
 std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
    if (!match(XPathTokenType::LBRACKET)) return nullptr;
 
-   auto predicate = std::make_unique<XPathNode>(XPathNodeType::Predicate);
+   auto predicate = std::make_unique<XPathNode>(XPathNodeType::PREDICATE);
 
    if (check(XPathTokenType::NUMBER)) {
       // Index predicate [1], [2], etc.
       std::string index(peek().value);
       advance();
-      predicate->add_child(std::make_unique<XPathNode>(XPathNodeType::Number, index));
+      predicate->add_child(std::make_unique<XPathNode>(XPathNodeType::NUMBER, index));
    }
    else if (check(XPathTokenType::EQUALS)) {
       // Content predicate [=value]
@@ -662,7 +662,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
       auto content_value = parse_predicate_value();
 
       if (content_value) {
-         auto content_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "content-equals");
+         auto content_test = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, "content-equals");
          content_test->add_child(std::move(content_value));
          predicate->add_child(std::move(content_test));
       }
@@ -694,16 +694,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
                auto attr_value = parse_predicate_value();
 
                if (attr_value) {
-                  auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-equals");
-                  attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
+                  auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, "attribute-equals");
+                  attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::LITERAL, attr_name));
                   attr_test->add_child(std::move(attr_value));
                   attribute_expression = std::move(attr_test);
                }
                else report_error("Expected literal after '=' in attribute predicate");
             }
             else {
-               auto attr_exists = std::make_unique<XPathNode>(XPathNodeType::BinaryOp, "attribute-exists");
-               attr_exists->add_child(std::make_unique<XPathNode>(XPathNodeType::Literal, attr_name));
+               auto attr_exists = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, "attribute-exists");
+               attr_exists->add_child(std::make_unique<XPathNode>(XPathNodeType::LITERAL, attr_name));
                attribute_expression = std::move(attr_exists);
             }
 
@@ -736,7 +736,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value() {
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
+      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
    }
 
    if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::NUMBER)) {
@@ -748,7 +748,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value() {
          advance();
       }
 
-      return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
+      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
    }
 
    if (check(XPathTokenType::DOLLAR)) {
@@ -874,7 +874,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
 
    if (!check(XPathTokenType::PIPE)) return left;
 
-   auto union_node = std::make_unique<XPathNode>(XPathNodeType::Union);
+   auto union_node = std::make_unique<XPathNode>(XPathNodeType::UNION);
    union_node->add_child(std::move(left));
 
    while (match(XPathTokenType::PIPE)) {
@@ -907,7 +907,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr() {
       auto location = parse_location_path();
       if (!location) return nullptr;
 
-      auto path_node = std::make_unique<XPathNode>(XPathNodeType::Path);
+      auto path_node = std::make_unique<XPathNode>(XPathNodeType::PATH);
       path_node->add_child(std::move(location));
       return path_node;
    }
@@ -927,7 +927,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
       if (!predicate) return nullptr;
 
       if (!has_predicate) {
-         auto filter = std::make_unique<XPathNode>(XPathNodeType::Filter);
+         auto filter = std::make_unique<XPathNode>(XPathNodeType::FILTER);
          filter->add_child(std::move(current));
          current = std::move(filter);
          has_predicate = true;
@@ -947,18 +947,18 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
       auto relative = parse_location_path();
       if (!relative) return nullptr;
 
-      auto path_node = std::make_unique<XPathNode>(XPathNodeType::Path);
+      auto path_node = std::make_unique<XPathNode>(XPathNodeType::PATH);
       path_node->add_child(std::move(current));
 
       if (slash_type IS XPathTokenType::DOUBLE_SLASH) {
-         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
+         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
          path_node->add_child(std::move(descendant_step));
       }
 
       for (auto &child : relative->children) {
-         if (child and (child->type IS XPathNodeType::Step)) {
+         if (child and (child->type IS XPathNodeType::STEP)) {
             path_node->add_child(std::move(child));
          }
       }
@@ -979,13 +979,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
+      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
    }
 
    if (check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::Number, value);
+      return std::make_unique<XPathNode>(XPathNodeType::NUMBER, value);
    }
 
    if (check(XPathTokenType::DOLLAR)) {
@@ -999,7 +999,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
 
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::Literal, value);
+      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
    }
 
    return nullptr;
@@ -1013,7 +1013,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call() {
 
    if (!match(XPathTokenType::LPAREN)) return nullptr;
 
-   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FunctionCall, function_name);
+   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, function_name);
 
    while (!check(XPathTokenType::RPAREN) and !is_at_end()) {
       auto arg = parse_expr();
@@ -1052,7 +1052,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_number()
    if (check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::Number, value);
+      return std::make_unique<XPathNode>(XPathNodeType::NUMBER, value);
    }
    return nullptr;
 }
@@ -1062,7 +1062,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_literal()
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::String, value);
+      return std::make_unique<XPathNode>(XPathNodeType::STRING, value);
    }
    return nullptr;
 }
@@ -1074,7 +1074,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
       if (check(XPathTokenType::IDENTIFIER)) {
          std::string name(peek().value);
          advance();
-         return std::make_unique<XPathNode>(XPathNodeType::VariableReference, name);
+         return std::make_unique<XPathNode>(XPathNodeType::VARIABLE_REFERENCE, name);
       }
    }
    return nullptr;

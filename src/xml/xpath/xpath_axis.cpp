@@ -36,26 +36,26 @@ struct AxisNameMapping {
 };
 
 constexpr std::array axis_mappings{
-   AxisNameMapping{ AxisType::Child, "child" },
-   AxisNameMapping{ AxisType::Descendant, "descendant" },
-   AxisNameMapping{ AxisType::DescendantOrSelf, "descendant-or-self" },
-   AxisNameMapping{ AxisType::Following, "following" },
-   AxisNameMapping{ AxisType::FollowingSibling, "following-sibling" },
-   AxisNameMapping{ AxisType::Parent, "parent" },
-   AxisNameMapping{ AxisType::Ancestor, "ancestor" },
-   AxisNameMapping{ AxisType::AncestorOrSelf, "ancestor-or-self" },
-   AxisNameMapping{ AxisType::Preceding, "preceding" },
-   AxisNameMapping{ AxisType::PrecedingSibling, "preceding-sibling" },
-   AxisNameMapping{ AxisType::Self, "self" },
-   AxisNameMapping{ AxisType::Attribute, "attribute" },
-   AxisNameMapping{ AxisType::Namespace, "namespace" }
+   AxisNameMapping{ AxisType::CHILD, "child" },
+   AxisNameMapping{ AxisType::DESCENDANT, "descendant" },
+   AxisNameMapping{ AxisType::DESCENDANT_OR_SELF, "descendant-or-self" },
+   AxisNameMapping{ AxisType::FOLLOWING, "following" },
+   AxisNameMapping{ AxisType::FOLLOWING_SIBLING, "following-sibling" },
+   AxisNameMapping{ AxisType::PARENT, "parent" },
+   AxisNameMapping{ AxisType::ANCESTOR, "ancestor" },
+   AxisNameMapping{ AxisType::ANCESTOR_OR_SELF, "ancestor-or-self" },
+   AxisNameMapping{ AxisType::PRECEDING, "preceding" },
+   AxisNameMapping{ AxisType::PRECEDING_SIBLING, "preceding-sibling" },
+   AxisNameMapping{ AxisType::SELF, "self" },
+   AxisNameMapping{ AxisType::ATTRIBUTE, "attribute" },
+   AxisNameMapping{ AxisType::NAMESPACE, "namespace" }
 };
 
 constexpr std::array reverse_axes{
-   AxisType::Ancestor,
-   AxisType::AncestorOrSelf,
-   AxisType::Preceding,
-   AxisType::PrecedingSibling
+   AxisType::ANCESTOR,
+   AxisType::ANCESTOR_OR_SELF,
+   AxisType::PRECEDING,
+   AxisType::PRECEDING_SIBLING
 };
 
 }
@@ -68,43 +68,43 @@ void AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *ContextNode, std::vecto
    Output.clear();
 
    switch (Axis) {
-      case AxisType::Child:
+      case AxisType::CHILD:
          if (ContextNode) evaluate_child_axis(ContextNode, Output);
          break;
-      case AxisType::Descendant:
+      case AxisType::DESCENDANT:
          if (ContextNode) evaluate_descendant_axis(ContextNode, Output);
          break;
-      case AxisType::Parent:
+      case AxisType::PARENT:
          if (ContextNode) evaluate_parent_axis(ContextNode, Output);
          break;
-      case AxisType::Ancestor:
+      case AxisType::ANCESTOR:
          if (ContextNode) evaluate_ancestor_axis(ContextNode, Output);
          break;
-      case AxisType::FollowingSibling:
+      case AxisType::FOLLOWING_SIBLING:
          if (ContextNode) evaluate_following_sibling_axis(ContextNode, Output);
          break;
-      case AxisType::PrecedingSibling:
+      case AxisType::PRECEDING_SIBLING:
          if (ContextNode) evaluate_preceding_sibling_axis(ContextNode, Output);
          break;
-      case AxisType::Following:
+      case AxisType::FOLLOWING:
          if (ContextNode) evaluate_following_axis(ContextNode, Output);
          break;
-      case AxisType::Preceding:
+      case AxisType::PRECEDING:
          if (ContextNode) evaluate_preceding_axis(ContextNode, Output);
          break;
-      case AxisType::Attribute:
+      case AxisType::ATTRIBUTE:
          if (ContextNode) evaluate_attribute_axis(ContextNode, Output);
          break;
-      case AxisType::Namespace:
+      case AxisType::NAMESPACE:
          if (ContextNode) evaluate_namespace_axis(ContextNode, Output);
          break;
-      case AxisType::Self:
+      case AxisType::SELF:
          if (ContextNode) evaluate_self_axis(ContextNode, Output);
          break;
-      case AxisType::DescendantOrSelf:
+      case AxisType::DESCENDANT_OR_SELF:
          if (ContextNode) evaluate_descendant_or_self_axis(ContextNode, Output);
          break;
-      case AxisType::AncestorOrSelf:
+      case AxisType::ANCESTOR_OR_SELF:
          if (ContextNode) evaluate_ancestor_or_self_axis(ContextNode, Output);
          break;
       default:
@@ -123,7 +123,7 @@ AxisType AxisEvaluator::parse_axis_name(std::string_view AxisName) {
    });
 
    if (match != axis_mappings.end()) return match->Type;
-   return AxisType::Child;
+   return AxisType::CHILD;
 }
 
 std::string_view AxisEvaluator::axis_name_to_string(AxisType Axis) {
@@ -200,38 +200,38 @@ size_t AxisEvaluator::estimate_result_size(AxisType Axis, XMLTag *ContextNode) {
    if (!ContextNode) return 0;
 
    switch (Axis) {
-      case AxisType::Child:
+      case AxisType::CHILD:
          return ContextNode->Children.size();
 
-      case AxisType::Descendant:
-      case AxisType::DescendantOrSelf:
+      case AxisType::DESCENDANT:
+      case AxisType::DESCENDANT_OR_SELF:
          // Conservative estimate: depth * average children per node
          return ContextNode->Children.size() * 4;
 
-      case AxisType::Parent:
-      case AxisType::Self:
+      case AxisType::PARENT:
+      case AxisType::SELF:
          return 1;
 
-      case AxisType::Ancestor:
-      case AxisType::AncestorOrSelf:
+      case AxisType::ANCESTOR:
+      case AxisType::ANCESTOR_OR_SELF:
          // Typical XML depth estimate
          return 10;
 
-      case AxisType::FollowingSibling:
-      case AxisType::PrecedingSibling: {
+      case AxisType::FOLLOWING_SIBLING:
+      case AxisType::PRECEDING_SIBLING: {
          XMLTag *parent = find_tag_by_id(ContextNode->ParentID);
          return parent ? parent->Children.size() : 0;
       }
 
-      case AxisType::Following:
-      case AxisType::Preceding:
+      case AxisType::FOLLOWING:
+      case AxisType::PRECEDING:
          // Conservative estimate for document-order traversal
          return 20;
 
-      case AxisType::Attribute:
+      case AxisType::ATTRIBUTE:
          return ContextNode->Attribs.size();
 
-      case AxisType::Namespace:
+      case AxisType::NAMESPACE:
          // Typical namespace count estimate
          return 5;
 

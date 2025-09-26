@@ -91,37 +91,37 @@ struct XPathToken {
 
 enum class XPathNodeType {
    // Location path components
-   LocationPath,
-   Step,
-   NodeTest,
-   Predicate,
-   Root,
+   LOCATION_PATH,
+   STEP,
+   NODE_TEST,
+   PREDICATE,
+   ROOT,
 
    // Expressions
-   Expression,
-   Filter,
-   BinaryOp,
-   UnaryOp,
-   FunctionCall,
-   Literal,
-   VariableReference,
+   EXPRESSION,
+   FILTER,
+   BINARY_OP,
+   UNARY_OP,
+   FUNCTION_CALL,
+   LITERAL,
+   VARIABLE_REFERENCE,
 
    // Node tests
-   NameTest,
-   NodeTypeTest,
-   ProcessingInstructionTest,
-   Wildcard,
+   NAME_TEST,
+   NODE_TYPE_TEST,
+   PROCESSING_INSTRUCTION_TEST,
+   WILDCARD,
 
    // Axes
-   AxisSpecifier,
+   AXIS_SPECIFIER,
 
    // Union
-   Union,
+   UNION,
 
    // Primary expressions
-   Number,
-   String,
-   Path
+   NUMBER,
+   STRING,
+   PATH
 };
 
 struct XPathNode {

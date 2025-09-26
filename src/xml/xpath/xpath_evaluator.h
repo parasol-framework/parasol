@@ -1,7 +1,7 @@
 //********************************************************************************************************************
 // XPath Evaluator - Main Evaluation Engine
 //
-// This file contains the final AST-only SimpleXPathEvaluator implementation and
+// This file contains the final AST-only XPathEvaluator implementation and
 // integrates XPath traversal, predicate, and function support.
 //********************************************************************************************************************
 
@@ -14,7 +14,7 @@
 
 struct XMLAttrib;
 
-class SimpleXPathEvaluator {
+class XPathEvaluator {
    public:
    enum class PredicateResult {
       Match,
@@ -73,7 +73,7 @@ class SimpleXPathEvaluator {
    std::string build_ast_signature(const XPathNode *Node) const;
 
    public:
-   explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) { context.document = XML; }
+   explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) { context.document = XML; }
 
    // Phase 2+ methods (AST-based)
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);

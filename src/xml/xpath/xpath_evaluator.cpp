@@ -52,7 +52,7 @@ std::string_view trim_view(std::string_view Value)
 // Context Management
 
 // Preserve the current evaluation context and establish a new one for nested expressions.
-void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
+void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
    auto document = context.document ? context.document : xml;
    context_stack.push_back(context);
@@ -64,7 +64,7 @@ void SimpleXPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Si
 }
 
 // Restore the previous context when unwinding recursive evaluation.
-void SimpleXPathEvaluator::pop_context()
+void XPathEvaluator::pop_context()
 {
    if (context_stack.empty()) {
       context.context_node = nullptr;
@@ -80,7 +80,7 @@ void SimpleXPathEvaluator::pop_context()
 }
 
 // Snapshot cursor state so legacy cursor-based APIs can be restored after XPath evaluation.
-void SimpleXPathEvaluator::push_cursor_state()
+void XPathEvaluator::push_cursor_state()
 {
    CursorState state{};
    state.tags = xml->CursorTags;
@@ -94,7 +94,7 @@ void SimpleXPathEvaluator::push_cursor_state()
 }
 
 // Reinstate any saved cursor state.
-void SimpleXPathEvaluator::pop_cursor_state()
+void XPathEvaluator::pop_cursor_state()
 {
    if (cursor_stack.empty()) return;
 
@@ -113,7 +113,7 @@ void SimpleXPathEvaluator::pop_cursor_state()
 }
 
 // Convert an axis selection into a list of node or attribute matches relative to the active context.
-std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis,
+std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Axis,
    XMLTag *ContextNode, const XMLAttrib *ContextAttribute)
 {
    std::vector<AxisMatch> matches;
@@ -133,7 +133,7 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
    bool attribute_context = ContextAttribute != nullptr;
 
    switch (Axis) {
-      case AxisType::Child: {
+      case AxisType::CHILD: {
          if (attribute_context) break;
 
          if (!ContextNode) {
@@ -144,13 +144,13 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
          }
          else {
             auto &child_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Child, ContextNode, child_buffer);
+            axis_evaluator.evaluate_axis(AxisType::CHILD, ContextNode, child_buffer);
             append_nodes(child_buffer);
          }
          break;
       }
 
-      case AxisType::Descendant: {
+      case AxisType::DESCENDANT: {
          if (attribute_context) break;
 
          if (!ContextNode) {
@@ -158,19 +158,19 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
                if (!tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
                auto &desc_buffer = arena.acquire_node_vector();
-               axis_evaluator.evaluate_axis(AxisType::Descendant, &tag, desc_buffer);
+               axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
                append_nodes(desc_buffer);
             }
          }
          else {
             auto &desc_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode, desc_buffer);
+            axis_evaluator.evaluate_axis(AxisType::DESCENDANT, ContextNode, desc_buffer);
             append_nodes(desc_buffer);
          }
          break;
       }
 
-      case AxisType::DescendantOrSelf: {
+      case AxisType::DESCENDANT_OR_SELF: {
          if (attribute_context) {
             matches.push_back({ ContextNode, ContextAttribute });
             break;
@@ -182,20 +182,20 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
                if (!tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
                auto &desc_buffer = arena.acquire_node_vector();
-               axis_evaluator.evaluate_axis(AxisType::Descendant, &tag, desc_buffer);
+               axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
                append_nodes(desc_buffer);
             }
          }
          else {
             matches.push_back({ ContextNode, nullptr });
             auto &desc_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode, desc_buffer);
+            axis_evaluator.evaluate_axis(AxisType::DESCENDANT, ContextNode, desc_buffer);
             append_nodes(desc_buffer);
          }
          break;
       }
 
-      case AxisType::Self: {
+      case AxisType::SELF: {
          if (attribute_context) {
             matches.push_back({ ContextNode, ContextAttribute });
          }
@@ -203,96 +203,96 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
          break;
       }
 
-      case AxisType::Parent: {
+      case AxisType::PARENT: {
          if (attribute_context) {
             if (ContextNode) matches.push_back({ ContextNode, nullptr });
          }
          else if (ContextNode) {
             auto &parent_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Parent, ContextNode, parent_buffer);
+            axis_evaluator.evaluate_axis(AxisType::PARENT, ContextNode, parent_buffer);
             append_nodes(parent_buffer);
          }
          break;
       }
 
-      case AxisType::Ancestor: {
+      case AxisType::ANCESTOR: {
          if (attribute_context) {
             if (ContextNode) {
                matches.push_back({ ContextNode, nullptr });
                auto &ancestor_buffer = arena.acquire_node_vector();
-               axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+               axis_evaluator.evaluate_axis(AxisType::ANCESTOR, ContextNode, ancestor_buffer);
                append_nodes(ancestor_buffer);
             }
          }
          else if (ContextNode) {
             auto &ancestor_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+            axis_evaluator.evaluate_axis(AxisType::ANCESTOR, ContextNode, ancestor_buffer);
             append_nodes(ancestor_buffer);
          }
         break;
      }
 
-      case AxisType::AncestorOrSelf: {
+      case AxisType::ANCESTOR_OR_SELF: {
          if (attribute_context) {
             matches.push_back({ ContextNode, ContextAttribute });
             if (ContextNode) {
                matches.push_back({ ContextNode, nullptr });
                auto &ancestor_buffer = arena.acquire_node_vector();
-               axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+               axis_evaluator.evaluate_axis(AxisType::ANCESTOR, ContextNode, ancestor_buffer);
                append_nodes(ancestor_buffer);
             }
          }
          else if (ContextNode) {
             matches.push_back({ ContextNode, nullptr });
             auto &ancestor_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+            axis_evaluator.evaluate_axis(AxisType::ANCESTOR, ContextNode, ancestor_buffer);
             append_nodes(ancestor_buffer);
          }
          else matches.push_back({ nullptr, nullptr });
          break;
       }
 
-      case AxisType::FollowingSibling: {
+      case AxisType::FOLLOWING_SIBLING: {
          if (attribute_context) break;
          if (ContextNode) {
             auto &sibling_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::FollowingSibling, ContextNode, sibling_buffer);
+            axis_evaluator.evaluate_axis(AxisType::FOLLOWING_SIBLING, ContextNode, sibling_buffer);
             append_nodes(sibling_buffer);
          }
         break;
      }
 
-      case AxisType::PrecedingSibling: {
+      case AxisType::PRECEDING_SIBLING: {
          if (attribute_context) break;
          if (ContextNode) {
             auto &sibling_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::PrecedingSibling, ContextNode, sibling_buffer);
+            axis_evaluator.evaluate_axis(AxisType::PRECEDING_SIBLING, ContextNode, sibling_buffer);
             append_nodes(sibling_buffer);
          }
         break;
      }
 
-      case AxisType::Following: {
+      case AxisType::FOLLOWING: {
          if (attribute_context) break;
          if (ContextNode) {
             auto &following_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Following, ContextNode, following_buffer);
+            axis_evaluator.evaluate_axis(AxisType::FOLLOWING, ContextNode, following_buffer);
             append_nodes(following_buffer);
          }
         break;
      }
 
-      case AxisType::Preceding: {
+      case AxisType::PRECEDING: {
          if (attribute_context) break;
          if (ContextNode) {
             auto &preceding_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Preceding, ContextNode, preceding_buffer);
+            axis_evaluator.evaluate_axis(AxisType::PRECEDING, ContextNode, preceding_buffer);
             append_nodes(preceding_buffer);
          }
         break;
      }
 
-      case AxisType::Attribute: {
+      case AxisType::ATTRIBUTE: {
          if (attribute_context) break;
          if (ContextNode and ContextNode->isTag()) {
             for (size_t index = 1; index < ContextNode->Attribs.size(); ++index) {
@@ -302,11 +302,11 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
          break;
       }
 
-      case AxisType::Namespace: {
+      case AxisType::NAMESPACE: {
          if (attribute_context) break;
          if (ContextNode) {
             auto &namespace_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::Namespace, ContextNode, namespace_buffer);
+            axis_evaluator.evaluate_axis(AxisType::NAMESPACE, ContextNode, namespace_buffer);
             append_nodes(namespace_buffer);
          }
          break;
@@ -320,11 +320,11 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
 // Enhanced Entry Point (AST Evaluation)
 
 // Public entry point that evaluates an XPath expression and moves the XML cursor accordingly.
-ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix) {
+ERR XPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix) {
    return find_tag_enhanced_internal(XPath, CurrentPrefix, true);
 }
 
-ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
+ERR XPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
    // Namespace axis evaluation can allocate transient nodes; ensure we start from a clean slate.
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
@@ -381,35 +381,35 @@ ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uin
 // AST Evaluation Methods
 
 // Dispatch AST nodes to the appropriate evaluation routine.
-ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) {
+ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) {
    if (!Node) return ERR::Failed;
 
    switch (Node->type) {
-      case XPathNodeType::LocationPath:
+      case XPathNodeType::LOCATION_PATH:
          return evaluate_location_path(Node, CurrentPrefix);
 
-      case XPathNodeType::Step:
+      case XPathNodeType::STEP:
          return evaluate_step_ast(Node, CurrentPrefix);
 
-      case XPathNodeType::Union:
+      case XPathNodeType::UNION:
          return evaluate_union(Node, CurrentPrefix);
 
-      case XPathNodeType::Path:
+      case XPathNodeType::PATH:
          if ((Node->child_count() > 0) and Node->get_child(0) and
-             (Node->get_child(0)->type IS XPathNodeType::LocationPath)) {
+             (Node->get_child(0)->type IS XPathNodeType::LOCATION_PATH)) {
             return evaluate_location_path(Node->get_child(0), CurrentPrefix);
          }
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
-      case XPathNodeType::Expression:
-      case XPathNodeType::Filter:
-      case XPathNodeType::BinaryOp:
-      case XPathNodeType::UnaryOp:
-      case XPathNodeType::FunctionCall:
-      case XPathNodeType::Literal:
-      case XPathNodeType::VariableReference:
-      case XPathNodeType::Number:
-      case XPathNodeType::String:
+      case XPathNodeType::EXPRESSION:
+      case XPathNodeType::FILTER:
+      case XPathNodeType::BINARY_OP:
+      case XPathNodeType::UNARY_OP:
+      case XPathNodeType::FUNCTION_CALL:
+      case XPathNodeType::LITERAL:
+      case XPathNodeType::VARIABLE_REFERENCE:
+      case XPathNodeType::NUMBER:
+      case XPathNodeType::STRING:
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
       default:
@@ -418,8 +418,8 @@ ERR SimpleXPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPr
 }
 
 // Execute a full location path expression, managing implicit root handling and cursor updates.
-ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) {
-   if ((!PathNode) or (PathNode->type != XPathNodeType::LocationPath)) return ERR::Failed;
+ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) {
+   if ((!PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return ERR::Failed;
 
    pf::Log log(__FUNCTION__);
 
@@ -433,19 +433,19 @@ ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint
       auto child = PathNode->get_child(i);
       if (!child) continue;
 
-      if ((i IS 0) and (child->type IS XPathNodeType::Root)) {
+      if ((i IS 0) and (child->type IS XPathNodeType::ROOT)) {
          has_root = true;
          root_descendant = child->value IS "//";
          continue;
       }
 
-      if (child->type IS XPathNodeType::Step) steps.push_back(child);
+      if (child->type IS XPathNodeType::STEP) steps.push_back(child);
    }
 
    if (root_descendant) {
-      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
       steps.insert(steps.begin(), descendant_step.get());
       synthetic_steps.push_back(std::move(descendant_step));
    }
@@ -473,9 +473,9 @@ ERR SimpleXPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint
    return ERR::Search;
 }
 
-ERR SimpleXPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
+ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::Union)) return ERR::Failed;
+   if ((!Node) or (Node->type != XPathNodeType::UNION)) return ERR::Failed;
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
@@ -529,7 +529,7 @@ ERR SimpleXPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t Current
 }
 
 // Evaluate a single step expression against the current context.
-ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix) {
+ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix) {
    if (!StepNode) return ERR::Failed;
 
    std::vector<const XPathNode *> steps;
@@ -551,7 +551,7 @@ ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t 
 }
 
 // Recursive driver that iterates through each step in a location path.
-ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
+ERR XPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
    std::vector<AxisMatch> current_context;
@@ -575,7 +575,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
       if (current_context.empty()) break;
 
       auto step_node = Steps[step_index];
-      if ((!step_node) or (step_node->type != XPathNodeType::Step)) return ERR::Failed;
+      if ((!step_node) or (step_node->type != XPathNodeType::STEP)) return ERR::Failed;
 
       const XPathNode *axis_node = nullptr;
       const XPathNode *node_test = nullptr;
@@ -586,14 +586,14 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
          auto child = step_node->get_child(i);
          if (!child) continue;
 
-         if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
-         else if (child->type IS XPathNodeType::Predicate) predicate_nodes.push_back(child);
-         else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or (child->type IS XPathNodeType::Wildcard) or (child->type IS XPathNodeType::NodeTypeTest))) {
+         if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
+         else if (child->type IS XPathNodeType::PREDICATE) predicate_nodes.push_back(child);
+         else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or (child->type IS XPathNodeType::WILDCARD) or (child->type IS XPathNodeType::NODE_TYPE_TEST))) {
             node_test = child;
          }
       }
 
-      AxisType axis = AxisType::Child;
+      AxisType axis = AxisType::CHILD;
       if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
       bool is_last_step = (step_index + 1 >= Steps.size());
@@ -648,7 +648,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
             push_context(candidate, index + 1, filtered.size(), match.attribute);
 
-            if (axis IS AxisType::Attribute) {
+            if (axis IS AxisType::ATTRIBUTE) {
                AxisMatch next_match{};
                next_match.node = candidate;
                next_match.attribute = match.attribute;
@@ -770,8 +770,8 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
    return Matched ? ERR::Okay : ERR::Search;
 }
 
-bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix) {
-   bool attribute_axis = (Axis IS AxisType::Attribute) or ((Axis IS AxisType::Self) and (Attribute != nullptr));
+bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix) {
+   bool attribute_axis = (Axis IS AxisType::ATTRIBUTE) or ((Axis IS AxisType::SELF) and (Attribute != nullptr));
 
    auto resolve_namespace = [&](std::string_view Prefix, XMLTag *Scope) -> std::optional<uint32_t> {
       if (!xml) return std::nullopt;
@@ -807,13 +807,13 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
    if (attribute_axis) {
       if (!Attribute) return false;
 
-      if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
+      if (NodeTest->type IS XPathNodeType::NODE_TYPE_TEST) {
          return NodeTest->value IS "node";
       }
 
-      if (NodeTest->type IS XPathNodeType::Wildcard) return true;
+      if (NodeTest->type IS XPathNodeType::WILDCARD) return true;
 
-      if (NodeTest->type IS XPathNodeType::NameTest) {
+      if (NodeTest->type IS XPathNodeType::NAME_TEST) {
          std::string_view test_name = NodeTest->value;
          if (test_name.empty()) return false;
 
@@ -861,7 +861,7 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
       return false;
    }
 
-   if (NodeTest->type IS XPathNodeType::NodeTypeTest) {
+   if (NodeTest->type IS XPathNodeType::NODE_TYPE_TEST) {
       if (NodeTest->value IS "node") return true;
       if (!Candidate) return false;
 
@@ -878,7 +878,7 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
       return false;
    }
 
-   if (NodeTest->type IS XPathNodeType::ProcessingInstructionTest) {
+   if (NodeTest->type IS XPathNodeType::PROCESSING_INSTRUCTION_TEST) {
       if (!Candidate) return false;
       if ((Candidate->Flags & XTF::INSTRUCTION) IS XTF::NIL) return false;
 
@@ -896,9 +896,9 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
 
    if (!Candidate) return false;
 
-   if (NodeTest->type IS XPathNodeType::Wildcard) return Candidate->isTag();
+   if (NodeTest->type IS XPathNodeType::WILDCARD) return Candidate->isTag();
 
-   if (NodeTest->type IS XPathNodeType::NameTest) {
+   if (NodeTest->type IS XPathNodeType::NAME_TEST) {
       std::string_view test_name = NodeTest->value;
       if (test_name.empty()) return false;
 
@@ -947,8 +947,8 @@ bool SimpleXPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType A
    return false;
 }
 
-SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
-   if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::Predicate)) {
+XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
+   if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
       return PredicateResult::Unsupported;
    }
 
@@ -957,7 +957,7 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
    const XPathNode *expression = PredicateNode->get_child(0);
    if (!expression) return PredicateResult::Unsupported;
 
-   if (expression->type IS XPathNodeType::BinaryOp) {
+   if (expression->type IS XPathNodeType::BINARY_OP) {
       auto *candidate = context.context_node;
       if (!candidate) return PredicateResult::NoMatch;
 
@@ -995,7 +995,7 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          std::string attribute_value;
          bool wildcard_value = false;
 
-         if (value_node->type IS XPathNodeType::Literal) {
+         if (value_node->type IS XPathNodeType::LITERAL) {
             attribute_value = value_node->value;
             wildcard_value = attribute_value.find('*') != std::string::npos;
          }
@@ -1041,7 +1041,7 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          std::string expected;
          bool wildcard_value = false;
 
-         if (value_node->type IS XPathNodeType::Literal) {
+         if (value_node->type IS XPathNodeType::LITERAL) {
             expected = value_node->value;
             wildcard_value = expected.find('*') != std::string::npos;
          }
@@ -1274,7 +1274,7 @@ bool compare_xpath_relational(const XPathValue &left_value,
 
 } // namespace
 
-std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
+std::vector<XMLTag *> XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
                                                                  const std::vector<const XPathNode *> &Steps,
                                                                  size_t StepIndex,
                                                                  uint32_t CurrentPrefix,
@@ -1290,7 +1290,7 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
    }
 
    auto step_node = Steps[StepIndex];
-   if ((!step_node) or (step_node->type != XPathNodeType::Step)) {
+   if ((!step_node) or (step_node->type != XPathNodeType::STEP)) {
       Unsupported = true;
       return results;
    }
@@ -1303,14 +1303,14 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
       auto *child = step_node->get_child(index);
       if (!child) continue;
 
-      if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
-      else if (child->type IS XPathNodeType::Predicate) predicate_nodes.push_back(child);
-      else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
-                                 (child->type IS XPathNodeType::Wildcard) or
-                                 (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+      if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
+      else if (child->type IS XPathNodeType::PREDICATE) predicate_nodes.push_back(child);
+      else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+                                 (child->type IS XPathNodeType::WILDCARD) or
+                                 (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
    }
 
-   AxisType axis = AxisType::Child;
+   AxisType axis = AxisType::CHILD;
    if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
    bool is_last_step = (StepIndex + 1 >= Steps.size());
@@ -1370,19 +1370,19 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
    return results;
 }
 
-XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) {
+XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) {
    if (!PathNode) {
       expression_unsupported = true;
       return XPathValue();
    }
 
    const XPathNode *location = PathNode;
-   if (PathNode->type IS XPathNodeType::Path) {
+   if (PathNode->type IS XPathNodeType::PATH) {
       if (PathNode->child_count() IS 0) return XPathValue();
       location = PathNode->get_child(0);
    }
 
-   if ((!location) or (location->type != XPathNodeType::LocationPath)) {
+   if ((!location) or (location->type != XPathNodeType::LOCATION_PATH)) {
       expression_unsupported = true;
       return XPathValue();
    }
@@ -1397,19 +1397,19 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
       auto *child = location->get_child(index);
       if (!child) continue;
 
-      if ((index IS 0) and (child->type IS XPathNodeType::Root)) {
+      if ((index IS 0) and (child->type IS XPathNodeType::ROOT)) {
          has_root = true;
          root_descendant = child->value IS "//";
          continue;
       }
 
-      if (child->type IS XPathNodeType::Step) steps.push_back(child);
+      if (child->type IS XPathNodeType::STEP) steps.push_back(child);
    }
 
    if (root_descendant) {
-      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::Step);
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AxisSpecifier, "descendant-or-self"));
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NodeTypeTest, "node"));
+      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
       steps.insert(steps.begin(), descendant_step.get());
       synthetic_steps.push_back(std::move(descendant_step));
    }
@@ -1437,14 +1437,14 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
          auto *child = last_step->get_child(index);
          if (!child) continue;
 
-         if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
-         else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
-                                    (child->type IS XPathNodeType::Wildcard) or
-                                    (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+         if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
+         else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+                                    (child->type IS XPathNodeType::WILDCARD) or
+                                    (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
       }
 
-      AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::Child;
-      if (axis IS AxisType::Attribute) {
+      AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::CHILD;
+      if (axis IS AxisType::ATTRIBUTE) {
          attribute_step = last_step;
          attribute_test = node_test;
       }
@@ -1490,20 +1490,20 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
          auto *child = step->get_child(index);
          if (!child) continue;
 
-         if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
-         else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
-                                    (child->type IS XPathNodeType::Wildcard) or
-                                    (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+         if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
+         else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+                                    (child->type IS XPathNodeType::WILDCARD) or
+                                    (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
       }
 
-      AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::Child;
+      AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::CHILD;
 
-      if ((axis IS AxisType::Self) and !node_results.empty()) {
+      if ((axis IS AxisType::SELF) and !node_results.empty()) {
          bool accepts_attribute = false;
 
          if (!node_test) accepts_attribute = true;
-         else if (node_test->type IS XPathNodeType::Wildcard) accepts_attribute = true;
-         else if (node_test->type IS XPathNodeType::NodeTypeTest) accepts_attribute = node_test->value IS "node";
+         else if (node_test->type IS XPathNodeType::WILDCARD) accepts_attribute = true;
+         else if (node_test->type IS XPathNodeType::NODE_TYPE_TEST) accepts_attribute = node_test->value IS "node";
 
          if (accepts_attribute) {
             std::vector<const XMLAttrib *> attribute_refs(node_results.size(), context.attribute_node);
@@ -1520,10 +1520,10 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
 
-         auto matches = dispatch_axis(AxisType::Attribute, candidate);
+         auto matches = dispatch_axis(AxisType::ATTRIBUTE, candidate);
          for (auto &match : matches) {
             if (!match.attribute) continue;
-            if (!match_node_test(attribute_test, AxisType::Attribute, match.node, match.attribute, CurrentPrefix)) continue;
+            if (!match_node_test(attribute_test, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
             attribute_refs.push_back(match.attribute);
@@ -1540,7 +1540,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
    return XPathValue(node_results);
 }
 
-XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
+XPathValue XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
                                                           const std::vector<const XMLAttrib *> &InitialAttributes,
                                                           const std::vector<const XPathNode *> &Steps,
                                                           const XPathNode *AttributeStep,
@@ -1586,10 +1586,10 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
       for (auto *candidate : node_results) {
          if (!candidate) continue;
 
-         auto matches = dispatch_axis(AxisType::Attribute, candidate);
+         auto matches = dispatch_axis(AxisType::ATTRIBUTE, candidate);
          for (auto &match : matches) {
             if (!match.attribute) continue;
-            if (!match_node_test(AttributeTest, AxisType::Attribute, match.node, match.attribute, CurrentPrefix)) continue;
+            if (!match_node_test(AttributeTest, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
             attribute_refs.push_back(match.attribute);
@@ -1607,7 +1607,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
    return XPathValue(node_results);
 }
 
-XPathValue SimpleXPathEvaluator::evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix)
+XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
       XMLTag * node;
@@ -1741,28 +1741,28 @@ XPathValue SimpleXPathEvaluator::evaluate_union_value(const std::vector<const XP
    return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
 
-XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
+XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
       expression_unsupported = true;
       return XPathValue();
    }
 
-   if (ExprNode->type IS XPathNodeType::Number) {
+   if (ExprNode->type IS XPathNodeType::NUMBER) {
       char *end_ptr = nullptr;
       double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
       if ((end_ptr) and (*end_ptr IS '\0')) return XPathValue(value);
       return XPathValue(std::numeric_limits<double>::quiet_NaN());
    }
 
-   if ((ExprNode->type IS XPathNodeType::Literal) or (ExprNode->type IS XPathNodeType::String)) {
+   if ((ExprNode->type IS XPathNodeType::LITERAL) or (ExprNode->type IS XPathNodeType::STRING)) {
       return XPathValue(ExprNode->value);
    }
 
-   if (ExprNode->type IS XPathNodeType::LocationPath) {
+   if (ExprNode->type IS XPathNodeType::LOCATION_PATH) {
       return evaluate_path_expression_value(ExprNode, CurrentPrefix);
    }
 
-   if (ExprNode->type IS XPathNodeType::Union) {
+   if (ExprNode->type IS XPathNodeType::UNION) {
       std::vector<const XPathNode *> branches;
       branches.reserve(ExprNode->child_count());
 
@@ -1774,7 +1774,7 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       return evaluate_union_value(branches, CurrentPrefix);
    }
 
-   if (ExprNode->type IS XPathNodeType::Filter) {
+   if (ExprNode->type IS XPathNodeType::FILTER) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
          return XPathValue();
@@ -1859,14 +1859,14 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       return XPathValue(filtered_nodes, first_value, std::move(filtered_strings), std::move(filtered_attributes));
    }
 
-   if (ExprNode->type IS XPathNodeType::Path) {
+   if (ExprNode->type IS XPathNodeType::PATH) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
          return XPathValue();
       }
 
       auto *first_child = ExprNode->get_child(0);
-      if (first_child and (first_child->type IS XPathNodeType::LocationPath)) {
+      if (first_child and (first_child->type IS XPathNodeType::LOCATION_PATH)) {
          return evaluate_path_expression_value(ExprNode, CurrentPrefix);
       }
 
@@ -1880,7 +1880,7 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       std::vector<const XPathNode *> steps;
       for (size_t index = 1; index < ExprNode->child_count(); ++index) {
          auto *child = ExprNode->get_child(index);
-         if (child and (child->type IS XPathNodeType::Step)) steps.push_back(child);
+         if (child and (child->type IS XPathNodeType::STEP)) steps.push_back(child);
       }
 
       if (steps.empty()) return base_value;
@@ -1897,14 +1897,14 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
             auto *child = last_step->get_child(index);
             if (!child) continue;
 
-            if (child->type IS XPathNodeType::AxisSpecifier) axis_node = child;
-            else if ((!node_test) and ((child->type IS XPathNodeType::NameTest) or
-                                       (child->type IS XPathNodeType::Wildcard) or
-                                       (child->type IS XPathNodeType::NodeTypeTest))) node_test = child;
+            if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
+            else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+                                       (child->type IS XPathNodeType::WILDCARD) or
+                                       (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
          }
 
-         AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::Child;
-         if (axis IS AxisType::Attribute) {
+         AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::CHILD;
+         if (axis IS AxisType::ATTRIBUTE) {
             attribute_step = last_step;
             attribute_test = node_test;
          }
@@ -1918,13 +1918,13 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
                                       CurrentPrefix);
    }
 
-   if (ExprNode->type IS XPathNodeType::FunctionCall) {
+   if (ExprNode->type IS XPathNodeType::FUNCTION_CALL) {
       auto value = evaluate_function_call(ExprNode, CurrentPrefix);
       if (expression_unsupported) return XPathValue();
       return value;
    }
 
-   if (ExprNode->type IS XPathNodeType::UnaryOp) {
+   if (ExprNode->type IS XPathNodeType::UNARY_OP) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
          return XPathValue();
@@ -1945,7 +1945,7 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       return XPathValue();
    }
 
-   if (ExprNode->type IS XPathNodeType::BinaryOp) {
+   if (ExprNode->type IS XPathNodeType::BINARY_OP) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
          return XPathValue();
@@ -2058,7 +2058,7 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
       return XPathValue();
    }
 
-   if (ExprNode->type IS XPathNodeType::VariableReference) {
+   if (ExprNode->type IS XPathNodeType::VARIABLE_REFERENCE) {
       // Look up variable in the XML object's variable storage
       auto it = xml->Variables.find(ExprNode->value);
       if (it != xml->Variables.end()) {
@@ -2075,7 +2075,7 @@ XPathValue SimpleXPathEvaluator::evaluate_expression(const XPathNode *ExprNode, 
    return XPathValue();
 }
 
-ERR SimpleXPathEvaluator::process_expression_node_set(const XPathValue &Value)
+ERR XPathEvaluator::process_expression_node_set(const XPathValue &Value)
 {
    struct NodeEntry {
       XMLTag * node = nullptr;
@@ -2170,13 +2170,13 @@ ERR SimpleXPathEvaluator::process_expression_node_set(const XPathValue &Value)
    return ERR::Search;
 }
 
-ERR SimpleXPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix)
+ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (!Node) return ERR::Failed;
 
    const XPathNode *expression = Node;
 
-   if (Node->type IS XPathNodeType::Expression) {
+   if (Node->type IS XPathNodeType::EXPRESSION) {
       if (Node->child_count() IS 0) {
          xml->Attrib.clear();
          return ERR::Search;
@@ -2203,8 +2203,8 @@ ERR SimpleXPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, u
    return ERR::Failed;
 }
 
-XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
-   if (!FuncNode or FuncNode->type != XPathNodeType::FunctionCall) {
+XPathValue XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
+   if (!FuncNode or FuncNode->type != XPathNodeType::FUNCTION_CALL) {
       return XPathValue();
    }
 
@@ -2240,7 +2240,7 @@ XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNod
    return function_library.call_function(function_name, args, context);
 }
 
-std::shared_ptr<XPathNode> SimpleXPathEvaluator::get_cached_ast(const std::string &Key)
+std::shared_ptr<XPathNode> XPathEvaluator::get_cached_ast(const std::string &Key)
 {
    if (Key.empty()) return nullptr;
 
@@ -2259,7 +2259,7 @@ std::shared_ptr<XPathNode> SimpleXPathEvaluator::get_cached_ast(const std::strin
    return it->second.ast;
 }
 
-void SimpleXPathEvaluator::store_cached_ast(const std::string &Key, const std::shared_ptr<XPathNode> &Ast, const std::string &Signature)
+void XPathEvaluator::store_cached_ast(const std::string &Key, const std::shared_ptr<XPathNode> &Ast, const std::string &Signature)
 {
    if (Key.empty() or !Ast) return;
 
@@ -2277,7 +2277,7 @@ void SimpleXPathEvaluator::store_cached_ast(const std::string &Key, const std::s
    prune_ast_cache();
 }
 
-void SimpleXPathEvaluator::prune_ast_cache()
+void XPathEvaluator::prune_ast_cache()
 {
    while (ast_cache.size() > ast_cache_limit) {
       if (ast_cache_order.empty()) break;
@@ -2300,7 +2300,7 @@ void SimpleXPathEvaluator::prune_ast_cache()
    }
 }
 
-std::string SimpleXPathEvaluator::normalise_cache_key(std::string_view Expression) const
+std::string XPathEvaluator::normalise_cache_key(std::string_view Expression) const
 {
    auto trimmed = trim_view(Expression);
    if (trimmed.empty()) return std::string();
@@ -2315,7 +2315,7 @@ std::string SimpleXPathEvaluator::normalise_cache_key(std::string_view Expressio
    return key;
 }
 
-std::string SimpleXPathEvaluator::build_ast_signature(const XPathNode *Node) const
+std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
    if (!Node) return std::string("#");
 
