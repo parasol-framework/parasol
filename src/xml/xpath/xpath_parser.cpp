@@ -1171,9 +1171,9 @@ CompiledXPath CompiledXPath::compile(std::string_view XPath)
    auto parsed_ast = parser.parse(tokens);
 
    if (!parsed_ast) {
-      result.compilation_errors = parser.get_errors();
-      if (result.compilation_errors.empty()) {
-         result.compilation_errors.push_back("Failed to parse XPath expression");
+      result.errors = parser.get_errors();
+      if (result.errors.empty()) {
+         result.errors.push_back("Failed to parse XPath expression");
       }
       return result;
    }
