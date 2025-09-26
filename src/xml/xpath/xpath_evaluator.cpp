@@ -500,8 +500,16 @@ ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t 
 ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
-   std::vector<XMLTag *> current_context(ContextNodes.begin(), ContextNodes.end());
-   std::vector<XMLTag *> next_context;
+   std::vector<AxisMatch> current_context;
+   current_context.reserve(ContextNodes.size());
+
+   for (auto *candidate : ContextNodes) {
+      const XMLAttrib *attribute = nullptr;
+      if ((candidate) and context.attribute_node and (candidate IS context.context_node)) attribute = context.attribute_node;
+      current_context.push_back({ candidate, attribute });
+   }
+
+   std::vector<AxisMatch> next_context;
    next_context.reserve(current_context.size());
 
    std::vector<AxisMatch> filtered;
@@ -536,10 +544,11 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
       bool is_last_step = (step_index + 1 >= Steps.size());
 
-      for (auto *context_node : current_context) {
-         const XMLAttrib *context_attribute = nullptr;
+      for (auto &context_entry : current_context) {
+         auto *context_node = context_entry.node;
+         const XMLAttrib *context_attribute = context_entry.attribute;
 
-         if ((context_node) and context.attribute_node and (context_node IS context.context_node)) {
+         if ((!context_attribute) and context_node and context.attribute_node and (context_node IS context.context_node)) {
             context_attribute = context.attribute_node;
          }
 
@@ -634,6 +643,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                   continue;
                }
 
+               next_context.push_back({ candidate, match.attribute });
                pop_context();
                continue;
             }
@@ -690,7 +700,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
                continue;
             }
 
-            next_context.push_back(candidate);
+            next_context.push_back({ candidate, nullptr });
             pop_context();
          }
       }
