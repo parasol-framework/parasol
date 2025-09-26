@@ -1034,6 +1034,7 @@ XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> 
 
    pf::Regex compiled;
    if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
+      Context.expression_unsupported = true;
       return XPathValue(input);
    }
 
