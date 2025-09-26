@@ -24,10 +24,11 @@
 #include <cctype>
 #include <cstdlib>
 #include <limits>
-#include <regex>
 #include <sstream>
 #include <string_view>
 #include <unordered_set>
+
+#include "../../link/regex.h"
 
 //********************************************************************************************************************
 // XPathValue Implementation
@@ -48,7 +49,7 @@ std::string format_xpath_number(double Value)
 
    std::string result = stream.str();
 
-   if (!result.empty() and (result[0] IS '+')) result.erase(result.begin());
+   if (not result.empty() and (result[0] IS '+')) result.erase(result.begin());
 
    auto decimal = result.find('.');
    if (decimal != std::string::npos) {
@@ -136,20 +137,22 @@ std::string apply_string_case(const std::string &Value, bool Upper)
    return result;
 }
 
-std::regex_constants::syntax_option_type build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
+pf::SyntaxOptions build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 {
-   std::regex_constants::syntax_option_type options = std::regex_constants::ECMAScript;
+   pf::SyntaxOptions options = pf::SyntaxECMAScript;
 
    for (char flag : Flags) {
       unsigned char code = (unsigned char)flag;
       char normalised = (char)std::tolower(code);
 
-      if (normalised IS 'i') {
-         options = (std::regex_constants::syntax_option_type)(options | std::regex_constants::icase);
-      }
-      else {
-         if (UnsupportedFlag) *UnsupportedFlag = true;
-      }
+      if (normalised IS 'i') options |= pf::SyntaxIgnoreCase;
+      else if (normalised IS 'm') options |= pf::SyntaxMultiline;
+      else if (normalised IS 's') options |= pf::SyntaxDotAll;
+      else if (normalised IS 'u') options |= pf::SyntaxUnicodeSets;
+      else if (normalised IS 'y') options |= pf::SyntaxSticky;
+      else if (normalised IS 'q') options |= pf::SyntaxQuiet;
+      else if (normalised IS 'v') options |= pf::SyntaxVerboseMode;
+      else if (UnsupportedFlag) *UnsupportedFlag = true;
    }
 
    return options;
@@ -159,32 +162,32 @@ void append_numbers_from_nodeset(const XPathValue &Value, std::vector<double> &N
 {
    if (Value.node_set_string_override.has_value()) {
       double number = XPathValue::string_to_number(*Value.node_set_string_override);
-      if (!std::isnan(number)) Numbers.push_back(number);
+      if (not std::isnan(number)) Numbers.push_back(number);
       return;
    }
 
-   if (!Value.node_set_attributes.empty()) {
+   if (not Value.node_set_attributes.empty()) {
       for (const XMLAttrib *attribute : Value.node_set_attributes) {
-         if (!attribute) continue;
+         if (not attribute) continue;
          double number = XPathValue::string_to_number(attribute->Value);
-         if (!std::isnan(number)) Numbers.push_back(number);
+         if (not std::isnan(number)) Numbers.push_back(number);
       }
       return;
    }
 
-   if (!Value.node_set_string_values.empty()) {
+   if (not Value.node_set_string_values.empty()) {
       for (const std::string &entry : Value.node_set_string_values) {
          double number = XPathValue::string_to_number(entry);
-         if (!std::isnan(number)) Numbers.push_back(number);
+         if (not std::isnan(number)) Numbers.push_back(number);
       }
       return;
    }
 
    for (XMLTag *node : Value.node_set) {
-      if (!node) continue;
+      if (not node) continue;
       std::string content = XPathValue::node_string_value(node);
       double number = XPathValue::string_to_number(content);
-      if (!std::isnan(number)) Numbers.push_back(number);
+      if (not std::isnan(number)) Numbers.push_back(number);
    }
 }
 
@@ -192,11 +195,11 @@ void append_numbers_from_value(const XPathValue &Value, std::vector<double> &Num
 {
    switch (Value.type) {
       case XPathValueType::Number:
-         if (!std::isnan(Value.number_value)) Numbers.push_back(Value.number_value);
+         if (not std::isnan(Value.number_value)) Numbers.push_back(Value.number_value);
          break;
       case XPathValueType::String: {
          double number = XPathValue::string_to_number(Value.string_value);
-         if (!std::isnan(number)) Numbers.push_back(number);
+         if (not std::isnan(number)) Numbers.push_back(number);
          break;
       }
       case XPathValueType::Boolean:
@@ -237,11 +240,11 @@ double XPathValue::string_to_number(const std::string &Value)
 // Obtain the string-value of a node, following XPath's definition for text and element nodes.
 std::string XPathValue::node_string_value(XMLTag *Node)
 {
-   if (!Node) return std::string();
+   if (not Node) return std::string();
 
    if (Node->isContent()) {
-      if (!Node->Children.empty()) return Node->getContent();
-      if (!Node->Attribs.empty()) return Node->Attribs[0].Value;
+      if (not Node->Children.empty()) return Node->getContent();
+      if (not Node->Attribs.empty()) return Node->Attribs[0].Value;
       return std::string();
    }
 
@@ -258,7 +261,7 @@ double XPathValue::to_number() const {
       case XPathValueType::NodeSet: {
          if (node_set.empty()) return std::numeric_limits<double>::quiet_NaN();
          if (node_set_string_override.has_value()) return string_to_number(*node_set_string_override);
-         if (!node_set_string_values.empty()) return string_to_number(node_set_string_values[0]);
+         if (not node_set_string_values.empty()) return string_to_number(node_set_string_values[0]);
          return string_to_number(node_string_value(node_set[0]));
       }
    }
@@ -274,7 +277,7 @@ std::string XPathValue::to_string() const {
       case XPathValueType::String: return string_value;
       case XPathValueType::NodeSet: {
          if (node_set_string_override.has_value()) return *node_set_string_override;
-         if (!node_set_string_values.empty()) return node_set_string_values[0];
+         if (not node_set_string_values.empty()) return node_set_string_values[0];
          if (node_set.empty()) return "";
 
          return node_string_value(node_set[0]);
@@ -329,7 +332,7 @@ std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::string_
          }
       }
 
-      if (!Document) break;
+      if (not Document) break;
       if (current->ParentID IS 0) break;
       current = Document->getTag(current->ParentID);
    }
@@ -347,7 +350,7 @@ std::string find_language_for_node(XMLTag *Node, extXML *Document)
          if (pf::iequals(attrib.Name, "xml:lang")) return attrib.Value;
       }
 
-      if (!Document) break;
+      if (not Document) break;
       if (current->ParentID IS 0) break;
       current = Document->getTag(current->ParentID);
    }
@@ -444,12 +447,11 @@ XPathValue XPathFunctionLibrary::call_function(std::string_view Name, const std:
    if (const auto *function_ptr = find_function(Name)) {
       return (*function_ptr)(Args, Context);
    }
-   if (Context.expression_unsupported_flag) {
-      *Context.expression_unsupported_flag = true;
-   }
+
+   if (Context.expression_unsupported) *Context.expression_unsupported = true;
 
    if (Context.document) {
-      if (!Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
+      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
       Context.document->ErrorMsg.append("Unsupported XPath function: ").append(Name);
    }
 
@@ -487,7 +489,7 @@ size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathValue> 
          case XPathValueType::NodeSet:
             if (arg.node_set_string_override.has_value()) {
                total += arg.node_set_string_override->length();
-            } else if (!arg.node_set_string_values.empty()) {
+            } else if (not arg.node_set_string_values.empty()) {
                total += arg.node_set_string_values[0].length();
             } else {
                total += 64; // Conservative estimate for node content
@@ -537,7 +539,7 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
       while (start != std::string::npos) {
          size_t end = Value.find_first_of(" \t\r\n", start);
          std::string token = Value.substr(start, (end IS std::string::npos) ? std::string::npos : end - start);
-         if (!token.empty()) requested_ids.insert(token);
+         if (not token.empty()) requested_ids.insert(token);
          if (end IS std::string::npos) break;
          start = Value.find_first_not_of(" \t\r\n", end);
       }
@@ -546,13 +548,13 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
    auto collect_from_value = [&](const XPathValue &Value) {
       switch (Value.type) {
          case XPathValueType::NodeSet: {
-            if (!Value.node_set_string_values.empty()) {
+            if (not Value.node_set_string_values.empty()) {
                for (const auto &entry : Value.node_set_string_values) add_tokens(entry);
             }
             else if (Value.node_set_string_override.has_value()) add_tokens(*Value.node_set_string_override);
             else {
                for (auto *node : Value.node_set) {
-                  if (!node) continue;
+                  if (not node) continue;
                   add_tokens(node->getContent());
                }
             }
@@ -568,7 +570,7 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
             break;
 
          case XPathValueType::Number:
-            if (!std::isnan(Value.number_value)) add_tokens(Value.to_string());
+            if (not std::isnan(Value.number_value)) add_tokens(Value.to_string());
             break;
       }
    };
@@ -576,7 +578,7 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
    for (const auto &arg : Args) collect_from_value(arg);
 
    if (requested_ids.empty()) return XPathValue(results);
-   if (!Context.document) return XPathValue(results);
+   if (not Context.document) return XPathValue(results);
 
    std::unordered_set<int> seen_tags;
 
@@ -584,13 +586,13 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
       if (Tag.isTag()) {
          for (size_t index = 1; index < Tag.Attribs.size(); ++index) {
             const auto &attrib = Tag.Attribs[index];
-            if (!(pf::iequals(attrib.Name, "id") or pf::iequals(attrib.Name, "xml:id"))) continue;
+            if (not (pf::iequals(attrib.Name, "id") or pf::iequals(attrib.Name, "xml:id"))) continue;
 
             size_t start = attrib.Value.find_first_not_of(" \t\r\n");
             while (start != std::string::npos) {
                size_t end = attrib.Value.find_first_of(" \t\r\n", start);
                std::string token = attrib.Value.substr(start, (end IS std::string::npos) ? std::string::npos : end - start);
-               if (!token.empty() and (requested_ids.find(token) != requested_ids.end())) {
+               if (not token.empty() and (requested_ids.find(token) != requested_ids.end())) {
                   if (seen_tags.insert(Tag.ID).second) results.push_back(&Tag);
                   break;
                }
@@ -626,7 +628,7 @@ XPathValue XPathFunctionLibrary::function_local_name(const std::vector<XPathValu
       return XPathValue(std::string(name.substr(colon + 1)));
    }
 
-   if (!target_node) return XPathValue("");
+   if (not target_node) return XPathValue("");
    if (target_node->Attribs.empty()) return XPathValue("");
 
    std::string_view node_name = target_node->Attribs[0].Name;
@@ -658,7 +660,7 @@ XPathValue XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathV
       if (pf::iequals(prefix, "xmlns")) return XPathValue("http://www.w3.org/2000/xmlns/");
 
       XMLTag *scope_node = target_node ? target_node : Context.context_node;
-      if (!scope_node) return XPathValue("");
+      if (not scope_node) return XPathValue("");
 
       if (Context.document) {
          std::string uri = find_in_scope_namespace(scope_node, Context.document, prefix);
@@ -668,16 +670,16 @@ XPathValue XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathV
       return XPathValue("");
    }
 
-   if (!target_node) return XPathValue("");
+   if (not target_node) return XPathValue("");
 
    std::string prefix;
-   if (!target_node->Attribs.empty()) {
+   if (not target_node->Attribs.empty()) {
       std::string_view node_name = target_node->Attribs[0].Name;
       auto colon = node_name.find(':');
       if (colon != std::string::npos) prefix = std::string(node_name.substr(0, colon));
    }
 
-   if (!prefix.empty()) {
+   if (not prefix.empty()) {
       if (pf::iequals(prefix, "xml")) return XPathValue("http://www.w3.org/XML/1998/namespace");
       if (pf::iequals(prefix, "xmlns")) return XPathValue("http://www.w3.org/2000/xmlns/");
    }
@@ -688,7 +690,7 @@ XPathValue XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathV
 
    if (Context.document) {
       std::string uri;
-      if (!prefix.empty()) uri = find_in_scope_namespace(target_node, Context.document, prefix);
+      if (not prefix.empty()) uri = find_in_scope_namespace(target_node, Context.document, prefix);
       else uri = find_in_scope_namespace(target_node, Context.document, std::string());
       return XPathValue(uri);
    }
@@ -709,7 +711,7 @@ XPathValue XPathFunctionLibrary::function_name(const std::vector<XPathValue> &Ar
 
    if (target_attribute) return XPathValue(target_attribute->Name);
 
-   if (!target_node) return XPathValue("");
+   if (not target_node) return XPathValue("");
    if (target_node->Attribs.empty()) return XPathValue("");
 
    return XPathValue(target_node->Attribs[0].Name);
@@ -872,7 +874,7 @@ XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPat
    bool in_whitespace = false;
    for (char c : str) {
       if (c IS ' ' or c IS '\t' or c IS '\n' or c IS '\r') {
-         if (!in_whitespace) {
+         if (not in_whitespace) {
             result += ' ';
             in_whitespace = true;
          }
@@ -1011,10 +1013,14 @@ XPathValue XPathFunctionLibrary::function_matches(const std::vector<XPathValue> 
    std::string pattern = Args[1].to_string();
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
-   std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-   std::regex compiled(pattern, options);
+   pf::Regex compiled;
+   if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
+      return XPathValue(false);
+   }
 
-   return XPathValue(std::regex_search(input, compiled));
+   pf::MatchResult result;
+   bool matched = compiled.search(input, result);
+   return XPathValue(matched);
 }
 
 XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -1026,10 +1032,15 @@ XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> 
    std::string replacement = Args[2].to_string();
    std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
 
-   std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-   std::regex compiled(pattern, options);
+   pf::Regex compiled;
+   if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
+      return XPathValue(input);
+   }
 
-   return XPathValue(std::regex_replace(input, compiled, replacement));
+   std::string replaced;
+   if (not compiled.replace(input, replacement, replaced)) replaced = input;
+
+   return XPathValue(replaced);
 }
 
 XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -1048,17 +1059,16 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
       }
    }
    else {
-      std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-      std::regex compiled(pattern, options);
+      pf::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported);
 
-      std::sregex_token_iterator iter(input.begin(), input.end(), compiled, -1);
-      std::sregex_token_iterator end;
-
-      for (; iter != end; ++iter) {
-         tokens.emplace_back(iter->str());
+      pf::Regex compiled;
+      if (not compiled.compile(pattern, options)) {
+         return XPathValue(std::vector<XMLTag *>());
       }
 
-      if (!tokens.empty() and tokens.back().empty()) tokens.pop_back();
+      compiled.tokenize(input, -1, tokens);
+
+      if (not tokens.empty() and tokens.back().empty()) tokens.pop_back();
    }
 
    std::vector<XMLTag *> placeholders(tokens.size(), nullptr);
@@ -1095,7 +1105,7 @@ XPathValue XPathFunctionLibrary::function_lang(const std::vector<XPathValue> &Ar
    if (requested.empty()) return XPathValue(false);
 
    XMLTag *node = Context.context_node;
-   if (!node) return XPathValue(false);
+   if (not node) return XPathValue(false);
 
    std::string language = find_language_for_node(node, Context.document);
    if (language.empty()) return XPathValue(false);
@@ -1124,21 +1134,21 @@ XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Arg
    double sum = 0.0;
 
    // Handle attribute nodes if present
-   if (!nodeset.node_set_attributes.empty()) {
+   if (not nodeset.node_set_attributes.empty()) {
       for (const XMLAttrib *attr : nodeset.node_set_attributes) {
          if (attr) {
             double value = XPathValue::string_to_number(attr->Value);
-            if (!std::isnan(value)) {
+            if (not std::isnan(value)) {
                sum += value;
             }
          }
       }
    }
    // Handle string values if present
-   else if (!nodeset.node_set_string_values.empty()) {
+   else if (not nodeset.node_set_string_values.empty()) {
       for (const std::string &str : nodeset.node_set_string_values) {
          double value = XPathValue::string_to_number(str);
-         if (!std::isnan(value)) {
+         if (not std::isnan(value)) {
             sum += value;
          }
       }
@@ -1149,7 +1159,7 @@ XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Arg
          if (node) {
             std::string node_content = XPathValue::node_string_value(node);
             double value = XPathValue::string_to_number(node_content);
-            if (!std::isnan(value)) {
+            if (not std::isnan(value)) {
                sum += value;
             }
          }
