@@ -684,6 +684,26 @@ function testXPathArithmetic()
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testXPathMultiplicationOutsidePredicates()
+   local xml = obj.new("xml", {
+      statement = '<root><item price="3" tax="4"/><value>ignored</value></root>'
+   })
+
+   local err = xml.mtFindTag('3 * 4')
+   assert(err == ERR_Okay, 'Top-level multiplication should parse correctly: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('3 * 4 = 12')
+   assert(err == ERR_Okay, '3 * 4 should evaluate to 12 outside predicates: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('number(/root/item/@price) * number(/root/item/@tax) = 12')
+   assert(err == ERR_Okay, 'Attribute multiplication outside predicates should evaluate: ' .. mSys.GetErrorMsg(err))
+
+   err = xml.mtFindTag('substring("abcdef", 2 * 1, 3) = "bcd"')
+   assert(err == ERR_Okay, 'Function argument multiplication should parse: ' .. mSys.GetErrorMsg(err))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testComparisonOperators', 'testMathematicalExpressions',
@@ -693,7 +713,7 @@ return {
       'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',
       'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
       'testFunctionLibrary', 'testXPathOperators',
-      'testXPathExpressions', 'testXPathArithmetic',
+      'testXPathExpressions', 'testXPathArithmetic', 'testXPathMultiplicationOutsidePredicates',
       'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions'
    },
    init = function(ScriptFolder)
