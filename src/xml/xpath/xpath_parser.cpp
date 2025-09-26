@@ -16,7 +16,7 @@
 #include <mutex>
 
 // Static string interning storage
-std::unordered_map<std::string_view, std::string> XPathTokenizer::interned_strings;
+ankerl::unordered_dense::map<std::string_view, std::string> XPathTokenizer::interned_strings;
 
 void XPathTokenizer::initialize_interned_strings() {
    // Common XPath keywords and operators

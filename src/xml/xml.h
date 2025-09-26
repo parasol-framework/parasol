@@ -2,6 +2,15 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
+#include <string_view>
+#include <unordered_map>
+#include <deque>
+#include <unordered_set>
+#include <functional>
+#include <map>
+#include <optional>
 
 struct ParseState {
    CSTRING Pos;
@@ -28,13 +37,13 @@ class extXML : public objXML {
    ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
    std::string ErrorMsg;    // The most recent error message for an activity, e.g. XPath parsing error
    std::string Statement;
+   std::string Attrib;
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
 
    TAGS *CursorParent;  // Parent tag, if any
    TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
-   std::string Attrib;
    FUNCTION Callback;
 
    // Variable storage for XPath variable references

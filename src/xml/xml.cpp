@@ -1717,6 +1717,22 @@ static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
 /*********************************************************************************************************************
 
 -FIELD-
+ErrorMsg: A textual description of the last parse error.
+
+This field may provide a textual description of the last parse error that occurred, in conjunction with the most 
+recently received error code.  Issues parsing malformed XPath expressions may also be reported here.
+
+*********************************************************************************************************************/
+
+static ERR GET_ErrorMsg(extXML *Self, CSTRING *Value)
+{
+   if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
+   else return ERR::NoData;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Flags: Controls XML parsing behaviour and processing options.
 
 -FIELD-
@@ -1948,6 +1964,7 @@ static const FieldArray clFields[] = {
    { "ParseError", FDF_INT|FD_PRIVATE|FDF_R },
    { "LineNo",     FDF_INT|FD_PRIVATE|FDF_R },
    // Virtual fields
+   { "ErrorMsg",   FDF_STRING|FDF_R, GET_ErrorMsg },
    { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
    { "Src",        FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
    { "Statement",  FDF_STRING|FDF_ALLOC|FDF_RW, GET_Statement, SET_Statement },
