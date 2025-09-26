@@ -1124,6 +1124,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
 
    if (!match(XPathTokenType::IN)) {
       report_error("Expected 'in' in for expression");
+      return nullptr;
    }
 
    auto sequence_expr = parse_expr();
