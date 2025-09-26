@@ -67,8 +67,8 @@ function testMathFunctions()
    local err3, maxNode = xml.mtFindTag('/root/value[@amount = max(/root/value/@amount)]')
    assert(err3 == ERR_Okay, "max() should locate the largest attribute value")
 
-   local err4, avgNode = xml.mtFindTag('/root/value[round(avg(/root/value/@amount)) = 20]')
-   assert(err4 == ERR_Okay, "avg() should average attribute values")
+   local err4, avgNode = xml.mtFindTag('/root/value[@amount = round(avg(/root/value/@amount))]')
+   assert(err4 == ERR_Okay, "avg() should locate the middle item")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

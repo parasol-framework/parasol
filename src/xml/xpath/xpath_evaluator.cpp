@@ -48,6 +48,49 @@ std::string_view trim_view(std::string_view Value)
 
 } // namespace
 
+enum class RelationalOperator {
+   LESS,
+   LESS_OR_EQUAL,
+   GREATER,
+   GREATER_OR_EQUAL
+};
+
+// Compare two floating-point numbers for equality using epsilon tolerance.
+// This prevents precision issues when comparing computed values like averages.
+
+static bool numeric_equal(double Left, double Right)
+{
+   if (std::isnan(Left) or std::isnan(Right)) return false;
+   if (std::isinf(Left) or std::isinf(Right)) return Left IS Right;
+
+   // Use relative epsilon for larger numbers, absolute epsilon for numbers near zero
+   const double abs_left = std::fabs(Left);
+   const double abs_right = std::fabs(Right);
+   const double larger = (abs_left > abs_right) ? abs_left : abs_right;
+
+   if (larger <= 1.0) {
+      // Use absolute epsilon for small numbers
+      return std::fabs(Left - Right) <= std::numeric_limits<double>::epsilon() * 16;
+   } else {
+      // Use relative epsilon for larger numbers
+      return std::fabs(Left - Right) <= larger * std::numeric_limits<double>::epsilon() * 16;
+   }
+}
+
+static bool numeric_compare(double Left, double Right, RelationalOperator Operation)
+{
+   if (std::isnan(Left) or std::isnan(Right)) return false;
+
+   switch (Operation) {
+      case RelationalOperator::LESS: return Left < Right;
+      case RelationalOperator::LESS_OR_EQUAL: return Left <= Right;
+      case RelationalOperator::GREATER: return Left > Right;
+      case RelationalOperator::GREATER_OR_EQUAL: return Left >= Right;
+   }
+
+   return false;
+}
+
 //********************************************************************************************************************
 // Context Management
 
@@ -1097,29 +1140,7 @@ double node_set_number_value(const XPathValue &Value, size_t Index)
    return XPathValue::string_to_number(str);
 }
 
-enum class RelationalOperator {
-   Less,
-   LessOrEqual,
-   Greater,
-   GreaterOrEqual
-};
-
-bool numeric_compare(double Left, double Right, RelationalOperator Operation)
-{
-   if (std::isnan(Left) or std::isnan(Right)) return false;
-
-   switch (Operation) {
-      case RelationalOperator::Less: return Left < Right;
-      case RelationalOperator::LessOrEqual: return Left <= Right;
-      case RelationalOperator::Greater: return Left > Right;
-      case RelationalOperator::GreaterOrEqual: return Left >= Right;
-   }
-
-   return false;
-}
-
-bool compare_xpath_values(const XPathValue &left_value,
-                          const XPathValue &right_value)
+bool compare_xpath_values(const XPathValue &left_value, const XPathValue &right_value)
 {
    auto left_type = left_value.type;
    auto right_type = right_value.type;
@@ -1141,7 +1162,7 @@ bool compare_xpath_values(const XPathValue &left_value,
          for (size_t index = 0; index < node_value.node_set.size(); ++index) {
             double node_number = node_set_number_value(node_value, index);
             if (std::isnan(node_number)) continue;
-            if (node_number IS comparison_number) return true;
+            if (numeric_equal(node_number, comparison_number)) return true;
          }
 
          return false;
@@ -1149,7 +1170,7 @@ bool compare_xpath_values(const XPathValue &left_value,
 
       double left_number = left_value.to_number();
       double right_number = right_value.to_number();
-      return left_number IS right_number;
+      return numeric_equal(left_number, right_number);
    }
 
    if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
@@ -1971,22 +1992,22 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       }
 
       if (operation IS "<") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::Less);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS);
          return XPathValue(result);
       }
 
       if (operation IS "<=") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LessOrEqual);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS_OR_EQUAL);
          return XPathValue(result);
       }
 
       if (operation IS ">") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::Greater);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER);
          return XPathValue(result);
       }
 
       if (operation IS ">=") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GreaterOrEqual);
+         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER_OR_EQUAL);
          return XPathValue(result);
       }
 
@@ -2201,81 +2222,6 @@ XPathValue XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uin
    }
 
    return function_library.call_function(function_name, args, context);
-}
-
-std::shared_ptr<XPathNode> XPathEvaluator::get_cached_ast(const std::string &Key)
-{
-   if (Key.empty()) return nullptr;
-
-   auto it = ast_cache.find(Key);
-   if (it IS ast_cache.end()) return nullptr;
-
-   for (auto order_it = ast_cache_order.begin(); order_it != ast_cache_order.end(); ++order_it) {
-      if ((*order_it).compare(Key) IS 0) {
-         ast_cache_order.erase(order_it);
-         break;
-      }
-   }
-
-   ast_cache_order.push_back(Key);
-
-   return it->second.ast;
-}
-
-void XPathEvaluator::store_cached_ast(const std::string &Key, const std::shared_ptr<XPathNode> &Ast, const std::string &Signature)
-{
-   if (Key.empty() or !Ast) return;
-
-   ast_cache[Key] = { Ast, Signature };
-
-   for (auto order_it = ast_cache_order.begin(); order_it != ast_cache_order.end(); ++order_it) {
-      if ((*order_it).compare(Key) IS 0) {
-         ast_cache_order.erase(order_it);
-         break;
-      }
-   }
-
-   ast_cache_order.push_back(Key);
-
-   prune_ast_cache();
-}
-
-void XPathEvaluator::prune_ast_cache()
-{
-   while (ast_cache.size() > ast_cache_limit) {
-      if (ast_cache_order.empty()) break;
-
-      auto evict_key = ast_cache_order.front();
-      ast_cache_order.pop_front();
-
-      auto entry_it = ast_cache.find(evict_key);
-      if (entry_it IS ast_cache.end()) continue;
-
-      auto signature = entry_it->second.signature;
-      ast_cache.erase(entry_it);
-
-      if (signature.empty()) continue;
-
-      auto signature_it = ast_signature_cache.find(signature);
-      if (signature_it IS ast_signature_cache.end()) continue;
-
-      if (signature_it->second.expired()) ast_signature_cache.erase(signature_it);
-   }
-}
-
-std::string XPathEvaluator::normalise_cache_key(std::string_view Expression) const
-{
-   auto trimmed = trim_view(Expression);
-   if (trimmed.empty()) return std::string();
-
-   std::string key(trimmed);
-
-   for (size_t index = 0; index < key.size(); ++index) {
-      char &ch = key[index];
-      if ((ch IS '\n') or (ch IS '\r') or (ch IS '\t')) ch = ' ';
-   }
-
-   return key;
 }
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
