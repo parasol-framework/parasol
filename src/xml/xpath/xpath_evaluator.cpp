@@ -319,11 +319,6 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 //********************************************************************************************************************
 // Enhanced Entry Point (AST Evaluation)
 
-// Public entry point that evaluates an XPath expression and moves the XML cursor accordingly.
-ERR XPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t CurrentPrefix) {
-   return find_tag_enhanced_internal(XPath, CurrentPrefix, true);
-}
-
 ERR XPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
    // Namespace axis evaluation can allocate transient nodes; ensure we start from a clean slate.
    axis_evaluator.reset_namespace_nodes();
