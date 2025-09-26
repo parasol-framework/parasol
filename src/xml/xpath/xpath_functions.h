@@ -7,14 +7,6 @@
 
 #pragma once
 
-#include <functional>
-#include <map>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <vector>
-
 struct TransparentStringHash {
    using is_transparent = void;
 
@@ -121,7 +113,7 @@ using XPathFunction = std::function<XPathValue(const std::vector<XPathValue> &, 
 
 class XPathFunctionLibrary {
    private:
-   std::unordered_map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
+   ankerl::unordered_dense::map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
    void register_core_functions();
    const XPathFunction * find_function(std::string_view Name) const;
 

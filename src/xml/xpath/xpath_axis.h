@@ -8,11 +8,6 @@
 #pragma once
 
 #include "xpath_ast.h"
-#include <parasol/modules/xml.h>
-#include <memory>
-#include <string_view>
-#include <unordered_map>
-#include <vector>
 
 //********************************************************************************************************************
 // XPath Axis Types
