@@ -24,10 +24,11 @@
 #include <cctype>
 #include <cstdlib>
 #include <limits>
-#include <regex>
 #include <sstream>
 #include <string_view>
 #include <unordered_set>
+
+#include "../../link/regex.h"
 
 //********************************************************************************************************************
 // XPathValue Implementation
@@ -136,20 +137,22 @@ std::string apply_string_case(const std::string &Value, bool Upper)
    return result;
 }
 
-std::regex_constants::syntax_option_type build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
+parasol::regex::SyntaxOptions build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 {
-   std::regex_constants::syntax_option_type options = std::regex_constants::ECMAScript;
+   parasol::regex::SyntaxOptions options = parasol::regex::SyntaxECMAScript;
 
    for (char flag : Flags) {
       unsigned char code = (unsigned char)flag;
       char normalised = (char)std::tolower(code);
 
-      if (normalised IS 'i') {
-         options = (std::regex_constants::syntax_option_type)(options | std::regex_constants::icase);
-      }
-      else {
-         if (UnsupportedFlag) *UnsupportedFlag = true;
-      }
+      if (normalised IS 'i') options |= parasol::regex::SyntaxIgnoreCase;
+      else if (normalised IS 'm') options |= parasol::regex::SyntaxMultiline;
+      else if (normalised IS 's') options |= parasol::regex::SyntaxDotAll;
+      else if (normalised IS 'u') options |= parasol::regex::SyntaxUnicodeSets;
+      else if (normalised IS 'y') options |= parasol::regex::SyntaxSticky;
+      else if (normalised IS 'q') options |= parasol::regex::SyntaxQuiet;
+      else if (normalised IS 'v') options |= parasol::regex::SyntaxVerboseMode;
+      else if (UnsupportedFlag) *UnsupportedFlag = true;
    }
 
    return options;
@@ -1011,10 +1014,17 @@ XPathValue XPathFunctionLibrary::function_matches(const std::vector<XPathValue> 
    std::string pattern = Args[1].to_string();
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
-   std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-   std::regex compiled(pattern, options);
+   parasol::regex::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported_flag);
 
-   return XPathValue(std::regex_search(input, compiled));
+   parasol::regex::Regex compiled;
+   if (!compiled.compile(pattern, options)) {
+      if (Context.expression_unsupported_flag) *Context.expression_unsupported_flag = true;
+      return XPathValue(false);
+   }
+
+   parasol::regex::MatchResult result;
+   bool matched = compiled.search(input, result);
+   return XPathValue(matched);
 }
 
 XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -1026,10 +1036,18 @@ XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> 
    std::string replacement = Args[2].to_string();
    std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
 
-   std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-   std::regex compiled(pattern, options);
+   parasol::regex::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported_flag);
 
-   return XPathValue(std::regex_replace(input, compiled, replacement));
+   parasol::regex::Regex compiled;
+   if (!compiled.compile(pattern, options)) {
+      if (Context.expression_unsupported_flag) *Context.expression_unsupported_flag = true;
+      return XPathValue(input);
+   }
+
+   std::string replaced;
+   if (!compiled.replace(input, replacement, replaced)) replaced = input;
+
+   return XPathValue(replaced);
 }
 
 XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -1048,15 +1066,15 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
       }
    }
    else {
-      std::regex_constants::syntax_option_type options = build_regex_options(flags, Context.expression_unsupported_flag);
-      std::regex compiled(pattern, options);
+      parasol::regex::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported_flag);
 
-      std::sregex_token_iterator iter(input.begin(), input.end(), compiled, -1);
-      std::sregex_token_iterator end;
-
-      for (; iter != end; ++iter) {
-         tokens.emplace_back(iter->str());
+      parasol::regex::Regex compiled;
+      if (!compiled.compile(pattern, options)) {
+         if (Context.expression_unsupported_flag) *Context.expression_unsupported_flag = true;
+         return XPathValue(std::vector<XMLTag *>());
       }
+
+      compiled.tokenize(input, -1, tokens);
 
       if (!tokens.empty() and tokens.back().empty()) tokens.pop_back();
    }
