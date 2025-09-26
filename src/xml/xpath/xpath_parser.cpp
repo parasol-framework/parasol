@@ -146,25 +146,72 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
       if (input[position] IS '*') {
          size_t start = position;
          position++;
-         bool in_predicate = bracket_depth > 0;
+
          XPathTokenType type = XPathTokenType::WILDCARD;
-         if (in_predicate) {
-            // If previous token can terminate an operand, treat '*' as MULTIPLY; otherwise as WILDCARD (e.g., @*)
-            if (!tokens.empty()) {
-               auto prev = tokens.back().type;
-               bool prev_is_operand = (prev IS XPathTokenType::NUMBER) or
-                                      (prev IS XPathTokenType::STRING) or
-                                      (prev IS XPathTokenType::IDENTIFIER) or
-                                      (prev IS XPathTokenType::RPAREN) or
-                                      (prev IS XPathTokenType::RBRACKET);
-               bool prev_forces_wild = (prev IS XPathTokenType::AT) or
-                                       (prev IS XPathTokenType::AXIS_SEPARATOR) or
-                                       (prev IS XPathTokenType::SLASH) or
-                                       (prev IS XPathTokenType::DOUBLE_SLASH) or
-                                       (prev IS XPathTokenType::COLON);
-               if (prev_is_operand and !prev_forces_wild) type = XPathTokenType::MULTIPLY;
-            }
+
+         bool prev_is_operand = false;
+         bool prev_forces_wild = false;
+
+         if (!tokens.empty()) {
+            auto prev = tokens.back().type;
+            prev_is_operand = (prev IS XPathTokenType::NUMBER) or
+                              (prev IS XPathTokenType::STRING) or
+                              (prev IS XPathTokenType::IDENTIFIER) or
+                              (prev IS XPathTokenType::RPAREN) or
+                              (prev IS XPathTokenType::RBRACKET);
+
+            prev_forces_wild = (prev IS XPathTokenType::AT) or
+                               (prev IS XPathTokenType::AXIS_SEPARATOR) or
+                               (prev IS XPathTokenType::SLASH) or
+                               (prev IS XPathTokenType::DOUBLE_SLASH) or
+                               (prev IS XPathTokenType::COLON);
          }
+
+         auto is_operand_start = [&](size_t index) {
+            if (index >= length) return false;
+            char ch = input[index];
+            if (is_digit(ch)) return true;
+            if (ch IS '.' and (index + 1 < length) and is_digit(input[index + 1])) return true;
+            if (is_name_start_char(ch)) return true;
+            if (ch IS '@' or ch IS '$' or ch IS '(') return true;
+            if (ch IS '\'' or ch IS '"') return true;
+            return false;
+         };
+
+         auto unary_context_before = [&](size_t index) {
+            size_t prev = index;
+            while (prev > 0 and is_whitespace(input[prev - 1])) prev--;
+            if (prev IS 0) return true;
+
+            char before = input[prev - 1];
+            if (before IS '(' or before IS '[') return true;
+            if (before IS '@' or before IS '$' or before IS ',' or before IS ':') return true;
+            if (before IS '+' or before IS '-' or before IS '*' or before IS '/' or before IS '|' or before IS '!' or before IS '<' or before IS '>' or before IS '=') return true;
+            if (before IS '/') return true;
+            return false;
+         };
+
+         auto next_token_is_operand = [&]() {
+            size_t lookahead = position;
+            while (lookahead < length and is_whitespace(input[lookahead])) lookahead++;
+            if (lookahead >= length) return false;
+
+            char next_char = input[lookahead];
+            if (next_char IS '-' or next_char IS '+') {
+               if (!unary_context_before(lookahead)) return false;
+               size_t after_sign = lookahead + 1;
+               while (after_sign < length and is_whitespace(input[after_sign])) after_sign++;
+               if (after_sign >= length) return false;
+               return is_operand_start(after_sign);
+            }
+
+            return is_operand_start(lookahead);
+         };
+
+         if (prev_is_operand and !prev_forces_wild and next_token_is_operand()) {
+            type = XPathTokenType::MULTIPLY;
+         }
+
          auto wildcard_char = input.substr(start, 1);
          tokens.emplace_back(type, wildcard_char, start, 1);
       }
