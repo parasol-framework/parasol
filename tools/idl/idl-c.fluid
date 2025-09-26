@@ -2293,7 +2293,7 @@ end
 ----------------------------------------------------------------------------------------------------------------------
 
 function saveOutput()
-   local tempPath = "temp:" .. nz(glModule.name,"idl-c"):lower() .. ".h"
+   local tempPath = "temp:" .. nz(glModule.name,"idl-c-" .. math.random(1000000)):lower() .. ".h"
    local outPath = glOutputPath
    if (outPath == nil) then
       if nz(glModule.name) then
