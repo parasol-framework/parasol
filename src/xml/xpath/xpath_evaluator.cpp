@@ -1825,7 +1825,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          previous_value = existing->second;
       }
 
-      auto restore_variable = [this, variable_name, had_previous, previous_value]() {
+      auto restore_variable = [this, variable_name, had_previous, &previous_value]() {
          if (had_previous) context.variables[variable_name] = previous_value;
          else context.variables.erase(variable_name);
       };
