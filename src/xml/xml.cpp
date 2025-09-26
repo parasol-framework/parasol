@@ -6,12 +6,17 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -CLASS-
-XML: Provides XML data management services for parsing, manipulation and serialisation.
+XML: Provides an interface for the management of structured data.
 
 The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
 It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
 accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation
 and document validation.
+
+The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
+this way, the class not only provides XML support but also serves as Parasol's general-purpose structured
+data handler.  It also makes it trivial to convert between different structured data formats, and benefit from
+the cross-application use of features, such as applying XPath queries on data originating from YAML.
 
 <header>Data Loading and Parsing</header>
 
@@ -26,9 +31,9 @@ document construction.
 The #Source field provides object-based input, allowing XML data to be sourced from any object supporting the Read
 action.
 
-For batch processing scenarios, the Path or Statement fields can be reset post-initialisation, causing the XML
-object to automatically rebuild itself.  This approach optimises memory usage by reusing existing object instances
-rather than creating new ones.
+For batch processing scenarios, the #Path or #Statement fields can be changed post-initialisation, causing the XML
+object to clear old data and parse the new.  This approach optimises memory usage by reusing existing object
+instances rather than creating new ones.
 
 <header>Document Structure and Access</header>
 
@@ -37,15 +42,14 @@ structures.  Each XMLTag represents a complete XML element including its attribu
 The structure maintains the original document hierarchy, enabling both tree traversal and direct element access.
 
 C++ developers benefit from direct access to the Tags field, represented as `pf::vector&lt;XMLTag&gt;`.  This provides
-efficient iteration and element access with standard STL semantics.  However, direct modification of the Tags array
-is discouraged as it can destabilise internal object state - developers should use the provided methods for safe
-manipulation.
+efficient iteration and element access with standard STL semantics.  Altering tag attributes is permitted and methods
+to do so are provided in the C++ header for `objXML` and `XMLTag`, with additional functions in the `xml` namespace.
+Check the header for details.
+
+Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it
+should therefore be read only as needed and cached until the XML object is modified.
 
 -END-
-
-ENTITY       <!ENTITY % textgizmo "fontgizmo">
-INSTRUCTION  <?XML version="1.0" standalone="yes" ?>
-NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 *********************************************************************************************************************/
 
@@ -55,160 +59,20 @@ NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 #include <functional>
 #include <sstream>
 #include "../link/unicode.h"
+#include "xml.h"
 
 JUMPTABLE_CORE
 
 static OBJECTPTR clXML = nullptr;
 static uint32_t glTagID = 1;
 
-struct ParseState {
-   CSTRING Pos;
-   int   Balance;  // Indicates that the tag structure is correctly balanced if zero
-
-   // Namespace context for this parsing scope
-   std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
-   uint32_t DefaultNamespace;                  // Default namespace URI hash
-
-   ParseState() : Pos(nullptr), Balance(0), DefaultNamespace(0) { }
-
-   // Copy constructor for inheriting namespace context from parent scope
-   ParseState(const ParseState& parent) : Pos(parent.Pos), Balance(parent.Balance),
-                                          PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace) { }
-};
-
-typedef objXML::TAGS TAGS;
-typedef objXML::CURSOR CURSOR;
-
-//********************************************************************************************************************
-
-class extXML : public objXML {
-   public:
-   ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
-   STRING Statement;
-   bool   ReadOnly;
-   bool   StaleMap;         // True if map requires a rebuild
-
-   TAGS *CursorParent;  // Parent tag, if any
-   TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
-   CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
-   std::string Attrib;
-   FUNCTION Callback;
-
-   // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XMLTag structures.
-   ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI
-
-   // Link prefixes to namespace URIs
-   // NOTE: If the XML document overwrites namespace URIs on the same prefix name (legal!)
-   // then this lookup table returns the most recently assigned URI.
-   std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
-
-   extXML() : ReadOnly(false), StaleMap(true) { }
-
-   ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
-      if (StaleMap) {
-         Map.clear();
-         updateIDs(Tags, 0);
-         StaleMap = false;
-      }
-
-      return Map;
-   }
-
-   // Return the tag for a particular ID.
-
-   [[nodiscard]] inline XMLTag * getTag(int ID) noexcept {
-      auto &map = getMap();
-      auto it = map.find(ID);
-      if (it IS map.end()) return nullptr;
-      else return it->second;
-   }
-
-   [[nodiscard]] inline TAGS * getInsert(int ID, CURSOR &Iterator) {
-      if (auto tag = getTag(ID)) {
-         return getInsert(tag, Iterator);
-      }
-      else return nullptr;
-   }
-
-   // For a given tag, return its vector array
-
-   [[nodiscard]] inline TAGS * getTags(XMLTag *Tag) {
-      if (!Tag->ParentID) return &Tags;
-      else if (auto parent = getTag(Tag->ParentID)) return &parent->Children;
-      else return nullptr;
-   }
-
-   // For a given tag, return its vector array and cursor position.
-
-   [[nodiscard]] TAGS * getInsert(XMLTag *Tag, CURSOR &Iterator) {
-      TAGS *tags;
-
-      if (Tag->ParentID) {
-         auto parent = getTag(Tag->ParentID);
-         if (parent) tags = &parent->Children;
-         else return nullptr;
-      }
-      else tags = &Tags;
-
-      for (auto it = tags->begin(); it != tags->end(); it++) {
-         if (it->ID IS Tag->ID) {
-            Iterator = it;
-            return tags;
-         }
-      }
-
-      return nullptr;
-   }
-
-   inline void modified() {
-      StaleMap = true;
-      Modified++;
-   }
-
-   inline ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr) {
-      this->Attrib.clear();
-
-      if (pCallback) this->Callback = *pCallback;
-      else this->Callback.Type = CALL::NIL;
-
-      this->CursorTags = &this->Tags;
-
-      Cursor = this->Tags.begin();
-      return find_tag(XPath, 0);
-   }
-
-   // Namespace utility methods
-
-   inline uint32_t registerNamespace(const std::string &uri) {
-      if (uri.empty()) return 0;
-      auto hash = pf::strhash(uri);
-      NSRegistry[hash] = uri;
-      return hash;
-   }
-
-   inline std::string * getNamespaceURI(uint32_t hash) {
-      auto it = NSRegistry.find(hash);
-      return (it != NSRegistry.end()) ? &it->second : nullptr;
-   }
-
-   ERR find_tag(std::string_view XPath, uint32_t);
-
-   inline void updateIDs(TAGS &List, int ParentID) {
-      for (auto &tag : List) {
-         Map[tag.ID] = &tag;
-         tag.ParentID = ParentID;
-         if (!tag.Children.empty()) updateIDs(tag.Children, tag.ID);
-      }
-   }
-};
-
-static ERR add_xml_class(void);
-static ERR SET_Statement(extXML *, CSTRING);
-static ERR SET_Source(extXML *, OBJECTPTR);
-
 #include "unescape.cpp"
 #include "xml_functions.cpp"
-#include "xml_search.cpp"
+#include "xpath/xpath_ast.cpp"
+#include "xpath/xpath_functions.cpp"
+#include "xpath/xpath_axis.cpp"
+#include "xpath/xpath_parser.cpp"
+#include "xpath/xpath_evaluator.cpp"
 
 //********************************************************************************************************************
 
@@ -445,8 +309,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 
 static ERR XML_Free(extXML *Self)
 {
-   if (Self->Path)      { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->~extXML();
    return ERR::Okay;
 }
@@ -817,18 +680,16 @@ static ERR XML_Init(extXML *Self)
 
    if (Self->isSubClass()) return ERR::Okay; // Break here for sub-classes to perform initialisation
 
-   if (Self->Statement) {
+   if (not Self->Statement.empty()) {
       Self->LineNo = 1;
-      if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement)) != ERR::Okay) {
+      if ((Self->ParseError = txt_to_xml(Self, Self->Tags, Self->Statement.c_str())) != ERR::Okay) {
          // Return NoSupport to defer parsing to other data handlers
          if (Self->ParseError IS ERR::InvalidData) return ERR::NoSupport;
 
          log.warning("XML parsing error #%d: %s", int(Self->ParseError), GetErrorMsg(Self->ParseError));
       }
 
-      FreeResource(Self->Statement);
-      Self->Statement = nullptr;
-
+      Self->Statement.clear();
       return Self->ParseError;
    }
    else if ((Self->Path) or (Self->Source)) {
@@ -1345,7 +1206,7 @@ static ERR XML_Reset(extXML *Self)
 -METHOD-
 ResolvePrefix: Resolve a namespace prefix to the UID of its namespace URI within a tag's scope.
 
-This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the 
+This method resolves a namespace prefix to its corresponding URI by examining namespace declarations within the
 specified tag's hierarchical scope. The resolution process:
 
 <list type="ordered">
@@ -1377,30 +1238,7 @@ static ERR XML_ResolvePrefix(extXML *Self, struct xml::ResolvePrefix *Args)
 
    if ((not Args) or (not Args->Prefix)) return log.warning(ERR::NullArgs);
 
-   for (auto tag = Self->getTag(Args->TagID); tag; tag = Self->getTag(tag->ParentID)) {
-      // Check this tag's attributes for namespace declarations
-      for (size_t i = 1; i < tag->Attribs.size(); i++) {
-         const auto &attrib = tag->Attribs[i];
-
-         // Check for xmlns:prefix="uri" declarations
-         if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
-            if (attrib.Name.substr(6) IS Args->Prefix) {
-               // Found the prefix declaration, return its namespace hash
-               Args->Result = pf::strhash(attrib.Value);
-               return ERR::Okay;
-            }
-         }
-         // Check for default namespace if looking for empty prefix
-         else if ((attrib.Name IS "xmlns") and ((not Args->Prefix) or (not Args->Prefix[0]))) {
-            Args->Result = pf::strhash(attrib.Value);
-            return ERR::Okay;
-         }
-      }
-
-      if (!tag->ParentID) break; // Reached root
-   }
-
-   return log.warning(ERR::Search);
+   return Self->resolvePrefix(Args->Prefix, Args->TagID, Args->Result);
 }
 
 /*********************************************************************************************************************
@@ -1837,6 +1675,62 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 }
 
 /*********************************************************************************************************************
+-METHOD-
+SetVariable: Stores a variable that can be referenced in XPath expressions.
+
+This method allows you to store key-value pairs that can be referenced in XPath expressions using the variable syntax
+`$variableName`.  Variables are stored as strings and are made available during XPath evaluation.
+
+-INPUT-
+cstr Key: The name of the variable (case sensitive).
+cstr Value: The string value to store.
+
+-ERRORS-
+Okay:
+NullArgs: The `Key` parameter was not specified.
+ReadOnly: The XML object is read-only.
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
+{
+   pf::Log log;
+
+   if (!Args) return log.warning(ERR::NullArgs);
+   if (!Args->Key) return log.warning(ERR::NullArgs);
+   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
+
+   log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
+
+   if (Args->Value) {
+      Self->Variables[Args->Key] = Args->Value;
+   }
+   else {
+      // Remove variable if Value is null
+      Self->Variables.erase(Args->Key);
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+ErrorMsg: A textual description of the last parse error.
+
+This field may provide a textual description of the last parse error that occurred, in conjunction with the most 
+recently received error code.  Issues parsing malformed XPath expressions may also be reported here.
+
+*********************************************************************************************************************/
+
+static ERR GET_ErrorMsg(extXML *Self, CSTRING *Value)
+{
+   if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
+   else return ERR::NoData;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 Flags: Controls XML parsing behaviour and processing options.
@@ -1862,7 +1756,7 @@ static ERR SET_Path(extXML *Self, CSTRING Value)
 {
    if (Self->Source) SET_Source(Self, nullptr);
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   Self->Statement.clear();
 
    if (pf::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the
@@ -1930,7 +1824,7 @@ automatically.
 static ERR SET_Source(extXML *Self, OBJECTPTR Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   Self->Statement.clear();
 
    if (Value) {
       Self->Source = Value;
@@ -1974,7 +1868,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
    pf::Log log;
 
    if (!Self->initialised()) {
-      if (Self->Statement) {
+      if (not Self->Statement.empty()) {
          *Value = pf::strclone(Self->Statement);
          return ERR::Okay;
       }
@@ -2006,7 +1900,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 static ERR SET_Statement(extXML *Self, CSTRING Value)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   if (Self->Statement) { FreeResource(Self->Statement); Self->Statement = nullptr; }
+   Self->Statement.clear();
 
    if ((Value) and (*Value)) {
       if (Self->initialised()) {
@@ -2015,8 +1909,10 @@ static ERR SET_Statement(extXML *Self, CSTRING Value)
          Self->ParseError = txt_to_xml(Self, Self->Tags, Value);
          return Self->ParseError;
       }
-      else if ((Self->Statement = pf::strclone(Value))) return ERR::Okay;
-      else return ERR::AllocMemory;
+      else  {
+         Self->Statement = Value;
+         return ERR::Okay;
+      }
    }
    else {
       if (Self->initialised()) {
@@ -2068,6 +1964,7 @@ static const FieldArray clFields[] = {
    { "ParseError", FDF_INT|FD_PRIVATE|FDF_R },
    { "LineNo",     FDF_INT|FD_PRIVATE|FDF_R },
    // Virtual fields
+   { "ErrorMsg",   FDF_STRING|FDF_R, GET_ErrorMsg },
    { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
    { "Src",        FDF_STRING|FDF_SYNONYM|FDF_RW, GET_Path, SET_Path },
    { "Statement",  FDF_STRING|FDF_ALLOC|FDF_RW, GET_Statement, SET_Statement },

@@ -166,11 +166,12 @@ if (INSTALL_TESTS)
    add_executable (test_objlocking "tests/object_locking.cpp")
    add_executable (test_memlocking "tests/memory_locking.cpp")
    add_executable (test_pf_vector "tests/pf_vector.cpp")
+   add_executable (test_wildcmp "tests/wildcmp.cpp")
 
    target_link_libraries (test_objlocking PRIVATE ${INIT_LINK})
    target_link_libraries (test_memlocking PRIVATE ${INIT_LINK})
 
-   set_target_properties (test_memlocking test_objlocking test_pf_vector PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+   set_target_properties (test_memlocking test_objlocking test_pf_vector test_wildcmp PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
 
-   install (TARGETS test_objlocking test_memlocking test_pf_vector DESTINATION "tests/")
+   install (TARGETS test_objlocking test_memlocking test_pf_vector test_wildcmp DESTINATION "tests/")
 endif ()

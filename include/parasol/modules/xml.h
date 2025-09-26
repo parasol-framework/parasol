@@ -82,6 +82,7 @@ enum class XTF : uint32_t {
    CDATA = 0x00000001,
    INSTRUCTION = 0x00000002,
    NOTATION = 0x00000004,
+   COMMENT = 0x00000008,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(XTF)
@@ -170,6 +171,7 @@ struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC
 struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -336,12 +338,16 @@ class objXML : public Object {
       if (Result) *Result = args.Result;
       return(error);
    }
+   inline ERR setVariable(CSTRING Key, CSTRING Value) noexcept {
+      struct xml::SetVariable args = { Key, Value };
+      return(Action(AC(-23), this, &args));
+   }
 
    // Customised field setting
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -363,13 +369,13 @@ class objXML : public Object {
 
    inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[15];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 

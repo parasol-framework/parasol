@@ -36,7 +36,6 @@ static ERR xml_callback(objXML *XML, int TagID, CSTRING Attrib, APTR Meta)
 int main(int argc, CSTRING *argv)
 {
    pf::Log log;
-   pf::vector<std::string> *args;
 
    if (auto msg = init_parasol(argc, argv)) {
       log.error("%s", msg);
