@@ -239,7 +239,7 @@ bool Regex::replace(std::string_view Text, std::string_view Replacement, std::st
    if (!impl or !impl->ready) return false;
 
    srell::regex_constants::match_flag_type native = convert_match_flags(Flags);
-   Output = srell::regex_replace(Text.data(), Text.size(), impl->pattern, Replacement.data(), Replacement.size(), native);
+   Output = srell::regex_replace(std::string(Text), impl->pattern, std::string(Replacement), native);
    return true;
 }
 

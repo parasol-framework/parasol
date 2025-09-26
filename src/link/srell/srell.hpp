@@ -49,15 +49,26 @@
 #include <vector>
 #include <iterator>
 #include <algorithm>
-
-#if !defined(SRELL_NO_UNISTACK) && (defined(__cplusplus) && (__cplusplus >= 201103L)) || (defined(_MSC_VER) && (_MSC_VER >= 1900))
 #include <type_traits>
+#include <span>
+#include <concepts>
+#include <compare>
+
+// C++20 baseline - no need for feature detection
 #define SRELL_HAS_TYPE_TRAITS
-#endif
+#define SRELL_NOEXCEPT noexcept
 
 #if !defined(SRELL_NO_SIMD)
 #if (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
-#if defined(__SSE4_2__)
+// Modern SIMD detection - prefer newer instruction sets
+#if defined(__AVX512F__)
+	#define SRELL_HAS_AVX512
+	#define SRELL_HAS_AVX2
+	#define SRELL_HAS_SSE42
+#elif defined(__AVX2__)
+	#define SRELL_HAS_AVX2
+	#define SRELL_HAS_SSE42
+#elif defined(__SSE4_2__)
 	#define SRELL_HAS_SSE42
 #elif defined(_MSC_VER) && (_MSC_VER >= 1500)
 	#define SRELL_HAS_SSE42
@@ -65,19 +76,33 @@
 	#define SRELL_HAS_SSE42
 #elif defined(__GNUC__) && ((__GNUC__ >= 5) || ((__GNUC__ == 4) && defined(__GNUC_MINOR__) && (__GNUC_MINOR__ >= 9)))
 	#define SRELL_HAS_SSE42
-#endif	//  sse 4.2.
+#endif	//  SIMD instruction sets
 #endif	//  x86/x64.
 #endif
 
 #define SRELL_AT_SSE42
-#if defined(SRELL_HAS_SSE42)
+#define SRELL_AT_AVX2
+#define SRELL_AT_AVX512
+
+#if defined(SRELL_HAS_SSE42) or defined(SRELL_HAS_AVX2) or defined(SRELL_HAS_AVX512)
 #if defined(_MSC_VER)
 	#include <intrin.h>
 #else
 	#include <x86intrin.h>
+
 	#if !defined(__SSE4_2__)
 	#undef SRELL_AT_SSE42
 	#define SRELL_AT_SSE42 __attribute__((target("sse4.2")))
+	#endif
+
+	#if !defined(__AVX2__)
+	#undef SRELL_AT_AVX2
+	#define SRELL_AT_AVX2 __attribute__((target("avx2")))
+	#endif
+
+	#if !defined(__AVX512F__)
+	#undef SRELL_AT_AVX512
+	#define SRELL_AT_AVX512 __attribute__((target("avx512f")))
 	#endif
 #endif
 #endif
@@ -129,14 +154,28 @@
 #define SRELL_NO_VCWARNING_END
 #endif
 
-#if defined(__cpp_rvalue_references) && (!defined(_MSC_VER) || (_MSC_VER >= 1900))
-#define SRELL_NOEXCEPT noexcept
-#else
-#define SRELL_NOEXCEPT
-#endif
+// SRELL_NOEXCEPT now defined above with C++20 baseline
 
 namespace srell
 {
+//  C++20 Concepts for better template constraints
+template<typename T>
+concept character_type = std::same_as<T, char> or
+                        std::same_as<T, wchar_t> or
+                        std::same_as<T, char8_t> or
+                        std::same_as<T, char16_t> or
+                        std::same_as<T, char32_t>;
+
+template<typename T>
+concept bidirectional_iterator = std::bidirectional_iterator<T>;
+
+template<typename T>
+concept allocator_type = requires(T alloc) {
+    typename T::value_type;
+    { alloc.allocate(std::size_t{1}) } -> std::convertible_to<typename T::value_type*>;
+    { alloc.deallocate(std::declval<typename T::value_type*>(), std::size_t{1}) } -> std::same_as<void>;
+};
+
 //  ["regex_constants.h" ...
 
 	namespace regex_constants
@@ -167,33 +206,33 @@ namespace srell
 			pflagsmask_ = (1 << 9) - 1
 		};
 
-		inline syntax_option_type operator&(const syntax_option_type left, const syntax_option_type right)
+		constexpr syntax_option_type operator&(const syntax_option_type left, const syntax_option_type right) noexcept
 		{
 			return static_cast<syntax_option_type>(static_cast<int>(left) & static_cast<int>(right));
 		}
-		inline syntax_option_type operator|(const syntax_option_type left, const syntax_option_type right)
+		constexpr syntax_option_type operator|(const syntax_option_type left, const syntax_option_type right) noexcept
 		{
 			return static_cast<syntax_option_type>(static_cast<int>(left) | static_cast<int>(right));
 		}
-		inline syntax_option_type operator^(const syntax_option_type left, const syntax_option_type right)
+		constexpr syntax_option_type operator^(const syntax_option_type left, const syntax_option_type right) noexcept
 		{
 			return static_cast<syntax_option_type>(static_cast<int>(left) ^ static_cast<int>(right));
 		}
-		inline syntax_option_type operator~(const syntax_option_type b)
+		constexpr syntax_option_type operator~(const syntax_option_type b) noexcept
 		{
 			return static_cast<syntax_option_type>(~static_cast<int>(b));
 		}
-		inline syntax_option_type &operator&=(syntax_option_type &left, const syntax_option_type right)
+		constexpr syntax_option_type &operator&=(syntax_option_type &left, const syntax_option_type right) noexcept
 		{
 			left = left & right;
 			return left;
 		}
-		inline syntax_option_type &operator|=(syntax_option_type &left, const syntax_option_type right)
+		constexpr syntax_option_type &operator|=(syntax_option_type &left, const syntax_option_type right) noexcept
 		{
 			left = left | right;
 			return left;
 		}
-		inline syntax_option_type &operator^=(syntax_option_type &left, const syntax_option_type right)
+		constexpr syntax_option_type &operator^=(syntax_option_type &left, const syntax_option_type right) noexcept
 		{
 			left = left ^ right;
 			return left;
@@ -224,33 +263,33 @@ namespace srell
 			match_match_ = 1 << 9
 		};
 
-		inline match_flag_type operator&(const match_flag_type left, const match_flag_type right)
+		constexpr match_flag_type operator&(const match_flag_type left, const match_flag_type right) noexcept
 		{
 			return static_cast<match_flag_type>(static_cast<int>(left) & static_cast<int>(right));
 		}
-		inline match_flag_type operator|(const match_flag_type left, const match_flag_type right)
+		constexpr match_flag_type operator|(const match_flag_type left, const match_flag_type right) noexcept
 		{
 			return static_cast<match_flag_type>(static_cast<int>(left) | static_cast<int>(right));
 		}
-		inline match_flag_type operator^(const match_flag_type left, const match_flag_type right)
+		constexpr match_flag_type operator^(const match_flag_type left, const match_flag_type right) noexcept
 		{
 			return static_cast<match_flag_type>(static_cast<int>(left) ^ static_cast<int>(right));
 		}
-		inline match_flag_type operator~(const match_flag_type b)
+		constexpr match_flag_type operator~(const match_flag_type b) noexcept
 		{
 			return static_cast<match_flag_type>(~static_cast<int>(b));
 		}
-		inline match_flag_type &operator&=(match_flag_type &left, const match_flag_type right)
+		constexpr match_flag_type &operator&=(match_flag_type &left, const match_flag_type right) noexcept
 		{
 			left = left & right;
 			return left;
 		}
-		inline match_flag_type &operator|=(match_flag_type &left, const match_flag_type right)
+		constexpr match_flag_type &operator|=(match_flag_type &left, const match_flag_type right) noexcept
 		{
 			left = left | right;
 			return left;
 		}
-		inline match_flag_type &operator^=(match_flag_type &left, const match_flag_type right)
+		constexpr match_flag_type &operator^=(match_flag_type &left, const match_flag_type right) noexcept
 		{
 			left = left ^ right;
 			return left;
@@ -1000,20 +1039,25 @@ struct concon_view
 	size_type size_;
 
 	template <typename ContiguousContainer>
-	concon_view(const ContiguousContainer &c)
-//		requires std::contiguous_iterator<typename ContiguousContainer::iterator>
+	constexpr concon_view(const ContiguousContainer &c) noexcept
+		requires std::contiguous_iterator<typename ContiguousContainer::iterator>
 		: data_(c.data()), size_(c.size()) {}
 
-	concon_view() : data_(NULL), size_(0) {}
-	concon_view(const charT *const p, const size_type s) : data_(p), size_(s) {}
+	constexpr concon_view() noexcept : data_(nullptr), size_(0) {}
+	constexpr concon_view(const charT *const p, const size_type s) noexcept : data_(p), size_(s) {}
+	constexpr concon_view(std::span<const charT> sp) noexcept : data_(sp.data()), size_(sp.size()) {}
 
-	const charT *data() const
+	constexpr const charT *data() const noexcept
 	{
 		return data_;
 	}
-	size_type size() const
+	constexpr size_type size() const noexcept
 	{
 		return size_;
+	}
+	constexpr std::span<const charT> as_span() const noexcept
+	{
+		return std::span<const charT>(data_, size_);
 	}
 };
 // concon_view
@@ -1085,39 +1129,30 @@ public:
 		return *this;
 	}
 
-#if defined(__cpp_rvalue_references)
-	simple_array(simple_array &&right) SRELL_NOEXCEPT
-		: buffer_(right.buffer_)
-		, size_(right.size_)
-		, capacity_p1_(right.capacity_p1_)
+	simple_array(simple_array &&right) noexcept
+		: buffer_(std::exchange(right.buffer_, nullptr))
+		, size_(std::exchange(right.size_, 0))
+		, capacity_p1_(std::exchange(right.capacity_p1_, 1))
 	{
-		right.size_ = 0;
-		right.capacity_p1_ = 1;
-		right.buffer_ = NULL;
 	}
 
-	simple_array &operator=(simple_array &&right) SRELL_NOEXCEPT
+	simple_array &operator=(simple_array &&right) noexcept
 	{
-		if (this != &right)
+		if (this != &right) [[likely]]
 		{
-			if (this->buffer_ != NULL)
+			if (this->buffer_ != nullptr) [[likely]]
 				std::free(this->buffer_);
 
-			this->size_ = right.size_;
-			this->capacity_p1_ = right.capacity_p1_;
-			this->buffer_ = right.buffer_;
-
-			right.size_ = 0;
-			right.capacity_p1_ = 1;
-			right.buffer_ = NULL;
+			this->size_ = std::exchange(right.size_, 0);
+			this->capacity_p1_ = std::exchange(right.capacity_p1_, 1);
+			this->buffer_ = std::exchange(right.buffer_, nullptr);
 		}
 		return *this;
 	}
-#endif
 
 	~simple_array()
 	{
-		if (buffer_ != NULL)
+		if (buffer_ != nullptr) [[likely]]
 			std::free(buffer_);
 	}
 
@@ -1126,16 +1161,37 @@ public:
 		return size_;
 	}
 
+	// Implicit conversion to sa_view/concon_view for compatibility
+	operator sa_view() const noexcept
+	{
+		return sa_view(buffer_, size_);
+	}
+
 	bool operator==(const simple_array &right) const
 	{
-		if (this->size_ != right.size_)
+		if (this->size_ != right.size_) [[unlikely]]
 			return false;
 
 		for (size_type i = 0; i < size_; ++i)
-			if (this->buffer_[i] != right[i])
+			if (this->buffer_[i] != right[i]) [[unlikely]]
 				return false;
 
 		return true;
+	}
+
+	std::strong_ordering operator<=>(const simple_array &right) const
+	{
+		const auto size_cmp = this->size_ <=> right.size_;
+		if (size_cmp != 0) [[likely]]
+			return size_cmp;
+
+		for (size_type i = 0; i < size_; ++i)
+		{
+			if (auto cmp = this->buffer_[i] <=> right[i]; cmp != 0) [[unlikely]]
+				return cmp;
+		}
+
+		return std::strong_ordering::equal;
 	}
 
 	void clear()
