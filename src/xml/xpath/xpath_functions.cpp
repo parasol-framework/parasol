@@ -36,7 +36,7 @@
 namespace {
 
 // Format a double according to XPath 1.0 number-to-string rules.
-std::string format_xpath_number(double Value)
+static std::string format_xpath_number(double Value)
 {
    if (std::isnan(Value)) return std::string("NaN");
    if (std::isinf(Value)) return (Value > 0) ? std::string("Infinity") : std::string("-Infinity");
@@ -60,7 +60,7 @@ std::string format_xpath_number(double Value)
    return result;
 }
 
-bool is_unreserved_uri_character(unsigned char Code)
+static bool is_unreserved_uri_character(unsigned char Code)
 {
    if ((Code >= 'A' and Code <= 'Z') or (Code >= 'a' and Code <= 'z') or (Code >= '0' and Code <= '9')) return true;
 
@@ -80,7 +80,7 @@ bool is_unreserved_uri_character(unsigned char Code)
    return false;
 }
 
-std::string encode_for_uri_impl(const std::string &Value)
+static std::string encode_for_uri_impl(const std::string &Value)
 {
    std::string result;
    result.reserve(Value.length() * 3);
@@ -101,7 +101,7 @@ std::string encode_for_uri_impl(const std::string &Value)
    return result;
 }
 
-void replace_all(std::string &Text, std::string_view From, std::string_view To)
+static void replace_all(std::string &Text, std::string_view From, std::string_view To)
 {
    if (From.empty()) return;
 
@@ -114,7 +114,7 @@ void replace_all(std::string &Text, std::string_view From, std::string_view To)
    }
 }
 
-std::string escape_html_uri_impl(const std::string &Value)
+static std::string escape_html_uri_impl(const std::string &Value)
 {
    std::string encoded = encode_for_uri_impl(Value);
 
@@ -127,7 +127,7 @@ std::string escape_html_uri_impl(const std::string &Value)
    return encoded;
 }
 
-std::string apply_string_case(const std::string &Value, bool Upper)
+static std::string apply_string_case(const std::string &Value, bool Upper)
 {
    std::string result = Value;
    std::transform(result.begin(), result.end(), result.begin(), [Upper](char Ch) {
@@ -158,7 +158,7 @@ pf::SyntaxOptions build_regex_options(const std::string &Flags, bool *Unsupporte
    return options;
 }
 
-void append_numbers_from_nodeset(const XPathValue &Value, std::vector<double> &Numbers)
+static void append_numbers_from_nodeset(const XPathValue &Value, std::vector<double> &Numbers)
 {
    if (Value.node_set_string_override.has_value()) {
       double number = XPathValue::string_to_number(*Value.node_set_string_override);
@@ -191,7 +191,7 @@ void append_numbers_from_nodeset(const XPathValue &Value, std::vector<double> &N
    }
 }
 
-void append_numbers_from_value(const XPathValue &Value, std::vector<double> &Numbers)
+static void append_numbers_from_value(const XPathValue &Value, std::vector<double> &Numbers)
 {
    switch (Value.type) {
       case XPathValueType::Number:
@@ -448,7 +448,7 @@ XPathValue XPathFunctionLibrary::call_function(std::string_view Name, const std:
       return (*function_ptr)(Args, Context);
    }
 
-   if (Context.expression_unsupported) *Context.expression_unsupported = true;
+   *Context.expression_unsupported = true;
 
    if (Context.document) {
       if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
@@ -1034,7 +1034,6 @@ XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> 
 
    pf::Regex compiled;
    if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
-      Context.expression_unsupported = true;
       return XPathValue(input);
    }
 
@@ -1064,7 +1063,6 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
 
       pf::Regex compiled;
       if (not compiled.compile(pattern, options)) {
-         Context.expression_unsupported = true;
          return XPathValue(std::vector<XMLTag *>());
       }
 
