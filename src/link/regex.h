@@ -80,5 +80,5 @@ private:
 
 std::string describe_error(unsigned int ErrorCode);
 
-} // namespace parasol::regex
+} // namespace pf
 
