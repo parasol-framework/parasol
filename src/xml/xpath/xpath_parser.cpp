@@ -216,7 +216,25 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
          };
 
          size_t operand_index = next_operand_index();
-         if (prev_is_operand and !prev_forces_wild and operand_index != std::string_view::npos) {
+         bool inside_structural_context = (bracket_depth > 0) or (paren_depth > 0);
+
+         bool prev_allows_binary = false;
+         if (!tokens.empty()) {
+            auto prev_type = tokens.back().type;
+
+            if ((prev_type IS XPathTokenType::IDENTIFIER) or
+                (prev_type IS XPathTokenType::RPAREN) or
+                (prev_type IS XPathTokenType::RBRACKET) or
+                (prev_type IS XPathTokenType::WILDCARD)) {
+               prev_allows_binary = true;
+            }
+            else if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
+               if (inside_structural_context) prev_allows_binary = true;
+            }
+         }
+
+         if (prev_is_operand and prev_allows_binary and !prev_forces_wild and
+             operand_index != std::string_view::npos) {
             type = XPathTokenType::MULTIPLY;
          }
 
