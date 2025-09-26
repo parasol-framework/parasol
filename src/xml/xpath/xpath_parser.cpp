@@ -1065,22 +1065,26 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
 
    if (!match(XPathTokenType::LPAREN)) {
       report_error("Expected '(' after 'if'");
+      return nullptr;
    }
 
    auto condition = parse_expr();
 
    if (!match(XPathTokenType::RPAREN)) {
       report_error("Expected ')' after condition in if expression");
+      return nullptr;
    }
 
    if (!match(XPathTokenType::THEN)) {
       report_error("Expected 'then' in if expression");
+      return nullptr;
    }
 
    auto then_branch = parse_expr();
 
    if (!match(XPathTokenType::ELSE)) {
       report_error("Expected 'else' in if expression");
+      return nullptr;
    }
 
    auto else_branch = parse_expr();
