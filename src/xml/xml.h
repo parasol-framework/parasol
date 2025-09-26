@@ -221,6 +221,6 @@ inline ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
       return pf::Log(__FUNCTION__).warning(ERR::SanityCheckFailed);
    }
 
-   XPathEvaluator evaluator(this);
-   return evaluator.find_tag_enhanced(XPath, CurrentPrefix);
+   XPathEvaluator eval(this);
+   return eval.find_tag_enhanced_internal(XPath, CurrentPrefix, true);
 }

@@ -81,7 +81,6 @@ class AxisEvaluator {
    void evaluate_preceding_sibling_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
    void evaluate_following_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
    void evaluate_preceding_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_attribute_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
    void evaluate_namespace_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
    void evaluate_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
    void evaluate_descendant_or_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);

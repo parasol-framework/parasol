@@ -92,9 +92,6 @@ void AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *ContextNode, std::vecto
       case AxisType::PRECEDING:
          if (ContextNode) evaluate_preceding_axis(ContextNode, Output);
          break;
-      case AxisType::ATTRIBUTE:
-         if (ContextNode) evaluate_attribute_axis(ContextNode, Output);
-         break;
       case AxisType::NAMESPACE:
          if (ContextNode) evaluate_namespace_axis(ContextNode, Output);
          break;
@@ -513,11 +510,6 @@ void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, std::vector<XMLTag *> 
       Output.insert(Output.end(), parent_preceding.begin(), parent_preceding.end());
       arena.release_node_vector(parent_preceding);
    }
-}
-
-void AxisEvaluator::evaluate_attribute_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
-   Output.clear();
-   (void)Node;
 }
 
 // Namespace axis is modelled with transient nodes that expose in-scope prefix mappings.

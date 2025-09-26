@@ -680,7 +680,27 @@ function testXPathArithmetic()
    assert(err == ERR_Okay, "Multiplication on attributes should evaluate numerically: " .. mSys.GetErrorMsg(err))
    local err5, multValue = xml.mtGetAttrib(id, 'value')
    assert(err5 == ERR_Okay and multValue == '5', "@value * 2 = 10 should return the 5 result node")
- end
+end
+ 
+-----------------------------------------------------------------------------------------------------------------------
+
+function testXPathMultiplicationOutsidePredicates()
+   local xml = obj.new("xml", {
+      statement = '<root><item price="3" tax="4"/><value>ignored</value></root>'
+   })
+
+   local err = xml.mtFindTag('3 * 4')
+   assert(err == ERR_Okay, 'Top-level multiplication should parse correctly: ' .. mSys.GetErrorMsg(err) .. ': ' .. nz(xml.errorMsg,'NIL'))
+
+   err = xml.mtFindTag('3 * 4 = 12')
+   assert(err == ERR_Okay, '3 * 4 should evaluate to 12 outside predicates: ' .. mSys.GetErrorMsg(err).. ': ' .. nz(xml.errorMsg,'NIL'))
+
+   err = xml.mtFindTag('number(/root/item/@price) * number(/root/item/@tax) = 12')
+   assert(err == ERR_Okay, 'Attribute multiplication outside predicates should evaluate: ' .. mSys.GetErrorMsg(err) .. ': ' .. nz(xml.errorMsg,'NIL'))
+
+   err = xml.mtFindTag('substring("abcdef", 2 * 1, 3) = "bcd"')
+   assert(err == ERR_Okay, 'Function argument multiplication should parse: ' .. mSys.GetErrorMsg(err) .. ': ' .. nz(xml.errorMsg,'NIL'))
+end
 
 -----------------------------------------------------------------------------------------------------------------------
 
