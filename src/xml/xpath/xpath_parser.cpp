@@ -142,7 +142,10 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
       skip_whitespace();
       if (position >= length) break;
 
-      // Context-aware handling for '*': wildcard vs multiply
+      // Context-aware handling for '*': wildcard vs multiply.  Wildcards are permitted for use as string comparators,
+      // e.g. /menu/*[@id='5'], /root/section[@*="alpha"], /*ab/, /A*B/ 
+      // In other contexts (e.g. /menu/thing[price*2>10]) it is consumed as a binary operator unless enclosed in quotes.
+
       if (input[position] IS '*') {
          size_t start = position;
          position++;
