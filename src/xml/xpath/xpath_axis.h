@@ -10,6 +10,11 @@
 #include "xpath_ast.h"
 #include "xpath_arena.h"
 
+#include <cstdint>
+#include <memory>
+#include <span>
+#include <unordered_map>
+
 //********************************************************************************************************************
 // XPath Axis Types
 
@@ -39,6 +44,16 @@ class AxisEvaluator {
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
    std::unordered_map<int, XMLTag *> id_lookup;
    bool id_cache_built = false;
+
+   struct AncestorPathView {
+      std::span<XMLTag *const> Path;
+      std::vector<XMLTag *> * Storage = nullptr;
+      bool Cached = false;
+   };
+
+   std::unordered_map<XMLTag *, std::vector<XMLTag *> *> ancestor_path_cache;
+   std::vector<std::unique_ptr<std::vector<XMLTag *>>> ancestor_path_storage;
+   std::unordered_map<uint64_t, bool> document_order_cache;
 
    // Optimized namespace handling data structures
    struct NamespaceDeclaration {
@@ -83,7 +98,9 @@ class AxisEvaluator {
 
    // Document order utilities
    void sort_document_order(std::vector<XMLTag *> &Nodes);
-   std::vector<XMLTag *> build_ancestor_path(XMLTag *Node);
+   AncestorPathView build_ancestor_path(XMLTag *Node);
+   void release_ancestor_path(AncestorPathView &View);
+   uint64_t make_document_order_key(XMLTag *Left, XMLTag *Right);
 
    // Helper methods for tag lookup
    void build_id_cache();
