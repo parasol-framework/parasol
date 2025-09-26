@@ -110,3 +110,57 @@ class XPathParser {
    private:
    std::vector<std::string> errors;
 };
+
+//********************************************************************************************************************
+// Compiled XPath - A reusable compiled XPath expression
+
+class CompiledXPath {
+   private:
+   std::shared_ptr<XPathNode> ast;
+   std::string original_expression;
+   std::vector<std::string> errors;
+   bool is_valid;
+
+   public:
+   CompiledXPath() : is_valid(false) {}
+
+   // Compile an XPath expression
+   static CompiledXPath compile(std::string_view XPath);
+
+   // Check if compilation was successful
+   [[nodiscard]] bool isValid() const { return is_valid; }
+
+   // Get the compiled AST (for internal use by evaluator)
+   [[nodiscard]] const XPathNode * getAST() const { return ast.get(); }
+   [[nodiscard]] std::shared_ptr<XPathNode> getASTShared() const { return ast; }
+
+   // Get the original expression
+   [[nodiscard]] const std::string & getExpression() const { return original_expression; }
+
+   // Get compilation errors
+   [[nodiscard]] const std::vector<std::string> & getErrors() const { return errors; }
+
+   // Move constructor and assignment for efficient storage
+   CompiledXPath(CompiledXPath &&other) noexcept
+      : ast(std::move(other.ast)),
+        original_expression(std::move(other.original_expression)),
+        errors(std::move(other.errors)),
+        is_valid(other.is_valid) {
+      other.is_valid = false;
+   }
+
+   CompiledXPath & operator=(CompiledXPath &&other) noexcept {
+      if (this != &other) {
+         ast = std::move(other.ast);
+         original_expression = std::move(other.original_expression);
+         errors = std::move(other.errors);
+         is_valid = other.is_valid;
+         other.is_valid = false;
+      }
+      return *this;
+   }
+
+   // Disable copy constructor and assignment to avoid shared AST issues
+   CompiledXPath(const CompiledXPath &) = delete;
+   CompiledXPath & operator=(const CompiledXPath &) = delete;
+};

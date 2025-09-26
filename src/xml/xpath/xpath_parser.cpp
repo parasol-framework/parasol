@@ -1155,3 +1155,31 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
    }
    return nullptr;
 }
+
+//********************************************************************************************************************
+// CompiledXPath Implementation
+
+CompiledXPath CompiledXPath::compile(std::string_view XPath)
+{
+   CompiledXPath result;
+   result.original_expression = std::string(XPath);
+
+   XPathTokenizer tokenizer;
+   auto tokens = tokenizer.tokenize(XPath);
+
+   XPathParser parser;
+   auto parsed_ast = parser.parse(tokens);
+
+   if (!parsed_ast) {
+      result.compilation_errors = parser.get_errors();
+      if (result.compilation_errors.empty()) {
+         result.compilation_errors.push_back("Failed to parse XPath expression");
+      }
+      return result;
+   }
+
+   result.ast = std::move(parsed_ast);
+   result.is_valid = true;
+
+   return result;
+}

@@ -30,6 +30,9 @@ struct ParseState {
 typedef objXML::TAGS TAGS;
 typedef objXML::CURSOR CURSOR;
 
+// Forward declarations
+class CompiledXPath;
+
 //********************************************************************************************************************
 
 class extXML : public objXML {
@@ -119,18 +122,28 @@ class extXML : public objXML {
       StaleMap = true;
       Modified++;
    }
+   
+   // XPath 1.0 Implementation for Parasol
+   // 
+   // Extra Features Supported:
+   // [=...] Match on encapsulated content (Not an XPath standard but we support it)
+   // The use of \ as an escape character in attribute strings is supported, but keep in mind that this is not an official
+   // feature of the XPath standard.
+   // Wildcards are legal only in the context of string comparisons, e.g. a node or attribute lookup
+   //
+   // Examples:
+   //   /menu/submenu
+   //   /menu[2]/window
+   //   /menu/window/@title
+   //   /menu/window[@title='foo']/...
+   //   /menu[=contentmatch]
+   //   /menu//window
+   //   /menu/window/* (First child of the window tag)
+   //   /menu/*[@id='5']
+   //   /root/section[@*="alpha"] (Match any attribute with value "alpha")
 
-   inline ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr) {
-      this->Attrib.clear();
-
-      if (pCallback) this->Callback = *pCallback;
-      else this->Callback.Type = CALL::NIL;
-
-      this->CursorTags = &this->Tags;
-
-      Cursor = this->Tags.begin();
-      return find_tag(XPath, 0);
-   }
+   ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr);
+   ERR findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback = nullptr);
 
    // Namespace utility methods
 
@@ -175,27 +188,6 @@ class extXML : public objXML {
       return ERR::Search;
    }
 
-   // XPath 1.0 Implementation for Parasol
-   // 
-   // Extra Features Supported:
-   // [=...] Match on encapsulated content (Not an XPath standard but we support it)
-   // The use of \ as an escape character in attribute strings is supported, but keep in mind that this is not an official
-   // feature of the XPath standard.
-   // Wildcards are legal only in the context of string comparisons, e.g. a node or attribute lookup
-   //
-   // Examples:
-   //   /menu/submenu
-   //   /menu[2]/window
-   //   /menu/window/@title
-   //   /menu/window[@title='foo']/...
-   //   /menu[=contentmatch]
-   //   /menu//window
-   //   /menu/window/* (First child of the window tag)
-   //   /menu/*[@id='5']
-   //   /root/section[@*="alpha"] (Match any attribute with value "alpha")
-
-   ERR find_tag(std::string_view XPath, uint32_t CurrentPrefix);
-
    inline void updateIDs(TAGS &List, int ParentID) {
       for (auto &tag : List) {
          Map[tag.ID] = &tag;
@@ -215,8 +207,31 @@ static ERR SET_Source(extXML *, OBJECTPTR);
 #include "xpath/xpath_parser.h"
 #include "xpath/xpath_evaluator.h"
 
-inline ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
+ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback) 
 {
+   auto compiled_path = CompiledXPath::compile(XPath);
+   if (not compiled_path.isValid()) {
+      ErrorMsg = "XPath compilation error: ";
+      for (const auto &err : compiled_path.getErrors()) {
+         if (!ErrorMsg.empty()) ErrorMsg += "; ";
+         ErrorMsg += err;
+      }
+      return pf::Log(__FUNCTION__).warning(ERR::Syntax);
+   }
+   return findTag(compiled_path, pCallback);
+}
+
+ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
+{
+   this->Attrib.clear();
+
+   if (pCallback) this->Callback = *pCallback;
+   else this->Callback.Type = CALL::NIL;
+
+   this->CursorTags = &this->Tags;
+
+   Cursor = this->Tags.begin();
+
    ErrorMsg.clear();
 
    if ((!CursorTags) or (CursorTags->empty())) {
@@ -224,5 +239,5 @@ inline ERR extXML::find_tag(std::string_view XPath, uint32_t CurrentPrefix)
    }
 
    XPathEvaluator eval(this);
-   return eval.find_tag_enhanced_internal(XPath, CurrentPrefix, true);
+   return eval.find_tag(CompiledPath, 0);
 }
