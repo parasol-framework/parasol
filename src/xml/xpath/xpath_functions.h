@@ -38,7 +38,10 @@ enum class XPathValueType {
    NodeSet,
    Boolean,
    Number,
-   String
+   String,
+   Date,
+   Time,
+   DateTime
 };
 
 class XPathValue 
@@ -58,6 +61,8 @@ class XPathValue
    explicit XPathValue(bool value) : type(XPathValueType::Boolean), boolean_value(value) {}
    explicit XPathValue(double value) : type(XPathValueType::Number), number_value(value) {}
    explicit XPathValue(std::string value) : type(XPathValueType::String), string_value(std::move(value)) {}
+   explicit XPathValue(XPathValueType ValueType, std::string value)
+      : type(ValueType), string_value(std::move(value)) {}
    explicit XPathValue(const std::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,
                        std::vector<std::string> NodeSetStrings = {},
@@ -163,6 +168,9 @@ class XPathFunctionLibrary {
    static XPathValue function_min(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_max(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_avg(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_current_date(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_current_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_current_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_matches(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_replace(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_tokenize(const std::vector<XPathValue> &Args, const XPathContext &Context);
