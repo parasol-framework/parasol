@@ -29,7 +29,7 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 *********************************************************************************************************************/
 
 #include "defs.h"
-#include <regex>
+#include "../link/srell/srell.hpp"
 
 #ifdef _WIN32
 using namespace display;
@@ -79,8 +79,8 @@ void clean_clipboard(void)
       LocalResource free_dir(dir);
 
       while (ScanDir(dir) IS ERR::Okay) {
-         const std::regex txt_regex("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$");
-         if (std::regex_match(dir->Info->Name, txt_regex)) {
+         const srell::regex txt_regex("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$");
+         if (srell::regex_match(dir->Info->Name, txt_regex)) {
             if (dir->Info->TimeStamp < yesterday) {
                std::string path("clipboard:");
                path.append(dir->Info->Name);

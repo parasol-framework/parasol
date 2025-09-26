@@ -6,7 +6,7 @@ constexpr int SIZE_READ = 1024;
 #include <unordered_set>
 #include <set>
 #include <array>
-#include <regex>
+#include "../link/srell/srell.hpp"
 #include <parasol/strings.hpp>
 #include <thread>
 #include <string_view>
@@ -284,7 +284,7 @@ struct fprocessing {
 
 class fregex {
 public:
-   std::regex *regex_obj = nullptr;  // Compiled regex object
+   srell::regex *regex_obj = nullptr;  // Compiled SRELL regex object
    std::string pattern;     // Original pattern string
    std::string error_msg;   // Error message if compilation failed
    int flags;               // Compilation flags
