@@ -4,7 +4,7 @@
 #include <iterator>
 #include <utility>
 
-namespace parasol::regex {
+namespace pf {
 
 namespace {
 

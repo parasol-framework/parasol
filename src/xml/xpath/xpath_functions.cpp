@@ -137,21 +137,21 @@ std::string apply_string_case(const std::string &Value, bool Upper)
    return result;
 }
 
-parasol::regex::SyntaxOptions build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
+pf::SyntaxOptions build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 {
-   parasol::regex::SyntaxOptions options = parasol::regex::SyntaxECMAScript;
+   pf::SyntaxOptions options = pf::SyntaxECMAScript;
 
    for (char flag : Flags) {
       unsigned char code = (unsigned char)flag;
       char normalised = (char)std::tolower(code);
 
-      if (normalised IS 'i') options |= parasol::regex::SyntaxIgnoreCase;
-      else if (normalised IS 'm') options |= parasol::regex::SyntaxMultiline;
-      else if (normalised IS 's') options |= parasol::regex::SyntaxDotAll;
-      else if (normalised IS 'u') options |= parasol::regex::SyntaxUnicodeSets;
-      else if (normalised IS 'y') options |= parasol::regex::SyntaxSticky;
-      else if (normalised IS 'q') options |= parasol::regex::SyntaxQuiet;
-      else if (normalised IS 'v') options |= parasol::regex::SyntaxVerboseMode;
+      if (normalised IS 'i') options |= pf::SyntaxIgnoreCase;
+      else if (normalised IS 'm') options |= pf::SyntaxMultiline;
+      else if (normalised IS 's') options |= pf::SyntaxDotAll;
+      else if (normalised IS 'u') options |= pf::SyntaxUnicodeSets;
+      else if (normalised IS 'y') options |= pf::SyntaxSticky;
+      else if (normalised IS 'q') options |= pf::SyntaxQuiet;
+      else if (normalised IS 'v') options |= pf::SyntaxVerboseMode;
       else if (UnsupportedFlag) *UnsupportedFlag = true;
    }
 
@@ -447,9 +447,8 @@ XPathValue XPathFunctionLibrary::call_function(std::string_view Name, const std:
    if (const auto *function_ptr = find_function(Name)) {
       return (*function_ptr)(Args, Context);
    }
-   if (Context.expression_unsupported_flag) {
-      *Context.expression_unsupported_flag = true;
-   }
+
+   if (Context.expression_unsupported) *Context.expression_unsupported = true;
 
    if (Context.document) {
       if (!Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
@@ -1014,15 +1013,13 @@ XPathValue XPathFunctionLibrary::function_matches(const std::vector<XPathValue> 
    std::string pattern = Args[1].to_string();
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
-   parasol::regex::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported_flag);
-
-   parasol::regex::Regex compiled;
-   if (!compiled.compile(pattern, options)) {
-      if (Context.expression_unsupported_flag) *Context.expression_unsupported_flag = true;
+   pf::Regex compiled;
+   if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
       return XPathValue(false);
    }
 
-   parasol::regex::MatchResult result;
+   pf::MatchResult result;
    bool matched = compiled.search(input, result);
    return XPathValue(matched);
 }
@@ -1036,11 +1033,9 @@ XPathValue XPathFunctionLibrary::function_replace(const std::vector<XPathValue> 
    std::string replacement = Args[2].to_string();
    std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
 
-   parasol::regex::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported_flag);
-
-   parasol::regex::Regex compiled;
-   if (!compiled.compile(pattern, options)) {
-      if (Context.expression_unsupported_flag) *Context.expression_unsupported_flag = true;
+   pf::Regex compiled;
+   if (!compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
       return XPathValue(input);
    }
 
@@ -1066,11 +1061,11 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
       }
    }
    else {
-      parasol::regex::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported_flag);
+      pf::SyntaxOptions options = build_regex_options(flags, Context.expression_unsupported);
 
-      parasol::regex::Regex compiled;
+      pf::Regex compiled;
       if (!compiled.compile(pattern, options)) {
-         if (Context.expression_unsupported_flag) *Context.expression_unsupported_flag = true;
+         if (Context.expression_unsupported) *Context.expression_unsupported = true;
          return XPathValue(std::vector<XMLTag *>());
       }
 

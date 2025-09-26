@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-namespace parasol::regex {
+namespace pf {
 
 enum SyntaxOption : unsigned int {
    SyntaxECMAScript = 1u << 0,
