@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "xpath_arena.h"
+
 //********************************************************************************************************************
 // Main XPath Evaluator
 
@@ -24,6 +26,7 @@ class SimpleXPathEvaluator {
    extXML * xml;
    XPathFunctionLibrary function_library;
    XPathContext context;
+   XPathArena arena;
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
 
@@ -70,7 +73,7 @@ class SimpleXPathEvaluator {
    std::string build_ast_signature(const XPathNode *Node) const;
 
    public:
-   explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML) { context.document = XML; }
+   explicit SimpleXPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) { context.document = XML; }
 
    // Phase 2+ methods (AST-based)
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
