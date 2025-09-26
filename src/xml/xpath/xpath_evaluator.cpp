@@ -31,6 +31,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "xpath_axis.h"
+#include "xpath_evaluator.h"
+#include "xpath_parser.h"
+
 namespace {
 
 // Lightweight view-based trim used for cache key normalisation.
@@ -110,10 +114,10 @@ void SimpleXPathEvaluator::pop_cursor_state()
 }
 
 // Convert an axis selection into a list of node or attribute matches relative to the active context.
-std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis,
+std::vector<XPathAxisMatch> SimpleXPathEvaluator::dispatch_axis(AxisType Axis,
    XMLTag *ContextNode, const XMLAttrib *ContextAttribute)
 {
-   std::vector<AxisMatch> matches;
+   std::vector<XPathAxisMatch> matches;
 
    // Pre-size result container based on axis type and context
    size_t estimated_capacity = axis_evaluator.estimate_result_size(Axis, ContextNode);
@@ -274,6 +278,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t Cur
 ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
    // Namespace axis evaluation can allocate transient nodes; ensure we start from a clean slate.
    axis_evaluator.reset_namespace_nodes();
+   arena.reset();
 
    (void)AllowUnionSplit;
 
@@ -500,8 +505,7 @@ ERR SimpleXPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t 
 ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
-   std::vector<AxisMatch> current_context;
-   current_context.reserve(ContextNodes.size());
+   auto &current_context = arena.acquire_vector<XPathAxisMatch>(ContextNodes.size());
 
    for (auto *candidate : ContextNodes) {
       const XMLAttrib *attribute = nullptr;
@@ -509,13 +513,9 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
       current_context.push_back({ candidate, attribute });
    }
 
-   std::vector<AxisMatch> next_context;
-   next_context.reserve(current_context.size());
-
-   std::vector<AxisMatch> filtered;
-   filtered.reserve(current_context.size());
-   std::vector<AxisMatch> predicate_buffer;
-   predicate_buffer.reserve(current_context.size());
+   auto &next_context = arena.acquire_vector<XPathAxisMatch>(current_context.size());
+   auto &filtered = arena.acquire_vector<XPathAxisMatch>(current_context.size());
+   auto &predicate_buffer = arena.acquire_vector<XPathAxisMatch>(current_context.size());
 
    for (size_t step_index = StepIndex; step_index < Steps.size(); ++step_index) {
       if (current_context.empty()) break;
@@ -525,8 +525,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
 
       const XPathNode *axis_node = nullptr;
       const XPathNode *node_test = nullptr;
-      std::vector<const XPathNode *> predicate_nodes;
-      predicate_nodes.reserve(step_node->child_count());
+      auto &predicate_nodes = arena.acquire_vector<const XPathNode *>(step_node->child_count());
 
       for (size_t i = 0; i < step_node->child_count(); ++i) {
          auto child = step_node->get_child(i);
@@ -595,7 +594,7 @@ ERR SimpleXPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &Co
             push_context(candidate, index + 1, filtered.size(), match.attribute);
 
             if (axis IS AxisType::Attribute) {
-               AxisMatch next_match{};
+               XPathAxisMatch next_match{};
                next_match.node = candidate;
                next_match.attribute = match.attribute;
 
@@ -947,7 +946,8 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          }
          else {
             bool saved_expression_unsupported = expression_unsupported;
-            auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
+            auto &evaluated_value = arena.acquire_value();
+            evaluated_value = evaluate_expression(value_node, CurrentPrefix);
             bool evaluation_failed = expression_unsupported;
             expression_unsupported = saved_expression_unsupported;
             if (evaluation_failed) return PredicateResult::NoMatch;
@@ -993,7 +993,8 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
          }
          else {
             bool saved_expression_unsupported = expression_unsupported;
-            auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
+            auto &evaluated_value = arena.acquire_value();
+            evaluated_value = evaluate_expression(value_node, CurrentPrefix);
             bool evaluation_failed = expression_unsupported;
             expression_unsupported = saved_expression_unsupported;
             if (evaluation_failed) return PredicateResult::NoMatch;
@@ -1018,7 +1019,8 @@ SimpleXPathEvaluator::PredicateResult SimpleXPathEvaluator::evaluate_predicate(c
       }
    }
 
-   auto result_value = evaluate_expression(expression, CurrentPrefix);
+   auto &result_value = arena.acquire_value();
+   result_value = evaluate_expression(expression, CurrentPrefix);
 
    if (expression_unsupported) {
       expression_unsupported = false;
@@ -1220,7 +1222,7 @@ bool compare_xpath_relational(const XPathValue &left_value,
 
 } // namespace
 
-std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
+std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vector<XPathAxisMatch> &ContextNodes,
                                                                  const std::vector<const XPathNode *> &Steps,
                                                                  size_t StepIndex,
                                                                  uint32_t CurrentPrefix,
@@ -1243,7 +1245,7 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
 
    const XPathNode *axis_node = nullptr;
    const XPathNode *node_test = nullptr;
-   std::vector<const XPathNode *> predicate_nodes;
+   auto &predicate_nodes = arena.acquire_vector<const XPathNode *>(step_node->child_count());
 
    for (size_t index = 0; index < step_node->child_count(); ++index) {
       auto *child = step_node->get_child(index);
@@ -1264,8 +1266,7 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
    for (auto &context_entry : ContextNodes) {
       auto axis_matches = dispatch_axis(axis, context_entry.node, context_entry.attribute);
 
-      std::vector<AxisMatch> filtered;
-      filtered.reserve(axis_matches.size());
+      auto &filtered = arena.acquire_vector<XPathAxisMatch>(axis_matches.size());
 
       for (auto &match : axis_matches) {
          if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
@@ -1275,8 +1276,7 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
       if (filtered.empty()) continue;
 
       for (auto *predicate_node : predicate_nodes) {
-         std::vector<AxisMatch> passed;
-         passed.reserve(filtered.size());
+         auto &passed = arena.acquire_vector<XPathAxisMatch>(filtered.size());
 
          for (size_t index = 0; index < filtered.size(); ++index) {
             auto &match = filtered[index];
@@ -1304,8 +1304,7 @@ std::vector<XMLTag *> SimpleXPathEvaluator::collect_step_results(const std::vect
          continue;
       }
 
-      std::vector<AxisMatch> next_context;
-      next_context.reserve(filtered.size());
+      auto &next_context = arena.acquire_vector<XPathAxisMatch>(filtered.size());
       for (auto &match : filtered) next_context.push_back(match);
 
       auto child_results = collect_step_results(next_context, Steps, StepIndex + 1, CurrentPrefix, Unsupported);
@@ -1408,8 +1407,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_expression_value(const XPathNode 
       }
    }
    else {
-      std::vector<AxisMatch> initial_matches;
-      initial_matches.reserve(initial_context.size());
+      auto &initial_matches = arena.acquire_vector<XPathAxisMatch>(initial_context.size());
 
       for (auto *candidate : initial_context) {
          const XMLAttrib *attribute = nullptr;
@@ -1503,8 +1501,7 @@ XPathValue SimpleXPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLT
       node_results = InitialContext;
    }
    else {
-      std::vector<AxisMatch> initial_matches;
-      initial_matches.reserve(InitialContext.size());
+      auto &initial_matches = arena.acquire_vector<XPathAxisMatch>(InitialContext.size());
 
       for (size_t index = 0; index < InitialContext.size(); ++index) {
          auto *candidate = InitialContext[index];
@@ -1593,8 +1590,7 @@ XPathValue SimpleXPathEvaluator::evaluate_union_value(const std::vector<const XP
       std::string string_value;
    };
 
-   std::vector<UnionEntry> entries;
-   entries.reserve(Branches.size() * 4);
+   auto &entries = arena.acquire_vector<UnionEntry>(Branches.size() * 4);
 
    std::optional<std::string> combined_override;
 
@@ -1609,7 +1605,8 @@ XPathValue SimpleXPathEvaluator::evaluate_union_value(const std::vector<const XP
       xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
-      auto branch_value = evaluate_expression(branch, CurrentPrefix);
+      auto &branch_value = arena.acquire_value();
+      branch_value = evaluate_expression(branch, CurrentPrefix);
       if (expression_unsupported) {
          context = saved_context;
          context_stack = saved_context_stack;
@@ -2156,8 +2153,7 @@ XPathValue SimpleXPathEvaluator::evaluate_function_call(const XPathNode *FuncNod
 
    std::string function_name = FuncNode->value;
 
-   std::vector<XPathValue> args;
-   args.reserve(FuncNode->child_count());
+   auto &args = arena.acquire_vector<XPathValue>(FuncNode->child_count());
 
    for (size_t index = 0; index < FuncNode->child_count(); ++index) {
       auto *argument_node = FuncNode->get_child(index);

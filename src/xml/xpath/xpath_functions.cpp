@@ -156,6 +156,18 @@ size_t XPathValue::size() const {
    }
 }
 
+void XPathValue::reset()
+{
+   type = XPathValueType::Boolean;
+   node_set.clear();
+   node_set_string_override.reset();
+   node_set_string_values.clear();
+   node_set_attributes.clear();
+   boolean_value = false;
+   number_value = 0.0;
+   string_value.clear();
+}
+
 namespace {
 
 // Walk up the tree to locate a namespace declaration corresponding to the requested prefix.

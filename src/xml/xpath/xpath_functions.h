@@ -84,6 +84,7 @@ class XPathValue {
    // Utility methods
    bool is_empty() const;
    size_t size() const;
+   void reset();
 
    // Helpers exposed for evaluator utilities
    static std::string node_string_value(XMLTag *Node);
