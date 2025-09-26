@@ -18,6 +18,9 @@
 // and tokenizer remain ignorant of runtime data structures, and testing of the evaluator can be done
 // independently of XML parsing.
 
+#include "xpath_evaluator.h"
+#include "xpath_axis.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -119,11 +122,12 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
    size_t estimated_capacity = axis_evaluator.estimate_result_size(Axis, ContextNode);
    matches.reserve(estimated_capacity);
 
-   auto append_nodes = [&matches](const std::vector<XMLTag *> &nodes) {
+   auto append_nodes = [this, &matches](std::vector<XMLTag *> &nodes) {
       matches.reserve(matches.size() + nodes.size());
       for (auto *node : nodes) {
          matches.push_back({ node, nullptr });
       }
+      arena.release_node_vector(nodes);
    };
 
    bool attribute_context = ContextAttribute != nullptr;
@@ -138,7 +142,11 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
                matches.push_back({ &tag, nullptr });
             }
          }
-         else append_nodes(axis_evaluator.evaluate_axis(AxisType::Child, ContextNode));
+         else {
+            auto &child_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Child, ContextNode, child_buffer);
+            append_nodes(child_buffer);
+         }
          break;
       }
 
@@ -149,10 +157,16 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
             for (auto &tag : xml->Tags) {
                if (!tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
-               append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, &tag));
+               auto &desc_buffer = arena.acquire_node_vector();
+               axis_evaluator.evaluate_axis(AxisType::Descendant, &tag, desc_buffer);
+               append_nodes(desc_buffer);
             }
          }
-         else append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode));
+         else {
+            auto &desc_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode, desc_buffer);
+            append_nodes(desc_buffer);
+         }
          break;
       }
 
@@ -167,12 +181,16 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
             for (auto &tag : xml->Tags) {
                if (!tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
-               append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, &tag));
+               auto &desc_buffer = arena.acquire_node_vector();
+               axis_evaluator.evaluate_axis(AxisType::Descendant, &tag, desc_buffer);
+               append_nodes(desc_buffer);
             }
          }
          else {
             matches.push_back({ ContextNode, nullptr });
-            append_nodes(axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode));
+            auto &desc_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Descendant, ContextNode, desc_buffer);
+            append_nodes(desc_buffer);
          }
          break;
       }
@@ -189,7 +207,11 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
          if (attribute_context) {
             if (ContextNode) matches.push_back({ ContextNode, nullptr });
          }
-         else if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Parent, ContextNode));
+         else if (ContextNode) {
+            auto &parent_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Parent, ContextNode, parent_buffer);
+            append_nodes(parent_buffer);
+         }
          break;
       }
 
@@ -197,24 +219,34 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
          if (attribute_context) {
             if (ContextNode) {
                matches.push_back({ ContextNode, nullptr });
-               append_nodes(axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode));
+               auto &ancestor_buffer = arena.acquire_node_vector();
+               axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+               append_nodes(ancestor_buffer);
             }
          }
-         else if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode));
-         break;
-      }
+         else if (ContextNode) {
+            auto &ancestor_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+            append_nodes(ancestor_buffer);
+         }
+        break;
+     }
 
       case AxisType::AncestorOrSelf: {
          if (attribute_context) {
             matches.push_back({ ContextNode, ContextAttribute });
             if (ContextNode) {
                matches.push_back({ ContextNode, nullptr });
-               append_nodes(axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode));
+               auto &ancestor_buffer = arena.acquire_node_vector();
+               axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+               append_nodes(ancestor_buffer);
             }
          }
          else if (ContextNode) {
             matches.push_back({ ContextNode, nullptr });
-            append_nodes(axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode));
+            auto &ancestor_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Ancestor, ContextNode, ancestor_buffer);
+            append_nodes(ancestor_buffer);
          }
          else matches.push_back({ nullptr, nullptr });
          break;
@@ -222,27 +254,43 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
 
       case AxisType::FollowingSibling: {
          if (attribute_context) break;
-         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::FollowingSibling, ContextNode));
-         break;
-      }
+         if (ContextNode) {
+            auto &sibling_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::FollowingSibling, ContextNode, sibling_buffer);
+            append_nodes(sibling_buffer);
+         }
+        break;
+     }
 
       case AxisType::PrecedingSibling: {
          if (attribute_context) break;
-         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::PrecedingSibling, ContextNode));
-         break;
-      }
+         if (ContextNode) {
+            auto &sibling_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::PrecedingSibling, ContextNode, sibling_buffer);
+            append_nodes(sibling_buffer);
+         }
+        break;
+     }
 
       case AxisType::Following: {
          if (attribute_context) break;
-         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Following, ContextNode));
-         break;
-      }
+         if (ContextNode) {
+            auto &following_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Following, ContextNode, following_buffer);
+            append_nodes(following_buffer);
+         }
+        break;
+     }
 
       case AxisType::Preceding: {
          if (attribute_context) break;
-         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Preceding, ContextNode));
-         break;
-      }
+         if (ContextNode) {
+            auto &preceding_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Preceding, ContextNode, preceding_buffer);
+            append_nodes(preceding_buffer);
+         }
+        break;
+     }
 
       case AxisType::Attribute: {
          if (attribute_context) break;
@@ -254,10 +302,15 @@ std::vector<SimpleXPathEvaluator::AxisMatch> SimpleXPathEvaluator::dispatch_axis
          break;
       }
 
-      case AxisType::Namespace:
+      case AxisType::Namespace: {
          if (attribute_context) break;
-         if (ContextNode) append_nodes(axis_evaluator.evaluate_axis(AxisType::Namespace, ContextNode));
+         if (ContextNode) {
+            auto &namespace_buffer = arena.acquire_node_vector();
+            axis_evaluator.evaluate_axis(AxisType::Namespace, ContextNode, namespace_buffer);
+            append_nodes(namespace_buffer);
+         }
          break;
+      }
    }
 
    return matches;
@@ -274,6 +327,7 @@ ERR SimpleXPathEvaluator::find_tag_enhanced(std::string_view XPath, uint32_t Cur
 ERR SimpleXPathEvaluator::find_tag_enhanced_internal(std::string_view XPath, uint32_t CurrentPrefix, bool AllowUnionSplit) {
    // Namespace axis evaluation can allocate transient nodes; ensure we start from a clean slate.
    axis_evaluator.reset_namespace_nodes();
+   arena.reset();
 
    (void)AllowUnionSplit;
 

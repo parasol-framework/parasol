@@ -8,6 +8,7 @@
 #pragma once
 
 #include "xpath_ast.h"
+#include "xpath_arena.h"
 
 //********************************************************************************************************************
 // XPath Axis Types
@@ -34,6 +35,7 @@ enum class AxisType {
 class AxisEvaluator {
    private:
    extXML * xml;
+   XPathArena & arena;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
    std::unordered_map<int, XMLTag *> id_lookup;
    bool id_cache_built = false;
@@ -56,19 +58,19 @@ class AxisEvaluator {
    std::vector<std::unique_ptr<XMLTag>> namespace_node_pool;
 
    // Helper methods for specific axes
-   std::vector<XMLTag *> evaluate_child_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_descendant_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_parent_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_ancestor_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_following_sibling_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_preceding_sibling_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_following_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_preceding_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_attribute_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_namespace_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_self_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_descendant_or_self_axis(XMLTag *ContextNode);
-   std::vector<XMLTag *> evaluate_ancestor_or_self_axis(XMLTag *ContextNode);
+   void evaluate_child_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_descendant_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_parent_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_ancestor_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_following_sibling_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_preceding_sibling_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_following_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_preceding_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_attribute_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_namespace_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_descendant_or_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_ancestor_or_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
 
    void collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output);
 
@@ -88,10 +90,10 @@ class AxisEvaluator {
    XMLTag * find_tag_by_id(int ID);
 
    public:
-   explicit AxisEvaluator(extXML *XML) : xml(XML) {}
+   explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}
 
    // Main evaluation method
-   std::vector<XMLTag *> evaluate_axis(AxisType Axis, XMLTag *ContextNode);
+   void evaluate_axis(AxisType Axis, XMLTag *ContextNode, std::vector<XMLTag *> &Output);
 
    // Evaluation lifecycle helpers
    void reset_namespace_nodes();
