@@ -297,7 +297,11 @@ static void parse_doctype(extXML *Self, CSTRING Input)
                if (*str IS '%') { parameter = true; str++; skip_ws(str); }
 
                std::string name;
-               if (!read_name(str, name)) continue;
+               if (!read_name(str, name)) {
+                  while ((*str) and (*str != '>')) str++;
+                  if (*str IS '>') str++;
+                  continue;
+               }
 
                skip_ws(str);
 
@@ -325,7 +329,11 @@ static void parse_doctype(extXML *Self, CSTRING Input)
             else if (ci_keyword(str, "NOTATION")) {
                skip_ws(str);
                std::string name;
-               if (!read_name(str, name)) continue;
+               if (!read_name(str, name)) {
+                  while ((*str) and (*str != '>')) str++;
+                  if (*str IS '>') str++;
+                  continue;
+               }
                skip_ws(str);
 
                std::string notation_value;
