@@ -297,16 +297,25 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
 
-   if (Self->findTag(Args->XPath, Args->Callback) IS ERR::Okay) {
+   ERR error = Self->findTag(Args->XPath, Args->Callback);
+
+   if (error IS ERR::Okay) {
       if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
       Args->Result = Self->Cursor->ID;
       return ERR::Okay;
    }
-   else if (Args->Callback) return ERR::Okay;
-   else {
-      if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Failed to find tag through XPath.");
-      return ERR::Search;
+
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) {
+      if (error IS ERR::Search) log.msg("Failed to find tag through XPath.");
+      else log.msg("XPath evaluation failed: %s", GetErrorMsg(error));
    }
+
+   if (Args->Callback) {
+      if (error IS ERR::Search) return ERR::Okay;
+      return error;
+   }
+
+   return error;
 }
 
 //********************************************************************************************************************
