@@ -245,7 +245,7 @@ function testContentExtraction()
    assert(string.find(immediateContent, "more content"), "Trailing content not extracted")
 
    -- Test deep content extraction
-   local deepContent = xml.getKey('string(/root/section/)')
+   local deepContent = xml.getKey('string(/root/section)')
    assert(string.find(deepContent, "emphasized"), "Deep content not extracted, got: " .. deepContent)
 end
 
