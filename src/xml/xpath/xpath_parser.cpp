@@ -976,8 +976,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_let_expr() {
       binding_node->add_child(std::move(binding_expr));
       let_node->add_child(std::move(binding_node));
 
-      if (match(XPathTokenType::COMMA)) parsing_bindings = true;
-      else parsing_bindings = false;
+      parsing_bindings = match(XPathTokenType::COMMA);
    }
 
    XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view());
