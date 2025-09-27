@@ -154,6 +154,54 @@ function testForExpressionMultipleBindings()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- FLWOR expressions should allow mixing FOR and LET clauses with shared variables
+
+function testFlworForLetCombination()
+   local xml = obj.new("xml", {
+      statement = '<library>' ..
+                  '<book id="a" genre="fiction" price="39"/>' ..
+                  '<book id="b" genre="reference" price="55"/>' ..
+                  '<book id="c" genre="fiction" price="42"/>' ..
+                  '</library>'
+   })
+
+   local collected = {}
+   local err = xml.mtFindTag('for $book in /library/book let $genre := $book/@genre return $book[$genre = "fiction"]', function(XML, TagID)
+      local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'FLWOR for-let callback should resolve book id: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(collected, idValue)
+   end)
+
+   assert(err == ERR_Okay, 'FLWOR for-let evaluation should succeed: ' .. mSys.GetErrorMsg(err))
+   table.sort(collected)
+   assert(#collected == 2 and collected[1] == 'a' and collected[2] == 'c', 'FLWOR for-let should filter fiction books, got ' .. table.concat(collected, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- LET clauses preceding FOR clauses should bind variables for subsequent iterations
+
+function testFlworLetForCombination()
+   local xml = obj.new("xml", {
+      statement = '<library>' ..
+                  '<book id="a" price="39"/>' ..
+                  '<book id="b" price="55"/>' ..
+                  '<book id="c" price="44"/>' ..
+                  '</library>'
+   })
+
+   local expensive = {}
+   local err = xml.mtFindTag('let $collection := /library/book for $book in $collection return $book[@price > 40]', function(XML, TagID)
+      local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'FLWOR let-for callback should resolve book id: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(expensive, idValue)
+   end)
+
+   assert(err == ERR_Okay, 'FLWOR let-for evaluation should succeed: ' .. mSys.GetErrorMsg(err))
+   table.sort(expensive)
+   assert(#expensive == 2 and expensive[1] == 'b' and expensive[2] == 'c', 'FLWOR let-for should filter books above price 40, got ' .. table.concat(expensive, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Sequence set operators should merge and filter node collections
 
 function testSequenceSetOperators()
@@ -247,7 +295,7 @@ return {
    tests = {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
       'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
-      'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testSequenceSetOperators',
+      'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testFlworForLetCombination', 'testFlworLetForCombination', 'testSequenceSetOperators',
       'testSetOperatorKeywordNameTests'
    }
 }

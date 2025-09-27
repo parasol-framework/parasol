@@ -395,6 +395,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) 
       case XPathNodeType::CONDITIONAL:
       case XPathNodeType::FOR_EXPRESSION:
       case XPathNodeType::LET_EXPRESSION:
+      case XPathNodeType::FLWOR_EXPRESSION:
       case XPathNodeType::QUANTIFIED_EXPRESSION:
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
@@ -2168,6 +2169,189 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       auto result_value = evaluate_expression(return_node, CurrentPrefix);
       return result_value;
+   }
+
+   if (ExprNode->type IS XPathNodeType::FLWOR_EXPRESSION) {
+      if (ExprNode->child_count() < 2) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
+
+      const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
+      if (!return_node) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
+
+      std::vector<const XPathNode *> clauses;
+      clauses.reserve(ExprNode->child_count() - 1);
+
+      for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
+         const XPathNode *clause_node = ExprNode->get_child(index);
+         if ((!clause_node) or
+             !((clause_node->type IS XPathNodeType::FOR_BINDING) or
+               (clause_node->type IS XPathNodeType::LET_BINDING))) {
+            expression_unsupported = true;
+            return XPathValue();
+         }
+         clauses.push_back(clause_node);
+      }
+
+      if (clauses.empty()) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
+
+      std::vector<XMLTag *> combined_nodes;
+      std::vector<std::string> combined_strings;
+      std::vector<const XMLAttrib *> combined_attributes;
+      std::optional<std::string> combined_override;
+
+      std::function<bool(size_t)> append_return_value;
+
+      append_return_value = [&](size_t clause_index) -> bool {
+         if (clause_index >= clauses.size()) {
+            auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
+            if (expression_unsupported) return false;
+
+            if (iteration_value.type != XPathValueType::NodeSet) {
+               expression_unsupported = true;
+               return false;
+            }
+
+            for (size_t node_index = 0; node_index < iteration_value.node_set.size(); ++node_index) {
+               XMLTag *node = iteration_value.node_set[node_index];
+               combined_nodes.push_back(node);
+
+               const XMLAttrib *attribute = nullptr;
+               if (node_index < iteration_value.node_set_attributes.size()) {
+                  attribute = iteration_value.node_set_attributes[node_index];
+               }
+               combined_attributes.push_back(attribute);
+
+               std::string node_string;
+               bool use_override = iteration_value.node_set_string_override.has_value() and
+                  (node_index IS 0) and iteration_value.node_set_string_values.empty();
+               if (node_index < iteration_value.node_set_string_values.size()) {
+                  node_string = iteration_value.node_set_string_values[node_index];
+               }
+               else if (use_override) node_string = *iteration_value.node_set_string_override;
+               else if (node) node_string = XPathValue::node_string_value(node);
+
+               combined_strings.push_back(node_string);
+
+               if (!combined_override.has_value()) {
+                  if (iteration_value.node_set_string_override.has_value()) {
+                     combined_override = iteration_value.node_set_string_override;
+                  }
+                  else combined_override = node_string;
+               }
+            }
+
+            return true;
+         }
+
+         const XPathNode *clause_node = clauses[clause_index];
+         if (!clause_node) {
+            expression_unsupported = true;
+            return false;
+         }
+
+         if (clause_node->type IS XPathNodeType::LET_BINDING) {
+            if ((clause_node->value.empty()) or (clause_node->child_count() IS 0)) {
+               expression_unsupported = true;
+               return false;
+            }
+
+            const XPathNode *binding_expr = clause_node->get_child(0);
+            if (!binding_expr) {
+               expression_unsupported = true;
+               return false;
+            }
+
+            XPathValue bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+            if (expression_unsupported) return false;
+
+            VariableBindingGuard guard(context, clause_node->value, std::move(bound_value));
+            return append_return_value(clause_index + 1);
+         }
+
+         if (clause_node->type IS XPathNodeType::FOR_BINDING) {
+            if ((clause_node->value.empty()) or (clause_node->child_count() IS 0)) {
+               expression_unsupported = true;
+               return false;
+            }
+
+            const XPathNode *sequence_expr = clause_node->get_child(0);
+            if (!sequence_expr) {
+               expression_unsupported = true;
+               return false;
+            }
+
+            auto sequence_value = evaluate_expression(sequence_expr, CurrentPrefix);
+            if (expression_unsupported) return false;
+
+            if (sequence_value.type != XPathValueType::NodeSet) {
+               expression_unsupported = true;
+               return false;
+            }
+
+            size_t sequence_size = sequence_value.node_set.size();
+            if (sequence_size IS 0) return true;
+
+            for (size_t index = 0; index < sequence_size; ++index) {
+               XMLTag *item_node = sequence_value.node_set[index];
+               const XMLAttrib *item_attribute = nullptr;
+               if (index < sequence_value.node_set_attributes.size()) {
+                  item_attribute = sequence_value.node_set_attributes[index];
+               }
+
+               XPathValue bound_value;
+               bound_value.type = XPathValueType::NodeSet;
+               bound_value.node_set.push_back(item_node);
+               bound_value.node_set_attributes.push_back(item_attribute);
+
+               std::string item_string;
+               bool use_override = sequence_value.node_set_string_override.has_value() and
+                  (index IS 0) and sequence_value.node_set_string_values.empty();
+               if (index < sequence_value.node_set_string_values.size()) {
+                  item_string = sequence_value.node_set_string_values[index];
+               }
+               else if (use_override) item_string = *sequence_value.node_set_string_override;
+               else if (item_node) item_string = XPathValue::node_string_value(item_node);
+
+               bound_value.node_set_string_values.push_back(item_string);
+               bound_value.node_set_string_override = item_string;
+
+               VariableBindingGuard iteration_guard(context, clause_node->value, std::move(bound_value));
+
+               push_context(item_node, index + 1, sequence_size, item_attribute);
+               bool evaluation_ok = append_return_value(clause_index + 1);
+               pop_context();
+
+               if (!evaluation_ok) return false;
+               if (expression_unsupported) return false;
+            }
+
+            return true;
+         }
+
+         expression_unsupported = true;
+         return false;
+      };
+
+      bool evaluation_ok = append_return_value(0);
+      if (!evaluation_ok) return XPathValue();
+      if (expression_unsupported) return XPathValue();
+
+      XPathValue result;
+      result.type = XPathValueType::NodeSet;
+      result.node_set = std::move(combined_nodes);
+      result.node_set_string_values = std::move(combined_strings);
+      result.node_set_attributes = std::move(combined_attributes);
+      if (combined_override.has_value()) result.node_set_string_override = combined_override;
+      else result.node_set_string_override.reset();
+      return result;
    }
 
    if (ExprNode->type IS XPathNodeType::FOR_EXPRESSION) {
