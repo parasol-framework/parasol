@@ -527,8 +527,6 @@ bool XPathParser::check_identifier_keyword(std::string_view Keyword) const {
       if (token.type IS XPathTokenType::EXCEPT) return true;
    }
 
-   if (token.value IS Keyword) return true;
-
    return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
 }
 
