@@ -58,6 +58,8 @@ class XPathParser {
 
    // Grammar rule methods (XPath 1.0 grammar)
    std::unique_ptr<XPathNode> parse_expr();
+   std::unique_ptr<XPathNode> parse_flwor_expr();
+   std::unique_ptr<XPathNode> parse_let_expr();
    std::unique_ptr<XPathNode> parse_or_expr();
    std::unique_ptr<XPathNode> parse_and_expr();
    std::unique_ptr<XPathNode> parse_equality_expr();

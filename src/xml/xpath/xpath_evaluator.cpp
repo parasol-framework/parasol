@@ -394,6 +394,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) 
       case XPathNodeType::STRING:
       case XPathNodeType::CONDITIONAL:
       case XPathNodeType::FOR_EXPRESSION:
+      case XPathNodeType::LET_EXPRESSION:
       case XPathNodeType::QUANTIFIED_EXPRESSION:
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
@@ -2124,6 +2125,49 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       auto *selected_node = condition_boolean ? then_node : else_node;
       auto branch_value = evaluate_expression(selected_node, CurrentPrefix);
       return branch_value;
+   }
+
+   if (ExprNode->type IS XPathNodeType::LET_EXPRESSION) {
+      if (ExprNode->child_count() < 2) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
+
+      const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
+      if (!return_node) {
+         expression_unsupported = true;
+         return XPathValue();
+      }
+
+      std::vector<VariableBindingGuard> binding_guards;
+      binding_guards.reserve(ExprNode->child_count() - 1);
+
+      for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
+         const XPathNode *binding_node = ExprNode->get_child(index);
+         if ((!binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
+            expression_unsupported = true;
+            return XPathValue();
+         }
+
+         if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
+            expression_unsupported = true;
+            return XPathValue();
+         }
+
+         const XPathNode *binding_expr = binding_node->get_child(0);
+         if (!binding_expr) {
+            expression_unsupported = true;
+            return XPathValue();
+         }
+
+         XPathValue bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+         if (expression_unsupported) return XPathValue();
+
+         binding_guards.emplace_back(context, binding_node->value, std::move(bound_value));
+      }
+
+      auto result_value = evaluate_expression(return_node, CurrentPrefix);
+      return result_value;
    }
 
    if (ExprNode->type IS XPathNodeType::FOR_EXPRESSION) {

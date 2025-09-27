@@ -28,6 +28,7 @@ void XPathTokenizer::initialize_interned_strings() {
    interned_strings["some"] = "some";
    interned_strings["every"] = "every";
    interned_strings["satisfies"] = "satisfies";
+   interned_strings["let"] = "let";
 
    // Common node type tests
    interned_strings["node"] = "node";
@@ -307,6 +308,7 @@ XPathToken XPathTokenizer::scan_identifier() {
    else if (identifier IS "then") type = XPathTokenType::THEN;
    else if (identifier IS "else") type = XPathTokenType::ELSE;
    else if (identifier IS "for") type = XPathTokenType::FOR;
+   else if (identifier IS "let") type = XPathTokenType::LET;
    else if (identifier IS "in") type = XPathTokenType::IN;
    else if (identifier IS "return") type = XPathTokenType::RETURN;
    else if (identifier IS "some") type = XPathTokenType::SOME;
@@ -430,6 +432,10 @@ XPathToken XPathTokenizer::scan_operator()
          position += 2;
          return XPathToken(XPathTokenType::GREATER_EQUAL, two_char, start, 2);
       }
+      else if (two_char IS ":=") {
+         position += 2;
+         return XPathToken(XPathTokenType::ASSIGN, two_char, start, 2);
+      }
    }
 
    // Single character operators - use string_view to avoid copying
@@ -520,6 +526,8 @@ bool XPathParser::check_identifier_keyword(std::string_view Keyword) const {
    else if (Keyword IS "except") {
       if (token.type IS XPathTokenType::EXCEPT) return true;
    }
+
+   if (token.value IS Keyword) return true;
 
    return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
 }
@@ -901,9 +909,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
       return parse_if_expr();
    }
 
-   // Handle for expressions at the top level
-   if (check(XPathTokenType::FOR)) {
-      return parse_for_expr();
+   // Handle FLWOR expressions (for/let) at the top level
+   if (check(XPathTokenType::FOR) or check(XPathTokenType::LET) or check_identifier_keyword("let")) {
+      return parse_flwor_expr();
    }
 
    // Handle quantified expressions at the top level
@@ -912,6 +920,80 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
    }
 
    return parse_or_expr();
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr() {
+   if (check(XPathTokenType::FOR)) {
+      return parse_for_expr();
+   }
+
+   if (check(XPathTokenType::LET) or check_identifier_keyword("let")) {
+      return parse_let_expr();
+   }
+
+   report_error("Expected 'for' or 'let' expression");
+   return nullptr;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_let_expr() {
+   XPathToken let_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("let", XPathTokenType::LET, let_token)) {
+      report_error("Expected 'let' expression");
+      return nullptr;
+   }
+
+   auto let_node = std::make_unique<XPathNode>(XPathNodeType::LET_EXPRESSION);
+
+   bool parsing_bindings = true;
+   while (parsing_bindings) {
+      if (!match(XPathTokenType::DOLLAR)) {
+         report_error("Expected '$' after 'let'");
+         return nullptr;
+      }
+
+      std::string variable_name;
+      if (check(XPathTokenType::IDENTIFIER)) {
+         variable_name = peek().value;
+         advance();
+      }
+      else {
+         report_error("Expected variable name after '$' in let binding");
+         return nullptr;
+      }
+
+      if (!match(XPathTokenType::ASSIGN)) {
+         report_error("Expected ':=' in let binding");
+         return nullptr;
+      }
+
+      auto binding_expr = parse_expr();
+      if (!binding_expr) {
+         report_error("Expected expression after ':=' in let binding");
+         return nullptr;
+      }
+
+      auto binding_node = std::make_unique<XPathNode>(XPathNodeType::LET_BINDING, variable_name);
+      binding_node->add_child(std::move(binding_expr));
+      let_node->add_child(std::move(binding_node));
+
+      if (match(XPathTokenType::COMMA)) parsing_bindings = true;
+      else parsing_bindings = false;
+   }
+
+   XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("return", XPathTokenType::RETURN, return_token)) {
+      report_error("Expected 'return' in let expression");
+      return nullptr;
+   }
+
+   auto return_expr = parse_expr();
+   if (!return_expr) {
+      report_error("Expected expression after 'return'");
+      return nullptr;
+   }
+
+   let_node->add_child(std::move(return_expr));
+   return let_node;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_or_expr() {
