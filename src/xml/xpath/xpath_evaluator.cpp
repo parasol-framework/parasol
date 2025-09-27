@@ -394,6 +394,8 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) 
       case XPathNodeType::STRING:
       case XPathNodeType::CONDITIONAL:
       case XPathNodeType::FOR_EXPRESSION:
+      case XPathNodeType::LET_EXPRESSION:
+      case XPathNodeType::FLWOR_EXPRESSION:
       case XPathNodeType::QUANTIFIED_EXPRESSION:
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
@@ -2071,7 +2073,7 @@ XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XP
 
 XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
-      expression_unsupported = true;
+      record_error("Unsupported XPath expression: empty node", true);
       return XPathValue();
    }
 
@@ -2124,6 +2126,252 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       auto *selected_node = condition_boolean ? then_node : else_node;
       auto branch_value = evaluate_expression(selected_node, CurrentPrefix);
       return branch_value;
+   }
+
+   // LET expressions share the same diagnostic surface as the parser.  Whenever a binding fails we populate
+   // extXML::ErrorMsg so Fluid callers receive precise feedback rather than generic failure codes.
+   if (ExprNode->type IS XPathNodeType::LET_EXPRESSION) {
+      if (ExprNode->child_count() < 2) {
+         record_error("LET expression requires at least one binding and a return clause.", true);
+         return XPathValue();
+      }
+
+      const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
+      if (!return_node) {
+         record_error("LET expression is missing its return clause.", true);
+         return XPathValue();
+      }
+
+      std::vector<VariableBindingGuard> binding_guards;
+      binding_guards.reserve(ExprNode->child_count() - 1);
+
+      for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
+         const XPathNode *binding_node = ExprNode->get_child(index);
+         if ((!binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
+            record_error("LET expression contains an invalid binding clause.", true);
+            return XPathValue();
+         }
+
+         if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
+            record_error("Let binding requires a variable name and expression.", true);
+            return XPathValue();
+         }
+
+         const XPathNode *binding_expr = binding_node->get_child(0);
+         if (!binding_expr) {
+            record_error("Let binding requires an expression node.", true);
+            return XPathValue();
+         }
+
+         XPathValue bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+         if (expression_unsupported) {
+            record_error("Let binding expression could not be evaluated.");
+            return XPathValue();
+         }
+
+         binding_guards.emplace_back(context, binding_node->value, std::move(bound_value));
+      }
+
+      auto result_value = evaluate_expression(return_node, CurrentPrefix);
+      if (expression_unsupported) {
+         record_error("Let return expression could not be evaluated.");
+         return XPathValue();
+      }
+      return result_value;
+   }
+
+   // FLWOR evaluation mirrors that approach, capturing structural and runtime issues so test_xpath_flwor.fluid can assert
+   // on human-readable error text while we continue to guard performance-sensitive paths.
+   if (ExprNode->type IS XPathNodeType::FLWOR_EXPRESSION) {
+      if (ExprNode->child_count() < 2) {
+         record_error("FLWOR expression requires at least one clause and a return expression.", true);
+         return XPathValue();
+      }
+
+      const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
+      if (!return_node) {
+         record_error("FLWOR expression is missing its return clause.", true);
+         return XPathValue();
+      }
+
+      std::vector<const XPathNode *> clauses;
+      clauses.reserve(ExprNode->child_count() - 1);
+
+      for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
+         const XPathNode *clause_node = ExprNode->get_child(index);
+         if ((!clause_node) or
+             !((clause_node->type IS XPathNodeType::FOR_BINDING) or
+               (clause_node->type IS XPathNodeType::LET_BINDING))) {
+            record_error("FLWOR expression contains an invalid clause.", true);
+            return XPathValue();
+         }
+         clauses.push_back(clause_node);
+      }
+
+      if (clauses.empty()) {
+         record_error("FLWOR expression is missing binding clauses.", true);
+         return XPathValue();
+      }
+
+      std::vector<XMLTag *> combined_nodes;
+      std::vector<std::string> combined_strings;
+      std::vector<const XMLAttrib *> combined_attributes;
+      std::optional<std::string> combined_override;
+
+      std::function<bool(size_t)> append_return_value;
+
+      append_return_value = [&](size_t clause_index) -> bool {
+         if (clause_index >= clauses.size()) {
+            auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
+            if (expression_unsupported) {
+               record_error("FLWOR return expression could not be evaluated.");
+               return false;
+            }
+
+            if (iteration_value.type != XPathValueType::NodeSet) {
+               record_error("FLWOR return expressions must yield node-sets.", true);
+               return false;
+            }
+
+            for (size_t node_index = 0; node_index < iteration_value.node_set.size(); ++node_index) {
+               XMLTag *node = iteration_value.node_set[node_index];
+               combined_nodes.push_back(node);
+
+               const XMLAttrib *attribute = nullptr;
+               if (node_index < iteration_value.node_set_attributes.size()) {
+                  attribute = iteration_value.node_set_attributes[node_index];
+               }
+               combined_attributes.push_back(attribute);
+
+               std::string node_string;
+               bool use_override = iteration_value.node_set_string_override.has_value() and
+                  (node_index IS 0) and iteration_value.node_set_string_values.empty();
+               if (node_index < iteration_value.node_set_string_values.size()) {
+                  node_string = iteration_value.node_set_string_values[node_index];
+               }
+               else if (use_override) node_string = *iteration_value.node_set_string_override;
+               else if (node) node_string = XPathValue::node_string_value(node);
+
+               combined_strings.push_back(node_string);
+
+               if (!combined_override.has_value()) {
+                  if (iteration_value.node_set_string_override.has_value()) {
+                     combined_override = iteration_value.node_set_string_override;
+                  }
+                  else combined_override = node_string;
+               }
+            }
+
+            return true;
+         }
+
+         const XPathNode *clause_node = clauses[clause_index];
+         if (!clause_node) {
+            record_error("FLWOR expression contains an invalid clause.", true);
+            return false;
+         }
+
+         if (clause_node->type IS XPathNodeType::LET_BINDING) {
+            if ((clause_node->value.empty()) or (clause_node->child_count() IS 0)) {
+               record_error("Let binding requires a variable name and expression.", true);
+               return false;
+            }
+
+            const XPathNode *binding_expr = clause_node->get_child(0);
+            if (!binding_expr) {
+               record_error("Let binding requires an expression node.", true);
+               return false;
+            }
+
+            XPathValue bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+            if (expression_unsupported) {
+               record_error("Let binding expression could not be evaluated.");
+               return false;
+            }
+
+            VariableBindingGuard guard(context, clause_node->value, std::move(bound_value));
+            return append_return_value(clause_index + 1);
+         }
+
+         if (clause_node->type IS XPathNodeType::FOR_BINDING) {
+            if ((clause_node->value.empty()) or (clause_node->child_count() IS 0)) {
+               record_error("For binding requires a variable name and sequence.", true);
+               return false;
+            }
+
+            const XPathNode *sequence_expr = clause_node->get_child(0);
+            if (!sequence_expr) {
+               record_error("For binding requires a sequence expression.", true);
+               return false;
+            }
+
+            auto sequence_value = evaluate_expression(sequence_expr, CurrentPrefix);
+            if (expression_unsupported) {
+               record_error("For binding sequence could not be evaluated.");
+               return false;
+            }
+
+            if (sequence_value.type != XPathValueType::NodeSet) {
+               record_error("For binding sequences must evaluate to node-sets.", true);
+               return false;
+            }
+
+            size_t sequence_size = sequence_value.node_set.size();
+            if (sequence_size IS 0) return true;
+
+            for (size_t index = 0; index < sequence_size; ++index) {
+               XMLTag *item_node = sequence_value.node_set[index];
+               const XMLAttrib *item_attribute = nullptr;
+               if (index < sequence_value.node_set_attributes.size()) {
+                  item_attribute = sequence_value.node_set_attributes[index];
+               }
+
+               XPathValue bound_value;
+               bound_value.type = XPathValueType::NodeSet;
+               bound_value.node_set.push_back(item_node);
+               bound_value.node_set_attributes.push_back(item_attribute);
+
+               std::string item_string;
+               bool use_override = sequence_value.node_set_string_override.has_value() and
+                  (index IS 0) and sequence_value.node_set_string_values.empty();
+               if (index < sequence_value.node_set_string_values.size()) {
+                  item_string = sequence_value.node_set_string_values[index];
+               }
+               else if (use_override) item_string = *sequence_value.node_set_string_override;
+               else if (item_node) item_string = XPathValue::node_string_value(item_node);
+
+               bound_value.node_set_string_values.push_back(item_string);
+               bound_value.node_set_string_override = item_string;
+
+               VariableBindingGuard iteration_guard(context, clause_node->value, std::move(bound_value));
+
+               push_context(item_node, index + 1, sequence_size, item_attribute);
+               bool evaluation_ok = append_return_value(clause_index + 1);
+               pop_context();
+
+               if (!evaluation_ok) return false;
+               if (expression_unsupported) return false;
+            }
+
+            return true;
+         }
+
+         record_error("FLWOR expression contains an unsupported clause type.", true);
+         return false;
+      };
+
+      bool evaluation_ok = append_return_value(0);
+      if (!evaluation_ok) return XPathValue();
+      if (expression_unsupported) return XPathValue();
+
+      XPathValue result;
+      result.type = XPathValueType::NodeSet;
+      result.node_set = std::move(combined_nodes);
+      result.node_set_string_values = std::move(combined_strings);
+      result.node_set_attributes = std::move(combined_attributes);
+      if (combined_override.has_value()) result.node_set_string_override = combined_override;
+      else result.node_set_string_override.reset();
+      return result;
    }
 
    if (ExprNode->type IS XPathNodeType::FOR_EXPRESSION) {
@@ -2238,39 +2486,19 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             return false;
          }
 
-         bool had_previous = false;
-         XPathValue previous_value;
-         auto existing = context.variables.find(binding.name);
-         if (existing != context.variables.end()) {
-            had_previous = true;
-            previous_value = existing->second;
-         }
-
          const std::string variable_name = binding.name;
 
-         auto restore_variable = [this, variable_name, had_previous, &previous_value]() {
-            if (had_previous) context.variables[variable_name] = previous_value;
-            else context.variables.erase(variable_name);
-         };
-
          auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
-         if (expression_unsupported) {
-            restore_variable();
-            return false;
-         }
+         if (expression_unsupported) return false;
 
          if (sequence_value.type != XPathValueType::NodeSet) {
-            restore_variable();
             expression_unsupported = true;
             return false;
          }
 
          size_t sequence_size = sequence_value.node_set.size();
 
-         if (sequence_size IS 0) {
-            restore_variable();
-            return true;
-         }
+         if (sequence_size IS 0) return true;
 
          for (size_t index = 0; index < sequence_size; ++index) {
             XMLTag *item_node = sequence_value.node_set[index];
@@ -2296,24 +2524,17 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
 
-            context.variables[variable_name] = bound_value;
+            VariableBindingGuard iteration_guard(context, variable_name, std::move(bound_value));
 
             push_context(item_node, index + 1, sequence_size, item_attribute);
             bool iteration_ok = evaluate_bindings(binding_index + 1);
             pop_context();
 
-            if (!iteration_ok) {
-               restore_variable();
-               return false;
-            }
+            if (!iteration_ok) return false;
 
-            if (expression_unsupported) {
-               restore_variable();
-               return false;
-            }
+            if (expression_unsupported) return false;
          }
 
-         restore_variable();
          return true;
       };
 
@@ -2392,39 +2613,19 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             return false;
          }
 
-         bool had_previous = false;
-         XPathValue previous_value;
-         auto existing = context.variables.find(binding.name);
-         if (existing != context.variables.end()) {
-            had_previous = true;
-            previous_value = existing->second;
-         }
-
          const std::string variable_name = binding.name;
 
-         auto restore_variable = [this, variable_name, had_previous, &previous_value]() {
-            if (had_previous) context.variables[variable_name] = previous_value;
-            else context.variables.erase(variable_name);
-         };
-
          auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
-         if (expression_unsupported) {
-            restore_variable();
-            return false;
-         }
+         if (expression_unsupported) return false;
 
          if (sequence_value.type != XPathValueType::NodeSet) {
-            restore_variable();
             expression_unsupported = true;
             return false;
          }
 
          size_t sequence_size = sequence_value.node_set.size();
 
-         if (sequence_size IS 0) {
-            restore_variable();
-            return is_every;
-         }
+         if (sequence_size IS 0) return is_every;
 
          for (size_t index = 0; index < sequence_size; ++index) {
             XMLTag *item_node = sequence_value.node_set[index];
@@ -2450,32 +2651,24 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
 
-            context.variables[variable_name] = bound_value;
+            VariableBindingGuard iteration_guard(context, variable_name, std::move(bound_value));
 
             push_context(item_node, index + 1, sequence_size, item_attribute);
             bool branch_result = evaluate_binding(binding_index + 1);
             pop_context();
 
-            if (expression_unsupported) {
-               restore_variable();
-               return false;
-            }
+            if (expression_unsupported) return false;
 
             if (branch_result) {
                if (is_some) {
-                  restore_variable();
                   return true;
                }
             }
             else {
-               if (is_every) {
-                  restore_variable();
-                  return false;
-               }
+               if (is_every) return false;
             }
          }
 
-         restore_variable();
          return is_every;
       };
 
@@ -2959,7 +3152,10 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
 
    expression_unsupported = false;
    auto value = evaluate_expression(expression, CurrentPrefix);
-   if (expression_unsupported) return ERR::Failed;
+   if (expression_unsupported) {
+      if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg = "Unsupported XPath expression.";
+      return ERR::Failed;
+   }
 
    switch (value.type) {
       case XPathValueType::NodeSet:
@@ -3039,6 +3235,13 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
    return signature;
 }
 
+void XPathEvaluator::record_error(std::string_view Message, bool Force)
+{
+   expression_unsupported = true;
+   if (!xml) return;
+   if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
+}
+
 //********************************************************************************************************************
 // Public method for AST Evaluation
 
@@ -3084,7 +3287,10 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
 
    Result = evaluate_expression(expression_node, CurrentPrefix);
 
-   if (expression_unsupported) return ERR::Syntax;
+   if (expression_unsupported) {
+      if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg = "Unsupported XPath expression.";
+      return ERR::Syntax;
+   }
    else return ERR::Okay;
 }
 

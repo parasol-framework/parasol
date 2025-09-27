@@ -5,6 +5,8 @@
 
 #include "xpath_arena.h"
 
+#include <string_view>
+
 struct XMLAttrib;
 
 class XPathEvaluator {
@@ -51,6 +53,8 @@ class XPathEvaluator {
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
 
    std::string build_ast_signature(const XPathNode *Node) const;
+
+   void record_error(std::string_view Message, bool Force = false);
 
    public:
    explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) {
