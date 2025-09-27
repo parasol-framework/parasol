@@ -1192,7 +1192,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr() {
 
       std::string variable_name;
       if (check(XPathTokenType::IDENTIFIER)) {
-         variable_name = std::string(peek().value);
+         variable_name = peek().value;
          advance();
       }
       else {
