@@ -1191,23 +1191,16 @@ XPathValue XPathFunctionLibrary::function_exists(const std::vector<XPathValue> &
    if (value.type IS XPathValueType::NodeSet) {
       if (not value.node_set.empty()) return XPathValue(true);
 
-      if (value.node_set_string_override.has_value()) {
-         return XPathValue(!value.node_set_string_override->empty());
-      }
+      if (value.node_set_string_override.has_value()) return XPathValue(true);
 
-      if (not value.node_set_string_values.empty()) {
-         for (const std::string &entry : value.node_set_string_values) {
-            if (!entry.empty()) return XPathValue(true);
-         }
-         return XPathValue(false);
-      }
+      if (not value.node_set_string_values.empty()) return XPathValue(true);
 
       if (not value.node_set_attributes.empty()) return XPathValue(true);
 
       return XPathValue(false);
    }
 
-   return XPathValue(!value.is_empty());
+   return XPathValue(true);
 }
 
 XPathValue XPathFunctionLibrary::function_number(const std::vector<XPathValue> &Args, const XPathContext &Context) {
