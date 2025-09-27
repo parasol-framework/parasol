@@ -1761,6 +1761,314 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
    return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
 
+XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
+{
+   struct NodeIdentity {
+      XMLTag * node;
+      const XMLAttrib * attribute;
+   };
+
+   struct NodeIdentityHash {
+      size_t operator()(const NodeIdentity &Value) const
+      {
+         size_t node_hash = std::hash<XMLTag *>()(Value.node);
+         size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
+         return node_hash ^ (attrib_hash << 1);
+      }
+   };
+
+   struct NodeIdentityEqual {
+      bool operator()(const NodeIdentity &LeftIdentity, const NodeIdentity &RightIdentity) const
+      {
+         return (LeftIdentity.node IS RightIdentity.node) and (LeftIdentity.attribute IS RightIdentity.attribute);
+      }
+   };
+
+   struct SetEntry {
+      XMLTag * node = nullptr;
+      const XMLAttrib * attribute = nullptr;
+      std::string string_value;
+   };
+
+   auto saved_context = context;
+   auto saved_context_stack = context_stack;
+   auto saved_cursor_stack = cursor_stack;
+   auto saved_cursor_tags = xml->CursorTags;
+   auto saved_cursor = xml->Cursor;
+   auto saved_attrib = xml->Attrib;
+   bool saved_expression_unsupported = expression_unsupported;
+
+   auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathValue> {
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      expression_unsupported = saved_expression_unsupported;
+
+      auto value = evaluate_expression(Operand, CurrentPrefix);
+      if (expression_unsupported) return std::nullopt;
+
+      if (value.type != XPathValueType::NodeSet) {
+         expression_unsupported = true;
+         return std::nullopt;
+      }
+
+      return value;
+   };
+
+   auto left_value_opt = evaluate_operand(Left);
+   if (!left_value_opt.has_value()) {
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      return XPathValue();
+   }
+
+   auto right_value_opt = evaluate_operand(Right);
+   if (!right_value_opt.has_value()) {
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      return XPathValue();
+   }
+
+   const XPathValue &left_value = *left_value_opt;
+   const XPathValue &right_value = *right_value_opt;
+
+   std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> right_entries;
+   right_entries.reserve(right_value.node_set.size() * 2);
+
+   for (size_t index = 0; index < right_value.node_set.size(); ++index) {
+      XMLTag *node = right_value.node_set[index];
+      const XMLAttrib *attribute = nullptr;
+      if (index < right_value.node_set_attributes.size()) attribute = right_value.node_set_attributes[index];
+
+      NodeIdentity identity { node, attribute };
+      right_entries.insert(identity);
+   }
+
+   std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> inserted;
+   inserted.reserve(left_value.node_set.size());
+
+   std::vector<SetEntry> entries;
+   entries.reserve(left_value.node_set.size());
+
+   std::optional<std::string> combined_override = left_value.node_set_string_override;
+
+   for (size_t index = 0; index < left_value.node_set.size(); ++index) {
+      XMLTag *node = left_value.node_set[index];
+      const XMLAttrib *attribute = nullptr;
+      if (index < left_value.node_set_attributes.size()) attribute = left_value.node_set_attributes[index];
+
+      NodeIdentity identity { node, attribute };
+      if (!right_entries.contains(identity)) continue;
+      if (!inserted.insert(identity).second) continue;
+
+      SetEntry entry;
+      entry.node = node;
+      entry.attribute = attribute;
+
+      if (index < left_value.node_set_string_values.size()) entry.string_value = left_value.node_set_string_values[index];
+      else entry.string_value = XPathValue::node_string_value(node);
+
+      if (!combined_override.has_value()) combined_override = entry.string_value;
+
+      entries.push_back(std::move(entry));
+   }
+
+   std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
+      if (LeftEntry.node IS RightEntry.node) return false;
+      return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
+   });
+
+   std::vector<XMLTag *> combined_nodes;
+   std::vector<const XMLAttrib *> combined_attributes;
+   std::vector<std::string> combined_strings;
+   combined_nodes.reserve(entries.size());
+   combined_attributes.reserve(entries.size());
+   combined_strings.reserve(entries.size());
+
+   for (const auto &entry : entries) {
+      combined_nodes.push_back(entry.node);
+      combined_attributes.push_back(entry.attribute);
+      combined_strings.push_back(entry.string_value);
+   }
+
+   context = saved_context;
+   context_stack = saved_context_stack;
+   cursor_stack = saved_cursor_stack;
+   xml->CursorTags = saved_cursor_tags;
+   xml->Cursor = saved_cursor;
+   xml->Attrib = saved_attrib;
+   expression_unsupported = saved_expression_unsupported;
+
+   if (combined_nodes.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+}
+
+XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
+{
+   struct NodeIdentity {
+      XMLTag * node;
+      const XMLAttrib * attribute;
+   };
+
+   struct NodeIdentityHash {
+      size_t operator()(const NodeIdentity &Value) const
+      {
+         size_t node_hash = std::hash<XMLTag *>()(Value.node);
+         size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
+         return node_hash ^ (attrib_hash << 1);
+      }
+   };
+
+   struct NodeIdentityEqual {
+      bool operator()(const NodeIdentity &LeftIdentity, const NodeIdentity &RightIdentity) const
+      {
+         return (LeftIdentity.node IS RightIdentity.node) and (LeftIdentity.attribute IS RightIdentity.attribute);
+      }
+   };
+
+   struct SetEntry {
+      XMLTag * node = nullptr;
+      const XMLAttrib * attribute = nullptr;
+      std::string string_value;
+   };
+
+   auto saved_context = context;
+   auto saved_context_stack = context_stack;
+   auto saved_cursor_stack = cursor_stack;
+   auto saved_cursor_tags = xml->CursorTags;
+   auto saved_cursor = xml->Cursor;
+   auto saved_attrib = xml->Attrib;
+   bool saved_expression_unsupported = expression_unsupported;
+
+   auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathValue> {
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      expression_unsupported = saved_expression_unsupported;
+
+      auto value = evaluate_expression(Operand, CurrentPrefix);
+      if (expression_unsupported) return std::nullopt;
+
+      if (value.type != XPathValueType::NodeSet) {
+         expression_unsupported = true;
+         return std::nullopt;
+      }
+
+      return value;
+   };
+
+   auto left_value_opt = evaluate_operand(Left);
+   if (!left_value_opt.has_value()) {
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      return XPathValue();
+   }
+
+   auto right_value_opt = evaluate_operand(Right);
+   if (!right_value_opt.has_value()) {
+      context = saved_context;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
+      xml->CursorTags = saved_cursor_tags;
+      xml->Cursor = saved_cursor;
+      xml->Attrib = saved_attrib;
+      return XPathValue();
+   }
+
+   const XPathValue &left_value = *left_value_opt;
+   const XPathValue &right_value = *right_value_opt;
+
+   std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> right_entries;
+   right_entries.reserve(right_value.node_set.size() * 2);
+
+   for (size_t index = 0; index < right_value.node_set.size(); ++index) {
+      XMLTag *node = right_value.node_set[index];
+      const XMLAttrib *attribute = nullptr;
+      if (index < right_value.node_set_attributes.size()) attribute = right_value.node_set_attributes[index];
+
+      NodeIdentity identity { node, attribute };
+      right_entries.insert(identity);
+   }
+
+   std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> inserted;
+   inserted.reserve(left_value.node_set.size());
+
+   std::vector<SetEntry> entries;
+   entries.reserve(left_value.node_set.size());
+
+   std::optional<std::string> combined_override = left_value.node_set_string_override;
+
+   for (size_t index = 0; index < left_value.node_set.size(); ++index) {
+      XMLTag *node = left_value.node_set[index];
+      const XMLAttrib *attribute = nullptr;
+      if (index < left_value.node_set_attributes.size()) attribute = left_value.node_set_attributes[index];
+
+      NodeIdentity identity { node, attribute };
+      if (right_entries.contains(identity)) continue;
+      if (!inserted.insert(identity).second) continue;
+
+      SetEntry entry;
+      entry.node = node;
+      entry.attribute = attribute;
+
+      if (index < left_value.node_set_string_values.size()) entry.string_value = left_value.node_set_string_values[index];
+      else entry.string_value = XPathValue::node_string_value(node);
+
+      if (!combined_override.has_value()) combined_override = entry.string_value;
+
+      entries.push_back(std::move(entry));
+   }
+
+   std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
+      if (LeftEntry.node IS RightEntry.node) return false;
+      return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
+   });
+
+   std::vector<XMLTag *> combined_nodes;
+   std::vector<const XMLAttrib *> combined_attributes;
+   std::vector<std::string> combined_strings;
+   combined_nodes.reserve(entries.size());
+   combined_attributes.reserve(entries.size());
+   combined_strings.reserve(entries.size());
+
+   for (const auto &entry : entries) {
+      combined_nodes.push_back(entry.node);
+      combined_attributes.push_back(entry.attribute);
+      combined_strings.push_back(entry.string_value);
+   }
+
+   context = saved_context;
+   context_stack = saved_context_stack;
+   cursor_stack = saved_cursor_stack;
+   xml->CursorTags = saved_cursor_tags;
+   xml->Cursor = saved_cursor;
+   xml->Attrib = saved_attrib;
+   expression_unsupported = saved_expression_unsupported;
+
+   if (combined_nodes.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+}
+
 XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
       expression_unsupported = true;
@@ -2393,6 +2701,14 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          if (left_node) branches.push_back(left_node);
          if (right_node) branches.push_back(right_node);
          return evaluate_union_value(branches, CurrentPrefix);
+      }
+
+      if (operation IS "intersect") {
+         return evaluate_intersect_value(left_node, right_node, CurrentPrefix);
+      }
+
+      if (operation IS "except") {
+         return evaluate_except_value(left_node, right_node, CurrentPrefix);
       }
 
       auto left_value = evaluate_expression(left_node, CurrentPrefix);

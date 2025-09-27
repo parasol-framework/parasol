@@ -33,6 +33,9 @@ enum class XPathTokenType {
    AT,                // @
    COMMA,             // ,
    PIPE,              // |
+   UNION,             // union keyword
+   INTERSECT,         // intersect keyword
+   EXCEPT,            // except keyword
 
    // Operators
    EQUALS,            // =
@@ -137,7 +140,7 @@ enum class XPathNodeType {
    // Axes
    AXIS_SPECIFIER,
 
-   // Union
+   // Union / set expressions
    UNION,
 
    // Primary expressions
