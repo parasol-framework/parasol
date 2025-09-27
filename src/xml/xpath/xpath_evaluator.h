@@ -46,6 +46,8 @@ class XPathEvaluator {
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR process_expression_node_set(const XPathValue &Value);
    XPathValue evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix);
+   XPathValue evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
+   XPathValue evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
 
    std::string build_ast_signature(const XPathNode *Node) const;

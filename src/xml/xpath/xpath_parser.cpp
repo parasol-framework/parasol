@@ -508,6 +508,40 @@ bool XPathParser::match(XPathTokenType Type) {
    return false;
 }
 
+bool XPathParser::check_identifier_keyword(std::string_view Keyword) const {
+   const XPathToken &token = peek();
+
+   if (Keyword IS "union") {
+      if (token.type IS XPathTokenType::UNION) return true;
+   }
+   else if (Keyword IS "intersect") {
+      if (token.type IS XPathTokenType::INTERSECT) return true;
+   }
+   else if (Keyword IS "except") {
+      if (token.type IS XPathTokenType::EXCEPT) return true;
+   }
+
+   return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
+}
+
+bool XPathParser::match_identifier_keyword(std::string_view Keyword,
+                                           XPathTokenType KeywordType,
+                                           XPathToken &OutToken) {
+   if (match(KeywordType)) {
+      OutToken = previous();
+      return true;
+   }
+
+   if (check(XPathTokenType::IDENTIFIER) and (peek().value IS Keyword)) {
+      OutToken = peek();
+      OutToken.type = KeywordType;
+      advance();
+      return true;
+   }
+
+   return false;
+}
+
 const XPathToken & XPathParser::peek() const
 {
    return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
@@ -592,7 +626,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
       if (check(XPathTokenType::RBRACKET) or
           check(XPathTokenType::RPAREN) or
           check(XPathTokenType::COMMA) or
-          check(XPathTokenType::PIPE)) {
+          check(XPathTokenType::PIPE) or
+          check(XPathTokenType::UNION) or
+          check(XPathTokenType::INTERSECT) or
+          check(XPathTokenType::EXCEPT)) {
          break;
       }
 
@@ -984,19 +1021,46 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() {
    return parse_union_expr();
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_intersect_expr() {
    auto left = parse_path_expr();
    if (!left) return nullptr;
 
-   if (!check(XPathTokenType::PIPE)) return left;
+   while (true) {
+      XPathToken op(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (!match_identifier_keyword("intersect", XPathTokenType::INTERSECT, op)) {
+         if (!match_identifier_keyword("except", XPathTokenType::EXCEPT, op)) break;
+      }
+
+      auto right = parse_path_expr();
+      if (!right) {
+         report_error("Expected expression after set operator");
+         return nullptr;
+      }
+
+      left = create_binary_op(std::move(left), op, std::move(right));
+   }
+
+   return left;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
+   auto left = parse_intersect_expr();
+   if (!left) return nullptr;
+
+   if (!check(XPathTokenType::PIPE) and !check_identifier_keyword("union")) return left;
 
    auto union_node = std::make_unique<XPathNode>(XPathNodeType::UNION);
    union_node->add_child(std::move(left));
 
-   while (match(XPathTokenType::PIPE)) {
-      auto branch = parse_path_expr();
+   while (true) {
+      if (!match(XPathTokenType::PIPE)) {
+         XPathToken union_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+         if (!match_identifier_keyword("union", XPathTokenType::UNION, union_token)) break;
+      }
+
+      auto branch = parse_intersect_expr();
       if (!branch) {
-         report_error("Expected path expression after '|' in union expression");
+         report_error("Expected expression after union operator");
          return nullptr;
       }
       union_node->add_child(std::move(branch));

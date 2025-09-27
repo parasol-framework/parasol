@@ -154,10 +154,100 @@ function testForExpressionMultipleBindings()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Sequence set operators should merge and filter node collections
+
+function testSequenceSetOperators()
+   local xml = obj.new("xml", {
+      statement = '<root>' ..
+                  '<item id="a" group="alpha"/>' ..
+                  '<item id="b" group="beta"/>' ..
+                  '<item id="c" group="gamma"/>' ..
+                  '<item id="d" group="alpha"/>' ..
+                  '</root>'
+   })
+
+   local unionOrder = {}
+   local errUnion = xml.mtFindTag('(/root/item[@group="alpha"] union /root/item[@group="beta"])', function(XML, TagID)
+      local errAttr, value = xml.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'Union keyword should expose item identifiers: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(unionOrder, value)
+   end)
+
+   assert(errUnion == ERR_Okay, 'Union keyword expression should evaluate successfully: ' .. mSys.GetErrorMsg(errUnion))
+   assert(#unionOrder == 3, 'Union keyword should return three matching nodes, got ' .. #unionOrder)
+   assert(unionOrder[1] == 'a' and unionOrder[2] == 'b' and unionOrder[3] == 'd',
+      'Union keyword should preserve document order of a, b, d, got ' .. table.concat(unionOrder, ','))
+
+   local xmlIntersect = obj.new("xml", {
+      statement = '<root>' ..
+                  '<item id="one" group="team" priority="high"/>' ..
+                  '<item id="two" group="team" priority="low"/>' ..
+                  '<item id="three" group="other" priority="high" exclude="yes"/>' ..
+                  '<item id="four" group="team" priority="high" exclude="yes"/>' ..
+                  '</root>'
+   })
+
+   local intersectIds = {}
+   local errIntersect = xmlIntersect.mtFindTag('(/root/item[@group="team"] intersect /root/item[@priority="high"])', function(XML, TagID)
+      local errAttr, value = xmlIntersect.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'Intersect operator should expose item identifiers: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(intersectIds, value)
+   end)
+
+   assert(errIntersect == ERR_Okay, 'Intersect operator should evaluate successfully: ' .. mSys.GetErrorMsg(errIntersect))
+   assert(#intersectIds == 2 and intersectIds[1] == 'one' and intersectIds[2] == 'four',
+      'Intersect operator should return ids one and four in document order, got ' .. table.concat(intersectIds, ','))
+
+   local exceptIds = {}
+   local errExcept = xmlIntersect.mtFindTag('(/root/item[@priority="high"]) except /root/item[@exclude="yes"]', function(XML, TagID)
+      local errAttr, value = xmlIntersect.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'Except operator should expose item identifiers: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(exceptIds, value)
+   end)
+
+   assert(errExcept == ERR_Okay, 'Except operator should evaluate successfully: ' .. mSys.GetErrorMsg(errExcept))
+   assert(#exceptIds == 1 and exceptIds[1] == 'one',
+      'Except operator should filter excluded nodes leaving only id one, got ' .. table.concat(exceptIds, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Node tests named after set operator keywords should continue to resolve
+
+function testSetOperatorKeywordNameTests()
+   local xml = obj.new("xml", {
+      statement = '<root>' ..
+                  '<union id="u"><leaf/></union>' ..
+                  '<intersect id="i" value="keep"/>' ..
+                  '<except id="e" flag="omit"/>' ..
+                  '</root>'
+   })
+
+   local unionId = xml.getKey('/root/union/@id')
+   assert(unionId == 'u', 'Selecting /root/union should expose id attribute, got ' .. nz(unionId, 'NIL'))
+
+   local errUnionAxis, unionAxisTag = xml.mtFindTag('/root/child::union')
+   assert(errUnionAxis == ERR_Okay, 'child::union axis form should resolve the union element: ' .. mSys.GetErrorMsg(errUnionAxis))
+   assert(unionAxisTag != nil and unionAxisTag != 0, 'child::union should return a valid tag id, got ' .. nz(unionAxisTag, 'NIL'))
+
+   local errIntersect, intersectTag = xml.mtFindTag('/root/intersect')
+   assert(errIntersect == ERR_Okay, 'Path lookup should resolve intersect element: ' .. mSys.GetErrorMsg(errIntersect))
+   local errIntersectAttrib, intersectValue = xml.mtGetAttrib(intersectTag, 'value')
+   assert(errIntersectAttrib == ERR_Okay and intersectValue == 'keep',
+       'Intersect element attribute should be retrievable, got ' .. nz(intersectValue, 'NIL'))
+
+   local errExcept, exceptTag = xml.mtFindTag('/root/except')
+   assert(errExcept == ERR_Okay, 'Path lookup should resolve except element: ' .. mSys.GetErrorMsg(errExcept))
+   local errExceptAttrib, exceptFlag = xml.mtGetAttrib(exceptTag, 'flag')
+   assert(errExceptAttrib == ERR_Okay and exceptFlag == 'omit',
+      'Except element attribute should be retrievable, got ' .. nz(exceptFlag, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
       'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
-      'testQuantifiedExpressions', 'testForExpressionMultipleBindings'
+      'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testSequenceSetOperators',
+      'testSetOperatorKeywordNameTests'
    }
 }

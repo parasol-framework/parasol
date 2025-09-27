@@ -65,6 +65,7 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_additive_expr();
    std::unique_ptr<XPathNode> parse_multiplicative_expr();
    std::unique_ptr<XPathNode> parse_unary_expr();
+   std::unique_ptr<XPathNode> parse_intersect_expr();
    std::unique_ptr<XPathNode> parse_union_expr();
    std::unique_ptr<XPathNode> parse_path_expr();
    std::unique_ptr<XPathNode> parse_filter_expr();
@@ -90,6 +91,8 @@ class XPathParser {
    // Utility methods
    bool check(XPathTokenType type) const;
    bool match(XPathTokenType type);
+   bool check_identifier_keyword(std::string_view Keyword) const;
+   bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
    const XPathToken & peek() const;
    const XPathToken & previous() const;
    bool is_at_end() const;
