@@ -56,6 +56,7 @@ should therefore be read only as needed and cached until the XML object is modif
 #define PRV_XML
 #include <parasol/modules/xml.h>
 #include <parasol/strings.hpp>
+#include <array>
 #include <functional>
 #include <sstream>
 #include "../link/unicode.h"
@@ -473,80 +474,90 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
       return ERR::Okay;
    }
-   else if ((pf::startswith("xpath:", field)) or
-            (pf::startswith("xml:", field)) or
-            (pf::startswith("content:", field)) or
-            (pf::startswith("extract:", field)) or
-            (pf::startswith("extract-under:", field)) or
-            (field[0] IS '/')) {
-      int j;
-      for (j=0; field[j] and (field[j] != '/'); j++) j++;
+   else {
+      // XPath prefix lookup table
+      static constexpr std::array<std::string_view, 5> xpath_prefixes = {
+         "xpath:", "xml:", "content:", "extract:", "extract-under:"
+      };
 
-      if (Self->findTag(field+j) != ERR::Okay) {
-         log.msg("Failed to lookup tag '%s'", field+j);
-         return ERR::Search;
-      }
+      CSTRING xpath_expr = nullptr;
 
-      if (!Self->Attrib.empty()) { // Extract attribute value
-         for (auto &scan : Self->Cursor->Attribs) {
-            if (pf::iequals(scan.Name, Self->Attrib)) {
-               pf::strcopy(scan.Value, Args->Value, Args->Size);
-               return ERR::Okay;
+      if (field[0] IS '/') xpath_expr = field;
+      else { // Check for XPath prefixes
+         for (const auto &prefix : xpath_prefixes) {
+            if (pf::startswith(prefix, field)) {
+               xpath_expr = field + prefix.length();
+               break;
             }
          }
-         return ERR::Failed;
+      }
+
+      if (xpath_expr) {
+         if (Self->findTag(xpath_expr) != ERR::Okay) {
+            if (not Self->ErrorMsg.empty()) log.msg("Failed to lookup '%s': %s", xpath_expr, Self->ErrorMsg.c_str());
+            else log.msg("Failed to lookup '%s'", xpath_expr);
+            return ERR::Search;
+         }
+
+         if (!Self->Attrib.empty()) { // Extract attribute value
+            for (auto &scan : Self->Cursor->Attribs) {
+               if (pf::iequals(scan.Name, Self->Attrib)) {
+                  pf::strcopy(scan.Value, Args->Value, Args->Size);
+                  return ERR::Okay;
+               }
+            }
+            return ERR::Failed;
+         }
+         else { // Extract tag content
+            uint8_t extract;
+
+            if (pf::startswith("content:", field)) extract = 1; // 'In-Depth' content extract.
+            else if (pf::startswith("extract:", field)) extract = 2;
+            else if (pf::startswith("extract-under:", field)) extract = 3;
+            else extract = 0;
+
+            Args->Value[0] = 0;
+            if (extract IS 1) {
+               int output;
+               return get_all_content(Self, *Self->Cursor, Args->Value, Args->Size, output);
+            }
+            else if (extract IS 2) {
+               STRING str;
+               ERR error = Self->serialise(Self->Cursor->ID, XMF::NIL, &str);
+               if (error IS ERR::Okay) {
+                  pf::strcopy(str, Args->Value, Args->Size);
+                  FreeResource(str);
+               }
+
+               return error;
+            }
+            else if (extract IS 3) {
+               STRING str;
+               ERR error = Self->serialise(Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
+               if (error IS ERR::Okay) {
+                  pf::strcopy(str, Args->Value, Args->Size);
+                  FreeResource(str);
+               }
+
+               return error;
+            }
+            else { // 'Immediate' content extract (not deep)
+               if (!Self->Cursor->Children.empty()) {
+                  int j = 0;
+                  for (auto &scan : Self->Cursor->Children) {
+                     if (scan.Attribs[0].isContent()) j += pf::strcopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
+                  }
+                  if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
+               }
+            }
+         }
+
+         return ERR::Okay;
       }
       else {
-         // Extract tag content
-
-         uint8_t extract;
-
-         if (pf::startswith("content:", field)) extract = 1; // 'In-Depth' content extract.
-         else if (pf::startswith("extract:", field)) extract = 2;
-         else if (pf::startswith("extract-under:", field)) extract = 3;
-         else extract = 0;
-
-         Args->Value[0] = 0;
-         if (extract IS 1) {
-            int output;
-            return get_all_content(Self, *Self->Cursor, Args->Value, Args->Size, output);
-         }
-         else if (extract IS 2) {
-            STRING str;
-            ERR error = Self->serialise(Self->Cursor->ID, XMF::NIL, &str);
-            if (error IS ERR::Okay) {
-               pf::strcopy(str, Args->Value, Args->Size);
-               FreeResource(str);
-            }
-
-            return error;
-         }
-         else if (extract IS 3) {
-            STRING str;
-            ERR error = Self->serialise(Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
-            if (error IS ERR::Okay) {
-               pf::strcopy(str, Args->Value, Args->Size);
-               FreeResource(str);
-            }
-
-            return error;
-         }
-         else { // 'Immediate' content extract (not deep)
-            if (!Self->Cursor->Children.empty()) {
-               int j = 0;
-               for (auto &scan : Self->Cursor->Children) {
-                  if (scan.Attribs[0].isContent()) j += pf::strcopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
-               }
-               if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
-            }
-         }
+         log.msg("Unsupported field \"%s\".", field);
+         return ERR::UnsupportedField;
       }
-
-      return ERR::Okay;
-   }
-   else {
-      log.msg("Unsupported field \"%s\".", field);
-      return ERR::UnsupportedField;
    }
 }
 

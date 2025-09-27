@@ -467,6 +467,7 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
       std::string token_text(token.value);
       if (token_text.empty()) token_text = "<unexpected>";
       report_error("Unexpected token '" + token_text + "' in XPath expression");
+      return nullptr;
    }
 
    if (has_errors() or (!expression)) return nullptr;
@@ -704,11 +705,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
                report_error("Expected ')' after processing-instruction() test");
             }
 
-            return std::make_unique<XPathNode>(XPathNodeType::PROCESSING_INSTRUCTION_TEST, target);
+            if (has_errors()) return nullptr;
+            else return std::make_unique<XPathNode>(XPathNodeType::PROCESSING_INSTRUCTION_TEST, target);
          }
 
          if (!match(XPathTokenType::RPAREN)) {
             report_error("Expected ')' after node type test");
+            return nullptr;
          }
 
          return std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, name);
@@ -772,9 +775,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
             if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
                attr_name += peek().value;
                advance();
-            } else {
-               report_error("Expected identifier or wildcard after ':' in attribute name");
-            }
+            } 
+            else report_error("Expected identifier or wildcard after ':' in attribute name");
          }
 
          if (check(XPathTokenType::EQUALS) or check(XPathTokenType::RBRACKET)) {
@@ -816,6 +818,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
       }
    }
 
+   if (has_errors()) return nullptr;
+
    match(XPathTokenType::RBRACKET); // consume closing bracket
    return predicate;
 }
@@ -849,6 +853,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value() {
 // Expression parsing for XPath 1.0 precedence rules
 
 std::unique_ptr<XPathNode> XPathParser::parse_expr() {
+   // Handle conditional expressions at the top level
+   if (check(XPathTokenType::IF)) {
+      return parse_if_expr();
+   }
+
+   // Handle for expressions at the top level
+   if (check(XPathTokenType::FOR)) {
+      return parse_for_expr();
+   }
+
    return parse_or_expr();
 }
 
@@ -972,7 +986,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
       auto branch = parse_path_expr();
       if (!branch) {
          report_error("Expected path expression after '|' in union expression");
-         break;
+         return nullptr;
       }
       union_node->add_child(std::move(branch));
    }
@@ -1067,15 +1081,6 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
       report_error("Expected '(' after 'if'");
       return nullptr;
    }
-      report_error("Expected '(' after 'if'");
-      return nullptr;
-   }
-      report_error("Expected '(' after 'if'");
-      return nullptr;
-   }
-      report_error("Expected '(' after 'if'");
-      return nullptr;
-   }
 
    auto condition = parse_expr();
 
@@ -1094,9 +1099,6 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
    if (!match(XPathTokenType::ELSE)) {
       report_error("Expected 'else' in if expression");
       return nullptr;
-      return nullptr;
-      return nullptr;
-      return nullptr;
    }
 
    auto else_branch = parse_expr();
@@ -1113,6 +1115,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
 
    if (!match(XPathTokenType::DOLLAR)) {
       report_error("Expected '$' after 'for'");
+      return nullptr;
    }
 
    std::string variable_name;
@@ -1120,7 +1123,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
       variable_name = peek().value;
       advance();
    }
-   else report_error("Expected variable name after '$' in for expression");
+   else {
+      report_error("Expected variable name after '$' in for expression");
+      return nullptr;
+   }
 
    if (!match(XPathTokenType::IN)) {
       report_error("Expected 'in' in for expression");
@@ -1131,6 +1137,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
 
    if (!match(XPathTokenType::RETURN)) {
       report_error("Expected 'return' in for expression");
+      return nullptr;
    }
 
    auto return_expr = parse_expr();
@@ -1142,14 +1149,6 @@ std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
-   if (check(XPathTokenType::IF)) {
-      return parse_if_expr();
-   }
-
-   if (check(XPathTokenType::FOR)) {
-      return parse_for_expr();
-   }
-
    if (match(XPathTokenType::LPAREN)) {
       auto expr = parse_expr();
       match(XPathTokenType::RPAREN);
