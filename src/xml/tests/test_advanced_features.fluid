@@ -94,14 +94,38 @@ end
 -- Test entity parsing
 
 function testEntityParsing()
-   local xmlWithEntities = '<!DOCTYPE root [<!ENTITY test "replacement">]><root>&test;</root>'
+   local xmlWithEntities = [[<!DOCTYPE root PUBLIC "-//Example//DTD Example//EN" "http://example.com/example.dtd" [
+      <!ENTITY % base "value">
+      <!ENTITY test "%base; and more">
+      <!NOTATION icon SYSTEM "viewer">
+   ]>
+   <root>&test;</root>]]
 
    -- Test with entity parsing enabled
    local xml = obj.new("xml", {
       statement = xmlWithEntities,
       flags = XMF_PARSE_ENTITY
    })
-   -- Entities should be processed when flag is set
+
+   assert(xml.documentType == 'root', 'Document type field should be populated')
+   assert(xml.publicID == '-//Example//DTD Example//EN', 'Public identifier should match declaration')
+   assert(xml.systemID == 'http://example.com/example.dtd', 'System identifier should match declaration')
+
+   local err, entityValue = xml.mtGetEntity('test')
+   assert(err == ERR_Okay and entityValue == 'value and more', 'Parsed entity should resolve parameter entities')
+
+   local notationErr, notationValue = xml.mtGetNotation('icon')
+   assert(notationErr == ERR_Okay and notationValue == 'viewer', 'Notation lookup should return the system identifier')
+
+   local info = struct.new('DTDInfo')
+   local infoErr = xml.mtGetDTDInfo(info)
+   assert(infoErr == ERR_Okay, 'GetDTDInfo should succeed')
+   assert(info.documentType == 'root', 'DTDInfo should copy the document type name')
+   assert(info.publicID == xml.publicID, 'DTDInfo should copy the public identifier')
+   assert(info.systemID == xml.systemID, 'DTDInfo should copy the system identifier')
+
+   local resolved = xml.getKey('string(/root)')
+   assert(resolved == 'value and more', 'Entity references should be expanded in content')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

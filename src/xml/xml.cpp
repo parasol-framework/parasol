@@ -104,6 +104,12 @@ static ERR XML_Clear(extXML *Self)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    Self->Tags.clear();
+   clear_string(Self->DocumentType);
+   clear_string(Self->PublicID);
+   clear_string(Self->SystemID);
+   Self->Entities.clear();
+   Self->ParameterEntities.clear();
+   Self->Notations.clear();
    Self->LineNo = 1;
    Self->Start  = 0;
    Self->ParseError = ERR::Okay;
@@ -394,6 +400,97 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
    return ERR::NotFound;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetEntity: Retrieves the value of a parsed entity declaration.
+
+This method returns the expanded value associated with a general entity parsed from the
+document's DOCTYPE declaration.  Entity names are case-sensitive and must match exactly
+as declared.  The method returns `ERR::Search` if the entity cannot be found.
+
+-INPUT-
+cstr Name: The name of the entity to retrieve.  This must correspond to a parsed entity declaration.
+&cstr Value: Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
+
+   auto key = std::string(Args->Name);
+   auto it = Self->Entities.find(key);
+   if (it IS Self->Entities.end()) return log.warning(ERR::Search);
+
+   Args->Value = it->second.c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetNotation: Retrieves information about a parsed notation declaration.
+
+Returns the system or public identifier captured for a notation declaration inside the
+document type definition.  If both public and system identifiers were provided they are
+returned as a single string separated by a single space.
+
+-INPUT-
+cstr Name: The notation name to look up.
+&cstr Value: Receives the notation descriptor on success.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
+
+   auto key = std::string(Args->Name);
+   auto it = Self->Notations.find(key);
+   if (it IS Self->Notations.end()) return log.warning(ERR::Search);
+
+   Args->Value = it->second.c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetDTDInfo: Returns the high-level DOCTYPE declaration details.
+
+Copies the parsed DOCTYPE root element name together with any public and system identifiers
+into the supplied !DTDInfo structure.  Strings are copied and therefore remain valid after
+the call completes.
+
+-INPUT-
+!struct DTDInfo Info: Pointer to a !DTDInfo structure that receives the DOCTYPE metadata.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetDTDInfo(extXML *Self, struct xml::GetDTDInfo *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Info)) return log.warning(ERR::NullArgs);
+
+   Args->Info->DocumentType = Self->DocumentType ? Self->DocumentType : "";
+   Args->Info->PublicID = Self->PublicID ? Self->PublicID : "";
+   Args->Info->SystemID = Self->SystemID ? Self->SystemID : "";
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1900,7 +1997,8 @@ static ERR add_xml_class(void)
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
-   { "XMLTag", sizeof(XMLTag) }
+   { "XMLTag", sizeof(XMLTag) },
+   { "DTDInfo", sizeof(DTDInfo) }
 };
 
 //********************************************************************************************************************

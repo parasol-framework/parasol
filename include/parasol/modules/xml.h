@@ -145,6 +145,12 @@ typedef struct XMLTag {
    }
 } XMLTAG;
 
+typedef struct DTDInfo {
+   std::string DocumentType;
+   std::string PublicID;
+   std::string SystemID;
+} DTDINFO;
+
 // XML class definition
 
 #define VER_XML (1.000000)
@@ -172,6 +178,9 @@ struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC i
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetDTDInfo { struct DTDInfo * Info; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -344,6 +353,22 @@ class objXML : public Object {
    inline ERR setVariable(CSTRING Key, CSTRING Value) noexcept {
       struct xml::SetVariable args = { Key, Value };
       return(Action(AC(-23), this, &args));
+   }
+   inline ERR getEntity(CSTRING Name, CSTRING * Result) noexcept {
+      struct xml::GetEntity args = { Name, (CSTRING)0 };
+      ERR error = Action(AC(-24), this, &args);
+      if (Result) *Result = args.Value;
+      return(error);
+   }
+   inline ERR getNotation(CSTRING Name, CSTRING * Result) noexcept {
+      struct xml::GetNotation args = { Name, (CSTRING)0 };
+      ERR error = Action(AC(-25), this, &args);
+      if (Result) *Result = args.Value;
+      return(error);
+   }
+   inline ERR getDTDInfo(struct DTDInfo * Info) noexcept {
+      struct xml::GetDTDInfo args = { Info };
+      return(Action(AC(-26), this, &args));
    }
 
    // Customised field setting

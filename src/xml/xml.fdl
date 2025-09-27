@@ -106,7 +106,13 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       }
       return str.str();
    }
-   ]])
+  ]])
+
+  struct("DTDInfo", { type="DTDInfo" }, [[
+    cpp(str) DocumentType # DOCTYPE root name
+    cpp(str) PublicID     # DOCTYPE public identifier
+    cpp(str) SystemID     # DOCTYPE system identifier
+  ]])
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
@@ -128,7 +134,10 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=20, name="GetNamespaceURI" },
     { id=21, name="SetTagNamespace" },
     { id=22, name="ResolvePrefix" },
-    { id=23, name="SetVariable" }
+    { id=23, name="SetVariable" },
+    { id=24, name="GetEntity" },
+    { id=25, name="GetNotation" },
+    { id=26, name="GetDTDInfo" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[

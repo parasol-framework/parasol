@@ -22,9 +22,343 @@ template <class T> void output_attribvalue(T &&String, std::ostringstream &Outpu
 //INSTRUCTION  <?XML version="1.0" standalone="yes" ?>
 //NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
+static bool is_name_char(char ch)
+{
+   if ((ch >= 'A') and (ch <= 'Z')) return true;
+   if ((ch >= 'a') and (ch <= 'z')) return true;
+   if ((ch >= '0') and (ch <= '9')) return true;
+   if ((ch IS '.') or (ch IS '-') or (ch IS '_') or (ch IS ':')) return true;
+   return false;
+}
+
+static void assign_string(STRING &Target, const std::string &Value)
+{
+   if (Target) { FreeResource(Target); Target = nullptr; }
+   if (!Value.empty()) Target = pf::strclone(Value);
+}
+
+static void clear_string(STRING &Target)
+{
+   if (Target) { FreeResource(Target); Target = nullptr; }
+}
+
+static bool is_name_start(char ch)
+{
+   if ((ch >= 'A') and (ch <= 'Z')) return true;
+   if ((ch >= 'a') and (ch <= 'z')) return true;
+   if ((ch IS '_') or (ch IS ':')) return true;
+   return false;
+}
+
+static void skip_ws(const char *&ptr)
+{
+   while ((ptr) and (*ptr) and (*ptr <= 0x20)) ptr++;
+}
+
+static bool ci_keyword(const char *&ptr, CSTRING Keyword)
+{
+   auto p = ptr;
+   auto k = Keyword;
+
+   while ((*p) and (*k)) {
+      auto ch = *p;
+      if ((ch >= 'A') and (ch <= 'Z')) ch += 0x20;
+      auto cmp = *k;
+      if ((cmp >= 'A') and (cmp <= 'Z')) cmp += 0x20;
+      if (ch != cmp) return false;
+      p++;
+      k++;
+   }
+
+   if (*k) return false;
+   if ((is_name_char(*p)) and (*p != '[')) return false;
+
+   ptr = p;
+   return true;
+}
+
+static bool read_name(const char *&ptr, std::string &Result)
+{
+   if (!is_name_start(*ptr)) return false;
+
+   auto start = ptr;
+   ptr++;
+   while (is_name_char(*ptr)) ptr++;
+
+   Result.assign(start, ptr - start);
+   return true;
+}
+
+static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
+   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack);
+
+static void expand_entity_references(extXML *Self, std::string &Value,
+   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+{
+   if (Value.empty()) return;
+
+   std::string output;
+   output.reserve(Value.size());
+
+   for (size_t i = 0; i < Value.size(); ) {
+      auto ch = Value[i];
+      if ((ch IS '%') and (i + 1 < Value.size())) {
+         auto start = i + 1;
+         auto end = start;
+         while ((end < Value.size()) and is_name_char(Value[end])) end++;
+         if ((end < Value.size()) and (Value[end] IS ';')) {
+            std::string name(Value.begin() + start, Value.begin() + end);
+            std::string resolved;
+            if (resolve_entity_internal(Self, name, resolved, true, EntityStack, ParameterStack) IS ERR::Okay) {
+               output += resolved;
+            }
+            else {
+               output.append("%");
+               output += name;
+               output.append(";");
+            }
+            i = end + 1;
+            continue;
+         }
+      }
+      else if ((ch IS '&') and (i + 1 < Value.size())) {
+         auto start = i + 1;
+         auto end = start;
+         while ((end < Value.size()) and is_name_char(Value[end])) end++;
+         if ((end < Value.size()) and (Value[end] IS ';')) {
+            std::string name(Value.begin() + start, Value.begin() + end);
+            std::string resolved;
+            if (resolve_entity_internal(Self, name, resolved, false, EntityStack, ParameterStack) IS ERR::Okay) {
+               output += resolved;
+            }
+            else {
+               output.append("&");
+               output += name;
+               output.append(";");
+            }
+            i = end + 1;
+            continue;
+         }
+      }
+
+      output.push_back(ch);
+      i++;
+   }
+
+   Value.swap(output);
+}
+
+ERR extXML::resolveEntity(const std::string &Name, std::string &Value, bool Parameter)
+{
+   std::unordered_set<std::string> entity_stack;
+   std::unordered_set<std::string> parameter_stack;
+   return resolve_entity_internal(this, Name, Value, Parameter, entity_stack, parameter_stack);
+}
+
+static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
+   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto &stack = Parameter ? ParameterStack : EntityStack;
+   if (stack.contains(Name)) return log.warning(ERR::Loop);
+
+   auto &table = Parameter ? Self->ParameterEntities : Self->Entities;
+   auto it = table.find(Name);
+   if (it IS table.end()) return ERR::Search;
+
+   stack.insert(Name);
+
+   Value = it->second;
+   expand_entity_references(Self, Value, EntityStack, ParameterStack);
+
+   stack.erase(Name);
+   return ERR::Okay;
+}
+
+static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
+   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+{
+   if ((!ptr) or (!*ptr)) return false;
+
+   auto quote = *ptr;
+   if ((quote != '"') and (quote != '\'')) return false;
+
+   ptr++;
+   std::string buffer;
+
+   while ((*ptr) and (*ptr != quote)) {
+      if (*ptr IS '%') {
+         ptr++;
+         const char *start = ptr;
+         while (*ptr and is_name_char(*ptr)) ptr++;
+         if (*ptr IS ';') {
+            std::string name(start, ptr - start);
+            std::string resolved;
+            if (resolve_entity_internal(Self, name, resolved, true, EntityStack, ParameterStack) IS ERR::Okay) {
+               buffer += resolved;
+            }
+            else {
+               buffer.append("%");
+               buffer += name;
+               buffer.append(";");
+            }
+            ptr++;
+            continue;
+         }
+      }
+      else if (*ptr IS '&') {
+         ptr++;
+         const char *start = ptr;
+         while (*ptr and is_name_char(*ptr)) ptr++;
+         if (*ptr IS ';') {
+            std::string name(start, ptr - start);
+            std::string resolved;
+            if (resolve_entity_internal(Self, name, resolved, false, EntityStack, ParameterStack) IS ERR::Okay) {
+               buffer += resolved;
+            }
+            else {
+               buffer.append("&");
+               buffer += name;
+               buffer.append(";");
+            }
+            ptr++;
+            continue;
+         }
+      }
+
+      buffer.push_back(*ptr);
+      ptr++;
+   }
+
+   if (*ptr != quote) return false;
+   ptr++;
+   Result.swap(buffer);
+   return true;
+}
+
 static void parse_doctype(extXML *Self, CSTRING Input)
 {
+   if (!Input) return;
 
+   const char *str = Input;
+
+   while ((*str) and (((*str >= 'A') and (*str <= 'Z')) or ((*str >= 'a') and (*str <= 'z')))) str++;
+   skip_ws(str);
+
+   std::string document_type;
+   if (!read_name(str, document_type)) return;
+
+   assign_string(Self->DocumentType, document_type);
+   clear_string(Self->PublicID);
+   clear_string(Self->SystemID);
+   Self->Entities.clear();
+   Self->ParameterEntities.clear();
+   Self->Notations.clear();
+
+   skip_ws(str);
+
+   std::unordered_set<std::string> entity_stack;
+   std::unordered_set<std::string> parameter_stack;
+
+   if (ci_keyword(str, "PUBLIC")) {
+      skip_ws(str);
+      std::string public_id;
+      if (read_quoted(Self, str, public_id, entity_stack, parameter_stack)) assign_string(Self->PublicID, public_id);
+      else clear_string(Self->PublicID);
+      skip_ws(str);
+      std::string system_id;
+      if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
+      else clear_string(Self->SystemID);
+   }
+   else if (ci_keyword(str, "SYSTEM")) {
+      skip_ws(str);
+      std::string system_id;
+      if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
+      else clear_string(Self->SystemID);
+   }
+
+   skip_ws(str);
+
+   if (*str IS '[') {
+      str++;
+
+      while (*str) {
+         skip_ws(str);
+         if (!*str) break;
+         if (*str IS ']') { str++; break; }
+
+         if ((*str IS '<') and (str[1] IS '!')) {
+            str += 2;
+
+            if (ci_keyword(str, "ENTITY")) {
+               skip_ws(str);
+               bool parameter = false;
+               if (*str IS '%') { parameter = true; str++; skip_ws(str); }
+
+               std::string name;
+               if (!read_name(str, name)) continue;
+
+               skip_ws(str);
+
+               if (ci_keyword(str, "SYSTEM")) {
+                  skip_ws(str);
+                  std::string system;
+                  if (read_quoted(Self, str, system, entity_stack, parameter_stack)) {
+                     if (parameter) Self->ParameterEntities[name] = system;
+                     else Self->Entities[name] = system;
+                  }
+               }
+               else {
+                  std::string value;
+                  if ((*str IS '"') or (*str IS '\'')) {
+                     if (read_quoted(Self, str, value, entity_stack, parameter_stack)) {
+                        if (parameter) Self->ParameterEntities[name] = value;
+                        else Self->Entities[name] = value;
+                     }
+                  }
+               }
+
+               while ((*str) and (*str != '>')) str++;
+               if (*str IS '>') str++;
+            }
+            else if (ci_keyword(str, "NOTATION")) {
+               skip_ws(str);
+               std::string name;
+               if (!read_name(str, name)) continue;
+               skip_ws(str);
+
+               std::string notation_value;
+               if (ci_keyword(str, "PUBLIC")) {
+                  skip_ws(str);
+                  std::string public_id;
+                  std::string system_id;
+                  if (read_quoted(Self, str, public_id, entity_stack, parameter_stack)) {
+                     skip_ws(str);
+                     if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) {
+                        notation_value = public_id + " " + system_id;
+                     }
+                     else notation_value = public_id;
+                  }
+               }
+               else if (ci_keyword(str, "SYSTEM")) {
+                  skip_ws(str);
+                  read_quoted(Self, str, notation_value, entity_stack, parameter_stack);
+               }
+
+               if (!notation_value.empty()) Self->Notations[name] = notation_value;
+
+               while ((*str) and (*str != '>')) str++;
+               if (*str IS '>') str++;
+            }
+            else {
+               while ((*str) and (*str != '>')) str++;
+               if (*str IS '>') str++;
+            }
+         }
+         else str++;
+      }
+   }
 }
 
 //********************************************************************************************************************
@@ -369,6 +703,15 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 {
    pf::Log log(__FUNCTION__);
+
+   if (&Tags IS &Self->Tags) {
+      clear_string(Self->DocumentType);
+      clear_string(Self->PublicID);
+      clear_string(Self->SystemID);
+      Self->Entities.clear();
+      Self->ParameterEntities.clear();
+      Self->Notations.clear();
+   }
 
    // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.

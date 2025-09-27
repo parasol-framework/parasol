@@ -124,6 +124,8 @@ class extXML : public objXML {
       StaleMap = true;
       Modified++;
    }
+
+   ERR resolveEntity(const std::string &Name, std::string &Value, bool Parameter = false);
    
    // XPath 1.0 Implementation for Parasol
    // 
