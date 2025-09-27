@@ -211,10 +211,43 @@ function testSequenceSetOperators()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Node tests named after set operator keywords should continue to resolve
+
+function testSetOperatorKeywordNameTests()
+   local xml = obj.new("xml", {
+      statement = '<root>' ..
+                  '<union id="u"><leaf/></union>' ..
+                  '<intersect id="i" value="keep"/>' ..
+                  '<except id="e" flag="omit"/>' ..
+                  '</root>'
+   })
+
+   local unionId = xml.getKey('/root/union/@id')
+   assert(unionId == 'u', 'Selecting /root/union should expose id attribute, got ' .. nz(unionId, 'NIL'))
+
+   local errUnionAxis, unionAxisTag = xml.mtFindTag('/root/child::union')
+   assert(errUnionAxis == ERR_Okay, 'child::union axis form should resolve the union element: ' .. mSys.GetErrorMsg(errUnionAxis))
+   assert(unionAxisTag != nil and unionAxisTag != 0, 'child::union should return a valid tag id, got ' .. nz(unionAxisTag, 'NIL'))
+
+   local errIntersect, intersectTag = xml.mtFindTag('/root/intersect')
+   assert(errIntersect == ERR_Okay, 'Path lookup should resolve intersect element: ' .. mSys.GetErrorMsg(errIntersect))
+   local errIntersectAttrib, intersectValue = xml.mtGetAttrib(intersectTag, 'value')
+   assert(errIntersectAttrib == ERR_Okay and intersectValue == 'keep',
+       'Intersect element attribute should be retrievable, got ' .. nz(intersectValue, 'NIL'))
+
+   local errExcept, exceptTag = xml.mtFindTag('/root/except')
+   assert(errExcept == ERR_Okay, 'Path lookup should resolve except element: ' .. mSys.GetErrorMsg(errExcept))
+   local errExceptAttrib, exceptFlag = xml.mtGetAttrib(exceptTag, 'flag')
+   assert(errExceptAttrib == ERR_Okay and exceptFlag == 'omit',
+      'Except element attribute should be retrievable, got ' .. nz(exceptFlag, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
       'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
-      'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testSequenceSetOperators'
+      'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testSequenceSetOperators',
+      'testSetOperatorKeywordNameTests'
    }
 }

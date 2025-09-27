@@ -91,6 +91,8 @@ class XPathParser {
    // Utility methods
    bool check(XPathTokenType type) const;
    bool match(XPathTokenType type);
+   bool check_identifier_keyword(std::string_view Keyword) const;
+   bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
    const XPathToken & peek() const;
    const XPathToken & previous() const;
    bool is_at_end() const;
