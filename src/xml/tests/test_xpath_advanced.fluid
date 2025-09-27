@@ -79,9 +79,46 @@ function testDescendantAxisAttributeAccess()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Conditional expressions should select the correct branch
+
+function testConditionalIfExpression()
+   local xml = obj.new("xml", {
+      statement = '<root><item id="a">Alpha</item><item id="b">Beta</item></root>'
+   })
+
+   local chosen = xml.getKey('xpath:if (/root/item[@id="a"]) then /root/item[@id="a"] else /root/item[@id="b"]')
+   assert(chosen == 'Alpha', 'If expression should return Alpha branch when predicate succeeds, got ' .. nz(chosen, 'NIL'))
+
+   local fallback = xml.getKey('xpath:if (/root/item[@id="missing"]) then /root/item[@id="a"] else /root/item[@id="b"]')
+   assert(fallback == 'Beta', 'If expression should evaluate else branch when condition fails, got ' .. nz(fallback, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- For expressions should iterate sequences and aggregate node results
+
+function testForExpressionNodeAggregation()
+   local xml = obj.new("xml", {
+      statement = '<root><group name="one"><item id="a">Alpha</item><item id="b">Beta</item></group><group name="two"><item id="c">Gamma</item></group></root>'
+   })
+
+   local collected = {}
+   local err, index = xml.mtFindTag('for $g in /root/group return $g/item', function(XML, TagID, Attrib)
+      local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'For expression callback should resolve item id: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(collected, idValue)
+   end)
+
+   assert(err == ERR_Okay, 'For expression evaluation should succeed: ' .. mSys.GetErrorMsg(err))
+   assert(#collected == 3, 'For expression should yield three items, got ' .. #collected)
+
+   table.sort(collected)
+   assert(collected[1] == 'a' and collected[2] == 'b' and collected[3] == 'c', 'For expression should gather all item identifiers, got ' .. table.concat(collected, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
-      'testMissingPathError', 'testDescendantAxisAttributeAccess'
+      'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation'
    }
 }
