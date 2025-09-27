@@ -119,14 +119,14 @@ class VariableBindingGuard
    bool had_previous_value = false;
 
    public:
-   VariableBindingGuard(XPathContext &Context, const std::string &Name, XPathValue Value)
-      : context(Context), variable_name(Name)
+   VariableBindingGuard(XPathContext &Context, std::string Name, XPathValue Value)
+      : context(Context), variable_name(std::move(Name))
    {
-      auto existing = context.variables.find(Name);
+      auto existing = context.variables.find(variable_name);
       had_previous_value = (existing != context.variables.end());
       if (had_previous_value) previous_value = existing->second;
 
-      context.variables[Name] = std::move(Value);
+      context.variables[variable_name] = std::move(Value);
    }
 
    ~VariableBindingGuard()

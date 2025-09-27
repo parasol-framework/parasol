@@ -2238,7 +2238,6 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             return false;
          }
 
-         std::optional<VariableBindingGuard> binding_guard;
          const std::string variable_name = binding.name;
 
          auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
@@ -2277,8 +2276,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
 
-            if (!binding_guard.has_value()) binding_guard.emplace(context, variable_name, std::move(bound_value));
-            else context.variables[variable_name] = std::move(bound_value);
+            VariableBindingGuard iteration_guard(context, variable_name, std::move(bound_value));
 
             push_context(item_node, index + 1, sequence_size, item_attribute);
             bool iteration_ok = evaluate_bindings(binding_index + 1);
@@ -2367,7 +2365,6 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             return false;
          }
 
-         std::optional<VariableBindingGuard> binding_guard;
          const std::string variable_name = binding.name;
 
          auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
@@ -2406,8 +2403,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
 
-            if (!binding_guard.has_value()) binding_guard.emplace(context, variable_name, std::move(bound_value));
-            else context.variables[variable_name] = std::move(bound_value);
+            VariableBindingGuard iteration_guard(context, variable_name, std::move(bound_value));
 
             push_context(item_node, index + 1, sequence_size, item_attribute);
             bool branch_result = evaluate_binding(binding_index + 1);
