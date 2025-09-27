@@ -268,7 +268,7 @@ function testContentExists()
 
    -- Test element with content
    local contentExists = xml.getKey('exists(/root/withContent)')
-   assert(contentExists == "true", "Element with content should report content exists, got: " .. emptyExists)
+   assert(contentExists == "true", "Element with content should report content exists, got: " .. contentExists)
 
    -- Test element with only whitespace
    local whitespaceExists = xml.getKey('boolean(normalize-space(/root/whitespaceOnly))')
