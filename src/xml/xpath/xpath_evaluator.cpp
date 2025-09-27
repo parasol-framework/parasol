@@ -2238,39 +2238,20 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             return false;
          }
 
-         bool had_previous = false;
-         XPathValue previous_value;
-         auto existing = context.variables.find(binding.name);
-         if (existing != context.variables.end()) {
-            had_previous = true;
-            previous_value = existing->second;
-         }
-
+         std::optional<VariableBindingGuard> binding_guard;
          const std::string variable_name = binding.name;
 
-         auto restore_variable = [this, variable_name, had_previous, &previous_value]() {
-            if (had_previous) context.variables[variable_name] = previous_value;
-            else context.variables.erase(variable_name);
-         };
-
          auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
-         if (expression_unsupported) {
-            restore_variable();
-            return false;
-         }
+         if (expression_unsupported) return false;
 
          if (sequence_value.type != XPathValueType::NodeSet) {
-            restore_variable();
             expression_unsupported = true;
             return false;
          }
 
          size_t sequence_size = sequence_value.node_set.size();
 
-         if (sequence_size IS 0) {
-            restore_variable();
-            return true;
-         }
+         if (sequence_size IS 0) return true;
 
          for (size_t index = 0; index < sequence_size; ++index) {
             XMLTag *item_node = sequence_value.node_set[index];
@@ -2296,24 +2277,18 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
 
-            context.variables[variable_name] = bound_value;
+            if (!binding_guard.has_value()) binding_guard.emplace(context, variable_name, std::move(bound_value));
+            else context.variables[variable_name] = std::move(bound_value);
 
             push_context(item_node, index + 1, sequence_size, item_attribute);
             bool iteration_ok = evaluate_bindings(binding_index + 1);
             pop_context();
 
-            if (!iteration_ok) {
-               restore_variable();
-               return false;
-            }
+            if (!iteration_ok) return false;
 
-            if (expression_unsupported) {
-               restore_variable();
-               return false;
-            }
+            if (expression_unsupported) return false;
          }
 
-         restore_variable();
          return true;
       };
 
@@ -2392,39 +2367,20 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             return false;
          }
 
-         bool had_previous = false;
-         XPathValue previous_value;
-         auto existing = context.variables.find(binding.name);
-         if (existing != context.variables.end()) {
-            had_previous = true;
-            previous_value = existing->second;
-         }
-
+         std::optional<VariableBindingGuard> binding_guard;
          const std::string variable_name = binding.name;
 
-         auto restore_variable = [this, variable_name, had_previous, &previous_value]() {
-            if (had_previous) context.variables[variable_name] = previous_value;
-            else context.variables.erase(variable_name);
-         };
-
          auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
-         if (expression_unsupported) {
-            restore_variable();
-            return false;
-         }
+         if (expression_unsupported) return false;
 
          if (sequence_value.type != XPathValueType::NodeSet) {
-            restore_variable();
             expression_unsupported = true;
             return false;
          }
 
          size_t sequence_size = sequence_value.node_set.size();
 
-         if (sequence_size IS 0) {
-            restore_variable();
-            return is_every;
-         }
+         if (sequence_size IS 0) return is_every;
 
          for (size_t index = 0; index < sequence_size; ++index) {
             XMLTag *item_node = sequence_value.node_set[index];
@@ -2450,32 +2406,25 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
 
-            context.variables[variable_name] = bound_value;
+            if (!binding_guard.has_value()) binding_guard.emplace(context, variable_name, std::move(bound_value));
+            else context.variables[variable_name] = std::move(bound_value);
 
             push_context(item_node, index + 1, sequence_size, item_attribute);
             bool branch_result = evaluate_binding(binding_index + 1);
             pop_context();
 
-            if (expression_unsupported) {
-               restore_variable();
-               return false;
-            }
+            if (expression_unsupported) return false;
 
             if (branch_result) {
                if (is_some) {
-                  restore_variable();
                   return true;
                }
             }
             else {
-               if (is_every) {
-                  restore_variable();
-                  return false;
-               }
+               if (is_every) return false;
             }
          }
 
-         restore_variable();
          return is_every;
       };
 

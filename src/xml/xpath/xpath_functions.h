@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <ankerl/unordered_dense.h>
+
 struct TransparentStringHash {
    using is_transparent = void;
 
@@ -97,7 +99,7 @@ struct XPathContext
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
    size_t size = 1;
-   std::map<std::string, XPathValue> variables;
+   ankerl::unordered_dense::map<std::string, XPathValue> variables;
    extXML * document = nullptr;
    bool * expression_unsupported = nullptr;
 
@@ -106,6 +108,38 @@ struct XPathContext
                 extXML *Document = nullptr, bool *UnsupportedFlag = nullptr)
       : context_node(Node), attribute_node(Attribute), position(Pos), size(Sz), document(Document),
         expression_unsupported(UnsupportedFlag) {}
+};
+
+class VariableBindingGuard
+{
+   private:
+   XPathContext & context;
+   std::string variable_name;
+   std::optional<XPathValue> previous_value;
+   bool had_previous_value = false;
+
+   public:
+   VariableBindingGuard(XPathContext &Context, const std::string &Name, XPathValue Value)
+      : context(Context), variable_name(Name)
+   {
+      auto existing = context.variables.find(Name);
+      had_previous_value = (existing != context.variables.end());
+      if (had_previous_value) previous_value = existing->second;
+
+      context.variables[Name] = std::move(Value);
+   }
+
+   ~VariableBindingGuard()
+   {
+      if (had_previous_value) context.variables[variable_name] = *previous_value;
+      else context.variables.erase(variable_name);
+   }
+
+   VariableBindingGuard(const VariableBindingGuard &) = delete;
+   VariableBindingGuard & operator=(const VariableBindingGuard &) = delete;
+
+   VariableBindingGuard(VariableBindingGuard &&) = default;
+   VariableBindingGuard & operator=(VariableBindingGuard &&) = default;
 };
 
 //********************************************************************************************************************
