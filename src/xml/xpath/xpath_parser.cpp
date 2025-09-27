@@ -25,6 +25,9 @@ void XPathTokenizer::initialize_interned_strings() {
    interned_strings["not"] = "not";
    interned_strings["div"] = "div";
    interned_strings["mod"] = "mod";
+   interned_strings["some"] = "some";
+   interned_strings["every"] = "every";
+   interned_strings["satisfies"] = "satisfies";
 
    // Common node type tests
    interned_strings["node"] = "node";
@@ -306,6 +309,9 @@ XPathToken XPathTokenizer::scan_identifier() {
    else if (identifier IS "for") type = XPathTokenType::FOR;
    else if (identifier IS "in") type = XPathTokenType::IN;
    else if (identifier IS "return") type = XPathTokenType::RETURN;
+   else if (identifier IS "some") type = XPathTokenType::SOME;
+   else if (identifier IS "every") type = XPathTokenType::EVERY;
+   else if (identifier IS "satisfies") type = XPathTokenType::SATISFIES;
 
    // Use string_view directly - no copying
    return XPathToken(type, identifier, start, position - start);
@@ -863,6 +869,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
       return parse_for_expr();
    }
 
+   // Handle quantified expressions at the top level
+   if (check(XPathTokenType::SOME) or check(XPathTokenType::EVERY)) {
+      return parse_quantified_expr();
+   }
+
    return parse_or_expr();
 }
 
@@ -1113,27 +1124,41 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
 std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
    if (!match(XPathTokenType::FOR)) return nullptr;
 
-   if (!match(XPathTokenType::DOLLAR)) {
-      report_error("Expected '$' after 'for'");
-      return nullptr;
-   }
+   auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION);
 
-   std::string variable_name;
-   if (check(XPathTokenType::IDENTIFIER)) {
-      variable_name = peek().value;
-      advance();
-   }
-   else {
-      report_error("Expected variable name after '$' in for expression");
-      return nullptr;
-   }
+   bool expect_binding = true;
 
-   if (!match(XPathTokenType::IN)) {
-      report_error("Expected 'in' in for expression");
-      return nullptr;
-   }
+   while (expect_binding) {
+      if (!match(XPathTokenType::DOLLAR)) {
+         report_error("Expected '$' after 'for'");
+         return nullptr;
+      }
 
-   auto sequence_expr = parse_expr();
+      std::string variable_name;
+      if (check(XPathTokenType::IDENTIFIER)) {
+         variable_name = peek().value;
+         advance();
+      }
+      else {
+         report_error("Expected variable name after '$' in for expression");
+         return nullptr;
+      }
+
+      if (!match(XPathTokenType::IN)) {
+         report_error("Expected 'in' in for expression");
+         return nullptr;
+      }
+
+      auto sequence_expr = parse_expr();
+      if (!sequence_expr) return nullptr;
+
+      auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
+      binding_node->add_child(std::move(sequence_expr));
+      for_node->add_child(std::move(binding_node));
+
+      if (match(XPathTokenType::COMMA)) expect_binding = true;
+      else expect_binding = false;
+   }
 
    if (!match(XPathTokenType::RETURN)) {
       report_error("Expected 'return' in for expression");
@@ -1141,11 +1166,66 @@ std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
    }
 
    auto return_expr = parse_expr();
+   if (!return_expr) return nullptr;
 
-   auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION, variable_name);
-   for_node->add_child(std::move(sequence_expr));
    for_node->add_child(std::move(return_expr));
    return for_node;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr() {
+   bool is_some = match(XPathTokenType::SOME);
+   bool is_every = false;
+
+   if (!is_some) {
+      if (!match(XPathTokenType::EVERY)) return nullptr;
+      is_every = true;
+   }
+
+   auto quant_node = std::make_unique<XPathNode>(XPathNodeType::QUANTIFIED_EXPRESSION, is_some ? "some" : "every");
+
+   bool expect_binding = true;
+   while (expect_binding) {
+      if (!match(XPathTokenType::DOLLAR)) {
+         report_error("Expected '$' after quantified expression keyword");
+         return nullptr;
+      }
+
+      std::string variable_name;
+      if (check(XPathTokenType::IDENTIFIER)) {
+         variable_name = peek().value;
+         advance();
+      }
+      else {
+         report_error("Expected variable name in quantified expression");
+         return nullptr;
+      }
+
+      if (!match(XPathTokenType::IN)) {
+         report_error("Expected 'in' in quantified expression");
+         return nullptr;
+      }
+
+      auto sequence_expr = parse_expr();
+      if (!sequence_expr) return nullptr;
+
+      auto binding_node = std::make_unique<XPathNode>(XPathNodeType::QUANTIFIED_BINDING, variable_name);
+      binding_node->add_child(std::move(sequence_expr));
+      quant_node->add_child(std::move(binding_node));
+
+      if (match(XPathTokenType::COMMA)) expect_binding = true;
+      else expect_binding = false;
+   }
+
+   if (!match(XPathTokenType::SATISFIES)) {
+      report_error("Expected 'satisfies' in quantified expression");
+      return nullptr;
+   }
+
+   auto condition_expr = parse_expr();
+   if (!condition_expr) return nullptr;
+
+   quant_node->add_child(std::move(condition_expr));
+   return quant_node;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {

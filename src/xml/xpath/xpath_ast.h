@@ -60,6 +60,9 @@ enum class XPathTokenType {
    FOR,               // for
    IN,                // in
    RETURN,            // return
+   SOME,              // some
+   EVERY,             // every
+   SATISFIES,         // satisfies
 
    // Arithmetic operators
    PLUS,              // +
@@ -118,6 +121,9 @@ enum class XPathNodeType {
    UNARY_OP,
    CONDITIONAL,
    FOR_EXPRESSION,
+   FOR_BINDING,
+   QUANTIFIED_EXPRESSION,
+   QUANTIFIED_BINDING,
    FUNCTION_CALL,
    LITERAL,
    VARIABLE_REFERENCE,

@@ -116,9 +116,48 @@ function testForExpressionNodeAggregation()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Quantified expressions should evaluate boolean logic correctly
+
+function testQuantifiedExpressions()
+   local xml = obj.new("xml", {
+      statement = '<root><group name="alpha"><item id="a" class="one"/><item id="b" class="two"/></group><group name="beta"><item id="c" class="beta"/></group></root>'
+   })
+
+   local someResult = xml.getKey('if (some $g in /root/group satisfies $g/@name = "beta") then "yes" else "no"')
+   assert(someResult == 'yes', 'Quantified some expression should detect the beta group, got ' .. nz(someResult, 'NIL'))
+
+   local everyResult = xml.getKey('if (every $item in /root/group[@name="alpha"]/item satisfies @class = "one") then "all" else "mixed"')
+   assert(everyResult == 'mixed', 'Quantified every expression should detect mixed class values, got ' .. nz(everyResult, 'NIL'))
+
+   local nestedResult = xml.getKey('if (some $g in /root/group, $item in $g/item satisfies $item/@id = "c") then "found" else "missing"')
+   assert(nestedResult == 'found', 'Nested quantified expression should locate item c, got ' .. nz(nestedResult, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- For expressions with multiple bindings should iterate nested sequences
+
+function testForExpressionMultipleBindings()
+   local xml = obj.new("xml", {
+      statement = '<root><group name="one"><item id="a" class="one"/><item id="b" class="two"/></group><group name="two"><item id="c" class="two"/><item id="d" class="one"/></group></root>'
+   })
+
+   local matched = {}
+   local err = xml.mtFindTag('for $group in /root/group, $item in $group/item[@class=$group/@name] return $item', function(XML, TagID)
+      local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
+      assert(errAttr == ERR_Okay, 'Multi-binding for expression callback should resolve item id: ' .. mSys.GetErrorMsg(errAttr))
+      table.insert(matched, idValue)
+   end)
+
+   assert(err == ERR_Okay, 'Multi-binding for expression evaluation should succeed: ' .. mSys.GetErrorMsg(err))
+   table.sort(matched)
+   assert(#matched == 2 and matched[1] == 'a' and matched[2] == 'c', 'Multi-binding for expression should filter matching ids, got ' .. table.concat(matched, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 return {
    tests = {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
-      'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation'
+      'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
+      'testQuantifiedExpressions', 'testForExpressionMultipleBindings'
    }
 }
