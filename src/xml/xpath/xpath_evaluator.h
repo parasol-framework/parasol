@@ -70,7 +70,7 @@ class XPathEvaluator {
    ERR find_tag(const CompiledXPath &, uint32_t);
 
    // Full XPath expression evaluation returning computed values
-   XPathValue evaluate_xpath_expression(std::string_view XPathExpr, uint32_t CurrentPrefix = 0);
+   ERR evaluate_xpath_expression(const CompiledXPath &, XPathValue &, uint32_t CurrentPrefix = 0);
 
    // Context management for AST evaluation
    void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);

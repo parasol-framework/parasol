@@ -388,29 +388,22 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 /*********************************************************************************************************************
 
 -ACTION-
-GetKey: Retrieves data from an xml object.
+GetKey: Retrieves data using XPath 2.0 queries.
 
-The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out
-of the scope for this document, however the following examples illustrate the majority of uses for this query language
+The XML class uses key-values for the execution of XPath 2.0 queries.  Documentation of the XPath standard is out
+of the scope for this document, however the following examples illustrate common uses for this query language
 and a number of special instructions that we support:
 
 <types type="Path">
 <type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</>
-<type name="xpath:/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</>
-<type name="count:/menu">Return a count of all menu tags at the root level.</>
-<type name="xpath:/menu/window/@title">Return the value of the title attribute from the window tag.</>
-<type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title `foo`.</>
-<type name="extract:/menu/window(@title='bar')">Extract all XML starting from the window tag that has title `bar`.</>
-<type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside `&lt;menu&gt;` that contains content `apple`.</>
-<type name="extract-under:/menu/window(@title='bar')">Extract all XML underneath the window tag that has title `bar`.</>
-<type name="exists:/menu/@title">Return `1` if a menu with a title attribute can be matched, otherwise `0`.</>
-<type name="contentexists:/menu">Return `1` if if the immediate child tags of the XPath contain text (white space is ignored).</>
+<type name="/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</>
+<type name="count(/menu)">Return a count of all menu tags at the root level.</>
+<type name="/menu/window/@title">Return the value of the title attribute from the window tag.</>
+<type name="exists(/menu/@title)">Return `1` if a menu with a title attribute can be matched, otherwise `0`.</>
+<type name="exists(/menu/text())">Return `1` if menu contains content.</>
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
 </types>
 
-The `xpath` and `/` prefixes are identical in identifying the start of an xpath.  The `content` prefix is
-used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be
-used interchangeably for lookups and filtering clauses.
 -END-
 
 *********************************************************************************************************************/
@@ -418,159 +411,33 @@ used interchangeably for lookups and filtering clauses.
 static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
    pf::Log log;
-
+   
    if (!Args) return log.warning(ERR::NullArgs);
    if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
 
-   CSTRING field = Args->Key;
    Args->Value[0] = 0;
 
-   if (pf::startswith("count:", field)) {
-      tlXMLCounter = 0;
-      auto call = C_FUNCTION(xml_count);
-      auto error = Self->findTag(field+6, &call);
-      if (error IS ERR::Okay) {
-         Args->Value[pf::strcopy(std::to_string(tlXMLCounter), Args->Value, Args->Size)] = 0;
-         return ERR::Okay;
-      }
-      else return error;
+   if (pf::startswith("count:", Args->Key)) {
+      log.error("Deprecated.  Use 'xpath:' with the count() function instead.");
+      return ERR::Syntax;
    }
-   else if (pf::startswith("exists:", field)) {
-      Args->Value[0] = '0';
-      Args->Value[1] = 0;
-
-      if (Self->findTag(field+7) != ERR::Okay) return ERR::Okay;
-
-      if (!Self->Attrib.empty()) {
-         for (auto &scan : Self->Cursor->Attribs) {
-            if (pf::iequals(scan.Name, Self->Attrib)) {
-               Args->Value[0] = '1';
-               break;
-            }
-         }
-      }
-      else Args->Value[0] = '1';
-
-      return ERR::Okay;
+   else if (pf::startswith("exists:", Args->Key) or pf::startswith("contentexists:", Args->Key)) {
+      log.error("Deprecated.  Use 'xpath:' with the exists() function instead.");
+      return ERR::Syntax;
    }
-   else if (pf::startswith("contentexists:", field)) {
-      Args->Value[0] = '0';
-      Args->Value[1] = 0;
-
-      if (Self->findTag(field+14) != ERR::Okay) return ERR::Okay;
-
-      for (auto &scan : Self->Cursor->Children) {
-         if (scan.Attribs[0].isContent()) {
-            auto str = scan.Attribs[0].Value.c_str();
-            while (*str) {
-               if (*str > 0x20) {
-                  Args->Value[0] = '1';
-                  return ERR::Okay;
-               }
-               str++;
-            }
-         }
-      }
-
-      return ERR::Okay;
+   else if (pf::startswith("extract:", Args->Key) or pf::startswith("extract-under:", Args->Key)) {
+      log.error("Deprecated.  Use FindTag() and Serialise()");
+      return ERR::Syntax;
    }
    else {
-      // XPath prefix lookup table
-      static constexpr std::array<std::string_view, 5> xpath_prefixes = {
-         "xpath:", "content:", "extract:", "extract-under:"
-      };
-
-      CSTRING xpath_expr = nullptr;
-
-      if (field[0] IS '/') xpath_expr = field;
-      else { // Check for XPath prefixes
-         for (const auto &prefix : xpath_prefixes) {
-            if (pf::startswith(prefix, field)) {
-               xpath_expr = field + prefix.length();
-               break;
-            }
-         }
-      }
-
-      if (xpath_expr) {
-         // Use XPath evaluator for xpath: prefix to support computed values
-         if (pf::startswith("xpath:", field)) {
-            XPathEvaluator evaluator(Self);
-            auto result = evaluator.evaluate_xpath_expression(xpath_expr);
-
-            // Convert result to string and store in Args->Value
-            std::string result_str = result.to_string();
-            pf::strcopy(result_str, Args->Value, Args->Size);
-            return ERR::Okay;
-         }
-         else {
-            // Use traditional findTag for other prefixes
-            if (Self->findTag(xpath_expr) != ERR::Okay) {
-               if (not Self->ErrorMsg.empty()) log.msg("Failed to lookup '%s': %s", xpath_expr, Self->ErrorMsg.c_str());
-               else log.msg("Failed to lookup '%s'", xpath_expr);
-               return ERR::Search;
-            }
-         }
-
-         if (!Self->Attrib.empty()) { // Extract attribute value
-            for (auto &scan : Self->Cursor->Attribs) {
-               if (pf::iequals(scan.Name, Self->Attrib)) {
-                  pf::strcopy(scan.Value, Args->Value, Args->Size);
-                  return ERR::Okay;
-               }
-            }
-            return ERR::Failed;
-         }
-         else { // Extract tag content
-            uint8_t extract;
-
-            if (pf::startswith("content:", field)) extract = 1; // 'In-Depth' content extract.
-            else if (pf::startswith("extract:", field)) extract = 2;
-            else if (pf::startswith("extract-under:", field)) extract = 3;
-            else extract = 0;
-
-            Args->Value[0] = 0;
-            if (extract IS 1) {
-               int output;
-               return get_all_content(Self, *Self->Cursor, Args->Value, Args->Size, output);
-            }
-            else if (extract IS 2) {
-               STRING str;
-               ERR error = Self->serialise(Self->Cursor->ID, XMF::NIL, &str);
-               if (error IS ERR::Okay) {
-                  pf::strcopy(str, Args->Value, Args->Size);
-                  FreeResource(str);
-               }
-
-               return error;
-            }
-            else if (extract IS 3) {
-               STRING str;
-               ERR error = Self->serialise(Self->Cursor->Children[0].ID, XMF::INCLUDE_SIBLINGS, &str);
-               if (error IS ERR::Okay) {
-                  pf::strcopy(str, Args->Value, Args->Size);
-                  FreeResource(str);
-               }
-
-               return error;
-            }
-            else { // 'Immediate' content extract (not deep)
-               if (!Self->Cursor->Children.empty()) {
-                  int j = 0;
-                  for (auto &scan : Self->Cursor->Children) {
-                     if (scan.Attribs[0].isContent()) j += pf::strcopy(scan.Attribs[0].Value, Args->Value+j, Args->Size-j);
-                  }
-                  if (j >= Args->Size-1) log.warning(ERR::BufferOverflow);
-               }
-            }
-         }
-
+      std::string result_str; 
+      if (auto err = Self->evaluate(Args->Key, result_str); err IS ERR::Okay) {
+         pf::strcopy(result_str, Args->Value, Args->Size);
          return ERR::Okay;
       }
       else {
-         log.msg("Unsupported field \"%s\".", field);
-         return ERR::UnsupportedField;
+         return log.warning(err);
       }
    }
 }

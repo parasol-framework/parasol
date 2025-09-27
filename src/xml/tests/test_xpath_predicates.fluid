@@ -492,11 +492,11 @@ function testFunctionLibrary()
 
    -- Test that basic XPath functionality continues to work with infrastructure
 
-   local bookContent = xml.getKey('content:/library/books/book[@id="2"]')
+   local bookContent = xml.getKey('/library/books/book[@id="2"]/text()')
    assert(bookContent, "Book should have content")
 
    -- Test content extraction (important for function library string operations)
-   local authorContent = xml.getKey('content:/library/authors/author[@name="Donald Knuth"]')
+   local authorContent = xml.getKey('/library/authors/author[@name="Donald Knuth"]/text()')
    assert(authorContent, "Author should have content")
 
    -- Test navigation to container elements (important for node-set functions)
@@ -732,18 +732,16 @@ function testXPathFullEvaluation()
       statement = '<root><item>A</item><item>B</item><item>C</item><section><item>D</item></section></root>'
    })
 
-   local count_regular = xml.getKey('count:/root/item')
-
-   local count = xml.getKey('xpath:count(/root/item)')
+   local count = xml.getKey('count(/root/item)')
    assert(count == "3", "Expected count of 3 items, got " .. nz(count, "NIL"))
 
-   local total_count = xml.getKey('xpath:count(/root/*)')
+   local total_count = xml.getKey('count(/root/*)')
    assert(total_count == "4", "Expected count of 4 elements, got " .. nz(total_count, "NIL"))
 
-   local if_result = xml.getKey('xpath:if (/root/item[1]) then /root/item[1] else /root/item[2]')
+   local if_result = xml.getKey('if (/root/item[1]) then /root/item[1] else /root/item[2]')
    assert(if_result == "A", "Expected if result 'A', got " .. nz(if_result, "NIL"))
 
-   local length = xml.getKey('xpath:string-length(/root/item[1])')
+   local length = xml.getKey('string-length(/root/item[1])')
    assert(length == "1", "Expected string length of 1, got " .. nz(length, "NIL"))
 end
 

@@ -360,30 +360,6 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 }
 
 //********************************************************************************************************************
-// Entry Point (AST Evaluation)
-
-ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t CurrentPrefix)
-{
-   if (!CompiledPath.isValid()) {
-      xml->ErrorMsg = "Invalid compiled XPath expression";
-      for (const auto &error : CompiledPath.getErrors()) {
-         if (!xml->ErrorMsg.empty()) xml->ErrorMsg.append("\n");
-         xml->ErrorMsg.append(error);
-      }
-      return ERR::Failed;
-   }
-
-   // Reset the evaluator state
-   axis_evaluator.reset_namespace_nodes();
-   arena.reset();
-
-   // Ensure the document index is up to date
-   (void)xml->getMap();
-
-   return evaluate_ast(CompiledPath.getAST(), CurrentPrefix);
-}
-
-//********************************************************************************************************************
 // AST Evaluation Methods
 
 // Dispatch AST nodes to the appropriate evaluation routine.
@@ -2459,38 +2435,51 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 }
 
 //********************************************************************************************************************
+// Public method for AST Evaluation
+
+ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t CurrentPrefix)
+{
+   if (!CompiledPath.isValid()) return ERR::Syntax;
+
+   // Reset the evaluator state
+   axis_evaluator.reset_namespace_nodes();
+   arena.reset();
+   
+   // Ensure the tag ID and ParentID values are defined
+
+   (void)xml->getMap();
+
+   return evaluate_ast(CompiledPath.getAST(), CurrentPrefix);
+}
+
+//********************************************************************************************************************
 // Public method to evaluate complete XPath expressions and return computed values
 
-XPathValue XPathEvaluator::evaluate_xpath_expression(std::string_view XPathExpr, uint32_t CurrentPrefix) {
-   // Compile the XPath expression
-   auto compiled = CompiledXPath::compile(XPathExpr);
+ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath, XPathValue &Result, uint32_t CurrentPrefix)
+{
+   if (!CompiledPath.isValid()) return ERR::Syntax;
+   
+   // Ensure the tag ID and ParentID values are defined
 
-   if (!compiled.isValid()) {
-      // Return empty string for invalid expressions
-      return XPathValue(std::string(""));
-   }
+   (void)xml->getMap();
 
    // Set context to document root if not already set
-   if (!context.context_node) {
-      push_context(&xml->Tags[0], 1, 1);
-   }
+
+   if (!context.context_node) push_context(&xml->Tags[0], 1, 1);
 
    // Evaluate the compiled AST and return the XPathValue directly
+
    expression_unsupported = false;
 
-   const XPathNode *expression_node = compiled.getAST();
+   const XPathNode *expression_node = CompiledPath.getAST();
    if (expression_node and (expression_node->type IS XPathNodeType::EXPRESSION)) {
       if (expression_node->child_count() > 0) expression_node = expression_node->get_child(0);
       else expression_node = nullptr;
    }
 
-   auto result = evaluate_expression(expression_node, CurrentPrefix);
+   Result = evaluate_expression(expression_node, CurrentPrefix);
 
-   if (expression_unsupported) {
-      // Return empty string for unsupported expressions
-      return XPathValue(std::string(""));
-   }
-
-   return result;
+   if (expression_unsupported) return ERR::Syntax;
+   else return ERR::Okay;
 }
 

@@ -184,7 +184,7 @@ function testContentExtraction()
    assert(string.find(buffer, "end"), "Should include direct text")
 
    -- Test deep content extraction via getKey
-   local deepContent = xml.getKey('content:/root')
+   local deepContent = xml.getKey('string(/root)')
    assert(string.find(deepContent, "emphasized"), "Deep extraction should include nested content")
    assert(string.find(deepContent, "strong"), "Deep extraction should include nested content")
 end
@@ -203,11 +203,11 @@ function testCountMethods()
    assert(methodCount == 5, "Should count all items: got " .. methodCount)
 
    -- Test count: getKey
-   local keyCount = tonumber(xml.getKey('count://item'))
+   local keyCount = tonumber(xml.getKey('count(//item)'))
    assert(keyCount == 5, "Should count all items: got " .. keyCount)
 
    -- Test specific path count
-   local sectionCount = tonumber(xml.getKey('count:/root/section[1]/item'))
+   local sectionCount = tonumber(xml.getKey('count(/root/section[1]/item)'))
    assert(sectionCount == 2, "Should count items in first section only, got " .. sectionCount)
 end
 
@@ -263,16 +263,16 @@ function testContentExists()
    })
 
    -- Test empty element
-   local emptyExists = xml.getKey('contentexists:/root/empty')
-   assert(emptyExists == "0", "Empty element should report no content")
+   local emptyExists = xml.getKey('exists(/root/empty/text())')
+   assert(emptyExists == "false", "Empty element should report no content, got: " .. emptyExists)
 
    -- Test element with content
-   local contentExists = xml.getKey('contentexists:/root/withContent')
-   assert(contentExists == "1", "Element with content should report content exists")
+   local contentExists = xml.getKey('exists(/root/withContent)')
+   assert(contentExists == "true", "Element with content should report content exists, got: " .. emptyExists)
 
    -- Test element with only whitespace
-   local whitespaceExists = xml.getKey('contentexists:/root/whitespaceOnly')
-   assert(whitespaceExists == "0", "Whitespace-only should report no content")
+   local whitespaceExists = xml.getKey('boolean(normalize-space(/root/whitespaceOnly))')
+   assert(whitespaceExists == "false", "Whitespace-only should report no content, got: " .. emptyExists)
 end
 
 -----------------------------------------------------------------------------------------------------------------------

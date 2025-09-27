@@ -86,10 +86,10 @@ function testConditionalIfExpression()
       statement = '<root><item id="a">Alpha</item><item id="b">Beta</item></root>'
    })
 
-   local chosen = xml.getKey('xpath:if (/root/item[@id="a"]) then /root/item[@id="a"] else /root/item[@id="b"]')
+   local chosen = xml.getKey('if (/root/item[@id="a"]) then /root/item[@id="a"] else /root/item[@id="b"]')
    assert(chosen == 'Alpha', 'If expression should return Alpha branch when predicate succeeds, got ' .. nz(chosen, 'NIL'))
 
-   local fallback = xml.getKey('xpath:if (/root/item[@id="missing"]) then /root/item[@id="a"] else /root/item[@id="b"]')
+   local fallback = xml.getKey('if (/root/item[@id="missing"]) then /root/item[@id="a"] else /root/item[@id="b"]')
    assert(fallback == 'Beta', 'If expression should evaluate else branch when condition fails, got ' .. nz(fallback, 'NIL'))
 end
 

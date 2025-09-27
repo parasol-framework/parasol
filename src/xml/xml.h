@@ -144,6 +144,8 @@ class extXML : public objXML {
 
    ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr);
    ERR findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback = nullptr);
+   ERR evaluate(CSTRING, std::string &);
+   ERR evaluate(const CompiledXPath &, std::string &);
 
    // Namespace utility methods
 
@@ -240,4 +242,37 @@ ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
 
    XPathEvaluator eval(this);
    return eval.find_tag(CompiledPath, 0);
+}
+
+ERR extXML::evaluate(CSTRING XPath, std::string &Result) 
+{
+   auto compiled_path = CompiledXPath::compile(XPath);
+   if (not compiled_path.isValid()) {
+      ErrorMsg = "XPath compilation error: ";
+      for (const auto &err : compiled_path.getErrors()) {
+         if (!ErrorMsg.empty()) ErrorMsg += "; ";
+         ErrorMsg += err;
+      }
+      return pf::Log(__FUNCTION__).warning(ERR::Syntax);
+   }
+   return evaluate(compiled_path, Result);
+}
+
+ERR extXML::evaluate(const CompiledXPath &CompiledPath, std::string &Result)
+{
+   this->Attrib.clear();
+   this->CursorTags = &this->Tags;
+   Cursor = this->Tags.begin();
+
+   ErrorMsg.clear();
+
+   if ((!CursorTags) or (CursorTags->empty())) {
+      return pf::Log(__FUNCTION__).warning(ERR::SanityCheckFailed);
+   }
+
+   XPathValue eval_result;
+   XPathEvaluator eval(this);
+   auto err = eval.evaluate_xpath_expression(CompiledPath, eval_result);
+   if (err IS ERR::Okay) Result = eval_result.to_string();
+   return err;
 }
