@@ -2,6 +2,8 @@
 #
 # Release Config:  cmake -S . -B release -DCMAKE_BUILD_TYPE=Release
 # Debug Config:    cmake -S . -B debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+# Fast Config:     cmake -S . -B fast -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=local -DRUN_ANYWHERE=TRUE
+#                  (FastBuild optimises for compilation speed rather than runtime performance - uses -O0, faster linkers, minimal debug info)
 # Git Release:     cmake -S . -B release-git -DCMAKE_BUILD_TYPE=Release -DINSTALL_EXAMPLES=TRUE -DCMAKE_INSTALL_PREFIX=parasol-linux64-$(date +'%Y%m%d') -DRUN_ANYWHERE=TRUE -DBUILD_TESTS=OFF -DBUILD_DEFS=OFF
 #
 # For GCC based Windows builds, -G"MinGW Makefiles" must be added to the above commands.
@@ -462,6 +464,52 @@ else ()
    set (GCC_COMPAT "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU>")
    set (DEFAULT_GCC_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
    set (DEFAULT_GCXX_FLAGS "-Wall" "-Wno-empty-body" "-Wno-unused-result" "-Wno-format-zero-length" "-Wno-unused-but-set-variable" "-Wno-stringop-overflow")
+endif ()
+
+# --------------------------------------------------------------------------------------------------------------------
+# FastBuild configuration - optimised for compilation speed rather than runtime performance
+
+if (CMAKE_BUILD_TYPE STREQUAL "FastBuild")
+   message (STATUS "FastBuild configuration enabled - optimising for compilation speed")
+
+   if (MSVC)
+      # MSVC: Use /Od for no optimisation, /MP for parallel compilation, /Z7 for minimal debug info
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /Od /MP /Z7")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Od /MP /Z7")
+
+      # Disable exception handling for faster compilation (matches Release build behaviour)
+      add_compile_definitions ("_HAS_EXCEPTIONS=0")
+      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
+   else ()
+      # GCC/Clang: Use -O0 for no optimisation, -g1 for minimal debug info
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g1")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g1")
+
+      # Disable variable tracking for faster compilation
+      set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-var-tracking -fno-var-tracking-assignments")
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-var-tracking -fno-var-tracking-assignments")
+
+      # Try to use faster linkers if available
+      include(CheckLinkerFlag)
+      check_linker_flag(CXX "-fuse-ld=lld" HAVE_LLD_LINKER)
+      if (HAVE_LLD_LINKER)
+         set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+         set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
+         message (STATUS "Using LLD linker for faster linking")
+      else ()
+         check_linker_flag(CXX "-fuse-ld=gold" HAVE_GOLD_LINKER)
+         if (HAVE_GOLD_LINKER)
+            set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
+            set (CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
+            message (STATUS "Using Gold linker for faster linking")
+         endif ()
+      endif ()
+
+      # Disable exceptions for faster compilation (matches Release build behaviour)
+      set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+   endif ()
 endif ()
 
 # Support for building Windows resource files with MINGW

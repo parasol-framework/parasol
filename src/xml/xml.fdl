@@ -133,6 +133,9 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[
     str Path         # Location of the XML data file
+    str DocumentType # Root element name from DOCTYPE declaration
+    str PublicID     # Public identifier for external DTD
+    str SystemID     # System identifier for external DTD
     obj Source       # Alternative data source to specifying a `Path`
     int(XMF) Flags   # Optional user flags
     int Start        # Starting cursor position (tag index) for some operations

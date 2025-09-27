@@ -49,8 +49,10 @@ class extXML : public objXML {
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    FUNCTION Callback;
 
-   // Variable storage for XPath variable references
-   ankerl::unordered_dense::map<std::string, std::string> Variables;
+   ankerl::unordered_dense::map<std::string, std::string> Variables; // XPath variable references
+   ankerl::unordered_dense::map<std::string, std::string> Entities; // For general entities
+   ankerl::unordered_dense::map<std::string, std::string> ParameterEntities; // For parameter entities
+   ankerl::unordered_dense::map<std::string, std::string> Notations; // For notation declarations
 
    // Namespace registry using pf::strhash() values, this allows us to store URIs in compact form in XMLTag structures.
    ankerl::unordered_dense::map<uint32_t, std::string> NSRegistry; // hash(URI) -> URI

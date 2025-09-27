@@ -1859,13 +1859,16 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 #include "xml_def.c"
 
 static const FieldArray clFields[] = {
-   { "Path",       FDF_STRING|FDF_RW, nullptr, SET_Path },
-   { "Source",     FDF_OBJECT|FDF_RI },
-   { "Flags",      FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clXMLFlags },
-   { "Start",      FDF_INT|FDF_RW },
-   { "Modified",   FDF_INT|FDF_R },
-   { "ParseError", FDF_INT|FD_PRIVATE|FDF_R },
-   { "LineNo",     FDF_INT|FD_PRIVATE|FDF_R },
+   { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
+   { "DocumentType", FDF_STRING|FDF_R },
+   { "PublicID",     FDF_STRING|FDF_R },
+   { "SystemID",     FDF_STRING|FDF_R },
+   { "Source",       FDF_OBJECT|FDF_RI },
+   { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clXMLFlags },
+   { "Start",        FDF_INT|FDF_RW },
+   { "Modified",     FDF_INT|FDF_R },
+   { "ParseError",   FDF_INT|FD_PRIVATE|FDF_R },
+   { "LineNo",       FDF_INT|FD_PRIVATE|FDF_R },
    // Virtual fields
    { "ErrorMsg",   FDF_STRING|FDF_R, GET_ErrorMsg },
    { "ReadOnly",   FDF_INT|FDF_RI, GET_ReadOnly, SET_ReadOnly },
