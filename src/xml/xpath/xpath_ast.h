@@ -61,6 +61,7 @@ enum class XPathTokenType {
    THEN,              // then
    ELSE,              // else
    FOR,               // for
+   LET,               // let
    IN,                // in
    RETURN,            // return
    SOME,              // some
@@ -80,6 +81,7 @@ enum class XPathTokenType {
 
    // Variables and functions
    DOLLAR,            // $
+   ASSIGN,            // :=
 
    // Special tokens
    END_OF_INPUT,
@@ -125,6 +127,8 @@ enum class XPathNodeType {
    CONDITIONAL,
    FOR_EXPRESSION,
    FOR_BINDING,
+   LET_EXPRESSION,
+   LET_BINDING,
    QUANTIFIED_EXPRESSION,
    QUANTIFIED_BINDING,
    FUNCTION_CALL,
