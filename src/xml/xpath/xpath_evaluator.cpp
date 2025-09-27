@@ -2477,7 +2477,14 @@ XPathValue XPathEvaluator::evaluate_xpath_expression(std::string_view XPathExpr,
 
    // Evaluate the compiled AST and return the XPathValue directly
    expression_unsupported = false;
-   auto result = evaluate_expression(compiled.getAST(), CurrentPrefix);
+
+   const XPathNode *expression_node = compiled.getAST();
+   if (expression_node and (expression_node->type IS XPathNodeType::EXPRESSION)) {
+      if (expression_node->child_count() > 0) expression_node = expression_node->get_child(0);
+      else expression_node = nullptr;
+   }
+
+   auto result = evaluate_expression(expression_node, CurrentPrefix);
 
    if (expression_unsupported) {
       // Return empty string for unsupported expressions
