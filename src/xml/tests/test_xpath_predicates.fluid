@@ -727,6 +727,28 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function testXPathFullEvaluation()
+   local xml = obj.new("xml", {
+      statement = '<root><item>A</item><item>B</item><item>C</item><section><item>D</item></section></root>'
+   })
+
+   local count_regular = xml.getKey('count:/root/item')
+
+   local count = xml.getKey('xpath:count(/root/item)')
+   assert(count == "3", "Expected count of 3 items, got " .. nz(count, "NIL"))
+
+   local total_count = xml.getKey('xpath:count(/root/*)')
+   assert(total_count == "4", "Expected count of 4 elements, got " .. nz(total_count, "NIL"))
+
+   local if_result = xml.getKey('xpath:if (/root/item[1]) then /root/item[1] else /root/item[2]')
+   assert(if_result == "A", "Expected if result 'A', got " .. nz(if_result, "NIL"))
+
+   local length = xml.getKey('xpath:string-length(/root/item[1])')
+   assert(length == "1", "Expected string length of 1, got " .. nz(length, "NIL"))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testComparisonOperators', 'testMathematicalExpressions',
@@ -737,7 +759,8 @@ return {
       'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
       'testFunctionLibrary', 'testXPathOperators', 'testXPathMultiplicationIllegal',
       'testXPathExpressions', 'testXPathArithmetic', 'testXPathMultiplicationOutsidePredicates',
-      'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions'
+      'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions',
+      'testXPathFullEvaluation'
    },
    init = function(ScriptFolder)
    end,
