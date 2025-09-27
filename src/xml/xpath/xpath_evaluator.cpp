@@ -2458,3 +2458,39 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
    return signature;
 }
 
+//********************************************************************************************************************
+// Public method to evaluate complete XPath expressions and return computed values
+
+XPathValue XPathEvaluator::evaluate_xpath_expression(std::string_view XPathExpr, uint32_t CurrentPrefix) {
+   // Compile the XPath expression
+   auto compiled = CompiledXPath::compile(XPathExpr);
+
+   if (!compiled.isValid()) {
+      // Return empty string for invalid expressions
+      return XPathValue(std::string(""));
+   }
+
+   // Set context to document root if not already set
+   if (!context.context_node) {
+      push_context(&xml->Tags[0], 1, 1);
+   }
+
+   // Evaluate the compiled AST and return the XPathValue directly
+   expression_unsupported = false;
+
+   const XPathNode *expression_node = compiled.getAST();
+   if (expression_node and (expression_node->type IS XPathNodeType::EXPRESSION)) {
+      if (expression_node->child_count() > 0) expression_node = expression_node->get_child(0);
+      else expression_node = nullptr;
+   }
+
+   auto result = evaluate_expression(expression_node, CurrentPrefix);
+
+   if (expression_unsupported) {
+      // Return empty string for unsupported expressions
+      return XPathValue(std::string(""));
+   }
+
+   return result;
+}
+

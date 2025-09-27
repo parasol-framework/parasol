@@ -73,6 +73,7 @@ static uint32_t glTagID = 1;
 #include "xpath/xpath_functions.cpp"
 #include "xpath/xpath_axis.cpp"
 #include "xpath/xpath_parser.cpp"
+#include "xpath/xpath_evaluator.h"
 #include "xpath/xpath_evaluator.cpp"
 
 //********************************************************************************************************************
@@ -397,7 +398,7 @@ and a number of special instructions that we support:
 <type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</>
 <type name="xpath:/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</>
 <type name="count:/menu">Return a count of all menu tags at the root level.</>
-<type name="xml:/menu/window/@title">Return the value of the title attribute from the window tag.</>
+<type name="xpath:/menu/window/@title">Return the value of the title attribute from the window tag.</>
 <type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title `foo`.</>
 <type name="extract:/menu/window(@title='bar')">Extract all XML starting from the window tag that has title `bar`.</>
 <type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside `&lt;menu&gt;` that contains content `apple`.</>
@@ -407,7 +408,7 @@ and a number of special instructions that we support:
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
 </types>
 
-The `xpath`, `xml` and `/` prefixes are all identical in identifying the start of an xpath.  The `content` prefix is
+The `xpath` and `/` prefixes are identical in identifying the start of an xpath.  The `content` prefix is
 used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be
 used interchangeably for lookups and filtering clauses.
 -END-
@@ -477,7 +478,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    else {
       // XPath prefix lookup table
       static constexpr std::array<std::string_view, 5> xpath_prefixes = {
-         "xpath:", "xml:", "content:", "extract:", "extract-under:"
+         "xpath:", "content:", "extract:", "extract-under:"
       };
 
       CSTRING xpath_expr = nullptr;
@@ -493,10 +494,23 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
       }
 
       if (xpath_expr) {
-         if (Self->findTag(xpath_expr) != ERR::Okay) {
-            if (not Self->ErrorMsg.empty()) log.msg("Failed to lookup '%s': %s", xpath_expr, Self->ErrorMsg.c_str());
-            else log.msg("Failed to lookup '%s'", xpath_expr);
-            return ERR::Search;
+         // Use XPath evaluator for xpath: prefix to support computed values
+         if (pf::startswith("xpath:", field)) {
+            XPathEvaluator evaluator(Self);
+            auto result = evaluator.evaluate_xpath_expression(xpath_expr);
+
+            // Convert result to string and store in Args->Value
+            std::string result_str = result.to_string();
+            pf::strcopy(result_str, Args->Value, Args->Size);
+            return ERR::Okay;
+         }
+         else {
+            // Use traditional findTag for other prefixes
+            if (Self->findTag(xpath_expr) != ERR::Okay) {
+               if (not Self->ErrorMsg.empty()) log.msg("Failed to lookup '%s': %s", xpath_expr, Self->ErrorMsg.c_str());
+               else log.msg("Failed to lookup '%s'", xpath_expr);
+               return ERR::Search;
+            }
          }
 
          if (!Self->Attrib.empty()) { // Extract attribute value
