@@ -10,13 +10,13 @@ XML: Provides an interface for the management of structured data.
 
 The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
 It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
-accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation
+accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 queries, content manipulation
 and document validation.
 
 The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
 this way, the class not only provides XML support but also serves as Parasol's general-purpose structured
 data handler.  It also makes it trivial to convert between different structured data formats, and benefit from
-the cross-application use of features, such as applying XPath queries on data originating from YAML.
+the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.
 
 <header>Data Loading and Parsing</header>
 
@@ -156,6 +156,7 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 }
 
 /*********************************************************************************************************************
+
 -ACTION-
 DataFeed: Processes and integrates external XML data into the object's document structure.
 
@@ -181,6 +182,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 </code>
 
 -END-
+
 *********************************************************************************************************************/
 
 static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)

@@ -70,7 +70,7 @@ function testFlworNonNodeReturnError()
 
    local err = xml.mtFindTag('for $book in /library/book let $discounted := number($book/@price) * 0.9 return $discounted')
    assert(err != ERR_Okay, 'Numeric FLWOR return should be rejected')
-   local message = nz(xml.ErrorMsg, '')
+   local message = nz(xml.errorMsg, '')
    assert(string.find(message, 'return expressions must yield node-sets', 1, true),
       'FLWOR error message should describe node-set requirement, got ' .. message)
 end
