@@ -46,13 +46,13 @@ function testLetSyntaxErrors()
 
    local err = xml.mtFindTag('let $a return $a')
    assert(err == ERR_Syntax, 'Missing assignment should be a syntax error, got ' .. mSys.GetErrorMsg(err))
-   local message = nz(xml.ErrorMsg, '')
+   local message = nz(xml.errorMsg, '')
    assert(string.find(message, "Expected ':=' in let binding", 1, true),
       'Error message should reference missing :=, got ' .. message)
 
    local err2 = xml.mtFindTag('let $a := return 5')
    assert(err2 == ERR_Syntax, 'Missing expression should be a syntax error, got ' .. mSys.GetErrorMsg(err2))
-   local message2 = nz(xml.ErrorMsg, '')
+   local message2 = nz(xml.errorMsg, '')
    assert(string.find(message2, "Expected expression after ':=' in let binding", 1, true),
       'Error message should reference missing binding expression, got ' .. message2)
 end
