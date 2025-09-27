@@ -1884,7 +1884,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          context.variables[variable_name] = bound_value;
 
          push_context(item_node, index + 1, sequence_size, item_attribute);
-         
+
          auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
          pop_context();
          if (expression_unsupported) {
@@ -2491,7 +2491,7 @@ ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t Current
    // Reset the evaluator state
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
-   
+
    // Ensure the tag ID and ParentID values are defined
 
    (void)xml->getMap();
@@ -2505,7 +2505,7 @@ ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t Current
 ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath, XPathValue &Result, uint32_t CurrentPrefix)
 {
    if (!CompiledPath.isValid()) return ERR::Syntax;
-   
+
    // Ensure the tag ID and ParentID values are defined
 
    (void)xml->getMap();

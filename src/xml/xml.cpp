@@ -411,7 +411,7 @@ and a number of special instructions that we support:
 static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
    pf::Log log;
-   
+
    if (!Args) return log.warning(ERR::NullArgs);
    if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
    if (!Self->initialised()) return log.warning(ERR::NotInitialised);
@@ -431,7 +431,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
       return ERR::Syntax;
    }
    else {
-      std::string result_str; 
+      std::string result_str;
       if (auto err = Self->evaluate(Args->Key, result_str); err IS ERR::Okay) {
          pf::strcopy(result_str, Args->Value, Args->Size);
          return ERR::Okay;
@@ -1611,7 +1611,7 @@ static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
 -FIELD-
 ErrorMsg: A textual description of the last parse error.
 
-This field may provide a textual description of the last parse error that occurred, in conjunction with the most 
+This field may provide a textual description of the last parse error that occurred, in conjunction with the most
 recently received error code.  Issues parsing malformed XPath expressions may also be reported here.
 
 *********************************************************************************************************************/

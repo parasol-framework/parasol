@@ -786,7 +786,7 @@ XPathValue XPathFunctionLibrary::function_name(const std::vector<XPathValue> &Ar
    return XPathValue(target_node->Attribs[0].Name);
 }
 
-XPathValue XPathFunctionLibrary::function_string(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_string(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.empty()) {
       if (Context.attribute_node) {
@@ -803,7 +803,7 @@ XPathValue XPathFunctionLibrary::function_string(const std::vector<XPathValue> &
    return XPathValue(Args[0].to_string());
 }
 
-XPathValue XPathFunctionLibrary::function_concat(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_concat(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    // Pre-calculate total length to avoid quadratic behavior
    size_t total_length = 0;
@@ -825,7 +825,7 @@ XPathValue XPathFunctionLibrary::function_concat(const std::vector<XPathValue> &
    return XPathValue(result);
 }
 
-XPathValue XPathFunctionLibrary::function_starts_with(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_starts_with(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 2) return XPathValue(false);
    std::string str = Args[0].to_string();
@@ -833,7 +833,7 @@ XPathValue XPathFunctionLibrary::function_starts_with(const std::vector<XPathVal
    return XPathValue(str.substr(0, prefix.length()) IS prefix);
 }
 
-XPathValue XPathFunctionLibrary::function_contains(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_contains(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 2) return XPathValue(false);
    std::string str = Args[0].to_string();
@@ -841,7 +841,7 @@ XPathValue XPathFunctionLibrary::function_contains(const std::vector<XPathValue>
    return XPathValue(str.find(substr) != std::string::npos);
 }
 
-XPathValue XPathFunctionLibrary::function_substring_before(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_substring_before(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 2) return XPathValue(std::string());
 
@@ -856,7 +856,7 @@ XPathValue XPathFunctionLibrary::function_substring_before(const std::vector<XPa
    return XPathValue(source.substr(0, position));
 }
 
-XPathValue XPathFunctionLibrary::function_substring_after(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_substring_after(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 2) return XPathValue(std::string());
 
@@ -871,7 +871,7 @@ XPathValue XPathFunctionLibrary::function_substring_after(const std::vector<XPat
    return XPathValue(source.substr(position + pattern.length()));
 }
 
-XPathValue XPathFunctionLibrary::function_substring(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_substring(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() < 2 or Args.size() > 3) return XPathValue(std::string());
 
@@ -904,7 +904,7 @@ XPathValue XPathFunctionLibrary::function_substring(const std::vector<XPathValue
    return XPathValue(str.substr(start_index));
 }
 
-XPathValue XPathFunctionLibrary::function_string_length(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_string_length(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    std::string str;
    if (Args.empty()) {
@@ -913,12 +913,12 @@ XPathValue XPathFunctionLibrary::function_string_length(const std::vector<XPathV
          XPathValue node_set_value(nodes);
          str = node_set_value.to_string();
       }
-   } 
+   }
    else str = Args[0].to_string();
    return XPathValue((double)str.length());
 }
 
-XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    std::string str;
    if (Args.empty()) {
@@ -927,7 +927,7 @@ XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPat
          XPathValue node_set_value(nodes);
          str = node_set_value.to_string();
       }
-   } 
+   }
    else str = Args[0].to_string();
 
    // Remove leading and trailing whitespace, collapse internal whitespace
@@ -947,7 +947,7 @@ XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPat
             result += ' ';
             in_whitespace = true;
          }
-      } 
+      }
       else {
          result += c;
          in_whitespace = false;
@@ -989,7 +989,7 @@ XPathValue XPathFunctionLibrary::function_translate(const std::vector<XPathValue
          if (index IS -1) result.push_back(ch);
          else if (index < (int)to.length()) result.push_back(to[index]);
       }
-   } 
+   }
    else {
       // Use simple find for small translation sets
       for (char ch : source) {
@@ -1150,18 +1150,18 @@ XPathValue XPathFunctionLibrary::function_boolean(const std::vector<XPathValue> 
    return XPathValue(Args[0].to_boolean());
 }
 
-XPathValue XPathFunctionLibrary::function_not(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_not(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(true);
    return XPathValue(!Args[0].to_boolean());
 }
 
-XPathValue XPathFunctionLibrary::function_true(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_true(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    return XPathValue(true);
 }
 
-XPathValue XPathFunctionLibrary::function_false(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_false(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    return XPathValue(false);
 }
@@ -1215,7 +1215,7 @@ XPathValue XPathFunctionLibrary::function_number(const std::vector<XPathValue> &
    return XPathValue(Args[0].to_number());
 }
 
-XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(0.0);
    if (Args[0].type != XPathValueType::NodeSet) return XPathValue(0.0);
@@ -1258,7 +1258,7 @@ XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Arg
    return XPathValue(sum);
 }
 
-XPathValue XPathFunctionLibrary::function_floor(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_floor(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(std::numeric_limits<double>::quiet_NaN());
    double value = Args[0].to_number();
@@ -1266,7 +1266,7 @@ XPathValue XPathFunctionLibrary::function_floor(const std::vector<XPathValue> &A
    return XPathValue(std::floor(value));
 }
 
-XPathValue XPathFunctionLibrary::function_ceiling(const std::vector<XPathValue> &Args, const XPathContext &Context) 
+XPathValue XPathFunctionLibrary::function_ceiling(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(std::numeric_limits<double>::quiet_NaN());
    double value = Args[0].to_number();

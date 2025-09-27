@@ -24,7 +24,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "NO_ESCAPE: Turns off escape code conversion.",
     "INCLUDE_WHITESPACE: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
     "PARSE_HTML: Automatically parse HTML escape codes.",
-    "STRIP_CDATA: Do not echo `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
+    "STRIP_CDATA: Do not serialise `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
     "LOG_ALL: Print extra log messages.",
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",

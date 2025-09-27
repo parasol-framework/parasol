@@ -256,7 +256,7 @@ end
    local dataFile = glPath .. 'benchmark_data.xml'
 
    glXML = obj.new("xml", { path = dataFile })
-   
+
    local err = processing.task().set('Priority', 20)  -- Highest priority
 
    print('Benchmark data loaded successfully')

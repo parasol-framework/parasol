@@ -67,7 +67,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
     <action>
       <name>GetKey</name>
-      <comment>Retrieves data from an xml object.</comment>
+      <comment>Retrieves data using XPath 2.0 queries.</comment>
       <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
@@ -75,21 +75,16 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
-<p>The XML class uses key-values for the execution of XPath queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate the majority of uses for this query language and a number of special instructions that we support:</p>
+<p>The XML class uses key-values for the execution of XPath 2.0 queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate common uses for this query language and a number of special instructions that we support:</p>
 <types type="Path">
 <type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</type>
-<type name="xpath:/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</type>
-<type name="count:/menu">Return a count of all menu tags at the root level.</type>
-<type name="xml:/menu/window/@title">Return the value of the title attribute from the window tag.</type>
-<type name="content:/menu/window(@title='foo')">Return the content of the window tag which has title <code>foo</code>.</type>
-<type name="extract:/menu/window(@title='bar')">Extract all XML starting from the window tag that has title <code>bar</code>.</type>
-<type name="extract:/menu//window(=apple)">Extract all XML from the first window tag found anywhere inside <code>&lt;menu&gt;</code> that contains content <code>apple</code>.</type>
-<type name="extract-under:/menu/window(@title='bar')">Extract all XML underneath the window tag that has title <code>bar</code>.</type>
-<type name="exists:/menu/@title">Return <code>1</code> if a menu with a title attribute can be matched, otherwise <code>0</code>.</type>
-<type name="contentexists:/menu">Return <code>1</code> if if the immediate child tags of the XPath contain text (white space is ignored).</type>
+<type name="/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</type>
+<type name="count(/menu)">Return a count of all menu tags at the root level.</type>
+<type name="/menu/window/@title">Return the value of the title attribute from the window tag.</type>
+<type name="exists(/menu/@title)">Return <code>1</code> if a menu with a title attribute can be matched, otherwise <code>0</code>.</type>
+<type name="exists(/menu/text())">Return <code>1</code> if menu contains content.</type>
 <type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</type>
 </types>
-<p>The <code>xpath</code>, <code>xml</code> and <code>/</code> prefixes are all identical in identifying the start of an xpath.  The <code>content</code> prefix is used to specifically extract the content of the tag that matches the xpath.  Square brackets and round brackets may be used interchangeably for lookups and filtering clauses.</p>
       </description>
     </action>
 
@@ -686,7 +681,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
       <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
-      <const name="STRIP_CDATA">Do not echo <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
+      <const name="STRIP_CDATA">Do not serialise <code>CDATA</code> sections.  Note that this option is used as a parameter, not an object flag.</const>
       <const name="STRIP_CONTENT">Strip all content from incoming XML data.</const>
       <const name="STRIP_HEADERS">XML headers found in the source data will not be included in the parsed results.</const>
       <const name="WELL_FORMED">By default, the XML class will accept badly structured XML data.  This flag requires that XML statements must be well-formed (tags must balance) or an <code>ERR::BadData</code> error will be returned during processing.</const>

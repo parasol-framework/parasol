@@ -281,7 +281,7 @@ function testExists()
    assert(attribExists == "false", "Unexpected result for non-existant attribute, got: " .. attribExists)
 
    local attribExists = xml.getKey('exists(string(/root/empty/@blank))')
-   assert(attribExists == "true", "Expected true because blank exists despite being empty, got: " .. attribExists)
+   assert(attribExists == "true", "Expected true because @blank exists, despite being empty.  Got: " .. attribExists)
 
    -- Test element with only whitespace
    local whitespaceExists = xml.getKey('boolean(normalize-space(/root/whitespaceOnly))')

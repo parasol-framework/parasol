@@ -681,7 +681,7 @@ function testXPathArithmetic()
    local err5, multValue = xml.mtGetAttrib(id, 'value')
    assert(err5 == ERR_Okay and multValue == '5', "@value * 2 = 10 should return the 5 result node")
 end
- 
+
 -----------------------------------------------------------------------------------------------------------------------
 
 function testXPathMultiplicationIllegal()

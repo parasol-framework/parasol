@@ -143,7 +143,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath) {
       if (position >= length) break;
 
       // Context-aware handling for '*': wildcard vs multiply.  Wildcards are permitted for use as string comparators,
-      // e.g. /menu/*[@id='5'], /root/section[@*="alpha"], /*ab/, /A*B/ 
+      // e.g. /menu/*[@id='5'], /root/section[@*="alpha"], /*ab/, /A*B/
       // In other contexts (e.g. /menu/thing[price*2>10]) it is consumed as a binary operator unless enclosed in quotes.
 
       if (input[position] IS '*') {
@@ -374,12 +374,12 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar) {
          char escaped = input[position];
          if (escaped IS QuoteChar or escaped IS '\\' or escaped IS '*') {
             value += escaped;
-         } 
+         }
          else {
             value += '\\';
             value += escaped;
          }
-      } 
+      }
       else value += input[position];
 
       position++;
@@ -392,7 +392,7 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar) {
 
 //********************************************************************************************************************
 
-XPathToken XPathTokenizer::scan_operator() 
+XPathToken XPathTokenizer::scan_operator()
 {
    size_t start = position;
    char ch = input[position];
@@ -455,7 +455,7 @@ XPathToken XPathTokenizer::scan_operator()
 //********************************************************************************************************************
 // XPathParser Implementation
 
-std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &TokenList) 
+std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &TokenList)
 {
    tokens = TokenList;
    current_token = 0;
@@ -502,27 +502,27 @@ bool XPathParser::match(XPathTokenType Type) {
    return false;
 }
 
-const XPathToken & XPathParser::peek() const 
+const XPathToken & XPathParser::peek() const
 {
    return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
 }
 
-const XPathToken & XPathParser::previous() const 
+const XPathToken & XPathParser::previous() const
 {
    return tokens[current_token - 1];
 }
 
-bool XPathParser::is_at_end() const 
+bool XPathParser::is_at_end() const
 {
    return peek().type IS XPathTokenType::END_OF_INPUT;
 }
 
-void XPathParser::advance() 
+void XPathParser::advance()
 {
    if (!is_at_end()) current_token++;
 }
 
-bool XPathParser::is_step_start_token(XPathTokenType type) const 
+bool XPathParser::is_step_start_token(XPathTokenType type) const
 {
    switch (type) {
       case XPathTokenType::DOT:
@@ -536,22 +536,22 @@ bool XPathParser::is_step_start_token(XPathTokenType type) const
    }
 }
 
-void XPathParser::report_error(std::string_view Message) 
+void XPathParser::report_error(std::string_view Message)
 {
    errors.emplace_back(Message);
 }
 
-bool XPathParser::has_errors() const 
+bool XPathParser::has_errors() const
 {
    return !errors.empty();
 }
 
-std::vector<std::string> XPathParser::get_errors() const 
+std::vector<std::string> XPathParser::get_errors() const
 {
    return errors;
 }
 
-std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right) 
+std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right)
 {
    auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, std::string(Op.value));
    binary_op->add_child(std::move(Left));
@@ -775,7 +775,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
             if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
                attr_name += peek().value;
                advance();
-            } 
+            }
             else report_error("Expected identifier or wildcard after ':' in attribute name");
          }
 
@@ -964,7 +964,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() {
       if (match(XPathTokenType::LPAREN)) {
          operand = parse_expr();
          match(XPathTokenType::RPAREN);
-      } 
+      }
       else operand = parse_unary_expr();
 
       return create_unary_op(op, std::move(operand));
@@ -1226,7 +1226,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_argument() {
    return parse_expr();
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_number() 
+std::unique_ptr<XPathNode> XPathParser::parse_number()
 {
    if (check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
@@ -1236,7 +1236,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_number()
    return nullptr;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_literal() 
+std::unique_ptr<XPathNode> XPathParser::parse_literal()
 {
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
@@ -1246,7 +1246,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_literal()
    return nullptr;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_variable_reference() 
+std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
 {
    if (check(XPathTokenType::DOLLAR)) {
       advance();
