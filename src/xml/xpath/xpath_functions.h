@@ -159,6 +159,7 @@ class XPathFunctionLibrary {
    static XPathValue function_true(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_false(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_lang(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_exists(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_number(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_sum(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_floor(const std::vector<XPathValue> &Args, const XPathContext &Context);
