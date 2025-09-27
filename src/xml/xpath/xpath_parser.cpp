@@ -921,65 +921,109 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr() {
-   if (check(XPathTokenType::FOR)) {
-      return parse_for_expr();
+   std::vector<std::unique_ptr<XPathNode>> clauses;
+   bool saw_for = false;
+   bool saw_let = false;
+
+   while (true) {
+      if (match(XPathTokenType::FOR)) {
+         saw_for = true;
+
+         bool expect_binding = true;
+         while (expect_binding) {
+            if (!match(XPathTokenType::DOLLAR)) {
+               report_error("Expected '$' after 'for'");
+               return nullptr;
+            }
+
+            std::string variable_name;
+            if (check(XPathTokenType::IDENTIFIER)) {
+               variable_name = peek().value;
+               advance();
+            }
+            else {
+               report_error("Expected variable name after '$' in for expression");
+               return nullptr;
+            }
+
+            if (!match(XPathTokenType::IN)) {
+               report_error("Expected 'in' in for expression");
+               return nullptr;
+            }
+
+            auto sequence_expr = parse_expr();
+            if (!sequence_expr) return nullptr;
+
+            auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
+            binding_node->add_child(std::move(sequence_expr));
+            clauses.push_back(std::move(binding_node));
+
+            if (match(XPathTokenType::COMMA)) expect_binding = true;
+            else expect_binding = false;
+         }
+
+         continue;
+      }
+
+      if (check(XPathTokenType::LET) or check_identifier_keyword("let")) {
+         XPathToken let_token(XPathTokenType::UNKNOWN, std::string_view());
+         if (!match_identifier_keyword("let", XPathTokenType::LET, let_token)) {
+            report_error("Expected 'let' expression");
+            return nullptr;
+         }
+
+         saw_let = true;
+
+         bool parsing_bindings = true;
+         while (parsing_bindings) {
+            if (!match(XPathTokenType::DOLLAR)) {
+               report_error("Expected '$' after 'let'");
+               return nullptr;
+            }
+
+            std::string variable_name;
+            if (check(XPathTokenType::IDENTIFIER)) {
+               variable_name = peek().value;
+               advance();
+            }
+            else {
+               report_error("Expected variable name after '$' in let binding");
+               return nullptr;
+            }
+
+            if (!match(XPathTokenType::ASSIGN)) {
+               report_error("Expected ':=' in let binding");
+               return nullptr;
+            }
+
+            auto binding_expr = parse_expr();
+            if (!binding_expr) {
+               report_error("Expected expression after ':=' in let binding");
+               return nullptr;
+            }
+
+            auto binding_node = std::make_unique<XPathNode>(XPathNodeType::LET_BINDING, variable_name);
+            binding_node->add_child(std::move(binding_expr));
+            clauses.push_back(std::move(binding_node));
+
+            if (match(XPathTokenType::COMMA)) parsing_bindings = true;
+            else parsing_bindings = false;
+         }
+
+         continue;
+      }
+
+      break;
    }
 
-   if (check(XPathTokenType::LET) or check_identifier_keyword("let")) {
-      return parse_let_expr();
-   }
-
-   report_error("Expected 'for' or 'let' expression");
-   return nullptr;
-}
-
-std::unique_ptr<XPathNode> XPathParser::parse_let_expr() {
-   XPathToken let_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("let", XPathTokenType::LET, let_token)) {
-      report_error("Expected 'let' expression");
+   if (clauses.empty()) {
+      report_error("Expected 'for' or 'let' expression");
       return nullptr;
-   }
-
-   auto let_node = std::make_unique<XPathNode>(XPathNodeType::LET_EXPRESSION);
-
-   bool parsing_bindings = true;
-   while (parsing_bindings) {
-      if (!match(XPathTokenType::DOLLAR)) {
-         report_error("Expected '$' after 'let'");
-         return nullptr;
-      }
-
-      std::string variable_name;
-      if (check(XPathTokenType::IDENTIFIER)) {
-         variable_name = peek().value;
-         advance();
-      }
-      else {
-         report_error("Expected variable name after '$' in let binding");
-         return nullptr;
-      }
-
-      if (!match(XPathTokenType::ASSIGN)) {
-         report_error("Expected ':=' in let binding");
-         return nullptr;
-      }
-
-      auto binding_expr = parse_expr();
-      if (!binding_expr) {
-         report_error("Expected expression after ':=' in let binding");
-         return nullptr;
-      }
-
-      auto binding_node = std::make_unique<XPathNode>(XPathNodeType::LET_BINDING, variable_name);
-      binding_node->add_child(std::move(binding_expr));
-      let_node->add_child(std::move(binding_node));
-
-      parsing_bindings = match(XPathTokenType::COMMA);
    }
 
    XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view());
    if (!match_identifier_keyword("return", XPathTokenType::RETURN, return_token)) {
-      report_error("Expected 'return' in let expression");
+      report_error("Expected 'return' in FLWOR expression");
       return nullptr;
    }
 
@@ -989,8 +1033,42 @@ std::unique_ptr<XPathNode> XPathParser::parse_let_expr() {
       return nullptr;
    }
 
-   let_node->add_child(std::move(return_expr));
-   return let_node;
+   if (saw_for and !saw_let) {
+      auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION);
+      for (auto &clause : clauses) {
+         if ((!clause) or !(clause->type IS XPathNodeType::FOR_BINDING)) {
+            report_error("Invalid for binding in FLWOR expression");
+            return nullptr;
+         }
+         for_node->add_child(std::move(clause));
+      }
+      for_node->add_child(std::move(return_expr));
+      return for_node;
+   }
+
+   if (saw_let and !saw_for) {
+      auto let_node = std::make_unique<XPathNode>(XPathNodeType::LET_EXPRESSION);
+      for (auto &clause : clauses) {
+         if ((!clause) or !(clause->type IS XPathNodeType::LET_BINDING)) {
+            report_error("Invalid let binding in FLWOR expression");
+            return nullptr;
+         }
+         let_node->add_child(std::move(clause));
+      }
+      let_node->add_child(std::move(return_expr));
+      return let_node;
+   }
+
+   auto flwor_node = std::make_unique<XPathNode>(XPathNodeType::FLWOR_EXPRESSION);
+   for (auto &clause : clauses) {
+      if (!clause) {
+         report_error("Invalid clause in FLWOR expression");
+         return nullptr;
+      }
+      flwor_node->add_child(std::move(clause));
+   }
+   flwor_node->add_child(std::move(return_expr));
+   return flwor_node;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_or_expr() {
@@ -1262,57 +1340,6 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
    conditional->add_child(std::move(then_branch));
    conditional->add_child(std::move(else_branch));
    return conditional;
-}
-
-std::unique_ptr<XPathNode> XPathParser::parse_for_expr() {
-   if (!match(XPathTokenType::FOR)) return nullptr;
-
-   auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION);
-
-   bool expect_binding = true;
-
-   while (expect_binding) {
-      if (!match(XPathTokenType::DOLLAR)) {
-         report_error("Expected '$' after 'for'");
-         return nullptr;
-      }
-
-      std::string variable_name;
-      if (check(XPathTokenType::IDENTIFIER)) {
-         variable_name = peek().value;
-         advance();
-      }
-      else {
-         report_error("Expected variable name after '$' in for expression");
-         return nullptr;
-      }
-
-      if (!match(XPathTokenType::IN)) {
-         report_error("Expected 'in' in for expression");
-         return nullptr;
-      }
-
-      auto sequence_expr = parse_expr();
-      if (!sequence_expr) return nullptr;
-
-      auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
-      binding_node->add_child(std::move(sequence_expr));
-      for_node->add_child(std::move(binding_node));
-
-      if (match(XPathTokenType::COMMA)) expect_binding = true;
-      else expect_binding = false;
-   }
-
-   if (!match(XPathTokenType::RETURN)) {
-      report_error("Expected 'return' in for expression");
-      return nullptr;
-   }
-
-   auto return_expr = parse_expr();
-   if (!return_expr) return nullptr;
-
-   for_node->add_child(std::move(return_expr));
-   return for_node;
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr() {
