@@ -360,30 +360,6 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 }
 
 //********************************************************************************************************************
-// Entry Point (AST Evaluation)
-
-ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t CurrentPrefix)
-{
-   if (!CompiledPath.isValid()) {
-      xml->ErrorMsg = "Invalid compiled XPath expression";
-      for (const auto &error : CompiledPath.getErrors()) {
-         if (!xml->ErrorMsg.empty()) xml->ErrorMsg.append("\n");
-         xml->ErrorMsg.append(error);
-      }
-      return ERR::Failed;
-   }
-
-   // Reset the evaluator state
-   axis_evaluator.reset_namespace_nodes();
-   arena.reset();
-
-   // Ensure the document index is up to date
-   (void)xml->getMap();
-
-   return evaluate_ast(CompiledPath.getAST(), CurrentPrefix);
-}
-
-//********************************************************************************************************************
 // AST Evaluation Methods
 
 // Dispatch AST nodes to the appropriate evaluation routine.
@@ -1512,14 +1488,61 @@ XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathN
       std::vector<std::string> attribute_values;
       std::vector<XMLTag *> attribute_nodes;
       std::vector<const XMLAttrib *> attribute_refs;
+      std::vector<const XPathNode *> attribute_predicates;
+
+      for (size_t index = 0; index < attribute_step->child_count(); ++index) {
+         auto *child = attribute_step->get_child(index);
+         if (child and (child->type IS XPathNodeType::PREDICATE)) attribute_predicates.push_back(child);
+      }
 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
 
          auto matches = dispatch_axis(AxisType::ATTRIBUTE, candidate);
+         if (matches.empty()) continue;
+
+         std::vector<AxisMatch> filtered;
+         filtered.reserve(matches.size());
+
          for (auto &match : matches) {
             if (!match.attribute) continue;
             if (!match_node_test(attribute_test, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
+            filtered.push_back(match);
+         }
+
+         if (filtered.empty()) continue;
+
+         if (!attribute_predicates.empty()) {
+            std::vector<AxisMatch> predicate_buffer;
+            predicate_buffer.reserve(filtered.size());
+
+            for (auto *predicate_node : attribute_predicates) {
+               predicate_buffer.clear();
+               predicate_buffer.reserve(filtered.size());
+
+               for (size_t index = 0; index < filtered.size(); ++index) {
+                  auto &match = filtered[index];
+
+                  push_context(match.node, index + 1, filtered.size(), match.attribute);
+                  auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+                  pop_context();
+
+                  if (predicate_result IS PredicateResult::UNSUPPORTED) {
+                     expression_unsupported = true;
+                     return XPathValue();
+                  }
+
+                  if (predicate_result IS PredicateResult::MATCH) predicate_buffer.push_back(match);
+               }
+
+               filtered.swap(predicate_buffer);
+               if (filtered.empty()) break;
+            }
+
+            if (filtered.empty()) continue;
+         }
+
+         for (auto &match : filtered) {
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
             attribute_refs.push_back(match.attribute);
@@ -2459,38 +2482,51 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 }
 
 //********************************************************************************************************************
+// Public method for AST Evaluation
+
+ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t CurrentPrefix)
+{
+   if (!CompiledPath.isValid()) return ERR::Syntax;
+
+   // Reset the evaluator state
+   axis_evaluator.reset_namespace_nodes();
+   arena.reset();
+   
+   // Ensure the tag ID and ParentID values are defined
+
+   (void)xml->getMap();
+
+   return evaluate_ast(CompiledPath.getAST(), CurrentPrefix);
+}
+
+//********************************************************************************************************************
 // Public method to evaluate complete XPath expressions and return computed values
 
-XPathValue XPathEvaluator::evaluate_xpath_expression(std::string_view XPathExpr, uint32_t CurrentPrefix) {
-   // Compile the XPath expression
-   auto compiled = CompiledXPath::compile(XPathExpr);
+ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath, XPathValue &Result, uint32_t CurrentPrefix)
+{
+   if (!CompiledPath.isValid()) return ERR::Syntax;
+   
+   // Ensure the tag ID and ParentID values are defined
 
-   if (!compiled.isValid()) {
-      // Return empty string for invalid expressions
-      return XPathValue(std::string(""));
-   }
+   (void)xml->getMap();
 
    // Set context to document root if not already set
-   if (!context.context_node) {
-      push_context(&xml->Tags[0], 1, 1);
-   }
+
+   if (!context.context_node) push_context(&xml->Tags[0], 1, 1);
 
    // Evaluate the compiled AST and return the XPathValue directly
+
    expression_unsupported = false;
 
-   const XPathNode *expression_node = compiled.getAST();
+   const XPathNode *expression_node = CompiledPath.getAST();
    if (expression_node and (expression_node->type IS XPathNodeType::EXPRESSION)) {
       if (expression_node->child_count() > 0) expression_node = expression_node->get_child(0);
       else expression_node = nullptr;
    }
 
-   auto result = evaluate_expression(expression_node, CurrentPrefix);
+   Result = evaluate_expression(expression_node, CurrentPrefix);
 
-   if (expression_unsupported) {
-      // Return empty string for unsupported expressions
-      return XPathValue(std::string(""));
-   }
-
-   return result;
+   if (expression_unsupported) return ERR::Syntax;
+   else return ERR::Okay;
 }
 

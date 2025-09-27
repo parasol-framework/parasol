@@ -184,7 +184,7 @@ function testContentExtraction()
    assert(string.find(buffer, "end"), "Should include direct text")
 
    -- Test deep content extraction via getKey
-   local deepContent = xml.getKey('content:/root')
+   local deepContent = xml.getKey('string(/root)')
    assert(string.find(deepContent, "emphasized"), "Deep extraction should include nested content")
    assert(string.find(deepContent, "strong"), "Deep extraction should include nested content")
 end
@@ -203,11 +203,11 @@ function testCountMethods()
    assert(methodCount == 5, "Should count all items: got " .. methodCount)
 
    -- Test count: getKey
-   local keyCount = tonumber(xml.getKey('count://item'))
+   local keyCount = tonumber(xml.getKey('count(//item)'))
    assert(keyCount == 5, "Should count all items: got " .. keyCount)
 
    -- Test specific path count
-   local sectionCount = tonumber(xml.getKey('count:/root/section[1]/item'))
+   local sectionCount = tonumber(xml.getKey('count(/root/section[1]/item)'))
    assert(sectionCount == 2, "Should count items in first section only, got " .. sectionCount)
 end
 
@@ -255,24 +255,37 @@ function testRemoveXPathAttributes()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test contentexists: getKey operation
+-- Test exists() function
 
-function testContentExists()
+function testExists()
    local xml = obj.new("xml", {
-      statement = '<root><empty/><withContent>Some text</withContent><whitespaceOnly>   \n\t  </whitespaceOnly></root>'
+      statement = '<root><empty attrib="value" blank=""/><withContent>Some text</withContent><whitespaceOnly>   \n\t  </whitespaceOnly></root>'
    })
 
-   -- Test empty element
-   local emptyExists = xml.getKey('contentexists:/root/empty')
-   assert(emptyExists == "0", "Empty element should report no content")
+   local emptyExists = xml.getKey('exists(/root/empty/text())')
+   assert(emptyExists == "false", "exists() on text() should report no content, got: " .. emptyExists)
 
-   -- Test element with content
-   local contentExists = xml.getKey('contentexists:/root/withContent')
-   assert(contentExists == "1", "Element with content should report content exists")
+   local emptyExists = xml.getKey('exists(/root/empty)')
+   assert(emptyExists == "true", "Targeted empty element exists, got: " .. emptyExists)
+
+   local elementExists = xml.getKey('exists(/root/withContent)')
+   assert(elementExists == "true", "Element with content should report element exists, got: " .. elementExists)
+
+   local attribExists = xml.getKey('exists(/root/empty/@attrib)')
+   assert(attribExists == "true", "Targeted attrib element exists, got: " .. attribExists)
+
+   local attribExists = xml.getKey('exists(/root/empty/@blank)')
+   assert(attribExists == "true", "Targeted blank element exists, got: " .. attribExists)
+
+   local attribExists = xml.getKey('exists(/root/empty/@doesnotexist)')
+   assert(attribExists == "false", "Unexpected result for non-existant attribute, got: " .. attribExists)
+
+   local attribExists = xml.getKey('exists(string(/root/empty/@blank))')
+   assert(attribExists == "true", "Expected true because blank exists despite being empty, got: " .. attribExists)
 
    -- Test element with only whitespace
-   local whitespaceExists = xml.getKey('contentexists:/root/whitespaceOnly')
-   assert(whitespaceExists == "0", "Whitespace-only should report no content")
+   local whitespaceExists = xml.getKey('boolean(normalize-space(/root/whitespaceOnly))')
+   assert(whitespaceExists == "false", "Normalised whitespace should report no content, got: " .. whitespaceExists)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -282,7 +295,7 @@ return {
       'testParsingFlags', 'testWhitespaceHandling', 'testContentStripping', 'testHeaderStripping',
       'testWellFormedValidation', 'testEntityParsing', 'testNoEscapeMode', 'testSortingFlags',
       'testSerializationFlags', 'testContentExtraction', 'testCountMethods', 'testFilterMethod',
-      'testRemoveXPathAttributes', 'testContentExists'
+      'testRemoveXPathAttributes', 'testExists'
    },
    init = function(ScriptFolder)
       -- No global init needed for these tests

@@ -200,11 +200,11 @@ function testCountOperations()
    })
 
    -- Count all items
-   local totalItems = tonumber(xml.getKey('count://item'))
+   local totalItems = tonumber(xml.getKey('count(//item)'))
    assert(totalItems == 4, "Expected 4 total items, got " .. totalItems)
 
    -- Count items in first section
-   local firstSectionItems = tonumber(xml.getKey('count:/root/section[1]/item'))
+   local firstSectionItems = tonumber(xml.getKey('count(/root/section[1]/item)'))
    assert(firstSectionItems == 3, "Expected 3 items in first section, got " .. firstSectionItems)
 end
 
@@ -245,12 +245,12 @@ function testContentExtraction()
    assert(string.find(immediateContent, "more content"), "Trailing content not extracted")
 
    -- Test deep content extraction
-   local deepContent = xml.getKey('content:/root/section')
-   assert(string.find(deepContent, "emphasized"), "Deep content not extracted")
+   local deepContent = xml.getKey('string(/root/section)')
+   assert(string.find(deepContent, "emphasized"), "Deep content not extracted, got: " .. deepContent)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test extract operations (XML serialization)
+-- Test serialisation operations
 
 function testExtractOperations()
    local xml = obj.new("xml", {
@@ -258,9 +258,11 @@ function testExtractOperations()
    })
 
    -- Extract XML for specific element
-   local extractedXML = xml.getKey('extract:/root/section/item')
-   assert(string.find(extractedXML, 'id="1"'), "Extracted XML is missing attributes: " .. nz(extractedXML,'NIL'))
-   assert(string.find(extractedXML, "Content"), "Extracted XML is missing content" .. nz(extractedXML,'NIL'))
+   local err, id = xml.mtFindTag('/root/section/item')
+   local err, result = xml.mtSerialise(id, false)
+
+   assert(string.find(result, 'id="1"'), "Extracted XML is missing attributes: " .. nz(result,'NIL'))
+   assert(string.find(result, "Content"), "Extracted XML is missing content" .. nz(result,'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
