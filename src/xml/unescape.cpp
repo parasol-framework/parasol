@@ -315,7 +315,7 @@ static void xml_unescape(extXML *Self, std::string &String)
                std::string resolved;
                if (Self->resolveEntity(lookup, resolved) IS ERR::Okay) {
                   String.replace(c, end - c, resolved);
-                  c += resolved.size();
+                  // Rescan the inserted text to handle nested entity references.
                }
                else c++;
             }
