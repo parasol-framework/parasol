@@ -311,7 +311,14 @@ static void xml_unescape(extXML *Self, std::string &String)
                String.replace(c, end-c, glOfficial[lookup]);
                c++;
             }
-            else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) c++; // Not yet implemented
+            else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
+               std::string resolved;
+               if (Self->resolveEntity(lookup, resolved) IS ERR::Okay) {
+                  String.replace(c, end - c, resolved);
+                  // Rescan the inserted text to handle nested entity references.
+               }
+               else c++;
+            }
             else if ((Self->Flags & XMF::PARSE_HTML) != XMF::NIL) { // Process HTML escape codes
                if (glHTML.contains(lookup)) {
                   auto unicode = glHTML[lookup];

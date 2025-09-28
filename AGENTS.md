@@ -38,9 +38,9 @@ Key build options (use with `-D` flag):
 
 ### Development in the Cloud (Temporary Sessions)
 
-Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild` when in a cloud session.
+Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild` when in a temporary session.
 
-If you are running in a cloud session then disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
+Disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
 - `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 Performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.

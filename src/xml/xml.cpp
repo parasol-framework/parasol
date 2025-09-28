@@ -104,6 +104,12 @@ static ERR XML_Clear(extXML *Self)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    Self->Tags.clear();
+   if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
+   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   Self->Entities.clear();
+   Self->ParameterEntities.clear();
+   Self->Notations.clear();
    Self->LineNo = 1;
    Self->Start  = 0;
    Self->ParseError = ERR::Okay;
@@ -336,7 +342,6 @@ The GetAttrib method provides efficient access to individual attribute values wi
 identifier and attribute name, the method performs a case-insensitive search through the element's attribute
 collection and returns the corresponding value.
 
-
 When a specific attribute name is provided, the method searches through all attributes of the target tag.  The search
 is case-insensitive to accommodate XML documents with varying capitalisation conventions.
 
@@ -368,6 +373,8 @@ Okay: The attribute was successfully found and its value returned.
 NullArgs: Required arguments were not specified correctly.
 NotFound: Either the specified tag Index does not exist, or the named attribute was not found within the tag.
 
+-END-
+
 *********************************************************************************************************************/
 
 static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
@@ -394,6 +401,77 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Attrib %s not found in tag %d", Args->Attrib, Args->Index);
    return ERR::NotFound;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetEntity: Retrieves the value of a parsed entity declaration.
+
+This method returns the expanded value associated with a general entity parsed from the document's DOCTYPE declaration.
+Entity names are case-sensitive and must match exactly as declared.
+
+-INPUT-
+cstr Name: The name of the entity to retrieve.  This must correspond to a parsed entity declaration.
+&cstr Value: Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.
+
+-ERRORS-
+Okay: The entity was found and its value returned.
+NullArgs: Either the Name or Value parameter was NULL.
+Search: No matching entity could be found for the specified name.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
+
+   auto key = std::string(Args->Name);
+   auto it = Self->Entities.find(key);
+   if (it IS Self->Entities.end()) return log.warning(ERR::Search);
+
+   Args->Value = it->second.c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetNotation: Retrieves information about a parsed notation declaration.
+
+Returns the system or public identifier captured for a notation declaration inside the
+document type definition.  If both public and system identifiers were provided they are
+returned as a single string separated by a single space.
+
+-INPUT-
+cstr Name: The notation name to look up.
+&cstr Value: Receives the notation descriptor on success.
+
+-ERRORS-
+Okay: The notation was found and its descriptor returned.
+NullArgs: Either the Name or Value parameter was NULL.
+Search: No matching notation could be found for the specified name.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
+{
+   pf::Log log;
+
+   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
+
+   auto key = std::string(Args->Name);
+   auto it = Self->Notations.find(key);
+   if (it IS Self->Notations.end()) return log.warning(ERR::Search);
+
+   Args->Value = it->second.c_str();
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -1620,6 +1698,9 @@ static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
 /*********************************************************************************************************************
 
 -FIELD-
+DocType: Root element name from DOCTYPE declaration
+
+-FIELD-
 ErrorMsg: A textual description of the last parse error.
 
 This field may provide a textual description of the last parse error that occurred, in conjunction with the most
@@ -1689,6 +1770,12 @@ The Modified field provides an artificial timestamp value of when the XML data w
 or update).  Storing the current Modified value and making comparisons later makes it easy to determine that a change
 has been made.  A rough idea of the total number of change requests can also be calculated by subtracting out the
 difference.
+
+-FIELD-
+PublicID: Public identifier for external DTD
+
+-FIELD-
+SystemID: System identifier for external DTD
 
 -FIELD-
 ReadOnly: Prevents modifications and enables caching for a loaded XML data source.
@@ -1860,7 +1947,7 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 
 static const FieldArray clFields[] = {
    { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
-   { "DocumentType", FDF_STRING|FDF_R },
+   { "DocType",      FDF_STRING|FDF_R },
    { "PublicID",     FDF_STRING|FDF_R },
    { "SystemID",     FDF_STRING|FDF_R },
    { "Source",       FDF_OBJECT|FDF_RI },

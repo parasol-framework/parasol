@@ -174,7 +174,7 @@ function benchmarkAttributeScanning()
 end
 
 function benchmarkConditionalCounting()
-   local totalProducts = tonumber(glXML.getKey('count://product'))
+   local totalProducts = tonumber(glXML.getKey('count(//product)'))
    assert(totalProducts > 0, "Conditional counting failed")
 end
 
@@ -205,7 +205,7 @@ end
 -- Content and Structure Benchmarks
 
 function benchmarkContentExtraction()
-   local content = glXML.getKey('content://product[@id="prod-1"]')
+   local content = glXML.getKey('string(//product[@id="prod-1"])')
    assert(content, "Content extraction failed")
 end
 
@@ -261,7 +261,7 @@ end
 
    print('Benchmark data loaded successfully')
    print('Document root: ' .. nz(glXML.getKey('/catalog/@name'), 'Unknown'))
-   print('Total products: ' .. nz(glXML.getKey('count://product'), '0'))
+   print('Total products: ' .. nz(glXML.getKey('count(//product)'), '0'))
    print('')
 
    print('=== 1. Basic Navigation Tests ===')

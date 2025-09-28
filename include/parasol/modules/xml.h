@@ -172,6 +172,8 @@ struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC i
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -182,16 +184,16 @@ class objXML : public Object {
 
    using create = pf::Create<objXML>;
 
-   STRING    Path;         // Set this field if the XML document originates from a file source.
-   STRING    DocumentType; // Root element name from DOCTYPE declaration
-   STRING    PublicID;     // Public identifier for external DTD
-   STRING    SystemID;     // System identifier for external DTD
-   OBJECTPTR Source;       // Set this field if the XML data is to be sourced from another object.
-   XMF       Flags;        // Controls XML parsing behaviour and processing options.
-   int       Start;        // Set a starting cursor to affect the starting point for some XML operations.
-   int       Modified;     // A timestamp of when the XML data was last modified.
-   ERR       ParseError;   // Private
-   int       LineNo;       // Private
+   STRING    Path;    // Set this field if the XML document originates from a file source.
+   STRING    DocType; // Root element name from DOCTYPE declaration
+   STRING    PublicID; // Public identifier for external DTD
+   STRING    SystemID; // System identifier for external DTD
+   OBJECTPTR Source;  // Set this field if the XML data is to be sourced from another object.
+   XMF       Flags;   // Controls XML parsing behaviour and processing options.
+   int       Start;   // Set a starting cursor to affect the starting point for some XML operations.
+   int       Modified; // A timestamp of when the XML data was last modified.
+   ERR       ParseError; // Private
+   int       LineNo;  // Private
    public:
    typedef pf::vector<XMLTag> TAGS;
    typedef pf::vector<XMLTag>::iterator CURSOR;
@@ -345,12 +347,24 @@ class objXML : public Object {
       struct xml::SetVariable args = { Key, Value };
       return(Action(AC(-23), this, &args));
    }
+   inline ERR getEntity(CSTRING Name, CSTRING * Value) noexcept {
+      struct xml::GetEntity args = { Name, (CSTRING)0 };
+      ERR error = Action(AC(-24), this, &args);
+      if (Value) *Value = args.Value;
+      return(error);
+   }
+   inline ERR getNotation(CSTRING Name, CSTRING * Value) noexcept {
+      struct xml::GetNotation args = { Name, (CSTRING)0 };
+      ERR error = Action(AC(-25), this, &args);
+      if (Value) *Value = args.Value;
+      return(error);
+   }
 
    // Customised field setting
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[10];
+      auto field = &this->Class->Dictionary[12];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -372,13 +386,13 @@ class objXML : public Object {
 
    inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[15];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 
