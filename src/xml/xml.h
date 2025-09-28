@@ -11,6 +11,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <ankerl/unordered_dense.h>
 
 constexpr std::array<uint64_t, 4> name_char_table = []() {
    std::array<uint64_t, 4> table{0, 0, 0, 0};
@@ -84,7 +85,7 @@ struct ParseState {
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
    // Namespace context for this parsing scope
-   std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
+   ankerl::unordered_dense::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
    uint32_t DefaultNamespace;                  // Default namespace URI hash
    inline char current() const { return cursor.empty() ? '\0' : cursor.front(); }
    inline bool done() const { return cursor.empty(); }
@@ -167,7 +168,7 @@ class extXML : public objXML {
    // Link prefixes to namespace URIs
    // WARNING: If the XML document overwrites namespace URIs on the same prefix name (legal!)
    // then this lookup table returns the most recently assigned URI.
-   std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
+   ankerl::unordered_dense::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
