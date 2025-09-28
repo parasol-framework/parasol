@@ -21,7 +21,7 @@ static void output_attribvalue(std::string_view String, std::ostringstream &Outp
    }
 }
 
-inline void assign_string(STRING &Target, const std::string &Value)
+inline void assign_string(STRING &Target, const std::string_view Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
    if (not Value.empty()) Target = pf::strclone(Value);
@@ -230,7 +230,7 @@ static void parse_doctype(extXML *Self, ParseState &State)
    auto type_view = read_name(view);
    if (type_view.empty()) return;
 
-   assign_string(Self->DocType, std::string(type_view));
+   assign_string(Self->DocType, type_view);
    if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
    if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    Self->Entities.clear();
