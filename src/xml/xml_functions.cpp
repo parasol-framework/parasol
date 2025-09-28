@@ -423,14 +423,15 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 
       std::string str;
       str.reserve(State - content);
-      
-      // Copy content, skipping \r characters and counting newlines
-      while (not content.done()) {
-         if (content.current() == '\n') Self->LineNo++;
-         if (content.current() != '\r') str.push_back(content.current());
-         content.next();
+
+      auto end_ptr = State.cursor.data();
+      auto ptr = content.cursor.data();
+
+      while (ptr < end_ptr) {
+         char ch = *ptr++;
+         if (ch != '\r') str.push_back(ch);
       }
-      
+
       Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(str) } }));
    }
 }
@@ -545,14 +546,29 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       return ERR::Okay;
    }
 
-   if ((State.current() IS '?') or (State.current() IS '!')) {
+   if (State.startsWith("!DOCTYPE")) {
+      State.next(8);
+
       if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
-         if (State.startsWith("!DOCTYPE")) {
-            State.next(8);
-            parse_doctype(Self, State);
+         parse_doctype(Self, State);
+      }
+      else {
+         int depth = 0;
+         while (not State.done()) {
+            char ch = State.current();
+            if (ch IS '[') depth++;
+            else if ((ch IS ']') and depth) depth--;
+            else if ((ch IS '>') and (depth IS 0)) break;
+            if (ch IS '\n') Self->LineNo++;
+            State.next();
          }
       }
 
+      if (State.current() IS '>') State.next();
+      return ERR::NothingDone;
+   }
+
+   if ((State.current() IS '?') or (State.current() IS '!')) {
       if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {
          State.skipTo('>', Self->LineNo);
          if (State.current() IS '>') State.next();
