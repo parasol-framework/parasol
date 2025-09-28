@@ -58,6 +58,30 @@ function testSerialise()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test that line number counting works correctly
+
+function testLineCount()
+   local xml_content = [[<?xml version="1.0"?>
+<root>
+   <item>First</item>
+   <item>Second</item>
+   <item>
+      <nested>Value</nested>
+   </item>
+</root>]]
+
+   local _, newline_count = xml_content:gsub('\n', '')
+
+   local expected_lines = newline_count
+   if xml_content:sub(-1) != '\n' then
+      expected_lines = expected_lines + 1
+   end
+
+   local xml = obj.new("xml", { statement = xml_content })
+   assert(xml.lineNo == expected_lines, "Expected line count of " .. expected_lines .. " but got " .. xml.lineNo)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 function testSort()
    local err = glXML.mtSort('/book', 'name')
@@ -79,7 +103,7 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib', 'testSerialise', 'testSort' },
+      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib', 'testSerialise', 'testLineCount', 'testSort' },
       init = function(ScriptFolder)
          glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
       end,

@@ -17,11 +17,6 @@ constexpr bool is_name_start(char ch) noexcept
           (ch IS '_') or (ch IS ':');
 }
 
-constexpr bool is_whitespace(char ch) noexcept
-{
-   return uint8_t(ch) <= 0x20;
-}
-
 constexpr char to_lower(char ch) noexcept
 {
    return ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
@@ -51,13 +46,6 @@ inline void assign_string(STRING &Target, const std::string &Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
    if (not Value.empty()) Target = pf::strclone(Value);
-}
-
-inline void skip_ws(std::string_view &view) noexcept
-{
-   while (not view.empty() and is_whitespace(view.front())) {
-      view.remove_prefix(1);
-   }
 }
 
 static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcept
@@ -103,8 +91,29 @@ static std::string_view read_name(std::string_view &view) noexcept
    return result;
 }
 
+static void expand_entity_references(extXML *Self, std::string &Value,
+   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack);
+
 static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
-   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack);
+   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+{
+   pf::Log log(__FUNCTION__);
+
+   auto &stack = Parameter ? ParameterStack : EntityStack;
+   if (stack.contains(Name)) return log.warning(ERR::Loop);
+
+   auto &table = Parameter ? Self->ParameterEntities : Self->Entities;
+   auto it = table.find(Name);
+   if (it IS table.end()) return ERR::Search;
+
+   stack.insert(Name);
+
+   Value = it->second;
+   expand_entity_references(Self, Value, EntityStack, ParameterStack);
+
+   stack.erase(Name);
+   return ERR::Okay;
+}
 
 static void expand_entity_references(extXML *Self, std::string &Value,
    std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
@@ -168,27 +177,6 @@ ERR extXML::resolveEntity(const std::string &Name, std::string &Value, bool Para
    std::unordered_set<std::string> entity_stack;
    std::unordered_set<std::string> parameter_stack;
    return resolve_entity_internal(this, Name, Value, Parameter, entity_stack, parameter_stack);
-}
-
-static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
-   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
-{
-   pf::Log log(__FUNCTION__);
-
-   auto &stack = Parameter ? ParameterStack : EntityStack;
-   if (stack.contains(Name)) return log.warning(ERR::Loop);
-
-   auto &table = Parameter ? Self->ParameterEntities : Self->Entities;
-   auto it = table.find(Name);
-   if (it IS table.end()) return ERR::Search;
-
-   stack.insert(Name);
-
-   Value = it->second;
-   expand_entity_references(Self, Value, EntityStack, ParameterStack);
-
-   stack.erase(Name);
-   return ERR::Okay;
 }
 
 static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
@@ -517,9 +505,9 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                nest--;
                if (not nest) break;
             }
-            else if ((State.startsWith("<![CDATA[")) or (State.startsWith("<![NDATA[")))  {
+            else if ((State.startsWith("![CDATA[")) or (State.startsWith("![NDATA[")))  {
                nest++;
-               State.next(7);
+               State.next(8);
             }
             else if (State.current() IS '\n') Self->LineNo++;
          }
@@ -582,7 +570,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    auto &tag = Tags.emplace_back(XMLTag(glTagID++, line_no));
 
    if (State.current() IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
-   else if ((State.current() IS '!') and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
+   else if ((State.current() IS '!') and (State.cursor.size() > 1) and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
 
    // Extract all attributes within the tag
 

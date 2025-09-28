@@ -251,7 +251,7 @@ cmake --install build/agents
 - Marked document sections are terminated at the end of their comment or when `-END-` is encountered.
 - Embedded documentation for each function is identified by the `-FUNCTION-` marker.
 - Embedded documentation for each class is identified by the `-CLASS-` marker.
-- Classes can export actions and methods, which are identified the `-ACTION-` and `-METHOD-` markers.
+- Classes can export actions and methods, which are documented with `-ACTION-` and `-METHOD-` markers.
 - Embedded documentation for class fields are identified by the `-FIELD-` marker.
 - Always use British English spelling in documentation, comments and variable names.
 
@@ -276,6 +276,8 @@ Key dependencies between modules:
 - `docs/html/` - Contains the entire Parasol website for offline viewing.
 - `docs/xml/` - Auto-generated API documentation in XML format.  This content is sourced from the Parasol C++ files.
 
+Lower snake-case is the preferred string format for new file names.
+
 ### Key Examples for Learning
 
 - **`examples/widgets.fluid`** - Primary showcase of Parasol's GUI capabilities, demonstrates standard widgets and UI patterns
@@ -287,5 +289,3 @@ Key dependencies between modules:
 ## Agentic Behaviour
 
 - Always give an honest, balanced opinion in your responses
-- Always use the fluid-code-expert agent for Fluid coding
-- Underscores are the preferred word seperator in file names.
