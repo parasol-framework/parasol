@@ -22,7 +22,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "STRIP_HEADERS: XML headers found in the source data will not be included in the parsed results.",
     "NEW: Creates an empty XML object on initialisation - if the #Path field has been set, the source file will not be loaded.",
     "NO_ESCAPE: Turns off escape code conversion.",
-    "INCLUDE_WHITESPACE: By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.",
+    "INCLUDE_WHITESPACE: By default the XML parser will skip content between tags when they contain pure whitespace.  Setting this flag will retain all whitespace.",
     "PARSE_HTML: Automatically parse HTML escape codes.",
     "STRIP_CDATA: Do not serialise `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
     "LOG_ALL: Print extra log messages.",

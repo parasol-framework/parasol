@@ -13,18 +13,58 @@
 #include <optional>
 
 struct ParseState {
-   CSTRING Pos;
+   std::string_view cursor;
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
    // Namespace context for this parsing scope
    std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
    uint32_t DefaultNamespace;                  // Default namespace URI hash
+   inline char current() const { return cursor.empty() ? '\0' : cursor.front(); }
+   inline bool done() const { return cursor.empty(); }
+   inline void next(size_t n = 1) { cursor.remove_prefix(n); }
 
-   ParseState() : Pos(nullptr), Balance(0), DefaultNamespace(0) { }
+   inline bool startsWith(std::string_view str) const {
+      return cursor.starts_with(str);
+   }
+
+   inline void skipTo(char ch, int &line) {
+      while ((not done()) and (current() != ch)) {
+         if (current() == '\n') line++;
+         next();
+      }
+   }
+   
+   inline void skipTo(std::string_view Seq, int &line) {
+      while ((not done()) and (not cursor.starts_with(Seq))) {
+         if (current() == '\n') line++;
+         next();
+      }
+   }
+
+   inline char skipWhitespace(int &line) {
+      while ((not done()) and (uint8_t(current()) <= 0x20)) {
+         if (current() == '\n') line++;
+         next();
+      }
+      return current();
+   }
+
+   ParseState() : cursor(nullptr), Balance(0), DefaultNamespace(0) { }
+   ParseState(std::string_view Text) : cursor(Text), Balance(0), DefaultNamespace(0) { }
 
    // Copy constructor for inheriting namespace context from parent scope
-   ParseState(const ParseState& parent) : Pos(parent.Pos), Balance(parent.Balance),
+   ParseState(const ParseState& parent) : cursor(parent.cursor), Balance(parent.Balance),
                                           PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace) { }
+   
+   inline bool operator!=(ParseState const &rhs) const {return !(*this == rhs);}
+
+   inline bool operator==(ParseState const &rhs) const {
+      return (cursor.data() == rhs.cursor.data());
+   }
+   
+   inline size_t operator-(ParseState const &rhs) const {
+      return (cursor.data() - rhs.cursor.data());
+   }
 };
 
 typedef objXML::TAGS TAGS;

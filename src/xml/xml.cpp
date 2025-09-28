@@ -737,7 +737,7 @@ static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
 {
    pf::Log log;
 
-   if (not Args) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Content)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, int(Args->Where));
 
@@ -745,7 +745,7 @@ static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
    if (not src) return log.warning(ERR::NotFound);
 
    std::ostringstream buffer;
-   auto content_view = view_or_empty(Args->Content);
+   auto content_view = std::string_view(Args->Content);
    output_attribvalue(content_view, buffer);
    XMLTag content(glTagID++, 0, { { "", buffer.str() } });
 

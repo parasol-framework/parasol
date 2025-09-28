@@ -104,9 +104,9 @@ struct XPathContext
    bool * expression_unsupported = nullptr;
 
    XPathContext() = default;
-   XPathContext(XMLTag *Node, size_t Pos = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
+   XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
                 extXML *Document = nullptr, bool *UnsupportedFlag = nullptr)
-      : context_node(Node), attribute_node(Attribute), position(Pos), size(Sz), document(Document),
+      : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), document(Document),
         expression_unsupported(UnsupportedFlag) {}
 };
 

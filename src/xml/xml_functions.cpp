@@ -2,12 +2,6 @@
 //********************************************************************************************************************
 // C++20 constexpr string utilities and character classification
 
-constexpr std::string_view view_or_empty(CSTRING Value) noexcept
-{
-   if (Value) return std::string_view(Value);
-   return std::string_view();
-}
-
 constexpr bool is_name_char(char ch) noexcept
 {
    return ((ch >= 'A') and (ch <= 'Z')) or
@@ -58,7 +52,6 @@ inline void assign_string(STRING &Target, const std::string &Value)
    if (Target) { FreeResource(Target); Target = nullptr; }
    if (not Value.empty()) Target = pf::strclone(Value);
 }
-
 
 inline void skip_ws(std::string_view &view) noexcept
 {
@@ -168,12 +161,10 @@ static void expand_entity_references(extXML *Self, std::string &Value,
             std::string resolved;
 
             // Only create string if resolution succeeds to avoid unnecessary allocation
-            if (resolve_entity_internal(Self, std::string(name_view), resolved,
-                                      is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
+            if (resolve_entity_internal(Self, std::string(name_view), resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
                output += resolved;
             }
-            else {
-               // Reconstruct the original entity reference
+            else { // Reconstruct the original entity reference
                output.push_back(is_parameter ? '%' : '&');
                output.append(name_view);
                output.push_back(';');
@@ -182,8 +173,7 @@ static void expand_entity_references(extXML *Self, std::string &Value,
             view.remove_prefix(name_length + 1); // Skip name + ';'
             continue;
          }
-         else {
-            // Not a valid entity reference, backtrack
+         else { // Not a valid entity reference, backtrack
             output.push_back(is_parameter ? '%' : '&');
          }
       }
@@ -263,8 +253,7 @@ static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
             std::string resolved;
 
             // Only create string for entity resolution
-            if (resolve_entity_internal(Self, std::string(name_view), resolved,
-                                      is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
+            if (resolve_entity_internal(Self, std::string(name_view), resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
                buffer += resolved;
             }
             else {
@@ -276,8 +265,7 @@ static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
             view.remove_prefix(name_length + 1); // Skip name + ';'
             continue;
          }
-         else {
-            // Not a valid entity, backtrack
+         else { // Not a valid entity, backtrack
             buffer.push_back(is_parameter ? '%' : '&');
          }
       }
@@ -291,10 +279,8 @@ static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
    return false;
 }
 
-static void parse_doctype(extXML *Self, CSTRING Input)
+static void parse_doctype(extXML *Self, ParseState &State)
 {
-   if (not Input) return;
-
    const char *str = Input;
 
    while ((*str) and (((*str >= 'A') and (*str <= 'Z')) or ((*str >= 'a') and (*str <= 'z')))) str++;
@@ -433,51 +419,39 @@ static void parse_doctype(extXML *Self, CSTRING Input)
 //********************************************************************************************************************
 // Extract content and add it to the end of Tags
 
-static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
+static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 {
-   pf::Log log(__FUNCTION__);
-
-   // Skip whitespace - this will tell us if there is content or not.  If we do find some content, reset the marker to
-   // the start of the content area because leading spaces may be important for content processing (e.g. for <pre> tags)
-
-   CSTRING str = State.Pos;
-   if ((Self->Flags & XMF::INCLUDE_WHITESPACE) IS XMF::NIL) {
-      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-      if (*str != '<') str = State.Pos;
-   }
-
-   // If the STRIP_CONTENT flag is set, skip over the content and return a NODATA error code.
-
    if ((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) {
-      while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
-      State.Pos = str;
-      return ERR::NoData;
+      State.skipTo('<', Self->LineNo);
+      return;
    }
-
-   for (int i=0; (str[i]) and (str[i] != '<'); i++) {
-      if (str[i] IS '\r') continue;
-      // Content detected
-
-      std::string content;
-      auto start = str;
-      while ((*str) and (*str != '<')) {
-         if (*str IS '\n') Self->LineNo++;
-         str++;
-      }
-
-      // Copy content, skipping \r characters
-      content.reserve(str - start);
-      for (auto p = start; p != str; ++p) {
-         if (*p != '\r') content.push_back(*p);
-      }
-
-      Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(content) } }));
-      State.Pos = str;
-      return ERR::Okay;
+   
+   if ((Self->Flags & XMF::INCLUDE_WHITESPACE) IS XMF::NIL) {
+      // Skip initial whitespace to find content.  We only drop content strings when they are pure whitespace.
+   
+      auto original = State.cursor;
+      auto ch = State.skipWhitespace(Self->LineNo); // Find first non-whitespace character
+            
+      // If we found content (not '<'), reset to original position to preserve leading whitespace
+      if ((not State.done()) and (ch != '<')) State.cursor = original;
    }
+   
+   if ((not State.done()) and (State.current() != '<')) {
+      auto content = State;
+      State.skipTo('<', Self->LineNo);
 
-   State.Pos = str;
-   return ERR::NoData;
+      std::string str;
+      str.reserve(State - content);
+      
+      // Copy content, skipping \r characters and counting newlines
+      while (not content.done()) {
+         if (content.current() == '\n') Self->LineNo++;
+         if (content.current() != '\r') str.push_back(content.current());
+         content.next();
+      }
+      
+      Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(str) } }));
+   }
 }
 
 //********************************************************************************************************************
@@ -489,7 +463,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%.30s", State.Pos);
+   log.traceBranch("%.*s", State.cursor.size(), State.cursor.data());
 
    // Save current namespace context to restore later (for proper scoping)
    auto saved_prefix_map = State.PrefixMap;
@@ -501,19 +475,19 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       State.DefaultNamespace = saved_default_namespace;
    });
 
-   if (State.Pos[0] != '<') {
+   if (State.current() != '<') {
       log.warning("Malformed XML statement detected.");
       return ERR::InvalidData;
    }
 
-   CSTRING str = State.Pos + 1;
+   State.next(); // Skip '<'
 
    auto line_no = Self->LineNo;
 
-   if ((str[0] IS '!') and (str[1] IS '-') and (str[2] IS '-')) {
+   if (State.startsWith("!--")) {
       if ((Self->Flags & XMF::INCLUDE_COMMENTS) IS XMF::NIL) {
-         if (auto i = pf::strsearch("-->", str); i != -1) {
-            State.Pos = str + i + 3;
+         if (auto i = State.cursor.find("-->"); i != State.cursor.npos) {
+            State.next(i + 3);
             return ERR::NothingDone;
          }
          else {
@@ -522,67 +496,60 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          }
       }
 
-      str += 3;
-      auto comment_start = str;
-      while ((str[0]) and !((str[0] IS '-') and (str[1] IS '-') and (str[2] IS '>'))) {
-         if (str[0] IS '\n') Self->LineNo++;
-         str++;
-      }
+      State.next(3);
+      auto comment = State;
+      comment.skipTo("-->", Self->LineNo);
 
-      if (not str[0]) {
+      if (comment.done()) {
          log.warning("Detected malformed comment (missing --> terminator).");
          return ERR::InvalidData;
       }
 
-      std::string comment_text(comment_start, size_t(str - comment_start));
+      std::string comment_text(State.cursor.data(), comment - State);
       auto &comment_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, { { "", comment_text } }));
       comment_tag.Flags |= XTF::COMMENT;
-      State.Pos = str + 3;
+      State = comment;
+      State.next(3);
       return ERR::Okay;
    }
 
    line_no = Self->LineNo;
    int8_t raw_content;
 
-   if (not strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
-   else if (not strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }
+   if (State.startsWith("![CDATA[")) { raw_content = RAW_CDATA; State.next(8); }
+   else if (State.startsWith("![NDATA[")) { raw_content = RAW_NDATA; State.next(8); }
    else raw_content = RAW_NONE;
 
    if (raw_content) {
-      int len;
-
       // CDATA handler
 
+      auto content = State; // Save start of content
       if (raw_content IS RAW_CDATA) {
-         for (len=0; str[len]; len++) {
-            if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) break;
-            else if (str[len] IS '\n') Self->LineNo++;
-         }
+         State.skipTo("]]>", Self->LineNo);
       }
       else if (raw_content IS RAW_NDATA) {
-         uint16_t nest = 1;
-         for (len=0; str[len]; len++) {
-            if ((str[len] IS '<') and (str[len+1] IS '!') and (str[len+2] IS '[') and
-                ((str[len+3] IS 'N') or (str[len+3] IS 'C')) and (str[len+4] IS 'D') and (str[len+5] IS 'A') and (str[len+6] IS 'T') and (str[len+7] IS 'A')  and (str[len+8] IS '[')) {
-               nest++;
-               len += 7;
-            }
-            else if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) {
+         int nest = 1;
+         while (not State.done()) {
+            if (State.startsWith("]]>")) {
                nest--;
                if (not nest) break;
             }
-            else if (str[len] IS '\n') Self->LineNo++;
+            else if ((State.startsWith("<![CDATA[")) or (State.startsWith("<![NDATA[")))  {
+               nest++;
+               State.next(7);
+            }
+            else if (State.current() IS '\n') Self->LineNo++;
          }
       }
 
-      // CDATA counts as content and therefore can be stripped out
+      // CDATA counts as content and therefore can be stripped out if desired
 
-      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (not len)) {
-         State.Pos = str + len + 3;
+      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (State - content IS 0)) {
+         State.next(3);
          return ERR::NothingDone;
       }
 
-      if (not str[len]) {
+      if (State.done()) {
          log.warning("Malformed XML:  A CDATA section is missing its closing string.");
          return ERR::InvalidData;
       }
@@ -590,21 +557,24 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       // CDATA sections are assimilated into the parent tag as content
 
       auto &cdata_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, {
-         { "", std::string(str, len) }
+         { "", std::string(content.cursor.data(), State - content) }
       }));
       cdata_tag.Flags |= XTF::CDATA;
-      State.Pos = str + len + 3;
+      State.next(3); // Skip "]]>"
       return ERR::Okay;
    }
 
-   if ((State.Pos[1] IS '?') or (State.Pos[1] IS '!')) {
+   if ((State.current() IS '?') or (State.current() IS '!')) {
       if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
-         if (pf::startswith("!DOCTYPE", State.Pos+1)) parse_doctype(Self, State.Pos+7);
+         if (State.startsWith("!DOCTYPE")) {
+            State.next(8);
+            parse_doctype(Self, State);
+         }
       }
 
       if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {
-         if (*str IS '>') str++;
-         State.Pos = str;
+         if (State.current() IS '>') State.next();
+         State.cursor = str;
          return ERR::NothingDone;
       }
    }
@@ -613,24 +583,23 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    auto &tag = Tags.emplace_back(XMLTag(glTagID++, line_no));
 
+   if (State.current() IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
+   else if ((State.current() IS '!') and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
+
    // Extract all attributes within the tag
 
-   str = State.Pos+1;
-   if (*str IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
-   else if ((*str IS '!') and (str[1] >= 'A') and (str[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
+   State.skipWhitespace(Self->LineNo);
+   while ((not State.done()) and (State.current() != '>')) {
+      if (State.startsWith("/>")) break; // Termination checks
+      if (State.startsWith("?>")) break;
 
-   while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-   while ((*str) and (*str != '>')) {
-      if ((str[0] IS '/') and (str[1] IS '>')) break; // Termination checks
-      if ((str[0] IS '?') and (str[1] IS '>')) break;
-
-      if (*str IS '=') return log.warning(ERR::InvalidData);
+      if (State.current() IS '=') return log.warning(ERR::InvalidData);
 
       // Extract the name of the attribute
 
       std::string_view name;
 
-      if (*str IS '"'); // Quoted notation attributes are parsed as content values
+      if (State.current() IS '"'); // Quoted notation attributes are parsed as content values
       else {
          int s = 0;
          while ((str[s] > 0x20) and (str[s] != '>') and (str[s] != '=')) {
@@ -736,48 +705,38 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
    }
 
-   State.Pos = str;
+   State.cursor = str;
 
-   if ((*State.Pos IS '>') and (not tag.Attribs.empty()) and
+   if ((State.current() IS '>') and (not tag.Attribs.empty()) and
        (tag.Attribs[0].Name[0] != '!') and (tag.Attribs[0].Name[0] != '?')) {
       // We reached the end of an open tag.  Extract the content within it and handle any child tags.
 
-      State.Pos++;
-      ERR error = extract_content(Self, Tags.back().Children, State);
+      State.next();
+      extract_content(Self, Tags.back().Children, State);
 
-      if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
+      while (State.cursor.starts_with("</")) {
+         auto error = parse_tag(Self, Tags.back().Children, State);
 
-      while ((State.Pos[0] IS '<') and (State.Pos[1] != '/')) {
-         error = parse_tag(Self, Tags.back().Children, State);
-
-         if (error IS ERR::NothingDone) {
-            // Extract any additional content trapped between tags
-
-            error = extract_content(Self, Tags.back().Children, State);
-
-            if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
+         if (error IS ERR::NothingDone) { // Extract any additional content trapped between tags
+            extract_content(Self, Tags.back().Children, State);
          }
-         else if (error IS ERR::Okay) {
-            // Extract any new content caught in-between tags
-
-            error = extract_content(Self, Tags.back().Children, State);
-
-            if ((error != ERR::Okay) and (error != ERR::NoData)) return error;
+         else if (error IS ERR::Okay) { // Extract any new content caught in-between tags
+            extract_content(Self, Tags.back().Children, State);
          }
          else return ERR::Failed;
       }
 
       // There should be a closing tag - skip past it
 
-      if ((State.Pos[0] IS '<') and (State.Pos[1] IS '/')) {
+      if (State.cursor.starts_with("</")) {
          State.Balance--;
-         while ((*State.Pos) and (*State.Pos != '>')) { if (*State.Pos IS '\n') Self->LineNo++; State.Pos++; }
+         while ((not State.done()) and (State.current() != '>')) { if (State.current() IS '\n') Self->LineNo++; State.next(); }
       }
 
-      if (*State.Pos IS '>') State.Pos++;
+      if (State.current() IS '>') State.next();
    }
    else {
-      if ((State.Pos[0] IS '/') and (State.Pos[1] IS '>')) State.Pos += 2;
+      if (State.cursor.starts_with("/>")) State.next(2);
       State.Balance--;
    }
 
@@ -805,30 +764,29 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
 
    log.trace("Extracting tag information with parse_tag()");
 
-   ParseState state;
-   CSTRING str;
-   for (str=Text.data(); (*str) and (*str != '<'); str++) {
-      if (*str IS '\n') Self->LineNo++;
+   std::string_view str;
+   while ((not Text.empty()) and (Text.front() != '<')) {
+      if (Text.front() IS '\n') Self->LineNo++;
+      Text.remove_prefix(1);
    }
    if (not str[0]) {
       Self->ParseError = log.warning(ERR::InvalidData);
       return Self->ParseError;
    }
-   state.Pos = str;
-   while ((state.Pos[0] IS '<') and (state.Pos[1] != '/')) {
+
+   ParseState state(Text);
+
+   while (state.cursor.starts_with("</")) {
       ERR error = parse_tag(Self, Tags, state);
 
       if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
-         log.warning("XML parsing aborted.");
-         return ERR::InvalidData;
+         return log.warning(error);
       }
 
-      // Skip content/whitespace to get to the next tag
-      str = state.Pos;
-      while ((*str) and (*str != '<')) { if (*str IS '\n') Self->LineNo++; str++; }
-      state.Pos = str;
+      // Skip content/whitespace to get to the next tag.  NB: We are working on the basis that
+      // we are at the root level of the document and Parasol permits multiple root tags.
 
-      if (error IS ERR::NothingDone) continue;
+      state.skipTo('<', Self->LineNo);
    }
 
    // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR::InvalidData.
