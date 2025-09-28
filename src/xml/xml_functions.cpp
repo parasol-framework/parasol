@@ -1,44 +1,23 @@
-
 //********************************************************************************************************************
-// C++20 constexpr string utilities and character classification
-
-constexpr bool is_name_char(char ch) noexcept
-{
-   return ((ch >= 'A') and (ch <= 'Z')) or
-          ((ch >= 'a') and (ch <= 'z')) or
-          ((ch >= '0') and (ch <= '9')) or
-          (ch IS '.') or (ch IS '-') or (ch IS '_') or (ch IS ':');
-}
-
-constexpr bool is_name_start(char ch) noexcept
-{
-   return ((ch >= 'A') and (ch <= 'Z')) or
-          ((ch >= 'a') and (ch <= 'z')) or
-          (ch IS '_') or (ch IS ':');
-}
-
-constexpr char to_lower(char ch) noexcept
-{
-   return ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
-}
-
-// XML entity escape sequences
-constexpr std::string_view xml_entities[] = {
-   "&amp;", "&lt;", "&gt;", "&quot;"
-};
-
-constexpr char xml_chars[] = { '&', '<', '>', '"' };
+// String utilities and character classification
 
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
-   for (char ch : String) {
-      switch (ch) {
-         case '&':  Output << "&amp;"; break;
-         case '<':  Output << "&lt;"; break;
-         case '>':  Output << "&gt;"; break;
-         case '"':  Output << "&quot;"; break;
-         default:   Output << ch; break;
+   size_t last_pos = 0;
+   for (size_t i = 0; i < String.size(); ++i) {
+      auto escape = xml_escape_table[static_cast<unsigned char>(String[i])];
+      if (escape) {
+         // Output any unescaped characters before this one
+         if (i > last_pos) {
+            Output.write(String.data() + last_pos, i - last_pos);
+         }
+         Output << escape;
+         last_pos = i + 1;
       }
+   }
+   // Output any remaining unescaped characters
+   if (last_pos < String.size()) {
+      Output.write(String.data() + last_pos, String.size() - last_pos);
    }
 }
 
@@ -605,35 +584,36 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          State.skipWhitespace(Self->LineNo);
 
          std::string val;
+         val.reserve(64); // Reserve space for typical attribute value
 
          if (State.current() IS '"') {
             State.next();
-            auto value_state = State;
+            auto value_start = State.cursor.data();
             while ((not State.done()) and (State.current() != '"')) {
                if (State.current() IS '\n') Self->LineNo++;
                State.next();
             }
-            val.assign(value_state.cursor.data(), State - value_state);
+            val.assign(value_start, State.cursor.data() - value_start);
             if (State.current() IS '"') State.next();
          }
          else if (State.current() IS '\'') {
             State.next();
-            auto value_state = State;
+            auto value_start = State.cursor.data();
             while ((not State.done()) and (State.current() != '\'')) {
                if (State.current() IS '\n') Self->LineNo++;
                State.next();
             }
-            val.assign(value_state.cursor.data(), State - value_state);
+            val.assign(value_start, State.cursor.data() - value_start);
             if (State.current() IS '\'') State.next();
          }
          else {
-            auto value_state = State;
+            auto value_start = State.cursor.data();
             while ((not State.done()) and (State.current() > 0x20) and (State.current() != '>')) {
                if ((State.current() IS '/') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
                if ((State.current() IS '?') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
                State.next();
             }
-            val.assign(value_state.cursor.data(), State - value_state);
+            val.assign(value_start, State.cursor.data() - value_start);
          }
 
          tag.Attribs.emplace_back(std::string(name), val);

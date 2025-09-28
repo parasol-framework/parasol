@@ -12,6 +12,73 @@
 #include <map>
 #include <optional>
 
+constexpr std::array<uint64_t, 4> name_char_table = []() {
+   std::array<uint64_t, 4> table{0, 0, 0, 0};
+   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
+   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
+   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
+   for (uint8_t c = '0'; c <= '9'; ++c) set_bit(c);
+   set_bit('.');
+   set_bit('-');
+   set_bit('_');
+   set_bit(':');
+   return table;
+}();
+
+constexpr std::array<uint64_t, 4> name_start_table = []() {
+   std::array<uint64_t, 4> table{0, 0, 0, 0};
+   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
+   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
+   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
+   set_bit('_');
+   set_bit(':');
+   return table;
+}();
+
+constexpr std::array<char, 256> to_lower_table = []() {
+   std::array<char, 256> table{};
+   for (int i = 0; i < 256; ++i) {
+      char ch = static_cast<char>(i);
+      table[i] = ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
+   }
+   return table;
+}();
+
+constexpr bool is_name_char(char ch) noexcept
+{
+   return (name_char_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
+}
+
+constexpr bool is_name_start(char ch) noexcept
+{
+   return (name_start_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
+}
+
+constexpr char to_lower(char ch) noexcept
+{
+   return to_lower_table[uint8_t(ch)];
+}
+
+// XML entity escape sequences
+constexpr std::string_view xml_entities[] = {
+   "&amp;", "&lt;", "&gt;", "&quot;"
+};
+
+constexpr char xml_chars[] = { '&', '<', '>', '"' };
+
+// Optimized lookup table for XML character escaping
+constexpr std::array<const char*, 256> xml_escape_table = []() {
+   std::array<const char*, 256> table{};
+   for (int i = 0; i < 256; ++i) {
+      table[i] = nullptr; // Most characters don't need escaping
+   }
+   table['&'] = "&amp;";
+   table['<'] = "&lt;";
+   table['>'] = "&gt;";
+   table['"'] = "&quot;";
+   return table;
+}();
+
 struct ParseState {
    std::string_view cursor;
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
