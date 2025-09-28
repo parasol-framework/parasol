@@ -107,7 +107,7 @@ function testEntityParsing()
       flags = XMF_PARSE_ENTITY
    })
 
-   assert(xml.documentType == 'root', 'Document type field should be populated')
+   assert(xml.docType == 'root', 'Document type field should be populated')
    assert(xml.publicID == '-//Example//DTD Example//EN', 'Public identifier should match declaration')
    assert(xml.systemID == 'http://example.com/example.dtd', 'System identifier should match declaration')
 
@@ -116,13 +116,6 @@ function testEntityParsing()
 
    local notationErr, notationValue = xml.mtGetNotation('icon')
    assert(notationErr == ERR_Okay and notationValue == 'viewer', 'Notation lookup should return the system identifier')
-
-   local info = struct.new('DTDInfo')
-   local infoErr = xml.mtGetDTDInfo(info)
-   assert(infoErr == ERR_Okay, 'GetDTDInfo should succeed')
-   assert(info.documentType == 'root', 'DTDInfo should copy the document type name')
-   assert(info.publicID == xml.publicID, 'DTDInfo should copy the public identifier')
-   assert(info.systemID == xml.systemID, 'DTDInfo should copy the system identifier')
 
    local resolved = xml.getKey('string(/root)')
    assert(resolved == 'value and more', 'Entity references should be expanded in content')
@@ -168,25 +161,25 @@ function testSortingFlags()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test serialization flags
+-- Test serialisation flags
 
-function testSerializationFlags()
+function testSerialisationFlags()
    local xml = obj.new("xml", {
       statement = '<root><child attr="value">Content</child></root>'
    })
 
-   -- Test readable serialization
+   -- Test readable serialisation
    local err, readable = xml.mtSerialise(0, bit.bor(XMF_READABLE, XMF_INCLUDE_SIBLINGS))
-   assert(err == ERR_Okay, "Readable serialization should succeed")
+   assert(err == ERR_Okay, "Readable serialisation should succeed")
    assert(string.find(readable, '\n'), "Readable format should include newlines")
 
-   -- Test compact serialization
+   -- Test compact serialisation
    local err, compact = xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
-   assert(err == ERR_Okay, "Compact serialization should succeed")
+   assert(err == ERR_Okay, "Compact serialisation should succeed")
 
-   -- Test omit tags serialization
+   -- Test omit tags serialisation
    local err, content = xml.mtSerialise(0, bit.bor(XMF_OMIT_TAGS, XMF_INCLUDE_SIBLINGS))
-   assert(err == ERR_Okay, "Content-only serialization should succeed")
+   assert(err == ERR_Okay, "Content-only serialisation should succeed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -318,7 +311,7 @@ return {
    tests = {
       'testParsingFlags', 'testWhitespaceHandling', 'testContentStripping', 'testHeaderStripping',
       'testWellFormedValidation', 'testEntityParsing', 'testNoEscapeMode', 'testSortingFlags',
-      'testSerializationFlags', 'testContentExtraction', 'testCountMethods', 'testFilterMethod',
+      'testSerialisationFlags', 'testContentExtraction', 'testCountMethods', 'testFilterMethod',
       'testRemoveXPathAttributes', 'testExists'
    },
    init = function(ScriptFolder)

@@ -4,23 +4,33 @@
 
 template <class T> void output_attribvalue(T &&String, std::ostringstream &Output)
 {
-   CSTRING str = to_cstring(String);
-   for (auto j=0; str[j]; j++) {
-      switch (str[j]) {
-         case '&':  Output << "&amp;"; break;
-         case '<':  Output << "&lt;"; break;
-         case '>':  Output << "&gt;"; break;
-         case '"':  Output << "&quot;"; break;
-         default:   Output << str[j]; break;
+   if constexpr (std::is_convertible_v<T, std::string_view>) {
+      std::string_view str_view = String;
+      for (char ch : str_view) {
+         switch (ch) {
+            case '&':  Output << "&amp;"; break;
+            case '<':  Output << "&lt;"; break;
+            case '>':  Output << "&gt;"; break;
+            case '"':  Output << "&quot;"; break;
+            default:   Output << ch; break;
+         }
+      }
+   }
+   else {
+      CSTRING str = to_cstring(String);
+      for (auto j=0; str[j]; j++) {
+         switch (str[j]) {
+            case '&':  Output << "&amp;"; break;
+            case '<':  Output << "&lt;"; break;
+            case '>':  Output << "&gt;"; break;
+            case '"':  Output << "&quot;"; break;
+            default:   Output << str[j]; break;
+         }
       }
    }
 }
 
 //********************************************************************************************************************
-// TODO: Support processing of ENTITY declarations in the doctype.
-//ENTITY       <!ENTITY % textgizmo "fontgizmo">
-//INSTRUCTION  <?XML version="1.0" standalone="yes" ?>
-//NOTATION     <!NOTATION gif SYSTEM "viewer.exe">
 
 static bool is_name_char(char ch)
 {
@@ -31,15 +41,10 @@ static bool is_name_char(char ch)
    return false;
 }
 
-static void assign_string(STRING &Target, const std::string &Value)
+inline void assign_string(STRING &Target, const std::string &Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
    if (!Value.empty()) Target = pf::strclone(Value);
-}
-
-static void clear_string(STRING &Target)
-{
-   if (Target) { FreeResource(Target); Target = nullptr; }
 }
 
 static bool is_name_start(char ch)
@@ -50,27 +55,29 @@ static bool is_name_start(char ch)
    return false;
 }
 
-static void skip_ws(const char *&ptr)
+inline void skip_ws(const char *&ptr)
 {
    while ((ptr) and (*ptr) and (*ptr <= 0x20)) ptr++;
 }
 
-static bool ci_keyword(const char *&ptr, CSTRING Keyword)
-{
-   auto p = ptr;
-   auto k = Keyword;
+//********************************************************************************************************************
 
-   while ((*p) and (*k)) {
-      auto ch = *p;
-      if ((ch >= 'A') and (ch <= 'Z')) ch += 0x20;
-      auto cmp = *k;
-      if ((cmp >= 'A') and (cmp <= 'Z')) cmp += 0x20;
-      if (ch != cmp) return false;
-      p++;
-      k++;
+static bool ci_keyword(const char *&ptr, std::string_view keyword)
+{
+   auto to_lower = [](char ch) constexpr -> char {
+      return (ch >= 'A' and ch <= 'Z') ? ch + 0x20 : ch;
+   };
+
+   auto p = ptr;
+   auto k = keyword.begin();
+
+   while ((*p) and (k != keyword.end())) {
+      if (to_lower(*p) != to_lower(*k)) return false;
+      ++p;
+      ++k;
    }
 
-   if (*k) return false;
+   if (k != keyword.end()) return false;
    if ((is_name_char(*p)) and (*p != '[')) return false;
 
    ptr = p;
@@ -249,9 +256,9 @@ static void parse_doctype(extXML *Self, CSTRING Input)
    std::string document_type;
    if (!read_name(str, document_type)) return;
 
-   assign_string(Self->DocumentType, document_type);
-   clear_string(Self->PublicID);
-   clear_string(Self->SystemID);
+   assign_string(Self->DocType, document_type);
+   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    Self->Entities.clear();
    Self->ParameterEntities.clear();
    Self->Notations.clear();
@@ -265,17 +272,14 @@ static void parse_doctype(extXML *Self, CSTRING Input)
       skip_ws(str);
       std::string public_id;
       if (read_quoted(Self, str, public_id, entity_stack, parameter_stack)) assign_string(Self->PublicID, public_id);
-      else clear_string(Self->PublicID);
       skip_ws(str);
       std::string system_id;
       if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
-      else clear_string(Self->SystemID);
    }
    else if (ci_keyword(str, "SYSTEM")) {
       skip_ws(str);
       std::string system_id;
       if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
-      else clear_string(Self->SystemID);
    }
 
    skip_ws(str);
@@ -713,9 +717,9 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    pf::Log log(__FUNCTION__);
 
    if (&Tags IS &Self->Tags) {
-      clear_string(Self->DocumentType);
-      clear_string(Self->PublicID);
-      clear_string(Self->SystemID);
+      if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
+      if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+      if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
       Self->Entities.clear();
       Self->ParameterEntities.clear();
       Self->Notations.clear();

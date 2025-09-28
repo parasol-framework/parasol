@@ -104,9 +104,9 @@ static ERR XML_Clear(extXML *Self)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    Self->Tags.clear();
-   clear_string(Self->DocumentType);
-   clear_string(Self->PublicID);
-   clear_string(Self->SystemID);
+   if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
+   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    Self->Entities.clear();
    Self->ParameterEntities.clear();
    Self->Notations.clear();
@@ -342,7 +342,6 @@ The GetAttrib method provides efficient access to individual attribute values wi
 identifier and attribute name, the method performs a case-insensitive search through the element's attribute
 collection and returns the corresponding value.
 
-
 When a specific attribute name is provided, the method searches through all attributes of the target tag.  The search
 is case-insensitive to accommodate XML documents with varying capitalisation conventions.
 
@@ -373,6 +372,8 @@ cstr Attrib: The name of the attribute to retrieve (case insensitive).  If NULL 
 Okay: The attribute was successfully found and its value returned.
 NullArgs: Required arguments were not specified correctly.
 NotFound: Either the specified tag Index does not exist, or the named attribute was not found within the tag.
+
+-END-
 
 *********************************************************************************************************************/
 
@@ -407,13 +408,17 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 -METHOD-
 GetEntity: Retrieves the value of a parsed entity declaration.
 
-This method returns the expanded value associated with a general entity parsed from the
-document's DOCTYPE declaration.  Entity names are case-sensitive and must match exactly
-as declared.  The method returns `ERR::Search` if the entity cannot be found.
+This method returns the expanded value associated with a general entity parsed from the document's DOCTYPE declaration.
+Entity names are case-sensitive and must match exactly as declared.
 
 -INPUT-
 cstr Name: The name of the entity to retrieve.  This must correspond to a parsed entity declaration.
 &cstr Value: Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.
+
+-ERRORS-
+Okay: The entity was found and its value returned.
+NullArgs: Either the Name or Value parameter was NULL.
+Search: No matching entity could be found for the specified name.
 
 -END-
 
@@ -446,6 +451,11 @@ returned as a single string separated by a single space.
 cstr Name: The notation name to look up.
 &cstr Value: Receives the notation descriptor on success.
 
+-ERRORS-
+Okay: The notation was found and its descriptor returned.
+NullArgs: Either the Name or Value parameter was NULL.
+Search: No matching notation could be found for the specified name.
+
 -END-
 
 *********************************************************************************************************************/
@@ -461,35 +471,6 @@ static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
    if (it IS Self->Notations.end()) return log.warning(ERR::Search);
 
    Args->Value = it->second.c_str();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-GetDTDInfo: Returns the high-level DOCTYPE declaration details.
-
-Copies the parsed DOCTYPE root element name together with any public and system identifiers
-into the supplied !DTDInfo structure.  Strings are copied and therefore remain valid after
-the call completes.
-
--INPUT-
-!struct DTDInfo Info: Pointer to a !DTDInfo structure that receives the DOCTYPE metadata.
-
--END-
-
-*********************************************************************************************************************/
-
-static ERR XML_GetDTDInfo(extXML *Self, struct xml::GetDTDInfo *Args)
-{
-   pf::Log log;
-
-   if ((!Args) or (!Args->Info)) return log.warning(ERR::NullArgs);
-
-   Args->Info->DocumentType = Self->DocumentType ? Self->DocumentType : "";
-   Args->Info->PublicID = Self->PublicID ? Self->PublicID : "";
-   Args->Info->SystemID = Self->SystemID ? Self->SystemID : "";
-
    return ERR::Okay;
 }
 
@@ -1717,6 +1698,9 @@ static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
 /*********************************************************************************************************************
 
 -FIELD-
+DocType: Root element name from DOCTYPE declaration
+
+-FIELD-
 ErrorMsg: A textual description of the last parse error.
 
 This field may provide a textual description of the last parse error that occurred, in conjunction with the most
@@ -1786,6 +1770,12 @@ The Modified field provides an artificial timestamp value of when the XML data w
 or update).  Storing the current Modified value and making comparisons later makes it easy to determine that a change
 has been made.  A rough idea of the total number of change requests can also be calculated by subtracting out the
 difference.
+
+-FIELD-
+PublicID: Public identifier for external DTD
+
+-FIELD-
+SystemID: System identifier for external DTD
 
 -FIELD-
 ReadOnly: Prevents modifications and enables caching for a loaded XML data source.
@@ -1957,7 +1947,7 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 
 static const FieldArray clFields[] = {
    { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
-   { "DocumentType", FDF_STRING|FDF_R },
+   { "DocType",      FDF_STRING|FDF_R },
    { "PublicID",     FDF_STRING|FDF_R },
    { "SystemID",     FDF_STRING|FDF_R },
    { "Source",       FDF_OBJECT|FDF_RI },
@@ -1997,8 +1987,7 @@ static ERR add_xml_class(void)
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
-   { "XMLTag", sizeof(XMLTag) },
-   { "DTDInfo", sizeof(DTDInfo) }
+   { "XMLTag", sizeof(XMLTag) }
 };
 
 //********************************************************************************************************************

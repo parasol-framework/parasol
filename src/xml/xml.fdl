@@ -43,7 +43,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
     "NOTATION: Tag represents a notation of the format `<!XML>`.",
     "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
-
+    
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
    cpp(str) Value  # Value of the attribute
@@ -108,12 +108,6 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
    }
   ]])
 
-  struct("DTDInfo", { type="DTDInfo" }, [[
-    cpp(str) DocumentType # DOCTYPE root name
-    cpp(str) PublicID     # DOCTYPE public identifier
-    cpp(str) SystemID     # DOCTYPE system identifier
-  ]])
-
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
     { id=2,  name="Serialise" },
@@ -136,13 +130,12 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=22, name="ResolvePrefix" },
     { id=23, name="SetVariable" },
     { id=24, name="GetEntity" },
-    { id=25, name="GetNotation" },
-    { id=26, name="GetDTDInfo" }
+    { id=25, name="GetNotation" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[
     str Path         # Location of the XML data file
-    str DocumentType # Root element name from DOCTYPE declaration
+    str DocType      # Root element name from DOCTYPE declaration
     str PublicID     # Public identifier for external DTD
     str SystemID     # System identifier for external DTD
     obj Source       # Alternative data source to specifying a `Path`
