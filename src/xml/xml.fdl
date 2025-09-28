@@ -43,7 +43,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
     "NOTATION: Tag represents a notation of the format `<!XML>`.",
     "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
-
+    
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
    cpp(str) Value  # Value of the attribute
@@ -106,7 +106,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       }
       return str.str();
    }
-   ]])
+  ]])
 
   methods("xml", "XML", {
     { id=1,  name="SetAttrib" },
@@ -128,11 +128,16 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=20, name="GetNamespaceURI" },
     { id=21, name="SetTagNamespace" },
     { id=22, name="ResolvePrefix" },
-    { id=23, name="SetVariable" }
+    { id=23, name="SetVariable" },
+    { id=24, name="GetEntity" },
+    { id=25, name="GetNotation" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[
     str Path         # Location of the XML data file
+    str DocType      # Root element name from DOCTYPE declaration
+    str PublicID     # Public identifier for external DTD
+    str SystemID     # System identifier for external DTD
     obj Source       # Alternative data source to specifying a `Path`
     int(XMF) Flags   # Optional user flags
     int Start        # Starting cursor position (tag index) for some operations

@@ -11,6 +11,7 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 **Configure build:**
 - Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON`
 - Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/agents-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DPARASOL_VLOG=TRUE`
+- Fast Build: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON`
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
 
 **Build and install:**
@@ -37,7 +38,9 @@ Key build options (use with `-D` flag):
 
 ### Development in the Cloud (Temporary Sessions)
 
-If you are running in a cloud session then disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
+Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild` when in a temporary session.
+
+Disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
 - `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 Performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.

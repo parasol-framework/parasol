@@ -15,8 +15,8 @@
     <category>Data</category>
     <copyright>Paul Manias © 2001-2025</copyright>
     <description>
-<p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath queries, content manipulation and document validation.</p>
-<p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Parasol's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath queries on data originating from YAML.</p>
+<p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 queries, content manipulation and document validation.</p>
+<p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Parasol's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.</p>
 <header>Data Loading and Parsing</header>
 <p>XML documents can be loaded into an XML object through multiple mechanisms:</p>
 <p>The <fl>Path</fl> field allows loading from file system sources, with automatic parsing upon initialisation.  The class supports <function module="Core">LoadFile</function> caching for frequently accessed files, improving performance for repeated operations.</p>
@@ -247,6 +247,24 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     </method>
 
     <method>
+      <name>GetEntity</name>
+      <comment>Retrieves the value of a parsed entity declaration.</comment>
+      <prototype>ERR xml::GetEntity(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The name of the entity to retrieve.  This must correspond to a parsed entity declaration.</param>
+        <param type="CSTRING *" name="Value">Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.</param>
+      </input>
+      <description>
+<p>This method returns the expanded value associated with a general entity parsed from the document's DOCTYPE declaration. Entity names are case-sensitive and must match exactly as declared.</p>
+      </description>
+      <result>
+        <error code="Okay">The entity was found and its value returned.</error>
+        <error code="Search">No matching entity could be found for the specified name.</error>
+        <error code="NullArgs">Either the Name or Value parameter was NULL.</error>
+      </result>
+    </method>
+
+    <method>
       <name>GetNamespaceURI</name>
       <comment>Retrieve the namespace URI for a given namespace UID.</comment>
       <prototype>ERR xml::GetNamespaceURI(OBJECTPTR Object, UINT NamespaceID, CSTRING * Result)</prototype>
@@ -261,6 +279,24 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <error code="Okay">The namespace URI was successfully retrieved.</error>
         <error code="Search">No namespace found for the specified UID.</error>
         <error code="NullArgs">Required arguments were not specified correctly.</error>
+      </result>
+    </method>
+
+    <method>
+      <name>GetNotation</name>
+      <comment>Retrieves information about a parsed notation declaration.</comment>
+      <prototype>ERR xml::GetNotation(OBJECTPTR Object, CSTRING Name, CSTRING * Value)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The notation name to look up.</param>
+        <param type="CSTRING *" name="Value">Receives the notation descriptor on success.</param>
+      </input>
+      <description>
+<p>Returns the system or public identifier captured for a notation declaration inside the document type definition.  If both public and system identifiers were provided they are returned as a single string separated by a single space.</p>
+      </description>
+      <result>
+        <error code="Okay">The notation was found and its descriptor returned.</error>
+        <error code="Search">No matching notation could be found for the specified name.</error>
+        <error code="NullArgs">Either the Name or Value parameter was NULL.</error>
       </result>
     </method>
 
@@ -568,6 +604,19 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
   <fields>
     <field>
+      <name>DocType</name>
+      <comment>Root element name from DOCTYPE declaration</comment>
+      <access>-/-</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
+      <name>DocumentType</name>
+      <access read="R">Read</access>
+      <type>STRING</type>
+    </field>
+
+    <field>
       <name>ErrorMsg</name>
       <comment>A textual description of the last parse error.</comment>
       <access read="G">Get</access>
@@ -606,6 +655,13 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>XML documents can be loaded from the file system by specifying a file path in this field.  If set post-initialisation, all currently loaded data will be cleared and the file will be parsed automatically.</p>
 <p>The XML class supports <function module="Core">LoadFile</function>, so an XML file can be pre-cached by the program if it is frequently used during a program's life cycle.</p>
       </description>
+    </field>
+
+    <field>
+      <name>PublicID</name>
+      <comment>Public identifier for external DTD</comment>
+      <access read="R">Read</access>
+      <type>STRING</type>
     </field>
 
     <field>
@@ -650,6 +706,13 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>Be aware that setting this field with an invalid statement will result in an empty XML object.</p>
 <p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the <fl>Start</fl> field.  The string result is an allocation that must be freed.</p>
       </description>
+    </field>
+
+    <field>
+      <name>SystemID</name>
+      <comment>System identifier for external DTD</comment>
+      <access read="R">Read</access>
+      <type>STRING</type>
     </field>
 
     <field>
