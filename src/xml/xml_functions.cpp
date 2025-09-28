@@ -60,16 +60,6 @@ inline void skip_ws(std::string_view &view) noexcept
    }
 }
 
-inline void skip_ws(const char *&ptr)
-{
-   if (not ptr) return;
-   std::string_view view(ptr);
-   skip_ws(view);
-   ptr = view.data();
-}
-
-//********************************************************************************************************************
-
 static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcept
 {
    if (keyword.empty() or view.size() < keyword.size()) return false;
@@ -87,12 +77,11 @@ static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcep
    return true;
 }
 
-static bool ci_keyword(const char *&ptr, std::string_view keyword)
+static bool ci_keyword(ParseState &State, std::string_view keyword) noexcept
 {
-   if (not ptr) return false;
-   std::string_view view(ptr);
+   auto view = State.cursor;
    if (ci_keyword(view, keyword)) {
-      ptr = view.data();
+      State.next(keyword.size());
       return true;
    }
    return false;
@@ -112,18 +101,6 @@ static std::string_view read_name(std::string_view &view) noexcept
    auto result = view.substr(0, length);
    view.remove_prefix(length);
    return result;
-}
-
-static bool read_name(const char *&ptr, std::string &Result)
-{
-   if (not ptr) return false;
-   std::string_view view(ptr);
-   auto name = read_name(view);
-   if (name.empty()) return false;
-
-   Result.assign(name.data(), name.size());
-   ptr = view.data();
-   return true;
 }
 
 static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
@@ -214,206 +191,210 @@ static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::s
    return ERR::Okay;
 }
 
-static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
+static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
    std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
 {
-   if ((not ptr) or (not *ptr)) return false;
+   if (State.done()) return false;
 
-   auto quote = *ptr;
+   auto quote = State.current();
    if ((quote != '"') and (quote != '\'')) return false;
 
-   ptr++;
-   std::string_view view(ptr);
-   std::string buffer;
-   buffer.reserve(view.size()); // Pre-allocate based on remaining view size
+   State.next();
 
-   while (not view.empty()) {
-      auto ch = view.front();
+   std::string buffer;
+   buffer.reserve(State.cursor.size());
+
+   while (not State.done()) {
+      auto ch = State.current();
+
       if (ch IS quote) {
-         ptr = view.data() + 1;
+         State.next();
          Result.swap(buffer);
          return true;
       }
 
-      if ((ch IS '%' or ch IS '&') and view.size() > 1) {
+      if ((ch IS '%' or ch IS '&') and (State.cursor.size() > 1)) {
          bool is_parameter = (ch IS '%');
-         view.remove_prefix(1); // Skip the % or &
+         State.next(); // Skip the % or &
 
-         // Find entity name using string_view
          size_t name_length = 0;
-         while (name_length < view.size() and is_name_char(view[name_length])) {
+         while ((name_length < State.cursor.size()) and is_name_char(State.cursor[name_length])) {
             name_length++;
          }
 
-         if (name_length > 0 and
-             name_length < view.size() and
-             view[name_length] IS ';') {
+         if ((name_length > 0) and
+             (name_length < State.cursor.size()) and
+             (State.cursor[name_length] IS ';')) {
 
-            auto name_view = view.substr(0, name_length);
+            std::string name(State.cursor.data(), name_length);
             std::string resolved;
 
-            // Only create string for entity resolution
-            if (resolve_entity_internal(Self, std::string(name_view), resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
+            if (resolve_entity_internal(Self, name, resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
                buffer += resolved;
             }
             else {
                buffer.push_back(is_parameter ? '%' : '&');
-               buffer.append(name_view);
+               buffer += name;
                buffer.push_back(';');
             }
 
-            view.remove_prefix(name_length + 1); // Skip name + ';'
+            State.next(name_length + 1); // Skip name + ';'
             continue;
          }
-         else { // Not a valid entity, backtrack
+         else {
             buffer.push_back(is_parameter ? '%' : '&');
+            continue;
          }
       }
-      else {
-         buffer.push_back(ch);
-         view.remove_prefix(1);
-      }
+
+      if (ch IS '\n') Self->LineNo++;
+      buffer.push_back(ch);
+      State.next();
    }
 
-   ptr = view.data();
    return false;
 }
 
 static void parse_doctype(extXML *Self, ParseState &State)
 {
-   const char *str = Input;
+   State.skipWhitespace(Self->LineNo);
 
-   while ((*str) and (((*str >= 'A') and (*str <= 'Z')) or ((*str >= 'a') and (*str <= 'z')))) str++;
-   skip_ws(str);
+   auto view = State.cursor;
+   auto type_view = read_name(view);
+   if (type_view.empty()) return;
 
-   std::string document_type;
-   if (not read_name(str, document_type)) return;
-
-   assign_string(Self->DocType, document_type);
+   assign_string(Self->DocType, std::string(type_view));
    if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
    if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    Self->Entities.clear();
    Self->ParameterEntities.clear();
    Self->Notations.clear();
 
-   skip_ws(str);
+   State.next(type_view.size());
+   State.skipWhitespace(Self->LineNo);
 
    std::unordered_set<std::string> entity_stack;
    std::unordered_set<std::string> parameter_stack;
 
-   if (ci_keyword(str, "PUBLIC")) {
-      skip_ws(str);
+   if (ci_keyword(State, "PUBLIC")) {
+      State.skipWhitespace(Self->LineNo);
       std::string public_id;
-      if (read_quoted(Self, str, public_id, entity_stack, parameter_stack)) assign_string(Self->PublicID, public_id);
-      skip_ws(str);
+      if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) assign_string(Self->PublicID, public_id);
+      State.skipWhitespace(Self->LineNo);
       std::string system_id;
-      if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
+      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
    }
-   else if (ci_keyword(str, "SYSTEM")) {
-      skip_ws(str);
+   else if (ci_keyword(State, "SYSTEM")) {
+      State.skipWhitespace(Self->LineNo);
       std::string system_id;
-      if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
+      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
    }
 
-   skip_ws(str);
+   State.skipWhitespace(Self->LineNo);
 
-   if (*str IS '[') {
-      str++;
+   if (State.current() IS '[') {
+      State.next();
 
-      while (*str) {
-         skip_ws(str);
-         if (not *str) break;
-         if (*str IS ']') { str++; break; }
+      while (not State.done()) {
+         State.skipWhitespace(Self->LineNo);
+         if (State.done()) break;
+         if (State.current() IS ']') { State.next(); break; }
 
-         if ((*str IS '<') and (str[1] IS '!')) {
-            str += 2;
+         if ((State.current() IS '<') and (State.cursor.size() > 1) and (State.cursor[1] IS '!')) {
+            State.next(2);
 
-            if (ci_keyword(str, "ENTITY")) {
-               skip_ws(str);
+            if (ci_keyword(State, "ENTITY")) {
+               State.skipWhitespace(Self->LineNo);
                bool parameter = false;
-               if (*str IS '%') { parameter = true; str++; skip_ws(str); }
+               if (State.current() IS '%') {
+                  parameter = true;
+                  State.next();
+                  State.skipWhitespace(Self->LineNo);
+               }
 
-               std::string name;
-               if (not read_name(str, name)) {
-                  std::string_view remainder(str ? str : "");
-                  auto close = remainder.find('>');
-                  if (close IS std::string_view::npos) str += remainder.size();
-                  else str += close + 1;
+               auto name_view = State.cursor;
+               auto entity_name = read_name(name_view);
+               if (entity_name.empty()) {
+                  State.skipTo('>', Self->LineNo);
+                  if (State.current() IS '>') State.next();
                   continue;
                }
 
-               skip_ws(str);
+               std::string name(entity_name);
+               State.next(entity_name.size());
+               State.skipWhitespace(Self->LineNo);
 
-               if (ci_keyword(str, "SYSTEM")) {
-                  skip_ws(str);
+               if (ci_keyword(State, "SYSTEM")) {
+                  State.skipWhitespace(Self->LineNo);
                   std::string system;
-                  if (read_quoted(Self, str, system, entity_stack, parameter_stack)) {
+                  if (read_quoted(Self, State, system, entity_stack, parameter_stack)) {
                      if (parameter) Self->ParameterEntities[name] = system;
                      else Self->Entities[name] = system;
                   }
                }
                else {
                   std::string value;
-                  if ((*str IS '"') or (*str IS '\'')) {
-                     if (read_quoted(Self, str, value, entity_stack, parameter_stack)) {
+                  if ((State.current() IS '"') or (State.current() IS '\'')) {
+                     if (read_quoted(Self, State, value, entity_stack, parameter_stack)) {
                         if (parameter) Self->ParameterEntities[name] = value;
                         else Self->Entities[name] = value;
                      }
                   }
                }
 
-               std::string_view remainder(str ? str : "");
-               auto close = remainder.find('>');
-               if (close IS std::string_view::npos) str += remainder.size();
-               else str += close + 1;
+               State.skipTo('>', Self->LineNo);
+               if (State.current() IS '>') State.next();
             }
-            else if (ci_keyword(str, "NOTATION")) {
-               skip_ws(str);
-               std::string name;
-               if (not read_name(str, name)) {
-                  std::string_view remainder(str ? str : "");
-                  auto close = remainder.find('>');
-                  if (close IS std::string_view::npos) str += remainder.size();
-                  else str += close + 1;
+            else if (ci_keyword(State, "NOTATION")) {
+               State.skipWhitespace(Self->LineNo);
+               auto name_view = State.cursor;
+               auto notation_name = read_name(name_view);
+               if (notation_name.empty()) {
+                  State.skipTo('>', Self->LineNo);
+                  if (State.current() IS '>') State.next();
                   continue;
                }
-               skip_ws(str);
+
+               std::string name(notation_name);
+               State.next(notation_name.size());
+               State.skipWhitespace(Self->LineNo);
 
                std::string notation_value;
-               if (ci_keyword(str, "PUBLIC")) {
-                  skip_ws(str);
+               if (ci_keyword(State, "PUBLIC")) {
+                  State.skipWhitespace(Self->LineNo);
                   std::string public_id;
                   std::string system_id;
-                  if (read_quoted(Self, str, public_id, entity_stack, parameter_stack)) {
-                     skip_ws(str);
-                     if (read_quoted(Self, str, system_id, entity_stack, parameter_stack)) {
+                  if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) {
+                     State.skipWhitespace(Self->LineNo);
+                     if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
                         notation_value = public_id + " " + system_id;
                      }
                      else notation_value = public_id;
                   }
                }
-               else if (ci_keyword(str, "SYSTEM")) {
-                  skip_ws(str);
-                  read_quoted(Self, str, notation_value, entity_stack, parameter_stack);
+               else if (ci_keyword(State, "SYSTEM")) {
+                  State.skipWhitespace(Self->LineNo);
+                  read_quoted(Self, State, notation_value, entity_stack, parameter_stack);
                }
 
                if (not notation_value.empty()) Self->Notations[name] = notation_value;
 
-               std::string_view remainder(str ? str : "");
-               auto close = remainder.find('>');
-               if (close IS std::string_view::npos) str += remainder.size();
-               else str += close + 1;
+               State.skipTo('>', Self->LineNo);
+               if (State.current() IS '>') State.next();
             }
             else {
-               std::string_view remainder(str ? str : "");
-               auto close = remainder.find('>');
-               if (close IS std::string_view::npos) str += remainder.size();
-               else str += close + 1;
+               State.skipTo('>', Self->LineNo);
+               if (State.current() IS '>') State.next();
             }
          }
-         else str++;
+         else {
+            if (State.current() IS '\n') Self->LineNo++;
+            State.next();
+         }
       }
    }
+
+   State.skipWhitespace(Self->LineNo);
 }
 
 //********************************************************************************************************************
@@ -463,7 +444,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    pf::Log log(__FUNCTION__);
 
-   log.traceBranch("%.*s", State.cursor.size(), State.cursor.data());
+   log.traceBranch("%.*s", int(State.cursor.size()), State.cursor.data());
 
    // Save current namespace context to restore later (for proper scoping)
    auto saved_prefix_map = State.PrefixMap;
@@ -573,8 +554,8 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
 
       if ((Self->Flags & XMF::STRIP_HEADERS) != XMF::NIL) {
+         State.skipTo('>', Self->LineNo);
          if (State.current() IS '>') State.next();
-         State.cursor = str;
          return ERR::NothingDone;
       }
    }
@@ -595,92 +576,90 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       if (State.current() IS '=') return log.warning(ERR::InvalidData);
 
-      // Extract the name of the attribute
-
       std::string_view name;
 
-      if (State.current() IS '"'); // Quoted notation attributes are parsed as content values
+      if (State.current() IS '"') {
+         // Quoted notation attributes are parsed as content values
+      }
       else {
-         int s = 0;
-         while ((str[s] > 0x20) and (str[s] != '>') and (str[s] != '=')) {
-            if ((str[s] IS '/') and (str[s+1] IS '>')) break;
-            if ((str[s] IS '?') and (str[s+1] IS '>')) break;
-            s++;
+         size_t length = 0;
+         while ((length < State.cursor.size()) and (State.cursor[length] > 0x20) and (State.cursor[length] != '>') and (State.cursor[length] != '=')) {
+            if ((State.cursor[length] IS '/') and (length + 1 < State.cursor.size()) and (State.cursor[length+1] IS '>')) break;
+            if ((State.cursor[length] IS '?') and (length + 1 < State.cursor.size()) and (State.cursor[length+1] IS '>')) break;
+            length++;
          }
-         name = std::string_view(str, s);
-         str += s;
+         name = State.cursor.substr(0, length);
+         State.next(length);
       }
 
-      // Extract the attributes value
+      State.skipWhitespace(Self->LineNo);
 
-      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-
-      if (*str IS '=') {
-         str++;
-         while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      if (State.current() IS '=') {
+         State.next();
+         State.skipWhitespace(Self->LineNo);
 
          std::string val;
-         if (*str IS '"') {
-            str++;
-            auto start = str;
-            while ((*str) and (*str != '"')) {
-               if (*str IS '\n') Self->LineNo++;
-               str++;
+
+         if (State.current() IS '"') {
+            State.next();
+            auto value_state = State;
+            while ((not State.done()) and (State.current() != '"')) {
+               if (State.current() IS '\n') Self->LineNo++;
+               State.next();
             }
-            val.assign(start, str);
-            if (*str IS '"') str++;
+            val.assign(value_state.cursor.data(), State - value_state);
+            if (State.current() IS '"') State.next();
          }
-         else if (*str IS '\'') {
-            str++;
-            auto start = str;
-            while ((*str) and (*str != '\'')) {
-               if (*str IS '\n') Self->LineNo++;
-               str++;
+         else if (State.current() IS '\'') {
+            State.next();
+            auto value_state = State;
+            while ((not State.done()) and (State.current() != '\'')) {
+               if (State.current() IS '\n') Self->LineNo++;
+               State.next();
             }
-            val.assign(start, str);
-            if (*str IS '\'') str++;
+            val.assign(value_state.cursor.data(), State - value_state);
+            if (State.current() IS '\'') State.next();
          }
          else {
-            auto start = str;
-            while ((*str > 0x20) and (*str != '>')) {
-               if ((str[0] IS '/') and (str[1] IS '>')) break;
-               str++;
+            auto value_state = State;
+            while ((not State.done()) and (State.current() > 0x20) and (State.current() != '>')) {
+               if ((State.current() IS '/') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
+               if ((State.current() IS '?') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
+               State.next();
             }
-            val.assign(start, str);
+            val.assign(value_state.cursor.data(), State - value_state);
          }
 
          tag.Attribs.emplace_back(std::string(name), val);
 
-         // Detect and process namespace declarations
          if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
             if (name.starts_with("xmlns")) {
                auto ns_hash = Self->registerNamespace(val);
 
-               if (name IS "xmlns") { // Default namespace declaration
+               if (name IS "xmlns") {
                   State.DefaultNamespace = ns_hash;
                }
                else if ((name.size() > 6) and (name[5] IS ':')) {
-                  // Prefixed namespace declaration: xmlns:prefix="uri"
                   std::string prefix(name.substr(6));
-                  Self->Prefixes[prefix] = ns_hash; // Permanent global record of this prefix
+                  Self->Prefixes[prefix] = ns_hash;
                   State.PrefixMap[prefix] = ns_hash;
                }
             }
          }
       }
-      else if ((name.empty()) and (*str IS '"')) { // Detect notation value with no name
-         str++;
-         int s;
-         for (s=0; (str[s]) and (str[s] != '"'); s++) {
-            if (str[s] IS '\n') Self->LineNo++;
+      else if ((name.empty()) and (State.current() IS '"')) {
+         State.next();
+         auto value_state = State;
+         while ((not State.done()) and (State.current() != '"')) {
+            if (State.current() IS '\n') Self->LineNo++;
+            State.next();
          }
-         tag.Attribs.emplace_back(std::string(name), std::string(str, s));
-         str += s;
-         if (*str IS '"') str++;
+         tag.Attribs.emplace_back(std::string(name), std::string(value_state.cursor.data(), State - value_state));
+         if (State.current() IS '"') State.next();
       }
-      else tag.Attribs.emplace_back(std::string(name), ""); // Either the tag name or an attribute with no value.
+      else tag.Attribs.emplace_back(std::string(name), "");
 
-      while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
+      State.skipWhitespace(Self->LineNo);
    }
 
    if (tag.Attribs.empty()) {
@@ -705,8 +684,6 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
    }
 
-   State.cursor = str;
-
    if ((State.current() IS '>') and (not tag.Attribs.empty()) and
        (tag.Attribs[0].Name[0] != '!') and (tag.Attribs[0].Name[0] != '?')) {
       // We reached the end of an open tag.  Extract the content within it and handle any child tags.
@@ -714,7 +691,10 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       State.next();
       extract_content(Self, Tags.back().Children, State);
 
-      while (State.cursor.starts_with("</")) {
+      // Each cycle of the loop needs to start with an open tag
+
+      while ((not State.done()) and (State.current() IS '<') and
+             (State.cursor.size() > 1) and (State.cursor[1] != '/')) {
          auto error = parse_tag(Self, Tags.back().Children, State);
 
          if (error IS ERR::NothingDone) { // Extract any additional content trapped between tags
@@ -762,21 +742,20 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.
 
-   log.trace("Extracting tag information with parse_tag()");
+   log.branch("Parsing incoming text stream...");
 
-   std::string_view str;
-   while ((not Text.empty()) and (Text.front() != '<')) {
-      if (Text.front() IS '\n') Self->LineNo++;
-      Text.remove_prefix(1);
-   }
-   if (not str[0]) {
+   ParseState state(Text);
+   
+   state.skipTo('<', Self->LineNo); // Skip any leading whitespace or content
+   if (state.done()) {
       Self->ParseError = log.warning(ERR::InvalidData);
       return Self->ParseError;
    }
 
-   ParseState state(Text);
+   // Each cycle of the loop needs to start with an open tag
 
-   while (state.cursor.starts_with("</")) {
+   while ((not state.done()) and (state.current() IS '<') and
+          (state.cursor.size() > 1) and (state.cursor[1] != '/')) {
       ERR error = parse_tag(Self, Tags, state);
 
       if ((error != ERR::Okay) and (error != ERR::NothingDone)) {
@@ -789,7 +768,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
       state.skipTo('<', Self->LineNo);
    }
 
-   // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR::InvalidData.
+   // If the WELL_FORMED flag is used, the tags must balance.
 
    if ((Self->Flags & XMF::WELL_FORMED) != XMF::NIL) {
       if (state.Balance != 0) return log.warning(ERR::UnbalancedXML);

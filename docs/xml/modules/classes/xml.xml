@@ -727,7 +727,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     <constants lookup="XMF" comment="Standard flags for the XML class.">
       <const name="INCLUDE_COMMENTS">By default, comments are stripped when parsing XML input unless this flag is specified.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (<action>GetXMLString</action> only)</const>
-      <const name="INCLUDE_WHITESPACE">By default the XML parser will trim whitespace (such as return codes, spaces and tabs) found in the XML content between tags.  Setting this flag turns off this feature, allowing all whitespace to be included.</const>
+      <const name="INCLUDE_WHITESPACE">By default the XML parser will skip content between tags when they contain pure whitespace.  Setting this flag will retain all whitespace.</const>
       <const name="INDENT">Indent the output of serialised XML to improve readability.</const>
       <const name="LOCK_REMOVE">Prevents removal of tags from the XML tree.  This specifically affects the RemoveTag and RemoveXPath methods.</const>
       <const name="LOG_ALL">Print extra log messages.</const>
