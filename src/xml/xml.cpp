@@ -150,7 +150,7 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->XPath)) return log.warning(ERR::NullArgs);
 
    tlXMLCounter = 0;
 
@@ -195,7 +195,7 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
    if ((Args->Datatype IS DATA::XML) or (Args->Datatype IS DATA::TEXT)) {
       if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -246,7 +246,7 @@ Search: No matching tag could be found for the specified XPath expression.
 
 static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
-   if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
+   if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
 
    if (Self->findTag(Args->XPath) IS ERR::Okay) {
       auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
@@ -299,7 +299,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
+   if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
 
@@ -381,12 +381,12 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
    auto tag = Self->getTag(Args->Index);
-   if (!tag) return log.warning(ERR::NotFound);
+   if (not tag) return log.warning(ERR::NotFound);
 
-   if ((!Args->Attrib) or (!Args->Attrib[0])) {
+   if ((not Args->Attrib) or (not Args->Attrib[0])) {
       Args->Value = tag->Attribs[0].Name.c_str();
       return ERR::Okay;
    }
@@ -428,7 +428,7 @@ static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
 
    auto key = std::string(Args->Name);
    auto it = Self->Entities.find(key);
@@ -464,7 +464,7 @@ static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Name)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
 
    auto key = std::string(Args->Name);
    auto it = Self->Notations.find(key);
@@ -501,9 +501,9 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
-   if ((!Args->Key) or (!Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
-   if (!Self->initialised()) return log.warning(ERR::NotInitialised);
+   if (not Args) return log.warning(ERR::NullArgs);
+   if ((not Args->Key) or (not Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
+   if (not Self->initialised()) return log.warning(ERR::NotInitialised);
 
    Args->Value[0] = 0;
 
@@ -582,7 +582,7 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Buffer)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Buffer)) return log.warning(ERR::NullArgs);
    if (Args->Length < 1) return log.warning(ERR::Args);
 
    if (auto tag = Self->getTag(Args->Index)) {
@@ -618,7 +618,7 @@ static ERR XML_GetNamespaceURI(extXML *Self, struct xml::GetNamespaceURI *Args)
    if (not Args) return log.warning(ERR::NullArgs);
 
    auto uri = Self->getNamespaceURI(Args->NamespaceID);
-   if (!uri) return log.warning(ERR::Search);
+   if (not uri) return log.warning(ERR::Search);
 
    Args->Result = uri->c_str();
    return ERR::Okay;
@@ -647,7 +647,7 @@ static ERR XML_GetTag(extXML *Self, struct xml::GetTag *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
    if ((Args->Result = Self->getTag(Args->Index))) return ERR::Okay;
    else return ERR::NotFound;
@@ -724,12 +724,12 @@ static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Insert: %d", Args->Index, int(Args->Where));
 
    auto src = Self->getTag(Args->Index);
-   if (!src) return log.warning(ERR::NotFound);
+   if (not src) return log.warning(ERR::NotFound);
 
    std::ostringstream buffer;
    auto content_view = view_or_empty(Args->Content);
@@ -790,12 +790,12 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.branch("Index: %d, Where: %d, XML: %.40s", Args->Index, int(Args->Where), Args->XML);
 
    auto src = Self->getTag(Args->Index);
-   if (!src) return log.warning(ERR::NotFound);
+   if (not src) return log.warning(ERR::NotFound);
 
    ERR error;
    TAGS insert;
@@ -866,7 +866,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath) or (!Args->XML)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->XPath) or (not Args->XML)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.branch("Insert: %d, XPath: %s", int(Args->Where), Args->XPath);
@@ -916,7 +916,7 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if (Args->Total < 1) return log.warning(ERR::Args);
    if (Args->Index IS Args->DestIndex) return ERR::Okay;
@@ -926,13 +926,13 @@ static ERR XML_MoveTags(extXML *Self, struct xml::MoveTags *Args)
    }
 
    auto dest = Self->getTag(Args->DestIndex);
-   if (!dest) return log.warning(ERR::NotFound);
+   if (not dest) return log.warning(ERR::NotFound);
 
    // Take a copy of the source tags
 
    CURSOR it;
    auto src_tags = Self->getInsert(Args->Index, it);
-   if (!src_tags) return log.warning(ERR::NotFound);
+   if (not src_tags) return log.warning(ERR::NotFound);
 
    int total = Args->Total;
    TAGS copy;
@@ -1061,7 +1061,7 @@ static ERR XML_RemoveTag(extXML *Self, struct xml::RemoveTag *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
 
@@ -1125,7 +1125,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->XPath)) return ERR::NullArgs;
+   if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
 
    if (Self->Tags.empty()) return ERR::NoData;
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
@@ -1133,12 +1133,12 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
 
    auto limit = Args->Limit;
    if (limit IS -1) limit = 0x7fffffff;
-   else if (!limit) limit = 1;
+   else if (not limit) limit = 1;
 
    while (limit > 0) {
       if (Self->findTag(Args->XPath) != ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
 
-      if (!Self->Attrib.empty()) { // Remove an attribute
+      if (not Self->Attrib.empty()) { // Remove an attribute
          for (int a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
             if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[a].Name)) {
                Self->Cursor->Attribs.erase(Self->Cursor->Attribs.begin() + a);
@@ -1233,7 +1233,7 @@ static ERR XML_SaveToObject(extXML *Self, struct acSaveToObject *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Dest)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Dest)) return log.warning(ERR::NullArgs);
    if (Self->Tags.size() <= 0) return ERR::Okay;
 
    log.traceBranch("To: %d", Args->Dest->UID);
@@ -1276,14 +1276,14 @@ static ERR XML_Serialise(extXML *Self, struct xml::Serialise *Args)
    pf::Log log;
 
    if (Self->Tags.empty()) return log.warning(ERR::NoData);
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
    log.traceBranch("Tag: %d", Args->Index);
 
    std::ostringstream buffer;
 
    auto tag = Args->Index ? Self->getTag(Args->Index) : &Self->Tags[0];
-   if (!tag) return log.warning(ERR::NotFound);
+   if (not tag) return log.warning(ERR::NotFound);
 
    if ((Args->Flags & XMF::INCLUDE_SIBLINGS) != XMF::NIL) {
       if (auto parent = Self->getTag(tag->ParentID)) {
@@ -1350,13 +1350,13 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.trace("Tag: %d, Attrib: $%.8x, %s = '%s'", Args->Index, Args->Attrib, Args->Name, Args->Value);
 
    auto tag = Self->getTag(Args->Index);
-   if (!tag) return log.warning(ERR::Search);
+   if (not tag) return log.warning(ERR::Search);
 
    auto cmd = Args->Attrib;
    if ((cmd IS XMS::UPDATE) or (cmd IS XMS::UPDATE_ONLY)) {
@@ -1373,7 +1373,7 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
       }
 
       if (cmd IS XMS::UPDATE) {
-         if ((!Args->Value) or (!Args->Value[0])) return ERR::Okay; // User wants to remove a non-existing attribute, so return ERR::Okay
+         if ((not Args->Value) or (not Args->Value[0])) return ERR::Okay; // User wants to remove a non-existing attribute, so return ERR::Okay
          else { // Create new attribute if name wasn't found
             tag->Attribs.push_back({ Args->Name, Args->Value });
             Self->Modified++;
@@ -1429,11 +1429,11 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Key)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    if (Self->findTag(Args->Key) IS ERR::Okay) {
-      if (!Self->Attrib.empty()) { // Updating or adding an attribute
+      if (not Self->Attrib.empty()) { // Updating or adding an attribute
          unsigned i;
          for (i=0; i < Self->Cursor->Attribs.size(); i++) {
             if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[i].Name)) break;
@@ -1443,7 +1443,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
          else Self->Cursor->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
          Self->Modified++;
       }
-      else if (!Self->Cursor->Children.empty()) { // Update existing content
+      else if (not Self->Cursor->Children.empty()) { // Update existing content
          Self->Cursor->Children[0].Attribs[0].Value = Args->Value;
          Self->Modified++;
       }
@@ -1490,7 +1490,7 @@ static ERR XML_SetTagNamespace(extXML *Self, struct xml::SetTagNamespace *Args)
 
    // Find the tag and assign the namespace
    auto tag = Self->getTag(Args->TagID);
-   if (!tag) return log.warning(ERR::NotFound);
+   if (not tag) return log.warning(ERR::NotFound);
 
    tag->NamespaceID = Args->NamespaceID;
    Self->modified();
@@ -1529,15 +1529,15 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 {
    pf::Log log;
 
-   if ((!Args) or (!Args->Sort)) return log.warning(ERR::NullArgs);
+   if ((not Args) or (not Args->Sort)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    CURSOR tag;
    TAGS *branch;
-   if ((!Args->XPath) or (!Args->XPath[0])) {
+   if ((not Args->XPath) or (not Args->XPath[0])) {
       branch = &Self->Tags;
       tag = &Self->Tags[0];
-      if (!tag) return ERR::Okay;
+      if (not tag) return ERR::Okay;
    }
    else {
       if (Self->findTag(Args->XPath) != ERR::Okay) return log.warning(ERR::Search);
@@ -1599,7 +1599,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
             }
          }
 
-         if (!tag) break;
+         if (not tag) break;
 
          if ((Args->Flags & XSF::CHECK_SORT) != XSF::NIL) { // Give precedence for a 'sort' attribute in the XML tag
             auto attrib = tag->Attribs.begin()+1;
@@ -1679,8 +1679,8 @@ static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
 {
    pf::Log log;
 
-   if (!Args) return log.warning(ERR::NullArgs);
-   if (!Args->Key) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
+   if (not Args->Key) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
@@ -1858,7 +1858,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 {
    pf::Log log;
 
-   if (!Self->initialised()) {
+   if (not Self->initialised()) {
       if (not Self->Statement.empty()) {
          *Value = pf::strclone(Self->Statement);
          return ERR::Okay;
