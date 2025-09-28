@@ -60,7 +60,7 @@ inline void assign_string(STRING &Target, const std::string &Value)
 }
 
 
-constexpr void skip_ws(std::string_view &view) noexcept
+inline void skip_ws(std::string_view &view) noexcept
 {
    while (not view.empty() and is_whitespace(view.front())) {
       view.remove_prefix(1);
