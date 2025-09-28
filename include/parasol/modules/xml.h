@@ -134,14 +134,24 @@ typedef struct XMLTag {
    }
 
    inline std::string getContent() const {
-      if (Children.empty()) return std::string("");
+      if (Children.empty()) return std::string();
 
-      std::ostringstream str;
+      std::string result;
+      // Pre-calculate total size to avoid reallocations
+      size_t total_size = 0;
       for (auto &scan : Children) {
-         if (scan.Attribs.empty()) continue; // Sanity check
-         if (scan.Attribs[0].isContent()) str << scan.Attribs[0].Value;
+         if (not scan.Attribs.empty() and scan.Attribs[0].isContent()) {
+            total_size += scan.Attribs[0].Value.size();
+         }
       }
-      return str.str();
+      result.reserve(total_size);
+
+      for (auto &scan : Children) {
+         if (not scan.Attribs.empty() and scan.Attribs[0].isContent()) {
+            result += scan.Attribs[0].Value;
+         }
+      }
+      return result;
    }
 } XMLTAG;
 
