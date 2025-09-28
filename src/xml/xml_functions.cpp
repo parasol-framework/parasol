@@ -147,6 +147,7 @@ static void expand_entity_references(extXML *Self, std::string &Value,
             std::string resolved;
 
             // Only create string if resolution succeeds to avoid unnecessary allocation
+
             if (resolve_entity_internal(Self, std::string(name_view), resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
                output += resolved;
             }
@@ -231,8 +232,17 @@ static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
          }
          else {
             buffer.push_back(is_parameter ? '%' : '&');
+
             continue;
          }
+         else {
+            // Not a valid entity, backtrack
+            buffer.push_back(is_parameter ? '%' : '&');
+         }
+      }
+      else {
+         buffer.push_back(ch);
+         view.remove_prefix(1);
       }
 
       if (ch IS '\n') Self->LineNo++;
