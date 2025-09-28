@@ -1,12 +1,44 @@
 
 //********************************************************************************************************************
-// Output an XML string with escape characters.
+// C++20 constexpr string utilities and character classification
 
-inline std::string_view view_or_empty(CSTRING Value)
+constexpr std::string_view view_or_empty(CSTRING Value) noexcept
 {
    if (Value) return std::string_view(Value);
    return std::string_view();
 }
+
+constexpr bool is_name_char(char ch) noexcept
+{
+   return ((ch >= 'A') and (ch <= 'Z')) or
+          ((ch >= 'a') and (ch <= 'z')) or
+          ((ch >= '0') and (ch <= '9')) or
+          (ch IS '.') or (ch IS '-') or (ch IS '_') or (ch IS ':');
+}
+
+constexpr bool is_name_start(char ch) noexcept
+{
+   return ((ch >= 'A') and (ch <= 'Z')) or
+          ((ch >= 'a') and (ch <= 'z')) or
+          (ch IS '_') or (ch IS ':');
+}
+
+constexpr bool is_whitespace(char ch) noexcept
+{
+   return ch <= 0x20;
+}
+
+constexpr char to_lower(char ch) noexcept
+{
+   return ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
+}
+
+// XML entity escape sequences
+constexpr std::string_view xml_entities[] = {
+   "&amp;", "&lt;", "&gt;", "&quot;"
+};
+
+constexpr char xml_chars[] = { '&', '<', '>', '"' };
 
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
@@ -21,82 +53,83 @@ static void output_attribvalue(std::string_view String, std::ostringstream &Outp
    }
 }
 
-//********************************************************************************************************************
-
-static bool is_name_char(char ch)
-{
-   if ((ch >= 'A') and (ch <= 'Z')) return true;
-   if ((ch >= 'a') and (ch <= 'z')) return true;
-   if ((ch >= '0') and (ch <= '9')) return true;
-   if ((ch IS '.') or (ch IS '-') or (ch IS '_') or (ch IS ':')) return true;
-   return false;
-}
-
 inline void assign_string(STRING &Target, const std::string &Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
    if (not Value.empty()) Target = pf::strclone(Value);
 }
 
-static bool is_name_start(char ch)
+
+constexpr void skip_ws(std::string_view &view) noexcept
 {
-   if ((ch >= 'A') and (ch <= 'Z')) return true;
-   if ((ch >= 'a') and (ch <= 'z')) return true;
-   if ((ch IS '_') or (ch IS ':')) return true;
-   return false;
+   while (not view.empty() and is_whitespace(view.front())) {
+      view.remove_prefix(1);
+   }
 }
 
 inline void skip_ws(const char *&ptr)
 {
    if (not ptr) return;
-
    std::string_view view(ptr);
-   size_t offset = 0;
-
-   while ((offset < view.size()) and (view[offset] <= 0x20)) offset++;
-
-   ptr += offset;
+   skip_ws(view);
+   ptr = view.data();
 }
 
 //********************************************************************************************************************
 
-static bool ci_keyword(const char *&ptr, std::string_view keyword)
+static bool ci_keyword(std::string_view &view, std::string_view keyword) noexcept
 {
-   if ((not ptr) or (keyword.empty())) return false;
+   if (keyword.empty() or view.size() < keyword.size()) return false;
 
-   auto to_lower = [](char ch) constexpr -> char {
-      if ((ch >= 'A') and (ch <= 'Z')) return ch + 0x20;
-      return ch;
-   };
-
-   std::string_view view(ptr);
-   size_t offset = 0;
-
-   for (char key_ch : keyword) {
-      if (offset >= view.size()) return false;
-      if (to_lower(view[offset]) != to_lower(key_ch)) return false;
-      offset++;
+   for (size_t i = 0; i < keyword.size(); ++i) {
+      if (to_lower(view[i]) != to_lower(keyword[i])) return false;
    }
 
-   if ((offset < view.size()) and (is_name_char(view[offset])) and (view[offset] != '[')) return false;
+   // Check that we're not matching a partial name
+   if ((view.size() > keyword.size()) and
+       is_name_char(view[keyword.size()]) and
+       (view[keyword.size()] != '[')) return false;
 
-   ptr += offset;
+   view.remove_prefix(keyword.size());
    return true;
+}
+
+static bool ci_keyword(const char *&ptr, std::string_view keyword)
+{
+   if (not ptr) return false;
+   std::string_view view(ptr);
+   if (ci_keyword(view, keyword)) {
+      ptr = view.data();
+      return true;
+   }
+   return false;
+}
+
+static std::string_view read_name(std::string_view &view) noexcept
+{
+   if (view.empty() or not is_name_start(view.front())) {
+      return std::string_view();
+   }
+
+   size_t length = 1;
+   while ((length < view.size()) and is_name_char(view[length])) {
+      length++;
+   }
+
+   auto result = view.substr(0, length);
+   view.remove_prefix(length);
+   return result;
 }
 
 static bool read_name(const char *&ptr, std::string &Result)
 {
    if (not ptr) return false;
-
    std::string_view view(ptr);
-   if (view.empty()) return false;
-   if (not is_name_start(view.front())) return false;
+   auto name = read_name(view);
+   if (name.empty()) return false;
 
-   size_t length = 1;
-   while ((length < view.size()) and is_name_char(view[length])) length++;
-
-   Result.assign(view.data(), length);
-   ptr += length;
+   Result.assign(name.data(), name.size());
+   ptr = view.data();
    return true;
 }
 
@@ -109,51 +142,55 @@ static void expand_entity_references(extXML *Self, std::string &Value,
    if (Value.empty()) return;
 
    std::string output;
-   output.reserve(Value.size());
+   output.reserve(Value.size() * 2); // Pre-allocate larger buffer to reduce reallocations
 
-   for (size_t i = 0; i < Value.size(); ) {
-      auto ch = Value[i];
-      if ((ch IS '%') and (i + 1 < Value.size())) {
-         auto start = i + 1;
-         auto end = start;
-         while ((end < Value.size()) and is_name_char(Value[end])) end++;
-         if ((end < Value.size()) and (Value[end] IS ';')) {
-            std::string name(Value.begin() + start, Value.begin() + end);
+   std::string_view view(Value);
+
+   while (not view.empty()) {
+      auto ch = view.front();
+
+      if ((ch IS '%' or ch IS '&') and view.size() > 1) {
+         bool is_parameter = (ch IS '%');
+         view.remove_prefix(1); // Skip the % or &
+
+         // Find the name end using string_view operations
+         auto name_start = view;
+         size_t name_length = 0;
+         while (name_length < view.size() and is_name_char(view[name_length])) {
+            name_length++;
+         }
+
+         if (name_length > 0 and
+             name_length < view.size() and
+             view[name_length] IS ';') {
+
+            auto name_view = view.substr(0, name_length);
             std::string resolved;
-            if (resolve_entity_internal(Self, name, resolved, true, EntityStack, ParameterStack) IS ERR::Okay) {
+
+            // Only create string if resolution succeeds to avoid unnecessary allocation
+            if (resolve_entity_internal(Self, std::string(name_view), resolved,
+                                      is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
                output += resolved;
             }
             else {
-               output.append("%");
-               output += name;
-               output.append(";");
+               // Reconstruct the original entity reference
+               output.push_back(is_parameter ? '%' : '&');
+               output.append(name_view);
+               output.push_back(';');
             }
-            i = end + 1;
-            continue;
-         }
-      }
-      else if ((ch IS '&') and (i + 1 < Value.size())) {
-         auto start = i + 1;
-         auto end = start;
-         while ((end < Value.size()) and is_name_char(Value[end])) end++;
-         if ((end < Value.size()) and (Value[end] IS ';')) {
-            std::string name(Value.begin() + start, Value.begin() + end);
-            std::string resolved;
-            if (resolve_entity_internal(Self, name, resolved, false, EntityStack, ParameterStack) IS ERR::Okay) {
-               output += resolved;
-            }
-            else {
-               output.append("&");
-               output += name;
-               output.append(";");
-            }
-            i = end + 1;
-            continue;
-         }
-      }
 
-      output.push_back(ch);
-      i++;
+            view.remove_prefix(name_length + 1); // Skip name + ';'
+            continue;
+         }
+         else {
+            // Not a valid entity reference, backtrack
+            output.push_back(is_parameter ? '%' : '&');
+         }
+      }
+      else {
+         output.push_back(ch);
+         view.remove_prefix(1);
+      }
    }
 
    Value.swap(output);
@@ -197,46 +234,60 @@ static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
 
    ptr++;
    std::string_view view(ptr);
-   size_t offset = 0;
    std::string buffer;
+   buffer.reserve(view.size()); // Pre-allocate based on remaining view size
 
-   while (offset < view.size()) {
-      auto ch = view[offset];
+   while (not view.empty()) {
+      auto ch = view.front();
       if (ch IS quote) {
-         ptr = view.data() + offset + 1;
+         ptr = view.data() + 1;
          Result.swap(buffer);
          return true;
       }
 
-      if ((ch IS '%') or (ch IS '&')) {
-         bool parameter = (ch IS '%');
-         size_t name_start = offset + 1;
-         size_t name_end = name_start;
+      if ((ch IS '%' or ch IS '&') and view.size() > 1) {
+         bool is_parameter = (ch IS '%');
+         view.remove_prefix(1); // Skip the % or &
 
-         while ((name_end < view.size()) and is_name_char(view[name_end])) name_end++;
+         // Find entity name using string_view
+         size_t name_length = 0;
+         while (name_length < view.size() and is_name_char(view[name_length])) {
+            name_length++;
+         }
 
-         if ((name_end < view.size()) and (view[name_end] IS ';')) {
-            std::string name(view.substr(name_start, name_end - name_start));
+         if (name_length > 0 and
+             name_length < view.size() and
+             view[name_length] IS ';') {
+
+            auto name_view = view.substr(0, name_length);
             std::string resolved;
-            bool entity_ok = (resolve_entity_internal(Self, name, resolved, parameter, EntityStack, ParameterStack) IS ERR::Okay);
 
-            if (entity_ok) buffer += resolved;
+            // Only create string for entity resolution
+            if (resolve_entity_internal(Self, std::string(name_view), resolved,
+                                      is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
+               buffer += resolved;
+            }
             else {
-               buffer.push_back(parameter ? '%' : '&');
-               buffer.append(name);
+               buffer.push_back(is_parameter ? '%' : '&');
+               buffer.append(name_view);
                buffer.push_back(';');
             }
 
-            offset = name_end + 1;
+            view.remove_prefix(name_length + 1); // Skip name + ';'
             continue;
          }
+         else {
+            // Not a valid entity, backtrack
+            buffer.push_back(is_parameter ? '%' : '&');
+         }
       }
-
-      buffer.push_back(ch);
-      offset++;
+      else {
+         buffer.push_back(ch);
+         view.remove_prefix(1);
+      }
    }
 
-   ptr = view.data() + view.size();
+   ptr = view.data();
    return false;
 }
 
@@ -407,13 +458,20 @@ static ERR extract_content(extXML *Self, TAGS &Tags, ParseState &State)
       if (str[i] IS '\r') continue;
       // Content detected
 
-      std::ostringstream buffer;
+      std::string content;
+      auto start = str;
       while ((*str) and (*str != '<')) {
          if (*str IS '\n') Self->LineNo++;
-         if (*str != '\r') buffer << *str++;
-         else str++;
+         str++;
       }
-      Tags.emplace_back(XMLTag(glTagID++, 0, { { "", buffer.str() } }));
+
+      // Copy content, skipping \r characters
+      content.reserve(str - start);
+      for (auto p = start; p != str; ++p) {
+         if (*p != '\r') content.push_back(*p);
+      }
+
+      Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(content) } }));
       State.Pos = str;
       return ERR::Okay;
    }
@@ -591,25 +649,36 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       if (*str IS '=') {
          str++;
          while ((*str) and (*str <= 0x20)) { if (*str IS '\n') Self->LineNo++; str++; }
-         std::ostringstream attrib_value;
+
+         std::string val;
          if (*str IS '"') {
             str++;
-            while ((*str) and (*str != '"')) { if (*str IS '\n') Self->LineNo++; attrib_value << *str++; }
+            auto start = str;
+            while ((*str) and (*str != '"')) {
+               if (*str IS '\n') Self->LineNo++;
+               str++;
+            }
+            val.assign(start, str);
             if (*str IS '"') str++;
          }
          else if (*str IS '\'') {
             str++;
-            while ((*str) and (*str != '\'')) { if (*str IS '\n') Self->LineNo++; attrib_value << *str++; }
+            auto start = str;
+            while ((*str) and (*str != '\'')) {
+               if (*str IS '\n') Self->LineNo++;
+               str++;
+            }
+            val.assign(start, str);
             if (*str IS '\'') str++;
          }
          else {
+            auto start = str;
             while ((*str > 0x20) and (*str != '>')) {
                if ((str[0] IS '/') and (str[1] IS '>')) break;
-               attrib_value << *str++;
+               str++;
             }
+            val.assign(start, str);
          }
-
-         auto val = attrib_value.str();
 
          tag.Attribs.emplace_back(std::string(name), val);
 
@@ -716,9 +785,9 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 }
 
 //********************************************************************************************************************
-// Convert a text string into XML tags.
+// Parse a text string into XML tags.
 
-static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
+static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
 {
    pf::Log log(__FUNCTION__);
 
@@ -738,7 +807,9 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 
    ParseState state;
    CSTRING str;
-   for (str=Text; (*str) and (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
+   for (str=Text.data(); (*str) and (*str != '<'); str++) {
+      if (*str IS '\n') Self->LineNo++;
+   }
    if (not str[0]) {
       Self->ParseError = log.warning(ERR::InvalidData);
       return Self->ParseError;
@@ -871,80 +942,45 @@ static ERR parse_source(extXML *Self)
    // call to LoadFile(), which can lead our use of LoadFile() to being quite effective.
 
    if (Self->Source) {
+      constexpr size_t initial_size = 64 * 1024;
+      constexpr size_t growth_threshold = 1024;
+
       std::string buffer;
-      buffer.resize(64 * 1024);
+      buffer.reserve(initial_size);
       Self->ParseError = ERR::Okay;
       acSeekStart(Self->Source, 0);
-      int pos = 0;
+
       while (true) {
+         // Ensure we have space for the next read
+         size_t current_size = buffer.size();
+         if (buffer.capacity() - current_size < growth_threshold) {
+            buffer.reserve(buffer.capacity() * 2);
+         }
+
+         // Read directly into the buffer
+         buffer.resize(current_size + growth_threshold);
          int result;
-         if (acRead(Self->Source, buffer.data() + pos, std::ssize(buffer) - pos, &result) != ERR::Okay) {
+         if (acRead(Self->Source, buffer.data() + current_size, growth_threshold, &result) != ERR::Okay) {
             Self->ParseError = ERR::Read;
             break;
          }
-         else if (result <= 0) break;
+         else if (result <= 0) {
+            buffer.resize(current_size); // Trim unused space
+            break;
+         }
 
-         pos += result;
-         if (pos >= std::ssize(buffer) - 1024) buffer.resize(std::ssize(buffer) * 2);
+         buffer.resize(current_size + result); // Adjust to actual read size
       }
 
       if (Self->ParseError IS ERR::Okay) {
-         Self->ParseError = txt_to_xml(Self, Self->Tags, buffer.c_str());
+         Self->ParseError = txt_to_xml(Self, Self->Tags, std::string_view(buffer));
       }
    }
    else if (LoadFile(Self->Path, LDF::NIL, &filecache) IS ERR::Okay) {
-      Self->ParseError = txt_to_xml(Self, Self->Tags, (CSTRING)filecache->Data);
+      Self->ParseError = txt_to_xml(Self, Self->Tags, std::string_view((char *)filecache->Data, filecache->Size));
       UnloadFile(filecache);
    }
    else Self->ParseError = ERR::File;
 
    return Self->ParseError;
-}
-
-//********************************************************************************************************************
-// Extracts immediate content, does not recurse into child tags.
-
-static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, int Size)
-{
-   Buffer[0] = 0;
-   if (not Tag.Children.empty()) {
-      int j = 0;
-      for (auto &scan : Tag.Children) {
-         if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
-
-         if (scan.Attribs[0].isContent()) {
-            j += pf::strcopy(scan.Attribs[0].Value, Buffer+j, Size-j);
-            if (j >= Size) return ERR::BufferOverflow;
-         }
-      }
-   }
-
-   return ERR::Okay;
-}
-
-static ERR get_all_content(extXML *Self, XMLTag &Tag, STRING Buffer, int Size, int &Output)
-{
-   Buffer[0] = 0;
-   Output = 0;
-   if (Tag.Children.empty()) return ERR::Okay;
-
-   int j = 0;
-   for (auto &scan : Tag.Children) {
-      if (not scan.Attribs.empty()) { // Sanity check (there should always be at least 1 attribute)
-         if (scan.Attribs[0].isContent()) {
-            j += pf::strcopy(scan.Attribs[0].Value, Buffer+j, Size-j);
-            if (j >= Size) return ERR::BufferOverflow;
-         }
-      }
-
-      if (not scan.Children.empty()) {
-         int out;
-         ERR error = get_all_content(Self, scan, Buffer+j, Size-j, out);
-         j += out;
-         if ((error IS ERR::BufferOverflow) or (j >= Size)) return ERR::BufferOverflow;
-      }
-   }
-
-   Output = j;
-   return ERR::Okay;
 }
