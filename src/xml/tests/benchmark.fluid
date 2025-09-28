@@ -6,16 +6,17 @@
 -- * Triple iteration counts for more reliable measurements
 -- * Progressive output showing test progress and individual results
 
-include 'xml'
+   include 'xml'
+   require 'common'
 
-local glXML = nil
-local benchmarkResults = {}
-local fastestResults = {}
-local totalTests = 0
-local passedTests = 0
+   local glXML = nil
+   local benchmarkResults = {}
+   local fastestResults = {}
+   local totalTests = 0
+   local passedTests = 0
 
-local glSelf = obj.find('self')
-local glPath = glSelf.workingPath
+   local glSelf = obj.find('self')
+   local glPath = glSelf.workingPath
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Utility functions for benchmarking
@@ -246,6 +247,17 @@ function benchmarkIndexedVsPredicateAccess()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
+local glContent
+
+function benchmarkParsing()
+   if not glContent then
+      glContent = file.readAll(glPath .. 'benchmark_data.xml')
+   end
+   glXML.statement = glContent
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Initialisation and main benchmark runner
 
    print('=== XML/XPath Performance Benchmark Suite ===')
@@ -307,6 +319,10 @@ end
    print('=== 7. Performance Comparison Tests ===')
    benchmarkTest('Simple vs Complex Paths', benchmarkSimpleVsComplexPaths, 1500)
    benchmarkTest('Indexed vs Predicate Access', benchmarkIndexedVsPredicateAccess, 1500)
+
+   print('')
+   print('=== 8. Parsing Tests ===')
+   benchmarkTest('Parse XML File', benchmarkParsing, 600)
 
    -- Print summary
    print('')

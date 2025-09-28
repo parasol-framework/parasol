@@ -410,7 +410,7 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
       State.skipTo('<', Self->LineNo);
 
       std::string str;
-      str.reserve(State - content);
+      str.reserve(std::max(size_t(State - content), size_t(64))); // Reserve at least 64 bytes
 
       auto end_ptr = State.cursor.data();
       auto ptr = content.cursor.data();
@@ -573,6 +573,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    else if ((State.current() IS '!') and (State.cursor.size() > 1) and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
 
    // Extract all attributes within the tag
+   tag.Attribs.reserve(8); // Reserve space for typical attribute count
 
    State.skipWhitespace(Self->LineNo);
    while ((not State.done()) and (State.current() != '>')) {
@@ -662,7 +663,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          tag.Attribs.emplace_back(std::string(name), std::string(value_state.cursor.data(), State - value_state));
          if (State.current() IS '"') State.next();
       }
-      else tag.Attribs.emplace_back(std::string(name), "");
+      else tag.Attribs.emplace_back(std::string(name), std::string{});
 
       State.skipWhitespace(Self->LineNo);
    }
@@ -748,6 +749,9 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    // to extract the child tags.
 
    log.branch("Parsing incoming text stream...");
+
+   // Estimate tag count and reserve space (heuristic: 1 tag per 100 characters)
+   Tags.reserve(std::max(size_t(Text.size() / 100), size_t(16)));
 
    ParseState state(Text);
    
