@@ -201,13 +201,13 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
       if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
       if (Self->Tags.empty()) {
-         if (auto error = txt_to_xml(Self, Self->Tags, (CSTRING)Args->Buffer); error != ERR::Okay) {
+         if (auto error = txt_to_xml(Self, Self->Tags, std::string_view((char *)Args->Buffer, Args->Size)); error != ERR::Okay) {
             return log.warning(error);
          }
       }
       else {
          TAGS tags;
-         if (auto error = txt_to_xml(Self, tags, (CSTRING)Args->Buffer); error != ERR::Okay) {
+         if (auto error = txt_to_xml(Self, tags, std::string_view((char *)Args->Buffer, Args->Size)); error != ERR::Okay) {
             return log.warning(error);
          }
 
@@ -586,7 +586,20 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
    if (Args->Length < 1) return log.warning(ERR::Args);
 
    if (auto tag = Self->getTag(Args->Index)) {
-      return get_content(Self, *tag, Args->Buffer, Args->Length);
+      Args->Buffer[0] = 0;
+      if (not tag->Children.empty()) {
+         int j = 0;
+         for (auto &scan : tag->Children) {
+            if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
+
+            if (scan.Attribs[0].isContent()) {
+               j += pf::strcopy(scan.Attribs[0].Value, Args->Buffer+j, Args->Length-j);
+               if (j >= Args->Length) return ERR::BufferOverflow;
+            }
+         }
+      }
+
+      return ERR::Okay;
    }
    else return log.warning(ERR::NotFound);
 }
