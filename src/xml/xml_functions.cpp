@@ -665,9 +665,10 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                      namespace_guard.registerInsertion(prefix, true);
                   }
                   else {
-                     auto previous = result.first->second;
-                     result.first->second = ns_hash;
+                     auto &existing = result.first->second;
+                     auto previous = existing;
                      namespace_guard.registerInsertion(prefix, false, previous);
+                     existing = ns_hash;
                   }
                }
             }
