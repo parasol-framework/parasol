@@ -429,6 +429,7 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 
       while (ptr < end_ptr) {
          char ch = *ptr++;
+         if (ch == '\n') ++Self->LineNo;
          if (ch != '\r') str.push_back(ch);
       }
 
