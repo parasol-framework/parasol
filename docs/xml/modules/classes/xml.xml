@@ -606,12 +606,6 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     <field>
       <name>DocType</name>
       <comment>Root element name from DOCTYPE declaration</comment>
-      <access>-/-</access>
-      <type>STRING</type>
-    </field>
-
-    <field>
-      <name>DocumentType</name>
       <access read="R">Read</access>
       <type>STRING</type>
     </field>

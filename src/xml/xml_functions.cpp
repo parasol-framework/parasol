@@ -25,7 +25,7 @@ constexpr bool is_name_start(char ch) noexcept
 
 constexpr bool is_whitespace(char ch) noexcept
 {
-   return ch <= 0x20;
+   return uint8_t(ch) <= 0x20;
 }
 
 constexpr char to_lower(char ch) noexcept
