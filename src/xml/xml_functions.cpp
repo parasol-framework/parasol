@@ -2,30 +2,21 @@
 //********************************************************************************************************************
 // Output an XML string with escape characters.
 
-template <class T> void output_attribvalue(T &&String, std::ostringstream &Output)
+inline std::string_view view_or_empty(CSTRING Value)
 {
-   if constexpr (std::is_convertible_v<T, std::string_view>) {
-      std::string_view str_view = String;
-      for (char ch : str_view) {
-         switch (ch) {
-            case '&':  Output << "&amp;"; break;
-            case '<':  Output << "&lt;"; break;
-            case '>':  Output << "&gt;"; break;
-            case '"':  Output << "&quot;"; break;
-            default:   Output << ch; break;
-         }
-      }
-   }
-   else {
-      CSTRING str = to_cstring(String);
-      for (auto j=0; str[j]; j++) {
-         switch (str[j]) {
-            case '&':  Output << "&amp;"; break;
-            case '<':  Output << "&lt;"; break;
-            case '>':  Output << "&gt;"; break;
-            case '"':  Output << "&quot;"; break;
-            default:   Output << str[j]; break;
-         }
+   if (Value) return std::string_view(Value);
+   return std::string_view();
+}
+
+static void output_attribvalue(std::string_view String, std::ostringstream &Output)
+{
+   for (char ch : String) {
+      switch (ch) {
+         case '&':  Output << "&amp;"; break;
+         case '<':  Output << "&lt;"; break;
+         case '>':  Output << "&gt;"; break;
+         case '"':  Output << "&quot;"; break;
+         default:   Output << ch; break;
       }
    }
 }
@@ -57,42 +48,55 @@ static bool is_name_start(char ch)
 
 inline void skip_ws(const char *&ptr)
 {
-   while ((ptr) and (*ptr) and (*ptr <= 0x20)) ptr++;
+   if (!ptr) return;
+
+   std::string_view view(ptr);
+   size_t offset = 0;
+
+   while ((offset < view.size()) and (view[offset] <= 0x20)) offset++;
+
+   ptr += offset;
 }
 
 //********************************************************************************************************************
 
 static bool ci_keyword(const char *&ptr, std::string_view keyword)
 {
+   if ((!ptr) or (keyword.size() IS 0)) return false;
+
    auto to_lower = [](char ch) constexpr -> char {
-      return (ch >= 'A' and ch <= 'Z') ? ch + 0x20 : ch;
+      if ((ch >= 'A') and (ch <= 'Z')) return ch + 0x20;
+      return ch;
    };
 
-   auto p = ptr;
-   auto k = keyword.begin();
+   std::string_view view(ptr);
+   size_t offset = 0;
 
-   while ((*p) and (k != keyword.end())) {
-      if (to_lower(*p) != to_lower(*k)) return false;
-      ++p;
-      ++k;
+   for (char key_ch : keyword) {
+      if (offset >= view.size()) return false;
+      if (to_lower(view[offset]) != to_lower(key_ch)) return false;
+      offset++;
    }
 
-   if (k != keyword.end()) return false;
-   if ((is_name_char(*p)) and (*p != '[')) return false;
+   if ((offset < view.size()) and (is_name_char(view[offset])) and (view[offset] != '[')) return false;
 
-   ptr = p;
+   ptr += offset;
    return true;
 }
 
 static bool read_name(const char *&ptr, std::string &Result)
 {
-   if (!is_name_start(*ptr)) return false;
+   if (!ptr) return false;
 
-   auto start = ptr;
-   ptr++;
-   while (is_name_char(*ptr)) ptr++;
+   std::string_view view(ptr);
+   if (view.size() IS 0) return false;
+   if (!is_name_start(view.front())) return false;
 
-   Result.assign(start, ptr - start);
+   size_t length = 1;
+   while ((length < view.size()) and is_name_char(view[length])) length++;
+
+   Result.assign(view.data(), length);
+   ptr += length;
    return true;
 }
 
@@ -192,56 +196,48 @@ static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
    if ((quote != '"') and (quote != '\'')) return false;
 
    ptr++;
+   std::string_view view(ptr);
+   size_t offset = 0;
    std::string buffer;
 
-   while ((*ptr) and (*ptr != quote)) {
-      if (*ptr IS '%') {
-         ptr++;
-         const char *start = ptr;
-         while (*ptr and is_name_char(*ptr)) ptr++;
-         if (*ptr IS ';') {
-            std::string name(start, ptr - start);
-            std::string resolved;
-            if (resolve_entity_internal(Self, name, resolved, true, EntityStack, ParameterStack) IS ERR::Okay) {
-               buffer += resolved;
-            }
-            else {
-               buffer.append("%");
-               buffer += name;
-               buffer.append(";");
-            }
-            ptr++;
-            continue;
-         }
+   while (offset < view.size()) {
+      auto ch = view[offset];
+      if (ch IS quote) {
+         ptr = view.data() + offset + 1;
+         Result.swap(buffer);
+         return true;
       }
-      else if (*ptr IS '&') {
-         ptr++;
-         const char *start = ptr;
-         while (*ptr and is_name_char(*ptr)) ptr++;
-         if (*ptr IS ';') {
-            std::string name(start, ptr - start);
+
+      if ((ch IS '%') or (ch IS '&')) {
+         bool parameter = (ch IS '%');
+         size_t name_start = offset + 1;
+         size_t name_end = name_start;
+
+         while ((name_end < view.size()) and is_name_char(view[name_end])) name_end++;
+
+         if ((name_end < view.size()) and (view[name_end] IS ';')) {
+            std::string name(view.substr(name_start, name_end - name_start));
             std::string resolved;
-            if (resolve_entity_internal(Self, name, resolved, false, EntityStack, ParameterStack) IS ERR::Okay) {
-               buffer += resolved;
-            }
+            bool entity_ok = (resolve_entity_internal(Self, name, resolved, parameter, EntityStack, ParameterStack) IS ERR::Okay);
+
+            if (entity_ok) buffer += resolved;
             else {
-               buffer.append("&");
-               buffer += name;
-               buffer.append(";");
+               buffer.push_back(parameter ? '%' : '&');
+               buffer.append(name);
+               buffer.push_back(';');
             }
-            ptr++;
+
+            offset = name_end + 1;
             continue;
          }
       }
 
-      buffer.push_back(*ptr);
-      ptr++;
+      buffer.push_back(ch);
+      offset++;
    }
 
-   if (*ptr != quote) return false;
-   ptr++;
-   Result.swap(buffer);
-   return true;
+   ptr = view.data() + view.size();
+   return false;
 }
 
 static void parse_doctype(extXML *Self, CSTRING Input)
@@ -302,8 +298,10 @@ static void parse_doctype(extXML *Self, CSTRING Input)
 
                std::string name;
                if (!read_name(str, name)) {
-                  while ((*str) and (*str != '>')) str++;
-                  if (*str IS '>') str++;
+                  std::string_view remainder(str ? str : "");
+                  auto close = remainder.find('>');
+                  if (close IS std::string_view::npos) str += remainder.size();
+                  else str += close + 1;
                   continue;
                }
 
@@ -327,15 +325,19 @@ static void parse_doctype(extXML *Self, CSTRING Input)
                   }
                }
 
-               while ((*str) and (*str != '>')) str++;
-               if (*str IS '>') str++;
+               std::string_view remainder(str ? str : "");
+               auto close = remainder.find('>');
+               if (close IS std::string_view::npos) str += remainder.size();
+               else str += close + 1;
             }
             else if (ci_keyword(str, "NOTATION")) {
                skip_ws(str);
                std::string name;
                if (!read_name(str, name)) {
-                  while ((*str) and (*str != '>')) str++;
-                  if (*str IS '>') str++;
+                  std::string_view remainder(str ? str : "");
+                  auto close = remainder.find('>');
+                  if (close IS std::string_view::npos) str += remainder.size();
+                  else str += close + 1;
                   continue;
                }
                skip_ws(str);
@@ -360,12 +362,16 @@ static void parse_doctype(extXML *Self, CSTRING Input)
 
                if (!notation_value.empty()) Self->Notations[name] = notation_value;
 
-               while ((*str) and (*str != '>')) str++;
-               if (*str IS '>') str++;
+               std::string_view remainder(str ? str : "");
+               auto close = remainder.find('>');
+               if (close IS std::string_view::npos) str += remainder.size();
+               else str += close + 1;
             }
             else {
-               while ((*str) and (*str != '>')) str++;
-               if (*str IS '>') str++;
+               std::string_view remainder(str ? str : "");
+               auto close = remainder.find('>');
+               if (close IS std::string_view::npos) str += remainder.size();
+               else str += close + 1;
             }
          }
          else str++;

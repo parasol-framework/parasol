@@ -732,7 +732,8 @@ static ERR XML_InsertContent(extXML *Self, struct xml::InsertContent *Args)
    if (!src) return log.warning(ERR::NotFound);
 
    std::ostringstream buffer;
-   output_attribvalue(std::string(Args->Content), buffer);
+   auto content_view = view_or_empty(Args->Content);
+   output_attribvalue(content_view, buffer);
    XMLTag content(glTagID++, 0, { { "", buffer.str() } });
 
    if (Args->Where IS XMI::NEXT) {
