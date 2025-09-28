@@ -691,6 +691,8 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       State.next();
       extract_content(Self, Tags.back().Children, State);
 
+      // Each cycle of the loop needs to start with an open tag
+
       while ((not State.done()) and (State.current() IS '<') and
              (State.cursor.size() > 1) and (State.cursor[1] != '/')) {
          auto error = parse_tag(Self, Tags.back().Children, State);
@@ -740,18 +742,17 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.
 
-   log.trace("Extracting tag information with parse_tag()");
+   log.branch("Parsing incoming text stream...");
 
-   while ((not Text.empty()) and (Text.front() != '<')) {
-      if (Text.front() IS '\n') Self->LineNo++;
-      Text.remove_prefix(1);
-   }
-   if (Text.empty()) {
+   ParseState state(Text);
+   
+   state.skipTo('<', Self->LineNo); // Skip any leading whitespace or content
+   if (state.done()) {
       Self->ParseError = log.warning(ERR::InvalidData);
       return Self->ParseError;
    }
 
-   ParseState state(Text);
+   // Each cycle of the loop needs to start with an open tag
 
    while ((not state.done()) and (state.current() IS '<') and
           (state.cursor.size() > 1) and (state.cursor[1] != '/')) {
@@ -767,7 +768,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
       state.skipTo('<', Self->LineNo);
    }
 
-   // If the WELL_FORMED flag has been used, check that the tags balance.  If they don't then return ERR::InvalidData.
+   // If the WELL_FORMED flag is used, the tags must balance.
 
    if ((Self->Flags & XMF::WELL_FORMED) != XMF::NIL) {
       if (state.Balance != 0) return log.warning(ERR::UnbalancedXML);
