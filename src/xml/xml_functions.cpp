@@ -2,30 +2,21 @@
 //********************************************************************************************************************
 // Output an XML string with escape characters.
 
-template <class T> void output_attribvalue(T &&String, std::ostringstream &Output)
+inline std::string_view view_or_empty(CSTRING Value)
 {
-   if constexpr (std::is_convertible_v<T, std::string_view>) {
-      std::string_view str_view = String;
-      for (char ch : str_view) {
-         switch (ch) {
-            case '&':  Output << "&amp;"; break;
-            case '<':  Output << "&lt;"; break;
-            case '>':  Output << "&gt;"; break;
-            case '"':  Output << "&quot;"; break;
-            default:   Output << ch; break;
-         }
-      }
-   }
-   else {
-      CSTRING str = to_cstring(String);
-      for (auto j=0; str[j]; j++) {
-         switch (str[j]) {
-            case '&':  Output << "&amp;"; break;
-            case '<':  Output << "&lt;"; break;
-            case '>':  Output << "&gt;"; break;
-            case '"':  Output << "&quot;"; break;
-            default:   Output << str[j]; break;
-         }
+   if (Value) return std::string_view(Value);
+   return std::string_view();
+}
+
+static void output_attribvalue(std::string_view String, std::ostringstream &Output)
+{
+   for (char ch : String) {
+      switch (ch) {
+         case '&':  Output << "&amp;"; break;
+         case '<':  Output << "&lt;"; break;
+         case '>':  Output << "&gt;"; break;
+         case '"':  Output << "&quot;"; break;
+         default:   Output << ch; break;
       }
    }
 }
@@ -44,7 +35,7 @@ static bool is_name_char(char ch)
 inline void assign_string(STRING &Target, const std::string &Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
-   if (!Value.empty()) Target = pf::strclone(Value);
+   if (not Value.empty()) Target = pf::strclone(Value);
 }
 
 static bool is_name_start(char ch)
@@ -57,42 +48,55 @@ static bool is_name_start(char ch)
 
 inline void skip_ws(const char *&ptr)
 {
-   while ((ptr) and (*ptr) and (*ptr <= 0x20)) ptr++;
+   if (not ptr) return;
+
+   std::string_view view(ptr);
+   size_t offset = 0;
+
+   while ((offset < view.size()) and (view[offset] <= 0x20)) offset++;
+
+   ptr += offset;
 }
 
 //********************************************************************************************************************
 
 static bool ci_keyword(const char *&ptr, std::string_view keyword)
 {
+   if ((not ptr) or (keyword.empty())) return false;
+
    auto to_lower = [](char ch) constexpr -> char {
-      return (ch >= 'A' and ch <= 'Z') ? ch + 0x20 : ch;
+      if ((ch >= 'A') and (ch <= 'Z')) return ch + 0x20;
+      return ch;
    };
 
-   auto p = ptr;
-   auto k = keyword.begin();
+   std::string_view view(ptr);
+   size_t offset = 0;
 
-   while ((*p) and (k != keyword.end())) {
-      if (to_lower(*p) != to_lower(*k)) return false;
-      ++p;
-      ++k;
+   for (char key_ch : keyword) {
+      if (offset >= view.size()) return false;
+      if (to_lower(view[offset]) != to_lower(key_ch)) return false;
+      offset++;
    }
 
-   if (k != keyword.end()) return false;
-   if ((is_name_char(*p)) and (*p != '[')) return false;
+   if ((offset < view.size()) and (is_name_char(view[offset])) and (view[offset] != '[')) return false;
 
-   ptr = p;
+   ptr += offset;
    return true;
 }
 
 static bool read_name(const char *&ptr, std::string &Result)
 {
-   if (!is_name_start(*ptr)) return false;
+   if (not ptr) return false;
 
-   auto start = ptr;
-   ptr++;
-   while (is_name_char(*ptr)) ptr++;
+   std::string_view view(ptr);
+   if (view.empty()) return false;
+   if (not is_name_start(view.front())) return false;
 
-   Result.assign(start, ptr - start);
+   size_t length = 1;
+   while ((length < view.size()) and is_name_char(view[length])) length++;
+
+   Result.assign(view.data(), length);
+   ptr += length;
    return true;
 }
 
@@ -186,67 +190,59 @@ static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::s
 static bool read_quoted(extXML *Self, const char *&ptr, std::string &Result,
    std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
 {
-   if ((!ptr) or (!*ptr)) return false;
+   if ((not ptr) or (not *ptr)) return false;
 
    auto quote = *ptr;
    if ((quote != '"') and (quote != '\'')) return false;
 
    ptr++;
+   std::string_view view(ptr);
+   size_t offset = 0;
    std::string buffer;
 
-   while ((*ptr) and (*ptr != quote)) {
-      if (*ptr IS '%') {
-         ptr++;
-         const char *start = ptr;
-         while (*ptr and is_name_char(*ptr)) ptr++;
-         if (*ptr IS ';') {
-            std::string name(start, ptr - start);
-            std::string resolved;
-            if (resolve_entity_internal(Self, name, resolved, true, EntityStack, ParameterStack) IS ERR::Okay) {
-               buffer += resolved;
-            }
-            else {
-               buffer.append("%");
-               buffer += name;
-               buffer.append(";");
-            }
-            ptr++;
-            continue;
-         }
+   while (offset < view.size()) {
+      auto ch = view[offset];
+      if (ch IS quote) {
+         ptr = view.data() + offset + 1;
+         Result.swap(buffer);
+         return true;
       }
-      else if (*ptr IS '&') {
-         ptr++;
-         const char *start = ptr;
-         while (*ptr and is_name_char(*ptr)) ptr++;
-         if (*ptr IS ';') {
-            std::string name(start, ptr - start);
+
+      if ((ch IS '%') or (ch IS '&')) {
+         bool parameter = (ch IS '%');
+         size_t name_start = offset + 1;
+         size_t name_end = name_start;
+
+         while ((name_end < view.size()) and is_name_char(view[name_end])) name_end++;
+
+         if ((name_end < view.size()) and (view[name_end] IS ';')) {
+            std::string name(view.substr(name_start, name_end - name_start));
             std::string resolved;
-            if (resolve_entity_internal(Self, name, resolved, false, EntityStack, ParameterStack) IS ERR::Okay) {
-               buffer += resolved;
-            }
+            bool entity_ok = (resolve_entity_internal(Self, name, resolved, parameter, EntityStack, ParameterStack) IS ERR::Okay);
+
+            if (entity_ok) buffer += resolved;
             else {
-               buffer.append("&");
-               buffer += name;
-               buffer.append(";");
+               buffer.push_back(parameter ? '%' : '&');
+               buffer.append(name);
+               buffer.push_back(';');
             }
-            ptr++;
+
+            offset = name_end + 1;
             continue;
          }
       }
 
-      buffer.push_back(*ptr);
-      ptr++;
+      buffer.push_back(ch);
+      offset++;
    }
 
-   if (*ptr != quote) return false;
-   ptr++;
-   Result.swap(buffer);
-   return true;
+   ptr = view.data() + view.size();
+   return false;
 }
 
 static void parse_doctype(extXML *Self, CSTRING Input)
 {
-   if (!Input) return;
+   if (not Input) return;
 
    const char *str = Input;
 
@@ -254,7 +250,7 @@ static void parse_doctype(extXML *Self, CSTRING Input)
    skip_ws(str);
 
    std::string document_type;
-   if (!read_name(str, document_type)) return;
+   if (not read_name(str, document_type)) return;
 
    assign_string(Self->DocType, document_type);
    if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
@@ -289,7 +285,7 @@ static void parse_doctype(extXML *Self, CSTRING Input)
 
       while (*str) {
          skip_ws(str);
-         if (!*str) break;
+         if (not *str) break;
          if (*str IS ']') { str++; break; }
 
          if ((*str IS '<') and (str[1] IS '!')) {
@@ -301,9 +297,11 @@ static void parse_doctype(extXML *Self, CSTRING Input)
                if (*str IS '%') { parameter = true; str++; skip_ws(str); }
 
                std::string name;
-               if (!read_name(str, name)) {
-                  while ((*str) and (*str != '>')) str++;
-                  if (*str IS '>') str++;
+               if (not read_name(str, name)) {
+                  std::string_view remainder(str ? str : "");
+                  auto close = remainder.find('>');
+                  if (close IS std::string_view::npos) str += remainder.size();
+                  else str += close + 1;
                   continue;
                }
 
@@ -327,15 +325,19 @@ static void parse_doctype(extXML *Self, CSTRING Input)
                   }
                }
 
-               while ((*str) and (*str != '>')) str++;
-               if (*str IS '>') str++;
+               std::string_view remainder(str ? str : "");
+               auto close = remainder.find('>');
+               if (close IS std::string_view::npos) str += remainder.size();
+               else str += close + 1;
             }
             else if (ci_keyword(str, "NOTATION")) {
                skip_ws(str);
                std::string name;
-               if (!read_name(str, name)) {
-                  while ((*str) and (*str != '>')) str++;
-                  if (*str IS '>') str++;
+               if (not read_name(str, name)) {
+                  std::string_view remainder(str ? str : "");
+                  auto close = remainder.find('>');
+                  if (close IS std::string_view::npos) str += remainder.size();
+                  else str += close + 1;
                   continue;
                }
                skip_ws(str);
@@ -358,14 +360,18 @@ static void parse_doctype(extXML *Self, CSTRING Input)
                   read_quoted(Self, str, notation_value, entity_stack, parameter_stack);
                }
 
-               if (!notation_value.empty()) Self->Notations[name] = notation_value;
+               if (not notation_value.empty()) Self->Notations[name] = notation_value;
 
-               while ((*str) and (*str != '>')) str++;
-               if (*str IS '>') str++;
+               std::string_view remainder(str ? str : "");
+               auto close = remainder.find('>');
+               if (close IS std::string_view::npos) str += remainder.size();
+               else str += close + 1;
             }
             else {
-               while ((*str) and (*str != '>')) str++;
-               if (*str IS '>') str++;
+               std::string_view remainder(str ? str : "");
+               auto close = remainder.find('>');
+               if (close IS std::string_view::npos) str += remainder.size();
+               else str += close + 1;
             }
          }
          else str++;
@@ -465,7 +471,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          str++;
       }
 
-      if (!str[0]) {
+      if (not str[0]) {
          log.warning("Detected malformed comment (missing --> terminator).");
          return ERR::InvalidData;
       }
@@ -480,8 +486,8 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    line_no = Self->LineNo;
    int8_t raw_content;
 
-   if (!strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
-   else if (!strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }
+   if (not strncmp("![CDATA[", str, 8)) { raw_content = RAW_CDATA; str += 8; }
+   else if (not strncmp("![NDATA[", str, 8)) { raw_content = RAW_NDATA; str += 8; }
    else raw_content = RAW_NONE;
 
    if (raw_content) {
@@ -505,7 +511,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
             }
             else if ((str[len] IS ']') and (str[len+1] IS ']') and (str[len+2] IS '>')) {
                nest--;
-               if (!nest) break;
+               if (not nest) break;
             }
             else if (str[len] IS '\n') Self->LineNo++;
          }
@@ -513,12 +519,12 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       // CDATA counts as content and therefore can be stripped out
 
-      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (!len)) {
+      if (((Self->Flags & XMF::STRIP_CONTENT) != XMF::NIL) or (not len)) {
          State.Pos = str + len + 3;
          return ERR::NothingDone;
       }
 
-      if (!str[len]) {
+      if (not str[len]) {
          log.warning("Malformed XML:  A CDATA section is missing its closing string.");
          return ERR::InvalidData;
       }
@@ -647,7 +653,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    // Resolve prefixed tag names to namespace IDs
 
    if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
-      if (!tag.Attribs[0].Name.empty()) {
+      if (not tag.Attribs[0].Name.empty()) {
          auto &tag_name = tag.Attribs[0].Name;
          if (auto colon = tag_name.find(':'); colon != std::string::npos) {
             std::string prefix = tag_name.substr(0, colon);
@@ -663,7 +669,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    State.Pos = str;
 
-   if ((*State.Pos IS '>') and (!tag.Attribs.empty()) and
+   if ((*State.Pos IS '>') and (not tag.Attribs.empty()) and
        (tag.Attribs[0].Name[0] != '!') and (tag.Attribs[0].Name[0] != '?')) {
       // We reached the end of an open tag.  Extract the content within it and handle any child tags.
 
@@ -733,7 +739,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
    ParseState state;
    CSTRING str;
    for (str=Text; (*str) and (*str != '<'); str++) if (*str IS '\n') Self->LineNo++;
-   if (!str[0]) {
+   if (not str[0]) {
       Self->ParseError = log.warning(ERR::InvalidData);
       return Self->ParseError;
    }
@@ -777,7 +783,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, CSTRING Text)
 static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
 {
    if (Tag.Attribs[0].isContent()) {
-      if (!Tag.Attribs[0].Value.empty()) {
+      if (not Tag.Attribs[0].Value.empty()) {
          if ((Tag.Flags & XTF::CDATA) != XTF::NIL) {
             if ((Flags & XMF::STRIP_CDATA) IS XMF::NIL) Buffer << "<![CDATA[";
             Buffer << Tag.Attribs[0].Value;
@@ -797,7 +803,7 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
       }
    }
    else if ((Flags & XMF::OMIT_TAGS) != XMF::NIL) {
-      if (!Tag.Children.empty()) {
+      if (not Tag.Children.empty()) {
          for (auto &child : Tag.Children) {
             serialise_xml(child, Buffer, Flags);
          }
@@ -810,10 +816,10 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
       bool insert_space = false;
       for (auto &scan : Tag.Attribs) {
          if (insert_space) Buffer << ' ';
-         if (!scan.Name.empty()) output_attribvalue(scan.Name, Buffer);
+         if (not scan.Name.empty()) output_attribvalue(scan.Name, Buffer);
 
-         if (!scan.Value.empty()) {
-            if (!scan.Name.empty()) Buffer << '=';
+         if (not scan.Value.empty()) {
+            if (not scan.Name.empty()) Buffer << '=';
             Buffer << '"';
             output_attribvalue(scan.Value, Buffer);
             Buffer << '"';
@@ -829,9 +835,9 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
          Buffer << '>';
          if ((Flags & XMF::READABLE) != XMF::NIL) Buffer << '\n';
       }
-      else if (!Tag.Children.empty()) {
+      else if (not Tag.Children.empty()) {
          Buffer << '>';
-         if (!Tag.Children[0].Attribs[0].isContent()) Buffer << '\n';
+         if (not Tag.Children[0].Attribs[0].isContent()) Buffer << '\n';
 
          for (auto &child : Tag.Children) {
             serialise_xml(child, Buffer, Flags);
@@ -901,7 +907,7 @@ static ERR parse_source(extXML *Self)
 static ERR get_content(extXML *Self, XMLTag &Tag, STRING Buffer, int Size)
 {
    Buffer[0] = 0;
-   if (!Tag.Children.empty()) {
+   if (not Tag.Children.empty()) {
       int j = 0;
       for (auto &scan : Tag.Children) {
          if (scan.Attribs.empty()) continue; // Sanity check (there should always be at least 1 attribute)
