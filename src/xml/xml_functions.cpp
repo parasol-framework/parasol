@@ -1,6 +1,8 @@
 //********************************************************************************************************************
 // String utilities and character classification
 
+#include <ankerl/unordered_dense.h>
+
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
    size_t last_pos = 0;
@@ -71,10 +73,10 @@ static std::string_view read_name(std::string_view &view) noexcept
 }
 
 static void expand_entity_references(extXML *Self, std::string &Value,
-   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack);
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack);
 
 static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
-   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+   bool Parameter, ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
    pf::Log log(__FUNCTION__);
 
@@ -95,7 +97,7 @@ static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::s
 }
 
 static void expand_entity_references(extXML *Self, std::string &Value,
-   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
    if (Value.empty()) return;
 
@@ -153,13 +155,13 @@ static void expand_entity_references(extXML *Self, std::string &Value,
 
 ERR extXML::resolveEntity(const std::string &Name, std::string &Value, bool Parameter)
 {
-   std::unordered_set<std::string> entity_stack;
-   std::unordered_set<std::string> parameter_stack;
+   ankerl::unordered_dense::set<std::string> entity_stack;
+   ankerl::unordered_dense::set<std::string> parameter_stack;
    return resolve_entity_internal(this, Name, Value, Parameter, entity_stack, parameter_stack);
 }
 
 static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
-   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
    if (State.done()) return false;
 
@@ -240,8 +242,8 @@ static void parse_doctype(extXML *Self, ParseState &State)
    State.next(type_view.size());
    State.skipWhitespace(Self->LineNo);
 
-   std::unordered_set<std::string> entity_stack;
-   std::unordered_set<std::string> parameter_stack;
+   ankerl::unordered_dense::set<std::string> entity_stack;
+   ankerl::unordered_dense::set<std::string> parameter_stack;
 
    if (ci_keyword(State, "PUBLIC")) {
       State.skipWhitespace(Self->LineNo);
