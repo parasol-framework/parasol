@@ -49,7 +49,7 @@ struct ParseState {
       return current();
    }
 
-   ParseState() : cursor(nullptr), Balance(0), DefaultNamespace(0) { }
+   ParseState() : cursor(), Balance(0), DefaultNamespace(0) { }
    ParseState(std::string_view Text) : cursor(Text), Balance(0), DefaultNamespace(0) { }
 
    // Copy constructor for inheriting namespace context from parent scope
