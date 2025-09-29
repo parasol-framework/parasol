@@ -121,10 +121,7 @@ static void expand_entity_references(extXML *Self, std::string &Value,
             name_length++;
          }
 
-         if (name_length > 0 and
-             name_length < view.size() and
-             view[name_length] IS ';') {
-
+         if ((name_length > 0) and (name_length < view.size()) and (view[name_length] IS ';')) {
             auto name_view = view.substr(0, name_length);
             std::string resolved;
 

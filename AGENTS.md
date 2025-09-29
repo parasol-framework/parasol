@@ -63,11 +63,11 @@ Performing the build and install process is essential if intending to run `paras
 The framework uses a modular architecture where each major feature is implemented as a separate module:
 - Each module is in `src/[module_name]/` with its own `CMakeLists.txt`
 - Static builds link all modules into the core, while modular builds load them dynamically
-- Module definitions are stored in `.fdl` files which generate C headers and IDL strings
+- Module definitions are stored in `.fdl` files which generate C++ headers and IDL strings
 
 ### Object System and FDL Files
 
-Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
+Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to generate documentation, include files and C++ stubs:
 - FDL files define classes, methods, fields, and constants
 - Build system generates C/C++ headers from FDL using tools in `tools/idl/`
 - Class implementations are in `class_*.cpp` files
@@ -89,7 +89,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 #### Fluid Script Execution Model
 
 **CRITICAL: Fluid scripts execute top-to-bottom with NO entry point function**
-- Always study existing `.fluid` files (like `docs/generate.fluid`, `examples/*.fluid`) to understand patterns
+- Always study existing `.fluid` files (like `tools/docgen.fluid`, `examples/*.fluid`) to understand patterns
 - API documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
 
 #### Fluid Coding Patterns
@@ -98,7 +98,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension:
 ```bash
 # Key example files to examine:
 examples/*.fluid          # Application examples
-docs/generate.fluid       # Process execution example
+tools/docgen.fluid        # Process execution example
 tools/*.fluid             # Build and utility scripts
 scripts/gui/*.fluid       # GUI component examples
 scripts/*.fluid           # APIs
@@ -116,9 +116,9 @@ Tests are written in Fluid and executed with the Flute test runner:
 - Always use `--gfx-driver=headless` for CI/automated testing
 - You can append `--log-api` to the runner to see log messages
 
-**Proper Flute Test Command Format:**
+**Flute Test Command Format:**
 
-**For Windows (use relative paths to avoid path separator issues):**
+**For Windows (relative paths avoid path separator issues):**
 ```bash
 cd src/network/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test_bind_address.fluid --gfx-driver=headless
 ```
@@ -219,7 +219,16 @@ For Fluid code, verify:
 **MANDATORY: Always compile after making C++ changes**
 - After making changes to C++ source files, you MUST verify compilation by building the affected module(s)
 - This is required before considering any code changes complete
-- Use the module-specific build target to test individual modules quickly
+- Your system will require a full build and install initially, but subsequent builds can define a build target to test individual modules quickly
+
+**Full Build Commands:**
+```bash
+# Build everything
+cmake --build build/agents --config Release -j 8
+
+# Install after successful build
+cmake --install build/agents
+```
 
 **Module Build Commands:**
 ```bash
@@ -231,18 +240,6 @@ cmake --build build/agents --config Release --target network -j 8    # For netwo
 cmake --build build/agents --config Release --target vector -j 8     # For vector changes
 cmake --build build/agents --config Release --target svg -j 8        # For SVG changes
 ```
-
-**Full Build Commands:**
-```bash
-# Build everything
-cmake --build build/agents --config Release -j 8
-
-# Install after successful build
-cmake --install build/agents
-```
-
-**SSL-Specific Testing:**
-- If working with SSL code, ensure build is configured with SSL support
 
 ### Documentation
 
