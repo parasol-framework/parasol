@@ -102,6 +102,18 @@ static void expand_entity_references(extXML *Self, std::string &Value,
 {
    if (Value.empty()) return;
 
+   // Scan for entities first to avoid allocation if none present
+
+   bool has_entities = false;
+   for (size_t i = 0; i < Value.size(); ++i) {
+      if ((Value[i] IS '%' or Value[i] IS '&') and (i + 1 < Value.size())) {
+         has_entities = true;
+         break;
+      }
+   }
+
+   if (not has_entities) return;
+
    std::string output;
    output.reserve(Value.size() * 2); // Pre-allocate larger buffer to reduce reallocations
 
@@ -115,7 +127,6 @@ static void expand_entity_references(extXML *Self, std::string &Value,
          view.remove_prefix(1); // Skip the % or &
 
          // Find the name end using string_view operations
-         auto name_start = view;
          size_t name_length = 0;
          while (name_length < view.size() and is_name_char(view[name_length])) {
             name_length++;
@@ -127,7 +138,7 @@ static void expand_entity_references(extXML *Self, std::string &Value,
 
             // Only create string if resolution succeeds to avoid unnecessary allocation
             if (resolve_entity_internal(Self, std::string(name_view), resolved, is_parameter, EntityStack, ParameterStack) IS ERR::Okay) {
-               output += resolved;
+               output.append(resolved);
             }
             else { // Reconstruct the original entity reference
                output.push_back(is_parameter ? '%' : '&');
@@ -148,7 +159,7 @@ static void expand_entity_references(extXML *Self, std::string &Value,
       }
    }
 
-   Value.swap(output);
+   Value = std::move(output);
 }
 
 ERR extXML::resolveEntity(const std::string &Name, std::string &Value, bool Parameter)
@@ -373,17 +384,17 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
       State.skipTo('<', Self->LineNo);
       return;
    }
-   
+
    if ((Self->Flags & XMF::INCLUDE_WHITESPACE) IS XMF::NIL) {
       // Skip initial whitespace to find content.  We only drop content strings when they are pure whitespace.
-   
+
       auto original = State.cursor;
       auto ch = State.skipWhitespace(Self->LineNo); // Find first non-whitespace character
-            
+
       // If we found content (not '<'), reset to original position to preserve leading whitespace
       if ((not State.done()) and (ch != '<')) State.cursor = original;
    }
-   
+
    if ((not State.done()) and (State.current() != '<')) {
       auto content = State;
       State.skipTo('<', Self->LineNo);
@@ -772,7 +783,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    Tags.reserve(std::max(size_t(Text.size() / 100), size_t(16)));
 
    ParseState state(Text);
-   
+
    state.skipTo('<', Self->LineNo); // Skip any leading whitespace or content
    if (state.done()) {
       Self->ParseError = log.warning(ERR::InvalidData);
@@ -825,15 +836,18 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
             if ((Flags & XMF::STRIP_CDATA) IS XMF::NIL) Buffer << "]]>";
          }
          else {
-            auto &str = Tag.Attribs[0].Value;
-            for (auto j=0; str[j]; j++) {
-               switch (str[j]) {
-                  case '&': Buffer << "&amp;"; break;
-                  case '<': Buffer << "&lt;"; break;
-                  case '>': Buffer << "&gt;"; break;
-                  default:  Buffer << str[j]; break;
+            // Use lookup table for efficient escaping (matching output_attribvalue)
+            const auto &str = Tag.Attribs[0].Value;
+            size_t last_pos = 0;
+            for (size_t j = 0; j < str.size(); ++j) {
+               auto escape = xml_escape_table[uint8_t(str[j])];
+               if (escape) {
+                  if (j > last_pos) Buffer.write(str.data() + last_pos, j - last_pos);
+                  Buffer << escape;
+                  last_pos = j + 1;
                }
             }
+            if (last_pos < str.size()) Buffer.write(str.data() + last_pos, str.size() - last_pos);
          }
       }
    }
