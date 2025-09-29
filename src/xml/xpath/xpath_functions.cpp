@@ -1459,6 +1459,7 @@ XPathValue XPathFunctionLibrary::function_round_half_to_even(const std::vector<X
       factor = std::pow(10.0, precision);
       if (std::isnan(factor) or std::isinf(factor) or factor IS 0.0) return XPathValue(value);
       scaled = value * factor;
+      if (std::isnan(scaled) or std::isinf(scaled)) return XPathValue(value);
    }
    else if (precision < 0) {
       negative_precision = true;
