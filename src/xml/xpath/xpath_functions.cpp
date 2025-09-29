@@ -832,6 +832,251 @@ static std::string format_with_picture(const DateTimeComponents &Components, con
    return output;
 }
 
+static std::string format_seconds_field(double Value)
+{
+   if (Value < 0.0) Value = 0.0;
+
+   double integral_part = 0.0;
+   double fractional_part = std::modf(Value, &integral_part);
+
+   long long integral_seconds = (long long)integral_part;
+   long long fractional_microseconds = (long long)std::llround(fractional_part * 1000000.0);
+
+   if (fractional_microseconds >= 1000000ll) {
+      fractional_microseconds -= 1000000ll;
+      ++integral_seconds;
+   }
+
+   std::string seconds = format_integer_component(integral_seconds, 2, true);
+
+   if (fractional_microseconds > 0ll) {
+      std::string fractional_digits = std::to_string(fractional_microseconds);
+      while (fractional_digits.length() < 6u) fractional_digits.insert(0u, 1u, '0');
+      while ((!fractional_digits.empty()) and (fractional_digits.back() IS '0')) fractional_digits.pop_back();
+      if (!fractional_digits.empty()) {
+         seconds.push_back('.');
+         seconds.append(fractional_digits);
+      }
+   }
+
+   return seconds;
+}
+
+static std::string serialise_date_only(const DateTimeComponents &Components, bool IncludeTimezone)
+{
+   std::string result;
+   result.append(format_integer_component(Components.year, 4, true));
+   result.push_back('-');
+   result.append(format_integer_component(Components.month, 2, true));
+   result.push_back('-');
+   result.append(format_integer_component(Components.day, 2, true));
+
+   if (IncludeTimezone and Components.has_timezone) result.append(format_timezone(Components));
+
+   return result;
+}
+
+static std::string serialise_time_only(const DateTimeComponents &Components, bool IncludeTimezone)
+{
+   std::string result;
+   result.append(format_integer_component(Components.hour, 2, true));
+   result.push_back(':');
+   result.append(format_integer_component(Components.minute, 2, true));
+   result.push_back(':');
+   result.append(format_seconds_field(Components.second));
+
+   if (IncludeTimezone and Components.has_timezone) result.append(format_timezone(Components));
+
+   return result;
+}
+
+static std::string serialise_date_time_components(const DateTimeComponents &Components)
+{
+   std::string result = serialise_date_only(Components, false);
+   result.push_back('T');
+   result.append(serialise_time_only(Components, true));
+   return result;
+}
+
+static bool combine_date_and_time(const std::string &DateValue, const std::string &TimeValue,
+   DateTimeComponents &Combined)
+{
+   DateTimeComponents date_components;
+   if (!parse_date_value(DateValue, date_components)) return false;
+
+   DateTimeComponents time_components;
+   if (!parse_time_value(TimeValue, time_components)) return false;
+
+   Combined = date_components;
+   Combined.hour = time_components.hour;
+   Combined.minute = time_components.minute;
+   Combined.second = time_components.second;
+   Combined.has_time = time_components.has_time;
+
+   bool date_has_timezone = date_components.has_timezone;
+   bool time_has_timezone = time_components.has_timezone;
+
+   if (date_has_timezone and time_has_timezone) {
+      if (date_components.timezone_offset_minutes != time_components.timezone_offset_minutes) return false;
+      Combined.has_timezone = true;
+      Combined.timezone_offset_minutes = time_components.timezone_offset_minutes;
+      Combined.timezone_is_utc = time_components.timezone_is_utc;
+   }
+   else if (time_has_timezone) {
+      Combined.has_timezone = true;
+      Combined.timezone_offset_minutes = time_components.timezone_offset_minutes;
+      Combined.timezone_is_utc = time_components.timezone_is_utc;
+   }
+   else if (date_has_timezone) {
+      Combined.has_timezone = true;
+      Combined.timezone_offset_minutes = date_components.timezone_offset_minutes;
+      Combined.timezone_is_utc = date_components.timezone_is_utc;
+   }
+   else {
+      Combined.has_timezone = false;
+      Combined.timezone_offset_minutes = 0;
+      Combined.timezone_is_utc = false;
+   }
+
+   return true;
+}
+
+static bool parse_timezone_duration(const std::string &Text, int &OffsetMinutes)
+{
+   DurationComponents components;
+   if (!parse_duration_components(Text, components)) return false;
+
+   normalise_duration_components(components);
+
+   if (components.has_year or components.has_month or components.has_day) return false;
+   if (components.has_second) return false;
+
+   long long total_minutes = components.hours.count() * 60ll + components.minutes.count();
+   if (components.negative) total_minutes = -total_minutes;
+
+   if (total_minutes < -14ll * 60ll or total_minutes > 14ll * 60ll) return false;
+
+   OffsetMinutes = (int)total_minutes;
+   return true;
+}
+
+static std::string format_timezone_duration(int OffsetMinutes)
+{
+   if (OffsetMinutes IS 0) return std::string("PT0S");
+
+   std::string result;
+   if (OffsetMinutes < 0) {
+      result.append("-PT");
+      OffsetMinutes = -OffsetMinutes;
+   }
+   else {
+      result.append("PT");
+   }
+
+   int hours = OffsetMinutes / 60;
+   int minutes = OffsetMinutes % 60;
+
+   if (hours != 0) {
+      result.append(std::to_string(hours));
+      result.push_back('H');
+   }
+
+   if (minutes != 0) {
+      result.append(std::to_string(minutes));
+      result.push_back('M');
+   }
+
+   if ((hours IS 0) and (minutes IS 0)) result.append("0S");
+
+   return result;
+}
+
+static bool components_to_utc_time(const DateTimeComponents &Components, int ImplicitTimezoneMinutes,
+   std::chrono::sys_time<std::chrono::microseconds> &UtcTime)
+{
+   using namespace std::chrono;
+
+   int year_value = Components.has_date ? Components.year : 1970;
+   int month_value = Components.has_date ? Components.month : 1;
+   int day_value = Components.has_date ? Components.day : 1;
+
+   year y(year_value);
+   month m(month_value);
+   day d(day_value);
+
+   if (!y.ok() or !m.ok() or !d.ok()) return false;
+
+   year_month_day ymd(y, m, d);
+   if (!ymd.ok()) return false;
+
+   sys_days day_point(ymd);
+
+   int hour = Components.has_time ? Components.hour : 0;
+   int minute = Components.has_time ? Components.minute : 0;
+   double seconds_value = Components.has_time ? Components.second : 0.0;
+
+   double integral_part = 0.0;
+   double fractional_part = std::modf(seconds_value, &integral_part);
+
+   long long integral_seconds = (long long)integral_part;
+   long long microseconds_value = (long long)std::llround(fractional_part * 1000000.0);
+
+   if (microseconds_value >= 1000000ll) {
+      microseconds_value -= 1000000ll;
+      ++integral_seconds;
+   }
+
+   auto time_duration = hours(hour) + minutes(minute) + seconds(integral_seconds)
+      + microseconds(microseconds_value);
+
+   sys_time<microseconds> local_time(day_point.time_since_epoch() + duration_cast<microseconds>(time_duration));
+
+   int timezone_offset = Components.has_timezone ? Components.timezone_offset_minutes : ImplicitTimezoneMinutes;
+
+   UtcTime = local_time - minutes(timezone_offset);
+   return true;
+}
+
+static DateTimeComponents components_from_utc_time(const std::chrono::sys_time<std::chrono::microseconds> &UtcTime,
+   int TargetOffsetMinutes, bool IncludeTimezone, bool IncludeDate, bool IncludeTime)
+{
+   using namespace std::chrono;
+
+   sys_time<microseconds> local_time = UtcTime + minutes(TargetOffsetMinutes);
+   auto day_point = floor<days>(local_time);
+
+   DateTimeComponents result;
+
+   if (IncludeDate) {
+      year_month_day ymd(day_point);
+      result.year = int(ymd.year());
+      result.month = (int)unsigned(ymd.month());
+      result.day = (int)unsigned(ymd.day());
+      result.has_date = true;
+   }
+
+   if (IncludeTime) {
+      auto day_time = local_time - day_point;
+      auto hour_duration = duration_cast<hours>(day_time);
+      auto minute_duration = duration_cast<minutes>(day_time - hour_duration);
+      auto second_duration = duration_cast<seconds>(day_time - hour_duration - minute_duration);
+      auto micro_duration = duration_cast<microseconds>(day_time - hour_duration - minute_duration - second_duration);
+
+      result.hour = (int)hour_duration.count();
+      result.minute = (int)minute_duration.count();
+      result.second = (double)second_duration.count() + (double)micro_duration.count() / 1000000.0;
+      result.has_time = true;
+   }
+
+   if (IncludeTimezone) {
+      result.has_timezone = true;
+      result.timezone_offset_minutes = TargetOffsetMinutes;
+      result.timezone_is_utc = (TargetOffsetMinutes IS 0);
+   }
+
+   return result;
+}
+
 static std::string format_integer_picture(long long Value, const std::string &Picture)
 {
    bool negative = Value < 0;
@@ -1540,6 +1785,26 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("current-date", function_current_date);
    register_function("current-time", function_current_time);
    register_function("current-dateTime", function_current_date_time);
+   register_function("dateTime", function_date_time);
+   register_function("year-from-dateTime", function_year_from_date_time);
+   register_function("month-from-dateTime", function_month_from_date_time);
+   register_function("day-from-dateTime", function_day_from_date_time);
+   register_function("hours-from-dateTime", function_hours_from_date_time);
+   register_function("minutes-from-dateTime", function_minutes_from_date_time);
+   register_function("seconds-from-dateTime", function_seconds_from_date_time);
+   register_function("timezone-from-dateTime", function_timezone_from_date_time);
+   register_function("year-from-date", function_year_from_date);
+   register_function("month-from-date", function_month_from_date);
+   register_function("day-from-date", function_day_from_date);
+   register_function("timezone-from-date", function_timezone_from_date);
+   register_function("hours-from-time", function_hours_from_time);
+   register_function("minutes-from-time", function_minutes_from_time);
+   register_function("seconds-from-time", function_seconds_from_time);
+   register_function("timezone-from-time", function_timezone_from_time);
+   register_function("adjust-dateTime-to-timezone", function_adjust_date_time_to_timezone);
+   register_function("adjust-date-to-timezone", function_adjust_date_to_timezone);
+   register_function("adjust-time-to-timezone", function_adjust_time_to_timezone);
+   register_function("implicit-timezone", function_implicit_timezone);
    register_function("years-from-duration", function_years_from_duration);
    register_function("months-from-duration", function_months_from_duration);
    register_function("days-from-duration", function_days_from_duration);
@@ -3175,6 +3440,392 @@ XPathValue XPathFunctionLibrary::function_current_date_time(const std::vector<XP
    combined.append(time);
    combined.push_back('Z');
    return XPathValue(XPathValueType::DateTime, std::move(combined));
+}
+
+XPathValue XPathFunctionLibrary::function_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue();
+   if (Args[0].is_empty() or Args[1].is_empty()) return XPathValue();
+
+   std::string date_value = Args[0].to_string();
+   std::string time_value = Args[1].to_string();
+
+   DateTimeComponents combined;
+   if (!combine_date_and_time(date_value, time_value, combined)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue();
+   }
+
+   return XPathValue(XPathValueType::DateTime, serialise_date_time_components(combined));
+}
+
+XPathValue XPathFunctionLibrary::function_year_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components) or !components.has_date) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.year);
+}
+
+XPathValue XPathFunctionLibrary::function_month_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components) or !components.has_date) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.month);
+}
+
+XPathValue XPathFunctionLibrary::function_day_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components) or !components.has_date) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.day);
+}
+
+XPathValue XPathFunctionLibrary::function_hours_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components) or !components.has_time) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.hour);
+}
+
+XPathValue XPathFunctionLibrary::function_minutes_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components) or !components.has_time) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.minute);
+}
+
+XPathValue XPathFunctionLibrary::function_seconds_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components) or !components.has_time) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue(components.second);
+}
+
+XPathValue XPathFunctionLibrary::function_timezone_from_date_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(Args[0].to_string(), components)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue();
+   }
+
+   if (!components.has_timezone) return XPathValue();
+
+   return XPathValue(format_timezone_duration(components.timezone_offset_minutes));
+}
+
+XPathValue XPathFunctionLibrary::function_year_from_date(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_value(Args[0].to_string(), components) or !components.has_date) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.year);
+}
+
+XPathValue XPathFunctionLibrary::function_month_from_date(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_value(Args[0].to_string(), components) or !components.has_date) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.month);
+}
+
+XPathValue XPathFunctionLibrary::function_day_from_date(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_value(Args[0].to_string(), components) or !components.has_date) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.day);
+}
+
+XPathValue XPathFunctionLibrary::function_timezone_from_date(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_date_value(Args[0].to_string(), components)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue();
+   }
+
+   if (!components.has_timezone) return XPathValue();
+
+   return XPathValue(format_timezone_duration(components.timezone_offset_minutes));
+}
+
+XPathValue XPathFunctionLibrary::function_hours_from_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_time_value(Args[0].to_string(), components) or !components.has_time) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.hour);
+}
+
+XPathValue XPathFunctionLibrary::function_minutes_from_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_time_value(Args[0].to_string(), components) or !components.has_time) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue((double)components.minute);
+}
+
+XPathValue XPathFunctionLibrary::function_seconds_from_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_time_value(Args[0].to_string(), components) or !components.has_time) {
+      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+   }
+
+   return XPathValue(components.second);
+}
+
+XPathValue XPathFunctionLibrary::function_timezone_from_time(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   DateTimeComponents components;
+   if (!parse_time_value(Args[0].to_string(), components)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue();
+   }
+
+   if (!components.has_timezone) return XPathValue();
+
+   return XPathValue(format_timezone_duration(components.timezone_offset_minutes));
+}
+
+XPathValue XPathFunctionLibrary::function_adjust_date_time_to_timezone(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   std::string value = Args[0].to_string();
+   DateTimeComponents components;
+   if (!parse_date_time_components(value, components)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue(XPathValueType::DateTime, value);
+   }
+
+   bool remove_timezone = false;
+   bool have_target = false;
+   int target_offset = 0;
+
+   if (Args.size() > 1u) {
+      if (Args[1].is_empty()) {
+         remove_timezone = true;
+      }
+      else {
+         int parsed_offset = 0;
+         if (!parse_timezone_duration(Args[1].to_string(), parsed_offset)) {
+            if (Context.expression_unsupported) *Context.expression_unsupported = true;
+            return XPathValue(XPathValueType::DateTime, value);
+         }
+         target_offset = parsed_offset;
+         have_target = true;
+      }
+   }
+
+   if (remove_timezone) {
+      components.has_timezone = false;
+      components.timezone_offset_minutes = 0;
+      components.timezone_is_utc = false;
+      return XPathValue(XPathValueType::DateTime, serialise_date_time_components(components));
+   }
+
+   if (!have_target) {
+      target_offset = 0;
+      have_target = true;
+   }
+
+   std::chrono::sys_time<std::chrono::microseconds> utc_time;
+   if (!components_to_utc_time(components, 0, utc_time)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue(XPathValueType::DateTime, value);
+   }
+
+   DateTimeComponents adjusted = components_from_utc_time(utc_time, target_offset, true, true, true);
+   return XPathValue(XPathValueType::DateTime, serialise_date_time_components(adjusted));
+}
+
+XPathValue XPathFunctionLibrary::function_adjust_date_to_timezone(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   std::string value = Args[0].to_string();
+   DateTimeComponents components;
+   if (!parse_date_value(value, components)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue(XPathValueType::Date, value);
+   }
+
+   bool remove_timezone = false;
+   bool have_target = false;
+   int target_offset = 0;
+
+   if (Args.size() > 1u) {
+      if (Args[1].is_empty()) {
+         remove_timezone = true;
+      }
+      else {
+         int parsed_offset = 0;
+         if (!parse_timezone_duration(Args[1].to_string(), parsed_offset)) {
+            if (Context.expression_unsupported) *Context.expression_unsupported = true;
+            return XPathValue(XPathValueType::Date, value);
+         }
+         target_offset = parsed_offset;
+         have_target = true;
+      }
+   }
+
+   if (remove_timezone) {
+      components.has_timezone = false;
+      components.timezone_offset_minutes = 0;
+      components.timezone_is_utc = false;
+      return XPathValue(XPathValueType::Date, serialise_date_only(components, false));
+   }
+
+   if (!have_target) {
+      target_offset = 0;
+      have_target = true;
+   }
+
+   std::chrono::sys_time<std::chrono::microseconds> utc_time;
+   if (!components_to_utc_time(components, 0, utc_time)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue(XPathValueType::Date, value);
+   }
+
+   DateTimeComponents adjusted = components_from_utc_time(utc_time, target_offset, true, true, false);
+   return XPathValue(XPathValueType::Date, serialise_date_only(adjusted, true));
+}
+
+XPathValue XPathFunctionLibrary::function_adjust_time_to_timezone(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args[0].is_empty()) return XPathValue();
+
+   std::string value = Args[0].to_string();
+   DateTimeComponents components;
+   if (!parse_time_value(value, components)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue(XPathValueType::Time, value);
+   }
+
+   bool remove_timezone = false;
+   bool have_target = false;
+   int target_offset = 0;
+
+   if (Args.size() > 1u) {
+      if (Args[1].is_empty()) {
+         remove_timezone = true;
+      }
+      else {
+         int parsed_offset = 0;
+         if (!parse_timezone_duration(Args[1].to_string(), parsed_offset)) {
+            if (Context.expression_unsupported) *Context.expression_unsupported = true;
+            return XPathValue(XPathValueType::Time, value);
+         }
+         target_offset = parsed_offset;
+         have_target = true;
+      }
+   }
+
+   if (remove_timezone) {
+      components.has_timezone = false;
+      components.timezone_offset_minutes = 0;
+      components.timezone_is_utc = false;
+      return XPathValue(XPathValueType::Time, serialise_time_only(components, false));
+   }
+
+   if (!have_target) {
+      target_offset = 0;
+      have_target = true;
+   }
+
+   std::chrono::sys_time<std::chrono::microseconds> utc_time;
+   if (!components_to_utc_time(components, 0, utc_time)) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue(XPathValueType::Time, value);
+   }
+
+   DateTimeComponents adjusted = components_from_utc_time(utc_time, target_offset, true, false, true);
+   return XPathValue(XPathValueType::Time, serialise_time_only(adjusted, true));
+}
+
+XPathValue XPathFunctionLibrary::function_implicit_timezone(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   return XPathValue(std::string("PT0S"));
 }
 
 XPathValue XPathFunctionLibrary::function_years_from_duration(const std::vector<XPathValue> &Args,
