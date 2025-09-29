@@ -216,7 +216,7 @@ if (WIN32)
       if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
          set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
       endif ()
-      set (INIT_LINK "init-win" core)
+      set (INIT_LINK "init-win" parasol_static)
    else ()
       set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
       set (INIT_LINK "init-win")
@@ -224,7 +224,7 @@ if (WIN32)
 else ()
    # Note that compiling with -static in Linux is disabled because it appears to cause segfaults when writing __thread variables.
    if (PARASOL_STATIC)
-      set (INIT_LINK "init-unix" core)
+      set (INIT_LINK "init-unix" parasol_static)
    else ()
       set (INIT_LINK "init-unix")
    endif ()
@@ -373,9 +373,14 @@ function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
    # Ensure all modules have a minimum level of dependencies, this ensures a minimally
    # functioning environment is created when building individual targets with --target
 
-   if (NOT ARG_TARGET IN_LIST REQUIRED_MODS)
-      add_dependencies (${ARG_TARGET} ${REQUIRED_MODS})
-   endif()
+   # Create a list of required modules excluding the current target to avoid circular dependencies
+   if (NOT (ARG_TARGET STREQUAL core))
+      if (ARG_TARGET IN_LIST REQUIRED_MODS)
+         add_dependencies (${ARG_TARGET} core)
+      else ()
+         add_dependencies (${ARG_TARGET} ${REQUIRED_MODS})
+      endif ()
+   endif ()
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -598,10 +603,10 @@ if (NOT DISABLE_AUDIO)
    list (APPEND LIB_LIST audio)
 endif ()
 
-if (NOT DISABLE_BACKSTAGE AND NOT DISABLE_NETWORK)
-   add_subdirectory (src/backstage)
-   list (APPEND LIB_LIST backstage)
-endif()
+#if (NOT DISABLE_BACKSTAGE AND NOT DISABLE_NETWORK)
+#   add_subdirectory (src/backstage)
+#   list (APPEND LIB_LIST backstage)
+#endif()
 
 if (NOT DISABLE_DISPLAY)
    add_subdirectory (src/display)
@@ -667,6 +672,19 @@ add_subdirectory (src/xml)
 add_subdirectory (src/json)
 
 add_subdirectory (src/launcher)
+
+# --------------------------------------------------------------------------------------------------------------------
+# Create a combined static library that links all modules together
+# This breaks the circular dependencies by having a separate target own all the inter-module linkage
+
+if (PARASOL_STATIC)
+   # Create an interface library that groups all modules together
+   add_library (parasol_static INTERFACE)
+
+   target_link_libraries (parasol_static INTERFACE core ${LIB_LIST})
+
+   message(STATUS "Created combined interface library 'parasol_static' with modules: core ${LIB_LIST}")
+endif ()
 
 # --------------------------------------------------------------------------------------------------------------------
 # Generate the platform configuration header

@@ -140,9 +140,6 @@ target_include_directories (core PRIVATE
 
 target_link_libraries (core PRIVATE zlib)
 
-if (PARASOL_STATIC)
-   target_link_libraries (core PRIVATE ${LIB_LIST})
-endif ()
 
 if (WIN32)
    target_sources (core PRIVATE microsoft/windows.cpp)
