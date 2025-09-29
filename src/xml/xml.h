@@ -11,13 +11,81 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <ankerl/unordered_dense.h>
+
+constexpr std::array<uint64_t, 4> name_char_table = []() {
+   std::array<uint64_t, 4> table{0, 0, 0, 0};
+   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
+   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
+   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
+   for (uint8_t c = '0'; c <= '9'; ++c) set_bit(c);
+   set_bit('.');
+   set_bit('-');
+   set_bit('_');
+   set_bit(':');
+   return table;
+}();
+
+constexpr std::array<uint64_t, 4> name_start_table = []() {
+   std::array<uint64_t, 4> table{0, 0, 0, 0};
+   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
+   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
+   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
+   set_bit('_');
+   set_bit(':');
+   return table;
+}();
+
+constexpr std::array<char, 256> to_lower_table = []() {
+   std::array<char, 256> table{};
+   for (int i = 0; i < 256; ++i) {
+      char ch = static_cast<char>(i);
+      table[i] = ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
+   }
+   return table;
+}();
+
+constexpr bool is_name_char(char ch) noexcept
+{
+   return (name_char_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
+}
+
+constexpr bool is_name_start(char ch) noexcept
+{
+   return (name_start_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
+}
+
+constexpr char to_lower(char ch) noexcept
+{
+   return to_lower_table[uint8_t(ch)];
+}
+
+// XML entity escape sequences
+constexpr std::string_view xml_entities[] = {
+   "&amp;", "&lt;", "&gt;", "&quot;"
+};
+
+constexpr char xml_chars[] = { '&', '<', '>', '"' };
+
+// Optimized lookup table for XML character escaping
+constexpr std::array<const char*, 256> xml_escape_table = []() {
+   std::array<const char*, 256> table{};
+   for (int i = 0; i < 256; ++i) {
+      table[i] = nullptr; // Most characters don't need escaping
+   }
+   table['&'] = "&amp;";
+   table['<'] = "&lt;";
+   table['>'] = "&gt;";
+   table['"'] = "&quot;";
+   return table;
+}();
 
 struct ParseState {
    std::string_view cursor;
    int   Balance;  // Indicates that the tag structure is correctly balanced if zero
 
    // Namespace context for this parsing scope
-   std::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
+   ankerl::unordered_dense::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
    uint32_t DefaultNamespace;                  // Default namespace URI hash
    inline char current() const { return cursor.empty() ? '\0' : cursor.front(); }
    inline bool done() const { return cursor.empty(); }
@@ -100,7 +168,7 @@ class extXML : public objXML {
    // Link prefixes to namespace URIs
    // WARNING: If the XML document overwrites namespace URIs on the same prefix name (legal!)
    // then this lookup table returns the most recently assigned URI.
-   std::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
+   ankerl::unordered_dense::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 

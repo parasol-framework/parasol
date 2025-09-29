@@ -1,48 +1,30 @@
-
 //********************************************************************************************************************
-// C++20 constexpr string utilities and character classification
+// String utilities and character classification
 
-constexpr bool is_name_char(char ch) noexcept
-{
-   return ((ch >= 'A') and (ch <= 'Z')) or
-          ((ch >= 'a') and (ch <= 'z')) or
-          ((ch >= '0') and (ch <= '9')) or
-          (ch IS '.') or (ch IS '-') or (ch IS '_') or (ch IS ':');
-}
-
-constexpr bool is_name_start(char ch) noexcept
-{
-   return ((ch >= 'A') and (ch <= 'Z')) or
-          ((ch >= 'a') and (ch <= 'z')) or
-          (ch IS '_') or (ch IS ':');
-}
-
-constexpr char to_lower(char ch) noexcept
-{
-   return ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
-}
-
-// XML entity escape sequences
-constexpr std::string_view xml_entities[] = {
-   "&amp;", "&lt;", "&gt;", "&quot;"
-};
-
-constexpr char xml_chars[] = { '&', '<', '>', '"' };
+#include <ankerl/unordered_dense.h>
+#include <vector>
 
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
-   for (char ch : String) {
-      switch (ch) {
-         case '&':  Output << "&amp;"; break;
-         case '<':  Output << "&lt;"; break;
-         case '>':  Output << "&gt;"; break;
-         case '"':  Output << "&quot;"; break;
-         default:   Output << ch; break;
+   size_t last_pos = 0;
+   for (size_t i = 0; i < String.size(); ++i) {
+      auto escape = xml_escape_table[static_cast<unsigned char>(String[i])];
+      if (escape) {
+         // Output any unescaped characters before this one
+         if (i > last_pos) {
+            Output.write(String.data() + last_pos, i - last_pos);
+         }
+         Output << escape;
+         last_pos = i + 1;
       }
+   }
+   // Output any remaining unescaped characters
+   if (last_pos < String.size()) {
+      Output.write(String.data() + last_pos, String.size() - last_pos);
    }
 }
 
-inline void assign_string(STRING &Target, const std::string &Value)
+inline void assign_string(STRING &Target, const std::string_view Value)
 {
    if (Target) { FreeResource(Target); Target = nullptr; }
    if (not Value.empty()) Target = pf::strclone(Value);
@@ -92,10 +74,10 @@ static std::string_view read_name(std::string_view &view) noexcept
 }
 
 static void expand_entity_references(extXML *Self, std::string &Value,
-   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack);
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack);
 
 static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::string &Value,
-   bool Parameter, std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+   bool Parameter, ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
    pf::Log log(__FUNCTION__);
 
@@ -116,7 +98,7 @@ static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::s
 }
 
 static void expand_entity_references(extXML *Self, std::string &Value,
-   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
    if (Value.empty()) return;
 
@@ -174,13 +156,13 @@ static void expand_entity_references(extXML *Self, std::string &Value,
 
 ERR extXML::resolveEntity(const std::string &Name, std::string &Value, bool Parameter)
 {
-   std::unordered_set<std::string> entity_stack;
-   std::unordered_set<std::string> parameter_stack;
+   ankerl::unordered_dense::set<std::string> entity_stack;
+   ankerl::unordered_dense::set<std::string> parameter_stack;
    return resolve_entity_internal(this, Name, Value, Parameter, entity_stack, parameter_stack);
 }
 
 static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
-   std::unordered_set<std::string> &EntityStack, std::unordered_set<std::string> &ParameterStack)
+   ankerl::unordered_dense::set<std::string> &EntityStack, ankerl::unordered_dense::set<std::string> &ParameterStack)
 {
    if (State.done()) return false;
 
@@ -251,7 +233,7 @@ static void parse_doctype(extXML *Self, ParseState &State)
    auto type_view = read_name(view);
    if (type_view.empty()) return;
 
-   assign_string(Self->DocType, std::string(type_view));
+   assign_string(Self->DocType, type_view);
    if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
    if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    Self->Entities.clear();
@@ -261,8 +243,8 @@ static void parse_doctype(extXML *Self, ParseState &State)
    State.next(type_view.size());
    State.skipWhitespace(Self->LineNo);
 
-   std::unordered_set<std::string> entity_stack;
-   std::unordered_set<std::string> parameter_stack;
+   ankerl::unordered_dense::set<std::string> entity_stack;
+   ankerl::unordered_dense::set<std::string> parameter_stack;
 
    if (ci_keyword(State, "PUBLIC")) {
       State.skipWhitespace(Self->LineNo);
@@ -428,6 +410,43 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 //********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
+class NamespaceScopeGuard {
+   private:
+   struct PrefixEntry {
+      std::string Prefix;
+      bool Restore;
+      uint32_t PreviousValue;
+   };
+
+   ParseState &state;
+   uint32_t default_namespace;
+   std::vector<PrefixEntry> entries;
+
+   public:
+   explicit NamespaceScopeGuard(ParseState &StateRef)
+      : state(StateRef), default_namespace(StateRef.DefaultNamespace)
+   {
+   }
+
+   ~NamespaceScopeGuard()
+   {
+      for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+         if (it->Restore) {
+            state.PrefixMap[it->Prefix] = it->PreviousValue;
+         }
+         else {
+            state.PrefixMap.erase(it->Prefix);
+         }
+      }
+      state.DefaultNamespace = default_namespace;
+   }
+
+   void registerInsertion(const std::string &Prefix, bool Inserted, uint32_t PreviousValue = 0)
+   {
+      entries.push_back(PrefixEntry{Prefix, not Inserted, PreviousValue});
+   }
+};
+
 static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
@@ -436,15 +455,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    log.traceBranch("%.*s", int(State.cursor.size()), State.cursor.data());
 
-   // Save current namespace context to restore later (for proper scoping)
-   auto saved_prefix_map = State.PrefixMap;
-   auto saved_default_namespace = State.DefaultNamespace;
-
-   // Use Defer to ensure namespace context is always restored when function exits
-   auto restore_namespace = pf::Defer([&]() {
-      State.PrefixMap = saved_prefix_map;
-      State.DefaultNamespace = saved_default_namespace;
-   });
+   NamespaceScopeGuard namespace_guard(State);
 
    if (State.current() != '<') {
       log.warning("Malformed XML statement detected.");
@@ -605,35 +616,36 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          State.skipWhitespace(Self->LineNo);
 
          std::string val;
+         val.reserve(64); // Reserve space for typical attribute value
 
          if (State.current() IS '"') {
             State.next();
-            auto value_state = State;
+            auto value_start = State.cursor.data();
             while ((not State.done()) and (State.current() != '"')) {
                if (State.current() IS '\n') Self->LineNo++;
                State.next();
             }
-            val.assign(value_state.cursor.data(), State - value_state);
+            val.assign(value_start, State.cursor.data() - value_start);
             if (State.current() IS '"') State.next();
          }
          else if (State.current() IS '\'') {
             State.next();
-            auto value_state = State;
+            auto value_start = State.cursor.data();
             while ((not State.done()) and (State.current() != '\'')) {
                if (State.current() IS '\n') Self->LineNo++;
                State.next();
             }
-            val.assign(value_state.cursor.data(), State - value_state);
+            val.assign(value_start, State.cursor.data() - value_start);
             if (State.current() IS '\'') State.next();
          }
          else {
-            auto value_state = State;
+            auto value_start = State.cursor.data();
             while ((not State.done()) and (State.current() > 0x20) and (State.current() != '>')) {
                if ((State.current() IS '/') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
                if ((State.current() IS '?') and (State.cursor.size() > 1) and (State.cursor[1] IS '>')) break;
                State.next();
             }
-            val.assign(value_state.cursor.data(), State - value_state);
+            val.assign(value_start, State.cursor.data() - value_start);
          }
 
          tag.Attribs.emplace_back(std::string(name), val);
@@ -648,7 +660,16 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                else if ((name.size() > 6) and (name[5] IS ':')) {
                   std::string prefix(name.substr(6));
                   Self->Prefixes[prefix] = ns_hash;
-                  State.PrefixMap[prefix] = ns_hash;
+                  auto result = State.PrefixMap.try_emplace(prefix, ns_hash);
+                  if (result.second) {
+                     namespace_guard.registerInsertion(prefix, true);
+                  }
+                  else {
+                     auto &existing = result.first->second;
+                     auto previous = existing;
+                     namespace_guard.registerInsertion(prefix, false, previous);
+                     existing = ns_hash;
+                  }
                }
             }
          }

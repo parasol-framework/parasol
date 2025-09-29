@@ -606,7 +606,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     <field>
       <name>DocType</name>
       <comment>Root element name from DOCTYPE declaration</comment>
-      <access read="R">Read</access>
+      <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
     </field>
 
@@ -654,7 +654,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     <field>
       <name>PublicID</name>
       <comment>Public identifier for external DTD</comment>
-      <access read="R">Read</access>
+      <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
     </field>
 
@@ -705,7 +705,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     <field>
       <name>SystemID</name>
       <comment>System identifier for external DTD</comment>
-      <access read="R">Read</access>
+      <access read="R" write="S">Read/Set</access>
       <type>STRING</type>
     </field>
 
