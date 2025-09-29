@@ -1658,7 +1658,6 @@ XPathValue XPathFunctionLibrary::function_insert_before(const std::vector<XPathV
       else insert_index = (size_t)(floored - 1);
    }
 
-   if (insert_index > length) insert_index = length;
 
    SequenceBuilder builder;
 
