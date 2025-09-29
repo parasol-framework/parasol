@@ -196,6 +196,18 @@ class XPathFunctionLibrary {
    static XPathValue function_false(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_lang(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_exists(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_index_of(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_empty(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_distinct_values(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_insert_before(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_remove(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_reverse(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_subsequence(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_unordered(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_deep_equal(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_zero_or_one(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_one_or_more(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_exactly_one(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_number(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_sum(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_floor(const std::vector<XPathValue> &Args, const XPathContext &Context);

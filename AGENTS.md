@@ -219,7 +219,7 @@ For Fluid code, verify:
 **MANDATORY: Always compile after making C++ changes**
 - After making changes to C++ source files, you MUST verify compilation by building the affected module(s)
 - This is required before considering any code changes complete
-- Your system will require a full build and install initially, but subsequent builds can define a build target to test individual modules quickly
+- There is a dependency on `parasol_cmd` being built by cmake in order to make the `parasol` executable available to run tests.
 
 **Full Build Commands:**
 ```bash
