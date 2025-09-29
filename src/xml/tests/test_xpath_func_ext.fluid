@@ -72,6 +72,40 @@ function testMathFunctions()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Ensure trace() produces pass-through results while emitting diagnostics
+
+function testTraceFunction()
+   local xml = obj.new("xml", {
+      statement = '<root><item id="a">Alpha</item><item id="b">Beta</item></root>'
+   })
+
+   local err, nodeId = xml.mtFindTag('/root/item[trace(@id, "ids") = "a"]')
+   assert(err == ERR_Okay, 'trace() should preserve attribute values during predicates: ' .. mSys.GetErrorMsg(err))
+   assert(nodeId != nil, 'trace() predicate should locate the first matching item')
+
+   local err2, contentId = xml.mtFindTag('/root/item[trace(., "content") = "Beta"]')
+   assert(err2 == ERR_Okay, 'trace() should expose node string values: ' .. mSys.GetErrorMsg(err2))
+   local _, attrValue = xml.mtGetAttrib(contentId, 'id')
+   assert(attrValue == 'b', 'trace() should return the original node-set without modification')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify error() reports diagnostics and halts XPath evaluation
+
+function testErrorFunction()
+   local xml = obj.new("xml", {
+      statement = '<root><item code="A">Alpha</item></root>'
+   })
+
+   local err = xml.mtFindTag('/root/item[error("err:TEST0001", "Forced failure", @code)]')
+   assert(err != ERR_Okay, 'error() should signal a failing predicate evaluation')
+
+   local message = nz(xml.errorMsg, '')
+   assert(message == 'XPath error err:TEST0001: Forced failure [A]',
+      'error() should populate the XML error message with detail, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Validate date and time helper functions
 
 function testDateTimeFunctions()
@@ -130,6 +164,8 @@ return {
       'testUriEncodingFunctions',
       'testRegexFunctions',
       'testMathFunctions',
+      'testTraceFunction',
+      'testErrorFunction',
       'testDateTimeFunctions',
       'testValueComparisonOperators'
    },

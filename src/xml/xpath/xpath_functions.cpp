@@ -140,6 +140,84 @@ static std::string apply_string_case(const std::string &Value, bool Upper)
    return result;
 }
 
+static std::string describe_xpath_value(const XPathValue &Value)
+{
+   switch (Value.type) {
+      case XPathValueType::Boolean:
+         return Value.boolean_value ? std::string("true") : std::string("false");
+      case XPathValueType::Number:
+         return Value.to_string();
+      case XPathValueType::String:
+      case XPathValueType::Date:
+      case XPathValueType::Time:
+      case XPathValueType::DateTime:
+         return Value.string_value;
+      case XPathValueType::NodeSet: {
+         std::vector<std::string> entries;
+
+         if (Value.node_set_string_override.has_value()) {
+            entries.push_back(*Value.node_set_string_override);
+         }
+         else if (not Value.node_set_attributes.empty()) {
+            for (const XMLAttrib *attribute : Value.node_set_attributes) {
+               if (not attribute) continue;
+               entries.push_back(attribute->Value);
+            }
+         }
+         else if (not Value.node_set_string_values.empty()) {
+            entries.insert(entries.end(), Value.node_set_string_values.begin(), Value.node_set_string_values.end());
+         }
+         else {
+            for (XMLTag *node : Value.node_set) {
+               if (not node) continue;
+               entries.push_back(XPathValue::node_string_value(node));
+            }
+         }
+
+         size_t total_count = entries.size();
+         if ((total_count IS 0) and not Value.node_set.empty()) total_count = Value.node_set.size();
+         if ((total_count IS 0) and not Value.node_set_attributes.empty()) total_count = Value.node_set_attributes.size();
+         if ((total_count IS 0) and not Value.node_set_string_values.empty()) {
+            total_count = Value.node_set_string_values.size();
+         }
+
+         if (entries.empty()) {
+            if (total_count IS 0) return std::string("()");
+         }
+
+         size_t summary_limit = entries.size();
+         if (summary_limit > 3) summary_limit = 3;
+
+         std::string summary;
+         for (size_t index = 0; index < summary_limit; ++index) {
+            if (index > 0) summary.append(", ");
+            summary.append(entries[index]);
+         }
+
+         if (entries.size() > summary_limit) summary.append(", ...");
+
+         if (total_count > 1) {
+            std::string result;
+            result.reserve(summary.length() + 24);
+            result.append("node-set[");
+            result.append(std::to_string(total_count));
+            result.append("]");
+            if (not summary.empty()) {
+               result.append(": ");
+               result.append(summary);
+            }
+            return result;
+         }
+
+         if (not summary.empty()) return summary;
+
+         return std::string("()");
+      }
+   }
+
+   return std::string();
+}
+
 pf::SyntaxOptions build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 {
    pf::SyntaxOptions options = pf::SyntaxECMAScript;
@@ -475,6 +553,10 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("matches", function_matches);
    register_function("replace", function_replace);
    register_function("tokenize", function_tokenize);
+
+   // Diagnostics Functions
+   register_function("error", function_error);
+   register_function("trace", function_trace);
 
    // Boolean Functions
    register_function("boolean", function_boolean);
@@ -1072,6 +1154,81 @@ XPathValue XPathFunctionLibrary::function_escape_html_uri(const std::vector<XPat
    else input = Args[0].to_string();
 
    return XPathValue(escape_html_uri_impl(input));
+}
+
+XPathValue XPathFunctionLibrary::function_error(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   std::string error_code = "err:FOER0000";
+   std::string description = "User-defined error";
+   std::string detail;
+
+   if (not Args.empty()) {
+      const XPathValue &code_value = Args[0];
+      if (not code_value.is_empty()) error_code = code_value.to_string();
+   }
+
+   if (Args.size() > 1) {
+      const XPathValue &description_value = Args[1];
+      if (not description_value.is_empty()) description = description_value.to_string();
+   }
+
+   if (Args.size() > 2) {
+      const XPathValue &detail_value = Args[2];
+      if (not detail_value.is_empty()) detail = describe_xpath_value(detail_value);
+   }
+
+   pf::Log log(__FUNCTION__);
+
+   if (detail.empty()) {
+      log.warning("XPath error (%s): %s", error_code.c_str(), description.c_str());
+   }
+   else {
+      log.warning("XPath error (%s): %s [%s]", error_code.c_str(), description.c_str(), detail.c_str());
+   }
+
+   if (Context.expression_unsupported) {
+      *Context.expression_unsupported = true;
+   }
+
+   if (Context.document) {
+      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
+      Context.document->ErrorMsg.append("XPath error ");
+      Context.document->ErrorMsg.append(error_code);
+      Context.document->ErrorMsg.append(": ");
+      Context.document->ErrorMsg.append(description);
+      if (not detail.empty()) {
+         Context.document->ErrorMsg.append(" [");
+         Context.document->ErrorMsg.append(detail);
+         Context.document->ErrorMsg.append("]");
+      }
+   }
+
+   return XPathValue();
+}
+
+XPathValue XPathFunctionLibrary::function_trace(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue();
+
+   const XPathValue &value = Args[0];
+   std::string label = "trace";
+
+   if (Args.size() > 1) {
+      const XPathValue &label_value = Args[1];
+      if (not label_value.is_empty()) label = label_value.to_string();
+   }
+
+   if (label.empty()) label = "trace";
+
+   std::string summary = describe_xpath_value(value);
+   if (summary.empty()) summary = std::string("()");
+
+   pf::Log log(__FUNCTION__);
+   log.msg("XPath trace [%s]: %s", label.c_str(), summary.c_str());
+
+   (void)Context;
+
+   return value;
 }
 
 XPathValue XPathFunctionLibrary::function_matches(const std::vector<XPathValue> &Args, const XPathContext &Context)
