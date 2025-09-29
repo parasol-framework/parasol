@@ -30,6 +30,7 @@
 #include <sstream>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 
 #include "../../link/regex.h"
 
@@ -292,6 +293,205 @@ static void append_numbers_from_value(const XPathValue &Value, std::vector<doubl
       case XPathValueType::NodeSet:
          append_numbers_from_nodeset(Value, Numbers);
          break;
+   }
+}
+
+struct SequenceBuilder
+{
+   std::vector<XMLTag *> nodes;
+   std::vector<const XMLAttrib *> attributes;
+   std::vector<std::string> strings;
+};
+
+static size_t sequence_length(const XPathValue &Value)
+{
+   if (Value.type IS XPathValueType::NodeSet) {
+      size_t length = Value.node_set.size();
+      if (length < Value.node_set_attributes.size()) length = Value.node_set_attributes.size();
+      if (length < Value.node_set_string_values.size()) length = Value.node_set_string_values.size();
+      if ((length IS 0) and Value.node_set_string_override.has_value()) length = 1;
+      return length;
+   }
+
+   return Value.is_empty() ? 0 : 1;
+}
+
+static std::string sequence_item_string(const XPathValue &Value, size_t Index)
+{
+   if (Value.type IS XPathValueType::NodeSet) {
+      if (Index < Value.node_set_string_values.size()) return Value.node_set_string_values[Index];
+
+      bool use_override = Value.node_set_string_override.has_value() and (Index IS 0) and
+         Value.node_set_string_values.empty();
+      if (use_override) return *Value.node_set_string_override;
+
+      if (Index < Value.node_set_attributes.size()) {
+         const XMLAttrib *attribute = Value.node_set_attributes[Index];
+         if (attribute) return attribute->Value;
+      }
+
+      if (Index < Value.node_set.size()) {
+         XMLTag *node = Value.node_set[Index];
+         if (node) return XPathValue::node_string_value(node);
+      }
+
+      return std::string();
+   }
+
+   return Value.to_string();
+}
+
+static void append_sequence_item(const XPathValue &Value, size_t Index, SequenceBuilder &Builder)
+{
+   XMLTag *node = nullptr;
+   if (Index < Value.node_set.size()) node = Value.node_set[Index];
+   Builder.nodes.push_back(node);
+
+   const XMLAttrib *attribute = nullptr;
+   if (Index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[Index];
+   Builder.attributes.push_back(attribute);
+
+   std::string entry = sequence_item_string(Value, Index);
+   Builder.strings.push_back(entry);
+}
+
+static void append_value_to_sequence(const XPathValue &Value, SequenceBuilder &Builder)
+{
+   if (Value.type IS XPathValueType::NodeSet) {
+      size_t length = sequence_length(Value);
+      for (size_t index = 0; index < length; ++index) append_sequence_item(Value, index, Builder);
+      return;
+   }
+
+   if (Value.is_empty()) return;
+
+   Builder.nodes.push_back(nullptr);
+   Builder.attributes.push_back(nullptr);
+   Builder.strings.push_back(Value.to_string());
+}
+
+static XPathValue make_sequence_value(SequenceBuilder &&Builder)
+{
+   XPathValue result;
+   result.type = XPathValueType::NodeSet;
+   result.node_set = std::move(Builder.nodes);
+   result.node_set_attributes = std::move(Builder.attributes);
+   result.node_set_string_values = std::move(Builder.strings);
+
+   if ((result.node_set_string_values.size() IS 1) and result.node_set.empty() and
+       result.node_set_attributes.empty()) {
+      result.node_set_string_override = result.node_set_string_values[0];
+   }
+
+   return result;
+}
+
+static XPathValue extract_sequence_item(const XPathValue &Value, size_t Index)
+{
+   if (Value.type IS XPathValueType::NodeSet) {
+      size_t length = sequence_length(Value);
+      if (Index >= length) return XPathValue();
+
+      XPathValue result;
+      result.type = XPathValueType::NodeSet;
+
+      XMLTag *node = nullptr;
+      if (Index < Value.node_set.size()) node = Value.node_set[Index];
+      result.node_set.push_back(node);
+
+      const XMLAttrib *attribute = nullptr;
+      if (Index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[Index];
+      result.node_set_attributes.push_back(attribute);
+
+      std::string entry = sequence_item_string(Value, Index);
+      result.node_set_string_values.push_back(entry);
+
+      bool use_override = Value.node_set_string_override.has_value() and (Index IS 0) and
+         Value.node_set_string_values.empty();
+      if (use_override or (result.node_set_string_values.size() IS 1 and result.node_set.empty() and
+         result.node_set_attributes.empty())) {
+         result.node_set_string_override = entry;
+      }
+
+      return result;
+   }
+
+   if (Index IS 0) return Value;
+   return XPathValue();
+}
+
+static bool numeric_equal(double Left, double Right)
+{
+   if (std::isnan(Left) or std::isnan(Right)) return false;
+   if (std::isinf(Left) or std::isinf(Right)) return Left IS Right;
+
+   double abs_left = std::fabs(Left);
+   double abs_right = std::fabs(Right);
+   double larger = (abs_left > abs_right) ? abs_left : abs_right;
+
+   if (larger <= 1.0) {
+      return std::fabs(Left - Right) <= std::numeric_limits<double>::epsilon() * 16;
+   }
+
+   return std::fabs(Left - Right) <= larger * std::numeric_limits<double>::epsilon() * 16;
+}
+
+static bool xpath_values_equal(const XPathValue &Left, const XPathValue &Right)
+{
+   auto left_type = Left.type;
+   auto right_type = Right.type;
+
+   if ((left_type IS XPathValueType::Boolean) or (right_type IS XPathValueType::Boolean)) {
+      bool left_boolean = Left.to_boolean();
+      bool right_boolean = Right.to_boolean();
+      return left_boolean IS right_boolean;
+   }
+
+   if ((left_type IS XPathValueType::Number) or (right_type IS XPathValueType::Number)) {
+      double left_number = Left.to_number();
+      double right_number = Right.to_number();
+      if (std::isnan(left_number) or std::isnan(right_number)) return false;
+      return numeric_equal(left_number, right_number);
+   }
+
+   if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
+      if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::NodeSet)) {
+         XMLTag *left_node = Left.node_set.empty() ? nullptr : Left.node_set[0];
+         XMLTag *right_node = Right.node_set.empty() ? nullptr : Right.node_set[0];
+         if (left_node or right_node) {
+            if (left_node IS right_node) return true;
+            if ((left_node IS nullptr) or (right_node IS nullptr)) return false;
+         }
+
+         const XMLAttrib *left_attribute = Left.node_set_attributes.empty() ? nullptr : Left.node_set_attributes[0];
+         const XMLAttrib *right_attribute = Right.node_set_attributes.empty() ? nullptr : Right.node_set_attributes[0];
+         if (left_attribute or right_attribute) {
+            if (left_attribute IS right_attribute) return true;
+            if ((left_attribute IS nullptr) or (right_attribute IS nullptr)) return false;
+         }
+      }
+
+      std::string left_string = Left.to_string();
+      std::string right_string = Right.to_string();
+      return left_string.compare(right_string) IS 0;
+   }
+
+   std::string left_string = Left.to_string();
+   std::string right_string = Right.to_string();
+   return left_string.compare(right_string) IS 0;
+}
+
+static void flag_cardinality_error(const XPathContext &Context, std::string_view FunctionName,
+   std::string_view Message)
+{
+   if (Context.expression_unsupported) *Context.expression_unsupported = true;
+
+   if (Context.document) {
+      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
+      Context.document->ErrorMsg.append("XPath function ");
+      Context.document->ErrorMsg.append(FunctionName);
+      Context.document->ErrorMsg.append(": ");
+      Context.document->ErrorMsg.append(Message);
    }
 }
 
@@ -565,6 +765,20 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("false", function_false);
    register_function("lang", function_lang);
    register_function("exists", function_exists);
+
+   // Sequence Functions
+   register_function("index-of", function_index_of);
+   register_function("empty", function_empty);
+   register_function("distinct-values", function_distinct_values);
+   register_function("insert-before", function_insert_before);
+   register_function("remove", function_remove);
+   register_function("reverse", function_reverse);
+   register_function("subsequence", function_subsequence);
+   register_function("unordered", function_unordered);
+   register_function("deep-equal", function_deep_equal);
+   register_function("zero-or-one", function_zero_or_one);
+   register_function("one-or-more", function_one_or_more);
+   register_function("exactly-one", function_exactly_one);
 
    // Number Functions
    register_function("number", function_number);
@@ -1359,6 +1573,259 @@ XPathValue XPathFunctionLibrary::function_exists(const std::vector<XPathValue> &
    }
 
    return XPathValue(true);
+}
+
+XPathValue XPathFunctionLibrary::function_index_of(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2) return XPathValue(std::vector<XMLTag *>());
+
+   if ((Args.size() > 2) and Context.expression_unsupported) *Context.expression_unsupported = true;
+
+   const XPathValue &sequence = Args[0];
+   const XPathValue &lookup = Args[1];
+
+   size_t length = sequence_length(sequence);
+   if (length IS 0) return XPathValue(std::vector<XMLTag *>());
+
+   XPathValue target = extract_sequence_item(lookup, 0);
+   SequenceBuilder builder;
+
+   for (size_t index = 0; index < length; ++index) {
+      XPathValue item = extract_sequence_item(sequence, index);
+      if (xpath_values_equal(item, target)) {
+         builder.nodes.push_back(nullptr);
+         builder.attributes.push_back(nullptr);
+         builder.strings.push_back(format_xpath_number(double(index + 1)));
+      }
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_empty(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(true);
+
+   size_t length = sequence_length(Args[0]);
+   return XPathValue(length IS 0);
+}
+
+XPathValue XPathFunctionLibrary::function_distinct_values(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   if ((Args.size() > 1) and Context.expression_unsupported) *Context.expression_unsupported = true;
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+   if (length IS 0) return XPathValue(std::vector<XMLTag *>());
+
+   std::unordered_set<std::string> seen;
+   SequenceBuilder builder;
+
+   for (size_t index = 0; index < length; ++index) {
+      std::string key = sequence_item_string(sequence, index);
+      auto insert_result = seen.insert(key);
+      if (insert_result.second) {
+         XPathValue item = extract_sequence_item(sequence, index);
+         append_value_to_sequence(item, builder);
+      }
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_insert_before(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 3) {
+      if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
+      return Args[0];
+   }
+
+   const XPathValue &sequence = Args[0];
+   double position_value = Args[1].to_number();
+   const XPathValue &insertion = Args[2];
+
+   size_t length = sequence_length(sequence);
+   size_t insert_index = 0;
+
+   if (std::isnan(position_value)) insert_index = 0;
+   else if (std::isinf(position_value)) insert_index = (position_value > 0.0) ? length : 0;
+   else {
+      long long floored = (long long)std::floor(position_value);
+      if (floored <= 1) insert_index = 0;
+      else if (floored > (long long)length) insert_index = length;
+      else insert_index = (size_t)(floored - 1);
+   }
+
+   if (insert_index > length) insert_index = length;
+
+   SequenceBuilder builder;
+
+   for (size_t index = 0; index < length; ++index) {
+      if (index IS insert_index) append_value_to_sequence(insertion, builder);
+      XPathValue item = extract_sequence_item(sequence, index);
+      append_value_to_sequence(item, builder);
+   }
+
+   if (insert_index >= length) append_value_to_sequence(insertion, builder);
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_remove(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2) {
+      if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
+      return Args[0];
+   }
+
+   const XPathValue &sequence = Args[0];
+   double position_value = Args[1].to_number();
+   size_t length = sequence_length(sequence);
+
+   if (length IS 0) return XPathValue(std::vector<XMLTag *>());
+   if (std::isnan(position_value) or std::isinf(position_value)) return sequence;
+
+   long long floored = (long long)std::floor(position_value);
+   if (floored < 1) return sequence;
+   if (floored > (long long)length) return sequence;
+
+   size_t remove_index = (size_t)(floored - 1);
+   SequenceBuilder builder;
+
+   for (size_t index = 0; index < length; ++index) {
+      if (index IS remove_index) continue;
+      XPathValue item = extract_sequence_item(sequence, index);
+      append_value_to_sequence(item, builder);
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_reverse(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+   SequenceBuilder builder;
+
+   for (size_t index = length; index > 0; --index) {
+      XPathValue item = extract_sequence_item(sequence, index - 1);
+      append_value_to_sequence(item, builder);
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_subsequence(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2) return XPathValue(std::vector<XMLTag *>());
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+   if (length IS 0) return XPathValue(std::vector<XMLTag *>());
+
+   double start_value = Args[1].to_number();
+   if (std::isnan(start_value)) return XPathValue(std::vector<XMLTag *>());
+
+   double min_position = std::ceil(start_value);
+   if (std::isnan(min_position)) return XPathValue(std::vector<XMLTag *>());
+   if (min_position < 1.0) min_position = 1.0;
+
+   double max_position = std::numeric_limits<double>::infinity();
+   if (Args.size() > 2) {
+      double length_value = Args[2].to_number();
+      if (std::isnan(length_value)) return XPathValue(std::vector<XMLTag *>());
+      if (length_value <= 0.0) return XPathValue(std::vector<XMLTag *>());
+
+      max_position = std::ceil(start_value + length_value);
+      if (std::isnan(max_position)) return XPathValue(std::vector<XMLTag *>());
+   }
+
+   SequenceBuilder builder;
+
+   for (size_t index = 0; index < length; ++index) {
+      double position = double(index + 1);
+      if (position < min_position) continue;
+      if ((not std::isinf(max_position)) and (position >= max_position)) break;
+      XPathValue item = extract_sequence_item(sequence, index);
+      append_value_to_sequence(item, builder);
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_unordered(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
+   return Args[0];
+}
+
+XPathValue XPathFunctionLibrary::function_deep_equal(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2) return XPathValue(false);
+
+   if ((Args.size() > 2) and Context.expression_unsupported) *Context.expression_unsupported = true;
+
+   const XPathValue &left = Args[0];
+   const XPathValue &right = Args[1];
+
+   size_t left_length = sequence_length(left);
+   size_t right_length = sequence_length(right);
+   if (left_length != right_length) return XPathValue(false);
+
+   for (size_t index = 0; index < left_length; ++index) {
+      XPathValue left_item = extract_sequence_item(left, index);
+      XPathValue right_item = extract_sequence_item(right, index);
+      if (not xpath_values_equal(left_item, right_item)) return XPathValue(false);
+   }
+
+   return XPathValue(true);
+}
+
+XPathValue XPathFunctionLibrary::function_zero_or_one(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue();
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+
+   if (length <= 1) return sequence;
+
+   flag_cardinality_error(Context, "zero-or-one", "argument has more than one item");
+   return XPathValue();
+}
+
+XPathValue XPathFunctionLibrary::function_one_or_more(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue();
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+
+   if (length IS 0) {
+      flag_cardinality_error(Context, "one-or-more", "argument is empty");
+      return XPathValue();
+   }
+
+   return sequence;
+}
+
+XPathValue XPathFunctionLibrary::function_exactly_one(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue();
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+
+   if (length IS 1) return sequence;
+
+   if (length IS 0) flag_cardinality_error(Context, "exactly-one", "argument is empty");
+   else flag_cardinality_error(Context, "exactly-one", "argument has more than one item");
+
+   return XPathValue();
 }
 
 XPathValue XPathFunctionLibrary::function_number(const std::vector<XPathValue> &Args, const XPathContext &Context) {

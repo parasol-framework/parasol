@@ -1,0 +1,113 @@
+-- XPath sequence function tests
+
+   include 'xml'
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Validate empty() behaviour
+
+function testEmptyFunction()
+   local xml = obj.new("xml", {
+      statement = '<root/>'
+   })
+
+   local emptyValue = xml.getKey('empty(())')
+   assert(emptyValue == 'true', "empty(()) should return true, got " .. nz(emptyValue, 'NIL'))
+
+   local nonEmptyValue = xml.getKey('empty((1,2))')
+   assert(nonEmptyValue == 'false', "empty((1,2)) should return false, got " .. nz(nonEmptyValue, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Verify index-of returns all matching positions
+
+function testIndexOfFunction()
+   local xml = obj.new("xml", {
+      statement = '<root/>'
+   })
+
+   local matchCount = tonumber(xml.getKey('count(index-of((1,2,3,2), 2))'))
+   assert(matchCount == 2, "index-of should report two matches, got " .. tostring(matchCount))
+
+   local firstMatch = tonumber(xml.getKey('index-of((1,2,3,2), 2)[1]'))
+   assert(firstMatch == 2, "First index-of result should be position 2, got " .. tostring(firstMatch))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Distinct values should preserve first occurrence order
+
+function testDistinctValuesFunction()
+   local xml = obj.new("xml", {
+      statement = '<root/>'
+   })
+
+   local joined = xml.getKey('string-join(distinct-values(("alpha","beta","alpha","gamma")), ",")')
+   assert(joined == 'alpha,beta,gamma', "distinct-values should keep first occurrences, got " .. nz(joined, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- insert-before, remove and reverse sequence operations
+
+function testInsertRemoveReverse()
+   local xml = obj.new("xml", {
+      statement = '<root/>'
+   })
+
+   local inserted = xml.getKey('string-join(insert-before((1,3,4), 2, 2), ",")')
+   assert(inserted == '1,2,3,4', "insert-before should place value before position, got " .. nz(inserted, 'NIL'))
+
+   local removed = xml.getKey('string-join(remove((1,2,3), 2), ",")')
+   assert(removed == '1,3', "remove should drop the requested position, got " .. nz(removed, 'NIL'))
+
+   local reversed = xml.getKey('string-join(reverse((1,2,3)), ",")')
+   assert(reversed == '3,2,1', "reverse should invert sequence order, got " .. nz(reversed, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- subsequence, unordered and deep-equal checks
+
+function testSubsequenceDeepEqual()
+   local xml = obj.new("xml", {
+      statement = '<root/>'
+   })
+
+   local subseq = xml.getKey('string-join(subsequence(("a","b","c","d"), 2, 2), ",")')
+   assert(subseq == 'b,c', "subsequence should extract two middle entries, got " .. nz(subseq, 'NIL'))
+
+   local unorderedEqual = xml.getKey('deep-equal(unordered((1,2,3)), (1,2,3))')
+   assert(unorderedEqual == 'true', "unordered should preserve all members, got " .. nz(unorderedEqual, 'NIL'))
+
+   local deepEqualTrue = xml.getKey('deep-equal((1,2,3), (1,2,3))')
+   assert(deepEqualTrue == 'true', "deep-equal should return true for identical sequences, got " .. nz(deepEqualTrue, 'NIL'))
+
+   local deepEqualFalse = xml.getKey('deep-equal((1,2), (1,2,3))')
+   assert(deepEqualFalse == 'false', "deep-equal should detect differing lengths, got " .. nz(deepEqualFalse, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Cardinality helper functions
+
+function testCardinalityFunctions()
+   local xml = obj.new("xml", {
+      statement = '<root/>'
+   })
+
+   local zeroOneValue = tonumber(xml.getKey('zero-or-one((42))'))
+   assert(zeroOneValue == 42, "zero-or-one should return the single item, got " .. tostring(zeroOneValue))
+
+   local zeroOneEmpty = xml.getKey('empty(zero-or-one(()))')
+   assert(zeroOneEmpty == 'true', "zero-or-one should allow empty sequence, got " .. nz(zeroOneEmpty, 'NIL'))
+
+   local oneOrMoreCount = tonumber(xml.getKey('count(one-or-more((5,6)))'))
+   assert(oneOrMoreCount == 2, "one-or-more should keep all items, got " .. tostring(oneOrMoreCount))
+
+   local exactlyOne = tonumber(xml.getKey('exactly-one((99))'))
+   assert(exactlyOne == 99, "exactly-one should return the single value, got " .. tostring(exactlyOne))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+return {
+   tests = {
+      'testEmptyFunction', 'testIndexOfFunction', 'testDistinctValuesFunction',
+      'testInsertRemoveReverse', 'testSubsequenceDeepEqual', 'testCardinalityFunctions'
+   }
+}
