@@ -2,6 +2,7 @@
 // String utilities and character classification
 
 #include <ankerl/unordered_dense.h>
+#include <vector>
 
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
@@ -409,6 +410,43 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
 //********************************************************************************************************************
 // Called by txt_to_xml() to extract the next tag from an XML string.  This function also recurses into itself.
 
+class NamespaceScopeGuard {
+   private:
+   struct PrefixEntry {
+      std::string Prefix;
+      bool Restore;
+      uint32_t PreviousValue;
+   };
+
+   ParseState &state;
+   uint32_t default_namespace;
+   std::vector<PrefixEntry> entries;
+
+   public:
+   explicit NamespaceScopeGuard(ParseState &StateRef)
+      : state(StateRef), default_namespace(StateRef.DefaultNamespace)
+   {
+   }
+
+   ~NamespaceScopeGuard()
+   {
+      for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+         if (it->Restore) {
+            state.PrefixMap[it->Prefix] = it->PreviousValue;
+         }
+         else {
+            state.PrefixMap.erase(it->Prefix);
+         }
+      }
+      state.DefaultNamespace = default_namespace;
+   }
+
+   void registerInsertion(const std::string &Prefix, bool Inserted, uint32_t PreviousValue = 0)
+   {
+      entries.push_back(PrefixEntry{Prefix, not Inserted, PreviousValue});
+   }
+};
+
 static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
@@ -417,15 +455,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
    log.traceBranch("%.*s", int(State.cursor.size()), State.cursor.data());
 
-   // Save current namespace context to restore later (for proper scoping)
-   auto saved_prefix_map = State.PrefixMap;
-   auto saved_default_namespace = State.DefaultNamespace;
-
-   // Use Defer to ensure namespace context is always restored when function exits
-   auto restore_namespace = pf::Defer([&]() {
-      State.PrefixMap = saved_prefix_map;
-      State.DefaultNamespace = saved_default_namespace;
-   });
+   NamespaceScopeGuard namespace_guard(State);
 
    if (State.current() != '<') {
       log.warning("Malformed XML statement detected.");
@@ -630,7 +660,16 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
                else if ((name.size() > 6) and (name[5] IS ':')) {
                   std::string prefix(name.substr(6));
                   Self->Prefixes[prefix] = ns_hash;
-                  State.PrefixMap[prefix] = ns_hash;
+                  auto result = State.PrefixMap.try_emplace(prefix, ns_hash);
+                  if (result.second) {
+                     namespace_guard.registerInsertion(prefix, true);
+                  }
+                  else {
+                     auto &existing = result.first->second;
+                     auto previous = existing;
+                     namespace_guard.registerInsertion(prefix, false, previous);
+                     existing = ns_hash;
+                  }
                }
             }
          }
