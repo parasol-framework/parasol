@@ -48,27 +48,27 @@ end
 function testDateTimeAdjustment()
    local xml = obj.new("xml", { statement = '<root />' })
 
-   local adjustedUtc = xml.selectValue("adjust-dateTime-to-timezone('2023-01-01T12:00:00+02:00', 'PT0S')")
+   local adjustedUtc = xml.getKey("adjust-dateTime-to-timezone('2023-01-01T12:00:00+02:00)', 'PT0S')")
    assert(adjustedUtc == '2023-01-01T10:00:00Z',
-      'adjust-dateTime-to-timezone() should translate instants to the requested timezone')
+      'adjust-dateTime-to-timezone() should translate instants to the requested timezone, got: ' .. nz(adjustedUtc,'NIL'))
 
-   local adjustedForward = xml.selectValue("adjust-dateTime-to-timezone('2023-01-01T12:00:00', 'PT3H')")
+   local adjustedForward = xml.getKey("adjust-dateTime-to-timezone('2023-01-01T12:00:00)', 'PT3H')")
    assert(adjustedForward == '2023-01-01T15:00:00+03:00',
       'dateTime adjustment should adopt the target offset when none is provided on the source value')
 
-   local adjustedDate = xml.selectValue("adjust-date-to-timezone('2023-01-01+02:00', 'PT0S')")
+   local adjustedDate = xml.getKey("adjust-date-to-timezone('2023-01-01+02:00)', 'PT0S')")
    assert(adjustedDate == '2022-12-31Z',
       'adjust-date-to-timezone() should shift calendar days when timezone changes cross midnight')
 
-   local adjustedTime = xml.selectValue("adjust-time-to-timezone('12:00:00+02:00', 'PT0S')")
+   local adjustedTime = xml.getKey("adjust-time-to-timezone('12:00:00+02:00)', 'PT0S')")
    assert(adjustedTime == '10:00:00Z',
       'adjust-time-to-timezone() should convert clock times between offsets')
 
-   local constructed = xml.selectValue("dateTime('2023-12-25', '10:15:30Z')")
+   local constructed = xml.getKey("dateTime('2023-12-25)', '10:15:30Z')")
    assert(constructed == '2023-12-25T10:15:30Z',
       'dateTime() should combine xs:date and xs:time values into a canonical xs:dateTime string')
 
-   local implicit = xml.selectValue('implicit-timezone()')
+   local implicit = xml.getKey('implicit-timezone()')
    assert(implicit == 'PT0S', 'implicit-timezone() should reflect the engine default timezone offset')
 end
 
