@@ -273,11 +273,12 @@ inline int strcopy(T &&Source, std::span<char, N> Dest) noexcept
 [[nodiscard]] inline STRING strclone(const std::string_view String) noexcept
 {
    STRING newstr;
-   if (AllocMemory(String.size()+1, MEM::STRING, (APTR *)&newstr, NULL) IS ERR::Okay) {
-      copymem(String.data(), newstr, String.size()+1);
+   if (AllocMemory(String.size()+1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&newstr, nullptr) IS ERR::Okay) {
+      copymem(String.data(), newstr, String.size());
+      newstr[String.size()] = 0;
       return newstr;
    }
-   else return NULL;
+   else return nullptr;
 }
 
 // std::string_view conversion to numeric type.  Returns zero on error.
@@ -305,7 +306,7 @@ inline ERR set_string_field(const std::string_view Source, STRING &Dest)
       }
       else {
          FreeResource(GetMemoryID(Dest));
-         if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, NULL) IS ERR::Okay) {
+         if (AllocMemory(Source.size() + 1, MEM::STRING|MEM::NO_CLEAR, (APTR *)&Dest, nullptr) IS ERR::Okay) {
             copymem(Source.data(), Dest, Source.size());
             Dest[Source.size()] = 0;
             return ERR::Okay;

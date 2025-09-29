@@ -1714,6 +1714,17 @@ static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
 -FIELD-
 DocType: Root element name from DOCTYPE declaration
 
+*********************************************************************************************************************/
+
+static ERR SET_DocType(extXML *Self, CSTRING Value)
+{
+   if (Value) return pf::set_string_field(Value, Self->DocType);
+   else if (Self->DocType) { FreeResource(Self->DocType); Self->DocType = nullptr; }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 ErrorMsg: A textual description of the last parse error.
 
@@ -1788,8 +1799,30 @@ difference.
 -FIELD-
 PublicID: Public identifier for external DTD
 
+*********************************************************************************************************************/
+
+static ERR SET_PublicID(extXML *Self, CSTRING Value)
+{
+   if (Value) return pf::set_string_field(Value, Self->PublicID);
+   else if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
 -FIELD-
 SystemID: System identifier for external DTD
+
+*********************************************************************************************************************/
+
+static ERR SET_SystemID(extXML *Self, CSTRING Value)
+{
+   if (Value) return pf::set_string_field(Value, Self->SystemID);
+   else if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
 
 -FIELD-
 ReadOnly: Prevents modifications and enables caching for a loaded XML data source.
@@ -1961,9 +1994,9 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 
 static const FieldArray clFields[] = {
    { "Path",         FDF_STRING|FDF_RW, nullptr, SET_Path },
-   { "DocType",      FDF_STRING|FDF_R },
-   { "PublicID",     FDF_STRING|FDF_R },
-   { "SystemID",     FDF_STRING|FDF_R },
+   { "DocType",      FDF_STRING|FDF_RW, nullptr, SET_DocType },
+   { "PublicID",     FDF_STRING|FDF_RW, nullptr, SET_PublicID },
+   { "SystemID",     FDF_STRING|FDF_RW, nullptr, SET_SystemID },
    { "Source",       FDF_OBJECT|FDF_RI },
    { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clXMLFlags },
    { "Start",        FDF_INT|FDF_RW },

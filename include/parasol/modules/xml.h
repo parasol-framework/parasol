@@ -378,6 +378,24 @@ class objXML : public Object {
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
+   template <class T> inline ERR setDocType(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setPublic(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSystem(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
    inline ERR setSource(OBJECTPTR Value) noexcept {
       if (this->initialised()) return ERR::NoFieldAccess;
       this->Source = Value;
