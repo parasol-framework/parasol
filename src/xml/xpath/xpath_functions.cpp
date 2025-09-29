@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <charconv>
 #include <cmath>
 #include <cctype>
 #include <cstdio>
@@ -33,6 +34,7 @@
 #include <utility>
 
 #include "../../link/regex.h"
+#include "../../link/unicode.h"
 
 //********************************************************************************************************************
 // XPathValue Implementation
@@ -139,6 +141,513 @@ static std::string apply_string_case(const std::string &Value, bool Upper)
       return Upper ? (char)std::toupper(code) : (char)std::tolower(code);
    });
    return result;
+}
+
+static void append_codepoint_utf8(std::string &Output, uint32_t Codepoint)
+{
+   if ((Codepoint > 0x10FFFFu) or ((Codepoint >= 0xD800u) and (Codepoint <= 0xDFFFu))) {
+      Codepoint = 0xFFFDu;
+   }
+
+   char buffer[8] = { 0 };
+   int written = UTF8WriteValue((int)Codepoint, buffer, (int)sizeof(buffer));
+   if (written <= 0) return;
+
+   Output.append(buffer, (size_t)written);
+}
+
+static std::vector<uint32_t> decode_codepoints(const std::string &Input)
+{
+   std::vector<uint32_t> codepoints;
+   codepoints.reserve(Input.length());
+
+   size_t offset = 0u;
+   while (offset < Input.length()) {
+      int length = 0;
+      uint32_t value = UTF8ReadValue(Input.c_str() + offset, &length);
+      if (length <= 0) {
+         value = (unsigned char)Input[offset];
+         length = 1;
+      }
+
+      codepoints.push_back(value);
+      offset += (size_t)length;
+   }
+
+   return codepoints;
+}
+
+static std::string encode_codepoints(const std::vector<uint32_t> &Codepoints)
+{
+   std::string output;
+   for (uint32_t code : Codepoints) append_codepoint_utf8(output, code);
+   return output;
+}
+
+static std::string simple_normalise_unicode(const std::string &Value, std::string_view Form, bool *Unsupported)
+{
+   if (Form.empty()) return Value;
+
+   std::string normalised_form(Form);
+   std::transform(normalised_form.begin(), normalised_form.end(), normalised_form.begin(), [](char Ch) {
+      unsigned char code = (unsigned char)Ch;
+      return (char)std::toupper(code);
+   });
+
+   if ((normalised_form IS "NFC") or (normalised_form IS "NFKC")) {
+      auto codepoints = decode_codepoints(Value);
+      std::vector<uint32_t> result;
+      result.reserve(codepoints.size());
+
+      for (size_t index = 0u; index < codepoints.size(); ++index) {
+         uint32_t code = codepoints[index];
+         if ((index + 1u) < codepoints.size()) {
+            uint32_t next = codepoints[index + 1u];
+            if ((code IS 0x0065u) and (next IS 0x0301u)) {
+               result.push_back(0x00E9u);
+               index++;
+               continue;
+            }
+            if ((code IS 0x0045u) and (next IS 0x0301u)) {
+               result.push_back(0x00C9u);
+               index++;
+               continue;
+            }
+         }
+         result.push_back(code);
+      }
+
+      return encode_codepoints(result);
+   }
+
+   if ((normalised_form IS "NFD") or (normalised_form IS "NFKD")) {
+      auto codepoints = decode_codepoints(Value);
+      std::vector<uint32_t> result;
+      result.reserve(codepoints.size() * 2u);
+
+      for (uint32_t code : codepoints) {
+         if (code IS 0x00E9u) {
+            result.push_back(0x0065u);
+            result.push_back(0x0301u);
+            continue;
+         }
+         if (code IS 0x00C9u) {
+            result.push_back(0x0045u);
+            result.push_back(0x0301u);
+            continue;
+         }
+         result.push_back(code);
+      }
+
+      return encode_codepoints(result);
+   }
+
+   if (Unsupported) *Unsupported = true;
+   return Value;
+}
+
+static bool is_absolute_uri(std::string_view Uri)
+{
+   size_t index = 0u;
+   while (index < Uri.length()) {
+      char ch = Uri[index];
+      if (ch IS ':') return index > 0u;
+      if ((ch IS '/') or (ch IS '?') or (ch IS '#')) break;
+      ++index;
+   }
+   return false;
+}
+
+static std::string strip_query_fragment(std::string_view Uri)
+{
+   size_t pos = Uri.find_first_of("?#");
+   if (pos != std::string::npos) return std::string(Uri.substr(0u, pos));
+   return std::string(Uri);
+}
+
+static std::string normalise_path_segments(const std::string &Path)
+{
+   std::vector<std::string> segments;
+   bool leading_slash = (!Path.empty()) and (Path.front() IS '/');
+   size_t start = leading_slash ? 1u : 0u;
+
+   while (start <= Path.length()) {
+      size_t end = Path.find('/', start);
+      std::string segment;
+      if (end IS std::string::npos) {
+         segment = Path.substr(start);
+         start = Path.length() + 1u;
+      } else {
+         segment = Path.substr(start, end - start);
+         start = end + 1u;
+      }
+
+      if (segment.empty() or (segment IS ".")) continue;
+      if (segment IS "..") {
+         if (!segments.empty()) segments.pop_back();
+         continue;
+      }
+
+      segments.push_back(segment);
+   }
+
+   std::string result;
+   if (leading_slash) result.push_back('/');
+
+   for (size_t index = 0u; index < segments.size(); ++index) {
+      if (index > 0u) result.push_back('/');
+      result.append(segments[index]);
+   }
+
+   if ((!Path.empty()) and (Path.back() IS '/') and (!result.empty()) and (result.back() != '/')) {
+      result.push_back('/');
+   }
+
+   return result;
+}
+
+static std::string resolve_relative_uri(std::string_view Relative, std::string_view Base)
+{
+   if (Relative.empty()) return std::string(Base);
+   if (is_absolute_uri(Relative)) return std::string(Relative);
+
+   std::string base_clean = strip_query_fragment(Base);
+   if (base_clean.empty()) return std::string();
+
+   std::string prefix;
+   std::string path = base_clean;
+
+   size_t scheme_pos = base_clean.find(':');
+   if (scheme_pos != std::string::npos) {
+      prefix = base_clean.substr(0u, scheme_pos + 1u);
+      path = base_clean.substr(scheme_pos + 1u);
+
+      if (path.rfind("//", 0u) IS 0u) {
+         size_t authority_end = path.find('/', 2u);
+         if (authority_end IS std::string::npos) {
+            std::string combined = prefix + path;
+            if ((!Relative.empty()) and (Relative.front() != '/')) combined.push_back('/');
+            combined.append(std::string(Relative));
+            return combined;
+         }
+
+         prefix.append(path.substr(0u, authority_end));
+         path = path.substr(authority_end);
+      }
+   }
+
+   std::string directory = path;
+   size_t last_slash = directory.rfind('/');
+   if (last_slash != std::string::npos) directory = directory.substr(0u, last_slash + 1u);
+   else directory.clear();
+
+   std::string relative_path = std::string(Relative);
+   if ((!relative_path.empty()) and (relative_path.front() IS '/')) {
+      std::string combined_path = normalise_path_segments(relative_path);
+      return prefix + combined_path;
+   }
+
+   std::string combined_path = directory;
+   combined_path.append(relative_path);
+   combined_path = normalise_path_segments(combined_path);
+
+   return prefix + combined_path;
+}
+
+struct DateTimeComponents
+{
+   int year = 0;
+   int month = 1;
+   int day = 1;
+   int hour = 0;
+   int minute = 0;
+   double second = 0.0;
+   bool has_date = false;
+   bool has_time = false;
+   bool has_timezone = false;
+   bool timezone_is_utc = false;
+   int timezone_offset_minutes = 0;
+};
+
+static bool parse_fixed_number(std::string_view Text, int &Output)
+{
+   int value = 0;
+   auto result = std::from_chars(Text.data(), Text.data() + Text.length(), value);
+   if (result.ec != std::errc()) return false;
+   Output = value;
+   return true;
+}
+
+static bool parse_timezone(std::string_view Text, DateTimeComponents &Components)
+{
+   if (Text.empty()) return true;
+
+   Components.has_timezone = true;
+
+   if ((Text.length() IS 1u) and ((Text[0] IS 'Z') or (Text[0] IS 'z'))) {
+      Components.timezone_is_utc = true;
+      Components.timezone_offset_minutes = 0;
+      return true;
+   }
+
+   if (Text.length() < 3u) return false;
+   char sign = Text[0];
+   if ((sign != '+') and (sign != '-')) return false;
+
+   std::string_view hours_view = Text.substr(1u, 2u);
+   int hours = 0;
+   if (!parse_fixed_number(hours_view, hours)) return false;
+
+   size_t pos = 3u;
+   int minutes = 0;
+   if ((Text.length() >= 6u) and (Text[3] IS ':')) {
+      std::string_view minutes_view = Text.substr(4u, 2u);
+      if (!parse_fixed_number(minutes_view, minutes)) return false;
+      pos = 6u;
+   }
+   else if (Text.length() >= 5u) {
+      std::string_view minutes_view = Text.substr(3u, 2u);
+      if (!parse_fixed_number(minutes_view, minutes)) return false;
+      pos = 5u;
+   }
+
+   if (Text.length() != pos) return false;
+
+   int total = hours * 60 + minutes;
+   if (sign IS '-') total = -total;
+   Components.timezone_offset_minutes = total;
+   Components.timezone_is_utc = (total IS 0);
+   return true;
+}
+
+static bool parse_time_value(std::string_view Text, DateTimeComponents &Components)
+{
+   if (Text.length() < 8u) return false;
+
+   size_t tz_pos = std::string::npos;
+   for (size_t index = 0u; index < Text.length(); ++index) {
+      char ch = Text[index];
+      if ((ch IS '+') or (ch IS '-') or (ch IS 'Z') or (ch IS 'z')) {
+         if (index >= 5u) {
+            tz_pos = index;
+            break;
+         }
+      }
+   }
+
+   std::string_view time_section = Text;
+   std::string_view tz_section;
+
+   if (tz_pos != std::string::npos) {
+      time_section = Text.substr(0u, tz_pos);
+      tz_section = Text.substr(tz_pos);
+   }
+
+   if ((time_section.length() < 8u) or (time_section[2] != ':') or (time_section[5] != ':')) return false;
+
+   int hour = 0;
+   int minute = 0;
+   int second = 0;
+
+   if (!parse_fixed_number(time_section.substr(0u, 2u), hour)) return false;
+   if (!parse_fixed_number(time_section.substr(3u, 2u), minute)) return false;
+   if (!parse_fixed_number(time_section.substr(6u, 2u), second)) return false;
+
+   Components.hour = hour;
+   Components.minute = minute;
+   Components.second = (double)second;
+   Components.has_time = true;
+
+   size_t fractional_pos = time_section.find('.');
+   if (fractional_pos != std::string::npos) {
+      std::string_view fraction = time_section.substr(fractional_pos + 1u);
+      int fraction_value = 0;
+      if (!fraction.empty() and parse_fixed_number(fraction, fraction_value)) {
+         double scale = std::pow(10.0, (double)fraction.length());
+         Components.second += (double)fraction_value / scale;
+      }
+   }
+
+   if (!tz_section.empty()) return parse_timezone(tz_section, Components);
+   return true;
+}
+
+static bool parse_date_value(std::string_view Text, DateTimeComponents &Components)
+{
+   if (Text.length() < 10u) return false;
+   if ((Text[4] != '-') or (Text[7] != '-')) return false;
+
+   int year = 0;
+   int month = 0;
+   int day = 0;
+
+   if (!parse_fixed_number(Text.substr(0u, 4u), year)) return false;
+   if (!parse_fixed_number(Text.substr(5u, 2u), month)) return false;
+   if (!parse_fixed_number(Text.substr(8u, 2u), day)) return false;
+
+   Components.year = year;
+   Components.month = month;
+   Components.day = day;
+   Components.has_date = true;
+
+   if (Text.length() IS 10u) return true;
+
+   std::string_view tz_section = Text.substr(10u);
+   return parse_timezone(tz_section, Components);
+}
+
+static bool parse_date_time_components(std::string_view Text, DateTimeComponents &Components)
+{
+   size_t t_pos = Text.find('T');
+   if (t_pos != std::string::npos) {
+      std::string_view date_part = Text.substr(0u, t_pos);
+      std::string_view time_part = Text.substr(t_pos + 1u);
+      return parse_date_value(date_part, Components) and parse_time_value(time_part, Components);
+   }
+
+   if (Text.find('-') != std::string::npos) return parse_date_value(Text, Components);
+   return parse_time_value(Text, Components);
+}
+
+static std::string format_integer_component(long long Value, int Width, bool ZeroPad)
+{
+   bool negative = Value < 0;
+   unsigned long long absolute = negative ? (unsigned long long)(-Value) : (unsigned long long)Value;
+   std::string digits = std::to_string(absolute);
+
+   if ((Width > 0) and ((int)digits.length() < Width)) {
+      std::string padding((size_t)(Width - (int)digits.length()), ZeroPad ? '0' : ' ');
+      digits.insert(0u, padding);
+   }
+
+   if (negative) digits.insert(digits.begin(), '-');
+   return digits;
+}
+
+static std::string format_timezone(const DateTimeComponents &Components)
+{
+   if (!Components.has_timezone) return std::string();
+   if (Components.timezone_is_utc or (Components.timezone_offset_minutes IS 0)) return std::string("Z");
+
+   int offset = Components.timezone_offset_minutes;
+   char sign = '+';
+   if (offset < 0) {
+      sign = '-';
+      offset = -offset;
+   }
+
+   int hours = offset / 60;
+   int minutes = offset % 60;
+
+   std::string result;
+   result.push_back(sign);
+   if (hours < 10) result.push_back('0');
+   result.append(std::to_string(hours));
+   result.push_back(':');
+   if (minutes < 10) result.push_back('0');
+   result.append(std::to_string(minutes));
+   return result;
+}
+
+static std::string format_component(const DateTimeComponents &Components, const std::string &Token)
+{
+   if (Token.empty()) return std::string();
+
+   char symbol = Token[0];
+   std::string spec = Token.substr(1u);
+
+   int width = 0;
+   bool zero_pad = false;
+   for (char ch : spec) {
+      if (std::isdigit((unsigned char)ch)) {
+         width++;
+         if (ch IS '0') zero_pad = true;
+      }
+   }
+
+   switch (symbol) {
+      case 'Y': return format_integer_component(Components.year, (width > 0) ? width : 4, true);
+      case 'M': return format_integer_component(Components.month, (width > 0) ? width : 2, true);
+      case 'D': return format_integer_component(Components.day, (width > 0) ? width : 2, true);
+      case 'H': return format_integer_component(Components.hour, (width > 0) ? width : 2, true);
+      case 'm': return format_integer_component(Components.minute, (width > 0) ? width : 2, true);
+      case 's': {
+         long long rounded = (long long)std::llround(Components.second);
+         return format_integer_component(rounded, (width > 0) ? width : 2, true);
+      }
+      case 'Z':
+      case 'z':
+         return format_timezone(Components);
+      default:
+         break;
+   }
+
+   return Token;
+}
+
+static std::string format_with_picture(const DateTimeComponents &Components, const std::string &Picture)
+{
+   std::string output;
+   for (size_t index = 0u; index < Picture.length();) {
+      char ch = Picture[index];
+      if (ch IS '[') {
+         size_t end = Picture.find(']', index + 1u);
+         if (end IS std::string::npos) break;
+         std::string token = Picture.substr(index + 1u, end - index - 1u);
+         output.append(format_component(Components, token));
+         index = end + 1u;
+      }
+      else if (ch IS '\'') {
+         size_t end = Picture.find('\'', index + 1u);
+         if (end IS std::string::npos) break;
+         output.append(Picture.substr(index + 1u, end - index - 1u));
+         index = end + 1u;
+      }
+      else {
+         output.push_back(ch);
+         ++index;
+      }
+   }
+   return output;
+}
+
+static std::string format_integer_picture(long long Value, const std::string &Picture)
+{
+   bool negative = Value < 0;
+   unsigned long long absolute = negative ? (unsigned long long)(-Value) : (unsigned long long)Value;
+   std::string digits = std::to_string(absolute);
+
+   size_t digit_slots = 0u;
+   bool zero_pad = false;
+   bool grouping = false;
+
+   for (char ch : Picture) {
+      if ((ch IS '#') or (ch IS '0')) {
+         digit_slots++;
+         if (ch IS '0') zero_pad = true;
+      }
+      if (ch IS ',') grouping = true;
+   }
+
+   if ((digit_slots > digits.length()) and (digit_slots > 0u)) {
+      std::string padding(digit_slots - digits.length(), zero_pad ? '0' : ' ');
+      digits.insert(0u, padding);
+   }
+
+   if (grouping) {
+      std::string grouped;
+      int count = 0;
+      for (auto iter = digits.rbegin(); iter != digits.rend(); ++iter) {
+         if ((count > 0) and ((count % 3) IS 0)) grouped.push_back(',');
+         grouped.push_back(*iter);
+         ++count;
+      }
+      std::reverse(grouped.begin(), grouped.end());
+      digits = grouped;
+   }
+
+   if (negative) digits.insert(digits.begin(), '-');
+   return digits;
 }
 
 static std::string describe_xpath_value(const XPathValue &Value)
@@ -737,13 +1246,21 @@ void XPathFunctionLibrary::register_core_functions() {
    // String Functions
    register_function("string", function_string);
    register_function("concat", function_concat);
+   register_function("codepoints-to-string", function_codepoints_to_string);
+   register_function("string-to-codepoints", function_string_to_codepoints);
+   register_function("compare", function_compare);
+   register_function("codepoint-equal", function_codepoint_equal);
    register_function("starts-with", function_starts_with);
+   register_function("ends-with", function_ends_with);
    register_function("contains", function_contains);
    register_function("substring-before", function_substring_before);
    register_function("substring-after", function_substring_after);
    register_function("substring", function_substring);
    register_function("string-length", function_string_length);
    register_function("normalize-space", function_normalize_space);
+   register_function("normalize-unicode", function_normalize_unicode);
+   register_function("string-join", function_string_join);
+   register_function("iri-to-uri", function_iri_to_uri);
    register_function("translate", function_translate);
    register_function("upper-case", function_upper_case);
    register_function("lower-case", function_lower_case);
@@ -753,6 +1270,12 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("matches", function_matches);
    register_function("replace", function_replace);
    register_function("tokenize", function_tokenize);
+   register_function("analyze-string", function_analyze_string);
+   register_function("resolve-uri", function_resolve_uri);
+   register_function("format-date", function_format_date);
+   register_function("format-time", function_format_time);
+   register_function("format-dateTime", function_format_date_time);
+   register_function("format-integer", function_format_integer);
 
    // Diagnostics Functions
    register_function("error", function_error);
@@ -1122,12 +1645,118 @@ XPathValue XPathFunctionLibrary::function_concat(const std::vector<XPathValue> &
    return XPathValue(result);
 }
 
+XPathValue XPathFunctionLibrary::function_codepoints_to_string(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::string());
+
+   const XPathValue &sequence = Args[0];
+   size_t length = sequence_length(sequence);
+   if (length IS 0u) return XPathValue(std::string());
+
+   std::string output;
+   output.reserve(length * 4u);
+
+   for (size_t index = 0u; index < length; ++index) {
+      XPathValue item = extract_sequence_item(sequence, index);
+      double numeric = item.to_number();
+      if (std::isnan(numeric)) continue;
+
+      long long rounded = (long long)std::llround(numeric);
+      if (rounded < 0) {
+         append_codepoint_utf8(output, 0xFFFDu);
+         continue;
+      }
+
+      append_codepoint_utf8(output, (uint32_t)rounded);
+   }
+
+   (void)Context;
+   return XPathValue(output);
+}
+
+XPathValue XPathFunctionLibrary::function_string_to_codepoints(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   std::string input = Args[0].to_string();
+
+   SequenceBuilder builder;
+   size_t offset = 0u;
+
+   while (offset < input.length()) {
+      int length = 0;
+      uint32_t code = UTF8ReadValue(input.c_str() + offset, &length);
+      if (length <= 0) {
+         code = (unsigned char)input[offset];
+         length = 1;
+      }
+
+      builder.nodes.push_back(nullptr);
+      builder.attributes.push_back(nullptr);
+      builder.strings.push_back(std::to_string(code));
+
+      offset += (size_t)length;
+   }
+
+   (void)Context;
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_compare(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue();
+   if (Args[0].is_empty() or Args[1].is_empty()) return XPathValue();
+
+   std::string left = Args[0].to_string();
+   std::string right = Args[1].to_string();
+   std::string collation = (Args.size() > 2u) ? Args[2].to_string() : std::string();
+
+   if (!collation.empty() and (collation != "http://www.w3.org/2005/xpath-functions/collation/codepoint") and
+       (collation != "unicode")) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+      return XPathValue();
+   }
+
+   int result = 0;
+   if (left < right) result = -1;
+   else if (left IS right) result = 0;
+   else result = 1;
+
+   return XPathValue((double)result);
+}
+
+XPathValue XPathFunctionLibrary::function_codepoint_equal(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue();
+   if (Args[0].is_empty() or Args[1].is_empty()) return XPathValue();
+
+   std::string first = Args[0].to_string();
+   std::string second = Args[1].to_string();
+
+   (void)Context;
+   return XPathValue(first IS second);
+}
+
 XPathValue XPathFunctionLibrary::function_starts_with(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 2) return XPathValue(false);
    std::string str = Args[0].to_string();
    std::string prefix = Args[1].to_string();
    return XPathValue(str.substr(0, prefix.length()) IS prefix);
+}
+
+XPathValue XPathFunctionLibrary::function_ends_with(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() != 2u) return XPathValue(false);
+
+   std::string input = Args[0].to_string();
+   std::string suffix = Args[1].to_string();
+   if (suffix.length() > input.length()) return XPathValue(false);
+
+   return XPathValue(input.compare(input.length() - suffix.length(), suffix.length(), suffix) IS 0);
 }
 
 XPathValue XPathFunctionLibrary::function_contains(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -1254,6 +1883,41 @@ XPathValue XPathFunctionLibrary::function_normalize_space(const std::vector<XPat
    return XPathValue(result);
 }
 
+XPathValue XPathFunctionLibrary::function_normalize_unicode(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::string());
+
+   std::string input = Args[0].to_string();
+   std::string form = (Args.size() > 1u) ? Args[1].to_string() : std::string("NFC");
+
+   bool unsupported = false;
+   std::string normalised = simple_normalise_unicode(input, form, &unsupported);
+   if (unsupported and Context.expression_unsupported) *Context.expression_unsupported = true;
+
+   return XPathValue(normalised);
+}
+
+XPathValue XPathFunctionLibrary::function_string_join(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue(std::string());
+
+   const XPathValue &sequence = Args[0];
+   std::string separator = (Args.size() > 1u) ? Args[1].to_string() : std::string();
+
+   size_t length = sequence_length(sequence);
+   if (length IS 0u) return XPathValue(std::string());
+
+   std::string result;
+   for (size_t index = 0u; index < length; ++index) {
+      if (index > 0u) result.append(separator);
+      result.append(sequence_item_string(sequence, index));
+   }
+
+   (void)Context;
+   return XPathValue(result);
+}
+
 XPathValue XPathFunctionLibrary::function_translate(const std::vector<XPathValue> &Args, const XPathContext &Context) {
    if (Args.size() != 3) return XPathValue(std::string());
 
@@ -1333,6 +1997,40 @@ XPathValue XPathFunctionLibrary::function_lower_case(const std::vector<XPathValu
    else input = Args[0].to_string();
 
    return XPathValue(apply_string_case(input, false));
+}
+
+XPathValue XPathFunctionLibrary::function_iri_to_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   std::string input;
+
+   if (Args.empty()) {
+      if (Context.attribute_node) input = Context.attribute_node->Value;
+      else if (Context.context_node) {
+         std::vector<XMLTag *> nodes = { Context.context_node };
+         XPathValue node_value(nodes);
+         input = node_value.to_string();
+      }
+      else input = std::string();
+   }
+   else input = Args[0].to_string();
+
+   std::string result;
+   result.reserve(input.length() * 3u);
+
+   static const char hex_digits[] = "0123456789ABCDEF";
+
+   for (unsigned char code : input) {
+      if (code <= 0x7Fu) {
+         result.push_back((char)code);
+      }
+      else {
+         result.push_back('%');
+         result.push_back(hex_digits[(code >> 4u) & 0x0Fu]);
+         result.push_back(hex_digits[code & 0x0Fu]);
+      }
+   }
+
+   return XPathValue(result);
 }
 
 XPathValue XPathFunctionLibrary::function_encode_for_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -1514,6 +2212,96 @@ XPathValue XPathFunctionLibrary::function_tokenize(const std::vector<XPathValue>
 
    std::vector<XMLTag *> placeholders(tokens.size(), nullptr);
    return XPathValue(placeholders, std::nullopt, tokens);
+}
+
+XPathValue XPathFunctionLibrary::function_analyze_string(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u or Args.size() > 3u) return XPathValue(std::vector<XMLTag *>());
+
+   std::string input = Args[0].to_string();
+   std::string pattern = Args[1].to_string();
+   std::string flags = (Args.size() > 2u) ? Args[2].to_string() : std::string();
+
+   pf::Regex compiled;
+   if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
+      return XPathValue(std::vector<XMLTag *>());
+   }
+
+   SequenceBuilder builder;
+   size_t search_offset = 0u;
+   size_t guard = 0u;
+
+   while (search_offset <= input.length()) {
+      std::string_view remaining(input.c_str() + search_offset, input.length() - search_offset);
+      pf::MatchResult match;
+      if (!compiled.search(remaining, match)) {
+         if (!remaining.empty()) {
+            builder.nodes.push_back(nullptr);
+            builder.attributes.push_back(nullptr);
+            builder.strings.push_back(std::string("non-match:") + std::string(remaining));
+         }
+         break;
+      }
+
+      if ((match.span.offset != (size_t)std::string::npos) and (match.span.offset > 0u)) {
+         std::string unmatched = std::string(remaining.substr(0u, match.span.offset));
+         if (!unmatched.empty()) {
+            builder.nodes.push_back(nullptr);
+            builder.attributes.push_back(nullptr);
+            builder.strings.push_back(std::string("non-match:") + unmatched);
+         }
+      }
+
+      std::string matched_text;
+      if (match.span.offset != (size_t)std::string::npos) {
+         matched_text = std::string(remaining.substr(match.span.offset, match.span.length));
+      }
+
+      builder.nodes.push_back(nullptr);
+      builder.attributes.push_back(nullptr);
+      builder.strings.push_back(std::string("match:") + matched_text);
+
+      for (size_t index = 1u; index < match.captures.size(); ++index) {
+         if (match.capture_spans[index].offset IS (size_t)std::string::npos) continue;
+         builder.nodes.push_back(nullptr);
+         builder.attributes.push_back(nullptr);
+         builder.strings.push_back(std::string("group") + std::to_string(index) + std::string(":") + match.captures[index]);
+      }
+
+      size_t advance = 0u;
+      if (match.span.offset != (size_t)std::string::npos) advance = match.span.offset;
+      if (match.span.length > 0u) advance += match.span.length;
+      else advance += 1u;
+
+      search_offset += advance;
+
+      guard++;
+      if (guard > input.length() + 8u) break;
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_resolve_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.empty()) return XPathValue();
+
+   std::string relative = Args[0].to_string();
+   std::string base;
+
+   if (Args.size() > 1u and not Args[1].is_empty()) base = Args[1].to_string();
+   else if (Context.document) base = Context.document->Path;
+
+   if (relative.empty()) {
+      if (base.empty()) return XPathValue();
+      return XPathValue(base);
+   }
+
+   if (is_absolute_uri(relative)) return XPathValue(relative);
+   if (base.empty()) return XPathValue();
+
+   std::string resolved = resolve_relative_uri(relative, base);
+   return XPathValue(resolved);
 }
 
 XPathValue XPathFunctionLibrary::function_boolean(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -2013,6 +2801,80 @@ XPathValue XPathFunctionLibrary::function_avg(const std::vector<XPathValue> &Arg
    for (double value : numbers) total += value;
 
    return XPathValue(total / (double)numbers.size());
+}
+
+XPathValue XPathFunctionLibrary::function_format_date(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue(std::string());
+   if (Args[0].is_empty()) return XPathValue();
+
+   std::string value = Args[0].to_string();
+   std::string picture = Args[1].to_string();
+
+   if (Args.size() > 2u and not Args[2].is_empty()) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+   }
+
+   DateTimeComponents components;
+   if (!parse_date_value(value, components)) return XPathValue(value);
+
+   std::string formatted = format_with_picture(components, picture);
+   return XPathValue(formatted);
+}
+
+XPathValue XPathFunctionLibrary::function_format_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue(std::string());
+   if (Args[0].is_empty()) return XPathValue();
+
+   std::string value = Args[0].to_string();
+   std::string picture = Args[1].to_string();
+
+   if (Args.size() > 2u and not Args[2].is_empty()) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+   }
+
+   DateTimeComponents components;
+   if (!parse_time_value(value, components)) return XPathValue(value);
+
+   std::string formatted = format_with_picture(components, picture);
+   return XPathValue(formatted);
+}
+
+XPathValue XPathFunctionLibrary::function_format_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue(std::string());
+   if (Args[0].is_empty()) return XPathValue();
+
+   std::string value = Args[0].to_string();
+   std::string picture = Args[1].to_string();
+
+   if (Args.size() > 2u and not Args[2].is_empty()) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+   }
+
+   DateTimeComponents components;
+   if (!parse_date_time_components(value, components)) return XPathValue(value);
+
+   std::string formatted = format_with_picture(components, picture);
+   return XPathValue(formatted);
+}
+
+XPathValue XPathFunctionLibrary::function_format_integer(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   if (Args.size() < 2u) return XPathValue(std::string());
+
+   double number = Args[0].to_number();
+   if (std::isnan(number) or std::isinf(number)) return XPathValue(std::string());
+
+   if (Args.size() > 2u and not Args[2].is_empty()) {
+      if (Context.expression_unsupported) *Context.expression_unsupported = true;
+   }
+
+   long long rounded = (long long)std::llround(number);
+   std::string picture = Args[1].to_string();
+   std::string formatted = format_integer_picture(rounded, picture);
+   return XPathValue(formatted);
 }
 
 namespace {
