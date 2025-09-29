@@ -572,6 +572,7 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("floor", function_floor);
    register_function("ceiling", function_ceiling);
    register_function("round", function_round);
+   register_function("round-half-to-even", function_round_half_to_even);
    register_function("abs", function_abs);
    register_function("min", function_min);
    register_function("max", function_max);
@@ -1437,6 +1438,48 @@ XPathValue XPathFunctionLibrary::function_round(const std::vector<XPathValue> &A
    double value = Args[0].to_number();
    if (std::isnan(value) or std::isinf(value)) return XPathValue(value);
    return XPathValue(std::round(value));
+}
+
+XPathValue XPathFunctionLibrary::function_round_half_to_even(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   if (Args.empty() or Args.size() > 2) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = Args[0].to_number();
+   if (std::isnan(value) or std::isinf(value)) return XPathValue(value);
+
+   int precision = 0;
+   if (Args.size() > 1) precision = (int)Args[1].to_number();
+
+   double scaled = value;
+   double factor = 1.0;
+   bool negative_precision = false;
+
+   if (precision > 0) {
+      factor = std::pow(10.0, precision);
+      if (std::isnan(factor) or std::isinf(factor) or factor IS 0.0) return XPathValue(value);
+      scaled = value * factor;
+   }
+   else if (precision < 0) {
+      negative_precision = true;
+      factor = std::pow(10.0, -precision);
+      if (std::isnan(factor) or std::isinf(factor) or factor IS 0.0) return XPathValue(value);
+      scaled = value / factor;
+   }
+
+   double rounded_scaled = std::nearbyint(scaled);
+
+   if (std::isnan(rounded_scaled) or std::isinf(rounded_scaled)) return XPathValue(rounded_scaled);
+
+   double result = rounded_scaled;
+   if (precision > 0) {
+      result = rounded_scaled / factor;
+   }
+   else if (negative_precision) {
+      result = rounded_scaled * factor;
+   }
+
+   return XPathValue(result);
 }
 
 XPathValue XPathFunctionLibrary::function_abs(const std::vector<XPathValue> &Args, const XPathContext &Context)
