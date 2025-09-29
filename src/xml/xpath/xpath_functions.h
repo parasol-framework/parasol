@@ -188,6 +188,8 @@ class XPathFunctionLibrary {
    static XPathValue function_lower_case(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_encode_for_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_escape_html_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_error(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_trace(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_boolean(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_not(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_true(const std::vector<XPathValue> &Args, const XPathContext &Context);
