@@ -378,6 +378,186 @@ static bool parse_fixed_number(std::string_view Text, int &Output)
    return true;
 }
 
+struct DurationComponents
+{
+   bool negative = false;
+   bool has_year = false;
+   bool has_month = false;
+   bool has_day = false;
+   bool has_hour = false;
+   bool has_minute = false;
+   bool has_second = false;
+   std::chrono::years years{0};
+   std::chrono::months months{0};
+   std::chrono::days days{0};
+   std::chrono::hours hours{0};
+   std::chrono::minutes minutes{0};
+   std::chrono::duration<double> seconds{0.0};
+};
+
+enum class DurationParseStatus { Empty, Error, Value };
+
+static bool parse_seconds_value(std::string_view Text, double &Output)
+{
+   if (Text.empty()) return false;
+
+   double value = 0.0;
+   auto result = std::from_chars(Text.data(), Text.data() + Text.length(), value);
+   if (result.ec != std::errc()) return false;
+   if (result.ptr != Text.data() + Text.length()) return false;
+   if (!std::isfinite(value)) return false;
+
+   Output = value;
+   return true;
+}
+
+static bool parse_duration_components(std::string_view Text, DurationComponents &Components)
+{
+   Components = DurationComponents();
+   if (Text.empty()) return false;
+
+   size_t index = 0u;
+   if (Text[index] IS '-') {
+      Components.negative = true;
+      ++index;
+      if (index >= Text.length()) return false;
+   }
+
+   if (Text[index] != 'P') return false;
+   ++index;
+   if (index >= Text.length()) return false;
+
+   bool in_time = false;
+   bool found_component = false;
+
+   while (index < Text.length()) {
+      if (Text[index] IS 'T') {
+         if (in_time) return false;
+         in_time = true;
+         ++index;
+         if (index >= Text.length()) return false;
+         continue;
+      }
+
+      size_t start = index;
+      while ((index < Text.length()) and std::isdigit((unsigned char)Text[index])) ++index;
+      size_t integer_end = index;
+
+      bool has_fraction = false;
+      bool fraction_digits = false;
+      if (index < Text.length() and Text[index] IS '.') {
+         if (!in_time) return false;
+         has_fraction = true;
+         ++index;
+         while ((index < Text.length()) and std::isdigit((unsigned char)Text[index])) {
+            fraction_digits = true;
+            ++index;
+         }
+         if (!fraction_digits) return false;
+      }
+
+      if (start IS index) return false;
+      if (index >= Text.length()) return false;
+
+      size_t designator_pos = index;
+      char designator = Text[designator_pos];
+      ++index;
+
+      size_t number_end = designator_pos;
+      std::string_view integer_view(Text.data() + start, integer_end - start);
+      std::string_view number_view(Text.data() + start, number_end - start);
+
+      if (has_fraction and not (in_time and designator IS 'S')) return false;
+
+      if (designator IS 'Y' and !in_time) {
+         if (Components.has_year) return false;
+         int value = 0;
+         if (!parse_fixed_number(integer_view, value)) return false;
+         Components.years = std::chrono::years(value);
+         Components.has_year = true;
+         found_component = true;
+         continue;
+      }
+
+      if (designator IS 'M' and !in_time) {
+         if (Components.has_month) return false;
+         int value = 0;
+         if (!parse_fixed_number(integer_view, value)) return false;
+         Components.months = std::chrono::months(value);
+         Components.has_month = true;
+         found_component = true;
+         continue;
+      }
+
+      if (designator IS 'D' and !in_time) {
+         if (Components.has_day) return false;
+         int value = 0;
+         if (!parse_fixed_number(integer_view, value)) return false;
+         Components.days = std::chrono::days(value);
+         Components.has_day = true;
+         found_component = true;
+         continue;
+      }
+
+      if (designator IS 'H' and in_time) {
+         if (Components.has_hour) return false;
+         int value = 0;
+         if (!parse_fixed_number(integer_view, value)) return false;
+         Components.hours = std::chrono::hours(value);
+         Components.has_hour = true;
+         found_component = true;
+         continue;
+      }
+
+      if (designator IS 'M' and in_time) {
+         if (Components.has_minute) return false;
+         int value = 0;
+         if (!parse_fixed_number(integer_view, value)) return false;
+         Components.minutes = std::chrono::minutes(value);
+         Components.has_minute = true;
+         found_component = true;
+         continue;
+      }
+
+      if (designator IS 'S' and in_time) {
+         if (Components.has_second) return false;
+         double value = 0.0;
+         if (!parse_seconds_value(number_view, value)) return false;
+         Components.seconds = std::chrono::duration<double>(value);
+         Components.has_second = true;
+         found_component = true;
+         continue;
+      }
+
+      return false;
+   }
+
+   return found_component;
+}
+
+static DurationParseStatus prepare_duration_components(const std::vector<XPathValue> &Args,
+   DurationComponents &Components, bool RequireYearMonthOnly, bool RequireDayTimeOnly)
+{
+   if (Args.empty()) return DurationParseStatus::Empty;
+   if (Args.size() != 1u) return DurationParseStatus::Error;
+   if (Args[0].is_empty()) return DurationParseStatus::Empty;
+
+   std::string value = Args[0].to_string();
+   if (!parse_duration_components(value, Components)) return DurationParseStatus::Error;
+
+   if (RequireYearMonthOnly) {
+      if (Components.has_day or Components.has_hour or Components.has_minute or Components.has_second) {
+         return DurationParseStatus::Error;
+      }
+   }
+
+   if (RequireDayTimeOnly) {
+      if (Components.has_year or Components.has_month) return DurationParseStatus::Error;
+   }
+
+   return DurationParseStatus::Value;
+}
+
 static bool parse_timezone(std::string_view Text, DateTimeComponents &Components)
 {
    if (Text.empty()) return true;
@@ -1319,6 +1499,18 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("current-date", function_current_date);
    register_function("current-time", function_current_time);
    register_function("current-dateTime", function_current_date_time);
+   register_function("years-from-duration", function_years_from_duration);
+   register_function("months-from-duration", function_months_from_duration);
+   register_function("days-from-duration", function_days_from_duration);
+   register_function("hours-from-duration", function_hours_from_duration);
+   register_function("minutes-from-duration", function_minutes_from_duration);
+   register_function("seconds-from-duration", function_seconds_from_duration);
+   register_function("years-from-yearMonthDuration", function_years_from_year_month_duration);
+   register_function("months-from-yearMonthDuration", function_months_from_year_month_duration);
+   register_function("days-from-dayTimeDuration", function_days_from_day_time_duration);
+   register_function("hours-from-dayTimeDuration", function_hours_from_day_time_duration);
+   register_function("minutes-from-dayTimeDuration", function_minutes_from_day_time_duration);
+   register_function("seconds-from-dayTimeDuration", function_seconds_from_day_time_duration);
 }
 
 bool XPathFunctionLibrary::has_function(std::string_view Name) const {
@@ -2942,4 +3134,172 @@ XPathValue XPathFunctionLibrary::function_current_date_time(const std::vector<XP
    combined.append(time);
    combined.push_back('Z');
    return XPathValue(XPathValueType::DateTime, std::move(combined));
+}
+
+XPathValue XPathFunctionLibrary::function_years_from_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.years.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_months_from_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.months.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_days_from_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.days.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_hours_from_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.hours.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_minutes_from_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.minutes.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_seconds_from_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = components.seconds.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_years_from_year_month_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, true, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.years.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_months_from_year_month_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, true, false);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.months.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_days_from_day_time_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, true);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.days.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_hours_from_day_time_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, true);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.hours.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_minutes_from_day_time_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, true);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = (double)components.minutes.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
+}
+
+XPathValue XPathFunctionLibrary::function_seconds_from_day_time_duration(const std::vector<XPathValue> &Args,
+   const XPathContext &Context)
+{
+   DurationComponents components;
+   DurationParseStatus status = prepare_duration_components(Args, components, false, true);
+
+   if (status IS DurationParseStatus::Empty) return XPathValue();
+   if (status IS DurationParseStatus::Error) return XPathValue(std::numeric_limits<double>::quiet_NaN());
+
+   double value = components.seconds.count();
+   if (components.negative) value = -value;
+   return XPathValue(value);
 }
