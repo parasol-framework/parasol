@@ -265,126 +265,76 @@ static void xml_unescape(extXML *Self, std::string &String)
 {
    pf::Log log(__FUNCTION__);
 
-   // Single-pass algorithm: scan once and build output directly
-   std::string result;
-   result.reserve(String.size()); // Reserve to avoid reallocations
 
-   size_t pos = 0;
-   const size_t length = String.size();
-
-   while (pos < length) {
-      const size_t amp_pos = String.find('&', pos);
-
-      // No more entities - append rest and exit
-      if (amp_pos IS std::string::npos) {
-         result.append(String, pos, length - pos);
-         break;
-      }
-
-      // Append everything before '&'
-      if (amp_pos > pos) {
-         result.append(String, pos, amp_pos - pos);
-      }
-
-      // Check for numeric escape
-      if ((amp_pos + 1 < length) and (String[amp_pos + 1] IS '#')) {
-         size_t len = amp_pos + 2;
+   auto c = String.find('&');
+   while (c != std::string::npos) {
+      if (String[c + 1] IS '#') { // Numeric escape code detected.
+         auto len = c + 2;
          uint32_t unicode = 0;
 
-         if ((len < length) and (String[len] IS 'x')) { // Hexadecimal
+         if (String[len] IS 'x') { // Hexadecimal literal
             len++;
-            while (len < length) {
-               char ch = String[len];
-               if (ch IS ';') break;
-
-               if ((ch >= '0') and (ch <= '9')) unicode = (unicode << 4) + (ch - '0');
-               else if ((ch >= 'a') and (ch <= 'f')) unicode = (unicode << 4) + (ch - 'a' + 10);
-               else if ((ch >= 'A') and (ch <= 'F')) unicode = (unicode << 4) + (ch - 'A' + 10);
+            while ((String[len]) and (String[len] != ';')) {
+               unicode <<= 4;
+               if ((String[len] >= '0') and (String[len] <= '9')) unicode += String[len] - '0';
+               else if ((String[len] >= 'a') and (String[len] <= 'f')) unicode += String[len] - 'a' + 10;
+               else if ((String[len] >= 'A') and (String[len] <= 'F')) unicode += String[len] - 'A' + 10;
                else break;
                len++;
             }
          }
-         else { // Decimal
-            while (len < length) {
-               char ch = String[len];
-               if (ch IS ';') break;
-               if ((ch >= '0') and (ch <= '9')) unicode = unicode * 10 + (ch - '0');
+         else { // Decimal literal
+            while ((String[len]) and (String[len] != ';')) {
+               unicode *= 10;
+               if ((String[len] >= '0') and (String[len] <= '9')) unicode += String[len] - '0';
                else break;
                len++;
             }
          }
 
-         if ((len < length) and (String[len] IS ';')) {
+         if (String[len] IS ';') { // The correct terminator must be present
             char unichar[6];
             auto ulen = UTF8WriteValue(unicode, unichar, sizeof(unichar));
-            result.append(unichar, ulen);
-            pos = len + 1;
+            len++;
+            String.replace(c, len - c, unichar, ulen);
+            c += ulen;
          }
-         else {
-            result.push_back('&'); // Invalid escape - keep literal '&'
-            pos = amp_pos + 1;
-         }
+         else c++; // Ignore invalid escape codes
       }
       else {
-         // Named entity reference
-         const size_t semi_pos = String.find(';', amp_pos + 1);
+         auto end = String.find(';', c);
+         if (end != std::string::npos) {
+            auto lookup = String.substr(c+1, end-c-1);
+            end++;
 
-         if (semi_pos IS std::string::npos) {
-            result.push_back('&');
-            pos = amp_pos + 1;
-            continue;
-         }
-
-         const size_t name_len = semi_pos - amp_pos - 1;
-         if (name_len IS 0) {
-            result.push_back('&');
-            pos = amp_pos + 1;
-            continue;
-         }
-
-         // Use string_view to avoid allocation for lookup
-         std::string_view lookup(&String[amp_pos + 1], name_len);
-
-         // Check official XML entities first (most common)
-         if (lookup IS "amp") { result.push_back('&'); pos = semi_pos + 1; }
-         else if (lookup IS "lt") { result.push_back('<'); pos = semi_pos + 1; }
-         else if (lookup IS "gt") { result.push_back('>'); pos = semi_pos + 1; }
-         else if (lookup IS "quot") { result.push_back('"'); pos = semi_pos + 1; }
-         else if (lookup IS "apos") { result.push_back('\''); pos = semi_pos + 1; }
-         else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
-            std::string resolved;
-            std::string lookup_str(lookup); // Only create string if needed
-            if (Self->resolveEntity(lookup_str, resolved) IS ERR::Okay) {
-               result.append(resolved);
-               pos = semi_pos + 1;
+            if (glOfficial.contains(lookup)) { // The five official XML escape codes
+               String.replace(c, end-c, glOfficial[lookup]);
+               c++;
             }
-            else {
-               result.push_back('&');
-               pos = amp_pos + 1;
+            else if ((Self->Flags & XMF::PARSE_ENTITY) != XMF::NIL) {
+               std::string resolved;
+               if (Self->resolveEntity(lookup, resolved) IS ERR::Okay) {
+                  String.replace(c, end - c, resolved);
+                  // Rescan the inserted text to handle nested entity references.
+               }
+               else c++;
             }
-         }
-         else if ((Self->Flags & XMF::PARSE_HTML) != XMF::NIL) {
-            std::string lookup_str(lookup); // Only create string if needed
-            if (glHTML.contains(lookup_str)) {
-               auto unicode = glHTML[lookup_str];
-               char unichar[6];
-               auto unilen = UTF8WriteValue(unicode, unichar, sizeof(unichar));
-               result.append(unichar, unilen);
-               pos = semi_pos + 1;
+            else if ((Self->Flags & XMF::PARSE_HTML) != XMF::NIL) { // Process HTML escape codes
+               if (glHTML.contains(lookup)) {
+                  auto unicode = glHTML[lookup];
+                  char unichar[6];
+                  auto unilen = UTF8WriteValue(unicode, unichar, sizeof(unichar));
+                  String.replace(c, end - c, unichar, unilen);
+                  c += unilen;
+               }
+               else c++;
             }
-            else {
-               result.push_back('&');
-               pos = amp_pos + 1;
-            }
+            else c++;
          }
-         else {
-            result.push_back('&');
-            pos = amp_pos + 1;
-         }
+         else c++;
       }
+      c = String.find('&', c);
    }
-
-   String = std::move(result);
 }
 
 //********************************************************************************************************************
