@@ -201,6 +201,7 @@ class XPathFunctionLibrary {
    static XPathValue function_floor(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_ceiling(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_round(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_round_half_to_even(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_abs(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_min(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_max(const std::vector<XPathValue> &Args, const XPathContext &Context);

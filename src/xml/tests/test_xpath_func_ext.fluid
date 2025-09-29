@@ -69,6 +69,31 @@ function testMathFunctions()
 
    local err4, avgNode = xml.mtFindTag('/root/value[@amount = round(avg(/root/value/@amount))]')
    assert(err4 == ERR_Okay, "avg() should locate the middle item")
+
+   local xmlRound = obj.new("xml", {
+      statement = '<root><case id="tie-low" value="0.5"/><case id="tie-high" value="1.5"/><case id="tie-upper" value="2.5"/><case id="negative" value="-1.5"/><case id="precision" value="123.455"/><case id="precision-even" value="123.445"/><case id="neg-precision" value="1250"/></root>'
+   })
+
+   local errTieLow, tieLowId = xmlRound.mtFindTag('/root/case[@id = "tie-low" and round-half-to-even(number(@value)) = 0]')
+   assert(errTieLow == ERR_Okay, 'round-half-to-even() should round 0.5 to the even integer 0')
+
+   local errTieHigh, tieHighId = xmlRound.mtFindTag('/root/case[@id = "tie-high" and round-half-to-even(number(@value)) = 2]')
+   assert(errTieHigh == ERR_Okay, 'round-half-to-even() should round 1.5 up to the even integer 2')
+
+   local errTieUpper, tieUpperId = xmlRound.mtFindTag('/root/case[@id = "tie-upper" and round-half-to-even(number(@value)) = 2]')
+   assert(errTieUpper == ERR_Okay, 'round-half-to-even() should round 2.5 down to the even integer 2')
+
+   local errNegative, negativeId = xmlRound.mtFindTag('/root/case[@id = "negative" and round-half-to-even(number(@value)) = -2]')
+   assert(errNegative == ERR_Okay, 'round-half-to-even() should honour even rounding for negative ties')
+
+   local errPrecision, precisionId = xmlRound.mtFindTag('/root/case[@id = "precision" and round-half-to-even(number(@value), 2) = 123.46]')
+   assert(errPrecision == ERR_Okay, 'round-half-to-even() should round fractional precision ties upward when the preceding digit is odd')
+
+   local errPrecisionEven, precisionEvenId = xmlRound.mtFindTag('/root/case[@id = "precision-even" and round-half-to-even(number(@value), 2) = 123.44]')
+   assert(errPrecisionEven == ERR_Okay, 'round-half-to-even() should leave even fractional digits unchanged when exactly halfway')
+
+   local errNegPrecision, negPrecisionId = xmlRound.mtFindTag('/root/case[@id = "neg-precision" and round-half-to-even(number(@value), -2) = 1200]')
+   assert(errNegPrecision == ERR_Okay, 'round-half-to-even() should support negative precision arguments')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
