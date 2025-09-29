@@ -175,6 +175,7 @@ int main() {
    FAIL_REGEX "warning")
 
 find_program (XXD_CMD "xxd")
+find_program (OD_CMD "od")
 find_program (PARASOL_CMD "parasol" NO_DEFAULT_PATH PATHS "${PARASOL_CMD_PATH}")
 find_file (IDL_C_SCRIPT "idl-c.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
 find_file (IDL_COMPILE_SCRIPT "idl-compile.fluid" PATHS "${PROJECT_SOURCE_DIR}/tools/idl")
