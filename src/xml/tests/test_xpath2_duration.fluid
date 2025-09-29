@@ -9,8 +9,10 @@ function testGeneralDurationComponents()
    local xml = obj.new("xml", {
       statement = '<root>'
          .. '<duration id="ym" value="P2Y11M"/>'
+         .. '<duration id="carry-months" value="P14M"/>'
          .. '<duration id="days" value="P30D"/>'
          .. '<duration id="time" value="PT30.5S"/>'
+         .. '<duration id="carry-time" value="PT48H30M90S"/>'
          .. '<duration id="negative" value="-P1Y2M3DT4H5M6S"/>'
          .. '<duration id="mixed" value="P1Y2M3DT4H5M6.25S"/>'
          .. '</root>'
@@ -19,11 +21,17 @@ function testGeneralDurationComponents()
    local errYears, yearsNode = xml.mtFindTag('/root/duration[@id = "ym" and years-from-duration(@value) = 2 and months-from-duration(@value) = 11]')
    assert(errYears == ERR_Okay and yearsNode != nil, 'years-from-duration() should extract the year component from xs:duration values')
 
+   local errCarryMonths, carryMonthsNode = xml.mtFindTag('/root/duration[@id = "carry-months" and years-from-duration(@value) = 1 and months-from-duration(@value) = 2]')
+   assert(errCarryMonths == ERR_Okay and carryMonthsNode != nil, 'duration helpers should normalise months into canonical year and month components')
+
    local errDays, daysNode = xml.mtFindTag('/root/duration[@id = "days" and days-from-duration(@value) = 30]')
    assert(errDays == ERR_Okay and daysNode != nil, 'days-from-duration() should decode day quantities from xs:duration values')
 
    local errSeconds, secondsNode = xml.mtFindTag('/root/duration[@id = "time" and seconds-from-duration(@value) = 30.5]')
    assert(errSeconds == ERR_Okay and secondsNode != nil, 'seconds-from-duration() should honour fractional seconds within xs:duration values')
+
+   local errCarryTime, carryTimeNode = xml.mtFindTag('/root/duration[@id = "carry-time" and days-from-duration(@value) = 2 and hours-from-duration(@value) = 0 and minutes-from-duration(@value) = 31 and seconds-from-duration(@value) = 30]')
+   assert(errCarryTime == ERR_Okay and carryTimeNode != nil, 'duration helpers should carry overflowed time fields into neighbouring units before extraction')
 
    local errNegative, negativeNode = xml.mtFindTag('/root/duration[@id = "negative" and years-from-duration(@value) = -1 and months-from-duration(@value) = -2 and days-from-duration(@value) = -3 and hours-from-duration(@value) = -4 and minutes-from-duration(@value) = -5 and seconds-from-duration(@value) = -6]')
    assert(errNegative == ERR_Okay and negativeNode != nil, 'duration component helpers should propagate the sign of negative xs:duration values')

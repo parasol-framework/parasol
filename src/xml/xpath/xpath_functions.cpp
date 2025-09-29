@@ -397,6 +397,45 @@ struct DurationComponents
 
 enum class DurationParseStatus { Empty, Error, Value };
 
+static void normalise_duration_components(DurationComponents &Components)
+{
+   long long total_months = (long long)Components.years.count() * 12ll + (long long)Components.months.count();
+   long long normalised_years = total_months / 12ll;
+   long long normalised_months = total_months % 12ll;
+
+   Components.years = std::chrono::years(normalised_years);
+   Components.months = std::chrono::months(normalised_months);
+   Components.has_year = (normalised_years != 0);
+   Components.has_month = (normalised_months != 0);
+
+   std::chrono::duration<double> total_seconds = Components.seconds;
+   total_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(Components.minutes);
+   total_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(Components.hours);
+   total_seconds += std::chrono::duration_cast<std::chrono::duration<double>>(Components.days);
+
+   auto whole_seconds = std::chrono::duration_cast<std::chrono::seconds>(total_seconds);
+   auto fractional_seconds = total_seconds - std::chrono::duration_cast<std::chrono::duration<double>>(whole_seconds);
+
+   auto total_minutes = std::chrono::duration_cast<std::chrono::minutes>(whole_seconds);
+   auto seconds_remainder = whole_seconds - std::chrono::duration_cast<std::chrono::seconds>(total_minutes);
+
+   auto total_hours = std::chrono::duration_cast<std::chrono::hours>(total_minutes);
+   auto minutes_remainder = total_minutes - std::chrono::duration_cast<std::chrono::minutes>(total_hours);
+
+   auto total_days = std::chrono::duration_cast<std::chrono::days>(total_hours);
+   auto hours_remainder = total_hours - std::chrono::duration_cast<std::chrono::hours>(total_days);
+
+   Components.days = total_days;
+   Components.hours = hours_remainder;
+   Components.minutes = minutes_remainder;
+   Components.seconds = fractional_seconds + std::chrono::duration_cast<std::chrono::duration<double>>(seconds_remainder);
+
+   Components.has_day = (Components.days.count() != 0);
+   Components.has_hour = (Components.hours.count() != 0);
+   Components.has_minute = (Components.minutes.count() != 0);
+   Components.has_second = (Components.seconds.count() != 0.0);
+}
+
 static bool parse_seconds_value(std::string_view Text, double &Output)
 {
    if (Text.empty()) return false;
@@ -554,6 +593,8 @@ static DurationParseStatus prepare_duration_components(const std::vector<XPathVa
    if (RequireDayTimeOnly) {
       if (Components.has_year or Components.has_month) return DurationParseStatus::Error;
    }
+
+   normalise_duration_components(Components);
 
    return DurationParseStatus::Value;
 }
