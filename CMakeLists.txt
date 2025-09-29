@@ -96,6 +96,8 @@ set (BUILD_RPATH_USE_ORIGIN TRUE)
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
 
+set(REQUIRED_MODS core fluid xml)
+
 if (PARASOL_STATIC)
    set (BUILD_SHARED_LIBS OFF)
 else ()
@@ -367,6 +369,13 @@ function (set_module_defaults ARG_TARGET ARG_NAMESPACE)
    # Ensure all modules depend on build_headers to prevent race conditions
    # where C++ compilation starts before FDL processing completes
    add_dependencies (${ARG_TARGET} build_headers)
+
+   # Ensure all modules have a minimum level of dependencies, this ensures a minimally
+   # functioning environment is created when building individual targets with --target
+
+   if (NOT ARG_TARGET IN_LIST REQUIRED_MODS)
+      add_dependencies (${ARG_TARGET} ${REQUIRED_MODS})
+   endif()
 endfunction ()
 
 # --------------------------------------------------------------------------------------------------------------------
