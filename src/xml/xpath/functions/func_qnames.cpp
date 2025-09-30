@@ -282,7 +282,7 @@ XPathValue XPathFunctionLibrary::function_namespace_uri_from_QName(const std::ve
       return XPathValue(std::vector<XMLTag *>());
    }
 
-   if (qname.namespace_uri.empty()) return XPathValue(std::vector<XMLTag *>());
+   if (qname.namespace_uri.empty()) return XPathValue(std::string());
    return XPathValue(qname.namespace_uri);
 }
 
