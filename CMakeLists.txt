@@ -96,7 +96,7 @@ set (BUILD_RPATH_USE_ORIGIN TRUE)
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
 
-set(REQUIRED_MODS core fluid xml)
+set(REQUIRED_MODS core fluid xml json)
 
 if (PARASOL_STATIC)
    set (BUILD_SHARED_LIBS OFF)
@@ -664,7 +664,7 @@ if (NOT DISABLE_VECTOR AND NOT DISABLE_DISPLAY AND NOT DISABLE_FONT)
    list (APPEND LIB_LIST vector)
 endif ()
 
-list (APPEND LIB_LIST fluid json jpeg xml)
+list (APPEND LIB_LIST ${REQUIRED_MODS})
 
 add_subdirectory (src/link)
 add_subdirectory (src/core)

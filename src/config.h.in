@@ -76,7 +76,7 @@ typedef void * APTR;           // 32 or 64 bit untyped pointer
 typedef char * STRING;         // string pointer (NULL terminated)
 typedef char * SSTRING;        // signed string pointer (NULL terminated)
 typedef const char * CSTRING;
-typedef void * OBJECT;           // Object pointer
+typedef void * OBJECT;             // Object pointer
 typedef struct Object * OBJECTPTR; // Object pointer
 typedef int64_t EVENTID;
 
