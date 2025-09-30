@@ -11,6 +11,7 @@
 #include <ankerl/unordered_dense.h>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -43,6 +44,12 @@ class extXML;
 //********************************************************************************************************************
 // XPath Value System
 
+namespace xml::schema
+{
+   enum class SchemaType;
+   class SchemaTypeDescriptor;
+}
+
 enum class XPathValueType {
    NodeSet,
    Boolean,
@@ -64,6 +71,8 @@ class XPathValue
    bool boolean_value = false;
    double number_value = 0.0;
    std::string string_value;
+   mutable std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_type_info;
+   mutable bool schema_validated = false;
 
    // Constructors
    XPathValue() : type(XPathValueType::Boolean) {}
@@ -91,6 +100,12 @@ class XPathValue
    // Utility methods
    bool is_empty() const;
    size_t size() const;
+
+   // Schema metadata helpers
+   bool has_schema_info() const;
+   void set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo);
+   bool validate_against_schema() const;
+   xml::schema::SchemaType get_schema_type() const;
 
    // Helpers exposed for evaluator utilities
    static std::string node_string_value(XMLTag *Node);
