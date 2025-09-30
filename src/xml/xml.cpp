@@ -2058,14 +2058,23 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
 {
    pf::Log log;
 
-   if (not Self->SchemaContext) return log.warning(ERR::NoSupport);
-   if (Self->Tags.empty()) return log.warning(ERR::NoData);
+   Self->ErrorMsg.clear();
+
+   if (not Self->SchemaContext) {
+      Self->ErrorMsg = "No schema has been loaded for this document.";
+      return log.warning(ERR::NoSupport);
+   }
+   if (Self->Tags.empty()) {
+      Self->ErrorMsg = "XML document has no parsed tags to validate.";
+      return log.warning(ERR::NoData);
+   }
    if ((Self->Tags[0].Attribs.empty()) or (Self->Tags[0].Attribs[0].Name.empty())) {
+      Self->ErrorMsg = "Document root element is unnamed.";
       return log.warning(ERR::InvalidData);
    }
 
    auto &context = *Self->SchemaContext;
-   auto find_descriptor = [&](std::string_view Name) -> 
+   auto find_descriptor = [&](std::string_view Name) ->
       std::shared_ptr<xml::schema::ElementDescriptor>
    {
       auto iter = context.elements.find(std::string(Name));
@@ -2092,16 +2101,33 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
    }
 
    if (!document_root) {
+      Self->ErrorMsg = "Document does not contain a schema-valid root element.";
       return log.warning(ERR::InvalidData);
    }
 
    std::string_view root_name(document_root->Attribs[0].Name);
    auto descriptor = find_descriptor(root_name);
-   if (!descriptor) return log.warning(ERR::Search);
+   if (!descriptor) {
+      Self->ErrorMsg = "Schema does not define root element '";
+      Self->ErrorMsg.append(root_name);
+      Self->ErrorMsg.append("'.");
+      return log.warning(ERR::Search);
+   }
 
-   xml::schema::TypeChecker checker(xml::schema::registry(), Self->SchemaContext.get());
-   if (checker.validate_element(*document_root, *descriptor)) return ERR::Okay;
-   else return ERR::InvalidData;
+   xml::schema::TypeChecker checker(xml::schema::registry(), Self->SchemaContext.get(), &Self->ErrorMsg);
+   checker.clear_error();
+
+   if (checker.validate_element(*document_root, *descriptor)) {
+      Self->ErrorMsg.clear();
+      return ERR::Okay;
+   }
+
+   if (Self->ErrorMsg.empty()) {
+      Self->ErrorMsg = checker.last_error();
+      if (Self->ErrorMsg.empty()) Self->ErrorMsg = "Schema validation failed.";
+   }
+
+   return log.warning(ERR::InvalidData);
 }
 
 //********************************************************************************************************************
