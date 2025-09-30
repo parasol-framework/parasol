@@ -15,6 +15,9 @@
 // namespace-aware functions or performance-focused helpers) without polluting the evaluator with
 // coercion details.
 
+#include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
+
 #include "xpath_functions.h"
 #include "../xml.h"
 
