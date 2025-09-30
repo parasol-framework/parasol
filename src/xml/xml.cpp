@@ -2016,20 +2016,43 @@ static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
 
    if ((not Args) or (not Args->Path)) return log.warning(ERR::NullArgs);
 
-   extXML schema_document;
-   schema_document.Path = pf::strclone(Args->Path);
-   if (not schema_document.Path) return log.warning(ERR::AllocMemory);
-   schema_document.Flags = XMF::WELL_FORMED | XMF::NAMESPACE_AWARE;
+   pf::Create<objXML> schema_holder(NF::UNTRACKED);
+   if (!schema_holder.ok()) return log.warning(schema_holder.error);
 
-   auto error = parse_source(&schema_document);
+   auto schema_document = (extXML *)*schema_holder;
+   *schema_holder = nullptr;
+   auto init_error = schema_document->init();
+   if (init_error != ERR::Okay) {
+      FreeResource(schema_document->UID);
+      *schema_holder = nullptr;
+      return log.warning(init_error);
+   }
 
-   if (schema_document.Path) { FreeResource(schema_document.Path); schema_document.Path = nullptr; }
+   struct SchemaGuard {
+      extXML *object;
+      ~SchemaGuard() { if (object) FreeResource(object->UID); }
+   } guard{schema_document};
+
+   schema_document->Path = pf::strclone(Args->Path);
+   if (not schema_document->Path) return log.warning(ERR::AllocMemory);
+   schema_document->Flags = XMF::WELL_FORMED | XMF::NAMESPACE_AWARE;
+
+   auto error = parse_source(schema_document);
+
+   if (schema_document->Path) { FreeResource(schema_document->Path); schema_document->Path = nullptr; }
 
    if (error != ERR::Okay) return log.warning(error);
-   if (schema_document.Tags.empty()) return log.warning(ERR::InvalidData);
+   if (schema_document->Tags.empty()) return log.warning(ERR::InvalidData);
 
    xml::schema::SchemaParser parser(xml::schema::registry());
-   auto Document = parser.parse(schema_document.Tags[0]);
+   XMLTag *root_tag = nullptr;
+   for (auto &tag : schema_document->Tags) {
+      if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { root_tag = &tag; break; }
+   }
+
+   if (!root_tag) return log.warning(ERR::InvalidData);
+
+   auto Document = parser.parse(*root_tag);
    if (Document.empty() or (not Document.context)) return log.warning(ERR::InvalidData);
 
    Self->schema_context = Document.context;
@@ -2090,7 +2113,17 @@ static ERR XML_ValidateDocument(extXML *Self, struct xml::ValidateDocument *Args
       return nullptr;
    };
 
-   std::string_view root_name(Self->Tags[0].Attribs[0].Name);
+   XMLTag *document_root = nullptr;
+   for (auto &tag : Self->Tags) {
+      if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { document_root = &tag; break; }
+   }
+
+   if (!document_root) {
+      Args->Result = 0;
+      return log.warning(ERR::InvalidData);
+   }
+
+   std::string_view root_name(document_root->Attribs[0].Name);
    auto descriptor = find_descriptor(root_name);
    if (!descriptor) {
       Args->Result = 0;
@@ -2098,7 +2131,7 @@ static ERR XML_ValidateDocument(extXML *Self, struct xml::ValidateDocument *Args
    }
 
    xml::schema::TypeChecker checker(xml::schema::registry(), Self->schema_context.get());
-   bool valid = checker.validate_element(Self->Tags[0], *descriptor);
+   bool valid = checker.validate_element(*document_root, *descriptor);
    Args->Result = valid ? 1 : 0;
 
    if (!valid) {

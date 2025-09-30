@@ -88,7 +88,7 @@ namespace xml::schema
 
    bool TypeChecker::validate_element(const XMLTag &Tag, const ElementDescriptor &Descriptor) const
    {
-      if (Descriptor.type) {
+      if (Descriptor.type and Descriptor.children.empty()) {
          XPathValue value(Tag.getContent());
          return validate_value(value, *Descriptor.type);
       }
@@ -128,7 +128,7 @@ namespace xml::schema
 
          counters[rule]++;
 
-         if (rule->type) {
+         if (rule->type and rule->children.empty()) {
             XPathValue child_value(Child.getContent());
             if (!validate_value(child_value, *rule->type)) return false;
          }
