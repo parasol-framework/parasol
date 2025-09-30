@@ -38,7 +38,7 @@ namespace xml::schema
 
          char *end = nullptr;
          auto parsed = std::strtoull(Value.c_str(), &end, 10);
-         if ((end) and (*end IS '\0')) return static_cast<size_t>(parsed);
+         if ((end) and (*end IS '\0')) return size_t(parsed);
          return DefaultValue;
       }
 
@@ -255,36 +255,8 @@ namespace xml::schema
          ? declared_name
          : make_qualified_name(Document.target_namespace_prefix, declared_name);
 
-      for (const auto &Child : Node.Children) {
-         if (Child.Attribs.empty()) continue;
-
-         auto child_local = extract_local_name(Child.Attribs[0].Name);
-         if (!is_named(child_local, "sequence")) continue;
-
-         for (const auto &SequenceChild : Child.Children) {
-            if (SequenceChild.Attribs.empty()) continue;
-            auto seq_local = extract_local_name(SequenceChild.Attribs[0].Name);
-            if (!is_named(seq_local, "element")) continue;
-
-            auto element_name = find_attribute_value(SequenceChild, "name");
-            if (element_name.empty()) continue;
-
-            auto element_descriptor = std::make_shared<ElementDescriptor>();
-            element_descriptor->name = element_name;
-            element_descriptor->qualified_name = Document.target_namespace_prefix.empty()
-               ? element_name
-               : make_qualified_name(Document.target_namespace_prefix, element_name);
-
-            auto type_name = find_attribute_value(SequenceChild, "type");
-            element_descriptor->type_name = type_name;
-            if (!type_name.empty()) element_descriptor->type = resolve_type(type_name, Document);
-
-            element_descriptor->min_occurs = parse_occurs_value(find_attribute_value(SequenceChild, "minOccurs"), 1u, false);
-            element_descriptor->max_occurs = parse_occurs_value(find_attribute_value(SequenceChild, "maxOccurs"), 1u, true);
-
-            Descriptor->children.push_back(element_descriptor);
-         }
-      }
+      Descriptor->children.clear();
+      parse_inline_complex_type(Node, Document, *Descriptor);
 
       Document.context->complex_types[Descriptor->name] = Descriptor;
       Document.context->complex_types[Descriptor->qualified_name] = Descriptor;
@@ -315,13 +287,139 @@ namespace xml::schema
             if (complex_it != Document.context->complex_types.end()) Descriptor->children = complex_it->second->children;
          }
       }
+      else {
+         for (const auto &Child : Node.Children) {
+            if (Child.Attribs.empty()) continue;
+
+            auto child_local = extract_local_name(Child.Attribs[0].Name);
+            if (is_named(child_local, "complexType")) {
+               Descriptor->children.clear();
+               parse_inline_complex_type(Child, Document, *Descriptor);
+            }
+            else if (is_named(child_local, "simpleType")) {
+               auto base_name = std::string();
+               for (const auto &SimpleChild : Child.Children) {
+                  if (SimpleChild.Attribs.empty()) continue;
+                  auto simple_local = extract_local_name(SimpleChild.Attribs[0].Name);
+                  if (!is_named(simple_local, "restriction")) continue;
+
+                  base_name = find_attribute_value(SimpleChild, "base");
+                  break;
+               }
+
+               if (!base_name.empty()) Descriptor->type = resolve_type(base_name, Document);
+            }
+         }
+      }
 
       register_element_aliases(Document, Descriptor);
    }
 
+   void SchemaParser::parse_inline_complex_type(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
+   {
+      for (const auto &Child : Node.Children) {
+         if (Child.Attribs.empty()) continue;
+
+         auto child_local = extract_local_name(Child.Attribs[0].Name);
+         if (is_named(child_local, "sequence")) {
+            parse_sequence(Child, Document, Descriptor);
+            continue;
+         }
+
+         if (is_named(child_local, "complexContent")) {
+            for (const auto &ContentChild : Child.Children) {
+               if (ContentChild.Attribs.empty()) continue;
+
+               auto content_local = extract_local_name(ContentChild.Attribs[0].Name);
+               if (is_named(content_local, "extension") or is_named(content_local, "restriction")) {
+                  auto base_name = find_attribute_value(ContentChild, "base");
+                  if (!base_name.empty()) Descriptor.type = resolve_type(base_name, Document);
+
+                  for (const auto &ExtensionChild : ContentChild.Children) {
+                     if (ExtensionChild.Attribs.empty()) continue;
+                     auto extension_local = extract_local_name(ExtensionChild.Attribs[0].Name);
+                     if (is_named(extension_local, "sequence")) parse_sequence(ExtensionChild, Document, Descriptor);
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   void SchemaParser::parse_sequence(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
+   {
+      for (const auto &SequenceChild : Node.Children) {
+         if (SequenceChild.Attribs.empty()) continue;
+
+         auto seq_local = extract_local_name(SequenceChild.Attribs[0].Name);
+         if (!is_named(seq_local, "element")) continue;
+
+         auto element_descriptor = parse_child_element_descriptor(SequenceChild, Document);
+         if (!element_descriptor) continue;
+
+         Descriptor.children.push_back(element_descriptor);
+      }
+   }
+
+   std::shared_ptr<ElementDescriptor> SchemaParser::parse_child_element_descriptor(const XMLTag &Node,
+                                                                                   SchemaDocument &Document) const
+   {
+      auto element_name = find_attribute_value(Node, "name");
+      if (element_name.empty()) return nullptr;
+
+      auto element_descriptor = std::make_shared<ElementDescriptor>();
+      element_descriptor->name = element_name;
+      element_descriptor->qualified_name = Document.target_namespace_prefix.empty()
+         ? element_name
+         : make_qualified_name(Document.target_namespace_prefix, element_name);
+
+      element_descriptor->min_occurs = parse_occurs_value(find_attribute_value(Node, "minOccurs"), 1u, false);
+      element_descriptor->max_occurs = parse_occurs_value(find_attribute_value(Node, "maxOccurs"), 1u, true);
+
+      auto type_name = find_attribute_value(Node, "type");
+      element_descriptor->type_name = type_name;
+
+      if (!type_name.empty()) {
+         element_descriptor->type = resolve_type(type_name, Document);
+
+         auto complex_it = Document.context->complex_types.find(type_name);
+         if (complex_it != Document.context->complex_types.end()) element_descriptor->children = complex_it->second->children;
+         else {
+            auto local_name = std::string(extract_local_name(type_name));
+            complex_it = Document.context->complex_types.find(local_name);
+            if (complex_it != Document.context->complex_types.end()) element_descriptor->children = complex_it->second->children;
+         }
+      }
+
+      for (const auto &Child : Node.Children) {
+         if (Child.Attribs.empty()) continue;
+
+         auto child_local = extract_local_name(Child.Attribs[0].Name);
+         if (is_named(child_local, "complexType")) {
+            element_descriptor->children.clear();
+            parse_inline_complex_type(Child, Document, *element_descriptor);
+         }
+         else if (is_named(child_local, "simpleType") and element_descriptor->type_name.empty()) {
+            auto base_name = std::string();
+            for (const auto &SimpleChild : Child.Children) {
+               if (SimpleChild.Attribs.empty()) continue;
+
+               auto simple_local = extract_local_name(SimpleChild.Attribs[0].Name);
+               if (!is_named(simple_local, "restriction")) continue;
+
+               base_name = find_attribute_value(SimpleChild, "base");
+               break;
+            }
+
+            if (!base_name.empty()) element_descriptor->type = resolve_type(base_name, Document);
+         }
+      }
+
+      return element_descriptor;
+   }
+
    std::shared_ptr<SchemaTypeDescriptor> SchemaParser::resolve_type(std::string_view Name, SchemaDocument &Document) const
    {
-      if (!registry_ref) registry_ref = &registry();
       if (Name.empty()) return registry_ref->find_descriptor(SchemaType::XSAnyType);
 
       auto lookup_name = std::string(Name);

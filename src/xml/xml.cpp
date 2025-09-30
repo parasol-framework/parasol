@@ -2064,7 +2064,10 @@ static ERR XML_ValidateDocument(extXML *Self, struct xml::ValidateDocument *Args
    if (not Args) return log.warning(ERR::NullArgs);
    if (!Self->schema_context) { Args->Result = 0; return log.warning(ERR::NoSupport); }
    if (Self->Tags.empty()) { Args->Result = 0; return log.warning(ERR::NoData); }
-   if (Self->Tags[0].Attribs.empty()) { Args->Result = 0; return log.warning(ERR::InvalidData); }
+   if ((Self->Tags[0].Attribs.size() IS 0) or (Self->Tags[0].Attribs[0].Name.empty())) {
+      Args->Result = 0;
+      return log.warning(ERR::InvalidData);
+   }
 
    auto &context = *Self->schema_context;
    auto find_descriptor = [&](std::string_view Name) -> std::shared_ptr<xml::schema::ElementDescriptor>

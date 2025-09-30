@@ -65,6 +65,10 @@ namespace xml::schema
       void parse_simple_type(const XMLTag &Node, SchemaDocument &Document) const;
       void parse_complex_type(const XMLTag &Node, SchemaDocument &Document) const;
       void parse_element(const XMLTag &Node, SchemaDocument &Document) const;
+      void parse_inline_complex_type(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const;
+      void parse_sequence(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const;
+      [[nodiscard]] std::shared_ptr<ElementDescriptor> parse_child_element_descriptor(const XMLTag &Node,
+                                                                                      SchemaDocument &Document) const;
       [[nodiscard]] std::shared_ptr<SchemaTypeDescriptor> resolve_type(std::string_view Name,
                                                                        SchemaDocument &Document) const;
    };
