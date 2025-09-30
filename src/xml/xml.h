@@ -13,6 +13,8 @@
 #include <optional>
 #include <ankerl/unordered_dense.h>
 
+#include "schema/schema_parser.h"
+
 constexpr std::array<uint64_t, 4> name_char_table = []() {
    std::array<uint64_t, 4> table{0, 0, 0, 0};
    auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
@@ -156,7 +158,8 @@ class extXML : public objXML {
    TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    FUNCTION Callback;
-
+   
+   std::shared_ptr<xml::schema::SchemaContext> SchemaContext;
    ankerl::unordered_dense::map<std::string, std::string> Variables; // XPath variable references
    ankerl::unordered_dense::map<std::string, std::string> Entities; // For general entities
    ankerl::unordered_dense::map<std::string, std::string> ParameterEntities; // For parameter entities

@@ -4,15 +4,12 @@ function testLoadSchema()
    local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err == ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
 
-   local errHas, has = glXML.mtHasSchema()
-   assert(errHas == ERR_Okay, "HasSchema() returned error: " .. mSys.GetErrorMsg(errHas))
-   assert(has == 1, "Schema not detected after loading")
+   assert(bit.band(glXML.flags, XMF_HAS_SCHEMA) != 0, "XMF_HAS_SCHEMA undefined")
 end
 
 function testValidateDocumentPass()
-   local err, result = glXML.mtValidateDocument()
+   local err = glXML.mtValidateDocument()
    assert(err == ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
-   assert(result == 1, "Expected document to validate successfully")
 end
 
 function testValidateDocumentFail()
@@ -20,9 +17,8 @@ function testValidateDocumentFail()
    local err = invalid.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err == ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
 
-   local errValidate, result = invalid.mtValidateDocument()
-   assert(errValidate == ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(errValidate))
-   assert(result == 0, "Expected invalid document to fail validation")
+   local err = invalid.mtValidateDocument()
+   assert(err != ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
 end
 
 return {

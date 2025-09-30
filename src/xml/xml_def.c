@@ -17,6 +17,7 @@ static const struct FieldDef clXMLFlags[] = {
    { "ParseEntity", 0x00001000 },
    { "OmitTags", 0x00002000 },
    { "NamespaceAware", 0x00004000 },
+   { "HasSchema", 0x00008000 },
    { "IncludeSiblings", (int)0x80000000 },
    { nullptr, 0 }
 };
@@ -44,8 +45,6 @@ FDEF maSetVariable[] = { { "Key", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF maGetEntity[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maGetNotation[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maLoadSchema[] = { { "Path", FD_STR }, { 0, 0 } };
-FDEF maValidateDocument[] = { { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
-FDEF maHasSchema[] = { { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clXMLMethods[] = {
    { AC(-1), (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
@@ -71,8 +70,7 @@ static const struct MethodEntry clXMLMethods[] = {
    { AC(-24), (APTR)XML_GetEntity, "GetEntity", maGetEntity, sizeof(struct xml::GetEntity) },
    { AC(-25), (APTR)XML_GetNotation, "GetNotation", maGetNotation, sizeof(struct xml::GetNotation) },
    { AC(-26), (APTR)XML_LoadSchema, "LoadSchema", maLoadSchema, sizeof(struct xml::LoadSchema) },
-   { AC(-27), (APTR)XML_ValidateDocument, "ValidateDocument", maValidateDocument, sizeof(struct xml::ValidateDocument) },
-   { AC(-28), (APTR)XML_HasSchema, "HasSchema", maHasSchema, sizeof(struct xml::HasSchema) },
+   { AC(-27), (APTR)XML_ValidateDocument, "ValidateDocument", 0, 0 },
    { AC::NIL, 0, 0, 0, 0 }
 };
 
@@ -90,4 +88,4 @@ static const struct ActionArray clXMLActions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.XMLAttrib:zsName,zsValue\ns.XMLTag:lID,lParentID,lLineNo,lFlags,ulNamespaceID,zeAttribs:XMLAttrib[],zeChildren:XMLTag[]\nc.XMF:INCLUDE_COMMENTS=0x2,INCLUDE_SIBLINGS=0x80000000,INCLUDE_WHITESPACE=0x100,INDENT=0x8,LOCK_REMOVE=0x10,LOG_ALL=0x800,NAMESPACE_AWARE=0x4000,NEW=0x40,NO_ESCAPE=0x80,OMIT_TAGS=0x2000,PARSE_ENTITY=0x1000,PARSE_HTML=0x200,READABLE=0x8,STRIP_CDATA=0x400,STRIP_CONTENT=0x4,STRIP_HEADERS=0x20,WELL_FORMED=0x1\nc.XMI:CHILD=0x1,CHILD_END=0x3,END=0x4,NEXT=0x2,PREV=0x0,PREVIOUS=0x0\nc.XMS:NEW=0xffffffff,UPDATE=0xfffffffd,UPDATE_ONLY=0xfffffffe\nc.XSF:CHECK_SORT=0x2,DESC=0x1\nc.XTF:CDATA=0x1,COMMENT=0x8,INSTRUCTION=0x2,NOTATION=0x4\n"
+#define MOD_IDL "s.XMLAttrib:zsName,zsValue\ns.XMLTag:lID,lParentID,lLineNo,lFlags,ulNamespaceID,zeAttribs:XMLAttrib[],zeChildren:XMLTag[]\nc.XMF:HAS_SCHEMA=0x8000,INCLUDE_COMMENTS=0x2,INCLUDE_SIBLINGS=0x80000000,INCLUDE_WHITESPACE=0x100,INDENT=0x8,LOCK_REMOVE=0x10,LOG_ALL=0x800,NAMESPACE_AWARE=0x4000,NEW=0x40,NO_ESCAPE=0x80,OMIT_TAGS=0x2000,PARSE_ENTITY=0x1000,PARSE_HTML=0x200,READABLE=0x8,STRIP_CDATA=0x400,STRIP_CONTENT=0x4,STRIP_HEADERS=0x20,WELL_FORMED=0x1\nc.XMI:CHILD=0x1,CHILD_END=0x3,END=0x4,NEXT=0x2,PREV=0x0,PREVIOUS=0x0\nc.XMS:NEW=0xffffffff,UPDATE=0xfffffffd,UPDATE_ONLY=0xfffffffe\nc.XSF:CHECK_SORT=0x2,DESC=0x1\nc.XTF:CDATA=0x1,COMMENT=0x8,INSTRUCTION=0x2,NOTATION=0x4\n"

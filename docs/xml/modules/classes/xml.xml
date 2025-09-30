@@ -386,6 +386,24 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     </method>
 
     <method>
+      <name>LoadSchema</name>
+      <comment>Load an XML Schema definition to enable schema-aware validation.</comment>
+      <prototype>ERR xml::LoadSchema(OBJECTPTR Object, CSTRING Path)</prototype>
+      <input>
+        <param type="CSTRING" name="Path">File system path to the XML Schema (XSD) document.</param>
+      </input>
+      <description>
+<p>This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, schema metadata is available for validation and XPath evaluation routines that utilise schema-aware behaviour.</p>
+      </description>
+      <result>
+        <error code="Okay">Schema was successfully loaded and parsed.</error>
+        <error code="NoData">The schema document did not contain any parsable definitions.</error>
+        <error code="CreateObject">The file in Path could not be processed as XML content.</error>
+        <error code="NullArgs">The Path argument was not provided.</error>
+      </result>
+    </method>
+
+    <method>
       <name>MoveTags</name>
       <comment>Move an XML tag group to a new position in the XML tree.</comment>
       <prototype>ERR xml::MoveTags(OBJECTPTR Object, INT Index, INT Total, INT DestIndex, XMI Where)</prototype>
@@ -600,6 +618,22 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       </result>
     </method>
 
+    <method>
+      <name>ValidateDocument</name>
+      <comment>Validate the XML document against the currently loaded schema.</comment>
+      <prototype>ERR xml::ValidateDocument(OBJECTPTR Object)</prototype>
+      <description>
+<p>This method performs structural and simple type validation of the document using the loaded XML Schema.  The Result parameter returns <code>1</code> when the document conforms to the schema, otherwise <code>0</code>.</p>
+      </description>
+      <result>
+        <error code="Okay">Validation completed successfully.</error>
+        <error code="Search">The schema does not define the root element present in the document.</error>
+        <error code="NoData">The XML document does not contain any parsed tags.</error>
+        <error code="NoSupport">No schema has been loaded for this XML object.</error>
+        <error code="NullArgs">The Result parameter was not supplied.</error>
+      </result>
+    </method>
+
   </methods>
 
   <fields>
@@ -725,6 +759,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
   </fields>
   <types>
     <constants lookup="XMF" comment="Standard flags for the XML class.">
+      <const name="HAS_SCHEMA">Automatically defined when a schema has been loaded into the XML object.</const>
       <const name="INCLUDE_COMMENTS">By default, comments are stripped when parsing XML input unless this flag is specified.</const>
       <const name="INCLUDE_SIBLINGS">Include siblings when building an XML string (<action>GetXMLString</action> only)</const>
       <const name="INCLUDE_WHITESPACE">By default the XML parser will skip content between tags when they contain pure whitespace.  Setting this flag will retain all whitespace.</const>
