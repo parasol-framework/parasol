@@ -10,9 +10,9 @@ namespace xml::schema
    bool TypeChecker::validate_value(const XPathValue &Value, const SchemaTypeDescriptor &Descriptor) const
    {
       auto SourceType = schema_type_for_xpath(Value.type);
-      if (Descriptor.can_coerce_to(SourceType)) return true;
-      if (Descriptor.can_coerce_to(SchemaType::XPathString)) return true;
-      return false;
+      auto SourceDescriptor = registry().find_descriptor(SourceType);
+      if (not SourceDescriptor) return false;
+      return SourceDescriptor->can_coerce_to(Descriptor.schema_type);
    }
 
    bool TypeChecker::validate_attribute(const XMLAttrib &Attribute, const SchemaTypeDescriptor &Descriptor) const
