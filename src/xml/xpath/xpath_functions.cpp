@@ -1898,7 +1898,7 @@ size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, 
 }
 
 //********************************************************************************************************************
-// Core XPath 1.0 Function Implementations
+// Core XPath Function Implementations
 
 #include "functions/func_nodeset.cpp"
 #include "functions/func_strings.cpp"
