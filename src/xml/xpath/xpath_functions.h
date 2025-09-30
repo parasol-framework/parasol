@@ -235,6 +235,29 @@ class XPathFunctionLibrary {
    static XPathValue function_current_date(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_current_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_current_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_year_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_month_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_day_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_hours_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_minutes_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_seconds_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_timezone_from_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_year_from_date(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_month_from_date(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_day_from_date(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_timezone_from_date(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_hours_from_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_minutes_from_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_seconds_from_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_timezone_from_time(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_adjust_date_time_to_timezone(const std::vector<XPathValue> &Args,
+      const XPathContext &Context);
+   static XPathValue function_adjust_date_to_timezone(const std::vector<XPathValue> &Args,
+      const XPathContext &Context);
+   static XPathValue function_adjust_time_to_timezone(const std::vector<XPathValue> &Args,
+      const XPathContext &Context);
+   static XPathValue function_implicit_timezone(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_years_from_duration(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_months_from_duration(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_days_from_duration(const std::vector<XPathValue> &Args, const XPathContext &Context);
