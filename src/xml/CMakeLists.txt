@@ -40,6 +40,7 @@ flute_test (${MOD}_xpath_sequences "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath
 flute_test (${MOD}_xpath_string_uri "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_string_uri.fluid")
 flute_test (${MOD}_xpath2_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_duration.fluid")
 flute_test (${MOD}_xpath2_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_datetime.fluid")
+flute_test (${MOD}_xpath2_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_qname.fluid")
 
 if (INSTALL_TESTS)
    add_executable (test_xml_count_debug "tests/test_count_debug.cpp")

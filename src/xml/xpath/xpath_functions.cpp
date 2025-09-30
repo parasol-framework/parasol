@@ -1712,6 +1712,15 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("namespace-uri", function_namespace_uri);
    register_function("name", function_name);
 
+   // QName Functions
+   register_function("QName", function_QName);
+   register_function("resolve-QName", function_resolve_QName);
+   register_function("prefix-from-QName", function_prefix_from_QName);
+   register_function("local-name-from-QName", function_local_name_from_QName);
+   register_function("namespace-uri-from-QName", function_namespace_uri_from_QName);
+   register_function("namespace-uri-for-prefix", function_namespace_uri_for_prefix);
+   register_function("in-scope-prefixes", function_in_scope_prefixes);
+
    // String Functions
    register_function("string", function_string);
    register_function("concat", function_concat);
@@ -1901,6 +1910,7 @@ size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, 
 // Core XPath Function Implementations
 
 #include "functions/func_nodeset.cpp"
+#include "functions/func_qnames.cpp"
 #include "functions/func_strings.cpp"
 #include "functions/func_diagnostics.cpp"
 #include "functions/func_booleans.cpp"

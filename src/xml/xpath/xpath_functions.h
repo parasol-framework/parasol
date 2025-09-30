@@ -181,6 +181,13 @@ class XPathFunctionLibrary {
    static XPathValue function_local_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_namespace_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_resolve_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_prefix_from_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_local_name_from_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_namespace_uri_from_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_namespace_uri_for_prefix(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_in_scope_prefixes(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_string(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_concat(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_codepoints_to_string(const std::vector<XPathValue> &Args, const XPathContext &Context);
