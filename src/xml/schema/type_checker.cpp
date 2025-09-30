@@ -1,5 +1,5 @@
-#include "type_checker.h"
 
+#include "type_checker.h"
 #include <cmath>
 #include <limits>
 

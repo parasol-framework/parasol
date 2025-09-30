@@ -5,9 +5,7 @@
 #include <string_view>
 #include <vector>
 #include <ankerl/unordered_dense.h>
-
 #include <parasol/modules/xml.h>
-
 #include "../xpath/xpath_functions.h"
 
 namespace xml::schema

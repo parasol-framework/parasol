@@ -1,5 +1,5 @@
-#include "schema_parser.h"
 
+#include "schema_parser.h"
 #include <cstdlib>
 #include <parasol/strings.hpp>
 
