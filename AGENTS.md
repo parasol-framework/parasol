@@ -15,8 +15,8 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
 
 **Build and install:**
-- Build: `cmake --build build/agents --config Release -j 8`
-- Install: `cmake --build build/agents --config Release -j 8 && cmake --install build/agents`
+- Build: `cmake --build build/agents --config Release --parallel`
+- Install: `cmake --build build/agents --config Release --parallel && cmake --install build/agents`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.
 
 **Testing:**
@@ -224,7 +224,7 @@ For Fluid code, verify:
 **Full Build Commands:**
 ```bash
 # Build everything
-cmake --build build/agents --config Release -j 8
+cmake --build build/agents --config Release --parallel
 
 # Install after successful build
 cmake --install build/agents
@@ -233,12 +233,12 @@ cmake --install build/agents
 **Module Build Commands:**
 ```bash
 # Build specific module (e.g., network, vector, svg, etc.)
-cmake --build build/agents --config Release --target [module_name] -j 8
+cmake --build build/agents --config Release --target [module_name] --parallel
 
 # Examples:
-cmake --build build/agents --config Release --target network -j 8    # For network changes
-cmake --build build/agents --config Release --target vector -j 8     # For vector changes
-cmake --build build/agents --config Release --target svg -j 8        # For SVG changes
+cmake --build build/agents --config Release --target network --parallel    # For network changes
+cmake --build build/agents --config Release --target vector --parallel     # For vector changes
+cmake --build build/agents --config Release --target svg --parallel        # For SVG changes
 ```
 
 ### Documentation
