@@ -10,6 +10,7 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <memory>
 #include <sstream>
 #ifndef STRINGS_HPP
 #include <parasol/strings.hpp>
@@ -18,6 +19,11 @@
 #endif
 
 class objXML;
+
+namespace xml::schema
+{
+   struct SchemaContext;
+}
 
 // For SetAttrib()
 
@@ -184,6 +190,9 @@ struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const 
 struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct LoadSchema { CSTRING Path; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ValidateDocument { int Result; static const AC id = AC(-27); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct HasSchema { int Result; static const AC id = AC(-28); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -208,6 +217,7 @@ class objXML : public Object {
    typedef pf::vector<XMLTag> TAGS;
    typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
+   std::shared_ptr<xml::schema::SchemaContext> schema_context;
 
    template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XMLTag **Result) {
       int index_result;
@@ -367,6 +377,22 @@ class objXML : public Object {
       struct xml::GetNotation args = { Name, (CSTRING)0 };
       ERR error = Action(AC(-25), this, &args);
       if (Value) *Value = args.Value;
+      return(error);
+   }
+   inline ERR loadSchema(CSTRING Path) noexcept {
+      struct xml::LoadSchema args = { Path };
+      return(Action(AC(-26), this, &args));
+   }
+   inline ERR validateDocument(int * Result) noexcept {
+      struct xml::ValidateDocument args = { 0 };
+      ERR error = Action(AC(-27), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR hasSchema(int * Result) noexcept {
+      struct xml::HasSchema args = { 0 };
+      ERR error = Action(AC(-28), this, &args);
+      if (Result) *Result = args.Result;
       return(error);
    }
 

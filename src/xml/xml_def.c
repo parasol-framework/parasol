@@ -43,6 +43,9 @@ FDEF maResolvePrefix[] = { { "Prefix", FD_STR }, { "TagID", FD_INT }, { "Result"
 FDEF maSetVariable[] = { { "Key", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF maGetEntity[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maGetNotation[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
+FDEF maLoadSchema[] = { { "Path", FD_STR }, { 0, 0 } };
+FDEF maValidateDocument[] = { { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
+FDEF maHasSchema[] = { { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clXMLMethods[] = {
    { AC(-1), (APTR)XML_SetAttrib, "SetAttrib", maSetAttrib, sizeof(struct xml::SetAttrib) },
@@ -67,6 +70,9 @@ static const struct MethodEntry clXMLMethods[] = {
    { AC(-23), (APTR)XML_SetVariable, "SetVariable", maSetVariable, sizeof(struct xml::SetVariable) },
    { AC(-24), (APTR)XML_GetEntity, "GetEntity", maGetEntity, sizeof(struct xml::GetEntity) },
    { AC(-25), (APTR)XML_GetNotation, "GetNotation", maGetNotation, sizeof(struct xml::GetNotation) },
+   { AC(-26), (APTR)XML_LoadSchema, "LoadSchema", maLoadSchema, sizeof(struct xml::LoadSchema) },
+   { AC(-27), (APTR)XML_ValidateDocument, "ValidateDocument", maValidateDocument, sizeof(struct xml::ValidateDocument) },
+   { AC(-28), (APTR)XML_HasSchema, "HasSchema", maHasSchema, sizeof(struct xml::HasSchema) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

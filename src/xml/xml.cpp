@@ -61,6 +61,8 @@ should therefore be read only as needed and cached until the XML object is modif
 #include <sstream>
 #include "../link/unicode.h"
 #include "xml.h"
+#include "schema/schema_parser.h"
+#include "schema/type_checker.h"
 
 JUMPTABLE_CORE
 
@@ -1984,6 +1986,152 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 {
    *Values = Self->Tags.data();
    *Elements = Self->Tags.size();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+LoadSchema: Load an XML Schema definition to enable schema-aware validation.
+
+This method parses an XML Schema document and attaches its schema context to the
+current XML object.  Once loaded, schema metadata is available for validation
+and XPath evaluation routines that utilise schema-aware behaviour.
+
+-INPUT-
+cstr Path: File system path to the XML Schema (XSD) document.
+
+-ERRORS-
+Okay: Schema was successfully loaded and parsed.
+NullArgs: The Path argument was not provided.
+AllocMemory: Memory allocation failed while preparing the schema loader.
+InvalidData: The schema document did not contain any parsable definitions.
+File: The schema file could not be opened.
+
+*********************************************************************************************************************/
+
+static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Path)) return log.warning(ERR::NullArgs);
+
+   extXML schema_document;
+   schema_document.Path = pf::strclone(Args->Path);
+   if (not schema_document.Path) return log.warning(ERR::AllocMemory);
+   schema_document.Flags = XMF::WELL_FORMED | XMF::NAMESPACE_AWARE;
+
+   auto error = parse_source(&schema_document);
+
+   if (schema_document.Path) { FreeResource(schema_document.Path); schema_document.Path = nullptr; }
+
+   if (error != ERR::Okay) return log.warning(error);
+   if (schema_document.Tags.empty()) return log.warning(ERR::InvalidData);
+
+   xml::schema::SchemaParser parser(xml::schema::registry());
+   auto Document = parser.parse(schema_document.Tags[0]);
+   if (Document.empty() or (not Document.context)) return log.warning(ERR::InvalidData);
+
+   Self->schema_context = Document.context;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ValidateDocument: Validate the XML document against the currently loaded schema.
+
+This method performs structural and simple type validation of the document using
+the loaded XML Schema.  The Result parameter returns `1` when the document
+conforms to the schema, otherwise `0`.
+
+-INPUT-
+&int Result: Receives `1` on success or `0` when validation fails.
+
+-ERRORS-
+Okay: Validation completed successfully.
+NullArgs: The Result parameter was not supplied.
+NoSupport: No schema has been loaded for this XML object.
+NoData: The XML document does not contain any parsed tags.
+Search: The schema does not define the root element present in the document.
+
+*********************************************************************************************************************/
+
+static ERR XML_ValidateDocument(extXML *Self, struct xml::ValidateDocument *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+   if (!Self->schema_context) { Args->Result = 0; return log.warning(ERR::NoSupport); }
+   if (Self->Tags.empty()) { Args->Result = 0; return log.warning(ERR::NoData); }
+   if (Self->Tags[0].Attribs.empty()) { Args->Result = 0; return log.warning(ERR::InvalidData); }
+
+   auto &context = *Self->schema_context;
+   auto find_descriptor = [&](std::string_view Name) -> std::shared_ptr<xml::schema::ElementDescriptor>
+   {
+      auto iter = context.elements.find(std::string(Name));
+      if (iter != context.elements.end()) return iter->second;
+
+      auto local = std::string(xml::schema::extract_local_name(Name));
+      iter = context.elements.find(local);
+      if (iter != context.elements.end()) return iter->second;
+
+      if (!context.target_namespace_prefix.empty()) {
+         auto qualified = std::string(context.target_namespace_prefix);
+         qualified.push_back(':');
+         qualified.append(local);
+         iter = context.elements.find(qualified);
+         if (iter != context.elements.end()) return iter->second;
+      }
+
+      return nullptr;
+   };
+
+   std::string_view root_name(Self->Tags[0].Attribs[0].Name);
+   auto descriptor = find_descriptor(root_name);
+   if (!descriptor) {
+      Args->Result = 0;
+      return log.warning(ERR::Search);
+   }
+
+   xml::schema::TypeChecker checker(xml::schema::registry(), Self->schema_context.get());
+   bool valid = checker.validate_element(Self->Tags[0], *descriptor);
+   Args->Result = valid ? 1 : 0;
+
+   if (!valid) {
+      Self->ErrorMsg = "Schema validation failed";
+   }
+   else {
+      Self->ErrorMsg.clear();
+   }
+
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+HasSchema: Determine if a schema has been loaded for this XML object.
+
+Returns `1` when a schema is currently associated with the XML object, otherwise
+returns `0`.
+
+-INPUT-
+&int Result: Receives the schema availability flag.
+
+-ERRORS-
+Okay: The query completed successfully.
+NullArgs: The Result parameter was not supplied.
+
+*********************************************************************************************************************/
+
+static ERR XML_HasSchema(extXML *Self, struct xml::HasSchema *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   Args->Result = Self->schema_context ? 1 : 0;
    return ERR::Okay;
 }
 

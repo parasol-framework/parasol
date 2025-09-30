@@ -140,7 +140,10 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=22, name="ResolvePrefix" },
     { id=23, name="SetVariable" },
     { id=24, name="GetEntity" },
-    { id=25, name="GetNotation" }
+    { id=25, name="GetNotation" },
+    { id=26, name="LoadSchema" },
+    { id=27, name="ValidateDocument" },
+    { id=28, name="HasSchema" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[
