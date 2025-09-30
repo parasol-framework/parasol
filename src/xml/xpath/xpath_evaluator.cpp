@@ -20,6 +20,7 @@
 
 #include "xpath_evaluator.h"
 #include "xpath_axis.h"
+#include "../schema/schema_types.h"
 
 #include <algorithm>
 #include <cmath>
@@ -54,6 +55,38 @@ enum class RelationalOperator {
    GREATER,
    GREATER_OR_EQUAL
 };
+
+std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(const XPathValue &Value)
+{
+   if (Value.schema_type_info) return Value.schema_type_info;
+
+   auto &registry = xml::schema::registry();
+   auto type = Value.get_schema_type();
+   return registry.find_descriptor(type);
+}
+
+bool should_compare_as_boolean(const XPathValue &Left, const XPathValue &Right)
+{
+   if ((Left.type IS XPathValueType::NodeSet) or (Right.type IS XPathValueType::NodeSet)) return false;
+   if ((Left.type IS XPathValueType::Boolean) or (Right.type IS XPathValueType::Boolean)) return true;
+
+   auto left_descriptor = schema_descriptor_for_value(Left);
+   auto right_descriptor = schema_descriptor_for_value(Right);
+   if (!left_descriptor or !right_descriptor) return false;
+
+   return left_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean) and
+          right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean);
+}
+
+bool should_compare_as_numeric(const XPathValue &Left, const XPathValue &Right)
+{
+   auto left_descriptor = schema_descriptor_for_value(Left);
+   auto right_descriptor = schema_descriptor_for_value(Right);
+   if (!left_descriptor or !right_descriptor) return false;
+
+   return left_descriptor->can_coerce_to(xml::schema::SchemaType::XPathNumber) and
+          right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathNumber);
+}
 
 // Compare two floating-point numbers for equality using epsilon tolerance.
 // This prevents precision issues when comparing computed values like averages.
@@ -1136,18 +1169,48 @@ bool compare_xpath_values(const XPathValue &left_value, const XPathValue &right_
    auto left_type = left_value.type;
    auto right_type = right_value.type;
 
+   bool schema_boolean = should_compare_as_boolean(left_value, right_value);
+   if (schema_boolean) {
+      auto left_descriptor = schema_descriptor_for_value(left_value);
+      auto right_descriptor = schema_descriptor_for_value(right_value);
+
+      bool left_boolean = left_value.to_boolean();
+      bool right_boolean = right_value.to_boolean();
+
+      if (left_descriptor) {
+         auto coerced = left_descriptor->coerce_value(left_value, xml::schema::SchemaType::XPathBoolean);
+         left_boolean = coerced.to_boolean();
+      }
+
+      if (right_descriptor) {
+         auto coerced = right_descriptor->coerce_value(right_value, xml::schema::SchemaType::XPathBoolean);
+         right_boolean = coerced.to_boolean();
+      }
+
+      return left_boolean IS right_boolean;
+   }
+
+   bool schema_numeric = should_compare_as_numeric(left_value, right_value);
    if ((left_type IS XPathValueType::Boolean) or (right_type IS XPathValueType::Boolean)) {
       bool left_boolean = left_value.to_boolean();
       bool right_boolean = right_value.to_boolean();
       return left_boolean IS right_boolean;
    }
 
-   if ((left_type IS XPathValueType::Number) or (right_type IS XPathValueType::Number)) {
+   if ((left_type IS XPathValueType::Number) or (right_type IS XPathValueType::Number) or schema_numeric) {
       if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
          const XPathValue &node_value = (left_type IS XPathValueType::NodeSet) ? left_value : right_value;
          const XPathValue &number_value = (left_type IS XPathValueType::NodeSet) ? right_value : left_value;
 
          double comparison_number = number_value.to_number();
+         if (schema_numeric) {
+            auto descriptor = schema_descriptor_for_value(number_value);
+            if (descriptor) {
+               auto coerced = descriptor->coerce_value(number_value, xml::schema::SchemaType::XPathNumber);
+               comparison_number = coerced.to_number();
+            }
+         }
+
          if (std::isnan(comparison_number)) return false;
 
          for (size_t index = 0; index < node_value.node_set.size(); ++index) {
@@ -1161,6 +1224,19 @@ bool compare_xpath_values(const XPathValue &left_value, const XPathValue &right_
 
       double left_number = left_value.to_number();
       double right_number = right_value.to_number();
+
+      if (schema_numeric) {
+         if (auto descriptor = schema_descriptor_for_value(left_value)) {
+            auto coerced = descriptor->coerce_value(left_value, xml::schema::SchemaType::XPathNumber);
+            left_number = coerced.to_number();
+         }
+
+         if (auto descriptor = schema_descriptor_for_value(right_value)) {
+            auto coerced = descriptor->coerce_value(right_value, xml::schema::SchemaType::XPathNumber);
+            right_number = coerced.to_number();
+         }
+      }
+
       return numeric_equal(left_number, right_number);
    }
 
@@ -1202,6 +1278,7 @@ bool compare_xpath_relational(const XPathValue &left_value,
 {
    auto left_type = left_value.type;
    auto right_type = right_value.type;
+   bool schema_numeric = should_compare_as_numeric(left_value, right_value);
 
    if ((left_type IS XPathValueType::NodeSet) or (right_type IS XPathValueType::NodeSet)) {
       if ((left_type IS XPathValueType::NodeSet) and (right_type IS XPathValueType::NodeSet)) {
@@ -1231,6 +1308,12 @@ bool compare_xpath_relational(const XPathValue &left_value,
       }
 
       double other_number = other_value.to_number();
+      if (schema_numeric) {
+         if (auto descriptor = schema_descriptor_for_value(other_value)) {
+            auto coerced = descriptor->coerce_value(other_value, xml::schema::SchemaType::XPathNumber);
+            other_number = coerced.to_number();
+         }
+      }
       if (std::isnan(other_number)) return false;
 
       for (size_t index = 0; index < node_value.node_set.size(); ++index) {
@@ -1244,6 +1327,17 @@ bool compare_xpath_relational(const XPathValue &left_value,
 
    double left_number = left_value.to_number();
    double right_number = right_value.to_number();
+   if (schema_numeric) {
+      if (auto descriptor = schema_descriptor_for_value(left_value)) {
+         auto coerced = descriptor->coerce_value(left_value, xml::schema::SchemaType::XPathNumber);
+         left_number = coerced.to_number();
+      }
+
+      if (auto descriptor = schema_descriptor_for_value(right_value)) {
+         auto coerced = descriptor->coerce_value(right_value, xml::schema::SchemaType::XPathNumber);
+         right_number = coerced.to_number();
+      }
+   }
    return numeric_compare(left_number, right_number, Operation);
 }
 

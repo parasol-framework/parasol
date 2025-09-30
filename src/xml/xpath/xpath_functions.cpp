@@ -70,6 +70,32 @@ static std::string format_xpath_number(double Value)
    return result;
 }
 
+static std::string_view trim_view(std::string_view Value) noexcept
+{
+   auto start = Value.find_first_not_of(" \t\r\n");
+   if (start IS std::string_view::npos) return std::string_view();
+
+   auto end = Value.find_last_not_of(" \t\r\n");
+   return Value.substr(start, end - start + 1);
+}
+
+static std::optional<bool> parse_schema_boolean(std::string_view Value)
+{
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return std::nullopt;
+
+   if ((trimmed.length() IS 1) and (trimmed[0] IS '1')) return true;
+   if ((trimmed.length() IS 1) and (trimmed[0] IS '0')) return false;
+
+   std::string lowered(trimmed);
+   std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
+
+   if (lowered.compare("true") IS 0) return true;
+   if (lowered.compare("false") IS 0) return false;
+
+   return std::nullopt;
+}
+
 static bool is_unreserved_uri_character(unsigned char Code)
 {
    if ((Code >= 'A' and Code <= 'Z') or (Code >= 'a' and Code <= 'z') or (Code >= '0' and Code <= '9')) return true;
@@ -1477,6 +1503,14 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
 } // namespace
 
 bool XPathValue::to_boolean() const {
+   auto schema_type = get_schema_type();
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPathValueType::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed;
+      }
+   }
+
    switch (type) {
       case XPathValueType::Boolean: return boolean_value;
       case XPathValueType::Number: return number_value != 0.0 and !std::isnan(number_value);
@@ -1542,6 +1576,14 @@ std::string XPathValue::node_string_value(XMLTag *Node)
 }
 
 double XPathValue::to_number() const {
+   auto schema_type = get_schema_type();
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPathValueType::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed ? 1.0 : 0.0;
+      }
+   }
+
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? 1.0 : 0.0;
       case XPathValueType::Number: return number_value;
@@ -1566,6 +1608,19 @@ double XPathValue::to_number() const {
 }
 
 std::string XPathValue::to_string() const {
+   auto schema_type = get_schema_type();
+   if (xml::schema::is_numeric(schema_type) and (type != XPathValueType::NodeSet)) {
+      double numeric_value = to_number();
+      if (!std::isnan(numeric_value)) return format_xpath_number(numeric_value);
+   }
+
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPathValueType::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed ? std::string("true") : std::string("false");
+      }
+   }
+
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? "true" : "false";
       case XPathValueType::Number: {

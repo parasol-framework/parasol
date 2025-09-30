@@ -60,6 +60,7 @@ class XPathEvaluator {
    explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) {
       context.document = XML;
       context.expression_unsupported = &expression_unsupported;
+      context.schema_registry = &xml::schema::registry();
    }
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);

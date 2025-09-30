@@ -115,7 +115,13 @@ class XPathValue
 //********************************************************************************************************************
 // XPath Evaluation Context
 
-struct XPathContext 
+namespace xml::schema
+{
+   class SchemaTypeRegistry;
+   SchemaTypeRegistry & registry();
+}
+
+struct XPathContext
 {
    XMLTag * context_node = nullptr;
    const XMLAttrib * attribute_node = nullptr;
@@ -124,12 +130,14 @@ struct XPathContext
    ankerl::unordered_dense::map<std::string, XPathValue> variables;
    extXML * document = nullptr;
    bool * expression_unsupported = nullptr;
+   xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
 
    XPathContext() = default;
    XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
-                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr)
+                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr,
+                xml::schema::SchemaTypeRegistry *Registry = nullptr)
       : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), document(Document),
-        expression_unsupported(UnsupportedFlag) {}
+        expression_unsupported(UnsupportedFlag), schema_registry(Registry) {}
 };
 
 class VariableBindingGuard
