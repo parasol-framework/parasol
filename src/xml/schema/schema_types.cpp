@@ -1,6 +1,6 @@
+
 #include "schema_types.h"
 #include "../xml.h"
-
 #include <utility>
 
 namespace xml::schema

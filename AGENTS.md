@@ -212,6 +212,7 @@ For Fluid code, verify:
 - C++ functions that use global variables must be written with thread safety in mind.
 - Use modern C++ conventions, targeting features up to and including C++20.
 - C++ global variables are prefixed with `gl` and written in upper camel-case, e.g. `glSomeVariable`
+- The default column width is 120 characters for all languages.
 - Always default to British English spelling in code and comments.
 
 ### Testing
@@ -286,3 +287,4 @@ Lower snake-case is the preferred string format for new file names.
 ## Agentic Behaviour
 
 - Always give an honest, balanced opinion in your responses
+- Encourage testing and validation of changes

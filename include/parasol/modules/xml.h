@@ -58,6 +58,7 @@ enum class XMF : uint32_t {
    PARSE_ENTITY = 0x00001000,
    OMIT_TAGS = 0x00002000,
    NAMESPACE_AWARE = 0x00004000,
+   HAS_SCHEMA = 0x00008000,
    INCLUDE_SIBLINGS = 0x80000000,
 };
 
@@ -184,6 +185,8 @@ struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const 
 struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct LoadSchema { CSTRING Path; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ValidateDocument { static const AC id = AC(-27); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -368,6 +371,13 @@ class objXML : public Object {
       ERR error = Action(AC(-25), this, &args);
       if (Value) *Value = args.Value;
       return(error);
+   }
+   inline ERR loadSchema(CSTRING Path) noexcept {
+      struct xml::LoadSchema args = { Path };
+      return(Action(AC(-26), this, &args));
+   }
+   inline ERR validateDocument() noexcept {
+      return(Action(AC(-27), this, nullptr));
    }
 
    // Customised field setting

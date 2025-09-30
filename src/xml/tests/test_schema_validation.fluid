@@ -1,0 +1,34 @@
+-- Schema validation tests for XML module
+
+function testLoadSchema()
+   local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
+   assert(err == ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
+
+   assert(bit.band(glXML.flags, XMF_HAS_SCHEMA) != 0, "XMF_HAS_SCHEMA undefined")
+end
+
+function testValidateDocumentPass()
+   local err = glXML.mtValidateDocument()
+   assert(err == ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
+end
+
+function testValidateDocumentFail()
+   local invalid = obj.new("xml", { path = glScriptFolder .. "schema_inventory_invalid.xml" })
+   local err = invalid.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
+   assert(err == ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
+
+   local err = invalid.mtValidateDocument()
+   assert(err != ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
+end
+
+return {
+   tests = { 'testLoadSchema', 'testValidateDocumentPass', 'testValidateDocumentFail' },
+   init = function(ScriptFolder)
+      glScriptFolder = ScriptFolder
+      glXML = obj.new("xml", { path = ScriptFolder .. "schema_inventory.xml" })
+   end,
+   cleanup = function()
+      glXML = nil
+      glScriptFolder = nil
+   end
+}

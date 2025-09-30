@@ -61,6 +61,8 @@ should therefore be read only as needed and cached until the XML object is modif
 #include <sstream>
 #include "../link/unicode.h"
 #include "xml.h"
+#include "schema/schema_parser.h"
+#include "schema/type_checker.h"
 
 JUMPTABLE_CORE
 
@@ -1985,6 +1987,121 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
    *Values = Self->Tags.data();
    *Elements = Self->Tags.size();
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+LoadSchema: Load an XML Schema definition to enable schema-aware validation.
+
+This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, 
+schema metadata is available for validation and XPath evaluation routines that utilise schema-aware behaviour.
+
+-INPUT-
+cstr Path: File system path to the XML Schema (XSD) document.
+
+-ERRORS-
+Okay: Schema was successfully loaded and parsed.
+NullArgs: The Path argument was not provided.
+NoData: The schema document did not contain any parsable definitions.
+CreateObject: The file in Path could not be processed as XML content.
+
+*********************************************************************************************************************/
+
+static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Path)) return log.warning(ERR::NullArgs);
+
+   pf::Create<extXML> schema({ fl::Path(Args->Path), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
+   if (schema.ok()) {
+      if (schema->Tags.empty()) return log.warning(ERR::NoData);
+
+      xml::schema::SchemaParser parser(xml::schema::registry());
+      XMLTag *root_tag = nullptr;
+      for (auto &tag : schema->Tags) {
+         if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { root_tag = &tag; break; }
+      }
+
+      if (!root_tag) return log.warning(ERR::InvalidData);
+
+      auto Document = parser.parse(*root_tag);
+      if (Document.empty() or (not Document.context)) return log.warning(ERR::NoData);
+
+      Self->Flags |= XMF::HAS_SCHEMA;
+      Self->SchemaContext = Document.context;
+      return ERR::Okay;
+   }
+   else return log.warning(ERR::CreateObject);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ValidateDocument: Validate the XML document against the currently loaded schema.
+
+This method performs structural and simple type validation of the document using
+the loaded XML Schema.  The Result parameter returns `1` when the document
+conforms to the schema, otherwise `0`.
+
+-ERRORS-
+Okay: Validation completed successfully.
+NullArgs: The Result parameter was not supplied.
+NoSupport: No schema has been loaded for this XML object.
+NoData: The XML document does not contain any parsed tags.
+Search: The schema does not define the root element present in the document.
+
+*********************************************************************************************************************/
+
+static ERR XML_ValidateDocument(extXML *Self, void *Args)
+{
+   pf::Log log;
+
+   if (not Self->SchemaContext) return log.warning(ERR::NoSupport);
+   if (Self->Tags.empty()) return log.warning(ERR::NoData);
+   if ((Self->Tags[0].Attribs.empty()) or (Self->Tags[0].Attribs[0].Name.empty())) {
+      return log.warning(ERR::InvalidData);
+   }
+
+   auto &context = *Self->SchemaContext;
+   auto find_descriptor = [&](std::string_view Name) -> 
+      std::shared_ptr<xml::schema::ElementDescriptor>
+   {
+      auto iter = context.elements.find(std::string(Name));
+      if (iter != context.elements.end()) return iter->second;
+
+      auto local = std::string(xml::schema::extract_local_name(Name));
+      iter = context.elements.find(local);
+      if (iter != context.elements.end()) return iter->second;
+
+      if (!context.target_namespace_prefix.empty()) {
+         auto qualified = std::string(context.target_namespace_prefix);
+         qualified.push_back(':');
+         qualified.append(local);
+         iter = context.elements.find(qualified);
+         if (iter != context.elements.end()) return iter->second;
+      }
+
+      return nullptr;
+   };
+
+   XMLTag *document_root = nullptr;
+   for (auto &tag : Self->Tags) {
+      if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { document_root = &tag; break; }
+   }
+
+   if (!document_root) {
+      return log.warning(ERR::InvalidData);
+   }
+
+   std::string_view root_name(document_root->Attribs[0].Name);
+   auto descriptor = find_descriptor(root_name);
+   if (!descriptor) return log.warning(ERR::Search);
+
+   xml::schema::TypeChecker checker(xml::schema::registry(), Self->SchemaContext.get());
+   if (checker.validate_element(*document_root, *descriptor)) return ERR::Okay;
+   else return ERR::InvalidData;
 }
 
 //********************************************************************************************************************

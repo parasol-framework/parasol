@@ -29,6 +29,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
     "NAMESPACE_AWARE: Enable namespace processing during parsing.",
+    "HAS_SCHEMA: Automatically defined when a schema has been loaded into the XML object.",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (#GetXMLString() only)" })
 
   enum("XMI", { type="int", start=0, comment="Tag insertion options." },
@@ -140,7 +141,9 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=22, name="ResolvePrefix" },
     { id=23, name="SetVariable" },
     { id=24, name="GetEntity" },
-    { id=25, name="GetNotation" }
+    { id=25, name="GetNotation" },
+    { id=26, name="LoadSchema" },
+    { id=27, name="ValidateDocument" }
   })
 
   class("XML", { src="xml.cpp", output="xml_def.c" }, [[
