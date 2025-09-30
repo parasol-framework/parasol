@@ -124,7 +124,7 @@ namespace xml::schema
             if (local_iter != lookup.end()) rule = local_iter->second;
          }
 
-         if (!rule) continue;
+         if (!rule) return false;
 
          counters[rule]++;
 
