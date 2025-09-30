@@ -20,6 +20,7 @@
 
 #include "xpath_functions.h"
 #include "../xml.h"
+#include "../schema/type_checker.h"
 
 #include <algorithm>
 #include <array>
@@ -1621,6 +1622,41 @@ size_t XPathValue::size() const {
          return is_empty() ? 0 : 1;
       default: return is_empty() ? 0 : 1;
    }
+}
+
+bool XPathValue::has_schema_info() const
+{
+   return schema_type_info != nullptr;
+}
+
+void XPathValue::set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo)
+{
+   schema_type_info = TypeInfo;
+   schema_validated = false;
+}
+
+bool XPathValue::validate_against_schema() const
+{
+   if (schema_validated and schema_type_info) return true;
+
+   auto descriptor = schema_type_info;
+   auto &registry_ref = xml::schema::registry();
+   if (not descriptor) {
+      auto inferred_type = xml::schema::schema_type_for_xpath(type);
+      descriptor = registry_ref.find_descriptor(inferred_type);
+      if (not descriptor) return false;
+      schema_type_info = descriptor;
+   }
+
+   xml::schema::TypeChecker checker(registry_ref);
+   schema_validated = checker.validate_value(*this, *descriptor);
+   return schema_validated;
+}
+
+xml::schema::SchemaType XPathValue::get_schema_type() const
+{
+   if (schema_type_info) return schema_type_info->schema_type;
+   return xml::schema::schema_type_for_xpath(type);
 }
 
 namespace {
