@@ -20,6 +20,9 @@ add_dependencies (xml_xpath_functions build_headers)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp"
    $<TARGET_OBJECTS:xml_xpath_functions>)
 
 flute_test (${MOD}_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.fluid")
