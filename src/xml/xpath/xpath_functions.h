@@ -7,7 +7,14 @@
 
 #pragma once
 
+#include <parasol/main.h>
 #include <ankerl/unordered_dense.h>
+#include <cstddef>
+#include <functional>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 struct TransparentStringHash {
    using is_transparent = void;

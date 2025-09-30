@@ -321,7 +321,7 @@ static ERR SET_Source(extXML *, OBJECTPTR);
 #include "xpath/xpath_parser.h"
 #include "xpath/xpath_evaluator.h"
 
-ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback) 
+inline ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback)
 {
    auto compiled_path = CompiledXPath::compile(XPath);
    if (not compiled_path.isValid()) {
@@ -335,7 +335,7 @@ ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback)
    return findTag(compiled_path, pCallback);
 }
 
-ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
+inline ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
 {
    this->Attrib.clear();
 
@@ -356,7 +356,7 @@ ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
    return eval.find_tag(CompiledPath, 0);
 }
 
-ERR extXML::evaluate(CSTRING XPath, std::string &Result) 
+inline ERR extXML::evaluate(CSTRING XPath, std::string &Result)
 {
    auto compiled_path = CompiledXPath::compile(XPath);
    if (not compiled_path.isValid()) {
@@ -370,7 +370,7 @@ ERR extXML::evaluate(CSTRING XPath, std::string &Result)
    return evaluate(compiled_path, Result);
 }
 
-ERR extXML::evaluate(const CompiledXPath &CompiledPath, std::string &Result)
+inline ERR extXML::evaluate(const CompiledXPath &CompiledPath, std::string &Result)
 {
    this->Attrib.clear();
    this->CursorTags = &this->Tags;

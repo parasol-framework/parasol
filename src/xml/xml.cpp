@@ -70,7 +70,6 @@ static uint32_t glTagID = 1;
 #include "unescape.cpp"
 #include "xml_functions.cpp"
 #include "xpath/xpath_ast.cpp"
-#include "xpath/xpath_functions.cpp"
 #include "xpath/xpath_axis.cpp"
 #include "xpath/xpath_parser.cpp"
 #include "xpath/xpath_evaluator.h"
