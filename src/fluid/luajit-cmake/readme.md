@@ -20,7 +20,7 @@ Use cmake to compile.
 
 ```bash
 cmake -H. -Bbuild -DLUAJIT_DIR=...
-make --build build --config Release
+cmake --build build --config Release
 ```
 
 ### Embed
