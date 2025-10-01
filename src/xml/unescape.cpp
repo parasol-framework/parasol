@@ -31,7 +31,7 @@ static bool decode_numeric_reference(const char *Start, size_t Length, char *Buf
       position++;
    }
 
-   ResultLength = UTF8WriteValue(unicode, Buffer, 6);
+   ResultLength = UTF8WriteValue(unicode, Buffer, sizeof(Buffer));
    return true;
 }
 
