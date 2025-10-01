@@ -1,7 +1,7 @@
 # luajit-cmake
 
 A flexible cmake builder for LuaJIT. Forked from
-[WohlSoft/LuaJIT](https://github.com/WohlSoft/LuaJIT) and update.
+[WohlSoft/LuaJIT](https://github.com/WohlSoft/LuaJIT) and updated.
 
 ## Build
 
