@@ -70,8 +70,8 @@ namespace xml::schema
       public:
       SchemaTypeRegistry();
 
-      [[nodiscard]] std::shared_ptr<SchemaTypeDescriptor> register_descriptor(SchemaType Type, std::string Name,
-                                                                             std::shared_ptr<SchemaTypeDescriptor> Base = nullptr,
+      std::shared_ptr<SchemaTypeDescriptor> register_descriptor(SchemaType Type, std::string Name,
+                                                                           std::shared_ptr<SchemaTypeDescriptor> Base = nullptr,
                                                                              bool Builtin = false);
       [[nodiscard]] std::shared_ptr<SchemaTypeDescriptor> find_descriptor(SchemaType Type) const;
       [[nodiscard]] std::shared_ptr<SchemaTypeDescriptor> find_descriptor(std::string_view Name) const;
