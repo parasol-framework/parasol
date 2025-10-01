@@ -17,6 +17,15 @@ glMismatchedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
 </catalog>
 ]]
 
+glPrefixedRootXML = [[<?xml version="1.0" encoding="UTF-8"?>
+<inv:inventory xmlns="urn:default" xmlns:inv="http://example.com/inventory">
+   <inv:item>
+      <inv:name>Widget</inv:name>
+      <inv:price>19.99</inv:price>
+   </inv:item>
+</inv:inventory>
+]]
+
 function testLoadSchema()
    local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err == ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
@@ -28,6 +37,17 @@ function testValidateDocumentPass()
    local err = glXML.mtValidateDocument()
    assert(err == ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
    assert(glXML.errorMsg == "" or glXML.errorMsg == nil, "ErrorMsg should be cleared after successful validation.")
+end
+
+function testValidateDocumentPrefixedRoot()
+   local doc = obj.new("xml", { statement = glPrefixedRootXML })
+   local err = doc.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
+   assert(err == ERR_Okay, "Failed to load schema for prefixed root document: " .. mSys.GetErrorMsg(err))
+
+   err = doc.mtValidateDocument()
+   assert(err == ERR_Okay, "Prefixed root document failed validation: " .. mSys.GetErrorMsg(err))
+   assert(doc.errorMsg == "" or doc.errorMsg == nil,
+      "Prefixed root document should not report an error message, found: " .. tostring(doc.errorMsg))
 end
 
 function testValidateDocumentFail()
@@ -75,6 +95,7 @@ return {
    tests = {
       'testLoadSchema',
       'testValidateDocumentPass',
+      'testValidateDocumentPrefixedRoot',
       'testValidateDocumentFail',
       'testValidateWithoutSchema',
       'testValidateDocumentWithoutContent',

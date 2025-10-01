@@ -2124,14 +2124,59 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
    std::string root_namespace;
    bool root_has_namespace = false;
 
+   auto assign_root_namespace = [&](const std::string &value)
+   {
+      if (root_has_namespace) return;
+      if (value.empty()) return;
+
+      root_namespace = value;
+      root_has_namespace = true;
+   };
+
    if (document_root->NamespaceID != 0u) {
       if (auto uri = Self->getNamespaceURI(document_root->NamespaceID)) {
-         root_namespace = *uri;
-         root_has_namespace = true;
+         assign_root_namespace(*uri);
       }
       else {
          Self->ErrorMsg = "Root element namespace is not registered within this document.";
          return log.warning(ERR::InvalidData);
+      }
+   }
+
+   if (not root_has_namespace) {
+      std::string root_prefix;
+      if (!document_root->Attribs.empty()) {
+         std::string_view qualified_name(document_root->Attribs[0].Name);
+         auto colon = qualified_name.find(':');
+         if (colon != std::string::npos) {
+            root_prefix.assign(qualified_name.begin(), qualified_name.begin() + colon);
+         }
+      }
+
+      std::string prefix_attribute;
+      if (!root_prefix.empty()) {
+         prefix_attribute = "xmlns:";
+         prefix_attribute.append(root_prefix);
+      }
+
+      if (!prefix_attribute.empty()) {
+         for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
+            const auto &attrib = document_root->Attribs[index];
+            if (pf::iequals(attrib.Name, prefix_attribute)) {
+               assign_root_namespace(attrib.Value);
+               break;
+            }
+         }
+      }
+
+      if (!root_has_namespace) {
+         for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
+            const auto &attrib = document_root->Attribs[index];
+            if (pf::iequals(attrib.Name, "xmlns")) {
+               assign_root_namespace(attrib.Value);
+               break;
+            }
+         }
       }
    }
 
