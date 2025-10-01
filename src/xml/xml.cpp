@@ -77,6 +77,10 @@ static uint32_t glTagID = 1;
 #include "xpath/xpath_evaluator.h"
 #include "xpath/xpath_evaluator.cpp"
 
+static ERR add_xml_class(void);
+static ERR SET_Statement(extXML *, CSTRING);
+static ERR SET_Source(extXML *, OBJECTPTR);
+
 //********************************************************************************************************************
 
 static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
@@ -2019,6 +2023,9 @@ static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
       if (schema->Tags.empty()) return log.warning(ERR::NoData);
 
       xml::schema::SchemaParser parser(xml::schema::registry());
+
+      // Find the first non-instruction tag
+
       XMLTag *root_tag = nullptr;
       for (auto &tag : schema->Tags) {
          if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { root_tag = &tag; break; }

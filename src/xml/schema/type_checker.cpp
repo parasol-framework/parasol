@@ -2,6 +2,7 @@
 
 #include "type_checker.h"
 #include <cmath>
+#include <format>
 #include <limits>
 
 namespace xml::schema
@@ -25,10 +26,7 @@ namespace xml::schema
       {
          if (pf::iequals(Value, "true")) return true;
          if (pf::iequals(Value, "false")) return true;
-         if (Value.length() IS 1) {
-            char ch = Value[0];
-            return (ch IS '0') or (ch IS '1');
-         }
+         if (Value.length() IS 1) return (Value[0] IS '0') or (Value[0] IS '1');
          return false;
       }
    }
@@ -80,13 +78,7 @@ namespace xml::schema
       if (is_numeric(target_type)) {
          auto coerced = effective->coerce_value(Value, target_type);
          if (!std::isnan(coerced.to_number())) return true;
-
-         auto message = std::string("Value '");
-         message.append(Value.to_string());
-         message.append("' is not valid for type ");
-         message.append(effective->type_name);
-         message.push_back('.');
-         assign_error(std::move(message));
+         assign_error(std::format("Value '{}' is not valid for type {}", Value.to_string(), effective->type_name));
          return false;
       }
 
@@ -95,10 +87,7 @@ namespace xml::schema
          auto string_value = Value.to_string();
          if (is_valid_boolean(string_value)) return true;
 
-         auto message = std::string("Value '");
-         message.append(string_value);
-         message.append("' is not a recognised boolean value.");
-         assign_error(std::move(message));
+         assign_error(std::format("Value '{}' is not a recognised boolean value.", string_value));
          return false;
       }
 
@@ -118,12 +107,7 @@ namespace xml::schema
 
       if (SourceDescriptor->can_coerce_to(Descriptor.schema_type)) return true;
 
-      auto message = std::string("Cannot coerce value of type ");
-      message.append(SourceDescriptor->type_name);
-      message.append(" to required type ");
-      message.append(Descriptor.type_name);
-      message.push_back('.');
-      assign_error(std::move(message));
+      assign_error(std::format("Cannot coerce value of type {} to required type {}.", SourceDescriptor->type_name, Descriptor.type_name));
       return false;
    }
 
@@ -134,18 +118,11 @@ namespace xml::schema
       if (validate_value(value, Descriptor)) return true;
 
       std::string previous_error(last_error_message);
-      auto message = std::string("Attribute ");
-      if (!Attribute.Name.empty()) message.append(Attribute.Name);
-      else message.append("(unnamed)");
-      message.append(": ");
+      auto attr_name = !Attribute.Name.empty() ? Attribute.Name : "(unnamed)";
 
-      if (!previous_error.empty()) message.append(previous_error);
-      else {
-         message.append("Value does not match expected type ");
-         message.append(Descriptor.type_name);
-      }
+      if (!previous_error.empty()) assign_error(std::format("Attribute {}: {}", attr_name, previous_error));
+      else assign_error(std::format("Attribute {}: Value does not match expected type {}", attr_name, Descriptor.type_name));
 
-      assign_error(std::move(message));
       return false;
    }
 
@@ -157,11 +134,8 @@ namespace xml::schema
          if (Tag.hasContent()) return true;
          if (not Tag.Children.empty()) return true;
 
-         auto message = std::string("Element ");
-         if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
-         else message.append("(unnamed)");
-         message.append(" is missing required textual content.");
-         assign_error(std::move(message));
+         auto elem_name = (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) ? Tag.Attribs[0].Name : "(unnamed)";
+         assign_error(std::format("Element {} is missing required textual content.", elem_name));
          return false;
       }
       if (Descriptor.can_coerce_to(SchemaType::XPathNodeSet)) return true;
@@ -178,18 +152,11 @@ namespace xml::schema
          if (validate_value(value, *Descriptor.type)) return true;
 
          std::string previous_error(last_error_message);
-         auto message = std::string("Element ");
-         if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
-         else message.append("(unnamed)");
-         message.append(": ");
+         auto elem_name = (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) ? Tag.Attribs[0].Name : "(unnamed)";
 
-         if (!previous_error.empty()) message.append(previous_error);
-         else {
-            message.append("Content does not match expected type ");
-            message.append(Descriptor.type_name);
-         }
+         if (!previous_error.empty()) assign_error(std::format("Element {}: {}", elem_name, previous_error));
+         else assign_error(std::format("Element {}: Content does not match expected type {}",elem_name, Descriptor.type_name));
 
-         assign_error(std::move(message));
          return false;
       }
 
@@ -203,8 +170,7 @@ namespace xml::schema
          lookup[child->name] = child.get();
          if (!child->qualified_name.empty()) lookup[child->qualified_name] = child.get();
 
-         auto local_name = std::string(extract_local_name(child->qualified_name.empty() ? child->name
-                                                                                        : child->qualified_name));
+         auto local_name = std::string(extract_local_name(child->qualified_name.empty() ? child->name : child->qualified_name));
          if (!local_name.empty()) lookup[local_name] = child.get();
          counters[child.get()] = 0u;
       }
@@ -225,11 +191,8 @@ namespace xml::schema
          }
 
          if (!rule) {
-            std::string message("Element ");
-            if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
-            else message.append("(unnamed)");
-            message += " contains unexpected child element " + std::string(child_name);
-            assign_error(std::move(message));
+            auto elem_name = (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) ? Tag.Attribs[0].Name : "(unnamed)";
+            assign_error(std::format("Element {} contains unexpected child element {}", elem_name, child_name));
             return false;
          }
 
@@ -239,18 +202,11 @@ namespace xml::schema
             XPathValue child_value(Child.getContent());
             if (!validate_value(child_value, *rule->type)) {
                std::string previous_error(last_error_message);
-               std::string message("Element ");
-               if (!Child.Attribs.empty() and !Child.Attribs[0].Name.empty()) message.append(Child.Attribs[0].Name);
-               else message.append("(unnamed)");
-               message.append(": ");
+               auto child_elem_name = (!Child.Attribs.empty() and !Child.Attribs[0].Name.empty()) ? Child.Attribs[0].Name : "(unnamed)";
 
-               if (!previous_error.empty()) message.append(previous_error);
-               else {
-                  message.append("Content does not match expected type ");
-                  message.append(rule->type->type_name);
-               }
+               if (!previous_error.empty()) assign_error(std::format("Element {}: {}", child_elem_name, previous_error));
+               else assign_error(std::format("Element {}: Content does not match expected type {}", child_elem_name, rule->type->type_name));
 
-               assign_error(std::move(message));
                return false;
             }
          }
@@ -262,20 +218,14 @@ namespace xml::schema
       for (const auto &child : Descriptor.children) {
          if (!child) continue;
          size_t count = counters[child.get()];
+         auto elem_name = (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) ? Tag.Attribs[0].Name : "(unnamed)";
+
          if (count < child->min_occurs) {
-            std::string message("Element ");
-            if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
-            else message.append("(unnamed)");
-            message += " is missing required child element " + child->name + " (expected at least " + std::to_string(child->min_occurs) + ").";
-            assign_error(std::move(message));
+            assign_error(std::format("Element {} is missing required child element {} (expected at least {}).", elem_name, child->name, child->min_occurs));
             return false;
          }
          if ((child->max_occurs != std::numeric_limits<size_t>::max()) and (count > child->max_occurs)) {
-            std::string message("Element ");
-            if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
-            else message.append("(unnamed)");
-            message += " contains too many " + child->name + " elements (maximum allowed is " + std::to_string(child->max_occurs) + ").";
-            assign_error(std::move(message));
+            assign_error(std::format("Element {} contains too many {} elements (maximum allowed is {}).", elem_name, child->name, child->max_occurs));
             return false;
          }
       }

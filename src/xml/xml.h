@@ -314,10 +314,6 @@ class extXML : public objXML {
    }
 };
 
-static ERR add_xml_class(void);
-static ERR SET_Statement(extXML *, CSTRING);
-static ERR SET_Source(extXML *, OBJECTPTR);
-
 #include "xpath/xpath_ast.h"
 #include "xpath/xpath_functions.h"
 #include "xpath/xpath_axis.h"
