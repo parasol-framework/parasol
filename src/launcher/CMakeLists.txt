@@ -67,7 +67,7 @@ set_target_properties (parasol_cmd PROPERTIES OUTPUT_NAME "parasol")
 
 # Attach headers to the Parasol binary so that we can ensure that all headers are built
 
-add_dependencies (parasol_cmd build_headers)
+add_dependencies (parasol_cmd build_headers icon_package)
 
 if (PARASOL_STATIC)
    add_dependencies (parasol_cmd parasol_static)

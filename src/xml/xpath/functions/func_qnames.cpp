@@ -40,8 +40,8 @@ static std::string trim_whitespace(std::string_view Value)
    size_t start = 0;
    size_t end = Value.length();
 
-   while ((start < end) and (unsigned char)Value[start] <= 0x20u) ++start;
-   while ((end > start) and (unsigned char)Value[end - 1] <= 0x20u) --end;
+   while ((start < end) and (uint8_t)Value[start] <= 0x20u) ++start;
+   while ((end > start) and (uint8_t)Value[end - 1] <= 0x20u) --end;
 
    return std::string(Value.substr(start, end - start));
 }

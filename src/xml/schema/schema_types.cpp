@@ -203,18 +203,13 @@ namespace xml::schema
    SchemaType schema_type_for_xpath(XPathValueType Type) noexcept
    {
       switch (Type) {
-         case XPathValueType::NodeSet:
-            return SchemaType::XPathNodeSet;
-         case XPathValueType::Boolean:
-            return SchemaType::XPathBoolean;
-         case XPathValueType::Number:
-            return SchemaType::XPathNumber;
-         case XPathValueType::String:
-            return SchemaType::XPathString;
+         case XPathValueType::NodeSet:  return SchemaType::XPathNodeSet;
+         case XPathValueType::Boolean:  return SchemaType::XPathBoolean;
+         case XPathValueType::Number:   return SchemaType::XPathNumber;
+         case XPathValueType::String:   return SchemaType::XPathString;
          case XPathValueType::Date:
          case XPathValueType::Time:
-         case XPathValueType::DateTime:
-            return SchemaType::XSDateTime;
+         case XPathValueType::DateTime: return SchemaType::XSDateTime;
       }
 
       return SchemaType::XPathString;
