@@ -1,4 +1,8 @@
-// schema_parser.cpp - Parses XML Schema documents into contextual descriptors used by the XML module.
+// schema_parser.cpp - Implements the concrete reader that turns parsed XML Schema documents into
+// SchemaDocument and SchemaContext structures consumed throughout the XML module.  The routines in
+// this file walk the tag tree provided by objXML, extract namespace bindings, assemble element and
+// type descriptors, and wire the results into the shared registry so that downstream validation,
+// code generation, and tooling layers can reason about schema-constrained XML data.
 
 #include "schema_parser.h"
 #include <cstdlib>

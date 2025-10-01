@@ -1,4 +1,8 @@
-// schema_types.cpp - Implements schema type descriptors and registry utilities for the XML module.
+// schema_types.cpp - Provides the backing logic for schema type descriptors and their registry,
+// modelling the primitive, derived, and user-defined datatypes referenced by XML Schema documents.
+// The functions here create descriptors, maintain inheritance relationships, and expose coercion
+// helpers so that other parts of the XML stack can interpret values in the context of XSD typing
+// rules.
 
 #include "schema_types.h"
 #include "../xml.h"
