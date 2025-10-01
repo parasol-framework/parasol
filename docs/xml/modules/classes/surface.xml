@@ -317,7 +317,7 @@ the surface area first).</li>
       <description>
 <p>The SetDisplay method is used to change the screen resolution of the top-level surface object (which represents the screen display).  It allows you to set the size of the display and you may also change the bitmap depth and the monitor's refresh rate.  If successful, the change is immediate.</p>
 <p>This method exercises some intelligence in adjusting the display to your requested settings.  For instance, if the requested width and/or height is not available, the closest display setting will be chosen.</p>
-<p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named "SystemSurface" by default and can be searched for by that name.</p>
+<p>This method does not work on anything other than top-level surface objects.  The current top-level surface object is usually named &quot;SystemSurface&quot; by default and can be searched for by that name.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

@@ -1,0 +1,135 @@
+# Continuous Integration for internal builds only (e.g. running from cloud systems, running tests)
+
+name: CI
+
+on:
+  push:
+    branches: [ master, test/* ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} - ${{ matrix.build_type }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [FastBuild]
+        include:
+          - os: ubuntu-latest
+            cmake_generator: "Unix Makefiles"
+            cmake_extra_args: ""
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache apt packages
+      if: runner.os == 'Linux'
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt/archives
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-apt-
+
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ccache \
+          libx11-dev \
+          libxext-dev \
+          libxrandr-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libxss-dev \
+          libudev-dev \
+          libssl-dev \
+          pkg-config
+
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ runner.os }}-${{ matrix.build_type }}
+        max-size: 500M
+        variant: ${{ 'ccache' }}
+
+    - name: Configure CMake (FastBuild)
+      if: matrix.build_type == 'FastBuild'
+      shell: bash
+      run: |
+        LAUNCHER=${{ 'ccache' }}
+        cmake -S . -B build/ci \
+          -G "${{ matrix.cmake_generator }}" \
+          ${{ matrix.cmake_extra_args }} \
+          -DCMAKE_BUILD_TYPE=FastBuild \
+          -DCMAKE_INSTALL_PREFIX=install/ci \
+          -DCMAKE_C_COMPILER_LAUNCHER=$LAUNCHER \
+          -DCMAKE_CXX_COMPILER_LAUNCHER=$LAUNCHER \
+          -DRUN_ANYWHERE=TRUE \
+          -DPARASOL_STATIC=OFF \
+          -DBUILD_DEFS=OFF \
+          -DBUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build build/ci --config ${{ matrix.build_type }} --parallel
+
+    - name: Install
+      run: cmake --install build/ci --config ${{ matrix.build_type }}
+
+    - name: Package install tree (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cd build/ci
+        tar -czf parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.tar.gz -C ../../install/ci .
+        if [ ! -f parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.tar.gz ]; then
+          echo "Error: Archive creation failed"
+          exit 1
+        fi
+
+    - name: Report artifact size
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          ls -lh build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.tar.gz
+          echo "Archive size: $(du -h build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.tar.gz | cut -f1)"
+        else
+          ls -lh build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.zip
+          echo "Archive size: $(du -h build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.zip | cut -f1)"
+        fi
+
+    - name: Upload install artifact (Linux)
+      if: runner.os == 'Linux' && success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: parasol-install-${{ matrix.os }}-${{ matrix.build_type }}
+        path: build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.tar.gz
+        retention-days: 30
+
+    - name: Run CTests (excluding audio/http)
+      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -E "(audio|http)"
+
+    - name: Run http tests (allowed to fail)
+      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -R "(http)" || true
+
+    - name: Upload build artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-logs-${{ matrix.os }}-${{ matrix.build_type }}
+        path: |
+          build/ci/CMakeFiles/CMakeOutput.log
+          build/ci/CMakeFiles/CMakeError.log
+          build/ci/Testing/Temporary/LastTest.log
+        retention-days: 7
