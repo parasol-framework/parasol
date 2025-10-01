@@ -12,7 +12,7 @@ ARTIFACT_NAME="${ARTIFACT_NAME:-parasol-install-ubuntu-latest-FastBuild}"
 DEST_DIR="${DEST_DIR:-install/agents}"
 GITHUB_HOST="${GITHUB_HOST:-github.com}"
 DEFAULT_REPOSITORY="${DEFAULT_REPOSITORY:-team-parasol/parasol}"
-GH_TOKEN=$(echo "Z2l0aHViX3BhdF8xMUFITldTUkkwZHE5WXJQUzdUUlIyX0RONk5kbnRMblh1SUp1Zzc5UGd1aEZ5NmhnWXd0RVdzM0NYU3ZoQzFQQmZNTlRLUlJQUHpJaTZuUGJq" | base64 -d)
+GH_TOKEN=$(echo "Z2l0aHViX3BhdF8xMUFITldTUkkwWVQ4WWxmSEExQk43X25Fd1VuMVhPNTMyS3BnOFBiZ085cnp0MFNpT2xyeWhIVHg0eFJqWG5aV05MUFdPNFZWRHE4T1hyUXhM" | base64 -d)
 
 # The GitHub CLI expects authentication tokens to be supplied via the
 # GITHUB_TOKEN environment variable.  Older versions of this script
