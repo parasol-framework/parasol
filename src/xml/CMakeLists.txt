@@ -12,7 +12,18 @@ target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
 
-target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp")
+add_library (xml_xpath_functions OBJECT "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp")
+target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
+target_compile_definitions (xml_xpath_functions PRIVATE "MOD_NAME=${MOD}" "MOD_NAMESPACE=Xml")
+set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+add_dependencies (xml_xpath_functions build_headers)
+
+target_sources (${MOD} PRIVATE
+   "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp"
+   $<TARGET_OBJECTS:xml_xpath_functions>)
 
 flute_test (${MOD}_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.fluid")
 flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_features.fluid")
@@ -32,6 +43,8 @@ flute_test (${MOD}_xpath_sequences "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath
 flute_test (${MOD}_xpath_string_uri "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_string_uri.fluid")
 flute_test (${MOD}_xpath2_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_duration.fluid")
 flute_test (${MOD}_xpath2_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_datetime.fluid")
+flute_test (${MOD}_xpath2_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_qname.fluid")
+flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
 
 if (INSTALL_TESTS)
    add_executable (test_xml_count_debug "tests/test_count_debug.cpp")

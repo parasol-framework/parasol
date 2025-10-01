@@ -13,6 +13,8 @@
 #include <optional>
 #include <ankerl/unordered_dense.h>
 
+#include "schema/schema_parser.h"
+
 constexpr std::array<uint64_t, 4> name_char_table = []() {
    std::array<uint64_t, 4> table{0, 0, 0, 0};
    auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
@@ -156,7 +158,8 @@ class extXML : public objXML {
    TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    FUNCTION Callback;
-
+   
+   std::shared_ptr<xml::schema::SchemaContext> SchemaContext;
    ankerl::unordered_dense::map<std::string, std::string> Variables; // XPath variable references
    ankerl::unordered_dense::map<std::string, std::string> Entities; // For general entities
    ankerl::unordered_dense::map<std::string, std::string> ParameterEntities; // For parameter entities
@@ -311,17 +314,13 @@ class extXML : public objXML {
    }
 };
 
-static ERR add_xml_class(void);
-static ERR SET_Statement(extXML *, CSTRING);
-static ERR SET_Source(extXML *, OBJECTPTR);
-
 #include "xpath/xpath_ast.h"
 #include "xpath/xpath_functions.h"
 #include "xpath/xpath_axis.h"
 #include "xpath/xpath_parser.h"
 #include "xpath/xpath_evaluator.h"
 
-ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback) 
+inline ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback)
 {
    auto compiled_path = CompiledXPath::compile(XPath);
    if (not compiled_path.isValid()) {
@@ -335,7 +334,7 @@ ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback)
    return findTag(compiled_path, pCallback);
 }
 
-ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
+inline ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
 {
    this->Attrib.clear();
 
@@ -356,7 +355,7 @@ ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
    return eval.find_tag(CompiledPath, 0);
 }
 
-ERR extXML::evaluate(CSTRING XPath, std::string &Result) 
+inline ERR extXML::evaluate(CSTRING XPath, std::string &Result)
 {
    auto compiled_path = CompiledXPath::compile(XPath);
    if (not compiled_path.isValid()) {
@@ -370,7 +369,7 @@ ERR extXML::evaluate(CSTRING XPath, std::string &Result)
    return evaluate(compiled_path, Result);
 }
 
-ERR extXML::evaluate(const CompiledXPath &CompiledPath, std::string &Result)
+inline ERR extXML::evaluate(const CompiledXPath &CompiledPath, std::string &Result)
 {
    this->Attrib.clear();
    this->CursorTags = &this->Tags;

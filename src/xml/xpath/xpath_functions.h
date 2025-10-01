@@ -7,7 +7,15 @@
 
 #pragma once
 
+#include <parasol/main.h>
 #include <ankerl/unordered_dense.h>
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 struct TransparentStringHash {
    using is_transparent = void;
@@ -36,6 +44,12 @@ class extXML;
 //********************************************************************************************************************
 // XPath Value System
 
+namespace xml::schema
+{
+   enum class SchemaType;
+   class SchemaTypeDescriptor;
+}
+
 enum class XPathValueType {
    NodeSet,
    Boolean,
@@ -57,6 +71,8 @@ class XPathValue
    bool boolean_value = false;
    double number_value = 0.0;
    std::string string_value;
+   mutable std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_type_info;
+   mutable bool schema_validated = false;
 
    // Constructors
    XPathValue() : type(XPathValueType::Boolean) {}
@@ -85,6 +101,12 @@ class XPathValue
    bool is_empty() const;
    size_t size() const;
 
+   // Schema metadata helpers
+   bool has_schema_info() const;
+   void set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo);
+   bool validate_against_schema() const;
+   xml::schema::SchemaType get_schema_type() const;
+
    // Helpers exposed for evaluator utilities
    static std::string node_string_value(XMLTag *Node);
    static double string_to_number(const std::string &Value);
@@ -93,7 +115,13 @@ class XPathValue
 //********************************************************************************************************************
 // XPath Evaluation Context
 
-struct XPathContext 
+namespace xml::schema
+{
+   class SchemaTypeRegistry;
+   SchemaTypeRegistry & registry();
+}
+
+struct XPathContext
 {
    XMLTag * context_node = nullptr;
    const XMLAttrib * attribute_node = nullptr;
@@ -102,12 +130,14 @@ struct XPathContext
    ankerl::unordered_dense::map<std::string, XPathValue> variables;
    extXML * document = nullptr;
    bool * expression_unsupported = nullptr;
+   xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
 
    XPathContext() = default;
    XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
-                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr)
+                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr,
+                xml::schema::SchemaTypeRegistry *Registry = nullptr)
       : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), document(Document),
-        expression_unsupported(UnsupportedFlag) {}
+        expression_unsupported(UnsupportedFlag), schema_registry(Registry) {}
 };
 
 class VariableBindingGuard
@@ -174,6 +204,13 @@ class XPathFunctionLibrary {
    static XPathValue function_local_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_namespace_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_resolve_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_prefix_from_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_local_name_from_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_namespace_uri_from_QName(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_namespace_uri_for_prefix(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_in_scope_prefixes(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_string(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_concat(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_codepoints_to_string(const std::vector<XPathValue> &Args, const XPathContext &Context);

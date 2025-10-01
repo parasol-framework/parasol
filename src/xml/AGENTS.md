@@ -31,9 +31,17 @@ src/xml/
 │   ├── xpath_ast.cpp/h       # Abstract Syntax Tree
 │   ├── xpath_axis.cpp/h      # XPath axis evaluation
 │   ├── xpath_evaluator.cpp/h # Main evaluation engine
-│   ├── xpath_functions.cpp/h # XPath function library
+│   ├── xpath_functions.cpp/h # XPath function library (registry/dispatch)
 │   ├── xpath_parser.cpp/h    # XPath expression parser
-│   └── xpath_arena.h         # Memory management
+│   ├── xpath_arena.h         # Memory management
+│   └── functions/            # XPath function implementations by category
+│       ├── func_booleans.cpp     # Boolean functions (not, true, false, etc.)
+│       ├── func_datetimes.cpp    # Date/time functions (current-date, etc.)
+│       ├── func_diagnostics.cpp  # Diagnostic functions (error, trace)
+│       ├── func_nodeset.cpp      # Node-set functions (name, local-name, etc.)
+│       ├── func_numbers.cpp      # Numeric functions (sum, round, etc.)
+│       ├── func_sequences.cpp    # Sequence functions (distinct-values, etc.)
+│       └── func_strings.cpp      # String functions (concat, substring, etc.)
 └── tests/               # Comprehensive test suite
     ├── test_basic.fluid           # Basic XML operations
     ├── test_advanced_features.fluid

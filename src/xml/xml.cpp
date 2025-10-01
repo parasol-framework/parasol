@@ -61,6 +61,8 @@ should therefore be read only as needed and cached until the XML object is modif
 #include <sstream>
 #include "../link/unicode.h"
 #include "xml.h"
+#include "schema/schema_parser.h"
+#include "schema/type_checker.h"
 
 JUMPTABLE_CORE
 
@@ -70,11 +72,14 @@ static uint32_t glTagID = 1;
 #include "unescape.cpp"
 #include "xml_functions.cpp"
 #include "xpath/xpath_ast.cpp"
-#include "xpath/xpath_functions.cpp"
 #include "xpath/xpath_axis.cpp"
 #include "xpath/xpath_parser.cpp"
 #include "xpath/xpath_evaluator.h"
 #include "xpath/xpath_evaluator.cpp"
+
+static ERR add_xml_class(void);
+static ERR SET_Statement(extXML *, CSTRING);
+static ERR SET_Source(extXML *, OBJECTPTR);
 
 //********************************************************************************************************************
 
@@ -1986,6 +1991,226 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
    *Values = Self->Tags.data();
    *Elements = Self->Tags.size();
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+LoadSchema: Load an XML Schema definition to enable schema-aware validation.
+
+This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, 
+schema metadata is available for validation and XPath evaluation routines that utilise schema-aware behaviour.
+
+-INPUT-
+cstr Path: File system path to the XML Schema (XSD) document.
+
+-ERRORS-
+Okay: Schema was successfully loaded and parsed.
+NullArgs: The Path argument was not provided.
+NoData: The schema document did not contain any parsable definitions.
+CreateObject: The file in Path could not be processed as XML content.
+
+*********************************************************************************************************************/
+
+static ERR XML_LoadSchema(extXML *Self, struct xml::LoadSchema *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Path)) return log.warning(ERR::NullArgs);
+
+   pf::Create<extXML> schema({ fl::Path(Args->Path), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
+   if (schema.ok()) {
+      if (schema->Tags.empty()) return log.warning(ERR::NoData);
+
+      xml::schema::SchemaParser parser(xml::schema::registry());
+
+      // Find the first non-instruction tag
+
+      XMLTag *root_tag = nullptr;
+      for (auto &tag : schema->Tags) {
+         if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { root_tag = &tag; break; }
+      }
+
+      if (!root_tag) return log.warning(ERR::InvalidData);
+
+      auto Document = parser.parse(*root_tag);
+      if (Document.empty() or (not Document.context)) return log.warning(ERR::NoData);
+
+      Self->Flags |= XMF::HAS_SCHEMA;
+      Self->SchemaContext = Document.context;
+      return ERR::Okay;
+   }
+   else return log.warning(ERR::CreateObject);
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+ValidateDocument: Validate the XML document against the currently loaded schema.
+
+This method performs structural and simple type validation of the document using
+the loaded XML Schema.  The Result parameter returns `1` when the document
+conforms to the schema, otherwise `0`.
+
+-ERRORS-
+Okay: Validation completed successfully.
+NullArgs: The Result parameter was not supplied.
+NoSupport: No schema has been loaded for this XML object.
+NoData: The XML document does not contain any parsed tags.
+Search: The schema does not define the root element present in the document.
+
+*********************************************************************************************************************/
+
+static ERR XML_ValidateDocument(extXML *Self, void *Args)
+{
+   pf::Log log;
+
+   Self->ErrorMsg.clear();
+
+   if (not Self->SchemaContext) {
+      Self->ErrorMsg = "No schema has been loaded for this document.";
+      return log.warning(ERR::NoSupport);
+   }
+   if (Self->Tags.empty()) {
+      Self->ErrorMsg = "XML document has no parsed tags to validate.";
+      return log.warning(ERR::NoData);
+   }
+   if ((Self->Tags[0].Attribs.empty()) or (Self->Tags[0].Attribs[0].Name.empty())) {
+      Self->ErrorMsg = "Document root element is unnamed.";
+      return log.warning(ERR::InvalidData);
+   }
+
+   auto &context = *Self->SchemaContext;
+   auto find_descriptor = [&](std::string_view Name) ->
+      std::shared_ptr<xml::schema::ElementDescriptor>
+   {
+      auto iter = context.elements.find(std::string(Name));
+      if (iter != context.elements.end()) return iter->second;
+
+      auto local = std::string(xml::schema::extract_local_name(Name));
+      iter = context.elements.find(local);
+      if (iter != context.elements.end()) return iter->second;
+
+      if (!context.target_namespace_prefix.empty()) {
+         auto qualified = std::string(context.target_namespace_prefix);
+         qualified.push_back(':');
+         qualified.append(local);
+         iter = context.elements.find(qualified);
+         if (iter != context.elements.end()) return iter->second;
+      }
+
+      return nullptr;
+   };
+
+   XMLTag *document_root = nullptr;
+   for (auto &tag : Self->Tags) {
+      if ((tag.Flags & XTF::INSTRUCTION) IS XTF::NIL) { document_root = &tag; break; }
+   }
+
+   if (!document_root) {
+      Self->ErrorMsg = "Document does not contain a schema-valid root element.";
+      return log.warning(ERR::InvalidData);
+   }
+
+   auto descriptor = find_descriptor(document_root->Attribs[0].Name);
+   if (!descriptor) {
+      Self->ErrorMsg = "Schema does not define root element '" + document_root->Attribs[0].Name + "'.";
+      return log.warning(ERR::Search);
+   }
+
+   std::string schema_namespace = context.target_namespace;
+   bool schema_has_namespace = !schema_namespace.empty();
+
+   std::string root_namespace;
+   bool root_has_namespace = false;
+
+   auto assign_root_namespace = [&](const std::string &value)
+   {
+      if (root_has_namespace) return;
+      if (value.empty()) return;
+
+      root_namespace = value;
+      root_has_namespace = true;
+   };
+
+   if (document_root->NamespaceID != 0u) {
+      if (auto uri = Self->getNamespaceURI(document_root->NamespaceID)) {
+         assign_root_namespace(*uri);
+      }
+      else {
+         Self->ErrorMsg = "Root element namespace is not registered within this document.";
+         return log.warning(ERR::InvalidData);
+      }
+   }
+
+   if (not root_has_namespace) {
+      std::string root_prefix;
+      if (!document_root->Attribs.empty()) {
+         std::string_view qualified_name(document_root->Attribs[0].Name);
+         auto colon = qualified_name.find(':');
+         if (colon != std::string::npos) {
+            root_prefix.assign(qualified_name.begin(), qualified_name.begin() + colon);
+         }
+      }
+
+      std::string prefix_attribute;
+      if (!root_prefix.empty()) {
+         prefix_attribute = "xmlns:";
+         prefix_attribute.append(root_prefix);
+      }
+
+      if (!prefix_attribute.empty()) {
+         for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
+            const auto &attrib = document_root->Attribs[index];
+            if (pf::iequals(attrib.Name, prefix_attribute)) {
+               assign_root_namespace(attrib.Value);
+               break;
+            }
+         }
+      }
+
+      if (!root_has_namespace) {
+         for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
+            const auto &attrib = document_root->Attribs[index];
+            if (pf::iequals(attrib.Name, "xmlns")) {
+               assign_root_namespace(attrib.Value);
+               break;
+            }
+         }
+      }
+   }
+
+   if (schema_has_namespace and (not root_has_namespace)) {
+      Self->ErrorMsg = "Root element is missing the schema target namespace '" + schema_namespace + "'.";
+      return log.warning(ERR::Search);
+   }
+
+   if ((not schema_has_namespace) and root_has_namespace) {
+      Self->ErrorMsg = "Root element namespace '" + root_namespace + "' is not expected by the schema.";
+      return log.warning(ERR::Search);
+   }
+
+   if (schema_has_namespace and !(root_namespace IS schema_namespace)) {
+      Self->ErrorMsg = "Root element namespace '" + root_namespace + "' does not match schema target namespace '" +
+         schema_namespace + "'.";
+      return log.warning(ERR::Search);
+   }
+
+   xml::schema::TypeChecker checker(xml::schema::registry(), Self->SchemaContext.get(), &Self->ErrorMsg);
+   checker.clear_error();
+
+   if (checker.validate_element(*document_root, *descriptor)) {
+      Self->ErrorMsg.clear();
+      return ERR::Okay;
+   }
+
+   if (Self->ErrorMsg.empty()) {
+      Self->ErrorMsg = checker.last_error();
+      if (Self->ErrorMsg.empty()) Self->ErrorMsg = "Schema validation failed.";
+   }
+
+   log.warning("%s", Self->ErrorMsg.c_str());
+   return ERR::InvalidData;
 }
 
 //********************************************************************************************************************

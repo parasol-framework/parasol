@@ -15,8 +15,12 @@
 // namespace-aware functions or performance-focused helpers) without polluting the evaluator with
 // coercion details.
 
+#include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
+
 #include "xpath_functions.h"
 #include "../xml.h"
+#include "../schema/type_checker.h"
 
 #include <algorithm>
 #include <array>
@@ -64,6 +68,32 @@ static std::string format_xpath_number(double Value)
    }
 
    return result;
+}
+
+static std::string_view trim_view(std::string_view Value) noexcept
+{
+   auto start = Value.find_first_not_of(" \t\r\n");
+   if (start IS std::string_view::npos) return std::string_view();
+
+   auto end = Value.find_last_not_of(" \t\r\n");
+   return Value.substr(start, end - start + 1);
+}
+
+static std::optional<bool> parse_schema_boolean(std::string_view Value)
+{
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return std::nullopt;
+
+   if ((trimmed.length() IS 1) and (trimmed[0] IS '1')) return true;
+   if ((trimmed.length() IS 1) and (trimmed[0] IS '0')) return false;
+
+   std::string lowered(trimmed);
+   std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
+
+   if (lowered.compare("true") IS 0) return true;
+   if (lowered.compare("false") IS 0) return false;
+
+   return std::nullopt;
 }
 
 static bool is_unreserved_uri_character(unsigned char Code)
@@ -1473,6 +1503,14 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
 } // namespace
 
 bool XPathValue::to_boolean() const {
+   auto schema_type = get_schema_type();
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPathValueType::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed;
+      }
+   }
+
    switch (type) {
       case XPathValueType::Boolean: return boolean_value;
       case XPathValueType::Number: return number_value != 0.0 and !std::isnan(number_value);
@@ -1538,6 +1576,14 @@ std::string XPathValue::node_string_value(XMLTag *Node)
 }
 
 double XPathValue::to_number() const {
+   auto schema_type = get_schema_type();
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPathValueType::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed ? 1.0 : 0.0;
+      }
+   }
+
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? 1.0 : 0.0;
       case XPathValueType::Number: return number_value;
@@ -1562,6 +1608,19 @@ double XPathValue::to_number() const {
 }
 
 std::string XPathValue::to_string() const {
+   auto schema_type = get_schema_type();
+   if (xml::schema::is_numeric(schema_type) and (type != XPathValueType::NodeSet)) {
+      double numeric_value = to_number();
+      if (!std::isnan(numeric_value)) return format_xpath_number(numeric_value);
+   }
+
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPathValueType::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed ? std::string("true") : std::string("false");
+      }
+   }
+
    switch (type) {
       case XPathValueType::Boolean: return boolean_value ? "true" : "false";
       case XPathValueType::Number: {
@@ -1618,6 +1677,41 @@ size_t XPathValue::size() const {
          return is_empty() ? 0 : 1;
       default: return is_empty() ? 0 : 1;
    }
+}
+
+bool XPathValue::has_schema_info() const
+{
+   return schema_type_info != nullptr;
+}
+
+void XPathValue::set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo)
+{
+   schema_type_info = TypeInfo;
+   schema_validated = false;
+}
+
+bool XPathValue::validate_against_schema() const
+{
+   if (schema_validated and schema_type_info) return true;
+
+   auto descriptor = schema_type_info;
+   auto &registry_ref = xml::schema::registry();
+   if (not descriptor) {
+      auto inferred_type = xml::schema::schema_type_for_xpath(type);
+      descriptor = registry_ref.find_descriptor(inferred_type);
+      if (not descriptor) return false;
+      schema_type_info = descriptor;
+   }
+
+   xml::schema::TypeChecker checker(registry_ref);
+   schema_validated = checker.validate_value(*this, *descriptor);
+   return schema_validated;
+}
+
+xml::schema::SchemaType XPathValue::get_schema_type() const
+{
+   if (schema_type_info) return schema_type_info->schema_type;
+   return xml::schema::schema_type_for_xpath(type);
 }
 
 namespace {
@@ -1708,6 +1802,15 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("local-name", function_local_name);
    register_function("namespace-uri", function_namespace_uri);
    register_function("name", function_name);
+
+   // QName Functions
+   register_function("QName", function_QName);
+   register_function("resolve-QName", function_resolve_QName);
+   register_function("prefix-from-QName", function_prefix_from_QName);
+   register_function("local-name-from-QName", function_local_name_from_QName);
+   register_function("namespace-uri-from-QName", function_namespace_uri_from_QName);
+   register_function("namespace-uri-for-prefix", function_namespace_uri_for_prefix);
+   register_function("in-scope-prefixes", function_in_scope_prefixes);
 
    // String Functions
    register_function("string", function_string);
@@ -1895,9 +1998,10 @@ size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, 
 }
 
 //********************************************************************************************************************
-// Core XPath 1.0 Function Implementations
+// Core XPath Function Implementations
 
 #include "functions/func_nodeset.cpp"
+#include "functions/func_qnames.cpp"
 #include "functions/func_strings.cpp"
 #include "functions/func_diagnostics.cpp"
 #include "functions/func_booleans.cpp"
