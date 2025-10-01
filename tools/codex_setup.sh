@@ -72,7 +72,7 @@ ensure_auth() {
 
    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
       if printf '%s\n' "${GITHUB_TOKEN}" \
-         | gh auth login --with-token --scopes "actions:read" >/dev/null; then
+         | gh auth login --with-token >/dev/null; then
          if gh auth status >/dev/null 2>&1; then
             gh_authenticated=true
             return
