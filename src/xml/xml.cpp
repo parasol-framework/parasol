@@ -2118,6 +2118,39 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       return log.warning(ERR::Search);
    }
 
+   std::string schema_namespace = context.target_namespace;
+   bool schema_has_namespace = !schema_namespace.empty();
+
+   std::string root_namespace;
+   bool root_has_namespace = false;
+
+   if (document_root->NamespaceID != 0u) {
+      if (auto uri = Self->getNamespaceURI(document_root->NamespaceID)) {
+         root_namespace = *uri;
+         root_has_namespace = true;
+      }
+      else {
+         Self->ErrorMsg = "Root element namespace is not registered within this document.";
+         return log.warning(ERR::InvalidData);
+      }
+   }
+
+   if (schema_has_namespace and (not root_has_namespace)) {
+      Self->ErrorMsg = "Root element is missing the schema target namespace '" + schema_namespace + "'.";
+      return log.warning(ERR::Search);
+   }
+
+   if ((not schema_has_namespace) and root_has_namespace) {
+      Self->ErrorMsg = "Root element namespace '" + root_namespace + "' is not expected by the schema.";
+      return log.warning(ERR::Search);
+   }
+
+   if (schema_has_namespace and !(root_namespace IS schema_namespace)) {
+      Self->ErrorMsg = "Root element namespace '" + root_namespace + "' does not match schema target namespace '" +
+         schema_namespace + "'.";
+      return log.warning(ERR::Search);
+   }
+
    xml::schema::TypeChecker checker(xml::schema::registry(), Self->SchemaContext.get(), &Self->ErrorMsg);
    checker.clear_error();
 
