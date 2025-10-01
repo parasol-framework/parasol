@@ -141,8 +141,8 @@ jobs:
     - name: Run CTests (excluding audio/http)
       run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -E "(audio|http)"
 
-    - name: Run audio/http tests (allowed to fail)
-      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -R "(audio|http)" || true
+    - name: Run http tests (allowed to fail)
+      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -R "(http)" || true
 
     - name: Upload build artifacts on failure
       if: failure()
