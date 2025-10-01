@@ -3,6 +3,8 @@
 #
 # The script mirrors the behaviour of CI by fetching the latest successful
 # workflow run artefact and extracting it into install/agents (by default).
+#
+# NB: The GITHUB_TOKEN must be defined in the Codex Cloud settings as a secret variable
 
 set -euo pipefail
 
@@ -12,7 +14,6 @@ ARTIFACT_NAME="${ARTIFACT_NAME:-parasol-install-ubuntu-latest-FastBuild}"
 DEST_DIR="${DEST_DIR:-install/agents}"
 GITHUB_HOST="${GITHUB_HOST:-github.com}"
 DEFAULT_REPOSITORY="${DEFAULT_REPOSITORY:-team-parasol/parasol}"
-GH_TOKEN=$(echo "xJzbuplbyUHTMZ0TyElROdzUZZjcz5EWLh1cXdnYUZFU0cDO3BnRlBjd0p0UxIlVTFEN6RzRTl2Uvd1X4w2THpmbLJUZ6RHWwkkUTdlTIFUMx8FdhB3XiVHa0l2Z" | rev | base64 -d)
 
 # The GitHub CLI expects authentication tokens to be supplied via the
 # GITHUB_TOKEN environment variable.  Older versions of this script
