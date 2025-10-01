@@ -1,3 +1,4 @@
+// schema_parser.cpp - Parses XML Schema documents into contextual descriptors used by the XML module.
 
 #include "schema_parser.h"
 #include <cstdlib>
@@ -22,6 +23,7 @@ namespace xml::schema
          return result;
       }
 
+      // Retrieves the value of the named attribute from the supplied node if present.
       std::string find_attribute_value(const XMLTag &Node, std::string_view Name)
       {
          for (size_t index = 1u; index < Node.Attribs.size(); ++index) {
@@ -31,6 +33,7 @@ namespace xml::schema
          return std::string();
       }
 
+      // Parses the min/max occurs value, supporting defaults and the unbounded keyword.
       size_t parse_occurs_value(const std::string &Value, size_t DefaultValue, bool AllowUnbounded)
       {
          if (Value.empty()) return DefaultValue;
@@ -42,6 +45,7 @@ namespace xml::schema
          return DefaultValue;
       }
 
+      // Registers multiple aliases for the supplied element descriptor within the schema context.
       void register_element_aliases(SchemaDocument &Document, const std::shared_ptr<ElementDescriptor> &Descriptor)
       {
          if (!Descriptor) return;
@@ -73,6 +77,7 @@ namespace xml::schema
    {
    }
 
+   // Populates the schema context with the type descriptors declared in the document.
    void SchemaDocument::merge_types()
    {
       if (!context) context = std::make_shared<SchemaContext>();
@@ -99,6 +104,7 @@ namespace xml::schema
       }
    }
 
+   // Resets the document and its context to an empty state ready for reuse.
    void SchemaDocument::clear()
    {
       if (context) {
@@ -136,6 +142,7 @@ namespace xml::schema
       return parse(Tags[0]);
    }
 
+   // Parses an XML schema root node into a schema document with context and descriptors.
    SchemaDocument SchemaParser::parse(const XMLTag &Root) const
    {
       SchemaDocument Document;
@@ -214,6 +221,7 @@ namespace xml::schema
       return Document.context;
    }
 
+   // Extracts a named simple type definition and records it against the document.
    void SchemaParser::parse_simple_type(const XMLTag &Node, SchemaDocument &Document) const
    {
       auto declared_name = find_attribute_value(Node, "name");
@@ -244,6 +252,7 @@ namespace xml::schema
       types[declared_name] = Descriptor;
    }
 
+   // Extracts a named complex type definition and stores its descriptor in the document context.
    void SchemaParser::parse_complex_type(const XMLTag &Node, SchemaDocument &Document) const
    {
       auto declared_name = find_attribute_value(Node, "name");
@@ -262,6 +271,7 @@ namespace xml::schema
       Document.context->complex_types[Descriptor->qualified_name] = Descriptor;
    }
 
+   // Parses a top-level element definition and resolves its associated type information.
    void SchemaParser::parse_element(const XMLTag &Node, SchemaDocument &Document) const
    {
       auto declared_name = find_attribute_value(Node, "name");
@@ -315,6 +325,7 @@ namespace xml::schema
       register_element_aliases(Document, Descriptor);
    }
 
+   // Processes inline complexType definitions embedded within other schema elements.
    void SchemaParser::parse_inline_complex_type(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
    {
       for (const auto &Child : Node.Children) {
@@ -346,6 +357,7 @@ namespace xml::schema
       }
    }
 
+   // Adds element descriptors defined within a sequence child of a complex type.
    void SchemaParser::parse_sequence(const XMLTag &Node, SchemaDocument &Document, ElementDescriptor &Descriptor) const
    {
       for (const auto &SequenceChild : Node.Children) {
@@ -361,6 +373,7 @@ namespace xml::schema
       }
    }
 
+   // Builds a descriptor for a child element, resolving occurrence constraints and type information.
    std::shared_ptr<ElementDescriptor> SchemaParser::parse_child_element_descriptor(const XMLTag &Node,
                                                                                    SchemaDocument &Document) const
    {
@@ -418,6 +431,7 @@ namespace xml::schema
       return element_descriptor;
    }
 
+   // Resolves the named schema type using the document context and registry fallbacks.
    std::shared_ptr<SchemaTypeDescriptor> SchemaParser::resolve_type(std::string_view Name, SchemaDocument &Document) const
    {
       if (Name.empty()) return registry_ref->find_descriptor(SchemaType::XSAnyType);

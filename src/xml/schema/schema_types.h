@@ -1,3 +1,5 @@
+// schema_types.h - Declares schema type descriptors and registry helpers for XML validation.
+
 #pragma once
 
 #include <memory>

@@ -1,3 +1,4 @@
+// type_checker.cpp - Implements schema-aware validation helpers for XML documents.
 
 #include "type_checker.h"
 #include <cmath>
@@ -7,6 +8,7 @@ namespace xml::schema
 {
    namespace
    {
+      // Follows user-defined types to find the underlying built-in descriptor.
       const SchemaTypeDescriptor * resolve_effective_descriptor(const SchemaTypeDescriptor &Descriptor)
       {
          const SchemaTypeDescriptor *current = &Descriptor;
@@ -18,6 +20,7 @@ namespace xml::schema
          return current ? current : &Descriptor;
       }
 
+      // Determines whether the supplied string value represents a valid boolean literal.
       bool is_valid_boolean(std::string_view Value)
       {
          if (pf::iequals(Value, "true")) return true;
@@ -68,6 +71,7 @@ namespace xml::schema
       if (error_sink) *error_sink = last_error_message;
    }
 
+   // Validates that the provided XPath value conforms to the supplied schema descriptor.
    bool TypeChecker::validate_value(const XPathValue &Value, const SchemaTypeDescriptor &Descriptor) const
    {
       auto effective = resolve_effective_descriptor(Descriptor);
@@ -123,6 +127,7 @@ namespace xml::schema
       return false;
    }
 
+   // Validates an attribute against the descriptor and records detailed errors when it fails.
    bool TypeChecker::validate_attribute(const XMLAttrib &Attribute, const SchemaTypeDescriptor &Descriptor) const
    {
       XPathValue value(Attribute.Value);
@@ -144,6 +149,7 @@ namespace xml::schema
       return false;
    }
 
+   // Validates that the tag node satisfies the structural requirements of the descriptor.
    bool TypeChecker::validate_node(const XMLTag &Tag, const SchemaTypeDescriptor &Descriptor) const
    {
       if (Descriptor.schema_type IS SchemaType::XPathNodeSet) return true;
@@ -164,6 +170,7 @@ namespace xml::schema
       return false;
    }
 
+   // Validates an element against the descriptor, recursively checking child elements as required.
    bool TypeChecker::validate_element(const XMLTag &Tag, const ElementDescriptor &Descriptor) const
    {
       if (Descriptor.type and Descriptor.children.empty()) {

@@ -1,3 +1,5 @@
+// schema_parser.h - Declares structures and helpers for interpreting XML Schema documents.
+
 #pragma once
 
 #include <ankerl/unordered_dense.h>

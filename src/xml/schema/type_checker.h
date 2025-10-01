@@ -1,3 +1,5 @@
+// type_checker.h - Declares XML schema validation utilities for checking instance documents.
+
 #pragma once
 
 #include "schema_parser.h"
