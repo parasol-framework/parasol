@@ -13,7 +13,6 @@ DEST_DIR="${DEST_DIR:-install/agents}"
 GITHUB_HOST="${GITHUB_HOST:-github.com}"
 GH_TOKEN=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
 DEFAULT_REPOSITORY="${DEFAULT_REPOSITORY:-team-parasol/parasol}"
-RELEASE_REPOSITORY="${RELEASE_REPOSITORY:-parasol-framework/parasol}"
 
 # The GitHub CLI expects authentication tokens to be supplied via the
 # GITHUB_TOKEN environment variable.  Older versions of this script
@@ -80,8 +79,9 @@ ensure_auth() {
       fi
    fi
 
-   echo "warning: gh is not authenticated; continuing without CI artefact support." >&2
+   echo "error: GitHub CLI authentication failed; provide GITHUB_TOKEN with actions:read scope or run 'gh auth login'." >&2
    gh_authenticated=false
+   return 1
 }
 
 discover_repo() {
@@ -112,7 +112,9 @@ discover_repo() {
 }
 
 ensure_gh
-ensure_auth
+if ! ensure_auth; then
+   exit 1
+fi
 
 repository="$(discover_repo)"
 tmp_dir="$(mktemp -d)"
@@ -137,12 +139,12 @@ download_ci_artifact() {
       --json databaseId \
       --jq '.[0].databaseId' \
       --repo "${repository}" 2>/dev/null)"; then
-      echo "warning: failed to query workflow runs via gh; falling back to release artefact." >&2
+      echo "error: failed to query workflow runs via gh." >&2
       return 1
    fi
 
    if [[ -z "${run_id}" ]]; then
-      echo "warning: no successful runs found for ${WORKFLOW_FILE} on ${BRANCH_NAME}; falling back to release artefact." >&2
+      echo "error: no successful runs found for ${WORKFLOW_FILE} on ${BRANCH_NAME}." >&2
       return 1
    fi
 
@@ -152,14 +154,14 @@ download_ci_artifact() {
       --name "${ARTIFACT_NAME}" \
       --dir "${tmp_dir}" \
       --repo "${repository}" >/dev/null 2>&1; then
-      echo "warning: failed to download CI artefact; falling back to release artefact." >&2
+      echo "error: failed to download CI artefact." >&2
       return 1
    fi
 
    local tarball
    tarball="$(find "${tmp_dir}" -type f -name '*.tar.gz' -print -quit)"
    if [[ -z "${tarball}" ]]; then
-      echo "warning: no .tar.gz found in downloaded CI artefact; falling back to release artefact." >&2
+      echo "error: no .tar.gz found in downloaded CI artefact." >&2
       return 1
    fi
 
@@ -169,69 +171,8 @@ download_ci_artifact() {
    return 0
 }
 
-download_release_artifact() {
-   local api_url="https://api.github.com/repos/${RELEASE_REPOSITORY}/releases/latest"
-   local dest="${tmp_dir}/${ARTIFACT_NAME}.tar.gz"
-   local asset_name=""
-   local asset_url=""
-
-   echo "Querying latest release from ${api_url}"
-   local json_file="${tmp_dir}/release.json"
-   if ! curl -fsSL "${api_url}" -o "${json_file}"; then
-      echo "error: failed to query ${api_url}." >&2
-      return 1
-   fi
-
-   if ! readarray -t asset_info < <(python3 - "${json_file}" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], 'r', encoding='utf-8') as fh:
-   data = json.load(fh)
-selected = None
-for asset in data.get('assets', []):
-   name = asset.get('name') or ''
-   url = asset.get('browser_download_url')
-   if not url:
-      continue
-   if name.endswith('.tar.gz'):
-      selected = (name, url)
-      if 'linux' in name.lower():
-         break
-
-if not selected:
-   sys.exit(1)
-
-print(selected[0])
-print(selected[1])
-PY
-   ); then
-      echo "error: unable to identify a release artefact for ${RELEASE_REPOSITORY}." >&2
-      return 1
-   fi
-
-   asset_name="${asset_info[0]:-}"
-   asset_url="${asset_info[1]:-}"
-
-   if [[ -z "${asset_url}" ]]; then
-      echo "error: latest release for ${RELEASE_REPOSITORY} does not contain a downloadable tarball." >&2
-      return 1
-   fi
-
-   echo "Downloading release artefact ${asset_name}"
-   if curl -fsSL "${asset_url}" -o "${dest}"; then
-      artifact_tarball="${dest}"
-      download_source="release ${RELEASE_REPOSITORY}:${asset_name}"
-      tar_strip="--strip-components=1"
-      return 0
-   fi
-
-   echo "error: failed to download release artefact from ${asset_url}." >&2
-   return 1
-}
-
 if ! download_ci_artifact; then
-   download_release_artifact
+   exit 1
 fi
 
 if [[ -z "${artifact_tarball}" ]]; then
