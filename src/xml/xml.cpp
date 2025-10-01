@@ -49,6 +49,11 @@ Check the header for details.
 Fluid developers need to be aware that reading the #Tags field generates a copy of the entire tag structure - it
 should therefore be read only as needed and cached until the XML object is modified.
 
+<header>Not Supported</header>
+
+DTD processing and validation is not supported.  While the class can parse DOCTYPE declarations, it does not load or 
+validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for validation instead.
+
 -END-
 
 *********************************************************************************************************************/
