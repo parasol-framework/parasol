@@ -1,3 +1,8 @@
+// type_checker.h - Declares the TypeChecker façade used by callers to validate XML instance data
+// against schema-derived descriptors.  It exposes context wiring, error reporting, and per-value or
+// per-element verification entry points that integrate with the schema parser and type registry to
+// deliver comprehensive XSD enforcement inside the XML module.
+
 #pragma once
 
 #include "schema_parser.h"

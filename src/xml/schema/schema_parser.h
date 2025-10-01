@@ -1,3 +1,9 @@
+// schema_parser.h - Declares the SchemaDocument data model alongside the SchemaParser façade that
+// cooperatively translates XML Schema tag trees into reusable descriptors.  These declarations are
+// shared by the parser implementation, the schema-aware validator, and any tooling that needs to
+// inspect namespaces, complex element hierarchies, or named type definitions extracted from XSD
+// files.
+
 #pragma once
 
 #include <ankerl/unordered_dense.h>

@@ -1,3 +1,8 @@
+// schema_types.h - Defines the SchemaType enumeration, descriptor classes, and registry interface
+// that capture XML Schema datatype semantics for the wider XML subsystem.  Consumers include the
+// schema parser, type checker, and XPath integration points that require quick lookup of built-in
+// and user-defined types, inheritance relationships, and value coercion behaviours.
+
 #pragma once
 
 #include <memory>
