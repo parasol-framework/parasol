@@ -5,6 +5,8 @@
 #include <format>
 #include <vector>
 
+#include "unescape.h"
+
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
    size_t last_pos = 0;
@@ -124,6 +126,18 @@ static void expand_entity_references(extXML *Self, std::string &Value,
       auto ch = view.front();
 
       if ((ch IS '%' or ch IS '&') and view.size() > 1) {
+         if ((ch IS '&') and (view[1] IS '#')) {
+            auto terminator = view.find(';');
+            if (!(terminator IS std::string_view::npos)) {
+               char unichar[6];
+               size_t ulen = 0;
+               if (decode_numeric_reference(view.data(), terminator + 1, unichar, ulen)) {
+                  output.append(unichar, ulen);
+                  view.remove_prefix(terminator + 1);
+                  continue;
+               }
+            }
+         }
          bool is_parameter = (ch IS '%');
          view.remove_prefix(1); // Skip the % or &
 
@@ -193,6 +207,18 @@ static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
       }
 
       if ((ch IS '%' or ch IS '&') and (State.cursor.size() > 1)) {
+         if ((ch IS '&') and (State.cursor[1] IS '#')) {
+            auto terminator = State.cursor.find(';');
+            if (!(terminator IS std::string_view::npos)) {
+               char unichar[6];
+               size_t ulen = 0;
+               if (decode_numeric_reference(State.cursor.data(), terminator + 1, unichar, ulen)) {
+                  buffer.append(unichar, ulen);
+                  State.next(terminator + 1);
+                  continue;
+               }
+            }
+         }
          bool is_parameter = (ch IS '%');
          State.next(); // Skip the % or &
 
