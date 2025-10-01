@@ -122,6 +122,25 @@ function testEntityParsing()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Test standalone declaration handling
+
+function testStandalonePreventsExternalDTD()
+   local standaloneXML = [[<?xml version="1.0" standalone="yes"?>
+<!DOCTYPE root SYSTEM "http://example.com/example.dtd">
+<root><child/></root>]]
+
+   local xml = obj.new("xml", {
+      statement = standaloneXML,
+      flags = XMF_PARSE_ENTITY
+   })
+
+   assert(bit.band(xml.flags, XMF_STANDALONE) != 0, 'Standalone declaration should set XMF_STANDALONE flag')
+   assert(xml.systemID == nil, 'System identifier should not be retained for standalone documents')
+   assert(xml.publicID == nil, 'Public identifier should not be retained for standalone documents')
+   assert(xml.docType == 'root', 'Document type should still be captured for standalone documents')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Test no-escape mode
 
 function testNoEscapeMode()
@@ -310,7 +329,7 @@ end
 return {
    tests = {
       'testParsingFlags', 'testWhitespaceHandling', 'testContentStripping', 'testHeaderStripping',
-      'testWellFormedValidation', 'testEntityParsing', 'testNoEscapeMode', 'testSortingFlags',
+      'testWellFormedValidation', 'testEntityParsing', 'testStandalonePreventsExternalDTD', 'testNoEscapeMode', 'testSortingFlags',
       'testSerialisationFlags', 'testContentExtraction', 'testCountMethods', 'testFilterMethod',
       'testRemoveXPathAttributes', 'testExists'
    },

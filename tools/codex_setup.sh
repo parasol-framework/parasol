@@ -15,15 +15,6 @@ DEST_DIR="${DEST_DIR:-install/agents}"
 GITHUB_HOST="${GITHUB_HOST:-github.com}"
 DEFAULT_REPOSITORY="parasol-framework/parasol"
 
-# The GitHub CLI expects authentication tokens to be supplied via the
-# GITHUB_TOKEN environment variable.  Older versions of this script
-# populated GH_TOKEN instead, which meant the non-interactive login step
-# failed and the artefact download never happened.  Normalise the token so
-# that GITHUB_TOKEN is always set when either variable is provided.
-if [[ -z "${GITHUB_TOKEN:-}" && -n "${GH_TOKEN:-}" ]]; then
-   export GITHUB_TOKEN="${GH_TOKEN}"
-fi
-
 # Older versions of gh (including the one available in this environment)
 # do not support the --hostname flag.  Setting GH_HOST ensures the CLI
 # operates against the requested GitHub instance without requiring the
