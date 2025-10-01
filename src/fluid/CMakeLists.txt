@@ -8,6 +8,7 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 
 set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 #link_directories (${LUAJIT_SRC})
+set (LUAJIT_INSTALL_DIR "${CMAKE_BINARY_DIR}/luajit-2.1")
 
 # We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
@@ -51,17 +52,34 @@ if (MSVC)
 else ()
    ExternalProject_Add(
       luajit
-      SOURCE_DIR ${LUAJIT_SRC}
-      CONFIGURE_COMMAND ""
-      BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
-      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
-      BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
-      # Specifying the WORKING_DIRECTORY triggers a bug in GitHub's auto-build as of 2024-11 (and we don't really need it in order to build)
-      #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1"
-      COMMENT "Compiling LuaJIT library")
+      SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/luajit-cmake"
+      BINARY_DIR "${LUAJIT_INSTALL_DIR}/build"
+      INSTALL_DIR "${LUAJIT_INSTALL_DIR}"
+      CMAKE_ARGS
+         ${GLOBAL_DEFAULT_ARGS}
+         ${GLOBAL_THIRDPARTY_LIB_ARGS}
+         -DCMAKE_BUILD_TYPE=Release
+         -DCMAKE_INSTALL_PREFIX=${LUAJIT_INSTALL_DIR}
+         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      CMAKE_CACHE_ARGS
+         -DLUA_TARGET_SHARED:BOOL=ON
+         -DLUAJIT_BUILD_EXE:BOOL=OFF
+         -DLUAJIT_BUILD_ALAMG:BOOL=ON
+         -DLUAJIT_DIR:PATH=${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1
+         -DLUAJIT_OUTPUT_NAME:STRING=luajit-5.1
+         -DLUAJIT_ENABLE_LUA52COMPAT:BOOL=ON
+      BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target libluajit --parallel
+      INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
+      BUILD_BYPRODUCTS "${LUAJIT_INSTALL_DIR}/lib/libluajit-5.1.a"
+      COMMENT "Compiling LuaJIT library with CMake")
 
-   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a")
+   set (LUAJIT_LINK "${LUAJIT_INSTALL_DIR}/lib/libluajit-5.1.a")
+endif ()
+
+if (MSVC)
+   set (LUAJIT_INCLUDE_DIR "${LUAJIT_SRC}")
+else ()
+   set (LUAJIT_INCLUDE_DIR "${LUAJIT_INSTALL_DIR}/include/luajit")
 endif ()
 
 # Fluid library build
@@ -78,6 +96,7 @@ target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/libffi-3.3/include"
+   "${LUAJIT_INCLUDE_DIR}"
    "luajit-2.1/src")
 
 target_link_libraries (${MOD} PRIVATE
