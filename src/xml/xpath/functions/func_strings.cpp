@@ -1,6 +1,8 @@
 //********************************************************************************************************************
 // XPath String Functions
 
+#include <format>
+
 XPathValue XPathFunctionLibrary::function_string(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.empty()) {
@@ -558,7 +560,7 @@ XPathValue XPathFunctionLibrary::function_analyze_string(const std::vector<XPath
          if (!remaining.empty()) {
             builder.nodes.push_back(nullptr);
             builder.attributes.push_back(nullptr);
-            builder.strings.push_back(std::string("non-match:") + std::string(remaining));
+            builder.strings.push_back(std::format("non-match:{}", remaining));
          }
          break;
       }
@@ -568,7 +570,7 @@ XPathValue XPathFunctionLibrary::function_analyze_string(const std::vector<XPath
          if (!unmatched.empty()) {
             builder.nodes.push_back(nullptr);
             builder.attributes.push_back(nullptr);
-            builder.strings.push_back(std::string("non-match:") + unmatched);
+            builder.strings.push_back(std::format("non-match:{}", unmatched));
          }
       }
 
@@ -579,13 +581,13 @@ XPathValue XPathFunctionLibrary::function_analyze_string(const std::vector<XPath
 
       builder.nodes.push_back(nullptr);
       builder.attributes.push_back(nullptr);
-      builder.strings.push_back(std::string("match:") + matched_text);
+      builder.strings.push_back(std::format("match:{}", matched_text));
 
       for (size_t index = 1u; index < match.captures.size(); ++index) {
          if (match.capture_spans[index].offset IS (size_t)std::string::npos) continue;
          builder.nodes.push_back(nullptr);
          builder.attributes.push_back(nullptr);
-         builder.strings.push_back(std::string("group") + std::to_string(index) + std::string(":") + match.captures[index]);
+         builder.strings.push_back(std::format("group{}:{}", index, match.captures[index]));
       }
 
       size_t advance = 0u;

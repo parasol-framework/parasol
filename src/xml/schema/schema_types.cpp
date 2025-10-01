@@ -20,7 +20,7 @@ namespace xml::schema
       }
 
       // Tests whether the provided schema type represents a string-like value.
-      bool is_schema_string(SchemaType Type) noexcept
+      constexpr bool is_schema_string(SchemaType Type) noexcept
       {
          switch (Type) {
             case SchemaType::XPathString:
@@ -32,7 +32,7 @@ namespace xml::schema
       }
 
       // Tests whether the provided schema type represents a numeric value category.
-      bool is_schema_numeric(SchemaType Type) noexcept
+      constexpr bool is_schema_numeric(SchemaType Type) noexcept
       {
          switch (Type) {
             case SchemaType::XPathNumber:

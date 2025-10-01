@@ -1,6 +1,8 @@
 //********************************************************************************************************************
 // XPath Diagnostics Functions
 
+#include <format>
+
 XPathValue XPathFunctionLibrary::function_error(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    std::string error_code = "err:FOER0000";
@@ -37,14 +39,11 @@ XPathValue XPathFunctionLibrary::function_error(const std::vector<XPathValue> &A
 
    if (Context.document) {
       if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
-      Context.document->ErrorMsg.append("XPath error ");
-      Context.document->ErrorMsg.append(error_code);
-      Context.document->ErrorMsg.append(": ");
-      Context.document->ErrorMsg.append(description);
-      if (not detail.empty()) {
-         Context.document->ErrorMsg.append(" [");
-         Context.document->ErrorMsg.append(detail);
-         Context.document->ErrorMsg.append("]");
+      if (detail.empty()) {
+         Context.document->ErrorMsg.append(std::format("XPath error {}: {}", error_code, description));
+      }
+      else {
+         Context.document->ErrorMsg.append(std::format("XPath error {}: {} [{}]", error_code, description, detail));
       }
    }
 

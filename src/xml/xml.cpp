@@ -57,6 +57,7 @@ should therefore be read only as needed and cached until the XML object is modif
 #include <parasol/modules/xml.h>
 #include <parasol/strings.hpp>
 #include <array>
+#include <format>
 #include <functional>
 #include <sstream>
 #include "../link/unicode.h"
@@ -2092,9 +2093,7 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       if (iter != context.elements.end()) return iter->second;
 
       if (!context.target_namespace_prefix.empty()) {
-         auto qualified = std::string(context.target_namespace_prefix);
-         qualified.push_back(':');
-         qualified.append(local);
+         std::string qualified = std::format("{}:{}", context.target_namespace_prefix, local);
          iter = context.elements.find(qualified);
          if (iter != context.elements.end()) return iter->second;
       }
@@ -2114,7 +2113,7 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
 
    auto descriptor = find_descriptor(document_root->Attribs[0].Name);
    if (!descriptor) {
-      Self->ErrorMsg = "Schema does not define root element '" + document_root->Attribs[0].Name + "'.";
+      Self->ErrorMsg = std::format("Schema does not define root element '{}'.", document_root->Attribs[0].Name);
       return log.warning(ERR::Search);
    }
 
@@ -2155,8 +2154,7 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
 
       std::string prefix_attribute;
       if (!root_prefix.empty()) {
-         prefix_attribute = "xmlns:";
-         prefix_attribute.append(root_prefix);
+         prefix_attribute = std::format("xmlns:{}", root_prefix);
       }
 
       if (!prefix_attribute.empty()) {
@@ -2181,18 +2179,18 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
    }
 
    if (schema_has_namespace and (not root_has_namespace)) {
-      Self->ErrorMsg = "Root element is missing the schema target namespace '" + schema_namespace + "'.";
+      Self->ErrorMsg = std::format("Root element is missing the schema target namespace '{}'.", schema_namespace);
       return log.warning(ERR::Search);
    }
 
    if ((not schema_has_namespace) and root_has_namespace) {
-      Self->ErrorMsg = "Root element namespace '" + root_namespace + "' is not expected by the schema.";
+      Self->ErrorMsg = std::format("Root element namespace '{}' is not expected by the schema.", root_namespace);
       return log.warning(ERR::Search);
    }
 
    if (schema_has_namespace and !(root_namespace IS schema_namespace)) {
-      Self->ErrorMsg = "Root element namespace '" + root_namespace + "' does not match schema target namespace '" +
-         schema_namespace + "'.";
+      Self->ErrorMsg = std::format("Root element namespace '{}' does not match schema target namespace '{}'.",
+         root_namespace, schema_namespace);
       return log.warning(ERR::Search);
    }
 

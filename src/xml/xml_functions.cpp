@@ -2,6 +2,7 @@
 // String utilities and character classification
 
 #include <ankerl/unordered_dense.h>
+#include <format>
 #include <vector>
 
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
@@ -345,7 +346,7 @@ static void parse_doctype(extXML *Self, ParseState &State)
                   if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) {
                      State.skipWhitespace(Self->LineNo);
                      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
-                        notation_value = public_id + " " + system_id;
+                        notation_value = std::format("{} {}", public_id, system_id);
                      }
                      else notation_value = public_id;
                   }

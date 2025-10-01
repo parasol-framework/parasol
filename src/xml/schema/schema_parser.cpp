@@ -6,6 +6,7 @@
 
 #include "schema_parser.h"
 #include <cstdlib>
+#include <format>
 #include <parasol/strings.hpp>
 
 namespace xml::schema
@@ -14,17 +15,13 @@ namespace xml::schema
    {
       bool is_named(std::string_view Name, std::string_view Expected)
       {
-         return pf::iequals(std::string(Name), std::string(Expected));
+         return pf::iequals(Name, Expected);
       }
 
       std::string make_qualified_name(std::string_view Prefix, std::string_view Local)
       {
          if (Prefix.empty()) return std::string(Local);
-
-         std::string result(Prefix);
-         result.push_back(':');
-         result.append(Local);
-         return result;
+         return std::format("{}:{}", Prefix, Local);
       }
 
       // Retrieves the value of the named attribute from the supplied node if present.
@@ -32,7 +29,7 @@ namespace xml::schema
       {
          for (size_t index = 1u; index < Node.Attribs.size(); ++index) {
             const auto &Attrib = Node.Attribs[index];
-            if (pf::iequals(Attrib.Name, std::string(Name))) return Attrib.Value;
+            if (pf::iequals(Attrib.Name, Name)) return Attrib.Value;
          }
          return std::string();
       }
@@ -67,10 +64,10 @@ namespace xml::schema
             elements[make_qualified_name(Document.target_namespace_prefix, local_name)] = Descriptor;
          }
 
-         for (const auto &entry : Document.namespace_bindings) {
-            if (entry.second IS Document.target_namespace) {
-               if (entry.first.empty()) elements[local_name] = Descriptor;
-               else elements[make_qualified_name(entry.first, local_name)] = Descriptor;
+         for (const auto &[prefix, ns_uri] : Document.namespace_bindings) {
+            if (ns_uri IS Document.target_namespace) {
+               if (prefix.empty()) elements[local_name] = Descriptor;
+               else elements[make_qualified_name(prefix, local_name)] = Descriptor;
             }
          }
       }
@@ -99,10 +96,10 @@ namespace xml::schema
             types[make_qualified_name(target_namespace_prefix, local_name)] = Descriptor;
          }
 
-         for (const auto &entry : namespace_bindings) {
-            if (entry.second IS target_namespace) {
-               if (entry.first.empty()) types[local_name] = Descriptor;
-               else types[make_qualified_name(entry.first, local_name)] = Descriptor;
+         for (const auto &[prefix, ns_uri] : namespace_bindings) {
+            if (ns_uri IS target_namespace) {
+               if (prefix.empty()) types[local_name] = Descriptor;
+               else types[make_qualified_name(prefix, local_name)] = Descriptor;
             }
          }
       }
@@ -166,7 +163,7 @@ namespace xml::schema
          }
 
          std::string_view attrib_name(Attrib.Name);
-         if (attrib_name.rfind("xmlns", 0) IS 0) {
+         if (attrib_name.starts_with("xmlns")) {
             std::string prefix;
             if ((attrib_name.length() > 5u) and (attrib_name[5] IS ':')) {
                prefix.assign(attrib_name.begin() + 6u, attrib_name.end());
@@ -179,9 +176,9 @@ namespace xml::schema
       }
 
       if (Document.target_namespace_prefix.empty()) {
-         for (const auto &entry : Document.namespace_bindings) {
-            if (entry.second IS Document.target_namespace) {
-               Document.target_namespace_prefix = entry.first;
+         for (const auto &[prefix, ns_uri] : Document.namespace_bindings) {
+            if (ns_uri IS Document.target_namespace) {
+               Document.target_namespace_prefix = prefix;
                break;
             }
          }
