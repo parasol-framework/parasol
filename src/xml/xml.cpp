@@ -1164,30 +1164,24 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
       if (Self->findTag(Args->XPath) != ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
 
       if (not Self->Attrib.empty()) { // Remove an attribute
-         for (int a=0; a < std::ssize(Self->Cursor->Attribs); a++) {
-            if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[a].Name)) {
-               Self->Cursor->Attribs.erase(Self->Cursor->Attribs.begin() + a);
-               break;
-            }
-         }
+         auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
+            return pf::iequals(Self->Attrib, a.Name);
+         });
+         if (it != Self->Cursor->Attribs.end()) Self->Cursor->Attribs.erase(it);
       }
       else if (Self->Cursor->ParentID) {
          if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
-            for (auto it=parent->Children.begin(); it != parent->Children.end(); it++) {
-               if (Self->Cursor->ID IS it->ID) {
-                  parent->Children.erase(it);
-                  break;
-               }
-            }
+            auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
+               return Self->Cursor->ID IS child.ID;
+            });
+            if (it != parent->Children.end()) parent->Children.erase(it);
          }
       }
       else {
-         for (auto it=Self->Tags.begin(); it != Self->Tags.end(); it++) {
-            if (Self->Cursor->ID IS it->ID) {
-               Self->Tags.erase(it);
-               break;
-            }
-         }
+         auto it = std::ranges::find_if(Self->Tags, [&](const auto& tag) {
+            return Self->Cursor->ID IS tag.ID;
+         });
+         if (it != Self->Tags.end()) Self->Tags.erase(it);
       }
 
       limit--;
@@ -1385,16 +1379,18 @@ static ERR XML_SetAttrib(extXML *Self, struct xml::SetAttrib *Args)
 
    auto cmd = Args->Attrib;
    if ((cmd IS XMS::UPDATE) or (cmd IS XMS::UPDATE_ONLY)) {
-      for (auto a = tag->Attribs.begin(); a != tag->Attribs.end(); a++) {
-         if (pf::iequals(Args->Name, a->Name)) {
-            if (Args->Value) {
-               a->Name  = Args->Name;
-               a->Value = Args->Value;
-            }
-            else tag->Attribs.erase(a);
-            Self->Modified++;
-            return ERR::Okay;
+      auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
+         return pf::iequals(Args->Name, a.Name);
+      });
+
+      if (it != tag->Attribs.end()) {
+         if (Args->Value) {
+            it->Name  = Args->Name;
+            it->Value = Args->Value;
          }
+         else tag->Attribs.erase(it);
+         Self->Modified++;
+         return ERR::Okay;
       }
 
       if (cmd IS XMS::UPDATE) {
@@ -1459,12 +1455,11 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 
    if (Self->findTag(Args->Key) IS ERR::Okay) {
       if (not Self->Attrib.empty()) { // Updating or adding an attribute
-         unsigned i;
-         for (i=0; i < Self->Cursor->Attribs.size(); i++) {
-            if (pf::iequals(Self->Attrib, Self->Cursor->Attribs[i].Name)) break;
-         }
+         auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
+            return pf::iequals(Self->Attrib, a.Name);
+         });
 
-         if (i < Self->Cursor->Attribs.size()) Self->Cursor->Attribs[i].Value = Args->Value; // Modify existing
+         if (it != Self->Cursor->Attribs.end()) it->Value = Args->Value; // Modify existing
          else Self->Cursor->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
          Self->Modified++;
       }
@@ -1616,40 +1611,38 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
             tag = &scan;
          }
          else {
-            for (auto &child : scan.Children) {
-               if (pf::wildcmp(filter.first, child.Attribs[0].Name)) {
-                  tag = &child;
-                  break;
-               }
-            }
+            auto child_it = std::ranges::find_if(scan.Children, [&](const auto& child) {
+               return pf::wildcmp(filter.first, child.Attribs[0].Name);
+            });
+            if (child_it != scan.Children.end()) tag = &(*child_it);
          }
 
          if (not tag) break;
 
          if ((Args->Flags & XSF::CHECK_SORT) != XSF::NIL) { // Give precedence for a 'sort' attribute in the XML tag
-            auto attrib = tag->Attribs.begin()+1;
-            for (; attrib != tag->Attribs.end(); attrib++) {
-               if (pf::iequals("sort", attrib->Name)) {
-                  sortval.append(attrib->Value);
-                  sortval.append("\x01");
-                  break;
-               }
+            auto attrib_view = tag->Attribs | std::views::drop(1);
+            auto attrib_it = std::ranges::find_if(attrib_view, [](const auto& a) {
+               return pf::iequals("sort", a.Name);
+            });
+
+            if (attrib_it != attrib_view.end()) {
+               sortval.append(attrib_it->Value);
+               sortval.append("\x01");
             }
-            if (attrib IS tag->Attribs.end()) continue;
+            else continue;
          }
 
          if (filter.second.empty()) { // Use content as the sort data
-            for (auto &child : tag->Children) {
-               if (child.isContent()) sortval += child.Attribs[0].Value;
+            for (auto &child : tag->Children | std::views::filter([](const auto& c) { return c.isContent(); })) {
+               sortval += child.Attribs[0].Value;
             }
          }
          else { // Extract the sort data from the specified tag attribute
-            for (auto attrib=tag->Attribs.begin()+1; attrib != tag->Attribs.end(); attrib++) {
-               if (pf::wildcmp(filter.second, attrib->Name)) {
-                  sortval += attrib->Value;
-                  break;
-               }
-            }
+            auto attrib_view = tag->Attribs | std::views::drop(1);
+            auto attrib_it = std::ranges::find_if(attrib_view, [&](const auto& a) {
+               return pf::wildcmp(filter.second, a.Name);
+            });
+            if (attrib_it != attrib_view.end()) sortval += attrib_it->Value;
          }
 
          // Each string in the sort list is separated with a byte value of 0x01
@@ -1661,14 +1654,10 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
    }
 
    if ((Args->Flags & XSF::DESC) != XSF::NIL) {
-      std::sort(list.begin(), list.end(), [](const ListSort &A, const ListSort &B) -> bool {
-         return A.Value > B.Value;
-      });
+      std::ranges::sort(list, std::ranges::greater{}, &ListSort::Value);
    }
    else {
-      std::sort(list.begin(), list.end(), [](const ListSort &A, const ListSort &B) -> bool {
-         return A.Value < B.Value;
-      });
+      std::ranges::sort(list, std::ranges::less{}, &ListSort::Value);
    }
 
    // Build new tag list for this branch, then apply it.

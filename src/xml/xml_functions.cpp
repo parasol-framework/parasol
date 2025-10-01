@@ -88,12 +88,12 @@ static ERR resolve_entity_internal(extXML *Self, const std::string &Name, std::s
    if (stack.contains(Name)) return log.warning(ERR::Loop);
 
    auto &table = Parameter ? Self->ParameterEntities : Self->Entities;
-   auto it = table.find(Name);
-   if (it IS table.end()) return ERR::Search;
+   auto *result = find_in_map(table, Name);
+   if (not result) return ERR::Search;
 
    stack.insert(Name);
 
-   Value = it->second;
+   Value = *result;
    expand_entity_references(Self, Value, EntityStack, ParameterStack);
 
    stack.erase(Name);

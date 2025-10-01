@@ -15,6 +15,25 @@
 
 #include "schema/schema_parser.h"
 
+#include <concepts>
+#include <ranges>
+#include <algorithm>
+
+// C++20 Concepts for type safety
+
+template<typename F>
+concept XMLCallback = requires(F f, extXML* xml, XMLTag& tag, const char* attrib) {
+   { f(xml, tag, attrib) } -> std::same_as<ERR>;
+};
+
+template<typename F>
+concept XMLTagPredicate = requires(F f, const XMLTag& tag) {
+   { f(tag) } -> std::convertible_to<bool>;
+};
+
+template<typename Key>
+concept MapKey = std::equality_comparable<Key> and std::default_initializable<Key>;
+
 constexpr std::array<uint64_t, 4> name_char_table = []() {
    std::array<uint64_t, 4> table{0, 0, 0, 0};
    auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
@@ -41,7 +60,7 @@ constexpr std::array<uint64_t, 4> name_start_table = []() {
 constexpr std::array<char, 256> to_lower_table = []() {
    std::array<char, 256> table{};
    for (int i = 0; i < 256; ++i) {
-      char ch = static_cast<char>(i);
+      char ch = char(i);
       table[i] = ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
    }
    return table;
@@ -142,6 +161,34 @@ typedef objXML::CURSOR CURSOR;
 
 // Forward declarations
 class CompiledXPath;
+
+// Generic lookup templates with concepts
+
+template<MapKey Key, typename Value>
+[[nodiscard]] inline auto find_in_map(
+   const ankerl::unordered_dense::map<Key, Value>& Map,
+   const Key& SearchKey) noexcept -> const Value*
+{
+   auto it = Map.find(SearchKey);
+   return (it != Map.end()) ? &it->second : nullptr;
+}
+
+template<MapKey Key, typename Value>
+[[nodiscard]] inline auto find_in_map(
+   ankerl::unordered_dense::map<Key, Value>& Map,
+   const Key& SearchKey) noexcept -> Value*
+{
+   auto it = Map.find(SearchKey);
+   return (it != Map.end()) ? &it->second : nullptr;
+}
+
+template<typename Range, typename Pred>
+   requires std::ranges::input_range<Range> and
+            std::predicate<Pred, std::ranges::range_reference_t<Range>>
+[[nodiscard]] inline auto find_if_range(Range&& range, Pred pred)
+{
+   return std::ranges::find_if(std::forward<Range>(range), pred);
+}
 
 //********************************************************************************************************************
 
@@ -272,31 +319,28 @@ class extXML : public objXML {
    }
 
    [[nodiscard]] inline std::string * getNamespaceURI(uint32_t Hash) {
-      auto it = NSRegistry.find(Hash);
-      return (it != NSRegistry.end()) ? &it->second : nullptr;
+      return find_in_map(NSRegistry, Hash);
    }
 
    // Fast implementation of ResolvePrefix() for internal use,
 
    [[nodiscard]] inline ERR resolvePrefix(const std::string_view Prefix, int TagID, uint32_t &Result) {
       for (auto tag = getTag(TagID); tag; tag = getTag(tag->ParentID)) {
-         // Check this tag's attributes for namespace declarations
-         for (size_t i = 1; i < tag->Attribs.size(); i++) {
-            const auto &attrib = tag->Attribs[i];
+         // Check this tag's attributes for namespace declarations using ranges
+         auto attribs_view = tag->Attribs | std::views::drop(1);
 
+         auto it = std::ranges::find_if(attribs_view, [&](const auto& attrib) {
             // Check for xmlns:prefix="uri" declarations
             if (attrib.Name.starts_with("xmlns:") and attrib.Name.size() > 6) {
-               if (attrib.Name.substr(6) IS Prefix) {
-                  // Found the prefix declaration, return its namespace hash
-                  Result = pf::strhash(attrib.Value);
-                  return ERR::Okay;
-               }
+               return attrib.Name.substr(6) IS Prefix;
             }
             // Check for default namespace if looking for empty prefix
-            else if ((attrib.Name IS "xmlns") and (Prefix.empty())) {
-               Result = pf::strhash(attrib.Value);
-               return ERR::Okay;
-            }
+            return (attrib.Name IS "xmlns") and Prefix.empty();
+         });
+
+         if (it != attribs_view.end()) {
+            Result = pf::strhash(it->Value);
+            return ERR::Okay;
          }
 
          if (!tag->ParentID) break; // Reached root
