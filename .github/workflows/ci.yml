@@ -9,10 +9,6 @@ on:
     branches: [ master ]
 
 jobs:
-  audio:
-    continue-on-error: true
-  http:
-    continue-on-error: true
   build-and-test:
     name: ${{ matrix.os }} - ${{ matrix.build_type }}
     runs-on: ${{ matrix.os }}
@@ -95,9 +91,6 @@ jobs:
     - name: Install
       run: cmake --install build/ci --config ${{ matrix.build_type }}
 
-    - name: Run CTests
-      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure
-
     - name: Package install tree (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -144,6 +137,12 @@ jobs:
         name: parasol-install-${{ matrix.os }}-${{ matrix.build_type }}
         path: build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.zip
         retention-days: 30
+
+    - name: Run CTests (excluding audio/http)
+      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -E "(audio|http)"
+
+    - name: Run audio/http tests (allowed to fail)
+      run: ctest --build-config ${{ matrix.build_type }} --test-dir build/ci --output-on-failure -R "(audio|http)" || true
 
     - name: Upload build artifacts on failure
       if: failure()

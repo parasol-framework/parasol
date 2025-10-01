@@ -51,8 +51,9 @@ should therefore be read only as needed and cached until the XML object is modif
 
 <header>Not Supported</header>
 
-DTD processing and validation is not supported.  While the class can parse DOCTYPE declarations, it does not load or 
-validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for validation instead.
+DTD processing and validation is intentionally not supported.  While the class can parse DOCTYPE declarations, it 
+does not load or  validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for 
+validation instead.
 
 -END-
 
