@@ -2004,7 +2004,7 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 -METHOD-
 LoadSchema: Load an XML Schema definition to enable schema-aware validation.
 
-This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, 
+This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded,
 schema metadata is available for validation and XPath evaluation routines that utilise schema-aware behaviour.
 
 -INPUT-
@@ -2077,10 +2077,12 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       Self->ErrorMsg = "No schema has been loaded for this document.";
       return log.warning(ERR::NoSupport);
    }
+
    if (Self->Tags.empty()) {
       Self->ErrorMsg = "XML document has no parsed tags to validate.";
       return log.warning(ERR::NoData);
    }
+
    if ((Self->Tags[0].Attribs.empty()) or (Self->Tags[0].Attribs[0].Name.empty())) {
       Self->ErrorMsg = "Document root element is unnamed.";
       return log.warning(ERR::InvalidData);
