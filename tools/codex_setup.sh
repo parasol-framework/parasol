@@ -1,21 +1,69 @@
 #!/usr/bin/env bash
-# restore_latest_install.sh
+# Download and install the Parasol CI artifact for local use.
+#
+# The script mirrors the behaviour of CI by fetching the latest successful
+# workflow run artefact and extracting it into install/agents (by default).
+
 set -euo pipefail
 
 WORKFLOW_FILE="${WORKFLOW_FILE:-ci.yml}"
 BRANCH_NAME="${BRANCH_NAME:-master}"
-ARTIFACT_NAME="${ARTIFACT_NAME:-parasol-install-ubuntu-latest-Release}"
+ARTIFACT_NAME="${ARTIFACT_NAME:-parasol-install-ubuntu-latest-FastBuild}"
 DEST_DIR="${DEST_DIR:-install/agents}"
+GITHUB_HOST="${GITHUB_HOST:-github.com}"
+GH_TOKEN=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
 
-if ! command -v gh >/dev/null 2>&1; then
-   echo "error: GitHub CLI (gh) not found; install it and run 'gh auth login' first." >&2
-   exit 1
-fi
+install_gh() {
+   if command -v gh >/dev/null 2>&1; then
+      return
+   fi
 
-if ! gh auth status >/dev/null 2>&1; then
-   echo "error: gh is not authenticated. Run 'gh auth login' with a token that has actions:read scope." >&2
+   export DEBIAN_FRONTEND="noninteractive"
+   apt-get update -y
+   if apt-get install -y gh; then
+      return
+   fi
+
+   echo "Configuring GitHub CLI apt repository..."
+   apt-get install -y curl ca-certificates gnupg
+   install -d -m 0755 /etc/apt/keyrings
+   curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+      | gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg
+   chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+   printf "deb [arch=%s signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n" \
+      "$(dpkg --print-architecture)" \
+      > /etc/apt/sources.list.d/github-cli.list
+   apt-get update -y
+   apt-get install -y gh
+}
+
+ensure_gh() {
+   install_gh
+   if ! command -v gh >/dev/null 2>&1; then
+      echo "error: GitHub CLI (gh) is required but could not be installed." >&2
+      exit 1
+   fi
+}
+
+ensure_auth() {
+   if gh auth status --hostname "${GITHUB_HOST}" >/dev/null 2>&1; then
+      return
+   fi
+
+   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      printf '%s\n' "${GITHUB_TOKEN}" \
+         | gh auth login --with-token --scopes "actions:read" --hostname "${GITHUB_HOST}" >/dev/null
+      if gh auth status --hostname "${GITHUB_HOST}" >/dev/null 2>&1; then
+         return
+      fi
+   fi
+
+   echo "error: gh is not authenticated. Provide GITHUB_TOKEN with actions:read scope or run 'gh auth login'." >&2
    exit 1
-fi
+}
+
+ensure_gh
+ensure_auth
 
 run_id="$(gh run list \
    --workflow "${WORKFLOW_FILE}" \
@@ -24,7 +72,8 @@ run_id="$(gh run list \
    --status success \
    --limit 1 \
    --json databaseId \
-   --jq '.[0].databaseId')"
+   --jq '.[0].databaseId' \
+   --hostname "${GITHUB_HOST}")"
 
 if [[ -z "${run_id}" ]]; then
    echo "error: no successful runs found for ${WORKFLOW_FILE} on ${BRANCH_NAME}." >&2
