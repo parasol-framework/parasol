@@ -10,11 +10,17 @@
 
 @if not defined INCLUDE goto :FAIL
 
+@rem Check for custom linker before @setlocal
+@rem Find MSVC linker in the same directory as cl.exe to avoid Git's link.exe
+@if not defined LJLINK (
+   for %%i in (cl.exe) do set "LJLINK=%%~dp$PATH:ilink.exe"
+)
+@if not defined LJLINK_ARGS set "LJLINK_ARGS=/nologo"
+
 @setlocal
 @rem Add more debug flags here, e.g. DEBUGCFLAGS=/DLUA_USE_APICHECK
 @set DEBUGCFLAGS=
 @set LJCOMPILE=cl /nologo /c /O2 /W3 /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /D_CRT_STDIO_INLINE=__declspec(dllexport)__inline
-@set LJLINK=link /nologo
 @set LJMT=mt /nologo
 @set LJLIB=lib /nologo /nodefaultlib
 @set DASMDIR=..\dynasm
@@ -29,14 +35,14 @@ if exist %LJLIBNAME% exit 0
 
 %LJCOMPILE% host\minilua.c
 @if errorlevel 1 goto :BAD
-%LJLINK% /out:minilua.exe minilua.obj
+"%LJLINK%" %LJLINK_ARGS% /out:minilua.exe minilua.obj
 @if errorlevel 1 goto :BAD
 if exist minilua.exe.manifest^
   %LJMT% -manifest minilua.exe.manifest -outputresource:minilua.exe
 
 @set DASMFLAGS=-D WIN -D JIT -D FFI -D P64
 @set LJARCH=x64
-@minilua
+@.\minilua.exe
 @if errorlevel 8 goto :X64
 @set DASC=vm_x86.dasc
 @set DASMFLAGS=-D WIN -D JIT -D FFI
@@ -48,29 +54,29 @@ if exist minilua.exe.manifest^
 @set DASC=vm_x86.dasc
 @set LJCOMPILE=%LJCOMPILE% /DLUAJIT_DISABLE_GC64
 :GC64
-minilua %DASM% -LN %DASMFLAGS% -o host\buildvm_arch.h %DASC%
+.\minilua.exe %DASM% -LN %DASMFLAGS% -o host\buildvm_arch.h %DASC%
 @if errorlevel 1 goto :BAD
 
 %LJCOMPILE% /I "." /I %DASMDIR% host\buildvm*.c
 @if errorlevel 1 goto :BAD
-%LJLINK% /out:buildvm.exe buildvm*.obj
+"%LJLINK%" %LJLINK_ARGS% /out:buildvm.exe buildvm*.obj
 @if errorlevel 1 goto :BAD
 if exist buildvm.exe.manifest^
   %LJMT% -manifest buildvm.exe.manifest -outputresource:buildvm.exe
 
-buildvm -m peobj -o lj_vm.obj
+.\buildvm.exe -m peobj -o lj_vm.obj
 @if errorlevel 1 goto :BAD
-buildvm -m bcdef -o lj_bcdef.h %ALL_LIB%
+.\buildvm.exe -m bcdef -o lj_bcdef.h %ALL_LIB%
 @if errorlevel 1 goto :BAD
-buildvm -m ffdef -o lj_ffdef.h %ALL_LIB%
+.\buildvm.exe -m ffdef -o lj_ffdef.h %ALL_LIB%
 @if errorlevel 1 goto :BAD
-buildvm -m libdef -o lj_libdef.h %ALL_LIB%
+.\buildvm.exe -m libdef -o lj_libdef.h %ALL_LIB%
 @if errorlevel 1 goto :BAD
-buildvm -m recdef -o lj_recdef.h %ALL_LIB%
+.\buildvm.exe -m recdef -o lj_recdef.h %ALL_LIB%
 @if errorlevel 1 goto :BAD
-buildvm -m vmdef -o jit\vmdef.lua %ALL_LIB%
+.\buildvm.exe -m vmdef -o jit\vmdef.lua %ALL_LIB%
 @if errorlevel 1 goto :BAD
-buildvm -m folddef -o lj_folddef.h lj_opt_fold.c
+.\buildvm.exe -m folddef -o lj_folddef.h lj_opt_fold.c
 @if errorlevel 1 goto :BAD
 
 @if "%1" neq "debug" goto :NODEBUG

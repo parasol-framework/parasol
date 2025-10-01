@@ -43,7 +43,7 @@ if (MSVC)
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE TRUE
       BUILD_ALWAYS TRUE
-      BUILD_COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild.bat" "static"
+      BUILD_COMMAND ${LUAJIT_SRC}/msvcbuild.bat static
       BUILD_BYPRODUCTS ${LUAJIT_LINK}
       INSTALL_COMMAND ""
       UPDATE_COMMAND ""
