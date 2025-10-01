@@ -2159,15 +2159,23 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
          prefix_attribute.append(root_prefix);
       }
 
-      for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
-         const auto &attrib = document_root->Attribs[index];
-         if (pf::iequals(attrib.Name, "xmlns")) {
-            assign_root_namespace(attrib.Value);
-            if (root_has_namespace) break;
+      if (!prefix_attribute.empty()) {
+         for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
+            const auto &attrib = document_root->Attribs[index];
+            if (pf::iequals(attrib.Name, prefix_attribute)) {
+               assign_root_namespace(attrib.Value);
+               break;
+            }
          }
-         else if ((!prefix_attribute.empty()) and pf::iequals(attrib.Name, prefix_attribute)) {
-            assign_root_namespace(attrib.Value);
-            if (root_has_namespace) break;
+      }
+
+      if (!root_has_namespace) {
+         for (size_t index = 1u; index < document_root->Attribs.size(); ++index) {
+            const auto &attrib = document_root->Attribs[index];
+            if (pf::iequals(attrib.Name, "xmlns")) {
+               assign_root_namespace(attrib.Value);
+               break;
+            }
          }
       }
    }
