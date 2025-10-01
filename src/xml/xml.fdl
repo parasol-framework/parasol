@@ -30,6 +30,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
     "NAMESPACE_AWARE: Enable namespace processing during parsing.",
     "HAS_SCHEMA: Automatically defined when a schema has been loaded into the XML object.",
+    "STANDALONE: Automatically defined when the XML declaration specifies standalone=\"yes\".",
     { INCLUDE_SIBLINGS = "0x80000000: Include siblings when building an XML string (#GetXMLString() only)" })
 
   enum("XMI", { type="int", start=0, comment="Tag insertion options." },

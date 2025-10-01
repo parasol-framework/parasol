@@ -278,6 +278,8 @@ static void parse_doctype(extXML *Self, ParseState &State)
    Self->ParameterEntities.clear();
    Self->Notations.clear();
 
+   bool standalone = ((Self->Flags & XMF::STANDALONE) != XMF::NIL);
+
    State.next(type_view.size());
    State.skipWhitespace(Self->LineNo);
 
@@ -287,15 +289,21 @@ static void parse_doctype(extXML *Self, ParseState &State)
    if (ci_keyword(State, "PUBLIC")) {
       State.skipWhitespace(Self->LineNo);
       std::string public_id;
-      if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) assign_string(Self->PublicID, public_id);
+      if (read_quoted(Self, State, public_id, entity_stack, parameter_stack)) {
+         if (not standalone) assign_string(Self->PublicID, public_id);
+      }
       State.skipWhitespace(Self->LineNo);
       std::string system_id;
-      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
+      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
+         if (not standalone) assign_string(Self->SystemID, system_id);
+      }
    }
    else if (ci_keyword(State, "SYSTEM")) {
       State.skipWhitespace(Self->LineNo);
       std::string system_id;
-      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) assign_string(Self->SystemID, system_id);
+      if (read_quoted(Self, State, system_id, entity_stack, parameter_stack)) {
+         if (not standalone) assign_string(Self->SystemID, system_id);
+      }
    }
 
    State.skipWhitespace(Self->LineNo);
@@ -336,8 +344,10 @@ static void parse_doctype(extXML *Self, ParseState &State)
                   State.skipWhitespace(Self->LineNo);
                   std::string system;
                   if (read_quoted(Self, State, system, entity_stack, parameter_stack)) {
-                     if (parameter) Self->ParameterEntities[name] = system;
-                     else Self->Entities[name] = system;
+                     if (not standalone) {
+                        if (parameter) Self->ParameterEntities[name] = system;
+                        else Self->Entities[name] = system;
+                     }
                   }
                }
                else {
@@ -385,7 +395,7 @@ static void parse_doctype(extXML *Self, ParseState &State)
                   read_quoted(Self, State, notation_value, entity_stack, parameter_stack);
                }
 
-               if (not notation_value.empty()) Self->Notations[name] = notation_value;
+               if ((not notation_value.empty()) and (not standalone)) Self->Notations[name] = notation_value;
 
                State.skipTo('>', Self->LineNo);
                if (State.current() IS '>') State.next();
@@ -621,6 +631,9 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    if (State.current() IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
    else if ((State.current() IS '!') and (State.cursor.size() > 1) and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
 
+   bool xml_instruction = ((tag.Flags & XTF::INSTRUCTION) != XTF::NIL);
+   bool is_xml_declaration = false;
+
    // Extract all attributes within the tag
    tag.Attribs.reserve(8); // Reserve space for typical attribute count
 
@@ -648,6 +661,10 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
 
       State.skipWhitespace(Self->LineNo);
+
+      std::string name_string(name);
+      bool has_value = false;
+      std::string value_string;
 
       if (State.current() IS '=') {
          State.next();
@@ -686,7 +703,9 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
             val.assign(value_start, State.cursor.data() - value_start);
          }
 
-         tag.Attribs.emplace_back(std::string(name), val);
+         value_string = val;
+         has_value = true;
+         tag.Attribs.emplace_back(name_string, val);
 
          if ((Self->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
             if (name.starts_with("xmlns")) {
@@ -719,10 +738,20 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
             if (State.current() IS '\n') Self->LineNo++;
             State.next();
          }
-         tag.Attribs.emplace_back(std::string(name), std::string(value_state.cursor.data(), State - value_state));
+         tag.Attribs.emplace_back(name_string, std::string(value_state.cursor.data(), State - value_state));
          if (State.current() IS '"') State.next();
       }
-      else tag.Attribs.emplace_back(std::string(name), std::string{});
+      else tag.Attribs.emplace_back(name_string, std::string{});
+
+      if (xml_instruction) {
+         if (tag.Attribs.size() IS 1) {
+            is_xml_declaration = pf::iequals(tag.Attribs[0].Name, "?xml");
+         }
+         else if (is_xml_declaration and has_value and pf::iequals(name_string, "standalone")) {
+            if (pf::iequals(value_string, "yes")) Self->Flags |= XMF::STANDALONE;
+            else Self->Flags &= ~XMF::STANDALONE;
+         }
+      }
 
       State.skipWhitespace(Self->LineNo);
    }
@@ -802,6 +831,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
       Self->Entities.clear();
       Self->ParameterEntities.clear();
       Self->Notations.clear();
+      Self->Flags &= ~XMF::STANDALONE;
    }
 
    // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
