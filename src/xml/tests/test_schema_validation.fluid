@@ -1,5 +1,13 @@
 -- Schema validation tests for XML module
 
+glInvalidXML = [[<?xml version="1.0" encoding="UTF-8"?>
+<inventory xmlns="http://example.com/inventory">
+   <item>
+      <name>Widget</name>
+   </item>
+</inventory>
+]]
+
 function testLoadSchema()
    local err = glXML.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err == ERR_Okay, "LoadSchema() failed: " .. mSys.GetErrorMsg(err))
@@ -13,12 +21,14 @@ function testValidateDocumentPass()
 end
 
 function testValidateDocumentFail()
-   local invalid = obj.new("xml", { path = glScriptFolder .. "schema_inventory_invalid.xml" })
+   local invalid = obj.new("xml", { statement = glInvalidXML })
    local err = invalid.mtLoadSchema(glScriptFolder .. "schema_inventory.xsd")
    assert(err == ERR_Okay, "Failed to load schema for invalid document: " .. mSys.GetErrorMsg(err))
 
    local err = invalid.mtValidateDocument()
-   assert(err != ERR_Okay, "ValidateDocument() returned error: " .. mSys.GetErrorMsg(err))
+   assert(err != ERR_Okay, "ValidateDocument() returned Okay error code.")
+   assert(invalid.errorMsg != nil and invalid.errorMsg != "",
+      "ValidateDocument() did not populate errorMsg on failure.")
 end
 
 return {
