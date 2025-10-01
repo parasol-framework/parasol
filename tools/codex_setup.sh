@@ -13,7 +13,7 @@ BRANCH_NAME="${BRANCH_NAME:-master}"
 ARTIFACT_NAME="${ARTIFACT_NAME:-parasol-install-ubuntu-latest-FastBuild}"
 DEST_DIR="${DEST_DIR:-install/agents}"
 GITHUB_HOST="${GITHUB_HOST:-github.com}"
-DEFAULT_REPOSITORY="${DEFAULT_REPOSITORY:-team-parasol/parasol}"
+DEFAULT_REPOSITORY="parasol-framework/parasol"
 
 # The GitHub CLI expects authentication tokens to be supplied via the
 # GITHUB_TOKEN environment variable.  Older versions of this script
