@@ -2105,12 +2105,9 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       return log.warning(ERR::InvalidData);
    }
 
-   std::string_view root_name(document_root->Attribs[0].Name);
-   auto descriptor = find_descriptor(root_name);
+   auto descriptor = find_descriptor(document_root->Attribs[0].Name);
    if (!descriptor) {
-      Self->ErrorMsg = "Schema does not define root element '";
-      Self->ErrorMsg.append(root_name);
-      Self->ErrorMsg.append("'.");
+      Self->ErrorMsg = "Schema does not define root element '" + document_root->Attribs[0].Name + "'.";
       return log.warning(ERR::Search);
    }
 
@@ -2127,7 +2124,8 @@ static ERR XML_ValidateDocument(extXML *Self, void *Args)
       if (Self->ErrorMsg.empty()) Self->ErrorMsg = "Schema validation failed.";
    }
 
-   return log.warning(ERR::InvalidData);
+   log.warning("%s", Self->ErrorMsg.c_str());
+   return ERR::InvalidData;
 }
 
 //********************************************************************************************************************

@@ -138,7 +138,6 @@ namespace xml::schema
       else {
          message.append("Value does not match expected type ");
          message.append(Descriptor.type_name);
-         message.push_back('.');
       }
 
       assign_error(std::move(message));
@@ -181,7 +180,6 @@ namespace xml::schema
          else {
             message.append("Content does not match expected type ");
             message.append(Descriptor.type_name);
-            message.push_back('.');
          }
 
          assign_error(std::move(message));
@@ -220,12 +218,10 @@ namespace xml::schema
          }
 
          if (!rule) {
-            auto message = std::string("Element ");
+            std::string message("Element ");
             if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
             else message.append("(unnamed)");
-            message.append(" contains unexpected child element ");
-            message.append(std::string(child_name));
-            message.push_back('.');
+            message += " contains unexpected child element " + std::string(child_name);
             assign_error(std::move(message));
             return false;
          }
@@ -236,7 +232,7 @@ namespace xml::schema
             XPathValue child_value(Child.getContent());
             if (!validate_value(child_value, *rule->type)) {
                std::string previous_error(last_error_message);
-               auto message = std::string("Element ");
+               std::string message("Element ");
                if (!Child.Attribs.empty() and !Child.Attribs[0].Name.empty()) message.append(Child.Attribs[0].Name);
                else message.append("(unnamed)");
                message.append(": ");
@@ -245,7 +241,6 @@ namespace xml::schema
                else {
                   message.append("Content does not match expected type ");
                   message.append(rule->type->type_name);
-                  message.push_back('.');
                }
 
                assign_error(std::move(message));
@@ -261,26 +256,18 @@ namespace xml::schema
          if (!child) continue;
          size_t count = counters[child.get()];
          if (count < child->min_occurs) {
-            auto message = std::string("Element ");
+            std::string message("Element ");
             if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
             else message.append("(unnamed)");
-            message.append(" is missing required child element ");
-            message.append(child->name);
-            message.append(" (expected at least ");
-            message.append(std::to_string(child->min_occurs));
-            message.append(").");
+            message += " is missing required child element " + child->name + " (expected at least " + std::to_string(child->min_occurs) + ").";
             assign_error(std::move(message));
             return false;
          }
          if ((child->max_occurs != std::numeric_limits<size_t>::max()) and (count > child->max_occurs)) {
-            auto message = std::string("Element ");
+            std::string message("Element ");
             if (!Tag.Attribs.empty() and !Tag.Attribs[0].Name.empty()) message.append(Tag.Attribs[0].Name);
             else message.append("(unnamed)");
-            message.append(" contains too many ");
-            message.append(child->name);
-            message.append(" elements (maximum allowed is ");
-            message.append(std::to_string(child->max_occurs));
-            message.append(").");
+            message += " contains too many " + child->name + " elements (maximum allowed is " + std::to_string(child->max_occurs) + ").";
             assign_error(std::move(message));
             return false;
          }
