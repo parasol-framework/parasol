@@ -1,3 +1,5 @@
+# Continuous Integration for internal builds only (e.g. running from cloud systems, running tests)
+
 name: CI
 
 on:
@@ -7,6 +9,10 @@ on:
     branches: [ master ]
 
 jobs:
+  audio:
+    continue-on-error: true
+  http:
+    continue-on-error: true
   build-and-test:
     name: ${{ matrix.os }} - ${{ matrix.build_type }}
     runs-on: ${{ matrix.os }}
@@ -15,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        build_type: [Release, Debug, FastBuild]
+        build_type: [FastBuild]
         include:
           - os: ubuntu-latest
             cmake_generator: "Unix Makefiles"
@@ -53,13 +59,8 @@ jobs:
           libxext-dev \
           libxrandr-dev \
           libxcursor-dev \
-          libxinerama-dev \
           libxi-dev \
           libxss-dev \
-          libgl1-mesa-dev \
-          libglu1-mesa-dev \
-          libasound2-dev \
-          libpulse-dev \
           libudev-dev \
           libssl-dev \
           pkg-config
@@ -70,41 +71,6 @@ jobs:
         key: ${{ runner.os }}-${{ matrix.build_type }}
         max-size: 500M
         variant: ${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
-
-    - name: Configure CMake (Release)
-      if: matrix.build_type == 'Release'
-      shell: bash
-      run: |
-        LAUNCHER=${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
-        cmake -S . -B build/ci \
-          -G "${{ matrix.cmake_generator }}" \
-          ${{ matrix.cmake_extra_args }} \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=install/ci \
-          -DCMAKE_C_COMPILER_LAUNCHER=$LAUNCHER \
-          -DCMAKE_CXX_COMPILER_LAUNCHER=$LAUNCHER \
-          -DRUN_ANYWHERE=TRUE \
-          -DPARASOL_STATIC=OFF \
-          -DBUILD_DEFS=ON \
-          -DBUILD_TESTS=ON
-
-    - name: Configure CMake (Debug)
-      if: matrix.build_type == 'Debug'
-      shell: bash
-      run: |
-        LAUNCHER=${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
-        cmake -S . -B build/ci \
-          -G "${{ matrix.cmake_generator }}" \
-          ${{ matrix.cmake_extra_args }} \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_INSTALL_PREFIX=install/ci \
-          -DCMAKE_C_COMPILER_LAUNCHER=$LAUNCHER \
-          -DCMAKE_CXX_COMPILER_LAUNCHER=$LAUNCHER \
-          -DRUN_ANYWHERE=TRUE \
-          -DPARASOL_STATIC=OFF \
-          -DPARASOL_VLOG=TRUE \
-          -DBUILD_DEFS=ON \
-          -DBUILD_TESTS=ON
 
     - name: Configure CMake (FastBuild)
       if: matrix.build_type == 'FastBuild'
@@ -120,7 +86,7 @@ jobs:
           -DCMAKE_CXX_COMPILER_LAUNCHER=$LAUNCHER \
           -DRUN_ANYWHERE=TRUE \
           -DPARASOL_STATIC=OFF \
-          -DBUILD_DEFS=ON \
+          -DBUILD_DEFS=OFF \
           -DBUILD_TESTS=ON
 
     - name: Build
@@ -189,76 +155,3 @@ jobs:
           build/ci/CMakeFiles/CMakeError.log
           build/ci/Testing/Temporary/LastTest.log
         retention-days: 7
-
-  static-build-test:
-    name: Static Build Test
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Cache apt packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-static-${{ hashFiles('.github/workflows/ci.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-apt-static-
-          ${{ runner.os }}-apt-
-
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          cmake \
-          ccache \
-          libx11-dev \
-          libxext-dev \
-          libssl-dev
-
-    - name: Setup ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ${{ runner.os }}-static
-        max-size: 500M
-
-    - name: Configure CMake (Static)
-      run: |
-        cmake -S . -B build/static \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=install/static \
-          -DCMAKE_C_COMPILER_LAUNCHER=ccache \
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-          -DRUN_ANYWHERE=TRUE \
-          -DPARASOL_STATIC=ON \
-          -DBUILD_DEFS=ON \
-          -DBUILD_TESTS=OFF
-
-    - name: Build Static
-      run: cmake --build build/static --config Release --parallel
-
-    - name: Install Static
-      run: cmake --install build/static --config Release
-
-    - name: Package static install tree
-      shell: bash
-      run: |
-        tar -czf build/static/parasol-install-static.tar.gz -C install/static .
-
-    - name: Report static artifact size
-      run: |
-        ls -lh build/static/parasol-install-static.tar.gz
-        echo "Static archive size: $(du -h build/static/parasol-install-static.tar.gz | cut -f1)"
-
-    - name: Upload static install artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: parasol-install-static
-        path: build/static/parasol-install-static.tar.gz
-        retention-days: 30

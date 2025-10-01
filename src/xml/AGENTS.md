@@ -9,6 +9,7 @@ The XML module provides robust functionality for creating, parsing, and maintain
 **Key Features:**
 - Full XML parsing and serialisation with flexible parsing modes
 - XPath 2.0 query engine with comprehensive function support
+- XML Schema (XSD) validation and type system integration
 - Namespace processing and management
 - Document validation and well-formedness checking
 - In-memory XML tree manipulation
@@ -27,6 +28,10 @@ src/xml/
 ├── xml_def.c            # Generated C definitions
 ├── xml_functions.cpp    # XML manipulation functions
 ├── unescape.cpp         # HTML/XML entity handling
+├── schema/              # XML Schema validation system
+│   ├── schema_parser.cpp/h       # XSD schema parsing
+│   ├── schema_types.cpp/h        # Schema type system and validation
+│   └── type_checker.cpp/h        # Type validation logic
 ├── xpath/               # XPath 2.0 engine implementation
 │   ├── xpath_ast.cpp/h       # Abstract Syntax Tree
 │   ├── xpath_axis.cpp/h      # XPath axis evaluation
@@ -43,9 +48,10 @@ src/xml/
 │       ├── func_sequences.cpp    # Sequence functions (distinct-values, etc.)
 │       └── func_strings.cpp      # String functions (concat, substring, etc.)
 └── tests/               # Comprehensive test suite
-    ├── test_basic.fluid           # Basic XML operations
-    ├── test_advanced_features.fluid
-    ├── test_xpath_*.fluid         # XPath functionality tests
+    ├── test_basic.fluid                # Basic XML operations
+    ├── test_advanced_features.fluid    # Complex parsing scenarios
+    ├── test_schema_validation.fluid    # XML Schema validation tests
+    ├── test_xpath_*.fluid              # XPath functionality tests
     └── ...
 ```
 
@@ -155,9 +161,35 @@ struct XMLAttrib {
 - `XMF::STRIP_CONTENT` - Removes all text content
 - `XMF::NAMESPACE_AWARE` - Enables namespace processing
 
+### XML Schema Validation
+
+The XML module now includes comprehensive XML Schema (XSD) validation support for ensuring document conformance to schema definitions.
+
+**Include:** `src/xml/schema/schema_types.h` (internal), access via XML class methods
+
+**Supported Features:**
+- Schema parsing from XSD files
+- Type validation (built-in and derived types)
+- Element and attribute validation
+- Namespace-aware schema processing
+- Detailed validation error diagnostics
+- Schema-aware XPath type comparisons
+
+**Key Methods (objXML):**
+- `LoadSchema()` - Load and parse XSD schema definition
+- `ValidateDocument()` - Validate XML document against loaded schema
+- Schema validation integrates with namespace processing
+
+**Validation Capabilities:**
+- Built-in schema types (string, integer, boolean, date, etc.)
+- Complex type definitions with sequences and choices
+- Attribute presence and type validation
+- Element cardinality validation (minOccurs, maxOccurs)
+- Namespace-qualified element validation
+
 ### XPath 2.0 Engine
 
-Comprehensive XPath 2.0 implementation with full W3C compliance.
+Comprehensive XPath 2.0 implementation with full W3C compliance and schema-aware type system.
 **Include:** `src/xml/xpath/xpath_evaluator.h` (internal), access via XML class methods
 
 **Supported Features:**
@@ -167,6 +199,7 @@ Comprehensive XPath 2.0 implementation with full W3C compliance.
 - Function library (100+ functions including XPath 2.0 extensions)
 - Variables and namespace support
 - Node-set, string, number, and boolean operations
+- Schema-aware type comparisons and operations
 
 **Key XPath Functions:**
 - String: `concat()`, `substring()`, `normalize-space()`, `matches()`
@@ -175,6 +208,8 @@ Comprehensive XPath 2.0 implementation with full W3C compliance.
 - Node: `name()`, `local-name()`, `namespace-uri()`
 - Sequence: `distinct-values()`, `index-of()`, `reverse()`
 - XPath 2.0: `error()`, `trace()`, `round-half-to-even()`
+- QName: `resolve-QName()`, `QName()`, `prefix-from-QName()`
+- DateTime: `current-date()`, `current-time()`, `current-dateTime()`
 
 ### Content Manipulation
 
@@ -215,14 +250,37 @@ void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &Functio
 
 ### Test Organization
 
-Comprehensive test suite using Flute test runner:
+Comprehensive test suite using Flute test runner covering all module features:
+
+**Core XML Tests:**
 - `test_basic.fluid` - Core XML operations and tag access
 - `test_advanced_features.fluid` - Complex parsing scenarios
 - `test_xml_parsing.fluid` - Parser robustness tests
 - `test_xml_manipulation.fluid` - Content modification
-- `test_xpath_*.fluid` - XPath functionality by category
+- `test_data_sources.fluid` - Multiple input source handling
 - `test_namespaces.fluid` - Namespace processing
-- `benchmark.fluid` - Performance testing
+- `test_error_handling.fluid` - Error condition handling
+
+**XPath Tests:**
+- `test_xpath_core.fluid` - Core XPath expressions and operators
+- `test_xpath_predicates.fluid` - Predicate evaluation
+- `test_xpath_axes.fluid` - All XPath axes (child, parent, ancestor, etc.)
+- `test_xpath_advanced.fluid` - Complex XPath queries
+- `test_xpath_advanced_paths.fluid` - Advanced path expressions
+- `test_xpath_flwor.fluid` - FLWOR expressions
+- `test_xpath_func_ext.fluid` - Extended function library
+- `test_xpath_sequences.fluid` - Sequence operations
+- `test_xpath_string_uri.fluid` - String and URI functions
+- `test_xpath2_duration.fluid` - Duration type operations
+- `test_xpath2_datetime.fluid` - DateTime functions
+- `test_xpath2_qname.fluid` - QName operations
+- `test_setvariable.fluid` - Variable binding
+
+**Schema Validation Tests:**
+- `test_schema_validation.fluid` - XML Schema validation and type checking
+
+**Performance Tests:**
+- `benchmark.fluid` - Performance measurement and optimization
 
 ### Running Tests
 
@@ -260,6 +318,23 @@ local err, index = xml.mtFindTag('//book[@category="fiction"]',  function(XML, T
 end)
 ```
 
+### XML Schema Validation
+
+```fluid
+-- Load schema definition
+local xml = obj.new('xml', { path = 'document.xml', flags = '!NAMESPACE_AWARE' })
+local err = xml.mtLoadSchema('schema.xsd')
+if err == ERR_Okay then
+   -- Validate document against schema
+   err = xml.mtValidateDocument()
+   if err == ERR_Okay then
+      print('Document is valid')
+   else
+      print('Validation failed: ' .. mSys.GetErrorMsg(err))
+   end
+end
+```
+
 ### Content Manipulation
 
 ```cpp
@@ -284,13 +359,32 @@ for (auto &tag : xml->Tags) {
 
 **Module Target:**
 ```bash
-cmake --build build/agents --config Release --target xml -j 8
+cmake --build build/agents --config Release --target xml --parallel
 ```
 
 **Test Registration:**
 ```cmake
 flute_test(xml_custom "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom.fluid")
 ```
+
+### Schema System Architecture
+
+The XML Schema validation system is integrated into the module with these components:
+
+**Schema Parser** (`schema/schema_parser.cpp/h`):
+- Parses XSD schema definitions
+- Builds internal schema type registry
+- Handles namespace-qualified schema elements
+
+**Type System** (`schema/schema_types.cpp/h`):
+- Defines built-in and derived schema types
+- Provides type validation interface
+- Supports complex type definitions
+
+**Type Checker** (`schema/type_checker.cpp/h`):
+- Validates element and attribute values against schema types
+- Checks element cardinality constraints
+- Reports detailed validation errors
 
 ## Performance Considerations
 
@@ -300,13 +394,16 @@ flute_test(xml_custom "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom.fluid")
 - **Content Extraction**: Pre-calculated string sizes prevent reallocations
 - **XPath Evaluation**: Arena-based memory allocation for expression evaluation
 - **Namespace Hashing**: URI hashes for fast namespace lookups
+- **Schema Validation**: Schema definitions cached after initial load
 
 ### Optimization Strategies
 
 - Cache `Tags` reads in Fluid scripts
 - Use specific XPath expressions rather than broad queries
-- Enable namespace processing only when required
+- Enable namespace processing only when required (`XMF::NAMESPACE_AWARE`)
 - Consider `XMF::STRIP_CONTENT` for metadata-only operations
+- Load schemas once and reuse XML objects for multiple validations
+- Schema validation requires namespace awareness for qualified elements
 
 ## Error Handling
 
@@ -317,6 +414,8 @@ flute_test(xml_custom "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom.fluid")
 - `ERR::InvalidPath` - Invalid file path in `Path` field
 - `ERR::NoSupport` - Unsupported XPath feature
 - `ERR::Args` - Invalid arguments to XML methods
+- `ERR::Failed` - Schema validation failure (invalid document structure or types)
+- `ERR::FileNotFound` - Schema file not found during `LoadSchema()`
 
 ### Best Practices
 
@@ -324,12 +423,23 @@ flute_test(xml_custom "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_custom.fluid")
 - Use `xml->ParseError` field for detailed parsing diagnostics
 - Enable appropriate logging levels (`--log-warning` minimum)
 - Validate XPath expressions before batch processing
+- Enable `XMF::NAMESPACE_AWARE` when using schema validation
+- Schema validation errors are logged with detailed diagnostics
+- Use `ValidateDocument()` after successful `LoadSchema()`
 
 ## Advanced Features
 
+### Schema-Aware XPath
+
+The XPath engine integrates with the schema validation system to provide type-aware comparisons and operations. When a schema is loaded, XPath expressions can leverage schema type information for more accurate evaluations.
+
+### Variable Binding
+
+The XPath engine supports variable binding through the `SetVariable()` method, enabling parameterized XPath queries. Variables can be referenced in XPath expressions using the `$variable` syntax.
+
 ### Custom Functions
 
-The XPath engine supports variable binding and custom function registration for specialized processing needs.
+The XPath engine supports variable binding and custom function registration for specialized processing needs through the extensible function registry.
 
 ### Cross-Format Support
 
