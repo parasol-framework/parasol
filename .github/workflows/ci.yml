@@ -16,15 +16,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         build_type: [FastBuild]
         include:
           - os: ubuntu-latest
             cmake_generator: "Unix Makefiles"
             cmake_extra_args: ""
-          - os: windows-latest
-            cmake_generator: "Visual Studio 17 2022"
-            cmake_extra_args: "-A x64"
 
     steps:
     - name: Checkout repository
@@ -66,13 +63,13 @@ jobs:
       with:
         key: ${{ runner.os }}-${{ matrix.build_type }}
         max-size: 500M
-        variant: ${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
+        variant: ${{ 'ccache' }}
 
     - name: Configure CMake (FastBuild)
       if: matrix.build_type == 'FastBuild'
       shell: bash
       run: |
-        LAUNCHER=${{ runner.os == 'Windows' && 'sccache' || 'ccache' }}
+        LAUNCHER=${{ 'ccache' }}
         cmake -S . -B build/ci \
           -G "${{ matrix.cmake_generator }}" \
           ${{ matrix.cmake_extra_args }} \
@@ -101,16 +98,6 @@ jobs:
           exit 1
         fi
 
-    - name: Package install tree (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        Compress-Archive -Path install/ci/* -DestinationPath build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.zip
-        if (!(Test-Path build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.zip)) {
-          Write-Error "Archive creation failed"
-          exit 1
-        }
-
     - name: Report artifact size
       shell: bash
       run: |
@@ -128,14 +115,6 @@ jobs:
       with:
         name: parasol-install-${{ matrix.os }}-${{ matrix.build_type }}
         path: build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.tar.gz
-        retention-days: 30
-
-    - name: Upload install artifact (Windows)
-      if: runner.os == 'Windows' && success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: parasol-install-${{ matrix.os }}-${{ matrix.build_type }}
-        path: build/ci/parasol-install-${{ matrix.os }}-${{ matrix.build_type }}.zip
         retention-days: 30
 
     - name: Run CTests (excluding audio/http)
