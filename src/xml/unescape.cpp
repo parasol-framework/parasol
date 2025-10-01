@@ -1,4 +1,42 @@
 
+#include "unescape.h"
+
+bool decode_numeric_reference(const char *Start, size_t Length, char *Buffer, size_t &ResultLength)
+{
+   if (Length < 3) return false;
+   if (!(Start[0] IS '&') or !(Start[1] IS '#') or !(Start[Length - 1] IS ';')) return false;
+
+   size_t position = 2;
+   bool is_hex = false;
+   if ((position < Length - 1) and ((Start[position] IS 'x') or (Start[position] IS 'X'))) {
+      is_hex = true;
+      position++;
+   }
+
+   uint32_t unicode = 0;
+   while (position < Length - 1) {
+      auto digit = Start[position];
+      if (is_hex) {
+         uint32_t value = 0;
+         if ((digit >= '0') and (digit <= '9')) value = uint32_t(digit - '0');
+         else if ((digit >= 'a') and (digit <= 'f')) value = uint32_t(digit - 'a' + 10);
+         else if ((digit >= 'A') and (digit <= 'F')) value = uint32_t(digit - 'A' + 10);
+         else return false;
+         unicode <<= 4;
+         unicode += value;
+      }
+      else {
+         if ((digit < '0') or (digit > '9')) return false;
+         unicode *= 10;
+         unicode += uint32_t(digit - '0');
+      }
+      position++;
+   }
+
+   ResultLength = UTF8WriteValue(unicode, Buffer, 6);
+   return true;
+}
+
 static ankerl::unordered_dense::map<std::string, std::string> glOfficial = {
    { "amp",  "&" },
    { "lt",   "<" },
@@ -268,38 +306,19 @@ static void xml_unescape(extXML *Self, std::string &String)
 
    auto c = String.find('&');
    while (c != std::string::npos) {
-      if (String[c + 1] IS '#') { // Numeric escape code detected.
-         auto len = c + 2;
-         uint32_t unicode = 0;
-
-         if (String[len] IS 'x') { // Hexadecimal literal
-            len++;
-            while ((String[len]) and (String[len] != ';')) {
-               unicode <<= 4;
-               if ((String[len] >= '0') and (String[len] <= '9')) unicode += String[len] - '0';
-               else if ((String[len] >= 'a') and (String[len] <= 'f')) unicode += String[len] - 'a' + 10;
-               else if ((String[len] >= 'A') and (String[len] <= 'F')) unicode += String[len] - 'A' + 10;
-               else break;
-               len++;
-            }
-         }
-         else { // Decimal literal
-            while ((String[len]) and (String[len] != ';')) {
-               unicode *= 10;
-               if ((String[len] >= '0') and (String[len] <= '9')) unicode += String[len] - '0';
-               else break;
-               len++;
-            }
-         }
-
-         if (String[len] IS ';') { // The correct terminator must be present
+      if ((c + 1 < String.size()) and (String[c + 1] IS '#')) {
+         auto end = String.find(';', c);
+         if (!(end IS std::string::npos)) {
             char unichar[6];
-            auto ulen = UTF8WriteValue(unicode, unichar, sizeof(unichar));
-            len++;
-            String.replace(c, len - c, unichar, ulen);
-            c += ulen;
+            size_t ulen = 0;
+            if (decode_numeric_reference(String.c_str() + c, end - c + 1, unichar, ulen)) {
+               String.replace(c, end - c + 1, unichar, ulen);
+               c += ulen;
+               c = String.find('&', c);
+               continue;
+            }
          }
-         else c++; // Ignore invalid escape codes
+         c++;
       }
       else {
          auto end = String.find(';', c);
