@@ -260,6 +260,9 @@ static bool read_quoted(extXML *Self, ParseState &State, std::string &Result,
    return false;
 }
 
+//********************************************************************************************************************
+// Support for !DOCTYPE parsing.  Note: DTD and !ATTLIST is not to be implemented as it is surpassed by XML Schema.
+
 static void parse_doctype(extXML *Self, ParseState &State)
 {
    State.skipWhitespace(Self->LineNo);
