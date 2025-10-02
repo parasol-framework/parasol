@@ -444,8 +444,8 @@ static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
 static OBJECTPTR clClientSocket = nullptr;
 static OBJECTPTR clNetClient = nullptr;
-static HOSTMAP glHosts;
-static HOSTMAP glAddresses;
+static HOSTMAP glHosts; // Protected by glHostsMutex
+static HOSTMAP glAddresses; // Protected by glAddressesMutex
 static std::shared_mutex glHostsMutex;
 static std::shared_mutex glAddressesMutex;
 static MSGID glResolveNameMsgID = MSGID::NIL;
