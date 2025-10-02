@@ -423,7 +423,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
       // The write queue will be signalled once the connection process is completed.
 
-      RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+      RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_connect, Socket);
    }
    else {
       log.trace("connect() successful.");
