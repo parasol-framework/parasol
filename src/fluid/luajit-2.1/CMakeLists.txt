@@ -23,6 +23,10 @@
 cmake_minimum_required(VERSION 3.15)
 project(LuaJIT C ASM)
 
+# Ensure try_compile checks do not require linking an executable (fixes issues
+# with certain generators and environments when used as a subdirectory).
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
 if (APPLE)
   set (CMAKE_MACOSX_RPATH TRUE) # @rpath in libs
 endif ()
@@ -111,14 +115,31 @@ ENDMACRO()
 
 set (CMAKE_REQUIRED_INCLUDES ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-foreach(arch X64 X86 ARM PPC PPCSPE MIPS)
-  LJ_TEST_ARCH(LJ_TARGET_${arch})
-  if(LJ_TARGET_${arch})
-    string(TOLOWER ${arch} TARGET_LJARCH)
-    message(STATUS "LuaJIT Target: ${TARGET_LJARCH}")
-    BREAK()
+# Prefer a straightforward host detection first; fall back to compile checks.
+if (NOT TARGET_LJARCH)
+  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+    if (WIN32)
+      set(TARGET_LJARCH "x64")
+    elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|amd64|AMD64)")
+      set(TARGET_LJARCH "x64")
+    endif ()
+  elseif (CMAKE_SIZEOF_VOID_P EQUAL 4)
+    if (WIN32 OR CMAKE_SYSTEM_PROCESSOR MATCHES "(x86|i.86)")
+      set(TARGET_LJARCH "x86")
+    endif ()
   endif ()
-endforeach()
+endif ()
+
+if (NOT TARGET_LJARCH)
+  foreach(arch X64 X86 ARM PPC PPCSPE MIPS)
+    LJ_TEST_ARCH(LJ_TARGET_${arch})
+    if(LJ_TARGET_${arch})
+      string(TOLOWER ${arch} TARGET_LJARCH)
+      message(STATUS "LuaJIT Target (probed): ${TARGET_LJARCH}")
+      BREAK()
+    endif ()
+  endforeach()
+endif ()
 
 if (NOT TARGET_LJARCH)
   message(FATAL_ERROR "architecture not supported")
@@ -197,9 +218,13 @@ endif ()
 add_executable (minilua src/host/minilua.c)
 target_compile_definitions(minilua PRIVATE ${TARGET_ARCH} ${LJ_COMMON_DEFS})
 target_include_directories(minilua PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-check_library_exists (m sin "" MINILUA_USE_LIBM)
-if (MINILUA_USE_LIBM)
-  target_link_libraries (minilua m)
+if (WIN32)
+  set(MINILUA_USE_LIBM OFF)
+else ()
+  check_library_exists (m sin "" MINILUA_USE_LIBM)
+  if (MINILUA_USE_LIBM)
+    target_link_libraries (minilua m)
+  endif ()
 endif ()
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h

@@ -6,8 +6,20 @@ set (INC_MOD_FLUID TRUE PARENT_SCOPE)
 idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/hashes.h")
 idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
-set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
-#link_directories (${LUAJIT_SRC})
+# LuaJIT is now built via CMake (subdirectory) rather than shell scripts.
+#
+# Windows + Ninja note:
+# - When using the Ninja generator with MSVC on Windows, the environment must
+#   provide the Visual C++ toolchain INCLUDE/LIB/SDK paths (e.g., by running
+#   inside a Visual Studio Developer Prompt or after calling vcvars*.bat).
+# - If these environment variables are not initialised, cl.exe may fail to
+#   find standard headers when compiling C sources in the LuaJIT subproject
+#   (e.g., host/minilua.c can error: cannot open include file 'stddef.h').
+# - Recommended on Windows: use the Visual Studio generator, e.g.
+#     cmake -S . -B build/agents-vs -G "Visual Studio 17 2022" -A x64
+#   Alternatively, keep Ninja but run CMake from a VS Developer shell so the
+#   MSVC environment is active.
+add_subdirectory(luajit-2.1)
 
 # We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
@@ -29,40 +41,7 @@ ExternalProject_Add(libffi-3.3
    BUILD_BYPRODUCTS ${FFI_LINK}
    COMMENT "Compiling FFI library")
 
-# LuaJIT library custom build
-
-if (MSVC)
-   set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
-
-   # NOTE: Binaries are built amongst the source files when building with MSVC
-   # Use full path to MSVC linker to avoid conflicts with Git's link.exe
-
-   ExternalProject_Add(
-      luajit
-      SOURCE_DIR ${LUAJIT_SRC}
-      CONFIGURE_COMMAND ""
-      BUILD_IN_SOURCE TRUE
-      BUILD_ALWAYS TRUE
-      BUILD_COMMAND ${LUAJIT_SRC}/msvcbuild.bat static
-      BUILD_BYPRODUCTS ${LUAJIT_LINK}
-      INSTALL_COMMAND ""
-      UPDATE_COMMAND ""
-      COMMENT "Compiling LuaJIT library")
-else ()
-   ExternalProject_Add(
-      luajit
-      SOURCE_DIR ${LUAJIT_SRC}
-      CONFIGURE_COMMAND ""
-      BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
-      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
-      BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
-      # Specifying the WORKING_DIRECTORY triggers a bug in GitHub's auto-build as of 2024-11 (and we don't really need it in order to build)
-      #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1"
-      COMMENT "Compiling LuaJIT library")
-
-   set (LUAJIT_LINK "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a")
-endif ()
+# LuaJIT target is provided by the subdirectory as target 'luajit' (OUTPUT_NAME lua51)
 
 # Fluid library build
 
@@ -77,12 +56,11 @@ target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp
    "fluid_class.cpp")
 
 target_include_directories (${MOD} PRIVATE
-   "${CMAKE_BINARY_DIR}/libffi-3.3/include"
-   "luajit-2.1/src")
+   "${CMAKE_BINARY_DIR}/libffi-3.3/include")
 
 target_link_libraries (${MOD} PRIVATE
    ${FFI_LINK}
-   ${LUAJIT_LINK}
+   luajit
    ${MATH_LINK}) # The link order matters, math must come last
 
 add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
