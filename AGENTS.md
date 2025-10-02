@@ -126,7 +126,7 @@ cd src/network/tests && ../../../install/agents/parasol.exe ../../../tools/flute
 
 **For Linux:**
 ```bash
-cd "path/to/module/directory" && /path/to/parasol.exe /path/to/tools/flute.fluid file=/absolute/path/to/test.fluid --gfx-driver=headless
+cd "path/to/module/directory" && ../install/agents/parasol /path/to/tools/flute.fluid file=/absolute/path/to/test.fluid --gfx-driver=headless
 ```
 
 **Example - Running SVG tests:**
