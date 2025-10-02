@@ -1815,6 +1815,7 @@ httpServer.start = function(Options)
       feedback = function(Server, ClientSocket, State)
          if State == NTC_CONNECTED then
             -- New client connection
+            msg('New client connection')
          elseif State == NTC_DISCONNECTED then
             -- Client disconnected
          end
