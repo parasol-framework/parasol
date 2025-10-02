@@ -53,6 +53,7 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 
 #include <stack>
 #include <mutex>
+#include <shared_mutex>
 #include <span>
 #include <cstring>
 #include <thread>
@@ -443,8 +444,10 @@ static OBJECTPTR clProxy = nullptr;
 static OBJECTPTR clNetSocket = nullptr;
 static OBJECTPTR clClientSocket = nullptr;
 static OBJECTPTR clNetClient = nullptr;
-static HOSTMAP glHosts;
-static HOSTMAP glAddresses;
+static HOSTMAP glHosts; // Protected by glHostsMutex
+static HOSTMAP glAddresses; // Protected by glAddressesMutex
+static std::shared_mutex glHostsMutex;
+static std::shared_mutex glAddressesMutex;
 static MSGID glResolveNameMsgID = MSGID::NIL;
 static MSGID glResolveAddrMsgID = MSGID::NIL;
 static std::string glCertPath;
