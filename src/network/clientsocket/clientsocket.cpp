@@ -30,7 +30,7 @@ static void disconnect(extClientSocket *Self)
 
    log.branch("Disconnecting socket handle %d", Self->Handle.int_value());
 
-   if (Self->Handle != NOHANDLE) {
+   if (Self->Handle.is_valid()) {
 
 #ifdef __linux__
       DeregisterFD(Self->Handle);
