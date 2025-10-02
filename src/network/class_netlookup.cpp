@@ -59,9 +59,9 @@ struct resolve_buffer {
 
 static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
 static ERR resolve_name(CSTRING, DNSEntry **);
-static ERR cache_host(HOSTMAP &, CSTRING, struct hostent *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, std::shared_mutex &, CSTRING, struct hostent *, DNSEntry **);
 #ifdef __linux__
-static ERR cache_host(HOSTMAP &, CSTRING, struct addrinfo *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, std::shared_mutex &, CSTRING, struct addrinfo *, DNSEntry **);
 #endif
 
 static std::vector<IPAddress> glNoAddresses;
@@ -81,8 +81,19 @@ static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Mes
    log.traceBranch("MsgID: %d, MsgType: %d, Host: %s", int(MsgID), int(MsgType), r.Address.c_str());
 
    if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
-      if (auto it = glHosts.find(r.Address); it != glHosts.end()) {
-         nl->Info = it->second;
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glHostsMutex);
+         auto it = glHosts.find(r.Address);
+         if (it != glHosts.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         nl->Info = cached;
          resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
       else resolve_callback(*nl, ERR::Failed);
@@ -101,8 +112,19 @@ static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Mes
    log.traceBranch("MsgID: %d, MsgType: %d, Address: %s", int(MsgID), MsgType, r.Address.c_str());
 
    if (pf::ScopedObjectLock<extNetLookup> nl(r.NetLookupID, 2000); nl.granted()) {
-      if (auto it = glAddresses.find(r.Address); it != glAddresses.end()) {
-         nl->Info = it->second;
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
+         auto it = glAddresses.find(r.Address);
+         if (it != glAddresses.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         nl->Info = cached;
          resolve_callback(*nl, ERR::Okay, nl->Info.HostName, nl->Info.Addresses);
       }
       else resolve_callback(*nl, ERR::Failed);
@@ -274,8 +296,19 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
    log.branch("Address: %s", Args->Address);
 
    if ((Self->Flags & NLF::NO_CACHE) IS NLF::NIL) { // Use the cache if available.
-      if (auto it = glAddresses.find(Args->Address); it != glAddresses.end()) {
-         Self->Info = it->second;
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
+         auto it = glAddresses.find(Args->Address);
+         if (it != glAddresses.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         Self->Info = cached;
          log.trace("Cache hit for address %s", Args->Address);
          resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR::Okay;
@@ -329,8 +362,19 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
    log.branch("Host: %s", Args->HostName);
 
    if ((Self->Flags & NLF::NO_CACHE) IS NLF::NIL) { // Use the cache if available.
-      if (auto it = glHosts.find(Args->HostName); it != glHosts.end()) {
-         Self->Info = it->second;
+      bool found = false;
+      DNSEntry cached;
+      {
+         std::shared_lock<std::shared_mutex> lock(glHostsMutex);
+         auto it = glHosts.find(Args->HostName);
+         if (it != glHosts.end()) {
+            cached = it->second;
+            found = true;
+         }
+      }
+
+      if (found) {
+         Self->Info = cached;
          log.trace("Cache hit for host %s", Self->Info.HostName);
          resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR::Okay;
@@ -423,7 +467,7 @@ static ERR GET_HostName(extNetLookup *Self, CSTRING *Value)
 
 //********************************************************************************************************************
 
-static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
 {
    if ((!Host) or (!Cache)) return ERR::NullArgs;
 
@@ -459,14 +503,18 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct hostent *Host, DNSEntr
       }
    }
 
-   Store[Key] = std::move(cache);
-   *Cache = &Store[Key];
+   {
+      std::unique_lock<std::shared_mutex> lock(Guard);
+      auto &entry = Store[Key];
+      entry = std::move(cache);
+      *Cache = &entry;
+   }
    return ERR::Okay;
 }
 
 #ifdef __linux__
 
-static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
 {
    if ((!Host) or (!Cache)) return ERR::NullArgs;
 
@@ -500,8 +548,12 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
       }
    }
 
-   Store[Key] = std::move(cache);
-   *Cache = &Store[Key];
+   {
+      std::unique_lock<std::shared_mutex> lock(Guard);
+      auto &entry = Store[Key];
+      entry = std::move(cache);
+      *Cache = &entry;
+   }
    return ERR::Okay;
 }
 
@@ -514,7 +566,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
 #ifdef _WIN32
    struct hostent *host = win_gethostbyaddr(IP);
    if (!host) return ERR::Failed;
-   return cache_host(glAddresses, Address, host, Info);
+   return cache_host(glAddresses, glAddressesMutex, Address, host, Info);
 #else
    char host_name[256], service[128];
    int result;
@@ -546,7 +598,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
             .h_length    = 0,
             .h_addr_list = nullptr
          };
-         return cache_host(glAddresses, Address, &host, Info);
+         return cache_host(glAddresses, glAddressesMutex, Address, &host, Info);
       }
       case EAI_AGAIN:    return ERR::Retry;
       case EAI_MEMORY:   return ERR::Memory;
@@ -561,7 +613,7 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
 
 #ifdef _WIN32
 
-static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host_from_addrinfo(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
 {
    if ((!Host) or (!Cache)) return ERR::NullArgs;
 
@@ -596,8 +648,12 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, CSTRING Key, struct addrinfo
       }
    }
 
-   Store[Key] = std::move(cache);
-   *Cache = &Store[Key];
+   {
+      std::unique_lock<std::shared_mutex> lock(Guard);
+      auto &entry = Store[Key];
+      entry = std::move(cache);
+      *Cache = &entry;
+   }
    return ERR::Okay;
 }
 
@@ -609,9 +665,13 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
 {
    // Use the cache if available.
 
-   if (auto it = glHosts.find(HostName); it != glHosts.end()) {
-      *Info = &it->second;
-      return ERR::Okay;
+   {
+      std::shared_lock<std::shared_mutex> lock(glHostsMutex);
+      auto it = glHosts.find(HostName);
+      if (it != glHosts.end()) {
+         *Info = &it->second;
+         return ERR::Okay;
+      }
    }
 
    // Use getaddrinfo() on both Linux and Windows for proper IPv4 and IPv6 (AAAA record) support
@@ -631,12 +691,12 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
    switch (result) {
       case 0: {
 #ifdef __linux__
-         ERR error = cache_host(glHosts, HostName, servinfo, Info);
+         ERR error = cache_host(glHosts, glHostsMutex, HostName, servinfo, Info);
          freeaddrinfo(servinfo);
          return error;
 #elif _WIN32
          // Convert getaddrinfo result to hostent format for Windows compatibility
-         ERR error = cache_host_from_addrinfo(glHosts, HostName, servinfo, Info);
+         ERR error = cache_host_from_addrinfo(glHosts, glHostsMutex, HostName, servinfo, Info);
          freeaddrinfo(servinfo);
          return error;
 #endif

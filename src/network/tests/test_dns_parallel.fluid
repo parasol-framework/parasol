@@ -76,14 +76,17 @@ function testDuplication()
       local nlA = obj.new('NetLookup', { callback = duplicate_resolved, flags=NLF_NO_CACHE })
       local nlB = obj.new('NetLookup', { callback = duplicate_resolved })
 
+      local target = resolved + 1
       local err = nlA.mtResolveName(v)
-      err = proc.sleep()
-      assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+      while (resolved < target) do
+         err = proc.sleep()
+         assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
+      end
       print('First lookup processed successfully.')
 
-      local save = resolved
+      target = resolved + 1
       err = nlB.mtResolveName(v)
-      if (save == resolved) then
+      while (resolved < target) do
          err = proc.sleep()
          assert(err == ERR_Okay, 'Name resolution failed: ' .. mSys.GetErrorMsg(err))
       end
