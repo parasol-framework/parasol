@@ -1,24 +1,5 @@
 # Copyright (C) 2007-2011 LuaDist.  Created by Peter Drahoš
 # Redistribution and use of this file is allowed according to the terms of the MIT license.
-#
-# Currently disabled.  For this build file to produce correct code on Windows platforms, it needs to perform the equivalent of the following:
-#
-# cl /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE /D_CRT_STDIO_INLINE=__declspec(dllexport)__inline host\minilua.c
-# link /nologo /out:minilua.exe minilua.obj
-# if exist minilua.exe.manifest mt /nologo -manifest minilua.exe.manifest -outputresource:minilua.exe
-# minilua ..\dynasm\dynasm.lua -LN -D WIN -D JIT -D FFI -D P64 -o host\buildvm_arch.h vm_x64.dasc
-# cl /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE /D_CRT_STDIO_INLINE=__declspec(dllexport)__inline /I "." /I ..\dynasm host\buildvm*.c
-# link /nologo /out:buildvm.exe buildvm*.obj
-# if exist buildvm.exe.manifest mt /nologo -manifest buildvm.exe.manifest -outputresource:buildvm.exe
-# buildvm -m peobj -o lj_vm.obj
-# buildvm -m bcdef -o lj_bcdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
-# buildvm -m ffdef -o lj_ffdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
-# buildvm -m libdef -o lj_libdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
-# buildvm -m recdef -o lj_recdef.h lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
-# buildvm -m vmdef -o jit\vmdef.lua lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
-# buildvm -m folddef -o lj_folddef.h lj_opt_fold.c
-# cl /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE /D_CRT_STDIO_INLINE=__declspec(dllexport)__inline lj_*.c lib_*.c
-# lib /nologo /nodefaultlib /OUT:lua51.lib lj_*.obj lib_*.obj
 
 cmake_minimum_required(VERSION 3.15)
 project(LuaJIT C ASM)
