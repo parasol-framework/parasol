@@ -494,7 +494,6 @@ ERR RegisterFD(int FD, RFD Flags, void (*Routine)(HOSTHANDLE, APTR), APTR Data)
 
 #ifdef _WIN32
    if (FD IS (HOSTHANDLE)-1) return log.warning(ERR::Args);
-   if ((Flags & RFD::SOCKET) != RFD::NIL) return log.warning(ERR::NoSupport); // In MS Windows, socket handles are managed as window messages (see Network module's Windows code)
 #else
    if (FD IS -1) return log.warning(ERR::Args);
 #endif
@@ -660,12 +659,6 @@ int64_t SetResource(RES Resource, int64_t Value)
          break;
 
       case RES::LOG_DEPTH: tlDepth = Value; break;
-
-#ifdef _WIN32
-      case RES::NET_PROCESSING: glNetProcessMessages = (void (*)(int, APTR))L64PTR(Value); break;
-#else
-      case RES::NET_PROCESSING: break;
-#endif
 
       case RES::JNI_ENV: glJNIEnv = L64PTR(Value); break;
 

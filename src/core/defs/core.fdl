@@ -345,7 +345,6 @@ constexpr bool defined(T flags, T test_flag) noexcept {
     "THREAD_ID: Return the ID of the current thread.",
     "OPEN_INFO: Pointer to the OpenInfo structure originally used to initialise the system.",
     "EXCEPTION_HANDLER: Internal",
-    "NET_PROCESSING: Internal windows resource for Network module",
     "PROCESS_STATE: Life-cycle stage of the running process",
     "TOTAL_MEMORY: The total amount of installed memory.",
     "TOTAL_SWAP: The total amount of available swap space.",

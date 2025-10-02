@@ -1104,13 +1104,12 @@ enum class RES : int {
    THREAD_ID = 14,
    OPEN_INFO = 15,
    EXCEPTION_HANDLER = 16,
-   NET_PROCESSING = 17,
-   PROCESS_STATE = 18,
-   TOTAL_MEMORY = 19,
-   TOTAL_SWAP = 20,
-   CPU_SPEED = 21,
-   FREE_MEMORY = 22,
-   MEMORY_USAGE = 23,
+   PROCESS_STATE = 17,
+   TOTAL_MEMORY = 18,
+   TOTAL_SWAP = 19,
+   CPU_SPEED = 20,
+   FREE_MEMORY = 21,
+   MEMORY_USAGE = 22,
 };
 
 // Path types for SetResourcePath()
