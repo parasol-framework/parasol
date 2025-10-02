@@ -142,7 +142,7 @@ template <class T> ERR sslConnect(T *Self)
    if (!Self->SSLHandle) return ERR::FieldNotSet;
 
    std::string hostname = Self->Address ? Self->Address : "";
-   auto result = ssl_connect(Self->SSLHandle, (void *)(size_t)Self->Handle, hostname);
+   auto result = ssl_connect(Self->SSLHandle, (void *)(size_t)Self->Handle.socket(), hostname);
 
    switch (result) {
       case SSL_OK:

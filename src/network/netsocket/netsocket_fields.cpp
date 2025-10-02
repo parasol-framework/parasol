@@ -207,11 +207,11 @@ static ERR SET_Outgoing(extNetSocket *Self, FUNCTION *Value)
    if (Self->Outgoing.isScript()) SubscribeAction(Self->Outgoing.Context, AC::Free, C_FUNCTION(notify_free_outgoing));
 
    if (Self->initialised()) {
-      if ((Self->Handle != NOHANDLE) and (Self->State IS NTC::CONNECTED)) {
+      if ((Self->Handle.is_valid()) and (Self->State IS NTC::CONNECTED)) {
          // Setting the Outgoing field after connectivity is established will put the socket into streamed write mode.
 
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
+            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
          #elif _WIN32
             win_socketstate(Self->Handle, std::nullopt, true);
          #endif
@@ -247,7 +247,7 @@ Handle: Platform specific reference to the network socket handle.
 
 static ERR GET_Handle(extNetSocket *Self, APTR *Value)
 {
-   *Value = (APTR)(MAXINT)Self->Handle;
+   *Value = (APTR)(MAXINT)Self->Handle.socket();
    return ERR::Okay;
 }
 
@@ -256,7 +256,7 @@ static ERR SET_Handle(extNetSocket *Self, APTR Value)
    // The user can set Handle prior to initialisation in order to create a NetSocket object that is linked to a
    // socket created from outside the core platform code base.
 
-   Self->Handle = (SOCKET_HANDLE)(MAXINT)Value;
+   Self->Handle = SocketHandle(static_cast<WSW_SOCKET>((MAXINT)Value));
    Self->ExternalSocket = true;
    return ERR::Okay;
 }
@@ -453,7 +453,7 @@ static ERR SET_State(extNetSocket *Self, NTC Value)
       if ((Self->State IS NTC::CONNECTED) and ((!Self->WriteQueue.Buffer.empty()) or (Self->Outgoing.defined()))) {
          log.msg("Sending queued data to server on connection.");
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
+            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
          #elif _WIN32
             win_socketstate(Self->Handle, std::nullopt, true);
          #endif

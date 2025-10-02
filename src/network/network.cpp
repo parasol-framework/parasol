@@ -31,6 +31,8 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
  #include <sys/resource.h>
 #endif
 
+#include <string.h>
+
 #include <parasol/main.h>
 #include <parasol/modules/network.h>
 #include <parasol/strings.hpp>
@@ -58,6 +60,8 @@ sockets and HTTP, please refer to the @NetSocket and @HTTP classes.
 #include <cstring>
 #include <thread>
 #include <optional>
+
+//********************************************************************************************************************
 
 std::mutex glmThreads;
 std::unordered_set<std::shared_ptr<std::jthread>> glThreads;
@@ -89,13 +93,7 @@ enum class SHS : uint8_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(SHS)
 
-#ifdef __linux__
-typedef int SOCKET_HANDLE;
-#elif _WIN32
-typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET for now to avoid including winsock.h
-#else
-#error "No support for this platform"
-#endif
+//********************************************************************************************************************
 
 #ifdef _WIN32
    #define INADDR_NONE 0xffffffff
@@ -243,11 +241,36 @@ typedef uint32_t SOCKET_HANDLE; // NOTE: declared as uint32_t instead of SOCKET 
 
 #else
    #error "No support for this platform"
+// For Linux, create a simple wrapper that behaves like an int but with methods
+class SocketHandle {
+private:
+   int socket_val;
+public:
+   SocketHandle() : socket_val(-1) {}
+   SocketHandle(int sock) : socket_val(sock) {}
+
+   operator int() const { return socket_val; }
+   operator bool() const { return socket_val != -1; }
+
+   int int_value() const { return socket_val; }
+   int hosthandle() const { return socket_val; }
+   int socket() const { return socket_val; }
+
+   bool is_valid() const { return socket_val != -1; }
+   bool is_invalid() const { return socket_val == -1; }
+
+   bool operator==(const SocketHandle& other) const { return socket_val == other.socket_val; }
+   bool operator!=(const SocketHandle& other) const { return socket_val != other.socket_val; }
+   bool operator==(int sock) const { return socket_val == sock; }
+   bool operator!=(int sock) const { return socket_val != sock; }
+
+   SocketHandle& operator=(int sock) { socket_val = sock; return *this; }
+};
 #endif
 
 class extClientSocket : public objClientSocket {
    public:
-   SOCKET_HANDLE Handle = NOHANDLE;
+   SocketHandle Handle;
    struct NetQueue WriteQueue; // Writes to the network socket are queued here in a buffer
    uint8_t OutgoingRecursion;  // Recursion manager
    uint8_t InUse;       // Recursion manager
@@ -265,9 +288,11 @@ class extClientSocket : public objClientSocket {
    #endif
 };
 
+//********************************************************************************************************************
+
 class extNetSocket : public objNetSocket {
    public:
-   SOCKET_HANDLE Handle = NOHANDLE;   // Handle of the socket
+   SocketHandle Handle;   // Handle of the socket
    FUNCTION Outgoing;
    FUNCTION Incoming;
    FUNCTION Feedback;
@@ -366,7 +391,7 @@ typedef ankerl::unordered_dense::map<std::string, DNSEntry, CaseInsensitiveHash,
 
 //********************************************************************************************************************
 
-static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
+static void CLOSESOCKET_THREADED(SocketHandle Handle)
 {
 #ifdef _WIN32
    win_deregister_socket(Handle);
@@ -390,7 +415,7 @@ static void CLOSESOCKET_THREADED(SOCKET_HANDLE Handle)
 
    std::lock_guard<std::mutex> lock(glmThreads);
    auto thread_ptr = std::make_shared<std::jthread>();
-   *thread_ptr = std::jthread([] (int Handle) { CLOSESOCKET(Handle); }, Handle);
+   *thread_ptr = std::jthread([] (SocketHandle Handle) { CLOSESOCKET(Handle); }, Handle);
    glThreads.insert(thread_ptr);
    // Don't detach, threads need to be joinable for proper cleanup
 }
@@ -464,7 +489,7 @@ static std::string glCertPath;
 
 //********************************************************************************************************************
 
-static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
+static void netsocket_incoming(SocketHandle, extNetSocket *);
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
@@ -946,7 +971,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                case SSL_ERROR_WANT_READ:
                   log.trace("Handshake requested by server.");
                   Self->HandshakeStatus = SHS::READ;
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_read<extNetSocket>), Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, ssl_handshake_read<extNetSocket>, Self);
                   return ERR::Okay;
 
                case SSL_ERROR_SYSCALL:

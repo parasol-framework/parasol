@@ -5,16 +5,14 @@ static void free_socket(extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
-   log.branch("Handle: %d", Self->Handle);
+   log.branch("Handle: %d", Self->Handle.int_value());
 
-   if (Self->Handle != NOHANDLE) {
+   if (Self->Handle.is_valid()) {
       log.trace("Deregistering socket.");
-#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
-      DeregisterFD((HOSTHANDLE)Self->Handle);
-#pragma GCC diagnostic warning "-Wint-to-pointer-cast"
+      DeregisterFD(Self->Handle.hosthandle());
 
       if (!Self->ExternalSocket) CLOSESOCKET_THREADED(Self->Handle);
-      Self->Handle = NOHANDLE;
+      Self->Handle = SocketHandle();
    }
 
    Self->WriteQueue.Buffer.clear();
@@ -212,13 +210,13 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
 // Called when a server socket handle detects a new client wanting to connect to it.
 // Used by Win32 (Windows message loop) & Linux (FD hook)
 
-static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
+static void server_accept_client(SocketHandle FD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
    uint8_t ip[8];
-   SOCKET_HANDLE clientfd;
+   SocketHandle clientfd;
 
-   log.traceBranch("FD: %d", FD);
+   log.traceBranch("FD: %d", FD.int_value());
 
    pf::SwitchContext context(Self);
 
@@ -252,7 +250,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
          struct sockaddr_storage addr_storage;
          socklen_t len = sizeof(addr_storage);
          clientfd = accept(FD, (struct sockaddr *)&addr_storage, &len);
-         if (clientfd IS NOHANDLE) return;
+         if (clientfd.is_invalid()) return;
 
          int nodelay = 1;
          setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
@@ -331,7 +329,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
          socklen_t len = sizeof(addr);
          clientfd = accept(FD, (struct sockaddr *)&addr, &len);
 
-         if (clientfd != NOHANDLE) {
+         if (clientfd.is_valid()) {
             int nodelay = 1;
             setsockopt(clientfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
          }
@@ -340,7 +338,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
          clientfd = win_accept(Self, FD, (struct sockaddr *)&addr, &len);
       #endif
 
-      if (clientfd IS NOHANDLE) {
+      if (clientfd.is_invalid()) {
          log.warning("accept() failed to return an FD.");
          return;
       }
@@ -360,23 +358,23 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
 
    objNetClient *client_ip;
    for (client_ip=Self->Clients; client_ip; client_ip=client_ip->Next) {
-      if (((int64_t *)&ip)[0] IS ((int64_t *)&client_ip->IP)[0]) break;
+      if (((int64_t *)&IP)[0] IS ((int64_t *)&client_ip->IP)[0]) break;
    }
 
    if (!client_ip) {
       if (NewObject(CLASSID::NETCLIENT, &client_ip) IS ERR::Okay) {
          if (InitObject(client_ip) != ERR::Okay) {
             FreeResource(client_ip);
-            CLOSESOCKET(clientfd);
+            CLOSESOCKET(ClientFD);
             return;
          }
       }
       else {
-         CLOSESOCKET(clientfd);
+         CLOSESOCKET(ClientFD);
          return;
       }
 
-      ((int64_t *)&client_ip->IP)[0] = ((int64_t *)&ip)[0];
+      ((int64_t *)&client_ip->IP)[0] = ((int64_t *)&IP)[0];
       client_ip->TotalConnections = 0;
       Self->TotalClients++;
 
@@ -389,14 +387,14 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
    }
    else if (client_ip->TotalConnections >= Self->SocketLimit) {
       log.warning("Socket limit of %d reached for IP %d.%d.%d.%d", Self->SocketLimit, client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
-      CLOSESOCKET(clientfd);
+      CLOSESOCKET(ClientFD);
       return;
    }
 
    if ((Self->Flags & NSF::MULTI_CONNECT) IS NSF::NIL) { // Check if the IP is already registered and alive
       if (client_ip->Connections) {
          log.msg("Preventing second connection attempt from IP %d.%d.%d.%d", client_ip->IP[0], client_ip->IP[1], client_ip->IP[2], client_ip->IP[3]);
-         CLOSESOCKET(clientfd);
+         CLOSESOCKET(ClientFD);
          return;
       }
    }
@@ -405,7 +403,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
 
    extClientSocket *client_socket;
    if (NewObject(CLASSID::CLIENTSOCKET, &client_socket) IS ERR::Okay) {
-      client_socket->Handle = clientfd;
+      client_socket->Handle = ClientFD;
       client_socket->Client = client_ip;
       if (InitObject(client_socket) IS ERR::Okay) {
          // Note that if the connection is over SSL then handshaking won't have
@@ -429,7 +427,7 @@ static void server_accept_client(SOCKET_HANDLE FD, extNetSocket *Self)
       else log.warning(ERR::Init);
    }
    else {
-      CLOSESOCKET(clientfd);
+      CLOSESOCKET(ClientFD);
       if (!client_ip->Connections) free_client(Self, client_ip);
       return;
    }
@@ -484,10 +482,9 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
 // See win32_netresponse() for the Windows version.
 
 #ifdef __linux__
-static void client_connect(SOCKET_HANDLE Void, APTR Data)
+static void netsocket_connect(SocketHandle Void, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
-   auto Self = (extNetSocket *)Data;
 
    pf::SwitchContext context(Self);
 
@@ -499,7 +496,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 
    // Remove the write callback
 
-   RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::REMOVE, &client_connect, nullptr);
+   RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::REMOVE, &netsocket_connect, nullptr);
 
    #ifndef DISABLE_SSL
    if ((Self->SSLHandle) and (!result)) {
@@ -511,7 +508,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       if (Self->Error != ERR::Okay) return;
 
       if (Self->State IS NTC::HANDSHAKING) {
-         RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+         RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Self);
       }
       return;
    }
@@ -523,7 +520,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
       if (Self->TimerHandle) { UpdateTimer(Self->TimerHandle, 0); Self->TimerHandle = 0; }
 
       Self->setState(NTC::CONNECTED);
-      RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+      RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Self);
       return;
    }
    else {
@@ -552,7 +549,7 @@ static void client_connect(SOCKET_HANDLE Void, APTR Data)
 //
 // This function is called from win32_netresponse() and is managed outside of the normal message queue.
 
-static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
+static void netsocket_incoming(SocketHandle FD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -567,7 +564,7 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 
    if (Self->Terminating) { // Set by FreeWarning()
       log.trace("Socket terminating...", Self->UID);
-      if (Self->Handle != NOHANDLE) free_socket(Self);
+      if (Self->Handle.is_valid()) free_socket(Self);
       return;
    }
 
@@ -608,12 +605,12 @@ static void netsocket_incoming(SOCKET_HANDLE FD, extNetSocket *Self)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle %" PRId64, Self->UID, (int64_t)FD);
+      log.trace("[NetSocket:%d] Recursion detected on handle %d", Self->UID, FD.int_value());
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: %" PRId64, Self->UID, (int64_t)FD);
+   log.traceBranch("[NetSocket:%d] Socket: %d", Self->UID, FD.int_value());
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -654,8 +651,8 @@ restart:
    }
 
    if (error IS ERR::Terminate) {
-      log.traceBranch("Socket %d will be terminated.", FD);
-      if (Self->Handle != NOHANDLE) free_socket(Self);
+      log.traceBranch("Socket %d will be terminated.", FD.int_value());
+      if (Self->Handle.is_valid()) free_socket(Self);
    }
    else if (Self->IncomingRecursion > 1) {
       // If netsocket_incoming() was called again during the callback, there is more
@@ -689,7 +686,7 @@ restart:
 //
 // Called from either the Windows messaging logic or a Linux FD subscription.
 
-static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
+static void netsocket_outgoing(SocketHandle Void, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -760,9 +757,9 @@ static void netsocket_outgoing(SOCKET_HANDLE Void, extNetSocket *Self)
       // be assigned temporarily.
 
       if ((!Self->Outgoing.defined()) and (Self->WriteQueue.Buffer.empty())) {
-         log.trace("Write-queue listening on socket %d will now stop.", Self->UID, Self->Handle);
+         log.trace("Write-queue listening on socket %d will now stop.", Self->UID, Self->Handle.int_value());
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
+            RegisterFD(Self->Handle.hosthandle(), RFD::REMOVE|RFD::WRITE|RFD::SOCKET, nullptr, nullptr);
          #elif _WIN32
             if (auto error = win_socketstate(Self->Handle, std::nullopt, false); error != ERR::Okay) log.warning(error);
          #endif
