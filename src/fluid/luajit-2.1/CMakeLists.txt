@@ -87,6 +87,10 @@ elseif ( APPLE )
   set ( LJVM_MODE machasm )
 else ()
   set ( LJVM_MODE elfasm )
+  # On ELF platforms (e.g., Linux), LuaJIT on x64 requires external
+  # unwinding support. Enable it explicitly and ensure unwind tables
+  # are emitted by the compiler.
+  list(APPEND LJ_COMMON_DEFS LUAJIT_UNWIND_EXTERNAL)
 endif ()
 
 MACRO(LJ_TEST_ARCH stuff)
@@ -337,3 +341,6 @@ add_library(luajit STATIC src/ljamalg.c ${DEPS})
 set_target_properties(luajit PROPERTIES OUTPUT_NAME lua51)
 target_compile_definitions(luajit PRIVATE ${TARGET_ARCH} ${LJ_COMMON_DEFS})
 target_include_directories(luajit PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
+if (UNIX AND NOT APPLE)
+  target_compile_options(luajit PRIVATE -funwind-tables)
+endif ()
