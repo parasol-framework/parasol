@@ -57,11 +57,11 @@ struct resolve_buffer {
    }
 };
 
-static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry **);
-static ERR resolve_name(CSTRING, DNSEntry **);
-static ERR cache_host(HOSTMAP &, std::shared_mutex &, CSTRING, struct hostent *, DNSEntry **);
+static ERR resolve_address(CSTRING, const IPAddress *, DNSEntry &);
+static ERR resolve_name(CSTRING, DNSEntry &);
+static ERR cache_host(HOSTMAP &, std::shared_mutex &, CSTRING, struct hostent *, DNSEntry &);
 #ifdef __linux__
-static ERR cache_host(HOSTMAP &, std::shared_mutex &, CSTRING, struct addrinfo *, DNSEntry **);
+static ERR cache_host(HOSTMAP &, std::shared_mutex &, CSTRING, struct addrinfo *, DNSEntry &);
 #endif
 
 static std::vector<IPAddress> glNoAddresses;
@@ -171,9 +171,9 @@ static ERR NETLOOKUP_BlockingResolveAddress(extNetLookup *Self, struct nl::Block
 
    IPAddress ip;
    if (net::StrToAddress(Args->Address, &ip) IS ERR::Okay) {
-      DNSEntry *info;
-      if (auto error = resolve_address(Args->Address, &ip, &info); error IS ERR::Okay) {
-         Self->Info = *info;
+      DNSEntry info;
+      if (auto error = resolve_address(Args->Address, &ip, info); error IS ERR::Okay) {
+         Self->Info = info;
          resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
          return ERR::Okay;
       }
@@ -215,9 +215,9 @@ static ERR NETLOOKUP_BlockingResolveName(extNetLookup *Self, struct nl::ResolveN
 
    log.branch("Host: %s", Args->HostName);
 
-   DNSEntry *info;
-   if (auto error = resolve_name(Args->HostName, &info); error IS ERR::Okay) {
-      Self->Info = *info;
+   DNSEntry info;
+   if (auto error = resolve_name(Args->HostName, info); error IS ERR::Okay) {
+      Self->Info = info;
       resolve_callback(Self, ERR::Okay, Self->Info.HostName, Self->Info.Addresses);
       return ERR::Okay;
    }
@@ -320,8 +320,8 @@ static ERR NETLOOKUP_ResolveAddress(extNetLookup *Self, struct nl::ResolveAddres
       resolve_buffer rb(Self->UID, ip, Args->Address);
 
       Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([](resolve_buffer rb) {
-         DNSEntry *dummy;
-         rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, &dummy);
+         DNSEntry dummy;
+         rb.Error = resolve_address(rb.Address.c_str(), &rb.IP, dummy);
          auto ser = rb.serialise();
          SendMessage(glResolveAddrMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_addr_receiver()
       }, std::move(rb))));
@@ -383,8 +383,8 @@ static ERR NETLOOKUP_ResolveName(extNetLookup *Self, struct nl::ResolveName *Arg
 
    resolve_buffer rb(Self->UID, Args->HostName);
    Self->Threads.emplace_back(std::make_unique<std::jthread>(std::jthread([Self](resolve_buffer rb) {
-      DNSEntry *dummy;
-      rb.Error = resolve_name(rb.Address.c_str(), &dummy);
+      DNSEntry dummy;
+      rb.Error = resolve_name(rb.Address.c_str(), dummy);
       auto ser = rb.serialise();
       SendMessage(glResolveNameMsgID, MSF::NIL, ser.data(), ser.size()); // See resolve_name_receiver()
    }, std::move(rb))));
@@ -467,9 +467,9 @@ static ERR GET_HostName(extNetLookup *Self, CSTRING *Value)
 
 //********************************************************************************************************************
 
-static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct hostent *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct hostent *Host, DNSEntry &Cache)
 {
-   if ((!Host) or (!Cache)) return ERR::NullArgs;
+   if (!Host) return ERR::NullArgs;
 
    if (!Key) {
       if (!(Key = Host->h_name)) return ERR::Args;
@@ -479,7 +479,6 @@ static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, str
 
    log.detail("Key: %s, Addresses: %p (IPV6: %d)", Key, Host->h_addr_list, (Host->h_addrtype == AF_INET6));
 
-   *Cache = nullptr;
    if ((Host->h_addrtype != AF_INET) and (Host->h_addrtype != AF_INET6)) return ERR::Args;
 
    DNSEntry cache;
@@ -507,18 +506,16 @@ static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, str
       std::unique_lock<std::shared_mutex> lock(Guard);
       auto &entry = Store[Key];
       entry = std::move(cache);
-      *Cache = &entry;
+      Cache = entry;
    }
    return ERR::Okay;
 }
 
 #ifdef __linux__
 
-static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct addrinfo *Host, DNSEntry &Cache)
 {
-   if ((!Host) or (!Cache)) return ERR::NullArgs;
-
-   *Cache = nullptr;
+   if (!Host) return ERR::NullArgs;
 
    if (!Key) {
       if (!(Key = Host->ai_canonname)) return ERR::Args;
@@ -552,7 +549,7 @@ static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, str
       std::unique_lock<std::shared_mutex> lock(Guard);
       auto &entry = Store[Key];
       entry = std::move(cache);
-      *Cache = &entry;
+      Cache = entry;
    }
    return ERR::Okay;
 }
@@ -561,8 +558,17 @@ static ERR cache_host(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, str
 
 //********************************************************************************************************************
 
-static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info)
+static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry &Info)
 {
+   {
+      std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
+      auto it = glAddresses.find(Address);
+      if (it != glAddresses.end()) {
+         Info = it->second;
+         return ERR::Okay;
+      }
+   }
+
 #ifdef _WIN32
    struct hostent *host = win_gethostbyaddr(IP);
    if (!host) return ERR::Failed;
@@ -613,11 +619,9 @@ static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry **Info
 
 #ifdef _WIN32
 
-static ERR cache_host_from_addrinfo(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct addrinfo *Host, DNSEntry **Cache)
+static ERR cache_host_from_addrinfo(HOSTMAP &Store, std::shared_mutex &Guard, CSTRING Key, struct addrinfo *Host, DNSEntry &Cache)
 {
-   if ((!Host) or (!Cache)) return ERR::NullArgs;
-
-   *Cache = nullptr;
+   if (!Host) return ERR::NullArgs;
 
    if (!Key) {
       if (!(Key = Host->ai_canonname)) return ERR::Args;
@@ -652,7 +656,7 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, std::shared_mutex &Guard, CS
       std::unique_lock<std::shared_mutex> lock(Guard);
       auto &entry = Store[Key];
       entry = std::move(cache);
-      *Cache = &entry;
+      Cache = entry;
    }
    return ERR::Okay;
 }
@@ -661,7 +665,7 @@ static ERR cache_host_from_addrinfo(HOSTMAP &Store, std::shared_mutex &Guard, CS
 
 //********************************************************************************************************************
 
-static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
+static ERR resolve_name(CSTRING HostName, DNSEntry &Info)
 {
    // Use the cache if available.
 
@@ -669,7 +673,7 @@ static ERR resolve_name(CSTRING HostName, DNSEntry **Info)
       std::shared_lock<std::shared_mutex> lock(glHostsMutex);
       auto it = glHosts.find(HostName);
       if (it != glHosts.end()) {
-         *Info = &it->second;
+         Info = it->second;
          return ERR::Okay;
       }
    }
