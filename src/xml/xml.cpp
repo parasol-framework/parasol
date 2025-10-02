@@ -341,6 +341,9 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 static ERR XML_Free(extXML *Self)
 {
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   if (Self->DocType) { FreeResource(Self->DocType); Self->DocType = nullptr; }
+   if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
+   if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }
    Self->~extXML();
    return ERR::Okay;
 }

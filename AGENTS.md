@@ -63,7 +63,7 @@ If `parasol` is not already installed in `install/agents` then performing the bu
 The framework uses a modular architecture where each major feature is implemented as a separate module:
 - Each module is in `src/[module_name]/` with its own `CMakeLists.txt`
 - Static builds link all modules into the core, while modular builds load them dynamically
-- Module definitions are stored in `.fdl` files which generate C++ headers and IDL strings
+- Module definitions are stored in `.fdl` files which generate C++ headers and module `MOD_IDL` strings
 
 ### Object System and FDL Files
 
@@ -72,6 +72,7 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - Build system generates C/C++ headers from FDL using tools in `tools/idl/`
 - Class implementations are in `class_*.cpp` files
 - Generated headers go to `include/parasol/` directory
+- Headers are built by triggering a cmake build.
 
 ### Scripting Integration
 

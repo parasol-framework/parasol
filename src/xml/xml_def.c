@@ -18,6 +18,7 @@ static const struct FieldDef clXMLFlags[] = {
    { "OmitTags", 0x00002000 },
    { "NamespaceAware", 0x00004000 },
    { "HasSchema", 0x00008000 },
+   { "Standalone", 0x00010000 },
    { "IncludeSiblings", (int)0x80000000 },
    { nullptr, 0 }
 };
