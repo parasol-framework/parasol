@@ -362,7 +362,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
 
             Socket->setState(NTC::CONNECTING);
             RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
-            RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_connect, Socket);
          }
          else {
             log.trace("IPv4-mapped IPv6 connect() successful.");
