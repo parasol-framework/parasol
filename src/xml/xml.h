@@ -220,6 +220,10 @@ class extXML : public objXML {
    // then this lookup table returns the most recently assigned URI.
    ankerl::unordered_dense::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
+   ankerl::unordered_dense::map<std::string, std::shared_ptr<extXML>> DocumentCache;
+   ankerl::unordered_dense::map<std::string, std::shared_ptr<std::string>> UnparsedTextCache;
+   ankerl::unordered_dense::map<const XMLTag *, std::weak_ptr<extXML>> DocumentNodeOwners;
+
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    [[nodiscard]] ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
