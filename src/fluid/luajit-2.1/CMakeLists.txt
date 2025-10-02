@@ -25,7 +25,7 @@ include (CheckCSourceCompiles)
 include (CheckTypeSize)
 
 # Accumulate common compile definitions for later, apply per-target.
-set(LJ_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT)
+set(LJ_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT LUAJIT_DISABLE_FFI)
 
 if (LUAJIT_DISABLE_JIT)
    list(APPEND LJ_COMMON_DEFS LUAJIT_DISABLE_JIT)
@@ -60,7 +60,7 @@ if ( WIN32 AND NOT CYGWIN )
   list(APPEND LJ_COMMON_DEFS LUAJIT_OS=LUAJIT_OS_WINDOWS)
   # Only GCC/Clang understand -malign-double; avoid on MSVC.
   if (NOT MSVC)
-    add_compile_options("-malign-double")
+    target_compile_options(luajit PRIVATE -malign-double)
   endif ()
   set ( LJVM_MODE coffasm )
 elseif ( APPLE )
