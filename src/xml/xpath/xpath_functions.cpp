@@ -1799,6 +1799,17 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("position", function_position);
    register_function("count", function_count);
    register_function("id", function_id);
+   register_function("idref", function_idref);
+   register_function("root", function_root);
+
+   // Document Functions
+   register_function("doc", function_doc);
+   register_function("doc-available", function_doc_available);
+   register_function("collection", function_collection);
+   register_function("uri-collection", function_uri_collection);
+   register_function("unparsed-text", function_unparsed_text);
+   register_function("unparsed-text-available", function_unparsed_text_available);
+   register_function("unparsed-text-lines", function_unparsed_text_lines);
    register_function("local-name", function_local_name);
    register_function("namespace-uri", function_namespace_uri);
    register_function("name", function_name);
@@ -2001,6 +2012,7 @@ size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, 
 // Core XPath Function Implementations
 
 #include "functions/func_nodeset.cpp"
+#include "functions/func_documents.cpp"
 #include "functions/func_qnames.cpp"
 #include "functions/func_strings.cpp"
 #include "functions/func_diagnostics.cpp"

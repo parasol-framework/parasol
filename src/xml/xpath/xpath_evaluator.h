@@ -39,6 +39,8 @@ class XPathEvaluator {
    std::vector<XPathContext> context_stack;
    
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
+   extXML * resolve_document_for_node(XMLTag *Node) const;
+   bool is_foreign_document_node(XMLTag *Node) const;
    std::vector<XMLTag *> collect_step_results(const std::vector<AxisMatch> &,
       const std::vector<const XPathNode *> &, size_t, uint32_t, bool &);
    XPathValue evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);

@@ -1334,7 +1334,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="const std::string_view &amp;" name="Path">The path to be resolved.</param>
       <param type="RSF" name="Flags" lookup="RSF">Optional flags.</param>
-      <param type="std::string *" name="Result">Must point to a <code>std::string</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.</param>
+      <param type="std::string *" name="Result">Must point to a <code>std::string</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.  The value is unchanged if the error code is not <code>ERR::Okay</code>.</param>
     </input>
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>
@@ -1350,8 +1350,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">The <code>Path</code> was resolved.</error>
       <error code="Search">The given volume does not exist.</error>
       <error code="FileNotFound">The path was resolved, but the referenced file or folder does not exist (use <code>NO_FILE_CHECK</code> to avoid this error code).</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="AllocMemory">The result string could not be allocated.</error>
+      <error code="InvalidPath">The path is malformed.</error>
+      <error code="VirtualVolume">The path refers to a virtual volume (use <code>CHECK_VIRTUAL</code> to return <code>Okay</code> instead).</error>
       <error code="Loop">The volume refers back to itself.</error>
       <error code="NullArgs">Invalid parameters were specified.</error>
     </result>
