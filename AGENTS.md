@@ -38,12 +38,14 @@ Key build options (use with `-D` flag):
 
 ### Development in the Cloud (Temporary Sessions)
 
-Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild` when in a temporary session.
+When working in ephemeral cloud environments:
 
-Disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
-- `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
-
-If `parasol` is not already installed in `install/agents` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
+- Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild`.
+- Prefer the pre-created build tree at `build/agents` and install tree at `install/agents` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config FastBuild --parallel`.
+- If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild ...` rather than deleting the entire build tree.
+- Network access is available, so you may fetch upstream documentation or dependencies if a build script expects them.
+- If `parasol` is not already installed in `install/agents` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
+- If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  You should include the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 ## Architecture Overview
 

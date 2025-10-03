@@ -176,18 +176,55 @@ void AxisEvaluator::build_id_cache() {
    id_cache_built = true;
 }
 
+// Determine which XML document owns a given node.
+extXML * AxisEvaluator::find_document_for_node(XMLTag *Node)
+{
+   if ((!Node) or (!xml)) return nullptr;
+
+   auto &map = xml->getMap();
+   auto owner = map.find(Node->ID);
+   if ((owner != map.end()) and (owner->second IS Node)) return xml;
+
+   auto registered = xml->DocumentNodeOwners.find(Node);
+   if (registered != xml->DocumentNodeOwners.end()) {
+      if (auto document = registered->second.lock(); document) return document.get();
+   }
+
+   for (auto &entry : xml->DocumentCache) {
+      auto &foreign_map = entry.second->getMap();
+      auto foreign = foreign_map.find(Node->ID);
+      if ((foreign != foreign_map.end()) and (foreign->second IS Node)) return entry.second.get();
+   }
+
+   return nullptr;
+}
+
 // Perform an ID-based lookup with caching to avoid repeated depth-first scans.
-XMLTag * AxisEvaluator::find_tag_by_id(int ID) {
+XMLTag * AxisEvaluator::find_tag_by_id(XMLTag *ReferenceNode, int ID)
+{
    if ((ID IS 0) or (!xml)) return nullptr;
 
-   if (!id_cache_built) build_id_cache();
+   extXML *target_document = xml;
+   if (ReferenceNode) {
+      if (auto document = find_document_for_node(ReferenceNode)) target_document = document;
+   }
 
-   auto iter = id_lookup.find(ID);
-   if (iter != id_lookup.end()) return iter->second;
+   if (target_document IS xml) {
+      if (!id_cache_built) build_id_cache();
 
-   build_id_cache();
-   iter = id_lookup.find(ID);
-   if (iter != id_lookup.end()) return iter->second;
+      auto iter = id_lookup.find(ID);
+      if (iter != id_lookup.end()) return iter->second;
+
+      build_id_cache();
+      iter = id_lookup.find(ID);
+      if (iter != id_lookup.end()) return iter->second;
+
+      return nullptr;
+   }
+
+   auto &map = target_document->getMap();
+   auto iter = map.find(ID);
+   if (iter != map.end()) return iter->second;
 
    return nullptr;
 }
@@ -216,7 +253,7 @@ size_t AxisEvaluator::estimate_result_size(AxisType Axis, XMLTag *ContextNode) {
 
       case AxisType::FOLLOWING_SIBLING:
       case AxisType::PRECEDING_SIBLING: {
-         XMLTag *parent = find_tag_by_id(ContextNode->ParentID);
+         XMLTag *parent = find_tag_by_id(ContextNode, ContextNode->ParentID);
          return parent ? parent->Children.size() : 0;
       }
 
@@ -284,7 +321,7 @@ void AxisEvaluator::evaluate_descendant_axis(XMLTag *Node, std::vector<XMLTag *>
 void AxisEvaluator::evaluate_parent_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
    Output.clear();
    if ((Node) and (Node->ParentID != 0)) {
-      if (auto *parent = find_tag_by_id(Node->ParentID)) {
+      if (auto *parent = find_tag_by_id(Node, Node->ParentID)) {
          Output.push_back(parent);
       }
    }
@@ -297,10 +334,10 @@ void AxisEvaluator::evaluate_ancestor_axis(XMLTag *Node, std::vector<XMLTag *> &
 
    Output.reserve(10);
 
-   XMLTag *parent = find_tag_by_id(Node->ParentID);
+   XMLTag *parent = find_tag_by_id(Node, Node->ParentID);
    while (parent) {
       Output.push_back(parent);
-      parent = find_tag_by_id(parent->ParentID);
+      parent = find_tag_by_id(parent, parent->ParentID);
    }
 }
 
@@ -308,7 +345,7 @@ void AxisEvaluator::evaluate_following_sibling_axis(XMLTag *Node, std::vector<XM
    Output.clear();
    if (!Node) return;
 
-   XMLTag *parent = find_tag_by_id(Node->ParentID);
+   XMLTag *parent = find_tag_by_id(Node, Node->ParentID);
    if (!parent) return;
 
    Output.reserve(parent->Children.size());
@@ -329,7 +366,7 @@ void AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Node, std::vector<XM
    Output.clear();
    if (!Node) return;
 
-   XMLTag *parent = find_tag_by_id(Node->ParentID);
+   XMLTag *parent = find_tag_by_id(Node, Node->ParentID);
    if (!parent) return;
 
    Output.reserve(parent->Children.size());
@@ -365,7 +402,7 @@ void AxisEvaluator::evaluate_following_axis(XMLTag *Node, std::vector<XMLTag *> 
 
    arena.release_node_vector(siblings);
 
-   if (auto *parent = find_tag_by_id(Node->ParentID)) {
+   if (auto *parent = find_tag_by_id(Node, Node->ParentID)) {
       auto &parent_following = arena.acquire_node_vector();
       evaluate_following_axis(parent, parent_following);
       Output.insert(Output.end(), parent_following.begin(), parent_following.end());
@@ -443,7 +480,7 @@ void AxisEvaluator::collect_namespace_declarations(XMLTag *Node, std::vector<Nam
       }
 
       if (!current->ParentID) break;
-      current = find_tag_by_id(current->ParentID);
+      current = find_tag_by_id(current, current->ParentID);
    }
 
    // Sort declarations by prefix for consistent ordering and deduplication
@@ -504,7 +541,7 @@ void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, std::vector<XMLTag *> 
    }
    arena.release_node_vector(preceding_siblings);
 
-   if (auto *parent = find_tag_by_id(Node->ParentID)) {
+   if (auto *parent = find_tag_by_id(Node, Node->ParentID)) {
       auto &parent_preceding = arena.acquire_node_vector();
       evaluate_preceding_axis(parent, parent_preceding);
       Output.insert(Output.end(), parent_preceding.begin(), parent_preceding.end());
@@ -620,7 +657,7 @@ AxisEvaluator::AncestorPathView AxisEvaluator::build_ancestor_path(XMLTag *Node)
    while (current) {
       storage->push_back(current);
       if (!current->ParentID) break;
-      current = find_tag_by_id(current->ParentID);
+      current = find_tag_by_id(current, current->ParentID);
    }
 
    std::reverse(storage->begin(), storage->end());

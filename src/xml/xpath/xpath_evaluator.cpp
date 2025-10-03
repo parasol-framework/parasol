@@ -1343,6 +1343,28 @@ bool compare_xpath_relational(const XPathValue &left_value,
 
 } // namespace
 
+extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
+{
+   if ((!Node) or (!xml)) return nullptr;
+
+   auto &map = xml->getMap();
+   auto base = map.find(Node->ID);
+   if ((base != map.end()) and (base->second IS Node)) return xml;
+
+   auto registered = xml->DocumentNodeOwners.find(Node);
+   if (registered != xml->DocumentNodeOwners.end()) {
+      if (auto document = registered->second.lock(); document) return document.get();
+   }
+
+   return nullptr;
+}
+
+bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
+{
+   auto *document = resolve_document_for_node(Node);
+   return (document) and (document != xml);
+}
+
 std::vector<XMLTag *> XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
                                                                  const std::vector<const XPathNode *> &Steps,
                                                                  size_t StepIndex,
@@ -1393,6 +1415,15 @@ std::vector<XMLTag *> XPathEvaluator::collect_step_results(const std::vector<Axi
       for (auto &match : axis_matches) {
          if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
          filtered.push_back(match);
+      }
+
+      if (filtered.empty()) {
+         if ((axis IS AxisType::CHILD) and context_entry.node and (context_entry.node->ParentID IS 0) and
+             is_foreign_document_node(context_entry.node)) {
+            if (match_node_test(node_test, axis, context_entry.node, context_entry.attribute, CurrentPrefix)) {
+               filtered.push_back(context_entry);
+            }
+         }
       }
 
       if (filtered.empty()) continue;

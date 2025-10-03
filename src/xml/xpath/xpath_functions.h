@@ -201,6 +201,24 @@ class XPathFunctionLibrary {
    static XPathValue function_position(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_count(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_id(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_idref(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_root(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_doc(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_doc_available(const std::vector<XPathValue> &Args, const XPathContext &Context);
+
+   // Accessor Functions (Phase 9)
+   static XPathValue function_base_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_data(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_document_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_node_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_nilled(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_static_base_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_default_collation(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_collection(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_uri_collection(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_unparsed_text(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_unparsed_text_available(const std::vector<XPathValue> &Args, const XPathContext &Context);
+   static XPathValue function_unparsed_text_lines(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_local_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_namespace_uri(const std::vector<XPathValue> &Args, const XPathContext &Context);
    static XPathValue function_name(const std::vector<XPathValue> &Args, const XPathContext &Context);
