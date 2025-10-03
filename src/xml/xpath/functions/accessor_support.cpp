@@ -12,6 +12,7 @@
 #include "../xpath_functions.h"
 #include "../../xml.h"
 #include "../../schema/schema_parser.h"
+#include "../../uri_utils.h"
 
 #include <parasol/strings.hpp>
 
@@ -27,12 +28,6 @@ namespace xpath::accessor
       {
          if (Attribute.Name.empty()) return false;
          return pf::iequals(Attribute.Name, "xml:base");
-      }
-
-      [[nodiscard]] static std::string normalise_uri_separators(std::string Value)
-      {
-         std::replace(Value.begin(), Value.end(), '\\', '/');
-         return Value;
       }
 
       [[nodiscard]] static std::optional<std::string> document_path(extXML *Document)
@@ -223,7 +218,7 @@ namespace xpath::accessor
 
       if (!Node) {
          auto base = document_path(document ? document : Context.document);
-         if (base.has_value()) return normalise_uri_separators(*base);
+         if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
          return std::nullopt;
       }
 
@@ -232,6 +227,17 @@ namespace xpath::accessor
          if (owner_origin.document) document = owner_origin.document;
          else document = Context.document;
       }
+
+      if ((Node->ParentID IS 0) and (!AttributeNode)) {
+         auto base = document_path(document ? document : Context.document);
+         if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
+      }
+
+      const std::string * cached_base = nullptr;
+      if (document) cached_base = document->findBaseURI(Node->ID);
+      else if (Context.document) cached_base = Context.document->findBaseURI(Node->ID);
+
+      if (cached_base) return xml::uri::normalise_uri_separators(*cached_base);
 
       std::vector<std::string> chain;
       for (XMLTag *current = Node; current; ) {
@@ -252,11 +258,11 @@ namespace xpath::accessor
       std::optional<std::string> base = document_path(document);
 
       for (auto iterator = chain.rbegin(); iterator != chain.rend(); ++iterator) {
-         if (base.has_value()) base = resolve_relative_uri(*iterator, *base);
+         if (base.has_value()) base = xml::uri::resolve_relative_uri(*iterator, *base);
          else base = *iterator;
       }
 
-      if (base.has_value()) return normalise_uri_separators(*base);
+      if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
       return std::nullopt;
    }
 
@@ -268,7 +274,7 @@ namespace xpath::accessor
       extXML *document = origin.document;
       if (!document) return std::nullopt;
 
-      if (auto path = document_path(document)) return normalise_uri_separators(*path);
+      if (auto path = document_path(document)) return xml::uri::normalise_uri_separators(*path);
 
       if (!Context.document) return std::nullopt;
 

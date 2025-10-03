@@ -116,6 +116,7 @@ static ERR XML_Clear(extXML *Self)
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
 
    Self->Tags.clear();
+   Self->BaseURIMap.clear();
    if (Self->DocType)  { FreeResource(Self->DocType); Self->DocType = nullptr; }
    if (Self->PublicID) { FreeResource(Self->PublicID); Self->PublicID = nullptr; }
    if (Self->SystemID) { FreeResource(Self->SystemID); Self->SystemID = nullptr; }

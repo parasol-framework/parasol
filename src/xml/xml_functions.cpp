@@ -4,8 +4,10 @@
 #include <ankerl/unordered_dense.h>
 #include <format>
 #include <vector>
+#include <utility>
 
 #include "unescape.h"
+#include "uri_utils.h"
 
 static void output_attribvalue(std::string_view String, std::ostringstream &Output)
 {
@@ -451,7 +453,8 @@ static void extract_content(extXML *Self, TAGS &Tags, ParseState &State)
          if (ch != '\r') str.push_back(ch);
       }
 
-      Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(str) } }));
+      auto &content_tag = Tags.emplace_back(XMLTag(glTagID++, 0, { { "", std::move(str) } }));
+      Self->BaseURIMap[content_tag.ID] = State.CurrentBase;
    }
 }
 
@@ -495,6 +498,23 @@ class NamespaceScopeGuard {
    }
 };
 
+class BaseScopeGuard {
+   private:
+   ParseState &state;
+   std::string previous_base;
+
+   public:
+   explicit BaseScopeGuard(ParseState &StateRef)
+      : state(StateRef), previous_base(StateRef.CurrentBase)
+   {
+   }
+
+   ~BaseScopeGuard()
+   {
+      state.CurrentBase = previous_base;
+   }
+};
+
 static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 {
    enum { RAW_NONE=0, RAW_CDATA, RAW_NDATA };
@@ -504,6 +524,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    log.traceBranch("%.*s", int(State.cursor.size()), State.cursor.data());
 
    NamespaceScopeGuard namespace_guard(State);
+   BaseScopeGuard base_guard(State);
 
    if (State.current() != '<') {
       log.warning("Malformed XML statement detected.");
@@ -538,6 +559,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       std::string comment_text(State.cursor.data(), comment - State);
       auto &comment_tag = Tags.emplace_back(XMLTag(glTagID++, line_no, { { "", comment_text } }));
       comment_tag.Flags |= XTF::COMMENT;
+      Self->BaseURIMap[comment_tag.ID] = State.CurrentBase;
       State = comment;
       State.next(3);
       return ERR::Okay;
@@ -590,6 +612,7 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
          { "", std::string(content.cursor.data(), State - content) }
       }));
       cdata_tag.Flags |= XTF::CDATA;
+      Self->BaseURIMap[cdata_tag.ID] = State.CurrentBase;
       State.next(3); // Skip "]]>"
       return ERR::Okay;
    }
@@ -627,6 +650,8 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
    State.Balance++;
 
    auto &tag = Tags.emplace_back(XMLTag(glTagID++, line_no));
+   std::string node_base = State.CurrentBase;
+   std::string inherited_base = State.CurrentBase;
 
    if (State.current() IS '?') tag.Flags |= XTF::INSTRUCTION; // Detect <?xml ?> style instruction elements.
    else if ((State.current() IS '!') and (State.cursor.size() > 1) and (State.cursor[1] >= 'A') and (State.cursor[1] <= 'Z')) tag.Flags |= XTF::NOTATION;
@@ -743,6 +768,25 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
       }
       else tag.Attribs.emplace_back(name_string, std::string{});
 
+      if (has_value and pf::iequals(name_string, "xml:base")) {
+         std::string resolved;
+
+         if (value_string.empty()) {
+            resolved = inherited_base;
+         }
+         else if (inherited_base.empty()) {
+            resolved = value_string;
+         }
+         else {
+            resolved = xml::uri::resolve_relative_uri(value_string, inherited_base);
+         }
+
+         resolved = xml::uri::normalise_uri_separators(std::move(resolved));
+         node_base = resolved;
+         State.CurrentBase = resolved;
+         inherited_base = resolved;
+     }
+
       if (xml_instruction) {
          if (tag.Attribs.size() IS 1) {
             is_xml_declaration = pf::iequals(tag.Attribs[0].Name, "?xml");
@@ -755,6 +799,8 @@ static ERR parse_tag(extXML *Self, TAGS &Tags, ParseState &State)
 
       State.skipWhitespace(Self->LineNo);
    }
+
+   Self->BaseURIMap[tag.ID] = node_base;
 
    if (tag.Attribs.empty()) {
       log.warning("No attributes parsed for tag at line %d", Self->LineNo);
@@ -831,6 +877,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
       Self->Entities.clear();
       Self->ParameterEntities.clear();
       Self->Notations.clear();
+      Self->BaseURIMap.clear();
       Self->Flags &= ~XMF::STANDALONE;
    }
 
@@ -843,6 +890,9 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    Tags.reserve(std::max(size_t(Text.size() / 100), size_t(16)));
 
    ParseState state(Text);
+
+   if (Self->Path) state.CurrentBase = xml::uri::normalise_uri_separators(std::string(Self->Path));
+   else state.CurrentBase.clear();
 
    state.skipTo('<', Self->LineNo); // Skip any leading whitespace or content
    if (state.done()) {
