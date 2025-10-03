@@ -43,7 +43,20 @@ Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild` when i
 Disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
 - `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
+When working in ephemeral cloud environments:
+
+- Prefer the pre-created build tree at `build/agents` and install tree at `install/agents` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config FastBuild --parallel`.
+- If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild ...` rather than deleting the entire build tree.
+- Keep an eye on disk usage by removing large artefacts (e.g., `rm -rf build/agents/CMakeFiles/*.dir`) once a task is complete.
+- Network access is available, so you may fetch upstream documentation or dependencies if a build script expects them.  Avoid long-running downloads that are not required for the current change.
+
 If `parasol` is not already installed in `install/agents` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
+
+#### Quick status checklist for short sessions
+
+- `ninja -C build/agents install` completes without re-running the full generator.
+- `ctest --build-config FastBuild --test-dir build/agents -L smoke` covers the minimal regression set when time is constrained.
+- `git status --short` shows only the intended modifications before committing.
 
 ## Architecture Overview
 
