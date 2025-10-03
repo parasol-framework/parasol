@@ -1799,7 +1799,7 @@ const XPathFunctionLibrary & XPathFunctionLibrary::instance()
    static std::unique_ptr<XPathFunctionLibrary> shared_library;
 
    std::call_once(initialise_flag, []() {
-      shared_library = std::unique_ptr<XPathFunctionLibrary>(new XPathFunctionLibrary());
+      shared_library = std::make_unique<XPathFunctionLibrary>();
    });
 
    return *shared_library;
