@@ -108,6 +108,7 @@ struct ParseState {
    // Namespace context for this parsing scope
    ankerl::unordered_dense::map<std::string, uint32_t> PrefixMap;  // Prefix -> namespace URI hash
    uint32_t DefaultNamespace;                  // Default namespace URI hash
+   std::string CurrentBase;
    inline char current() const { return cursor.empty() ? '\0' : cursor.front(); }
    inline bool done() const { return cursor.empty(); }
    inline void next(size_t n = 1) { cursor.remove_prefix(n); }
@@ -138,12 +139,13 @@ struct ParseState {
       return current();
    }
 
-   ParseState() : cursor(), Balance(0), DefaultNamespace(0) { }
-   ParseState(std::string_view Text) : cursor(Text), Balance(0), DefaultNamespace(0) { }
+   ParseState() : cursor(), Balance(0), DefaultNamespace(0), CurrentBase() { }
+   ParseState(std::string_view Text) : cursor(Text), Balance(0), DefaultNamespace(0), CurrentBase() { }
 
    // Copy constructor for inheriting namespace context from parent scope
    ParseState(const ParseState& parent) : cursor(parent.cursor), Balance(parent.Balance),
-                                          PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace) { }
+                                          PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace),
+                                          CurrentBase(parent.CurrentBase) { }
    
    inline bool operator!=(ParseState const &rhs) const {return !(*this == rhs);}
 
@@ -195,6 +197,7 @@ template<typename Range, typename Pred>
 class extXML : public objXML {
    public:
    ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
+   ankerl::unordered_dense::map<int, std::string> BaseURIMap;
    std::string ErrorMsg;    // The most recent error message for an activity, e.g. XPath parsing error
    std::string Statement;
    std::string Attrib;
@@ -359,6 +362,13 @@ class extXML : public objXML {
          tag.ParentID = ParentID;
          if (!tag.Children.empty()) updateIDs(tag.Children, tag.ID);
       }
+   }
+
+   inline const std::string * findBaseURI(int TagID) const
+   {
+      auto it = BaseURIMap.find(TagID);
+      if (it != BaseURIMap.end()) return &it->second;
+      return nullptr;
    }
 };
 
