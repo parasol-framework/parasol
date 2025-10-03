@@ -41,7 +41,7 @@ Key build options (use with `-D` flag):
 Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild` when in a temporary session.
 
 Disabling unnecessary modules like Audio and Graphics features (if they are not being worked on) will speed up the build.  You should include the following with your CMake build configuration:
-- `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
+- `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON -DDISABLE_SCINTILLA=ON`
 
 If `parasol` is not already installed in `install/agents` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
 
