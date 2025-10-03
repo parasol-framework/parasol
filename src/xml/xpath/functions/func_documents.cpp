@@ -16,26 +16,30 @@
 #include <string_view>
 #include <unordered_set>
 
-namespace {
+namespace { // Anonymous namespace for internal linkage
 
 namespace fs = std::filesystem;
 
+//*********************************************************************************************************************
+
 static bool is_string_uri(std::string_view Value)
 {
-   return Value.rfind("string:", 0u) IS 0u;
+   return not Value.rfind("string:", 0);
 }
+
+//*********************************************************************************************************************
+// Normalise newlines in a text resource to just LF (\n).
 
 static std::string normalise_newlines(const std::string &Input)
 {
    std::string output;
    output.reserve(Input.length());
 
-   size_t index = 0u;
+   size_t index = 0;
    while (index < Input.length()) {
-      char ch = Input[index];
-      if (ch IS '\r') {
+      if (char ch = Input[index]; ch IS '\r') {
          output.push_back('\n');
-         if ((index + 1u < Input.length()) and (Input[index + 1u] IS '\n')) index++;
+         if ((index + 1 < Input.length()) and (Input[index + 1] IS '\n')) index++;
       }
       else output.push_back(ch);
       index++;
@@ -43,6 +47,9 @@ static std::string normalise_newlines(const std::string &Input)
 
    return output;
 }
+
+//*********************************************************************************************************************
+// Get the directory of the current document, if available.
 
 static std::optional<std::string> get_context_directory(const XPathContext &Context)
 {
@@ -56,43 +63,32 @@ static std::optional<std::string> get_context_directory(const XPathContext &Cont
 
       std::string raw = Context.document->Path;
       size_t slash = raw.find_last_of("/\\");
-      if (slash != std::string::npos) return raw.substr(0u, slash + 1u);
+      if (slash != std::string::npos) return raw.substr(0, slash + 1u);
    }
 
    return std::nullopt;
 }
 
-static bool resolve_resource_location(const XPathContext &Context, const std::string &Uri, std::string &Resolved)
-{
-   if (Uri.empty()) return false;
-   if (is_string_uri(Uri)) { Resolved = Uri; return true; }
+//*********************************************************************************************************************
+// Resolve a resource URI to a usable path or string.
+// URI's can absolute paths, e.g. temp:thing.xml or relative, e.g. thing.xml.  Relative paths will ultimately use the
+// current working path and it is the responsibility of the caller to manage the path prior to making queries.
 
-   std::string candidate;
-   if (ResolvePath(Uri, RSF::NO_FILE_CHECK, &candidate) IS ERR::Okay) {
-      Resolved = candidate;
+static bool resolve_resource_location(const XPathContext &Context, const std::string &URI, std::string &Resolved)
+{
+   if (URI.empty()) return false;
+   if (is_string_uri(URI)) { Resolved = URI; return true; }
+
+   if (ResolvePath(URI, RSF::NO_FILE_CHECK, &Resolved) IS ERR::Okay) {
       return true;
    }
+   else Resolved = URI;
 
-   if (Context.document) {
-      auto base = get_context_directory(Context);
-      if (base.has_value()) {
-         fs::path base_path(*base);
-         fs::path combined = base_path / Uri;
-         std::string combined_str = combined.lexically_normal().string();
-
-         if (ResolvePath(combined_str, RSF::NO_FILE_CHECK, &candidate) IS ERR::Okay) {
-            Resolved = candidate;
-            return true;
-         }
-
-         Resolved = combined_str;
-         return true;
-      }
-   }
-
-   Resolved = Uri;
    return true;
 }
+
+//*********************************************************************************************************************
+// Register document nodes with their owner document for cross-document XPath processing.
 
 static void register_document_node(extXML *Owner, const std::shared_ptr<extXML> &Document, XMLTag &Tag)
 {
@@ -102,29 +98,37 @@ static void register_document_node(extXML *Owner, const std::shared_ptr<extXML> 
    for (auto &child : Tag.Children) register_document_node(Owner, Document, child);
 }
 
+//*********************************************************************************************************************
+
 static void register_document_nodes(extXML *Owner, const std::shared_ptr<extXML> &Document)
 {
    if ((!Owner) or (!Document)) return;
    for (auto &tag : Document->Tags) register_document_node(Owner, Document, tag);
 }
 
-static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &Uri)
+//*********************************************************************************************************************
+// Load (or retrieve from cache) an XML document.
+
+static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &URI)
 {
    if (!Owner) return nullptr;
 
-   auto existing = Owner->DocumentCache.find(Uri);
+   auto existing = Owner->DocumentCache.find(URI);
    if (existing != Owner->DocumentCache.end()) return existing->second;
 
    std::shared_ptr<extXML> document;
 
-   if (is_string_uri(Uri)) {
-      std::string payload = Uri.substr(7u);
-      if (auto raw = pf::Create<extXML>::global({ fl::Statement(payload.c_str()), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) })) {
+   if (is_string_uri(URI)) {
+      if (auto raw = pf::Create<extXML>::global({ 
+            fl::Statement(URI.substr(7)), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) 
+         })) {
          document = pf::make_shared_object(raw);
       }
    }
    else {
-      if (auto raw = pf::Create<extXML>::global({ fl::Path(Uri.c_str()), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) })) {
+      if (auto raw = pf::Create<extXML>::global({ 
+            fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) 
+         })) {
          document = pf::make_shared_object(raw);
       }
    }
@@ -134,11 +138,14 @@ static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &U
 
    document->getMap();
    register_document_nodes(Owner, document);
-   Owner->DocumentCache[Uri] = document;
+   Owner->DocumentCache[URI] = document;
    return document;
 }
 
-static bool read_text_resource(extXML *Owner, const std::string &Uri, const std::optional<std::string> &Encoding,
+//*********************************************************************************************************************
+// Load (or retrieve from cache) a text resource.
+
+static bool read_text_resource(extXML *Owner, const std::string &URI, const std::optional<std::string> &Encoding,
    std::shared_ptr<std::string> &Result)
 {
    if (!Owner) return false;
@@ -148,31 +155,33 @@ static bool read_text_resource(extXML *Owner, const std::string &Uri, const std:
       if ((lowered != "utf-8") and (lowered != "utf8")) return false;
    }
 
-   auto existing = Owner->UnparsedTextCache.find(Uri);
+   auto existing = Owner->UnparsedTextCache.find(URI);
    if (existing != Owner->UnparsedTextCache.end()) {
       Result = existing->second;
       return true;
    }
 
-   if (is_string_uri(Uri)) {
-      auto text = std::make_shared<std::string>(normalise_newlines(Uri.substr(7u)));
-      Owner->UnparsedTextCache[Uri] = text;
+   if (is_string_uri(URI)) {
+      auto text = std::make_shared<std::string>(normalise_newlines(URI.substr(7u)));
+      Owner->UnparsedTextCache[URI] = text;
       Result = text;
       return true;
    }
 
    CacheFile *filecache = nullptr;
-   if (LoadFile(Uri.c_str(), LDF::NIL, &filecache) != ERR::Okay) return false;
+   if (LoadFile(URI.c_str(), LDF::NIL, &filecache) != ERR::Okay) return false;
 
-   std::shared_ptr<std::string> text = std::make_shared<std::string>((const char *)filecache->Data,
-      (size_t)filecache->Size);
+   std::shared_ptr<std::string> text = std::make_shared<std::string>((CSTRING)filecache->Data, filecache->Size);
    UnloadFile(filecache);
 
    *text = normalise_newlines(*text);
-   Owner->UnparsedTextCache[Uri] = text;
+   Owner->UnparsedTextCache[URI] = text;
    Result = text;
    return true;
 }
+
+//*********************************************************************************************************************
+// Locate the document that owns a given node, if any.
 
 static extXML * locate_document_for_node(const XPathContext &Context, XMLTag *Node, std::shared_ptr<extXML> *Holder)
 {
@@ -180,8 +189,7 @@ static extXML * locate_document_for_node(const XPathContext &Context, XMLTag *No
 
    if (Context.document) {
       auto &map = Context.document->getMap();
-      auto it = map.find(Node->ID);
-      if ((it != map.end()) and (it->second IS Node)) {
+      if (auto it = map.find(Node->ID); (it != map.end()) and (it->second IS Node)) {
          if (Holder) Holder->reset();
          return Context.document;
       }
@@ -190,8 +198,7 @@ static extXML * locate_document_for_node(const XPathContext &Context, XMLTag *No
    if (Context.document) {
       auto entry = Context.document->DocumentNodeOwners.find(Node);
       if (entry != Context.document->DocumentNodeOwners.end()) {
-         auto doc = entry->second.lock();
-         if (doc) {
+         if (auto doc = entry->second.lock(); doc) {
             if (Holder) *Holder = doc;
             return doc.get();
          }
@@ -200,6 +207,9 @@ static extXML * locate_document_for_node(const XPathContext &Context, XMLTag *No
 
    return nullptr;
 }
+
+//*********************************************************************************************************************
+// Locate the root node of the document containing a given node.
 
 static XMLTag * locate_root_node(extXML *Document, XMLTag *Node)
 {
@@ -215,10 +225,13 @@ static XMLTag * locate_root_node(extXML *Document, XMLTag *Node)
    return current;
 }
 
+//*********************************************************************************************************************
+// Split a string into tokens based on whitespace.
+
 static std::vector<std::string> split_whitespace_tokens(std::string_view Value)
 {
    std::vector<std::string> tokens;
-   size_t offset = 0u;
+   size_t offset = 0;
 
    while (offset < Value.length()) {
       while ((offset < Value.length()) and std::isspace((unsigned char)Value[offset])) offset++;
@@ -229,6 +242,9 @@ static std::vector<std::string> split_whitespace_tokens(std::string_view Value)
 
    return tokens;
 }
+
+//*********************************************************************************************************************
+// Collect all nodes in the document that have an IDREF or IDREFS attribute matching one of the target IDs.
 
 static void collect_idref_matches(extXML *Document, const std::unordered_set<std::string> &Targets,
    std::unordered_set<const XMLTag *> &Seen, std::vector<XMLTag *> &Matches)
@@ -244,7 +260,7 @@ static void collect_idref_matches(extXML *Document, const std::unordered_set<std
       stack.pop_back();
 
       if ((!current->Attribs.empty()) and current->isTag()) {
-         for (size_t index = 1u; index < current->Attribs.size(); ++index) {
+         for (size_t index = 1; index < current->Attribs.size(); ++index) {
             const auto &attrib = current->Attribs[index];
             if (attrib.Name.empty()) continue;
 
@@ -267,6 +283,9 @@ static void collect_idref_matches(extXML *Document, const std::unordered_set<std
       for (auto &child : current->Children) stack.push_back(&child);
    }
 }
+
+//*********************************************************************************************************************
+// Enumerate all XML files in a directory.
 
 static std::vector<std::string> enumerate_collection(const std::string &Directory)
 {
@@ -293,6 +312,10 @@ static std::vector<std::string> enumerate_collection(const std::string &Director
 
 } // namespace
 
+//*********************************************************************************************************************
+// XPath Document and Text Retrieval Functions
+// See https://www.w3.org/TR/xpath-functions-31/#docfunc for details
+
 XPathValue XPathFunctionLibrary::function_root(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    XMLTag *node = nullptr;
@@ -317,6 +340,9 @@ XPathValue XPathFunctionLibrary::function_root(const std::vector<XPathValue> &Ar
    return XPathValue(result);
 }
 
+//*********************************************************************************************************************
+// The doc() function loads an XML document from a given URI and returns its top-level element nodes.
+
 XPathValue XPathFunctionLibrary::function_doc(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathValue(std::vector<XMLTag *>());
@@ -339,6 +365,9 @@ XPathValue XPathFunctionLibrary::function_doc(const std::vector<XPathValue> &Arg
 
    return XPathValue(nodes);
 }
+
+//*********************************************************************************************************************
+// The doc-available() function checks if a document at a given URI can be loaded.
 
 XPathValue XPathFunctionLibrary::function_doc_available(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
@@ -363,6 +392,9 @@ XPathValue XPathFunctionLibrary::function_doc_available(const std::vector<XPathV
 
    return XPathValue(false);
 }
+
+//*********************************************************************************************************************
+// The collection() function loads all XML documents in a given directory and returns their top-level element nodes.
 
 XPathValue XPathFunctionLibrary::function_collection(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
@@ -398,6 +430,9 @@ XPathValue XPathFunctionLibrary::function_collection(const std::vector<XPathValu
    return XPathValue(nodes);
 }
 
+//*********************************************************************************************************************
+// The uri-collection() function enumerates all XML files in a given directory and returns their URIs.
+
 XPathValue XPathFunctionLibrary::function_uri_collection(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (!Context.document) return XPathValue(std::vector<XMLTag *>());
@@ -428,6 +463,9 @@ XPathValue XPathFunctionLibrary::function_uri_collection(const std::vector<XPath
    return XPathValue(nodes, std::nullopt, values);
 }
 
+//*********************************************************************************************************************
+// The unparsed-text() function loads a text resource from a given URI and returns its content as a string.
+
 XPathValue XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathValue(std::string());
@@ -437,7 +475,7 @@ XPathValue XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathV
    if (uri.empty()) return XPathValue(std::string());
 
    std::optional<std::string> encoding;
-   if (Args.size() > 1u) {
+   if (Args.size() > 1) {
       std::string value = Args[1].to_string();
       if (not value.empty()) encoding = value;
    }
@@ -451,6 +489,9 @@ XPathValue XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathV
    return XPathValue(*text);
 }
 
+//*********************************************************************************************************************
+// The unparsed-text-available() function checks if a text resource at a given URI can be loaded.
+
 XPathValue XPathFunctionLibrary::function_unparsed_text_available(const std::vector<XPathValue> &Args,
    const XPathContext &Context)
 {
@@ -461,7 +502,7 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_available(const std::vec
    if (uri.empty()) return XPathValue(false);
 
    std::optional<std::string> encoding;
-   if (Args.size() > 1u) {
+   if (Args.size() > 1) {
       std::string value = Args[1].to_string();
       if (not value.empty()) encoding = value;
    }
@@ -474,6 +515,9 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_available(const std::vec
    return XPathValue(false);
 }
 
+//*********************************************************************************************************************
+// The unparsed-text-lines() function loads a text resource from a given URI and returns its content as a sequence of lines.
+
 XPathValue XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XPathValue> &Args,
    const XPathContext &Context)
 {
@@ -484,7 +528,7 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<
    if (uri.empty()) return XPathValue(std::vector<XMLTag *>());
 
    std::optional<std::string> encoding;
-   if (Args.size() > 1u) {
+   if (Args.size() > 1) {
       std::string value = Args[1].to_string();
       if (not value.empty()) encoding = value;
    }
@@ -498,7 +542,7 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<
    std::vector<XMLTag *> nodes;
    std::vector<std::string> lines;
 
-   size_t start = 0u;
+   size_t start = 0;
    while (start <= text->length()) {
       size_t end = text->find('\n', start);
       if (end IS std::string::npos) {
@@ -507,12 +551,15 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<
       }
 
       lines.emplace_back(text->substr(start, end - start));
-      start = end + 1u;
+      start = end + 1;
       if (start > text->length()) lines.emplace_back(std::string());
    }
 
    return XPathValue(nodes, std::nullopt, lines);
 }
+
+//*********************************************************************************************************************
+// The idref() function returns all elements that have an IDREF or IDREFS attribute matching one of the given IDs.
 
 XPathValue XPathFunctionLibrary::function_idref(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
