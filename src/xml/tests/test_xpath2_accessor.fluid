@@ -1,0 +1,125 @@
+-- XPath 2.0 accessor function tests
+
+   include 'xml'
+   require 'common'
+
+local glBaseFolder = 'temp:xpath_accessor_tests/'
+local glAccessorXML = nil
+
+local function writeFile(path, content)
+   local file = obj.new('file', { path = path, flags = 'WRITE|NEW' })
+   file.acWrite(content)
+   file = nil
+end
+
+local function ensureFolder(path)
+   local err = mSys.CreateFolder(path, 0)
+   if (err != ERR_Okay) and (err != ERR_FileExists) then
+      error('Failed to create folder ' .. path .. ': ' .. mSys.GetErrorMsg(err))
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:base-uri should resolve xml:base attributes and fall back to the document path
+
+function testBaseUriResolvesXmlBase()
+   local hasLeafSuffix = glAccessorXML.getKey(
+      'declare namespace ns="urn:test"; ends-with(base-uri(/root/ns:child/ns:leaf), "leaf.xml")')
+   assert(hasLeafSuffix == 'true',
+      'base-uri() should reflect xml:base inheritance and resolve to the leaf resource, got ' .. nz(hasLeafSuffix, 'NIL'))
+
+   local rootBase = glAccessorXML.getKey('base-uri(/root)')
+   assert((rootBase != nil) and rootBase:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
+      'base-uri() should return the source document path for the root element, got ' .. nz(rootBase, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:document-uri should expose the stable URI of the owning document
+
+function testDocumentUriReturnsDocumentPath()
+   local docUri = glAccessorXML.getKey('declare namespace ns="urn:test"; document-uri(/root/ns:child)')
+   assert((docUri != nil) and docUri:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
+      'document-uri() should return the document path for descendant nodes, got ' .. nz(docUri, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:node-name should preserve namespace prefixes when present
+
+function testNodeNamePreservesPrefix()
+   local nodeName = glAccessorXML.getKey(
+      'declare namespace ns="urn:test"; string(node-name(/root/ns:child))')
+   assert(nodeName == 'ns:child', 'node-name() should expose the QName using the parsed prefix, got ' .. nz(nodeName, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:data should atomise nodes into their typed value representation
+
+function testDataExtractsAtomicValues()
+   local joined = glAccessorXML.getKey(
+      'declare namespace ns="urn:test"; string-join(data((/root/ns:child/ns:leaf, /root/values/item[2]/@code, 42)), "|")')
+   assert(joined == 'Alpha|bravo|42', 'data() should coerce nodes into atomic values, got ' .. nz(joined, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:nilled should report xsi:nil elements as true
+
+function testNilledReportsTrue()
+   local nilled = glAccessorXML.getKey('nilled(/root/nilExample)')
+   assert(nilled == 'true', 'nilled() should report true for xsi:nil elements, got ' .. nz(nilled, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:static-base-uri should reflect the static context base of the primary document
+
+function testStaticBaseUriReflectsDocument()
+   local staticBase = glAccessorXML.getKey('static-base-uri()')
+   assert((staticBase != nil) and staticBase:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
+      'static-base-uri() should reflect the primary document base, got ' .. nz(staticBase, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- fn:default-collation should expose the W3C codepoint collation URI
+
+function testDefaultCollationIsCodepoint()
+   local collation = glAccessorXML.getKey('default-collation()')
+   assert(collation == 'http://www.w3.org/2005/xpath-functions/collation/codepoint',
+      'default-collation() should return the codepoint collation URI, got ' .. nz(collation, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testBaseUriResolvesXmlBase',
+      'testDocumentUriReturnsDocumentPath',
+      'testNodeNamePreservesPrefix',
+      'testDataExtractsAtomicValues',
+      'testNilledReportsTrue',
+      'testStaticBaseUriReflectsDocument',
+      'testDefaultCollationIsCodepoint'
+   },
+   init = function(ScriptFolder)
+      mSys.DeleteFile(glBaseFolder)
+      ensureFolder(glBaseFolder)
+
+      writeFile(glBaseFolder .. 'primary.xml', table.concat({
+         '<?xml version="1.0"?>',
+         '<root xml:base="nested/">',
+         '   <ns:child xmlns:ns="urn:test" xml:base="entries/">',
+         '      <ns:leaf xml:base="leaf.xml" code="alpha">Alpha</ns:leaf>',
+         '   </ns:child>',
+         '   <nilExample xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>',
+         '   <values>',
+         '      <item code="alpha">Alpha</item>',
+         '      <item code="bravo">Bravo</item>',
+         '   </values>',
+         '</root>'
+      }))
+
+      glAccessorXML = obj.new('xml', { path = glBaseFolder .. 'primary.xml' })
+   end,
+   cleanup = function()
+      mSys.DeleteFile(glBaseFolder)
+      glAccessorXML = nil
+   end
+}
