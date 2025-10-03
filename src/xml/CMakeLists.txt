@@ -46,6 +46,7 @@ flute_test (${MOD}_xpath2_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath
 flute_test (${MOD}_xpath2_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_qname.fluid")
 flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_documents.fluid")
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
+# flute_test (${MOD}_xpath2_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_accessor.fluid")
 
 if (INSTALL_TESTS)
    add_executable (test_xml_count_debug "tests/test_count_debug.cpp")
