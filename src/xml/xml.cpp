@@ -66,10 +66,12 @@ validation instead.
 #include <format>
 #include <functional>
 #include <sstream>
+#include <vector>
 #include "../link/unicode.h"
 #include "xml.h"
 #include "schema/schema_parser.h"
 #include "schema/type_checker.h"
+#include "uri_utils.h"
 
 JUMPTABLE_CORE
 
@@ -78,6 +80,78 @@ static uint32_t glTagID = 1;
 
 #include "unescape.cpp"
 #include "xml_functions.cpp"
+
+namespace
+{
+   [[nodiscard]] static bool attribute_is_xml_base(const XMLAttrib &Attribute)
+   {
+      if (Attribute.Name.empty()) return false;
+      return pf::iequals(Attribute.Name, "xml:base");
+   }
+
+   [[nodiscard]] static std::string document_base(extXML *Document)
+   {
+      if ((!Document) or (!Document->Path) or (!*Document->Path)) return std::string();
+      return xml::uri::normalise_uri_separators(std::string(Document->Path));
+   }
+
+   [[nodiscard]] static std::string resolve_inherited_base(extXML *Document, XMLTag *Parent)
+   {
+      if (!Document) return std::string();
+      if (!Parent) return document_base(Document);
+
+      if (auto cached = Document->findBaseURI(Parent->ID)) return *cached;
+
+      std::vector<std::string> chain;
+      for (XMLTag *current = Parent; current; ) {
+         for (size_t index = 1; index < current->Attribs.size(); ++index) {
+            const XMLAttrib &attrib = current->Attribs[index];
+            if (attribute_is_xml_base(attrib)) chain.push_back(attrib.Value);
+         }
+
+         if (!current->ParentID) break;
+         current = Document->getTag(current->ParentID);
+      }
+
+      std::string base = document_base(Document);
+      for (auto iterator = chain.rbegin(); iterator != chain.rend(); ++iterator) {
+         if (base.empty()) base = *iterator;
+         else base = xml::uri::resolve_relative_uri(*iterator, base);
+         base = xml::uri::normalise_uri_separators(std::move(base));
+      }
+
+      return base;
+   }
+
+   static void refresh_base_uris(extXML *Document, XMLTag &Node, const std::string &InheritedBase)
+   {
+      std::string node_base = InheritedBase;
+
+      for (size_t index = 1; index < Node.Attribs.size(); ++index) {
+         const XMLAttrib &attrib = Node.Attribs[index];
+         if (!attribute_is_xml_base(attrib)) continue;
+
+         std::string resolved;
+         if (attrib.Value.empty()) resolved = InheritedBase;
+         else if (InheritedBase.empty()) resolved = attrib.Value;
+         else resolved = xml::uri::resolve_relative_uri(attrib.Value, InheritedBase);
+
+         node_base = xml::uri::normalise_uri_separators(std::move(resolved));
+      }
+
+      Document->BaseURIMap[Node.ID] = node_base;
+
+      for (auto &child : Node.Children) refresh_base_uris(Document, child, node_base);
+   }
+
+   static void refresh_base_uris_for_insert(extXML *Document, TAGS &Inserted, XMLTag *Parent)
+   {
+      if ((!Document) or Inserted.empty()) return;
+
+      std::string inherited = resolve_inherited_base(Document, Parent);
+      for (auto &node : Inserted) refresh_base_uris(Document, node, inherited);
+   }
+}
 #include "xpath/xpath_ast.cpp"
 #include "xpath/xpath_axis.cpp"
 #include "xpath/xpath_parser.cpp"
@@ -832,6 +906,10 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
    if (insert.empty()) return ERR::NoData;
    auto result = insert[0].ID;
 
+   XMLTag *parent_scope = nullptr;
+   if ((Args->Where IS XMI::CHILD) or (Args->Where IS XMI::CHILD_END)) parent_scope = src;
+   else if (src->ParentID) parent_scope = Self->getTag(src->ParentID);
+
    if (Args->Where IS XMI::NEXT) {
       CURSOR it;
       if (auto tags = Self->getInsert(src, it)) {
@@ -860,6 +938,8 @@ static ERR XML_InsertXML(extXML *Self, struct xml::InsertXML *Args)
       else return log.warning(ERR::NotFound);
    }
    else return log.warning(ERR::Args);
+
+   refresh_base_uris_for_insert(Self, insert, parent_scope);
 
    Args->Result = result;
    Self->modified();
