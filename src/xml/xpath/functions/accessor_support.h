@@ -27,7 +27,13 @@ namespace xpath::accessor
 {
    struct NodeOrigin
    {
+      // `document` is a borrowed pointer to the owning extXML instance.  Callers can use it immediately without
+      // incurring shared ownership, which matches the historical behaviour of helpers that accepted raw document
+      // pointers.
       extXML * document = nullptr;
+      // `holder` keeps a shared_ptr alive when a node originates from a cached document that is not referenced by
+      // the current evaluation context.  When populated it ensures the document stays valid for the duration of the
+      // accessor operation.
       std::shared_ptr<extXML> holder;
    };
 

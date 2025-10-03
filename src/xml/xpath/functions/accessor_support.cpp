@@ -52,6 +52,62 @@ namespace xpath::accessor
          return Document->getTag(Node->ParentID);
       }
 
+      [[nodiscard]] static XMLTag * find_attribute_owner(extXML *Document, const XMLAttrib *Attribute)
+      {
+         if ((!Document) or (!Attribute)) return nullptr;
+
+         auto &map = Document->getMap();
+         for (auto &entry : map) {
+            XMLTag *candidate = entry.second;
+            if (!candidate) continue;
+
+            for (auto &attrib : candidate->Attribs) {
+               const XMLAttrib *attrib_ptr = &attrib;
+               if (attrib_ptr IS Attribute) return candidate;
+            }
+         }
+
+         return nullptr;
+      }
+
+      [[nodiscard]] static XMLTag * resolve_attribute_scope(const XPathContext &Context, XMLTag *NodeHint,
+         const XMLAttrib *Attribute, extXML *&Document)
+      {
+         if (!Attribute) return NodeHint;
+
+         if (NodeHint) {
+            for (auto &attrib : NodeHint->Attribs) {
+               const XMLAttrib *attrib_ptr = &attrib;
+               if (attrib_ptr IS Attribute) return NodeHint;
+            }
+         }
+
+         auto locate_in_document = [&](extXML *Candidate) -> XMLTag *
+         {
+            if (!Candidate) return nullptr;
+            XMLTag *owner = find_attribute_owner(Candidate, Attribute);
+            if (owner) {
+               Document = Candidate;
+               return owner;
+            }
+            return nullptr;
+         };
+
+         if (Document) {
+            if (auto owner = locate_in_document(Document)) return owner;
+         }
+
+         if (Context.document) {
+            if (auto owner = locate_in_document(Context.document)) return owner;
+
+            for (auto &entry : Context.document->DocumentCache) {
+               if (auto owner = locate_in_document(entry.second.get())) return owner;
+            }
+         }
+
+         return NodeHint;
+      }
+
       [[nodiscard]] static std::shared_ptr<xml::schema::ElementDescriptor> find_element_descriptor(extXML *Document,
          std::string_view Name)
       {
@@ -153,31 +209,38 @@ namespace xpath::accessor
    std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node,
       const XMLAttrib *AttributeNode)
    {
-      (void)AttributeNode;
+      NodeOrigin origin = locate_node_document(Context, Node);
+      extXML *document = origin.document ? origin.document : Context.document;
+
+      if (AttributeNode) {
+         Node = resolve_attribute_scope(Context, Node, AttributeNode, document);
+
+         if (Node) {
+            NodeOrigin owner_origin = locate_node_document(Context, Node);
+            if (owner_origin.document) document = owner_origin.document;
+         }
+      }
 
       if (!Node) {
-         auto base = document_path(Context.document);
+         auto base = document_path(document ? document : Context.document);
          if (base.has_value()) return normalise_uri_separators(*base);
          return std::nullopt;
       }
 
-      NodeOrigin origin = locate_node_document(Context, Node);
-      extXML *document = origin.document ? origin.document : Context.document;
+      if (!document) {
+         NodeOrigin owner_origin = locate_node_document(Context, Node);
+         if (owner_origin.document) document = owner_origin.document;
+         else document = Context.document;
+      }
 
       std::vector<std::string> chain;
-      bool first_iteration = true;
       for (XMLTag *current = Node; current; ) {
-         XMLTag *parent = parent_for_node(document, current);
-         bool skip_xml_base = first_iteration and (!parent);
-
-         if (!skip_xml_base) {
-            for (size_t index = 1; index < current->Attribs.size(); ++index) {
-               const XMLAttrib &attrib = current->Attribs[index];
-               if (attribute_is_xml_base(attrib)) chain.push_back(attrib.Value);
-            }
+         for (size_t index = 1; index < current->Attribs.size(); ++index) {
+            const XMLAttrib &attrib = current->Attribs[index];
+            if (attribute_is_xml_base(attrib)) chain.push_back(attrib.Value);
          }
 
-         first_iteration = false;
+         XMLTag *parent = parent_for_node(document, current);
          if (!parent) break;
          current = parent;
       }
