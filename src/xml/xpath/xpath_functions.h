@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -181,6 +182,7 @@ class XPathFunctionLibrary {
    private:
    ankerl::unordered_dense::map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
    void register_core_functions();
+   void register_function(std::string_view Name, XPathFunction Func);
    const XPathFunction * find_function(std::string_view Name) const;
 
    // Size estimation helpers for string operations
@@ -188,13 +190,15 @@ class XPathFunctionLibrary {
    static size_t estimate_normalize_space_size(const std::string &Input);
    static size_t estimate_translate_size(const std::string &Source, const std::string &From);
 
-   public:
    XPathFunctionLibrary();
+
+   public:
+   static const XPathFunctionLibrary & instance();
+
    ~XPathFunctionLibrary() = default;
 
    bool has_function(std::string_view Name) const;
    XPathValue call_function(std::string_view Name, const std::vector<XPathValue> &Args, const XPathContext &Context) const;
-   void register_function(std::string_view Name, XPathFunction Func);
 
    // Core XPath 1.0 functions
    static XPathValue function_last(const std::vector<XPathValue> &Args, const XPathContext &Context);

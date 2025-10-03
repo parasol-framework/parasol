@@ -1691,6 +1691,18 @@ XPathFunctionLibrary::XPathFunctionLibrary() {
    register_core_functions();
 }
 
+const XPathFunctionLibrary & XPathFunctionLibrary::instance()
+{
+   static std::once_flag initialise_flag;
+   static std::unique_ptr<XPathFunctionLibrary> shared_library;
+
+   std::call_once(initialise_flag, []() {
+      shared_library = std::make_unique<XPathFunctionLibrary>();
+   });
+
+   return *shared_library;
+}
+
 void XPathFunctionLibrary::register_core_functions() {
    // Node Set Functions
    register_function("last", function_last);

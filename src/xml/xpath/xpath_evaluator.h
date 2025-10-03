@@ -19,7 +19,6 @@ class XPathEvaluator {
 
    private:
    extXML * xml;
-   XPathFunctionLibrary function_library;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
