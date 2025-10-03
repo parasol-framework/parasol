@@ -90,18 +90,42 @@ static size_t glMaxWriteLen = 16 * 1024;
 //********************************************************************************************************************
 // Prototypes for internal methods
 
-#ifdef __linux__
-static void client_connect(HOSTHANDLE, APTR);
-#endif
-
-static void netsocket_incoming(SOCKET_HANDLE, extNetSocket *);
-static void netsocket_outgoing(SOCKET_HANDLE, extNetSocket *);
-static void server_incoming_from_client(HOSTHANDLE, extClientSocket *);
-static void clientsocket_outgoing(HOSTHANDLE, extClientSocket *);
 static void free_client(extNetSocket *, objNetClient *);
-static void server_accept_client(SOCKET_HANDLE, extNetSocket *);
 static void free_socket(extNetSocket *);
 static CSTRING netsocket_state(NTC Value);
+
+// Implementation functions that take HOSTHANDLE
+static void netsocket_incoming_impl(HOSTHANDLE, extNetSocket *);
+static void netsocket_outgoing_impl(HOSTHANDLE, extNetSocket *);
+static void netsocket_connect_impl(HOSTHANDLE, extNetSocket *);
+static void server_accept_client_impl(HOSTHANDLE, extNetSocket *);
+static void server_incoming_from_client_impl(HOSTHANDLE, extClientSocket *);
+static void clientsocket_outgoing_impl(HOSTHANDLE, extClientSocket *);
+
+// Wrappers for RegisterFD
+static void netsocket_incoming(HOSTHANDLE FD, APTR Data) {
+   netsocket_incoming_impl(FD, (extNetSocket *)Data);
+}
+
+static void netsocket_outgoing(HOSTHANDLE FD, APTR Data) {
+   netsocket_outgoing_impl(FD, (extNetSocket *)Data);
+}
+
+static void netsocket_connect(HOSTHANDLE FD, APTR Data) {
+   netsocket_connect_impl(FD, (extNetSocket *)Data);
+}
+
+static void server_accept_client(HOSTHANDLE FD, APTR Data) {
+   server_accept_client_impl(FD, (extNetSocket *)Data);
+}
+
+static void server_incoming_from_client(HOSTHANDLE FD, APTR Data) {
+   server_incoming_from_client_impl(FD, (extClientSocket *)Data);
+}
+
+static void clientsocket_outgoing(HOSTHANDLE FD, APTR Data) {
+   clientsocket_outgoing_impl(FD, (extClientSocket *)Data);
+}
 
 //********************************************************************************************************************
 
@@ -235,7 +259,7 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       return;
    }
 
-   log.msg("Received callback on DNS resolution.  Handle: %d", Socket->Handle);
+   log.msg("Received callback on DNS resolution.  Handle: %d", Socket->Handle.int_value());
 
    // Start connect()
 
@@ -322,13 +346,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             }
 
             Socket->setState(NTC::CONNECTING);
-            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
-            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_connect, Socket);
          }
          else {
             log.trace("IPv6 connect() successful.");
             Socket->setState(NTC::CONNECTED);
-            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
          }
       #endif
       return;
@@ -365,13 +389,13 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
             }
 
             Socket->setState(NTC::CONNECTING);
-            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
-            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_connect, Socket);
          }
          else {
             log.trace("IPv4-mapped IPv6 connect() successful.");
             Socket->setState(NTC::CONNECTED);
-            RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
+            RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
          }
          return;
       #elif _WIN32
@@ -423,17 +447,17 @@ static void connect_name_resolved(extNetSocket *Socket, ERR Error, const std::st
       }
 
       Socket->setState(NTC::CONNECTING);
-      RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
+      RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
 
       // The write queue will be signalled once the connection process is completed.
 
-      RegisterFD((HOSTHANDLE)Socket->Handle, RFD::WRITE|RFD::SOCKET, &client_connect, Socket);
+      RegisterFD(Socket->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_connect, Socket);
    }
    else {
       log.trace("connect() successful.");
 
       Socket->setState(NTC::CONNECTED);
-      RegisterFD((HOSTHANDLE)Socket->Handle, RFD::READ|RFD::SOCKET, (void (*)(HOSTHANDLE, APTR))&netsocket_incoming, Socket);
+      RegisterFD(Socket->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Socket);
    }
 
 #elif _WIN32
@@ -464,7 +488,7 @@ static ERR connect_timeout_handler(OBJECTPTR Subscriber, int64_t TimeElapsed, in
       return ERR::Terminate;
    }
 
-   if (socket->Handle != NOHANDLE) free_socket(socket);
+   if (socket->Handle.is_valid()) free_socket(socket);
 
    // Cancel DNS resolution if in progress
    if (socket->NetLookup) { FreeResource(socket->NetLookup); socket->NetLookup = nullptr; }
@@ -745,7 +769,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    pf::Log log;
    ERR error;
 
-   if (Self->Handle != NOHANDLE) return ERR::Okay; // The socket has been pre-configured by the developer
+   if (Self->Handle.is_valid()) return ERR::Okay; // The socket has been pre-configured by the developer
 
    if ((Self->Flags & NSF::UDP) != NSF::NIL) { // Set UDP-specific defaults
       if (!Self->MaxPacketSize) Self->MaxPacketSize = 65507; // Standard UDP max packet size
@@ -766,7 +790,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    int socket_type = ((Self->Flags & NSF::UDP) != NSF::NIL) ? SOCK_DGRAM : SOCK_STREAM;
    int protocol = ((Self->Flags & NSF::UDP) != NSF::NIL) ? IPPROTO_UDP : IPPROTO_TCP;
 
-   if ((Self->Handle = socket(PF_INET6, socket_type, protocol)) != NOHANDLE) {
+   if (auto sock = socket(PF_INET6, socket_type, protocol); sock != -1) {
+      Self->Handle = SocketHandle(sock);
       Self->IPV6 = true;
 
       // Enable dual-stack mode (accept both IPv4 and IPv6)
@@ -780,7 +805,8 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
          setsockopt(Self->Handle, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
       }
    }
-   else if ((Self->Handle = socket(PF_INET, socket_type, protocol)) != NOHANDLE) {
+   else if (auto sock = socket(PF_INET, socket_type, protocol); sock != -1) {
+      Self->Handle = SocketHandle(sock);
       Self->IPV6 = false;
 
       if ((Self->Flags & NSF::UDP) IS NSF::NIL) { // TCP-specific options
@@ -809,7 +835,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    bool is_ipv6;
    bool is_udp = ((Self->Flags & NSF::UDP) != NSF::NIL);
    Self->Handle = win_socket_ipv6(Self, true, false, is_ipv6, is_udp);
-   if (Self->Handle IS NOHANDLE) return ERR::SystemCall;
+   if (Self->Handle.is_invalid()) return ERR::SystemCall;
    Self->IPV6 = is_ipv6;
 
 #endif
@@ -881,10 +907,10 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             if ((result = bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                if ((Self->Flags & NSF::UDP) IS NSF::NIL) { // TCP server - needs listen()
                   listen(Self->Handle, Self->Backlog);
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_accept_client), Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &server_accept_client, Self);
                }
                else { // UDP server - just register for data reception
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Self);
                }
                return ERR::Okay;
             }
@@ -956,10 +982,10 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
             if ((result = bind(Self->Handle, (struct sockaddr *)&addr, sizeof(addr))) != -1) {
                if ((Self->Flags & NSF::UDP) IS NSF::NIL) { // TCP server - needs listen()
                   listen(Self->Handle, Self->Backlog);
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&server_accept_client), Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &server_accept_client, Self);
                }
                else { // UDP server - just register for data reception
-                  RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Self);
                }
                return ERR::Okay;
             }
@@ -999,7 +1025,7 @@ static ERR NETSOCKET_Init(extNetSocket *Self)
    else if ((Self->Flags & NSF::UDP) != NSF::NIL) {
       // UDP client sockets need to be registered for incoming data on Linux
       #ifdef __linux__
-      RegisterFD((HOSTHANDLE)Self->Handle, RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+      RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, &netsocket_incoming, Self);
       #endif
       return ERR::Okay;
    }
@@ -1195,7 +1221,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
       return ERR::NoSupport;
    }
 
-   if (Self->Handle IS NOHANDLE) return log.warning(ERR::Disconnected);
+   if (Self->Handle.is_invalid()) return log.warning(ERR::Disconnected);
 
    Self->ReadCalled = true;
    Args->Result = 0;
@@ -1249,7 +1275,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 
                       log.msg("SSL socket handshake requested by server.");
                       Self->HandshakeStatus = SHS::WRITE;
-                      RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(ssl_handshake_write<extNetSocket>), Self);
+                      RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write_netsocket, Self);
                       return ERR::Okay;
 
                    case SSL_ERROR_SYSCALL:
@@ -1276,7 +1302,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
             // For this reason we set the RECALL flag so that we can be called again manually when we know that there is
             // data pending.
 
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::RECALL|RFD::READ|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_incoming), Self);
+            RegisterFD(Self->Handle.hosthandle(), RFD::RECALL|RFD::READ|RFD::SOCKET, &netsocket_incoming, Self);
          }
 
          return ERR::Okay;
@@ -1339,7 +1365,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
       return ERR::NoSupport;
    }
 
-   if ((Self->Handle IS NOHANDLE) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
+   if ((Self->Handle.is_invalid()) or (Self->State != NTC::CONNECTED)) { // Queue the write prior to server connection
       log.trace("Saving %d bytes to queue.", Args->Length);
       Self->WriteQueue.write(Args->Buffer, std::min<size_t>(Args->Length, Self->MsgLimit));
       return ERR::Okay;
@@ -1366,7 +1392,7 @@ static ERR NETSOCKET_Write(extNetSocket *Self, struct acWrite *Args)
          log.trace("Error: '%s', queuing %d/%d bytes for transfer...", GetErrorMsg(error), Args->Length - len, Args->Length);
          Self->WriteQueue.write((int8_t *)Args->Buffer + len, std::min<size_t>(Args->Length - len, Self->MsgLimit));
          #ifdef __linux__
-            RegisterFD((HOSTHANDLE)Self->Handle, RFD::WRITE|RFD::SOCKET, reinterpret_cast<void (*)(HOSTHANDLE, APTR)>(&netsocket_outgoing), Self);
+            RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, &netsocket_outgoing, Self);
          #elif _WIN32
             win_socketstate(Self->Handle, std::nullopt, true);
          #endif
