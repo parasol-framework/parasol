@@ -539,7 +539,6 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<
    std::shared_ptr<std::string> text;
    if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathValue(std::vector<XMLTag *>());
 
-   std::vector<XMLTag *> nodes;
    std::vector<std::string> lines;
 
    size_t start = 0;
@@ -555,6 +554,7 @@ XPathValue XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<
       if (start > text->length()) lines.emplace_back(std::string());
    }
 
+   std::vector<XMLTag *> nodes(lines.size(), nullptr);
    return XPathValue(nodes, std::nullopt, lines);
 }
 

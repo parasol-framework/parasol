@@ -103,7 +103,8 @@ class AxisEvaluator {
 
    // Helper methods for tag lookup
    void build_id_cache();
-   XMLTag * find_tag_by_id(int ID);
+   extXML * find_document_for_node(XMLTag *Node);
+   XMLTag * find_tag_by_id(XMLTag *ReferenceNode, int ID);
 
    public:
    explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}
