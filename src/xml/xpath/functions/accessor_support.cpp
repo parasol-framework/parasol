@@ -235,9 +235,13 @@ namespace xpath::accessor
 
       std::vector<std::string> chain;
       for (XMLTag *current = Node; current; ) {
+         bool skip_current_xml_base = (current->ParentID IS 0) and (current IS Node) and (!AttributeNode);
+
          for (size_t index = 1; index < current->Attribs.size(); ++index) {
             const XMLAttrib &attrib = current->Attribs[index];
-            if (attribute_is_xml_base(attrib)) chain.push_back(attrib.Value);
+            if (!attribute_is_xml_base(attrib)) continue;
+            if (skip_current_xml_base) continue;
+            chain.push_back(attrib.Value);
          }
 
          XMLTag *parent = parent_for_node(document, current);
