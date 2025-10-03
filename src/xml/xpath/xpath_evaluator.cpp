@@ -19,6 +19,7 @@
 // independently of XML parsing.
 
 #include "xpath_evaluator.h"
+#include "xpath_functions.h"
 #include "xpath_axis.h"
 #include "../schema/schema_types.h"
 
@@ -3333,7 +3334,7 @@ XPathValue XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uin
       return XPathValue(text_nodes, first_value);
    }
 
-   return function_library.call_function(function_name, args, context);
+   return XPathFunctionLibrary::instance().call_function(function_name, args, context);
 }
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
@@ -3418,4 +3419,3 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
    }
    else return ERR::Okay;
 }
-
