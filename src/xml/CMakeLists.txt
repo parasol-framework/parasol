@@ -44,6 +44,7 @@ flute_test (${MOD}_xpath_string_uri "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpat
 flute_test (${MOD}_xpath2_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_duration.fluid")
 flute_test (${MOD}_xpath2_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_datetime.fluid")
 flute_test (${MOD}_xpath2_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_qname.fluid")
+flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_documents.fluid")
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
 
 if (INSTALL_TESTS)
