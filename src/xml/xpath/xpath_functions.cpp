@@ -1814,9 +1814,14 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("namespace-uri", function_namespace_uri);
    register_function("name", function_name);
 
-   // Accessor Functions (Phase 9)
-   // TODO(PHASE9): Register fn:base-uri, fn:data, fn:document-uri, fn:node-name, fn:nilled, fn:static-base-uri, and
-   // fn:default-collation once the implementations move beyond stubs.
+   // Accessor Functions
+   register_function("base-uri", function_base_uri);
+   register_function("data", function_data);
+   register_function("document-uri", function_document_uri);
+   register_function("node-name", function_node_name);
+   register_function("nilled", function_nilled);
+   register_function("static-base-uri", function_static_base_uri);
+   register_function("default-collation", function_default_collation);
 
    // QName Functions
    register_function("QName", function_QName);

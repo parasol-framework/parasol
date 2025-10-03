@@ -2,14 +2,9 @@
 // XPath Accessor Support Utilities
 //
 // These helpers centralise the document and schema lookups required by accessor-style XPath functions.  The
-// existing document functions in func_documents.cpp expose similar logic but rely on internal static helpers.  During
-// the phase 9 implementation we will migrate those routines into this shared layer so base-uri(), document-uri(), and
-// related accessors can operate consistently whether a node originates from the primary document tree or a cached
-// external resource.
-//
-// The helpers are intentionally declared here without concrete implementations yet.  Each function documents the
-// precise responsibilities it will fulfil once phase 9 reaches the implementation stage.  Keeping the contracts explicit
-// at this stage ensures subsequent patches can focus on behaviour rather than reverse-engineering requirements.
+// routines replicate the behaviour previously embedded inside func_documents.cpp so that the accessor
+// implementations can determine owning documents, resolve xml:base inheritance, and query schema metadata in a
+// consistent manner regardless of the source tree for a node.
 //********************************************************************************************************************
 
 #pragma once

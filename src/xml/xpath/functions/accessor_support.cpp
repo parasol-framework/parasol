@@ -1,91 +1,258 @@
 //********************************************************************************************************************
-// XPath Accessor Support Utilities - Placeholder Implementations
+// XPath Accessor Support Utilities
 //
-// These function bodies intentionally defer real logic until the phase 9 implementation lands.  Each TODO block
-// enumerates the concrete steps that will be applied so reviewers can validate the future approach before code is
-// written.
+// Shared helpers that offer document and schema discovery for accessor-style XPath functions.  The routines
+// consolidate logic that was previously embedded inside the document helper functions so that fn:base-uri(),
+// fn:document-uri(), fn:data(), fn:nilled() and related calls can reuse consistent behaviour regardless of the
+// source document for a node.
 //********************************************************************************************************************
 
 #include "accessor_support.h"
 
 #include "../xpath_functions.h"
 #include "../../xml.h"
+#include "../../schema/schema_parser.h"
+
+#include <parasol/strings.hpp>
+
+#include <algorithm>
+#include <format>
+#include <string_view>
 
 namespace xpath::accessor
 {
+   namespace
+   {
+      [[nodiscard]] static bool attribute_is_xml_base(const XMLAttrib &Attribute)
+      {
+         if (Attribute.Name.empty()) return false;
+         return pf::iequals(Attribute.Name, "xml:base");
+      }
+
+      [[nodiscard]] static std::string normalise_uri_separators(std::string Value)
+      {
+         std::replace(Value.begin(), Value.end(), '\\', '/');
+         return Value;
+      }
+
+      [[nodiscard]] static std::optional<std::string> document_path(extXML *Document)
+      {
+         if (!Document) return std::nullopt;
+
+         std::string path = Document->Path;
+         if (!path.empty()) return path;
+
+         return std::nullopt;
+      }
+
+      [[nodiscard]] static XMLTag * parent_for_node(extXML *Document, XMLTag *Node)
+      {
+         if ((!Document) or (!Node)) return nullptr;
+         if (Node->ParentID IS 0) return nullptr;
+         return Document->getTag(Node->ParentID);
+      }
+
+      [[nodiscard]] static std::shared_ptr<xml::schema::ElementDescriptor> find_element_descriptor(extXML *Document,
+         std::string_view Name)
+      {
+         if ((!Document) or (!Document->SchemaContext)) return nullptr;
+
+         auto &context = *Document->SchemaContext;
+
+         auto lookup = context.elements.find(std::string(Name));
+         if (lookup != context.elements.end()) return lookup->second;
+
+         auto local = std::string(xml::schema::extract_local_name(Name));
+         lookup = context.elements.find(local);
+         if (lookup != context.elements.end()) return lookup->second;
+
+         if (!context.target_namespace_prefix.empty()) {
+            std::string qualified = std::format("{}:{}", context.target_namespace_prefix, local);
+            lookup = context.elements.find(qualified);
+            if (lookup != context.elements.end()) return lookup->second;
+         }
+
+         return nullptr;
+      }
+
+      [[nodiscard]] static std::shared_ptr<xml::schema::SchemaTypeDescriptor> resolve_type_descriptor(
+         const XPathContext &Context, extXML *Document, const std::string &TypeName)
+      {
+         if (TypeName.empty()) return nullptr;
+
+         if ((Document) and Document->SchemaContext) {
+            auto &types = Document->SchemaContext->types;
+            auto iter = types.find(TypeName);
+            if (iter != types.end()) return iter->second;
+
+            auto local = std::string(xml::schema::extract_local_name(TypeName));
+            iter = types.find(local);
+            if (iter != types.end()) return iter->second;
+         }
+
+         if (!Context.schema_registry) return nullptr;
+
+         if (auto descriptor = Context.schema_registry->find_descriptor(TypeName)) return descriptor;
+
+         auto local = std::string(xml::schema::extract_local_name(TypeName));
+         return Context.schema_registry->find_descriptor(local);
+      }
+
+      [[nodiscard]] static bool attribute_matches_nil(const XMLAttrib &Attribute, XMLTag *Scope, extXML *Document)
+      {
+         if (Attribute.Name.empty()) return false;
+
+         std::string_view name(Attribute.Name);
+         auto colon = name.find(':');
+         if (colon IS std::string::npos) return false;
+
+         std::string prefix(name.substr(0, colon));
+         std::string local(name.substr(colon + 1));
+
+         if (!pf::iequals(local, "nil")) return false;
+
+         if (pf::iequals(prefix, "xml")) return false;
+         if (pf::iequals(prefix, "xmlns")) return false;
+
+         std::string uri;
+         if (Document) uri = find_in_scope_namespace(Scope, Document, prefix);
+         if (uri.empty()) return false;
+
+         return pf::iequals(uri, "http://www.w3.org/2001/XMLSchema-instance");
+      }
+   }
+
    NodeOrigin locate_node_document(const XPathContext &Context, XMLTag *Node)
    {
       NodeOrigin origin;
+      if (!Node) return origin;
 
-      // TODO(PHASE9):
-      // 1. Reuse the existing locate_document_for_node() logic from func_documents.cpp by moving it into this helper.
-      // 2. When the node belongs to the active Context.document, record the pointer without creating a holder.
-      // 3. When the node originates from Context.document->DocumentNodeOwners, copy the shared_ptr so the caller keeps
-      //    the cached document alive while resolving metadata such as document-uri().
-      // 4. Return the populated NodeOrigin so accessor functions can access owner metadata without duplicating lookups.
+      if (Context.document) {
+         auto &map = Context.document->getMap();
+         auto it = map.find(Node->ID);
+         if ((it != map.end()) and (it->second IS Node)) {
+            origin.document = Context.document;
+            return origin;
+         }
+      }
 
-      (void)Context;
-      (void)Node;
+      if (Context.document) {
+         auto entry = Context.document->DocumentNodeOwners.find(Node);
+         if (entry != Context.document->DocumentNodeOwners.end()) {
+            if (auto doc = entry->second.lock()) {
+               origin.document = doc.get();
+               origin.holder = doc;
+               return origin;
+            }
+         }
+      }
+
       return origin;
    }
 
-   std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node, const XMLAttrib *AttributeNode)
+   std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node,
+      const XMLAttrib *AttributeNode)
    {
-      // TODO(PHASE9):
-      // 1. Start from the supplied node (or attribute owner) and walk up the ancestor chain collecting xml:base attributes.
-      // 2. Resolve each xml:base value against the previously accumulated absolute URI using ResolvePath semantics so
-      //    relative fragments are interpreted in the correct order.
-      // 3. When no xml:base is present, fall back to the owning document path obtained through locate_node_document().
-      // 4. Normalise the final URI (convert backslashes, collapse ./ segments) so fn:base-uri() delivers stable output.
-      // 5. Return std::nullopt when no base URI information is available rather than an empty string.
-
-      (void)Context;
-      (void)Node;
       (void)AttributeNode;
+
+      if (!Node) {
+         auto base = document_path(Context.document);
+         if (base.has_value()) return normalise_uri_separators(*base);
+         return std::nullopt;
+      }
+
+      NodeOrigin origin = locate_node_document(Context, Node);
+      extXML *document = origin.document ? origin.document : Context.document;
+
+      std::vector<std::string> chain;
+      bool first_iteration = true;
+      for (XMLTag *current = Node; current; ) {
+         XMLTag *parent = parent_for_node(document, current);
+         bool skip_xml_base = first_iteration and (!parent);
+
+         if (!skip_xml_base) {
+            for (size_t index = 1; index < current->Attribs.size(); ++index) {
+               const XMLAttrib &attrib = current->Attribs[index];
+               if (attribute_is_xml_base(attrib)) chain.push_back(attrib.Value);
+            }
+         }
+
+         first_iteration = false;
+         if (!parent) break;
+         current = parent;
+      }
+
+      std::optional<std::string> base = document_path(document);
+
+      for (auto iterator = chain.rbegin(); iterator != chain.rend(); ++iterator) {
+         if (base.has_value()) base = resolve_relative_uri(*iterator, *base);
+         else base = *iterator;
+      }
+
+      if (base.has_value()) return normalise_uri_separators(*base);
       return std::nullopt;
    }
 
    std::optional<std::string> resolve_document_uri(const XPathContext &Context, XMLTag *Node)
    {
-      // TODO(PHASE9):
-      // 1. Use locate_node_document() to determine whether the node belongs to the primary document or a cached secondary
-      //    document.
-      // 2. Prefer the parsed document URI stored on extXML::Path when available, ensuring ResolvePath is applied to convert
-      //    relative references into absolute URIs.
-      // 3. Support string: URIs by returning them verbatim so fn:document-uri() mirrors the behaviour of fn:doc().
-      // 4. If no URI is known (for example, a dynamically constructed tree), return std::nullopt to signal an empty sequence.
+      if (!Node) return std::nullopt;
 
-      (void)Context;
-      (void)Node;
+      NodeOrigin origin = locate_node_document(Context, Node);
+      extXML *document = origin.document;
+      if (!document) return std::nullopt;
+
+      if (auto path = document_path(document)) return normalise_uri_separators(*path);
+
+      if (!Context.document) return std::nullopt;
+
+      for (const auto &entry : Context.document->DocumentCache) {
+         if (entry.second.get() IS document) return entry.first;
+      }
+
       return std::nullopt;
    }
 
    std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,
       const XMLAttrib *AttributeNode)
    {
-      // TODO(PHASE9):
-      // 1. If Context.schema_registry is null, immediately return nullptr so fn:data() falls back to string semantics.
-      // 2. Query the registry for element/attribute type descriptors using node QName + schema context stored on extXML.
-      // 3. When the schema marks the node as having a typed value, retain the descriptor in the shared_ptr so repeated
-      //    lookups by fn:data() do not duplicate registry searches.
-      // 4. Ensure attribute nodes use AttributeNode when provided, otherwise derive the attribute pointer from Node.
+      if (!Context.schema_registry) return nullptr;
+      if (!Node) return nullptr;
+      if (AttributeNode) return nullptr;
+      if (Node->Attribs.empty()) return nullptr;
+      if (Node->Attribs[0].Name.empty()) return nullptr;
 
-      (void)Context;
-      (void)Node;
-      (void)AttributeNode;
+      NodeOrigin origin = locate_node_document(Context, Node);
+      extXML *document = origin.document ? origin.document : Context.document;
+      if ((!document) or (!document->SchemaContext)) return nullptr;
+
+      auto descriptor = find_element_descriptor(document, Node->Attribs[0].Name);
+      if (!descriptor) return nullptr;
+
+      if (descriptor->type) return descriptor->type;
+
+      if (!descriptor->type_name.empty()) {
+         if (auto resolved = resolve_type_descriptor(Context, document, descriptor->type_name)) return resolved;
+      }
+
       return nullptr;
    }
 
    bool is_element_explicitly_nilled(const XPathContext &Context, XMLTag *Node)
    {
-      // TODO(PHASE9):
-      // 1. If the node is not an element, immediately return false so fn:nilled() can produce the empty sequence.
-      // 2. Inspect the node's attributes for xsi:nil values, accounting for namespace prefixes recorded on the element.
-      // 3. Accept "true"/"1" as true and "false"/"0" as false in accordance with XML Schema boolean parsing rules.
-      // 4. When schema metadata is available, combine the explicit xsi:nil flag with type information to validate the state.
+      if ((!Node) or Node->Attribs.empty()) return false;
+      if (Node->Attribs[0].Name.empty()) return false;
 
-      (void)Context;
-      (void)Node;
+      NodeOrigin origin = locate_node_document(Context, Node);
+      extXML *document = origin.document ? origin.document : Context.document;
+
+      for (size_t index = 1; index < Node->Attribs.size(); ++index) {
+         const XMLAttrib &attrib = Node->Attribs[index];
+         if (!attribute_matches_nil(attrib, Node, document)) continue;
+
+         auto parsed = parse_schema_boolean(attrib.Value);
+         if (parsed.has_value()) return parsed.value();
+      }
+
       return false;
    }
 }

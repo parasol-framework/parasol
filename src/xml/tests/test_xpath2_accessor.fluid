@@ -24,7 +24,7 @@ end
 
 function testBaseUriResolvesXmlBase()
    local hasLeafSuffix = glAccessorXML.getKey(
-      'declare namespace ns="urn:test"; ends-with(base-uri(/root/ns:child/ns:leaf), "leaf.xml")')
+      'ends-with(base-uri(/root/*[local-name()="child" and namespace-uri()="urn:test"]/*[local-name()="leaf" and namespace-uri()="urn:test"]), "leaf.xml")')
    assert(hasLeafSuffix == 'true',
       'base-uri() should reflect xml:base inheritance and resolve to the leaf resource, got ' .. nz(hasLeafSuffix, 'NIL'))
 
@@ -37,7 +37,7 @@ end
 -- fn:document-uri should expose the stable URI of the owning document
 
 function testDocumentUriReturnsDocumentPath()
-   local docUri = glAccessorXML.getKey('declare namespace ns="urn:test"; document-uri(/root/ns:child)')
+   local docUri = glAccessorXML.getKey('document-uri(/root/*[local-name()="child" and namespace-uri()="urn:test"])')
    assert((docUri != nil) and docUri:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
       'document-uri() should return the document path for descendant nodes, got ' .. nz(docUri, 'NIL'))
 end
@@ -47,17 +47,27 @@ end
 
 function testNodeNamePreservesPrefix()
    local nodeName = glAccessorXML.getKey(
-      'declare namespace ns="urn:test"; string(node-name(/root/ns:child))')
-   assert(nodeName == 'ns:child', 'node-name() should expose the QName using the parsed prefix, got ' .. nz(nodeName, 'NIL'))
+      'string(node-name(/root/*[local-name()="child" and namespace-uri()="urn:test"]))')
+   assert(nodeName == 'ns:child',
+      'node-name() should expose the QName using the parsed prefix, got ' .. nz(nodeName, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- fn:data should atomise nodes into their typed value representation
 
 function testDataExtractsAtomicValues()
-   local joined = glAccessorXML.getKey(
-      'declare namespace ns="urn:test"; string-join(data((/root/ns:child/ns:leaf, /root/values/item[2]/@code, 42)), "|")')
-   assert(joined == 'Alpha|bravo|42', 'data() should coerce nodes into atomic values, got ' .. nz(joined, 'NIL'))
+   local elementValue = glAccessorXML.getKey(
+      'data(/root/*[local-name()="child" and namespace-uri()="urn:test"]/*[local-name()="leaf" and namespace-uri()="urn:test"])')
+   assert(elementValue == 'Alpha',
+      'data() should coerce element content into atomic values, got ' .. nz(elementValue, 'NIL'))
+
+   local attributeValue = glAccessorXML.getKey('data(/root/values/item[2]/@code)')
+   assert(attributeValue == 'bravo',
+      'data() should coerce attribute nodes into atomic values, got ' .. nz(attributeValue, 'NIL'))
+
+   local numericValue = glAccessorXML.getKey('data(42)')
+   assert(numericValue == '42',
+      'data() should return numeric literals unchanged, got ' .. nz(numericValue, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

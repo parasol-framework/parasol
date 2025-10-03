@@ -73,6 +73,13 @@ void XPathTokenizer::initialize_interned_strings() {
    interned_strings["floor"] = "floor";
    interned_strings["ceiling"] = "ceiling";
    interned_strings["round"] = "round";
+   interned_strings["base-uri"] = "base-uri";
+   interned_strings["data"] = "data";
+   interned_strings["document-uri"] = "document-uri";
+   interned_strings["node-name"] = "node-name";
+   interned_strings["nilled"] = "nilled";
+   interned_strings["static-base-uri"] = "static-base-uri";
+   interned_strings["default-collation"] = "default-collation";
 }
 
 bool XPathTokenizer::is_alpha(char c) const {
