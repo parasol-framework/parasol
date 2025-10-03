@@ -1814,6 +1814,15 @@ void XPathFunctionLibrary::register_core_functions() {
    register_function("namespace-uri", function_namespace_uri);
    register_function("name", function_name);
 
+   // Accessor Functions
+   register_function("base-uri", function_base_uri);
+   register_function("data", function_data);
+   register_function("document-uri", function_document_uri);
+   register_function("node-name", function_node_name);
+   register_function("nilled", function_nilled);
+   register_function("static-base-uri", function_static_base_uri);
+   register_function("default-collation", function_default_collation);
+
    // QName Functions
    register_function("QName", function_QName);
    register_function("resolve-QName", function_resolve_QName);
@@ -2011,6 +2020,8 @@ size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, 
 //********************************************************************************************************************
 // Core XPath Function Implementations
 
+#include "functions/accessor_support.cpp"
+#include "functions/func_accessors.cpp"
 #include "functions/func_nodeset.cpp"
 #include "functions/func_documents.cpp"
 #include "functions/func_qnames.cpp"

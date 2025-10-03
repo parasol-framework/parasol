@@ -1,0 +1,202 @@
+//********************************************************************************************************************
+// XPath Accessor Functions
+//
+// Implements XPath 2.0 accessor helpers (base-uri, data, document-uri, node-name, nilled, static-base-uri and
+// default-collation) by combining the shared document/schema utilities in accessor_support.cpp with the
+// sequence-building helpers declared in xpath_functions.cpp.
+//********************************************************************************************************************
+
+#include <parasol/modules/xml.h>
+
+#include "accessor_support.h"
+#include "../xpath_functions.h"
+#include "../../xml.h"
+
+XPathValue XPathFunctionLibrary::function_base_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   XMLTag *target_node = nullptr;
+   const XMLAttrib *target_attribute = nullptr;
+
+   if (Args.empty()) {
+      target_node = Context.context_node;
+      target_attribute = Context.attribute_node;
+   }
+   else if (Args[0].type IS XPathValueType::NodeSet) {
+      const XPathValue &value = Args[0];
+      if (!value.node_set_attributes.empty()) target_attribute = value.node_set_attributes[0];
+      if (!value.node_set.empty()) target_node = value.node_set[0];
+   }
+   else return XPathValue(std::vector<XMLTag *>());
+
+   auto base = xpath::accessor::build_base_uri_chain(Context, target_node, target_attribute);
+   if (!base.has_value()) return XPathValue(std::vector<XMLTag *>());
+
+   return XPathValue(*base);
+}
+
+XPathValue XPathFunctionLibrary::function_data(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   const XPathValue *sequence_value = nullptr;
+   XPathValue context_value;
+
+   if (Args.empty()) {
+      if (Context.attribute_node) {
+         context_value.type = XPathValueType::NodeSet;
+         context_value.node_set.push_back(Context.context_node);
+         context_value.node_set_attributes.push_back(Context.attribute_node);
+         sequence_value = &context_value;
+      }
+      else if (Context.context_node) {
+         std::vector<XMLTag *> nodes = { Context.context_node };
+         context_value = XPathValue(nodes);
+         sequence_value = &context_value;
+      }
+      else return XPathValue(std::vector<XMLTag *>());
+   }
+   else sequence_value = &Args[0];
+
+   size_t length = sequence_length(*sequence_value);
+   if (length IS 0u) return XPathValue(std::vector<XMLTag *>());
+
+   SequenceBuilder builder;
+
+   for (size_t index = 0u; index < length; ++index) {
+      XPathValue item = extract_sequence_item(*sequence_value, index);
+
+      if (item.type IS XPathValueType::NodeSet) {
+         XMLTag *node = item.node_set.empty() ? nullptr : item.node_set[0];
+         const XMLAttrib *attribute = item.node_set_attributes.empty() ? nullptr : item.node_set_attributes[0];
+
+         if (attribute) {
+            append_value_to_sequence(XPathValue(attribute->Value), builder);
+            continue;
+         }
+
+         if (node) {
+            auto descriptor = xpath::accessor::infer_schema_type(Context, node, attribute);
+            std::string node_value = XPathValue::node_string_value(node);
+
+            if (descriptor) {
+               XPathValue base_value(node_value);
+               XPathValue coerced = descriptor->coerce_value(base_value, descriptor->schema_type);
+               append_value_to_sequence(coerced, builder);
+            }
+            else append_value_to_sequence(XPathValue(node_value), builder);
+
+            continue;
+         }
+
+         if (!item.node_set_string_values.empty()) {
+            append_value_to_sequence(XPathValue(item.node_set_string_values[0]), builder);
+            continue;
+         }
+
+         continue;
+      }
+
+      if (item.is_empty()) continue;
+
+      append_value_to_sequence(item, builder);
+   }
+
+   return make_sequence_value(std::move(builder));
+}
+
+XPathValue XPathFunctionLibrary::function_document_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   XMLTag *target_node = nullptr;
+
+   if (Args.empty()) target_node = Context.context_node;
+   else if (Args[0].type IS XPathValueType::NodeSet) {
+      if (!Args[0].node_set.empty()) target_node = Args[0].node_set[0];
+   }
+   else return XPathValue(std::vector<XMLTag *>());
+
+   auto uri = xpath::accessor::resolve_document_uri(Context, target_node);
+   if (!uri.has_value()) return XPathValue(std::vector<XMLTag *>());
+
+   return XPathValue(*uri);
+}
+
+XPathValue XPathFunctionLibrary::function_node_name(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   XMLTag *target_node = nullptr;
+   const XMLAttrib *target_attribute = nullptr;
+
+   if (Args.empty()) {
+      target_node = Context.context_node;
+      target_attribute = Context.attribute_node;
+   }
+   else if (Args[0].type IS XPathValueType::NodeSet) {
+      const XPathValue &value = Args[0];
+      if (!value.node_set_attributes.empty()) target_attribute = value.node_set_attributes[0];
+      if (!value.node_set.empty()) target_node = value.node_set[0];
+   }
+   else return XPathValue(std::vector<XMLTag *>());
+
+   if (target_attribute) {
+      if (target_attribute->Name.empty()) return XPathValue(std::vector<XMLTag *>());
+      return XPathValue(target_attribute->Name);
+   }
+
+   if ((!target_node) or target_node->Attribs.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   std::string name = target_node->Attribs[0].Name;
+   if (name.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   return XPathValue(name);
+}
+
+XPathValue XPathFunctionLibrary::function_nilled(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   XMLTag *target_node = nullptr;
+
+   if (Args.empty()) target_node = Context.context_node;
+   else if (Args[0].type IS XPathValueType::NodeSet) {
+      if (!Args[0].node_set.empty()) target_node = Args[0].node_set[0];
+   }
+   else return XPathValue(std::vector<XMLTag *>());
+
+   if ((!target_node) or target_node->Attribs.empty()) return XPathValue(std::vector<XMLTag *>());
+   if (target_node->Attribs[0].Name.empty()) return XPathValue(std::vector<XMLTag *>());
+
+   bool nilled = xpath::accessor::is_element_explicitly_nilled(Context, target_node);
+   return XPathValue(nilled);
+}
+
+XPathValue XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   (void)Args;
+
+   XMLTag *target_node = Context.context_node;
+   const XMLAttrib *target_attribute = Context.attribute_node;
+
+   if (!target_node and Context.document) {
+      for (auto &tag : Context.document->Tags) {
+         if ((tag.Flags & XTF::INSTRUCTION) != XTF::NIL) continue;
+         target_node = &tag;
+         break;
+      }
+   }
+
+   auto base = xpath::accessor::build_base_uri_chain(Context, target_node, target_attribute);
+   if (!base.has_value()) {
+      if (Context.document) {
+         std::string path = Context.document->Path;
+         if (!path.empty()) base = path;
+      }
+   }
+
+   if (!base.has_value()) return XPathValue(std::vector<XMLTag *>());
+
+   return XPathValue(*base);
+}
+
+XPathValue XPathFunctionLibrary::function_default_collation(const std::vector<XPathValue> &Args, const XPathContext &Context)
+{
+   (void)Args;
+   (void)Context;
+
+   return XPathValue(std::string("http://www.w3.org/2005/xpath-functions/collation/codepoint"));
+}
+

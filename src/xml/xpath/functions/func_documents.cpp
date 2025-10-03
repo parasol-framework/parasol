@@ -7,6 +7,7 @@
 
 #include "../xpath_functions.h"
 #include "../../xml.h"
+#include "accessor_support.h"
 
 #include <algorithm>
 #include <cctype>
@@ -181,33 +182,6 @@ static bool read_text_resource(extXML *Owner, const std::string &URI, const std:
 }
 
 //*********************************************************************************************************************
-// Locate the document that owns a given node, if any.
-
-static extXML * locate_document_for_node(const XPathContext &Context, XMLTag *Node, std::shared_ptr<extXML> *Holder)
-{
-   if (!Node) return nullptr;
-
-   if (Context.document) {
-      auto &map = Context.document->getMap();
-      if (auto it = map.find(Node->ID); (it != map.end()) and (it->second IS Node)) {
-         if (Holder) Holder->reset();
-         return Context.document;
-      }
-   }
-
-   if (Context.document) {
-      auto entry = Context.document->DocumentNodeOwners.find(Node);
-      if (entry != Context.document->DocumentNodeOwners.end()) {
-         if (auto doc = entry->second.lock(); doc) {
-            if (Holder) *Holder = doc;
-            return doc.get();
-         }
-      }
-   }
-
-   return nullptr;
-}
-
 //*********************************************************************************************************************
 // Locate the root node of the document containing a given node.
 
@@ -329,8 +303,9 @@ XPathValue XPathFunctionLibrary::function_root(const std::vector<XPathValue> &Ar
 
    if (!node) return XPathValue(std::vector<XMLTag *>());
 
-   std::shared_ptr<extXML> holder;
-   extXML *document = locate_document_for_node(Context, node, &holder);
+   xpath::accessor::NodeOrigin origin = xpath::accessor::locate_node_document(Context, node);
+   std::shared_ptr<extXML> holder = origin.holder;
+   extXML *document = origin.document;
    if (!document) return XPathValue(std::vector<XMLTag *>());
 
    XMLTag *root = locate_root_node(document, node);
