@@ -267,7 +267,7 @@ static ERR PROXY_Find(extProxy *Self, struct prx::Find *Args)
 
    const std::lock_guard<std::recursive_mutex> lock(glProxyMutex);
 
-   if (auto config = get_proxy_config()) {
+   if (auto config [[maybe_unused]] = get_proxy_config()) {
       #ifdef _WIN32
          // Remove existing host proxy settings
          ConfigGroups *groups;

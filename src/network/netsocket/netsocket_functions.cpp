@@ -496,7 +496,7 @@ static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 
    // Remove the write callback
 
-   RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::REMOVE, &netsocket_connect_impl, nullptr);
+   RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::REMOVE, &netsocket_connect, Self);
 
    #ifndef DISABLE_SSL
    if ((Self->SSLHandle) and (!result)) {
