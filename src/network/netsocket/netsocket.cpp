@@ -90,14 +90,42 @@ static size_t glMaxWriteLen = 16 * 1024;
 //********************************************************************************************************************
 // Prototypes for internal methods
 
-static void netsocket_incoming(SocketHandle, extNetSocket *);
-static void netsocket_outgoing(SocketHandle, extNetSocket *);
-static void server_incoming_from_client(SocketHandle, extClientSocket *);
-static void clientsocket_outgoing(SocketHandle, extClientSocket *);
 static void free_client(extNetSocket *, objNetClient *);
-static void server_accept_client(SocketHandle, extNetSocket *);
 static void free_socket(extNetSocket *);
 static CSTRING netsocket_state(NTC Value);
+
+// Implementation functions that take HOSTHANDLE
+static void netsocket_incoming_impl(HOSTHANDLE, extNetSocket *);
+static void netsocket_outgoing_impl(HOSTHANDLE, extNetSocket *);
+static void netsocket_connect_impl(HOSTHANDLE, extNetSocket *);
+static void server_accept_client_impl(HOSTHANDLE, extNetSocket *);
+static void server_incoming_from_client_impl(HOSTHANDLE, extClientSocket *);
+static void clientsocket_outgoing_impl(HOSTHANDLE, extClientSocket *);
+
+// Wrappers for RegisterFD
+static void netsocket_incoming(HOSTHANDLE FD, APTR Data) {
+   netsocket_incoming_impl(FD, (extNetSocket *)Data);
+}
+
+static void netsocket_outgoing(HOSTHANDLE FD, APTR Data) {
+   netsocket_outgoing_impl(FD, (extNetSocket *)Data);
+}
+
+static void netsocket_connect(HOSTHANDLE FD, APTR Data) {
+   netsocket_connect_impl(FD, (extNetSocket *)Data);
+}
+
+static void server_accept_client(HOSTHANDLE FD, APTR Data) {
+   server_accept_client_impl(FD, (extNetSocket *)Data);
+}
+
+static void server_incoming_from_client(HOSTHANDLE FD, APTR Data) {
+   server_incoming_from_client_impl(FD, (extClientSocket *)Data);
+}
+
+static void clientsocket_outgoing(HOSTHANDLE FD, APTR Data) {
+   clientsocket_outgoing_impl(FD, (extClientSocket *)Data);
+}
 
 //********************************************************************************************************************
 
@@ -1247,7 +1275,7 @@ static ERR NETSOCKET_Read(extNetSocket *Self, struct acRead *Args)
 
                       log.msg("SSL socket handshake requested by server.");
                       Self->HandshakeStatus = SHS::WRITE;
-                      RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write<extNetSocket>, Self);
+                      RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write_netsocket, Self);
                       return ERR::Okay;
 
                    case SSL_ERROR_SYSCALL:

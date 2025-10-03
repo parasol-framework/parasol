@@ -109,7 +109,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
 
                   log.msg("SSL socket handshake requested by server.");
                   Self->HandshakeStatus = SHS::WRITE;
-                  RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write<extClientSocket>, Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::WRITE|RFD::SOCKET, ssl_handshake_write_clientsocket, Self);
                   return ERR::Okay;
 
                case SSL_ERROR_SYSCALL:
@@ -173,7 +173,7 @@ static ERR receive_from_client(extClientSocket *Self, APTR Buffer, size_t Buffer
 //********************************************************************************************************************
 // Data has arrived from a client's socket handle.
 
-static void server_incoming_from_client(SocketHandle Handle, extClientSocket *client)
+static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocket *client)
 {
    pf::Log log(__FUNCTION__);
    if (!client->Client) return;
@@ -245,7 +245,7 @@ static void server_incoming_from_client(SocketHandle Handle, extClientSocket *cl
    Server->InUse++;
    client->ReadCalled = false;
 
-   log.traceBranch("Handle: %d, Socket: %d, Client: %d", Handle.int_value(), Server->UID, client->UID);
+   log.traceBranch("Handle: %d, Socket: %d, Client: %d", SocketFD, Server->UID, client->UID);
 
    auto error = ERR::Okay;
    if (Server->Incoming.defined()) {
@@ -280,7 +280,7 @@ static void server_incoming_from_client(SocketHandle Handle, extClientSocket *cl
 // no data is being written to the queue, the program will not be able to sleep until the client stops listening
 // to the write queue.
 
-static void clientsocket_outgoing(SocketHandle Void, extClientSocket *ClientSocket)
+static void clientsocket_outgoing_impl(HOSTHANDLE SocketFD, extClientSocket *ClientSocket)
 {
    pf::Log log(__FUNCTION__);
    auto Server = (extNetSocket *)(ClientSocket->Client->Owner);

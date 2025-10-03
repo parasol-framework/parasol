@@ -210,13 +210,13 @@ void win32_netresponse(OBJECTPTR SocketObject, SOCKET_HANDLE Handle, int Message
 // Called when a server socket handle detects a new client wanting to connect to it.
 // Used by Win32 (Windows message loop) & Linux (FD hook)
 
-static void server_accept_client(SocketHandle FD, extNetSocket *Self)
+static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
    uint8_t ip[8];
    SocketHandle clientfd;
 
-   log.traceBranch("FD: %d", FD.int_value());
+   log.traceBranch("FD: %d", SocketFD);
 
    pf::SwitchContext context(Self);
 
@@ -249,7 +249,7 @@ static void server_accept_client(SocketHandle FD, extNetSocket *Self)
          // For dual-stack sockets, use sockaddr_storage to handle both IPv4 and IPv6
          struct sockaddr_storage addr_storage;
          socklen_t len = sizeof(addr_storage);
-         clientfd = accept(FD, (struct sockaddr *)&addr_storage, &len);
+         clientfd = accept(SocketFD, (struct sockaddr *)&addr_storage, &len);
          if (clientfd.is_invalid()) return;
 
          int nodelay = 1;
@@ -327,7 +327,7 @@ static void server_accept_client(SocketHandle FD, extNetSocket *Self)
 
       #ifdef __linux__
          socklen_t len = sizeof(addr);
-         clientfd = accept(FD, (struct sockaddr *)&addr, &len);
+         clientfd = accept(SocketFD, (struct sockaddr *)&addr, &len);
 
          if (clientfd.is_valid()) {
             int nodelay = 1;
@@ -482,7 +482,7 @@ static void free_client(extNetSocket *Socket, objNetClient *Client)
 // See win32_netresponse() for the Windows version.
 
 #ifdef __linux__
-static void netsocket_connect(SocketHandle Void, extNetSocket *Self)
+static void netsocket_connect_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -492,7 +492,7 @@ static void netsocket_connect(SocketHandle Void, extNetSocket *Self)
 
    int result = EHOSTUNREACH; // Default error in case getsockopt() fails
    socklen_t optlen = sizeof(result);
-   getsockopt(Self->Handle, SOL_SOCKET, SO_ERROR, &result, &optlen);
+   getsockopt(SocketFD, SOL_SOCKET, SO_ERROR, &result, &optlen);
 
    // Remove the write callback
 
@@ -549,7 +549,7 @@ static void netsocket_connect(SocketHandle Void, extNetSocket *Self)
 //
 // This function is called from win32_netresponse() and is managed outside of the normal message queue.
 
-static void netsocket_incoming(SocketHandle FD, extNetSocket *Self)
+static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 
@@ -605,12 +605,12 @@ static void netsocket_incoming(SocketHandle FD, extNetSocket *Self)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle %d", Self->UID, FD.int_value());
+      log.trace("[NetSocket:%d] Recursion detected on handle %d", Self->UID, SocketFD);
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: %d", Self->UID, FD.int_value());
+   log.traceBranch("[NetSocket:%d] Socket: %d", Self->UID, SocketFD);
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -651,7 +651,7 @@ restart:
    }
 
    if (error IS ERR::Terminate) {
-      log.traceBranch("Socket %d will be terminated.", FD.int_value());
+      log.traceBranch("Socket %d will be terminated.", SocketFD);
       if (Self->Handle.is_valid()) free_socket(Self);
    }
    else if (Self->IncomingRecursion > 1) {
@@ -686,7 +686,7 @@ restart:
 //
 // Called from either the Windows messaging logic or a Linux FD subscription.
 
-static void netsocket_outgoing(SocketHandle Void, extNetSocket *Self)
+static void netsocket_outgoing_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 {
    pf::Log log(__FUNCTION__);
 

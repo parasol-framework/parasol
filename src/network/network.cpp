@@ -224,24 +224,6 @@ DEFINE_ENUM_FLAG_OPERATORS(SHS)
       close(Handle);
    }
 
-#elif _WIN32
-   #include "win32/winsockwrappers.h"
-
-   #include <string.h>
-
-   #define htons win_htons
-   #define htonl win_htonl
-   #define ntohs win_ntohs
-   #define ntohl win_ntohl
-
-   // Forward declarations for getaddrinfo functions (available in ws2_32.lib)
-   extern "C" {
-      int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
-      void freeaddrinfo(struct addrinfo *res);
-   }
-
-#else
-   #error "No support for this platform"
 // For Linux, create a simple wrapper that behaves like an int but with methods
 class SocketHandle {
 private:
@@ -267,6 +249,21 @@ public:
 
    SocketHandle& operator=(int sock) { socket_val = sock; return *this; }
 };
+#elif _WIN32
+   #include "win32/winsockwrappers.h"
+
+   #include <string.h>
+
+   #define htons win_htons
+   #define htonl win_htonl
+   #define ntohs win_ntohs
+   #define ntohl win_ntohl
+
+   // Forward declarations for getaddrinfo functions (available in ws2_32.lib)
+   extern "C" {
+      int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
+      void freeaddrinfo(struct addrinfo *res);
+   }
 #endif
 
 class extClientSocket : public objClientSocket {
@@ -490,7 +487,6 @@ static std::string glCertPath;
 
 //********************************************************************************************************************
 
-static void netsocket_incoming(SocketHandle, extNetSocket *);
 static ERR resolve_name_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 static ERR resolve_addr_receiver(APTR Custom, MSGID MsgID, int MsgType, APTR Message, int MsgSize);
 
@@ -972,7 +968,7 @@ static ERR send_data(T *Self, CPTR Buffer, size_t *Length)
                case SSL_ERROR_WANT_READ:
                   log.trace("Handshake requested by server.");
                   Self->HandshakeStatus = SHS::READ;
-                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, ssl_handshake_read<extNetSocket>, Self);
+                  RegisterFD(Self->Handle.hosthandle(), RFD::READ|RFD::SOCKET, ssl_handshake_read_netsocket, Self);
                   return ERR::Okay;
 
                case SSL_ERROR_SYSCALL:
