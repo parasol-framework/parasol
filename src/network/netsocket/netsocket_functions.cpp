@@ -216,7 +216,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    uint8_t ip[8];
    SocketHandle clientfd;
 
-   log.traceBranch("FD: %d", SocketFD);
+   log.traceBranch("FD: %" PRId64, int64_t(SocketFD));
 
    pf::SwitchContext context(Self);
 
@@ -287,7 +287,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          int family;
          struct sockaddr_storage addr_storage;
          int len = sizeof(addr_storage);
-         clientfd = win_accept_ipv6(Self, FD, (struct sockaddr *)&addr_storage, &len, &family);
+         clientfd = win_accept_ipv6(Self, WSW_SOCKET((uintptr_t)SocketFD), (struct sockaddr *)&addr_storage, &len, &family);
          if (clientfd IS NOHANDLE) return;
 
          if (family IS AF_INET6) { // IPv6 connection
@@ -335,7 +335,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
          }
       #elif _WIN32
          int len = sizeof(addr);
-         clientfd = win_accept(Self, FD, (struct sockaddr *)&addr, &len);
+         clientfd = win_accept(Self, WSW_SOCKET((uintptr_t)SocketFD), (struct sockaddr *)&addr, &len);
       #endif
 
       if (clientfd.is_invalid()) {
@@ -605,12 +605,12 @@ static void netsocket_incoming_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
 #endif
 
    if (Self->IncomingRecursion) {
-      log.trace("[NetSocket:%d] Recursion detected on handle %d", Self->UID, SocketFD);
+      log.trace("[NetSocket:%d] Recursion detected on handle %" PRId64, Self->UID, int64_t(SocketFD));
       if (Self->IncomingRecursion < 2) Self->IncomingRecursion++; // Indicate that there is more data to be received
       return;
    }
 
-   log.traceBranch("[NetSocket:%d] Socket: %d", Self->UID, SocketFD);
+   log.traceBranch("[NetSocket:%d] Socket: %" PRId64, Self->UID, int64_t(SocketFD));
 
    Self->InUse++;
    Self->IncomingRecursion++;
@@ -651,7 +651,7 @@ restart:
    }
 
    if (error IS ERR::Terminate) {
-      log.traceBranch("Socket %d will be terminated.", SocketFD);
+      log.traceBranch("Socket % " PRId64 " will be terminated.", int64_t(SocketFD));
       if (Self->Handle.is_valid()) free_socket(Self);
    }
    else if (Self->IncomingRecursion > 1) {

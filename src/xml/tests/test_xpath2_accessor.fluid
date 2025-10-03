@@ -6,12 +6,6 @@
 local glBaseFolder = 'temp:xpath_accessor_tests/'
 local glAccessorXML = nil
 
-local function writeFile(path, content)
-   local file = obj.new('file', { path = path, flags = 'WRITE|NEW' })
-   file.acWrite(content)
-   file = nil
-end
-
 local function ensureFolder(path)
    local err = mSys.CreateFolder(path, 0)
    if (err != ERR_Okay) and (err != ERR_FileExists) then
@@ -112,7 +106,7 @@ return {
       mSys.DeleteFile(glBaseFolder)
       ensureFolder(glBaseFolder)
 
-      writeFile(glBaseFolder .. 'primary.xml', table.concat({
+      file.writeAll(glBaseFolder .. 'primary.xml', table.concat({
          '<?xml version="1.0"?>',
          '<root xml:base="nested/">',
          '   <ns:child xmlns:ns="urn:test" xml:base="entries/">',

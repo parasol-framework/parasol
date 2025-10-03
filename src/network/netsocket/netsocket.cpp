@@ -97,7 +97,9 @@ static CSTRING netsocket_state(NTC Value);
 // Implementation functions that take HOSTHANDLE
 static void netsocket_incoming_impl(HOSTHANDLE, extNetSocket *);
 static void netsocket_outgoing_impl(HOSTHANDLE, extNetSocket *);
+#ifdef __linux__
 static void netsocket_connect_impl(HOSTHANDLE, extNetSocket *);
+#endif
 static void server_accept_client_impl(HOSTHANDLE, extNetSocket *);
 static void server_incoming_from_client_impl(HOSTHANDLE, extClientSocket *);
 static void clientsocket_outgoing_impl(HOSTHANDLE, extClientSocket *);
@@ -110,11 +112,11 @@ static void netsocket_incoming(HOSTHANDLE FD, APTR Data) {
 static void netsocket_outgoing(HOSTHANDLE FD, APTR Data) {
    netsocket_outgoing_impl(FD, (extNetSocket *)Data);
 }
-
+#ifdef __linux__
 static void netsocket_connect(HOSTHANDLE FD, APTR Data) {
    netsocket_connect_impl(FD, (extNetSocket *)Data);
 }
-
+#endif
 static void server_accept_client(HOSTHANDLE FD, APTR Data) {
    server_accept_client_impl(FD, (extNetSocket *)Data);
 }

@@ -245,7 +245,7 @@ static void server_incoming_from_client_impl(HOSTHANDLE SocketFD, extClientSocke
    Server->InUse++;
    client->ReadCalled = false;
 
-   log.traceBranch("Handle: %d, Socket: %d, Client: %d", SocketFD, Server->UID, client->UID);
+   log.traceBranch("Handle: %" PRId64 ", Socket: %d, Client: %d", int64_t(SocketFD), Server->UID, client->UID);
 
    auto error = ERR::Okay;
    if (Server->Incoming.defined()) {
