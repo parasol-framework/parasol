@@ -156,7 +156,6 @@ namespace
 #include "xpath/xpath_axis.cpp"
 #include "xpath/xpath_parser.cpp"
 #include "xpath/xpath_evaluator.h"
-#include "xpath/xpath_evaluator.cpp"
 
 static ERR add_xml_class(void);
 static ERR SET_Statement(extXML *, CSTRING);

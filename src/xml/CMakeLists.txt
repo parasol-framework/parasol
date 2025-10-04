@@ -13,6 +13,9 @@ target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
 
 add_library (xml_xpath_functions OBJECT
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_common.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_context.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_value.cpp")
 target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
