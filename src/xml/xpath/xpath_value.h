@@ -27,8 +27,8 @@ namespace xml::schema
    enum class SchemaType;
    class SchemaTypeDescriptor;
    class SchemaTypeRegistry;
-   SchemaType schema_type_for_xpath(XPathValueType);
-   bool is_numeric(SchemaType);
+   [[nodiscard]] SchemaType schema_type_for_xpath(XPathValueType) noexcept;
+   [[nodiscard]] bool is_numeric(SchemaType) noexcept;
    SchemaTypeRegistry & registry();
 }
 
