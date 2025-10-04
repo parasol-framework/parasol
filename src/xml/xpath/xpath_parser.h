@@ -7,46 +7,13 @@
 
 #pragma once
 
-//********************************************************************************************************************
-// XPath Tokenizer
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
-class XPathTokenizer {
-   private:
-   std::string_view input;
-   size_t position;
-   size_t length;
-
-   // String interning for frequently used identifiers
-   static ankerl::unordered_dense::map<std::string_view, std::string> interned_strings;
-   static void initialize_interned_strings();
-
-   // Character classification
-   [[nodiscard]] inline bool is_alpha(char c) const;
-   [[nodiscard]] inline bool is_digit(char c) const;
-   [[nodiscard]] inline bool is_alnum(char c) const;
-   [[nodiscard]] inline bool is_whitespace(char c) const;
-   [[nodiscard]] inline bool is_name_start_char(char c) const;
-   [[nodiscard]] inline bool is_name_char(char c) const;
-
-   // Token extraction methods
-   XPathToken scan_identifier();
-   XPathToken scan_number();
-   XPathToken scan_string(char QuoteChar);
-   XPathToken scan_operator();
-
-   // Lookahead and utility
-   [[nodiscard]] inline char peek(size_t offset = 0) const;
-   inline void skip_whitespace();
-   [[nodiscard]] inline bool match(std::string_view Str);
-
-   public:
-   XPathTokenizer() : position(0), length(0) {}
-
-   std::vector<XPathToken> tokenize(std::string_view XPath);
-   bool has_more() const;
-   [[nodiscard]]  char current() const;
-   void advance();
-};
+#include "xpath_ast.h"
+#include "xpath_tokenizer.h"
 
 //********************************************************************************************************************
 // XPath Parser

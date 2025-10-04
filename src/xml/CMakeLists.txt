@@ -12,7 +12,9 @@ target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
 
-add_library (xml_xpath_functions OBJECT "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp")
+add_library (xml_xpath_functions OBJECT
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_value.cpp")
 target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
 target_compile_definitions (xml_xpath_functions PRIVATE "MOD_NAME=${MOD}" "MOD_NAMESPACE=Xml")
 set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
@@ -20,6 +22,7 @@ add_dependencies (xml_xpath_functions build_headers)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_tokenizer.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp"
