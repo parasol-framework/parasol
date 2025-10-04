@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
@@ -164,18 +165,46 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
 
+   auto saved_context = context;
+   auto saved_context_stack = context_stack;
+   auto saved_cursor_stack = cursor_stack;
+
+   struct ContextRestorer
+   {
+      XPathEvaluator *evaluator;
+      XPathContext previous_context;
+      std::vector<XPathContext> previous_context_stack;
+      std::vector<CursorState> previous_cursor_stack;
+
+      ~ContextRestorer()
+      {
+         if (!evaluator) return;
+         evaluator->context = previous_context;
+         evaluator->context_stack = std::move(previous_context_stack);
+         evaluator->cursor_stack = std::move(previous_cursor_stack);
+      }
+   } restorer{ this, saved_context, saved_context_stack, saved_cursor_stack };
+
    context_stack.clear();
    cursor_stack.clear();
    expression_unsupported = false;
 
-   context.context_node = nullptr;
-   context.attribute_node = nullptr;
-   context.position = 1;
-   context.size = 1;
-   context.document = xml;
+   bool has_external_context = (saved_context.context_node != nullptr) or (saved_context.attribute_node != nullptr);
 
-   if (!xml->Tags.empty()) push_context(&xml->Tags[0], 1, 1);
-   else push_context(nullptr, 1, 1);
+   if (has_external_context) {
+      context = saved_context;
+      if (!context.document) context.document = xml;
+   }
+   else {
+      context.context_node = nullptr;
+      context.attribute_node = nullptr;
+      context.position = 1;
+      context.size = 1;
+      context.document = xml;
+
+      if (!xml->Tags.empty()) push_context(&xml->Tags[0], 1, 1);
+      else push_context(nullptr, 1, 1);
+   }
 
    auto ast = CompiledPath.getAST();
    auto value = evaluate_expression(ast, CurrentPrefix);
