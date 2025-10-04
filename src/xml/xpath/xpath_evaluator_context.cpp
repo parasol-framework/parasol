@@ -24,14 +24,36 @@ namespace {
 
 class ContextGuard {
    private:
-   XPathEvaluator & evaluator;
+   XPathEvaluator * evaluator;
    bool active;
 
    public:
    ContextGuard(XPathEvaluator &Evaluator, XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
-      : evaluator(Evaluator), active(true)
+      : evaluator(&Evaluator), active(true)
    {
-      evaluator.push_context(Node, Position, Size, Attribute);
+      evaluator->push_context(Node, Position, Size, Attribute);
+   }
+
+   ContextGuard(ContextGuard &&Other) noexcept
+      : evaluator(Other.evaluator), active(Other.active)
+   {
+      Other.evaluator = nullptr;
+      Other.active = false;
+   }
+
+   ContextGuard & operator=(ContextGuard &&Other) noexcept
+   {
+      if (this IS &Other) return *this;
+
+      if (active and evaluator) evaluator->pop_context();
+
+      evaluator = Other.evaluator;
+      active = Other.active;
+
+      Other.evaluator = nullptr;
+      Other.active = false;
+
+      return *this;
    }
 
    ContextGuard(const ContextGuard &) = delete;
@@ -39,20 +61,42 @@ class ContextGuard {
 
    ~ContextGuard()
    {
-      if (active) evaluator.pop_context();
+      if (active and evaluator) evaluator->pop_context();
    }
 };
 
 class CursorGuard {
    private:
-   XPathEvaluator & evaluator;
+   XPathEvaluator * evaluator;
    bool active;
 
    public:
    explicit CursorGuard(XPathEvaluator &Evaluator)
-      : evaluator(Evaluator), active(true)
+      : evaluator(&Evaluator), active(true)
    {
-      evaluator.push_cursor_state();
+      evaluator->push_cursor_state();
+   }
+
+   CursorGuard(CursorGuard &&Other) noexcept
+      : evaluator(Other.evaluator), active(Other.active)
+   {
+      Other.evaluator = nullptr;
+      Other.active = false;
+   }
+
+   CursorGuard & operator=(CursorGuard &&Other) noexcept
+   {
+      if (this IS &Other) return *this;
+
+      if (active and evaluator) evaluator->pop_cursor_state();
+
+      evaluator = Other.evaluator;
+      active = Other.active;
+
+      Other.evaluator = nullptr;
+      Other.active = false;
+
+      return *this;
    }
 
    CursorGuard(const CursorGuard &) = delete;
@@ -60,7 +104,7 @@ class CursorGuard {
 
    ~CursorGuard()
    {
-      if (active) evaluator.pop_cursor_state();
+      if (active and evaluator) evaluator->pop_cursor_state();
    }
 };
 
