@@ -29,6 +29,8 @@ class XPathEvaluator {
       const XMLAttrib * attribute = nullptr;
    };
 
+   using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
+
    struct CursorState {
       objXML::TAGS * tags;
       size_t index;
@@ -52,6 +54,20 @@ class XPathEvaluator {
    XPathValue evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    XPathValue evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
+      const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches);
+   ERR apply_predicates_to_candidates(const std::vector<const XPathNode *> &PredicateNodes,
+      uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer);
+   ERR process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
+      bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate);
+
+   PredicateResult dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
+      uint32_t CurrentPrefix);
+   const std::unordered_map<std::string_view, PredicateHandler> &predicate_handler_map() const;
+   PredicateResult handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t CurrentPrefix);
+   PredicateResult handle_attribute_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix);
+   PredicateResult handle_content_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix);
 
    std::string build_ast_signature(const XPathNode *Node) const;
 
