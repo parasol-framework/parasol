@@ -625,6 +625,51 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
    return ERR::Okay;
 }
 
+ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
+{
+   ShouldTerminate = false;
+   if (!Node) return ERR::Okay;
+
+   auto tags = xml->getInsert(Node, xml->Cursor);
+   if (!tags) return ERR::Okay;
+
+   xml->CursorTags = tags;
+
+   if (Attribute) xml->Attrib = Attribute->Name;
+   else xml->Attrib.clear();
+
+   if (!xml->Callback.defined()) {
+      Matched = true;
+      ShouldTerminate = true;
+      return ERR::Okay;
+   }
+
+   push_cursor_state();
+
+   ERR callback_error = ERR::Okay;
+   if (xml->Callback.isC()) {
+      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+      callback_error = routine(xml, Node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+   }
+   else if (xml->Callback.isScript()) {
+      if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+         { "XML",  xml, FD_OBJECTPTR },
+         { "Tag",  Node->ID },
+         { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+      }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+   }
+   else callback_error = ERR::InvalidValue;
+
+   pop_cursor_state();
+
+   Matched = true;
+
+   if (callback_error IS ERR::Terminate) return ERR::Terminate;
+   if (callback_error != ERR::Okay) return callback_error;
+
+   return ERR::Okay;
+}
+
 ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
    bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate)
 {
@@ -647,44 +692,13 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
          }
 
          if (IsLastStep) {
-            auto tags = xml->getInsert(next_match.node, xml->Cursor);
-            if (!tags) {
-               pop_context();
-               continue;
-            }
-
-            xml->CursorTags = tags;
-            xml->Attrib = next_match.attribute->Name;
-
-            if (!xml->Callback.defined()) {
-               Matched = true;
-               pop_context();
-               ShouldTerminate = true;
-               return ERR::Okay;
-            }
-
-            push_cursor_state();
-            ERR callback_error = ERR::Okay;
-            if (xml->Callback.isC()) {
-               auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-               callback_error = routine(xml, next_match.node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-            }
-            else if (xml->Callback.isScript()) {
-               if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-                  { "XML",  xml, FD_OBJECTPTR },
-                  { "Tag",  next_match.node->ID },
-                  { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-               }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-            }
-            else callback_error = ERR::InvalidValue;
-
-            pop_cursor_state();
+            ShouldTerminate = false;
+            auto callback_error = invoke_callback(next_match.node, next_match.attribute, Matched, ShouldTerminate);
             pop_context();
-
-            Matched = true;
 
             if (callback_error IS ERR::Terminate) return ERR::Terminate;
             if (callback_error != ERR::Okay) return callback_error;
+            if (ShouldTerminate) return ERR::Okay;
 
             continue;
          }
@@ -700,44 +714,13 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
             continue;
          }
 
-         auto tags = xml->getInsert(candidate, xml->Cursor);
-         if (!tags) {
-            pop_context();
-            continue;
-         }
-
-         xml->CursorTags = tags;
-         xml->Attrib.clear();
-
-         if (!xml->Callback.defined()) {
-            Matched = true;
-            pop_context();
-            ShouldTerminate = true;
-            return ERR::Okay;
-         }
-
-         push_cursor_state();
-         ERR callback_error = ERR::Okay;
-         if (xml->Callback.isC()) {
-            auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-            callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-         }
-         else if (xml->Callback.isScript()) {
-            if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-               { "XML",  xml, FD_OBJECTPTR },
-               { "Tag",  candidate->ID },
-               { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-            }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-         }
-         else callback_error = ERR::InvalidValue;
-
-         pop_cursor_state();
+         ShouldTerminate = false;
+         auto callback_error = invoke_callback(candidate, nullptr, Matched, ShouldTerminate);
          pop_context();
-
-         Matched = true;
 
          if (callback_error IS ERR::Terminate) return ERR::Terminate;
          if (callback_error != ERR::Okay) return callback_error;
+         if (ShouldTerminate) return ERR::Okay;
 
          continue;
       }
@@ -3277,44 +3260,13 @@ ERR XPathEvaluator::process_expression_node_set(const XPathValue &Value)
          continue;
       }
 
-      auto tags = xml->getInsert(candidate, xml->Cursor);
-      if (!tags) {
-         pop_context();
-         continue;
-      }
-
-      xml->CursorTags = tags;
-      if (entry.attribute) xml->Attrib = entry.attribute->Name;
-      else xml->Attrib.clear();
-
-      if (!xml->Callback.defined()) {
-         pop_context();
-         return ERR::Okay;
-      }
-
-      push_cursor_state();
-
-      ERR callback_error = ERR::Okay;
-      if (xml->Callback.isC()) {
-         auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-         callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-      }
-      else if (xml->Callback.isScript()) {
-         if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-            { "XML",  xml, FD_OBJECTPTR },
-            { "Tag",  candidate->ID },
-            { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-         }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-      }
-      else callback_error = ERR::InvalidValue;
-
-      pop_cursor_state();
+      bool should_terminate = false;
+      auto callback_error = invoke_callback(candidate, entry.attribute, matched, should_terminate);
       pop_context();
-
-      matched = true;
 
       if (callback_error IS ERR::Terminate) return ERR::Terminate;
       if (callback_error != ERR::Okay) return callback_error;
+      if (should_terminate) return ERR::Okay;
    }
 
    xml->Attrib.clear();

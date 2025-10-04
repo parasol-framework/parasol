@@ -61,6 +61,7 @@ class XPathEvaluator {
       uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer);
    ERR process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
       bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate);
+   ERR invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate);
 
    PredicateResult dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
       uint32_t CurrentPrefix);
