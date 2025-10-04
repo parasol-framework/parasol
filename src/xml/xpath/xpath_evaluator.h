@@ -3,11 +3,16 @@
 
 #pragma once
 
-#include "xpath_arena.h"
-
 #include <string_view>
+#include <unordered_map>
+
+class extXML;
+
+#include "xpath_axis.h"
+#include "xpath_functions.h"
 
 struct XMLAttrib;
+class CompiledXPath;
 
 class XPathEvaluator {
    public:
@@ -32,7 +37,7 @@ class XPathEvaluator {
    using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
 
    struct CursorState {
-      objXML::TAGS * tags;
+      pf::vector<XMLTag> * tags;
       size_t index;
    };
 
