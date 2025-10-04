@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ankerl/unordered_dense.h>
-#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,9 +12,6 @@ class XPathTokenizer
    std::string_view input;
    size_t position;
    size_t length;
-
-   static ankerl::unordered_dense::map<std::string_view, std::string> interned_strings;
-   static void initialize_interned_strings();
 
    [[nodiscard]] bool is_alpha(char c) const;
    [[nodiscard]] bool is_digit(char c) const;
@@ -42,4 +37,3 @@ class XPathTokenizer
    [[nodiscard]] char current() const;
    void advance();
 };
-

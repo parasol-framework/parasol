@@ -134,7 +134,7 @@ bool XPathParser::has_errors() const
    return !errors.empty();
 }
 
-std::vector<std::string> XPathParser::get_errors() const
+const std::vector<std::string> & XPathParser::get_errors() const
 {
    return errors;
 }

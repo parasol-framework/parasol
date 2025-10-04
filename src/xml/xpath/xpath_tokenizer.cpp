@@ -2,70 +2,52 @@
 
 #include <parasol/main.h>
 
+#include <array>
 #include <cctype>
-#include <mutex>
+#include <ranges>
+#include <utility>
 
-ankerl::unordered_dense::map<std::string_view, std::string> XPathTokenizer::interned_strings;
+namespace {
 
-void XPathTokenizer::initialize_interned_strings()
-{
-   interned_strings["and"] = "and";
-   interned_strings["or"] = "or";
-   interned_strings["not"] = "not";
-   interned_strings["div"] = "div";
-   interned_strings["mod"] = "mod";
-   interned_strings["some"] = "some";
-   interned_strings["every"] = "every";
-   interned_strings["satisfies"] = "satisfies";
-   interned_strings["let"] = "let";
+struct KeywordMapping {
+   std::string_view text;
+   XPathTokenType type;
+};
 
-   interned_strings["node"] = "node";
-   interned_strings["text"] = "text";
-   interned_strings["comment"] = "comment";
-   interned_strings["processing-instruction"] = "processing-instruction";
+constexpr std::array keyword_mappings{
+   KeywordMapping{ "and", XPathTokenType::AND },
+   KeywordMapping{ "or", XPathTokenType::OR },
+   KeywordMapping{ "not", XPathTokenType::NOT },
+   KeywordMapping{ "div", XPathTokenType::DIVIDE },
+   KeywordMapping{ "mod", XPathTokenType::MODULO },
+   KeywordMapping{ "eq", XPathTokenType::EQ },
+   KeywordMapping{ "ne", XPathTokenType::NE },
+   KeywordMapping{ "lt", XPathTokenType::LT },
+   KeywordMapping{ "le", XPathTokenType::LE },
+   KeywordMapping{ "gt", XPathTokenType::GT },
+   KeywordMapping{ "ge", XPathTokenType::GE },
+   KeywordMapping{ "if", XPathTokenType::IF },
+   KeywordMapping{ "then", XPathTokenType::THEN },
+   KeywordMapping{ "else", XPathTokenType::ELSE },
+   KeywordMapping{ "for", XPathTokenType::FOR },
+   KeywordMapping{ "let", XPathTokenType::LET },
+   KeywordMapping{ "in", XPathTokenType::IN },
+   KeywordMapping{ "return", XPathTokenType::RETURN },
+   KeywordMapping{ "some", XPathTokenType::SOME },
+   KeywordMapping{ "every", XPathTokenType::EVERY },
+   KeywordMapping{ "satisfies", XPathTokenType::SATISFIES }
+};
 
-   interned_strings["child"] = "child";
-   interned_strings["parent"] = "parent";
-   interned_strings["ancestor"] = "ancestor";
-   interned_strings["descendant"] = "descendant";
-   interned_strings["following"] = "following";
-   interned_strings["preceding"] = "preceding";
-   interned_strings["following-sibling"] = "following-sibling";
-   interned_strings["preceding-sibling"] = "preceding-sibling";
-   interned_strings["attribute"] = "attribute";
-   interned_strings["namespace"] = "namespace";
-   interned_strings["self"] = "self";
-   interned_strings["descendant-or-self"] = "descendant-or-self";
-   interned_strings["ancestor-or-self"] = "ancestor-or-self";
+constexpr std::array multi_char_operators{
+   std::pair{ std::string_view("//"), XPathTokenType::DOUBLE_SLASH },
+   std::pair{ std::string_view(".."), XPathTokenType::DOUBLE_DOT },
+   std::pair{ std::string_view("::"), XPathTokenType::AXIS_SEPARATOR },
+   std::pair{ std::string_view("!="), XPathTokenType::NOT_EQUALS },
+   std::pair{ std::string_view("<="), XPathTokenType::LESS_EQUAL },
+   std::pair{ std::string_view(">="), XPathTokenType::GREATER_EQUAL },
+   std::pair{ std::string_view(":="), XPathTokenType::ASSIGN }
+};
 
-   interned_strings["last"] = "last";
-   interned_strings["position"] = "position";
-   interned_strings["count"] = "count";
-   interned_strings["name"] = "name";
-   interned_strings["local-name"] = "local-name";
-   interned_strings["namespace-uri"] = "namespace-uri";
-   interned_strings["string"] = "string";
-   interned_strings["concat"] = "concat";
-   interned_strings["starts-with"] = "starts-with";
-   interned_strings["contains"] = "contains";
-   interned_strings["substring"] = "substring";
-   interned_strings["substring-before"] = "substring-before";
-   interned_strings["substring-after"] = "substring-after";
-   interned_strings["normalize-space"] = "normalize-space";
-   interned_strings["translate"] = "translate";
-   interned_strings["boolean"] = "boolean";
-   interned_strings["number"] = "number";
-   interned_strings["sum"] = "sum";
-   interned_strings["floor"] = "floor";
-   interned_strings["ceiling"] = "ceiling";
-   interned_strings["round"] = "round";
-   interned_strings["base-uri"] = "base-uri";
-   interned_strings["data"] = "data";
-   interned_strings["document-uri"] = "document-uri";
-   interned_strings["node-name"] = "node-name";
-   interned_strings["nilled"] = "nilled";
-   interned_strings["static-base-uri"] = "static-base-uri";
-   interned_strings["default-collation"] = "default-collation";
 }
 
 bool XPathTokenizer::is_alpha(char c) const
@@ -135,9 +117,6 @@ bool XPathTokenizer::has_more() const
 
 std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
 {
-   static std::once_flag is_once;
-   std::call_once(is_once, &XPathTokenizer::initialize_interned_strings);
-
    input = XPath;
    position = 0;
    length = input.size();
@@ -257,8 +236,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
             type = XPathTokenType::MULTIPLY;
          }
 
-         auto wildcard_char = input.substr(start, 1);
-         tokens.emplace_back(type, wildcard_char, start, 1);
+         tokens.emplace_back(type, input.substr(start, 1), start, 1);
       }
       else
       {
@@ -310,29 +288,12 @@ XPathToken XPathTokenizer::scan_identifier()
 
    auto identifier = input.substr(start, position - start);
 
-   XPathTokenType type = XPathTokenType::IDENTIFIER;
-   if (identifier IS "and") type = XPathTokenType::AND;
-   else if (identifier IS "or") type = XPathTokenType::OR;
-   else if (identifier IS "not") type = XPathTokenType::NOT;
-   else if (identifier IS "div") type = XPathTokenType::DIVIDE;
-   else if (identifier IS "mod") type = XPathTokenType::MODULO;
-   else if (identifier IS "eq") type = XPathTokenType::EQ;
-   else if (identifier IS "ne") type = XPathTokenType::NE;
-   else if (identifier IS "lt") type = XPathTokenType::LT;
-   else if (identifier IS "le") type = XPathTokenType::LE;
-   else if (identifier IS "gt") type = XPathTokenType::GT;
-   else if (identifier IS "ge") type = XPathTokenType::GE;
-   else if (identifier IS "if") type = XPathTokenType::IF;
-   else if (identifier IS "then") type = XPathTokenType::THEN;
-   else if (identifier IS "else") type = XPathTokenType::ELSE;
-   else if (identifier IS "for") type = XPathTokenType::FOR;
-   else if (identifier IS "let") type = XPathTokenType::LET;
-   else if (identifier IS "in") type = XPathTokenType::IN;
-   else if (identifier IS "return") type = XPathTokenType::RETURN;
-   else if (identifier IS "some") type = XPathTokenType::SOME;
-   else if (identifier IS "every") type = XPathTokenType::EVERY;
-   else if (identifier IS "satisfies") type = XPathTokenType::SATISFIES;
+   auto match = std::ranges::find_if(keyword_mappings, [identifier](const KeywordMapping &entry)
+   {
+      return identifier IS entry.text;
+   });
 
+   XPathTokenType type = (match != keyword_mappings.end()) ? match->type : XPathTokenType::IDENTIFIER;
    return XPathToken(type, identifier, start, position - start);
 }
 
@@ -423,43 +384,14 @@ XPathToken XPathTokenizer::scan_operator()
    size_t start = position;
    char ch = input[position];
 
-   if (position + 1 < length)
+   for (const auto &[text, token_type] : multi_char_operators)
    {
-      std::string_view two_char = input.substr(position, 2);
-      if (two_char IS "//")
+      size_t length_required = text.size();
+      if (position + length_required > length) continue;
+      if (input.compare(position, length_required, text) IS 0)
       {
-         position += 2;
-         return XPathToken(XPathTokenType::DOUBLE_SLASH, two_char, start, 2);
-      }
-      else if (two_char IS "..")
-      {
-         position += 2;
-         return XPathToken(XPathTokenType::DOUBLE_DOT, two_char, start, 2);
-      }
-      else if (two_char IS "::")
-      {
-         position += 2;
-         return XPathToken(XPathTokenType::AXIS_SEPARATOR, two_char, start, 2);
-      }
-      else if (two_char IS "!=")
-      {
-         position += 2;
-         return XPathToken(XPathTokenType::NOT_EQUALS, two_char, start, 2);
-      }
-      else if (two_char IS "<=")
-      {
-         position += 2;
-         return XPathToken(XPathTokenType::LESS_EQUAL, two_char, start, 2);
-      }
-      else if (two_char IS ">=")
-      {
-         position += 2;
-         return XPathToken(XPathTokenType::GREATER_EQUAL, two_char, start, 2);
-      }
-      else if (two_char IS ":=")
-      {
-         position += 2;
-         return XPathToken(XPathTokenType::ASSIGN, two_char, start, 2);
+         position += length_required;
+         return XPathToken(token_type, input.substr(start, length_required), start, length_required);
       }
    }
 
@@ -487,4 +419,3 @@ XPathToken XPathTokenizer::scan_operator()
 
    return XPathToken(XPathTokenType::UNKNOWN, std::string_view(""), start, 0);
 }
-
