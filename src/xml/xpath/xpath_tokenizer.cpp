@@ -125,13 +125,11 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
    int bracket_depth = 0;
    int paren_depth = 0;
 
-   while (position < length)
-   {
+   while (position < length) {
       skip_whitespace();
       if (position >= length) break;
 
-      if (input[position] IS '*')
-      {
+      if (input[position] IS '*') {
          size_t start = position;
          position++;
 
@@ -140,8 +138,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
          bool prev_is_operand = false;
          bool prev_forces_wild = false;
 
-         if (!tokens.empty())
-         {
+         if (not tokens.empty()) {
             auto prev = tokens.back().type;
             prev_is_operand = (prev IS XPathTokenType::NUMBER) or
                               (prev IS XPathTokenType::STRING) or
@@ -156,15 +153,12 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
                                (prev IS XPathTokenType::COLON);
          }
 
-         auto is_operand_start = [&](size_t index)
-         {
+         auto is_operand_start = [&](size_t index) {
             if (index >= length) return false;
             char ch = input[index];
             if (is_digit(ch)) return true;
-            if (ch IS '.')
-            {
-               if (index + 1 < length)
-               {
+            if (ch IS '.') {
+               if (index + 1 < length) {
                   char next = input[index + 1];
                   if (is_digit(next)) return true;
                   if (next IS '.' or next IS '/') return true;
@@ -178,8 +172,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
             return false;
          };
 
-         auto unary_context_before = [&](size_t index)
-         {
+         auto unary_context_before = [&](size_t index) {
             size_t prev = index;
             while (prev > 0 and is_whitespace(input[prev - 1])) prev--;
             if (prev IS 0) return true;
@@ -191,16 +184,14 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
             return false;
          };
 
-         auto next_operand_index = [&]() -> size_t
-         {
+         auto next_operand_index = [&]() -> size_t {
             size_t lookahead = position;
             while (lookahead < length and is_whitespace(input[lookahead])) lookahead++;
             if (lookahead >= length) return std::string_view::npos;
 
             char next_char = input[lookahead];
-            if (next_char IS '-' or next_char IS '+')
-            {
-               if (!unary_context_before(lookahead)) return std::string_view::npos;
+            if (next_char IS '-' or next_char IS '+') {
+               if (not unary_context_before(lookahead)) return std::string_view::npos;
                size_t after_sign = lookahead + 1;
                while (after_sign < length and is_whitespace(input[after_sign])) after_sign++;
                if (after_sign >= length) return std::string_view::npos;
@@ -214,49 +205,39 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
          bool inside_structural_context = (bracket_depth > 0) or (paren_depth > 0);
 
          bool prev_allows_binary = false;
-         if (!tokens.empty())
-         {
+         if (not tokens.empty()) {
             auto prev_type = tokens.back().type;
 
             if ((prev_type IS XPathTokenType::IDENTIFIER) or
                 (prev_type IS XPathTokenType::RPAREN) or
                 (prev_type IS XPathTokenType::RBRACKET) or
-                (prev_type IS XPathTokenType::WILDCARD))
-            {
+                (prev_type IS XPathTokenType::WILDCARD)) {
                prev_allows_binary = true;
             }
-            else if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING))
-            {
+            else if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
                if (inside_structural_context) prev_allows_binary = true;
             }
          }
 
-         if (prev_is_operand and prev_allows_binary and !prev_forces_wild and operand_index != std::string_view::npos)
-         {
+         if (prev_is_operand and prev_allows_binary and !prev_forces_wild and operand_index != std::string_view::npos) {
             type = XPathTokenType::MULTIPLY;
          }
 
          tokens.emplace_back(type, input.substr(start, 1), start, 1);
       }
-      else
-      {
+      else {
          XPathToken token = scan_operator();
-         if (token.type IS XPathTokenType::UNKNOWN)
-         {
-            if (current() IS '\'' or current() IS '"')
-            {
+         if (token.type IS XPathTokenType::UNKNOWN) {
+            if (current() IS '\'' or current() IS '"') {
                token = scan_string(current());
             }
-            else if (is_digit(current()) or (current() IS '.' and is_digit(peek(1))))
-            {
+            else if (is_digit(current()) or (current() IS '.' and is_digit(peek(1)))) {
                token = scan_number();
             }
-            else if (is_name_start_char(current()))
-            {
+            else if (is_name_start_char(current())) {
                token = scan_identifier();
             }
-            else
-            {
+            else {
                size_t start = position;
                auto unknown_char = input.substr(start, 1);
                advance();
@@ -281,15 +262,13 @@ XPathToken XPathTokenizer::scan_identifier()
 {
    size_t start = position;
 
-   while (position < length and is_name_char(input[position]))
-   {
+   while (position < length and is_name_char(input[position])) {
       position++;
    }
 
    auto identifier = input.substr(start, position - start);
 
-   auto match = std::ranges::find_if(keyword_mappings, [identifier](const KeywordMapping &entry)
-   {
+   auto match = std::ranges::find_if(keyword_mappings, [identifier](const KeywordMapping &entry) {
       return identifier IS entry.text;
    });
 
@@ -301,16 +280,14 @@ XPathToken XPathTokenizer::scan_number()
 {
    size_t start = position;
    bool seen_dot = false;
-   while (position < length)
-   {
+   while (position < length) {
       char current = input[position];
-      if (is_digit(current))
-      {
+      if (is_digit(current)) {
          position++;
          continue;
       }
-      if (!seen_dot and current IS '.')
-      {
+
+      if (not seen_dot and current IS '.') {
          seen_dot = true;
          position++;
          continue;
@@ -330,18 +307,15 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
 
    bool has_escapes = false;
    size_t scan_pos = position;
-   while ((scan_pos < length) and (input[scan_pos] != QuoteChar))
-   {
-      if (input[scan_pos] IS '\\')
-      {
+   while ((scan_pos < length) and (input[scan_pos] != QuoteChar)) {
+      if (input[scan_pos] IS '\\') {
          has_escapes = true;
          break;
       }
       scan_pos++;
    }
 
-   if (!has_escapes)
-   {
+   if (not has_escapes) {
       size_t content_end = scan_pos;
       position = scan_pos;
       if (position < length) position++;
