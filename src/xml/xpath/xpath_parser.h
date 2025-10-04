@@ -78,7 +78,7 @@ class XPathParser {
    // Error handling
    void report_error(std::string_view Message);
    bool has_errors() const;
-   std::vector<std::string> get_errors() const;
+   const std::vector<std::string> & get_errors() const;
 
    private:
    std::vector<std::string> errors;
