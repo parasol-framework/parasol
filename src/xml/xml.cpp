@@ -152,7 +152,7 @@ namespace
       for (auto &node : Inserted) refresh_base_uris(Document, node, inherited);
    }
 }
-#include "xpath/xpath_ast.cpp"
+
 #include "xpath/xpath_axis.cpp"
 #include "xpath/xpath_parser.cpp"
 #include "xpath/xpath_evaluator.h"

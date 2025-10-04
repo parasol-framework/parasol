@@ -1,11 +1,11 @@
 //********************************************************************************************************************
-// XPath AST Core Structures
+// XPath Abstract Syntax Tree (AST) Core Structures
 //
 // This file contains the fundamental AST data structures for XPath evaluation:
+// 
 // - Token types and structures
 // - AST node types and tree structure
 // - Core enumerations
-//********************************************************************************************************************
 
 #pragma once
 
@@ -158,6 +158,8 @@ enum class XPathNodeType {
    STRING,
    PATH
 };
+
+//********************************************************************************************************************
 
 struct XPathNode {
    XPathNodeType type;
