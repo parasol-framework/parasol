@@ -18,6 +18,8 @@
 #include <string_view>
 #include <vector>
 
+#include "xpath_value.h"
+
 struct TransparentStringHash {
    using is_transparent = void;
 
@@ -38,83 +40,9 @@ struct TransparentStringEqual {
    bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
 };
 
-struct XMLTag;
-struct XMLAttrib;
-class extXML;
-
-//********************************************************************************************************************
-// XPath Value System
-
-namespace xml::schema
-{
-   enum class SchemaType;
-   class SchemaTypeDescriptor;
-}
-
-enum class XPathValueType {
-   NodeSet,
-   Boolean,
-   Number,
-   String,
-   Date,
-   Time,
-   DateTime
-};
-
-class XPathValue 
-{
-   public:
-   XPathValueType type;
-   std::vector<XMLTag *> node_set;
-   std::optional<std::string> node_set_string_override;
-   std::vector<std::string> node_set_string_values;
-   std::vector<const XMLAttrib *> node_set_attributes;
-   bool boolean_value = false;
-   double number_value = 0.0;
-   std::string string_value;
-   mutable std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_type_info;
-   mutable bool schema_validated = false;
-
-   // Constructors
-   XPathValue() : type(XPathValueType::Boolean) {}
-   explicit XPathValue(bool value) : type(XPathValueType::Boolean), boolean_value(value) {}
-   explicit XPathValue(double value) : type(XPathValueType::Number), number_value(value) {}
-   explicit XPathValue(std::string value) : type(XPathValueType::String), string_value(std::move(value)) {}
-   explicit XPathValue(XPathValueType ValueType, std::string value)
-      : type(ValueType), string_value(std::move(value)) {}
-   explicit XPathValue(const std::vector<XMLTag *> &Nodes,
-                       std::optional<std::string> NodeSetString = std::nullopt,
-                       std::vector<std::string> NodeSetStrings = {},
-                       std::vector<const XMLAttrib *> NodeSetAttributes = {})
-      : type(XPathValueType::NodeSet),
-        node_set(Nodes),
-        node_set_string_override(std::move(NodeSetString)),
-        node_set_string_values(std::move(NodeSetStrings)),
-        node_set_attributes(std::move(NodeSetAttributes)) {}
-
-   // Type conversions
-   bool to_boolean() const;
-   double to_number() const;
-   std::string to_string() const;
-   std::vector<XMLTag *> to_node_set() const;
-
-   // Utility methods
-   bool is_empty() const;
-   size_t size() const;
-
-   // Schema metadata helpers
-   bool has_schema_info() const;
-   void set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo);
-   bool validate_against_schema() const;
-   xml::schema::SchemaType get_schema_type() const;
-
-   // Helpers exposed for evaluator utilities
-   static std::string node_string_value(XMLTag *Node);
-   static double string_to_number(const std::string &Value);
-};
-
 //********************************************************************************************************************
 // XPath Evaluation Context
+
 
 namespace xml::schema
 {
