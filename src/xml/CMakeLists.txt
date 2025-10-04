@@ -12,6 +12,8 @@ target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
 
+# XPath Support Library
+
 add_library (xml_xpath_functions OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_common.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_navigation.cpp"
@@ -20,19 +22,32 @@ add_library (xml_xpath_functions OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_values.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_tokenizer.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_value.cpp")
+
 target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
-target_compile_definitions (xml_xpath_functions PRIVATE "MOD_NAME=${MOD}" "MOD_NAMESPACE=Xml")
 set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
 add_dependencies (xml_xpath_functions build_headers)
 
-target_sources (${MOD} PRIVATE
-   "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_tokenizer.cpp"
+# Schema Supper Library
+
+add_library (xml_schema OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp"
-   $<TARGET_OBJECTS:xml_xpath_functions>)
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp")
+
+target_include_directories (xml_schema PRIVATE "${PROJECT_SOURCE_DIR}/include")
+set_target_properties (xml_schema PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+add_dependencies (xml_schema build_headers)
+
+# Module Code
+
+target_sources (${MOD} PRIVATE
+   "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   $<TARGET_OBJECTS:xml_xpath_functions>
+   $<TARGET_OBJECTS:xml_schema>)
+
+# Tests
 
 flute_test (${MOD}_basic "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basic.fluid")
 flute_test (${MOD}_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_features.fluid")
@@ -58,6 +73,7 @@ flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sch
 flute_test (${MOD}_xpath2_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_accessor.fluid")
 
 if (INSTALL_TESTS)
+   # This test is redundant but is being retained as an example for C++
    add_executable (test_xml_count_debug "tests/test_count_debug.cpp")
    target_link_libraries (test_xml_count_debug PRIVATE ${INIT_LINK})
    set_target_properties (test_xml_count_debug PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
