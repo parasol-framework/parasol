@@ -174,6 +174,9 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
    context.size = 1;
    context.document = xml;
 
+   if (!xml->Tags.empty()) push_context(&xml->Tags[0], 1, 1);
+   else push_context(nullptr, 1, 1);
+
    auto ast = CompiledPath.getAST();
    auto value = evaluate_expression(ast, CurrentPrefix);
 
