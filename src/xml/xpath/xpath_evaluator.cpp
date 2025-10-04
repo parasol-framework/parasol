@@ -572,6 +572,188 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
 }
 
 // Recursive driver that iterates through each step in a location path.
+void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
+   const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches)
+{
+   FilteredMatches.clear();
+
+   auto *context_node = ContextEntry.node;
+   const XMLAttrib *context_attribute = ContextEntry.attribute;
+
+   if ((!context_attribute) and context_node and context.attribute_node and (context_node IS context.context_node)) {
+      context_attribute = context.attribute_node;
+   }
+
+   auto axis_matches = dispatch_axis(Axis, context_node, context_attribute);
+   if (FilteredMatches.capacity() < axis_matches.size()) {
+      FilteredMatches.reserve(axis_matches.size());
+   }
+
+   for (auto &match : axis_matches) {
+      if (!match_node_test(NodeTest, Axis, match.node, match.attribute, CurrentPrefix)) continue;
+      FilteredMatches.push_back(match);
+   }
+}
+
+ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPathNode *> &PredicateNodes,
+   uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer)
+{
+   for (auto *predicate_node : PredicateNodes) {
+      ScratchBuffer.clear();
+      if (ScratchBuffer.capacity() < Candidates.size()) {
+         ScratchBuffer.reserve(Candidates.size());
+      }
+
+      for (size_t index = 0; index < Candidates.size(); ++index) {
+         auto &match = Candidates[index];
+         push_context(match.node, index + 1, Candidates.size(), match.attribute);
+
+         auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+         pop_context();
+
+         if (predicate_result IS PredicateResult::UNSUPPORTED) {
+            return ERR::Failed;
+         }
+
+         if (predicate_result IS PredicateResult::MATCH) ScratchBuffer.push_back(match);
+      }
+
+      Candidates.swap(ScratchBuffer);
+      if (Candidates.empty()) break;
+   }
+
+   return ERR::Okay;
+}
+
+ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
+   bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate)
+{
+   ShouldTerminate = false;
+
+   for (size_t index = 0; index < Matches.size(); ++index) {
+      auto &match = Matches[index];
+      auto *candidate = match.node;
+
+      push_context(candidate, index + 1, Matches.size(), match.attribute);
+
+      if (Axis IS AxisType::ATTRIBUTE) {
+         AxisMatch next_match{};
+         next_match.node = candidate;
+         next_match.attribute = match.attribute;
+
+         if (!next_match.node or !next_match.attribute) {
+            pop_context();
+            continue;
+         }
+
+         if (IsLastStep) {
+            auto tags = xml->getInsert(next_match.node, xml->Cursor);
+            if (!tags) {
+               pop_context();
+               continue;
+            }
+
+            xml->CursorTags = tags;
+            xml->Attrib = next_match.attribute->Name;
+
+            if (!xml->Callback.defined()) {
+               Matched = true;
+               pop_context();
+               ShouldTerminate = true;
+               return ERR::Okay;
+            }
+
+            push_cursor_state();
+            ERR callback_error = ERR::Okay;
+            if (xml->Callback.isC()) {
+               auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+               callback_error = routine(xml, next_match.node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+            }
+            else if (xml->Callback.isScript()) {
+               if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+                  { "XML",  xml, FD_OBJECTPTR },
+                  { "Tag",  next_match.node->ID },
+                  { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+               }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+            }
+            else callback_error = ERR::InvalidValue;
+
+            pop_cursor_state();
+            pop_context();
+
+            Matched = true;
+
+            if (callback_error IS ERR::Terminate) return ERR::Terminate;
+            if (callback_error != ERR::Okay) return callback_error;
+
+            continue;
+         }
+
+         NextContext.push_back(next_match);
+         pop_context();
+         continue;
+      }
+
+      if (IsLastStep) {
+         if (!candidate) {
+            pop_context();
+            continue;
+         }
+
+         auto tags = xml->getInsert(candidate, xml->Cursor);
+         if (!tags) {
+            pop_context();
+            continue;
+         }
+
+         xml->CursorTags = tags;
+         xml->Attrib.clear();
+
+         if (!xml->Callback.defined()) {
+            Matched = true;
+            pop_context();
+            ShouldTerminate = true;
+            return ERR::Okay;
+         }
+
+         push_cursor_state();
+         ERR callback_error = ERR::Okay;
+         if (xml->Callback.isC()) {
+            auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
+            callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+         }
+         else if (xml->Callback.isScript()) {
+            if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+               { "XML",  xml, FD_OBJECTPTR },
+               { "Tag",  candidate->ID },
+               { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+            }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+         }
+         else callback_error = ERR::InvalidValue;
+
+         pop_cursor_state();
+         pop_context();
+
+         Matched = true;
+
+         if (callback_error IS ERR::Terminate) return ERR::Terminate;
+         if (callback_error != ERR::Okay) return callback_error;
+
+         continue;
+      }
+
+      if (!candidate) {
+         pop_context();
+         continue;
+      }
+
+      NextContext.push_back({ candidate, nullptr });
+      pop_context();
+   }
+
+   return ERR::Okay;
+}
+
 ERR XPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
@@ -587,8 +769,8 @@ ERR XPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextN
    std::vector<AxisMatch> next_context;
    next_context.reserve(current_context.size());
 
-   std::vector<AxisMatch> filtered;
-   filtered.reserve(current_context.size());
+   std::vector<AxisMatch> axis_candidates;
+   axis_candidates.reserve(current_context.size());
    std::vector<AxisMatch> predicate_buffer;
    predicate_buffer.reserve(current_context.size());
 
@@ -618,179 +800,27 @@ ERR XPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextN
       if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
 
       bool is_last_step = (step_index + 1 >= Steps.size());
+      next_context.clear();
 
       for (auto &context_entry : current_context) {
-         auto *context_node = context_entry.node;
-         const XMLAttrib *context_attribute = context_entry.attribute;
+         expand_axis_candidates(context_entry, axis, node_test, CurrentPrefix, axis_candidates);
+         if (axis_candidates.empty()) continue;
 
-         if ((!context_attribute) and context_node and context.attribute_node and (context_node IS context.context_node)) {
-            context_attribute = context.attribute_node;
-         }
+         auto predicate_error = apply_predicates_to_candidates(predicate_nodes, CurrentPrefix, axis_candidates, predicate_buffer);
+         if (predicate_error != ERR::Okay) return predicate_error;
+         if (axis_candidates.empty()) continue;
 
-         auto axis_matches = dispatch_axis(axis, context_node, context_attribute);
-
-         filtered.clear();
-         filtered.reserve(axis_matches.size());
-
-         for (auto &match : axis_matches) {
-            if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
-            filtered.push_back(match);
-         }
-
-         if (filtered.empty()) continue;
-
-         for (auto *predicate_node : predicate_nodes) {
-            predicate_buffer.clear();
-            predicate_buffer.reserve(filtered.size());
-
-            for (size_t index = 0; index < filtered.size(); ++index) {
-               auto &match = filtered[index];
-               push_context(match.node, index + 1, filtered.size(), match.attribute);
-
-               auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
-               pop_context();
-
-               if (predicate_result IS PredicateResult::UNSUPPORTED) {
-                  return ERR::Failed;
-               }
-
-               if (predicate_result IS PredicateResult::MATCH) predicate_buffer.push_back(match);
-            }
-
-            filtered.swap(predicate_buffer);
-            if (filtered.empty()) break;
-         }
-
-         if (filtered.empty()) continue;
-
-         for (size_t index = 0; index < filtered.size(); ++index) {
-            auto &match = filtered[index];
-            auto *candidate = match.node;
-
-            push_context(candidate, index + 1, filtered.size(), match.attribute);
-
-            if (axis IS AxisType::ATTRIBUTE) {
-               AxisMatch next_match{};
-               next_match.node = candidate;
-               next_match.attribute = match.attribute;
-
-               if (!next_match.node or !next_match.attribute) {
-                  pop_context();
-                  continue;
-               }
-
-               if (is_last_step) {
-                  auto tags = xml->getInsert(next_match.node, xml->Cursor);
-                  if (!tags) {
-                     pop_context();
-                     continue;
-                  }
-
-                  xml->CursorTags = tags;
-                  xml->Attrib = next_match.attribute->Name;
-
-                  if (!xml->Callback.defined()) {
-                     Matched = true;
-                     pop_context();
-                     return ERR::Okay;
-                  }
-
-                  push_cursor_state();
-
-                  ERR callback_error = ERR::Okay;
-                  if (xml->Callback.isC()) {
-                     auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-                     callback_error = routine(xml, next_match.node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-                  }
-                  else if (xml->Callback.isScript()) {
-                     if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-                        { "XML",  xml, FD_OBJECTPTR },
-                        { "Tag",  next_match.node->ID },
-                        { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-                     }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-                  }
-                  else callback_error = ERR::InvalidValue;
-
-                  pop_cursor_state();
-                  pop_context();
-
-                  Matched = true;
-
-                  if (callback_error IS ERR::Terminate) return ERR::Terminate;
-                  if (callback_error != ERR::Okay) return callback_error;
-
-                  continue;
-               }
-
-               next_context.push_back(next_match);
-               pop_context();
-               continue;
-            }
-
-            if (is_last_step) {
-               if (!candidate) {
-                  pop_context();
-                  continue;
-               }
-
-               auto tags = xml->getInsert(candidate, xml->Cursor);
-               if (!tags) {
-                  pop_context();
-                  continue;
-               }
-
-               xml->CursorTags = tags;
-               xml->Attrib.clear();
-
-               if (!xml->Callback.defined()) {
-                  Matched = true;
-                  pop_context();
-                  return ERR::Okay;
-               }
-
-               push_cursor_state();
-               ERR callback_error = ERR::Okay;
-               if (xml->Callback.isC()) {
-                  auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-                  callback_error = routine(xml, candidate->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
-               }
-               else if (xml->Callback.isScript()) {
-                  if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
-                     { "XML",  xml, FD_OBJECTPTR },
-                     { "Tag",  candidate->ID },
-                     { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-                  }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
-               }
-               else callback_error = ERR::InvalidValue;
-
-               pop_cursor_state();
-               pop_context();
-
-               Matched = true;
-
-               if (callback_error IS ERR::Terminate) return ERR::Terminate;
-               if (callback_error != ERR::Okay) return callback_error;
-
-               continue;
-            }
-
-            if (!candidate) {
-               pop_context();
-               continue;
-            }
-
-            next_context.push_back({ candidate, nullptr });
-            pop_context();
-         }
+         bool should_terminate = false;
+         auto step_error = process_step_matches(axis_candidates, axis, is_last_step, Matched, next_context, should_terminate);
+         if (step_error != ERR::Okay) return step_error;
+         if (should_terminate) return ERR::Okay;
       }
 
       current_context.swap(next_context);
-      next_context.clear();
    }
 
    return Matched ? ERR::Okay : ERR::Search;
 }
-
 bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix) {
    bool attribute_axis = (Axis IS AxisType::ATTRIBUTE) or ((Axis IS AxisType::SELF) and (Attribute != nullptr));
 
@@ -968,6 +998,144 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
    return false;
 }
 
+const std::unordered_map<std::string_view, XPathEvaluator::PredicateHandler> &XPathEvaluator::predicate_handler_map() const
+{
+   static const std::unordered_map<std::string_view, PredicateHandler> handlers = {
+      { "attribute-exists", &XPathEvaluator::handle_attribute_exists_predicate },
+      { "attribute-equals", &XPathEvaluator::handle_attribute_equals_predicate },
+      { "content-equals", &XPathEvaluator::handle_content_equals_predicate }
+   };
+   return handlers;
+}
+
+XPathEvaluator::PredicateResult XPathEvaluator::dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
+   uint32_t CurrentPrefix)
+{
+   auto &handlers = predicate_handler_map();
+   auto it = handlers.find(OperationName);
+   if (it IS handlers.end()) return PredicateResult::UNSUPPORTED;
+
+   auto handler = it->second;
+   return (this->*handler)(Expression, CurrentPrefix);
+}
+
+XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
+{
+   (void)CurrentPrefix;
+
+   auto *candidate = context.context_node;
+   if (!candidate) return PredicateResult::NO_MATCH;
+   if ((!Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
+
+   const XPathNode *name_node = Expression->get_child(0);
+   if (!name_node) return PredicateResult::UNSUPPORTED;
+
+   const std::string &attribute_name = name_node->value;
+
+   if (attribute_name IS "*") {
+      return (candidate->Attribs.size() > 1) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
+   }
+
+   for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
+      auto &attrib = candidate->Attribs[index];
+      if (pf::iequals(attrib.Name, attribute_name)) return PredicateResult::MATCH;
+   }
+
+   return PredicateResult::NO_MATCH;
+}
+
+XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
+{
+   auto *candidate = context.context_node;
+   if (!candidate) return PredicateResult::NO_MATCH;
+   if ((!Expression) or (Expression->child_count() < 2)) return PredicateResult::UNSUPPORTED;
+
+   const XPathNode *name_node = Expression->get_child(0);
+   const XPathNode *value_node = Expression->get_child(1);
+   if ((!name_node) or (!value_node)) return PredicateResult::UNSUPPORTED;
+
+   const std::string &attribute_name = name_node->value;
+   std::string attribute_value;
+   bool wildcard_value = false;
+
+   if (value_node->type IS XPathNodeType::LITERAL) {
+      attribute_value = value_node->value;
+      wildcard_value = attribute_value.find('*') != std::string::npos;
+   }
+   else {
+      bool saved_expression_unsupported = expression_unsupported;
+      auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
+      bool evaluation_failed = expression_unsupported;
+      expression_unsupported = saved_expression_unsupported;
+      if (evaluation_failed) return PredicateResult::NO_MATCH;
+
+      attribute_value = evaluated_value.to_string();
+      wildcard_value = attribute_value.find('*') != std::string::npos;
+   }
+
+   bool wildcard_name = attribute_name.find('*') != std::string::npos;
+
+   for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
+      auto &attrib = candidate->Attribs[index];
+
+      bool name_matches;
+      if (attribute_name IS "*") name_matches = true;
+      else if (wildcard_name) name_matches = pf::wildcmp(attribute_name, attrib.Name);
+      else name_matches = pf::iequals(attrib.Name, attribute_name);
+
+      if (!name_matches) continue;
+
+      bool value_matches;
+      if (wildcard_value) value_matches = pf::wildcmp(attribute_value, attrib.Value);
+      else value_matches = pf::iequals(attrib.Value, attribute_value);
+
+      if (value_matches) return PredicateResult::MATCH;
+   }
+
+   return PredicateResult::NO_MATCH;
+}
+
+XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
+{
+   auto *candidate = context.context_node;
+   if (!candidate) return PredicateResult::NO_MATCH;
+   if ((!Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
+
+   const XPathNode *value_node = Expression->get_child(0);
+   if (!value_node) return PredicateResult::UNSUPPORTED;
+
+   std::string expected;
+   bool wildcard_value = false;
+
+   if (value_node->type IS XPathNodeType::LITERAL) {
+      expected = value_node->value;
+      wildcard_value = expected.find('*') != std::string::npos;
+   }
+   else {
+      bool saved_expression_unsupported = expression_unsupported;
+      auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
+      bool evaluation_failed = expression_unsupported;
+      expression_unsupported = saved_expression_unsupported;
+      if (evaluation_failed) return PredicateResult::NO_MATCH;
+
+      expected = evaluated_value.to_string();
+      wildcard_value = expected.find('*') != std::string::npos;
+   }
+
+   if (!candidate->Children.empty()) {
+      auto &first_child = candidate->Children[0];
+      if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
+         const std::string &content = first_child.Attribs[0].Value;
+         if (wildcard_value) {
+            return pf::wildcmp(expected, content) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
+         }
+         return pf::iequals(content, expected) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
+      }
+   }
+
+   return PredicateResult::NO_MATCH;
+}
+
 XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
    if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
       return PredicateResult::UNSUPPORTED;
@@ -982,115 +1150,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
       auto *candidate = context.context_node;
       if (!candidate) return PredicateResult::NO_MATCH;
 
-      const std::string &operation = expression->value;
-
-      if (operation IS "attribute-exists") {
-         if (expression->child_count() IS 0) return PredicateResult::UNSUPPORTED;
-
-         const XPathNode *name_node = expression->get_child(0);
-         if (!name_node) return PredicateResult::UNSUPPORTED;
-
-         const std::string &attribute_name = name_node->value;
-
-         if (attribute_name IS "*") {
-            return (candidate->Attribs.size() > 1) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
-         }
-
-         for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
-            auto &attrib = candidate->Attribs[index];
-            if (pf::iequals(attrib.Name, attribute_name)) return PredicateResult::MATCH;
-         }
-
-         return PredicateResult::NO_MATCH;
-      }
-
-      if (operation IS "attribute-equals") {
-         if (expression->child_count() < 2) return PredicateResult::UNSUPPORTED;
-
-         const XPathNode *name_node = expression->get_child(0);
-         const XPathNode *value_node = expression->get_child(1);
-         if ((!name_node) or (!value_node)) return PredicateResult::UNSUPPORTED;
-
-         const std::string &attribute_name = name_node->value;
-
-         std::string attribute_value;
-         bool wildcard_value = false;
-
-         if (value_node->type IS XPathNodeType::LITERAL) {
-            attribute_value = value_node->value;
-            wildcard_value = attribute_value.find('*') != std::string::npos;
-         }
-         else {
-            bool saved_expression_unsupported = expression_unsupported;
-            auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
-            bool evaluation_failed = expression_unsupported;
-            expression_unsupported = saved_expression_unsupported;
-            if (evaluation_failed) return PredicateResult::NO_MATCH;
-
-            attribute_value = evaluated_value.to_string();
-            wildcard_value = attribute_value.find('*') != std::string::npos;
-         }
-
-         bool wildcard_name = attribute_name.find('*') != std::string::npos;
-
-         for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
-            auto &attrib = candidate->Attribs[index];
-
-            bool name_matches;
-            if (attribute_name IS "*") name_matches = true;
-            else if (wildcard_name) name_matches = pf::wildcmp(attribute_name, attrib.Name);
-            else name_matches = pf::iequals(attrib.Name, attribute_name);
-
-            if (!name_matches) continue;
-
-            bool value_matches;
-            if (wildcard_value) value_matches = pf::wildcmp(attribute_value, attrib.Value);
-            else value_matches = pf::iequals(attrib.Value, attribute_value);
-
-            if (value_matches) return PredicateResult::MATCH;
-         }
-
-         return PredicateResult::NO_MATCH;
-      }
-
-      if (operation IS "content-equals") {
-         if (expression->child_count() IS 0) return PredicateResult::UNSUPPORTED;
-
-         const XPathNode *value_node = expression->get_child(0);
-         if (!value_node) return PredicateResult::UNSUPPORTED;
-
-         std::string expected;
-         bool wildcard_value = false;
-
-         if (value_node->type IS XPathNodeType::LITERAL) {
-            expected = value_node->value;
-            wildcard_value = expected.find('*') != std::string::npos;
-         }
-         else {
-            bool saved_expression_unsupported = expression_unsupported;
-            auto evaluated_value = evaluate_expression(value_node, CurrentPrefix);
-            bool evaluation_failed = expression_unsupported;
-            expression_unsupported = saved_expression_unsupported;
-            if (evaluation_failed) return PredicateResult::NO_MATCH;
-
-            expected = evaluated_value.to_string();
-            wildcard_value = expected.find('*') != std::string::npos;
-         }
-
-         if (!candidate->Children.empty()) {
-            auto &first_child = candidate->Children[0];
-            if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
-               const std::string &content = first_child.Attribs[0].Value;
-               if (wildcard_value) {
-                  auto match = pf::wildcmp(expected, content) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
-                  return match;
-               }
-               else return pf::iequals(content, expected) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
-            }
-         }
-
-         return PredicateResult::NO_MATCH;
-      }
+      auto dispatched = dispatch_predicate_operation(expression->value, expression, CurrentPrefix);
+      if (dispatched != PredicateResult::UNSUPPORTED) return dispatched;
    }
 
    auto result_value = evaluate_expression(expression, CurrentPrefix);

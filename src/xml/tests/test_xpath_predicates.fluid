@@ -118,6 +118,94 @@ function testComplexNestedPredicates()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Regression: Multi-step predicates should coordinate across helpers
+
+function testMultiStepNodePredicates()
+   local xml = obj.new("xml", {
+      statement = [[
+         <catalog>
+            <section name="fiction" status="active">
+               <book id="b1" author="Smith" edition="first">
+                  <chapter num="1">Intro</chapter>
+                  <chapter num="2">Plot Twist</chapter>
+               </book>
+               <book id="b2" author="Smith" edition="second">
+                  <chapter num="1">Recap</chapter>
+               </book>
+            </section>
+            <section name="fiction" status="archived">
+               <book id="b3" author="Doe" edition="first">
+                  <chapter num="2">Archive</chapter>
+               </book>
+            </section>
+         </catalog>
+      ]]
+   })
+
+   local err, chapterId = xml.mtFindTag('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/chapter[@num="2"][contains(., "Plot")]')
+   assert(err == ERR_Okay, 'Multi-step predicates should locate the Plot Twist chapter: ' .. mSys.GetErrorMsg(err))
+
+   local chapterText = xml.getKey('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/chapter[@num="2"][contains(., "Plot")]')
+   assert(chapterText == 'Plot Twist', 'Plot Twist chapter should be returned, got ' .. nz(chapterText, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Regression: Attribute axis predicates should share buffers across helpers
+
+function testMultiStepAttributePredicates()
+   local xml = obj.new("xml", {
+      statement = [[
+         <catalog>
+            <section name="fiction" status="active">
+               <book id="b1" author="Smith" edition="first" code="fic-001" />
+               <book id="b2" author="Smith" edition="second" code="fic-002" />
+            </section>
+            <section name="reference" status="active">
+               <book id="b3" author="Adams" edition="first" code="ref-101" />
+            </section>
+         </catalog>
+      ]]
+   })
+
+   local attrValue = xml.getKey('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/@code[starts-with(., "fic-")][contains(., "001")]')
+   assert(attrValue == 'fic-001', 'Attribute predicates should retain matches across helpers, got ' .. nz(attrValue, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Predicate dispatcher coverage for specialised handlers
+
+function testPredicateOperationHandlers()
+   local xml = obj.new("xml", {
+      statement = [[
+         <root>
+            <item id="book-1" category="Fiction" data-code="fic-001">
+               <title>Plot Twist</title>
+            </item>
+            <item id="book-2" data-code="ref-002">
+               <title>Reference Manual</title>
+            </item>
+         </root>
+      ]]
+   })
+
+   local err, itemId = xml.mtFindTag('/root/item[@category]')
+   assert(err == ERR_Okay, 'attribute-exists should match explicit attribute names: ' .. mSys.GetErrorMsg(err))
+
+   local errWildcard, wildcardId = xml.mtFindTag('/root/item[@*]')
+   assert(errWildcard == ERR_Okay and wildcardId == itemId, '@* should resolve via attribute-exists wildcard, got ' .. mSys.GetErrorMsg(errWildcard))
+
+   local errEquals, equalsId = xml.mtFindTag('/root/item[@data-code="fic-*"]')
+   assert(errEquals == ERR_Okay, 'attribute-equals should honour wildcard patterns: ' .. mSys.GetErrorMsg(errEquals))
+   local errAttrib, attribValue = xml.mtGetAttrib(equalsId, 'id')
+   assert(errAttrib == ERR_Okay and attribValue == 'book-1', 'Wildcard attribute-equals should return book-1, got ' .. nz(attribValue, 'NIL'))
+
+   local errContent, titleId = xml.mtFindTag('/root/item/title[="Plot*"]')
+   assert(errContent == ERR_Okay, 'content-equals should permit wildcard text matches: ' .. mSys.GetErrorMsg(errContent))
+   local titleText = xml.getKey('/root/item/title[="Plot*"]')
+   assert(titleText == 'Plot Twist', 'content-equals wildcard should resolve Plot Twist title, got ' .. nz(titleText, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Regression: Round bracket predicates are deprecated
 
 function testRoundBracketAlternatives()
@@ -751,7 +839,9 @@ return {
    tests = {
       'testComparisonOperators', 'testMathematicalExpressions',
       'testAttributeNameVariants', 'testVariables',
-      'testComplexNestedPredicates', 'testRoundBracketAlternatives',
+      'testComplexNestedPredicates', 'testMultiStepNodePredicates',
+      'testMultiStepAttributePredicates', 'testPredicateOperationHandlers',
+      'testRoundBracketAlternatives',
       'testXPathStringFunctions', 'testXPathAdditionalStringFunctions',
       'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',
       'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
