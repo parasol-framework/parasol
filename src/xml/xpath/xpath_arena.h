@@ -1,3 +1,5 @@
+// Provides pooled allocation helpers for XPath evaluation to minimise
+// temporary allocations when constructing node, attribute, and string vectors.
 #pragma once
 
 #include <memory>
@@ -11,9 +13,13 @@ class XPathArena {
    private:
    template<typename T>
    struct VectorPool {
+      // Supplies cleared std::vector instances for XPath evaluation and reuses
+      // them to avoid repeated heap allocations during query processing.
       std::vector<std::unique_ptr<std::vector<T>>> storage;
       std::vector<std::vector<T> *> free_list;
 
+      // Fetches an available vector from the free list, or allocates a new
+      // one, ensuring the container is reset before handing it to the caller.
       std::vector<T> & acquire() {
          if (!free_list.empty()) {
             auto *vector = free_list.back();
@@ -33,6 +39,8 @@ class XPathArena {
          free_list.push_back(&vector);
       }
 
+      // Clears the pool state while retaining allocated storage, preparing the
+      // vectors for reuse without incurring new allocations.
       void reset() {
          free_list.clear();
          for (auto &entry : storage) {

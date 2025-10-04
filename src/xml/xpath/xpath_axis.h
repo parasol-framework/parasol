@@ -1,9 +1,8 @@
-// XPath Axis Evaluation System
-//
-// This file contains:
-// - Axis type definitions (Phase 4 of AST_PLAN.md)
-// - Axis evaluation logic for traversing XML document structure
-// - Support for all XPath 1.0 axes
+// Defines the XPath axis evaluation subsystem responsible for translating abstract axis operations
+// into concrete traversals of Parasol's XMLTag tree.  The header publishes the AxisType enumeration,
+// the AxisEvaluator helper, and supporting data structures that keep namespace nodes, document order,
+// and ancestor caches consistent across evaluations.  The accompanying implementation applies these
+// declarations to realise the full set of XPath 1.0 navigation semantics.
 
 #pragma once
 
