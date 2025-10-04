@@ -88,9 +88,17 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
       wildcard_value = expected_value.find('*') != std::string::npos;
    }
 
+   bool wildcard_name = attribute_name.find('*') != std::string::npos;
+
    for (size_t index = 1; index < candidate->Attribs.size(); ++index) {
       auto &attribute = candidate->Attribs[index];
-      if (!pf::iequals(attribute.Name, attribute_name)) continue;
+
+      bool name_matches;
+      if (attribute_name IS "*") name_matches = true;
+      else if (wildcard_name) name_matches = pf::wildcmp(attribute_name, attribute.Name);
+      else name_matches = pf::iequals(attribute.Name, attribute_name);
+
+      if (!name_matches) continue;
 
       if (wildcard_value) {
          return pf::wildcmp(expected_value, attribute.Value) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
