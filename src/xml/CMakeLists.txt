@@ -16,6 +16,7 @@ add_library (xml_xpath_functions OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_common.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_navigation.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_context.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_predicates.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_value.cpp")
