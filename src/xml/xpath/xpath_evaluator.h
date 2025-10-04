@@ -4,10 +4,21 @@
 #pragma once
 
 #include "xpath_arena.h"
+#include "xpath_functions.h"
+#include "xpath_axis.h"
+#include "xpath_ast.h"
+#include "xpath_value.h"
+
+#include <parasol/modules/xml.h>
 
 #include <string_view>
+#include <unordered_map>
+#include <vector>
+
+struct XMLTag;
 
 struct XMLAttrib;
+class CompiledXPath;
 
 class XPathEvaluator {
    public:
