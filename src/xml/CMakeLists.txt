@@ -22,6 +22,14 @@ add_dependencies (xml_xpath_functions build_headers)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_ast.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_axis.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_parser.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_context.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_navigation.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_predicates.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_values.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_tokenizer.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"

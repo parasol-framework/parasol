@@ -9,6 +9,13 @@
 #include "xpath_ast.h"
 #include "xpath_arena.h"
 
+struct extXML;
+struct XMLTag;
+
+struct XMLTagDeleter {
+   void operator()(XMLTag *) const;
+};
+
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -40,7 +47,7 @@ class AxisEvaluator {
    private:
    extXML * xml;
    XPathArena & arena;
-   std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
+   std::vector<std::unique_ptr<XMLTag, XMLTagDeleter>> namespace_node_storage;
    std::unordered_map<int, XMLTag *> id_lookup;
    bool id_cache_built = false;
 
@@ -69,7 +76,7 @@ class AxisEvaluator {
    std::vector<int> visited_node_ids;
 
    // Namespace node pool for reuse to reduce allocations
-   std::vector<std::unique_ptr<XMLTag>> namespace_node_pool;
+   std::vector<std::unique_ptr<XMLTag, XMLTagDeleter>> namespace_node_pool;
 
    // Helper methods for specific axes
    void evaluate_child_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
@@ -107,6 +114,7 @@ class AxisEvaluator {
 
    public:
    explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}
+   ~AxisEvaluator();
 
    // Main evaluation method
    void evaluate_axis(AxisType Axis, XMLTag *ContextNode, std::vector<XMLTag *> &Output);

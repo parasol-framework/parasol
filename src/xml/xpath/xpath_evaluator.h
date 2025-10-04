@@ -4,10 +4,20 @@
 #pragma once
 
 #include "xpath_arena.h"
+#include "xpath_axis.h"
+#include "xpath_ast.h"
+#include "xpath_value.h"
+#include "xpath_functions.h"
+
+#include <parasol/system/errors.h>
+#include <unordered_map>
 
 #include <string_view>
 
 struct XMLAttrib;
+struct XMLTag;
+struct XPathNode;
+class CompiledXPath;
 
 class XPathEvaluator {
    public:
@@ -32,8 +42,8 @@ class XPathEvaluator {
    using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
 
    struct CursorState {
-      objXML::TAGS * tags;
-      size_t index;
+      void * tags = nullptr;
+      size_t index = 0;
    };
 
    std::vector<CursorState> cursor_stack;

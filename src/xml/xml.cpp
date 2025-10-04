@@ -152,11 +152,10 @@ namespace
       for (auto &node : Inserted) refresh_base_uris(Document, node, inherited);
    }
 }
-#include "xpath/xpath_ast.cpp"
-#include "xpath/xpath_axis.cpp"
-#include "xpath/xpath_parser.cpp"
+#include "xpath/xpath_ast.h"
+#include "xpath/xpath_axis.h"
+#include "xpath/xpath_parser.h"
 #include "xpath/xpath_evaluator.h"
-#include "xpath/xpath_evaluator.cpp"
 
 static ERR add_xml_class(void);
 static ERR SET_Statement(extXML *, CSTRING);

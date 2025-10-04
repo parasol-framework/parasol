@@ -18,10 +18,19 @@
 // by adding document order caches or debugging hooks).
 
 #include "xpath_axis.h"
+#include "../xml.h"
+
+AxisEvaluator::~AxisEvaluator() = default;
+
+void XMLTagDeleter::operator()(XMLTag *Node) const
+{
+   delete Node;
+}
 
 #include <algorithm>
 #include <array>
 #include <map>
+#include <memory>
 #include <ranges>
 #include <string_view>
 #include <unordered_set>
@@ -521,7 +530,7 @@ XMLTag * AxisEvaluator::acquire_namespace_node() {
    }
 
    // Create new node if pool is empty
-   auto node = std::make_unique<XMLTag>(0);
+   std::unique_ptr<XMLTag, XMLTagDeleter> node(new XMLTag(0));
    XMLTag *raw_ptr = node.get();
    namespace_node_storage.push_back(std::move(node));
    return raw_ptr;
