@@ -185,8 +185,6 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
       }
    } restorer{ this, saved_context, saved_context_stack, saved_cursor_stack };
 
-   context_stack.clear();
-   cursor_stack.clear();
    expression_unsupported = false;
 
    bool has_external_context = (saved_context.context_node != nullptr) or (saved_context.attribute_node != nullptr);
@@ -194,13 +192,18 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
    if (has_external_context) {
       context = saved_context;
       if (!context.document) context.document = xml;
+      context_stack = saved_context_stack;
+      cursor_stack = saved_cursor_stack;
    }
    else {
+      context = saved_context;
       context.context_node = nullptr;
       context.attribute_node = nullptr;
       context.position = 1;
       context.size = 1;
       context.document = xml;
+      context_stack.clear();
+      cursor_stack.clear();
 
       if (!xml->Tags.empty()) push_context(&xml->Tags[0], 1, 1);
       else push_context(nullptr, 1, 1);
