@@ -41,7 +41,7 @@ XPathValue XPathFunctionLibrary::function_current_date(const std::vector<XPathVa
 {
    auto now = current_utc_time_point();
    auto tm = make_utc_tm(now);
-   return XPathValue(XPathValueType::Date, format_utc_date(tm));
+   return XPathValue(XPVT::Date, format_utc_date(tm));
 }
 
 XPathValue XPathFunctionLibrary::function_current_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -50,7 +50,7 @@ XPathValue XPathFunctionLibrary::function_current_time(const std::vector<XPathVa
    auto tm = make_utc_tm(now);
    std::string time = format_utc_time(tm);
    time.push_back('Z');
-   return XPathValue(XPathValueType::Time, std::move(time));
+   return XPathValue(XPVT::Time, std::move(time));
 }
 
 XPathValue XPathFunctionLibrary::function_current_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -65,7 +65,7 @@ XPathValue XPathFunctionLibrary::function_current_date_time(const std::vector<XP
    combined.push_back('T');
    combined.append(time);
    combined.push_back('Z');
-   return XPathValue(XPathValueType::DateTime, std::move(combined));
+   return XPathValue(XPVT::DateTime, std::move(combined));
 }
 
 XPathValue XPathFunctionLibrary::function_date_time(const std::vector<XPathValue> &Args, const XPathContext &Context)
@@ -82,7 +82,7 @@ XPathValue XPathFunctionLibrary::function_date_time(const std::vector<XPathValue
       return XPathValue();
    }
 
-   return XPathValue(XPathValueType::DateTime, serialise_date_time_components(combined));
+   return XPathValue(XPVT::DateTime, serialise_date_time_components(combined));
 }
 
 XPathValue XPathFunctionLibrary::function_year_from_date_time(const std::vector<XPathValue> &Args,
@@ -298,7 +298,7 @@ XPathValue XPathFunctionLibrary::function_adjust_date_time_to_timezone(const std
    DateTimeComponents components;
    if (!parse_date_time_components(value, components)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
-      return XPathValue(XPathValueType::DateTime, value);
+      return XPathValue(XPVT::DateTime, value);
    }
 
    bool remove_timezone = false;
@@ -313,7 +313,7 @@ XPathValue XPathFunctionLibrary::function_adjust_date_time_to_timezone(const std
          int parsed_offset = 0;
          if (!parse_timezone_duration(Args[1].to_string(), parsed_offset)) {
             if (Context.expression_unsupported) *Context.expression_unsupported = true;
-            return XPathValue(XPathValueType::DateTime, value);
+            return XPathValue(XPVT::DateTime, value);
          }
          target_offset = parsed_offset;
          have_target = true;
@@ -324,7 +324,7 @@ XPathValue XPathFunctionLibrary::function_adjust_date_time_to_timezone(const std
       components.has_timezone = false;
       components.timezone_offset_minutes = 0;
       components.timezone_is_utc = false;
-      return XPathValue(XPathValueType::DateTime, serialise_date_time_components(components));
+      return XPathValue(XPVT::DateTime, serialise_date_time_components(components));
    }
 
    if (!have_target) {
@@ -335,11 +335,11 @@ XPathValue XPathFunctionLibrary::function_adjust_date_time_to_timezone(const std
    std::chrono::sys_time<std::chrono::microseconds> utc_time;
    if (!components_to_utc_time(components, 0, utc_time)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
-      return XPathValue(XPathValueType::DateTime, value);
+      return XPathValue(XPVT::DateTime, value);
    }
 
    DateTimeComponents adjusted = components_from_utc_time(utc_time, target_offset, true, true, true);
-   return XPathValue(XPathValueType::DateTime, serialise_date_time_components(adjusted));
+   return XPathValue(XPVT::DateTime, serialise_date_time_components(adjusted));
 }
 
 XPathValue XPathFunctionLibrary::function_adjust_date_to_timezone(const std::vector<XPathValue> &Args,
@@ -351,7 +351,7 @@ XPathValue XPathFunctionLibrary::function_adjust_date_to_timezone(const std::vec
    DateTimeComponents components;
    if (!parse_date_value(value, components)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
-      return XPathValue(XPathValueType::Date, value);
+      return XPathValue(XPVT::Date, value);
    }
 
    bool remove_timezone = false;
@@ -366,7 +366,7 @@ XPathValue XPathFunctionLibrary::function_adjust_date_to_timezone(const std::vec
          int parsed_offset = 0;
          if (!parse_timezone_duration(Args[1].to_string(), parsed_offset)) {
             if (Context.expression_unsupported) *Context.expression_unsupported = true;
-            return XPathValue(XPathValueType::Date, value);
+            return XPathValue(XPVT::Date, value);
          }
          target_offset = parsed_offset;
          have_target = true;
@@ -377,7 +377,7 @@ XPathValue XPathFunctionLibrary::function_adjust_date_to_timezone(const std::vec
       components.has_timezone = false;
       components.timezone_offset_minutes = 0;
       components.timezone_is_utc = false;
-      return XPathValue(XPathValueType::Date, serialise_date_only(components, false));
+      return XPathValue(XPVT::Date, serialise_date_only(components, false));
    }
 
    if (!have_target) {
@@ -388,11 +388,11 @@ XPathValue XPathFunctionLibrary::function_adjust_date_to_timezone(const std::vec
    std::chrono::sys_time<std::chrono::microseconds> utc_time;
    if (!components_to_utc_time(components, 0, utc_time)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
-      return XPathValue(XPathValueType::Date, value);
+      return XPathValue(XPVT::Date, value);
    }
 
    DateTimeComponents adjusted = components_from_utc_time(utc_time, target_offset, true, true, false);
-   return XPathValue(XPathValueType::Date, serialise_date_only(adjusted, true));
+   return XPathValue(XPVT::Date, serialise_date_only(adjusted, true));
 }
 
 XPathValue XPathFunctionLibrary::function_adjust_time_to_timezone(const std::vector<XPathValue> &Args,
@@ -404,7 +404,7 @@ XPathValue XPathFunctionLibrary::function_adjust_time_to_timezone(const std::vec
    DateTimeComponents components;
    if (!parse_time_value(value, components)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
-      return XPathValue(XPathValueType::Time, value);
+      return XPathValue(XPVT::Time, value);
    }
 
    bool remove_timezone = false;
@@ -419,7 +419,7 @@ XPathValue XPathFunctionLibrary::function_adjust_time_to_timezone(const std::vec
          int parsed_offset = 0;
          if (!parse_timezone_duration(Args[1].to_string(), parsed_offset)) {
             if (Context.expression_unsupported) *Context.expression_unsupported = true;
-            return XPathValue(XPathValueType::Time, value);
+            return XPathValue(XPVT::Time, value);
          }
          target_offset = parsed_offset;
          have_target = true;
@@ -430,7 +430,7 @@ XPathValue XPathFunctionLibrary::function_adjust_time_to_timezone(const std::vec
       components.has_timezone = false;
       components.timezone_offset_minutes = 0;
       components.timezone_is_utc = false;
-      return XPathValue(XPathValueType::Time, serialise_time_only(components, false));
+      return XPathValue(XPVT::Time, serialise_time_only(components, false));
    }
 
    if (!have_target) {
@@ -441,11 +441,11 @@ XPathValue XPathFunctionLibrary::function_adjust_time_to_timezone(const std::vec
    std::chrono::sys_time<std::chrono::microseconds> utc_time;
    if (!components_to_utc_time(components, 0, utc_time)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
-      return XPathValue(XPathValueType::Time, value);
+      return XPathValue(XPVT::Time, value);
    }
 
    DateTimeComponents adjusted = components_from_utc_time(utc_time, target_offset, true, false, true);
-   return XPathValue(XPathValueType::Time, serialise_time_only(adjusted, true));
+   return XPathValue(XPVT::Time, serialise_time_only(adjusted, true));
 }
 
 XPathValue XPathFunctionLibrary::function_implicit_timezone(const std::vector<XPathValue> &Args,

@@ -1054,27 +1054,25 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
 //********************************************************************************************************************
 // CompiledXPath Implementation
 
-CompiledXPath CompiledXPath::compile(std::string_view XPath)
+CompiledXPath * CompiledXPath::compile(std::string_view XPath, std::vector<std::string> &Errors)
 {
-   CompiledXPath result;
-   result.original_expression = std::string(XPath);
-
    XPathTokenizer tokenizer;
-   auto tokens = tokenizer.tokenize(XPath);
-
    XPathParser parser;
+
+   auto tokens = tokenizer.tokenize(XPath);
    auto parsed_ast = parser.parse(tokens);
 
    if (!parsed_ast) {
-      result.errors = parser.get_errors();
-      if (result.errors.empty()) {
-         result.errors.push_back("Failed to parse XPath expression");
+      Errors = parser.get_errors();
+      if (Errors.empty()) {
+         Errors.push_back("Failed to parse XPath expression");
       }
-      return result;
+      return nullptr;
    }
-
-   result.ast = std::move(parsed_ast);
-   result.is_valid = true;
-
+   
+   auto result = new (std::nothrow) CompiledXPath();
+   if (!result) return nullptr;
+   result->original_expression = std::string(XPath);
+   result->ast = std::move(parsed_ast);
    return result;
 }

@@ -10,9 +10,9 @@
 #include "accessor_support.h"
 
 #include "../xpath_functions.h"
-#include "../../xml.h"
-#include "../../schema/schema_parser.h"
-#include "../../uri_utils.h"
+#include "../../xml/xml.h"
+#include "../../xml/schema/schema_parser.h"
+#include "../../xml/uri_utils.h"
 
 #include <parasol/strings.hpp>
 

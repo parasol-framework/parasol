@@ -200,16 +200,16 @@ namespace xml::schema
    }
 
    // Maps an XPath runtime value type onto the corresponding schema type.
-   SchemaType schema_type_for_xpath(XPathValueType Type) noexcept
+   SchemaType schema_type_for_xpath(XPVT Type) noexcept
    {
       switch (Type) {
-         case XPathValueType::NodeSet:  return SchemaType::XPathNodeSet;
-         case XPathValueType::Boolean:  return SchemaType::XPathBoolean;
-         case XPathValueType::Number:   return SchemaType::XPathNumber;
-         case XPathValueType::String:   return SchemaType::XPathString;
-         case XPathValueType::Date:
-         case XPathValueType::Time:
-         case XPathValueType::DateTime: return SchemaType::XSDateTime;
+         case XPVT::NodeSet:  return SchemaType::XPathNodeSet;
+         case XPVT::Boolean:  return SchemaType::XPathBoolean;
+         case XPVT::Number:   return SchemaType::XPathNumber;
+         case XPVT::String:   return SchemaType::XPathString;
+         case XPVT::Date:
+         case XPVT::Time:
+         case XPVT::DateTime: return SchemaType::XSDateTime;
       }
 
       return SchemaType::XPathString;

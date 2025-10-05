@@ -7,27 +7,18 @@
 #include <vector>
 
 #include <parasol/main.h>
+#include <parasol/modules/xpath.h>
 
 struct XMLTag;
 struct XMLAttrib;
 class extXML;
-
-enum class XPathValueType {
-   NodeSet,
-   Boolean,
-   Number,
-   String,
-   Date,
-   Time,
-   DateTime
-};
 
 namespace xml::schema
 {
    enum class SchemaType;
    class SchemaTypeDescriptor;
    class SchemaTypeRegistry;
-   [[nodiscard]] SchemaType schema_type_for_xpath(XPathValueType) noexcept;
+   [[nodiscard]] SchemaType schema_type_for_xpath(XPVT) noexcept;
    [[nodiscard]] bool is_numeric(SchemaType) noexcept;
    SchemaTypeRegistry & registry();
 }
@@ -35,7 +26,7 @@ namespace xml::schema
 class XPathValue
 {
    public:
-   XPathValueType type;
+   XPVT type;
    std::vector<XMLTag *> node_set;
    std::optional<std::string> node_set_string_override;
    std::vector<std::string> node_set_string_values;
@@ -46,21 +37,24 @@ class XPathValue
    mutable std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_type_info;
    mutable bool schema_validated = false;
 
-   XPathValue() : type(XPathValueType::Boolean) {}
-   explicit XPathValue(bool value) : type(XPathValueType::Boolean), boolean_value(value) {}
-   explicit XPathValue(double value) : type(XPathValueType::Number), number_value(value) {}
-   explicit XPathValue(std::string value) : type(XPathValueType::String), string_value(std::move(value)) {}
-   explicit XPathValue(XPathValueType ValueType, std::string value)
-      : type(ValueType), string_value(std::move(value)) {}
+   // Constructors
+
+   XPathValue() : type(XPVT::Boolean) {}
+   explicit XPathValue(bool value) : type(XPVT::Boolean), boolean_value(value) {}
+   explicit XPathValue(double value) : type(XPVT::Number), number_value(value) {}
+   explicit XPathValue(std::string value) : type(XPVT::String), string_value(std::move(value)) {}
+   explicit XPathValue(XPVT ValueType, std::string value) : type(ValueType), string_value(std::move(value)) {}
    explicit XPathValue(const std::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,
                        std::vector<std::string> NodeSetStrings = {},
                        std::vector<const XMLAttrib *> NodeSetAttributes = {})
-      : type(XPathValueType::NodeSet),
+      : type(XPVT::NodeSet),
         node_set(Nodes),
         node_set_string_override(std::move(NodeSetString)),
         node_set_string_values(std::move(NodeSetStrings)),
         node_set_attributes(std::move(NodeSetAttributes)) {}
+
+   // Methods
 
    bool to_boolean() const;
    double to_number() const;

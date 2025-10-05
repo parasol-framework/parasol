@@ -1,6 +1,6 @@
 #include "xpath_evaluator_detail.h"
 
-#include "../schema/schema_types.h"
+#include "../xml/schema/schema_types.h"
 
 #include <cmath>
 #include <limits>
@@ -16,8 +16,8 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(c
 
 bool should_compare_as_boolean(const XPathValue &Left, const XPathValue &Right)
 {
-   if ((Left.type IS XPathValueType::NodeSet) or (Right.type IS XPathValueType::NodeSet)) return false;
-   if ((Left.type IS XPathValueType::Boolean) or (Right.type IS XPathValueType::Boolean)) return true;
+   if ((Left.type IS XPVT::NodeSet) or (Right.type IS XPVT::NodeSet)) return false;
+   if ((Left.type IS XPVT::Boolean) or (Right.type IS XPVT::Boolean)) return true;
 
    auto left_descriptor = schema_descriptor_for_value(Left);
    auto right_descriptor = schema_descriptor_for_value(Right);

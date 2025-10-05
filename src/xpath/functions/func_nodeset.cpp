@@ -11,7 +11,7 @@ XPathValue XPathFunctionLibrary::function_position(const std::vector<XPathValue>
 
 XPathValue XPathFunctionLibrary::function_count(const std::vector<XPathValue> &Args, const XPathContext &Context) {
    if (Args.size() != 1) return XPathValue(0.0);
-   if (Args[0].type != XPathValueType::NodeSet) return XPathValue(0.0);
+   if (Args[0].type != XPVT::NodeSet) return XPathValue(0.0);
    return XPathValue((double)Args[0].node_set.size());
 }
 
@@ -35,7 +35,7 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
 
    auto collect_from_value = [&](const XPathValue &Value) {
       switch (Value.type) {
-         case XPathValueType::NodeSet: {
+         case XPVT::NodeSet: {
             if (not Value.node_set_string_values.empty()) {
                for (const auto &entry : Value.node_set_string_values) add_tokens(entry);
             }
@@ -49,18 +49,18 @@ XPathValue XPathFunctionLibrary::function_id(const std::vector<XPathValue> &Args
             break;
          }
 
-         case XPathValueType::String:
-         case XPathValueType::Date:
-         case XPathValueType::Time:
-         case XPathValueType::DateTime:
+         case XPVT::String:
+         case XPVT::Date:
+         case XPVT::Time:
+         case XPVT::DateTime:
             add_tokens(Value.string_value);
             break;
 
-         case XPathValueType::Boolean:
+         case XPVT::Boolean:
             add_tokens(Value.to_string());
             break;
 
-         case XPathValueType::Number:
+         case XPVT::Number:
             if (not std::isnan(Value.number_value)) add_tokens(Value.to_string());
             break;
       }
@@ -109,7 +109,7 @@ XPathValue XPathFunctionLibrary::function_local_name(const std::vector<XPathValu
       target_node = Context.context_node;
       target_attribute = Context.attribute_node;
    }
-   else if (Args[0].type IS XPathValueType::NodeSet) target_node = Args[0].node_set.empty() ? nullptr : Args[0].node_set[0];
+   else if (Args[0].type IS XPVT::NodeSet) target_node = Args[0].node_set.empty() ? nullptr : Args[0].node_set[0];
    else return XPathValue(std::string());
 
    if (target_attribute) {
@@ -138,7 +138,7 @@ XPathValue XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathV
       target_node = Context.context_node;
       target_attribute = Context.attribute_node;
    }
-   else if (Args[0].type IS XPathValueType::NodeSet) target_node = Args[0].node_set.empty() ? nullptr : Args[0].node_set[0];
+   else if (Args[0].type IS XPVT::NodeSet) target_node = Args[0].node_set.empty() ? nullptr : Args[0].node_set[0];
    else return XPathValue(std::string());
 
    if (target_attribute) {
@@ -197,7 +197,7 @@ XPathValue XPathFunctionLibrary::function_name(const std::vector<XPathValue> &Ar
       target_node = Context.context_node;
       target_attribute = Context.attribute_node;
    }
-   else if (Args[0].type IS XPathValueType::NodeSet) target_node = Args[0].node_set.empty() ? nullptr : Args[0].node_set[0];
+   else if (Args[0].type IS XPVT::NodeSet) target_node = Args[0].node_set.empty() ? nullptr : Args[0].node_set[0];
    else return XPathValue(std::string());
 
    if (target_attribute) return XPathValue(target_attribute->Name);

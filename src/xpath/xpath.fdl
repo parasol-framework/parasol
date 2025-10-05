@@ -1,0 +1,26 @@
+--$FLUID:Include
+
+module({ name="XPath", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
+  cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
+  
+  enum('XPVT', { type='int', start=0, comment='' },
+     'NodeSet',
+     'Boolean',
+     'Number',
+     'String',
+     'Date',
+     'Time',
+     'DateTime')
+
+  -- The XPathExpression is an internal resource.  This definition makes it available to clients
+  -- without revealing its internal structure.
+
+  struct("XPathExpression", { type="XPathExpression" }, [[
+  cpp(str) original_expression
+  ]])
+
+  functionNames("xp",
+     "Compile",
+     "Evaluate",
+     "Query")
+end)

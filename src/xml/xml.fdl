@@ -26,7 +26,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "PARSE_HTML: Automatically parse HTML escape codes.",
     "STRIP_CDATA: Do not serialise `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
     "LOG_ALL: Print extra log messages.",
-    "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
+    "PARSE_ENTITY: Enables parsing of DOCTYPE entities.",
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
     "NAMESPACE_AWARE: Enable namespace processing during parsing.",
     "HAS_SCHEMA: Automatically defined when a schema has been loaded into the XML object.",

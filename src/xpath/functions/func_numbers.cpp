@@ -16,7 +16,7 @@ XPathValue XPathFunctionLibrary::function_number(const std::vector<XPathValue> &
 XPathValue XPathFunctionLibrary::function_sum(const std::vector<XPathValue> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathValue(0.0);
-   if (Args[0].type != XPathValueType::NodeSet) return XPathValue(0.0);
+   if (Args[0].type != XPVT::NodeSet) return XPathValue(0.0);
 
    const auto &nodeset = Args[0];
    double sum = 0.0;

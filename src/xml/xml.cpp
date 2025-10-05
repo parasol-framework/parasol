@@ -61,24 +61,40 @@ validation instead.
 
 #define PRV_XML
 #include <parasol/modules/xml.h>
+#include <parasol/modules/xpath.h>
 #include <parasol/strings.hpp>
 #include <array>
 #include <format>
 #include <functional>
 #include <sstream>
 #include <vector>
+
 #include "../link/unicode.h"
 #include "xml.h"
 #include "schema/schema_parser.h"
 #include "schema/type_checker.h"
 #include "uri_utils.h"
+#include "unescape.h"
 
 JUMPTABLE_CORE
+JUMPTABLE_XPATH
 
 static OBJECTPTR clXML = nullptr;
 static uint32_t glTagID = 1;
+static OBJECTPTR modXPath = nullptr;
 
-#include "unescape.cpp"
+//*********************************************************************************************************************
+// Dynamic loader for the XPath functionality.  We only load it as needed due to the size of the module.
+
+static ERR load_xpath(void)
+{
+   if (not modXPath) {
+      if (objModule::load("xpath", &modXPath, &XPathBase) != ERR::Okay) return ERR::InitModule;
+   }
+}
+
+//*********************************************************************************************************************
+
 #include "xml_functions.cpp"
 
 namespace
@@ -153,10 +169,6 @@ namespace
    }
 }
 
-#include "xpath/xpath_axis.cpp"
-#include "xpath/xpath_parser.cpp"
-#include "xpath/xpath_evaluator.h"
-
 static ERR add_xml_class(void);
 static ERR SET_Statement(extXML *, CSTRING);
 static ERR SET_Source(extXML *, OBJECTPTR);
@@ -173,6 +185,7 @@ static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 static ERR MODExpunge(void)
 {
    if (clXML) { FreeResource(clXML); clXML = nullptr; }
+   if (modXPath) { FreeResource(modXPath); modXPath = nullptr; }
    return ERR::Okay;
 }
 
@@ -213,7 +226,7 @@ optimised for performance and does not modify the XML structure in any way.  It 
 multiple threads.
 
 -INPUT-
-cstr XPath: A valid XPath expression string defining the elements to count.  The expression must conform to XPath 1.0 syntax with Parasol extensions.
+cstr XPath: A valid XPath expression string defining the elements to count.  The expression must conform to XPath 2.0 syntax with Parasol extensions.
 &int Result: Pointer to an integer variable that will receive the total count of matching tags.
 
 -ERRORS-
@@ -240,8 +253,12 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 
    tlXMLCounter = 0;
 
-   auto call = C_FUNCTION(xml_count);
-   Self->findTag(Args->XPath, &call);
+   XPathExpression *cp;
+   if (xp::Compile(Args->XPath, &cp) IS ERR::Okay) {
+      auto call = C_FUNCTION(xml_count);
+      xp::Query(Self, cp, &call);
+      FreeResource(cp);
+   }
 
    Args->Result = tlXMLCounter;
    return ERR::Okay;
@@ -333,14 +350,18 @@ Search: No matching tag could be found for the specified XPath expression.
 static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
-
-   if (Self->findTag(Args->XPath) IS ERR::Okay) {
-      auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
-      Self->Tags = std::move(new_tags);
-      Self->modified();
-      return ERR::Okay;
+   
+   XPathExpression *cp;
+   if (auto error = xp::Compile(Args->XPath, &cp); error IS ERR::Okay) {
+      if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
+         auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
+         Self->Tags = std::move(new_tags);
+         Self->modified();
+      }
+      FreeResource(cp);
+      return error;
    }
-   else return ERR::Search;
+   else return error;
 }
 
 /*********************************************************************************************************************
@@ -349,7 +370,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 FindTag: Searches for XML elements using XPath expressions with optional callback processing.
 
 The FindTag method provides the primary mechanism for locating XML elements within the document structure using
-XPath 1.0 compatible expressions.  The method supports both single-result queries and comprehensive tree traversal
+XPath 2.0 compatible expressions.  The method supports both single-result queries and comprehensive tree traversal
 with callback-based processing for complex operations.
 
 The method supports comprehensive XPath syntax including absolute paths, attribute matching, content matching (a Parasol
@@ -369,7 +390,7 @@ The callback should return `ERR::Okay` to continue processing, or `ERR::Terminat
 other error codes are ignored to maintain search robustness.
 
 -INPUT-
-cstr XPath: A valid XPath expression string conforming to XPath 1.0 syntax with Parasol extensions.  Must not be NULL or empty.
+cstr XPath: A valid XPath expression string conforming to XPath 2.0 syntax with Parasol extensions.  Must not be NULL or empty.
 ptr(func) Callback: Optional pointer to a callback function for processing multiple matches.
 &int Result: Pointer to an integer that will receive the unique ID of the first matching tag.  Only valid when no callback is provided.
 
@@ -388,26 +409,25 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
+   
+   XPathExpression *cp;
+   if (auto error = xp::Compile(Args->XPath, &cp); error IS ERR::Okay) {
+      error = xp::Query(Self, cp, Args->Callback);
 
-   ERR error = Self->findTag(Args->XPath, Args->Callback);
+      if (error IS ERR::Okay) {
+         if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
+         Args->Result = Self->Cursor->ID;
+         return ERR::Okay;
+      }
 
-   if (error IS ERR::Okay) {
-      if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
-      Args->Result = Self->Cursor->ID;
-      return ERR::Okay;
-   }
+      if (Args->Callback) {
+         if (error IS ERR::Search) return ERR::Okay;
+         return error;
+      }
 
-   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) {
-      if (error IS ERR::Search) log.msg("Failed to find tag through XPath.");
-      else log.msg("XPath evaluation failed: %s", GetErrorMsg(error));
-   }
-
-   if (Args->Callback) {
-      if (error IS ERR::Search) return ERR::Okay;
       return error;
    }
-
-   return error;
+   else return error;
 }
 
 //********************************************************************************************************************
@@ -610,13 +630,13 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    }
    else {
       std::string result_str;
-      if (auto err = Self->evaluate(Args->Key, result_str); err IS ERR::Okay) {
-         pf::strcopy(result_str, Args->Value, Args->Size);
-         return ERR::Okay;
+      XPathExpression *cp;
+      if (auto error = xp::Compile(Args->Key, &cp); error IS ERR::Okay) {
+         xp::XPathValue *xpv;
+         FreeResource(cp);
+         return error;
       }
-      else {
-         return log.warning(err);
-      }
+      else return error;
    }
 }
 
@@ -978,16 +998,18 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.branch("Insert: %d, XPath: %s", int(Args->Where), Args->XPath);
-
-   if (Self->findTag(Args->XPath) IS ERR::Okay) {
-      struct xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
-      if (auto error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
-         Args->Result = insert.Result;
-         return ERR::Okay;
+   
+   XPathExpression *cp;
+   if (auto error = xp::Compile(Args->XPath, &cp); error IS ERR::Okay) {
+      if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
+         xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
+         if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
+            Args->Result = insert.Result;
+         }
       }
-      else return error;
+      return error;
    }
-   else return ERR::Search;
+   else return error;
 }
 
 /*********************************************************************************************************************
@@ -1242,32 +1264,35 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
    auto limit = Args->Limit;
    if (limit IS -1) limit = 0x7fffffff;
    else if (not limit) limit = 1;
+   
+   XPathExpression *cp;
+   if (auto error = xp::Compile(Args->XPath, &cp); error IS ERR::Okay) {
+      while (limit > 0) {
+         if (xp::Query(Self, cp, nullptr) != ERR::Okay) break;
 
-   while (limit > 0) {
-      if (Self->findTag(Args->XPath) != ERR::Okay) return ERR::Okay; // Assume tag already removed if no match
-
-      if (not Self->Attrib.empty()) { // Remove an attribute
-         auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
-            return pf::iequals(Self->Attrib, a.Name);
-         });
-         if (it != Self->Cursor->Attribs.end()) Self->Cursor->Attribs.erase(it);
-      }
-      else if (Self->Cursor->ParentID) {
-         if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
-            auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
-               return Self->Cursor->ID IS child.ID;
+         if (not Self->Attrib.empty()) { // Remove an attribute
+            auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
+               return pf::iequals(Self->Attrib, a.Name);
             });
-            if (it != parent->Children.end()) parent->Children.erase(it);
+            if (it != Self->Cursor->Attribs.end()) Self->Cursor->Attribs.erase(it);
          }
+         else if (Self->Cursor->ParentID) {
+            if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
+               auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
+                  return Self->Cursor->ID IS child.ID;
+               });
+               if (it != parent->Children.end()) parent->Children.erase(it);
+            }
+         }
+         else {
+            auto it = std::ranges::find_if(Self->Tags, [&](const auto& tag) {
+               return Self->Cursor->ID IS tag.ID;
+            });
+            if (it != Self->Tags.end()) Self->Tags.erase(it);
+         }
+         limit--;
       }
-      else {
-         auto it = std::ranges::find_if(Self->Tags, [&](const auto& tag) {
-            return Self->Cursor->ID IS tag.ID;
-         });
-         if (it != Self->Tags.end()) Self->Tags.erase(it);
-      }
-
-      limit--;
+      FreeResource(cp);
    }
 
    Self->modified();
@@ -1535,33 +1560,38 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
+   
+   XPathExpression *cp;
+   if (auto error = xp::Compile(Args->Key, &cp); error IS ERR::Okay) {
+      if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
+         if (not Self->Attrib.empty()) { // Updating or adding an attribute
+            auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
+               return pf::iequals(Self->Attrib, a.Name);
+            });
 
-   if (Self->findTag(Args->Key) IS ERR::Okay) {
-      if (not Self->Attrib.empty()) { // Updating or adding an attribute
-         auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
-            return pf::iequals(Self->Attrib, a.Name);
-         });
+            if (it != Self->Cursor->Attribs.end()) it->Value = Args->Value; // Modify existing
+            else Self->Cursor->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
+            Self->Modified++;
+         }
+         else if (not Self->Cursor->Children.empty()) { // Update existing content
+            Self->Cursor->Children[0].Attribs[0].Value = Args->Value;
+            Self->Modified++;
+         }
+         else {
+            Self->Cursor->Children.emplace_back(XMLTag(glTagID++, 0, {
+               { "", std::string(Args->Value) }
+            }));
+            Self->modified();
+         }
+      }
+      else log.warning("Failed to find '%s'", Args->Key);
 
-         if (it != Self->Cursor->Attribs.end()) it->Value = Args->Value; // Modify existing
-         else Self->Cursor->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
-         Self->Modified++;
-      }
-      else if (not Self->Cursor->Children.empty()) { // Update existing content
-         Self->Cursor->Children[0].Attribs[0].Value = Args->Value;
-         Self->Modified++;
-      }
-      else {
-         Self->Cursor->Children.emplace_back(XMLTag(glTagID++, 0, {
-            { "", std::string(Args->Value) }
-         }));
-         Self->modified();
-      }
-
-      return ERR::Okay;
+      FreeResource(cp);
+      return error;
    }
    else {
-      log.msg("Failed to find '%s'", Args->Key);
-      return ERR::Search;
+      log.msg("Failed to compile '%s'", Args->Key);
+      return ERR::Syntax;
    }
 }
 
@@ -1643,7 +1673,12 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       if (not tag) return ERR::Okay;
    }
    else {
-      if (Self->findTag(Args->XPath) != ERR::Okay) return log.warning(ERR::Search);
+      XPathExpression *cp;
+      if (auto error = xp::Compile(Args->XPath, &cp); error IS ERR::Okay) {
+         error = xp::Query(Self, cp, nullptr);
+         FreeResource(cp);
+         if (error != ERR::Okay) return log.warning(ERR::Search);
+      }
       branch = &Self->Cursor->Children;
    }
 

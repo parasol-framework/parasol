@@ -3,8 +3,8 @@
 #include "xpath_functions.h"
 #include "xpath_axis.h"
 
-#include "../schema/schema_types.h"
-#include "../xml.h"
+#include "../xml/schema/schema_types.h"
+#include "../xml/xml.h"
 
 #include <algorithm>
 #include <array>
@@ -175,7 +175,8 @@ void XPathEvaluator::pop_cursor_state()
 // AST Evaluation Methods
 
 // Dispatch AST nodes to the appropriate evaluation routine.
-ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) {
+ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) 
+{
    if (!Node) return ERR::Failed;
 
    switch (Node->type) {
@@ -217,6 +218,8 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) 
 }
 
 // Execute a full location path expression, managing implicit root handling and cursor updates.
+// Returns ERR::Search if no matches were found.
+
 ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) {
    if ((!PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return ERR::Failed;
 
@@ -730,19 +733,19 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
       return PredicateResult::UNSUPPORTED;
    }
 
-   if (result_value.type IS XPathValueType::NodeSet) {
+   if (result_value.type IS XPVT::NodeSet) {
       return result_value.node_set.empty() ? PredicateResult::NO_MATCH : PredicateResult::MATCH;
    }
 
-   if (result_value.type IS XPathValueType::Boolean) {
+   if (result_value.type IS XPVT::Boolean) {
       return result_value.to_boolean() ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
    }
 
-   if (result_value.type IS XPathValueType::String) {
+   if (result_value.type IS XPVT::String) {
       return result_value.to_string().empty() ? PredicateResult::NO_MATCH : PredicateResult::MATCH;
    }
 
-   if (result_value.type IS XPathValueType::Number) {
+   if (result_value.type IS XPVT::Number) {
       double expected = result_value.to_number();
       if (std::isnan(expected)) return PredicateResult::NO_MATCH;
 

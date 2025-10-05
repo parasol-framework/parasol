@@ -14,6 +14,7 @@
 #include <ankerl/unordered_dense.h>
 
 #include "schema/schema_parser.h"
+#include <parasol/modules/xpath.h>
 
 #include <concepts>
 #include <ranges>
@@ -161,9 +162,6 @@ struct ParseState {
 typedef objXML::TAGS TAGS;
 typedef objXML::CURSOR CURSOR;
 
-// Forward declarations
-class CompiledXPath;
-
 // Generic lookup templates with concepts
 
 template<MapKey Key, typename Value>
@@ -292,30 +290,6 @@ class extXML : public objXML {
 
    ERR resolveEntity(const std::string &Name, std::string &Value, bool Parameter = false);
    
-   // XPath 1.0 Implementation for Parasol
-   // 
-   // Extra Features Supported:
-   // [=...] Match on encapsulated content (Not an XPath standard but we support it)
-   // The use of \ as an escape character in attribute strings is supported, but keep in mind that this is not an official
-   // feature of the XPath standard.
-   // Wildcards are legal only in the context of string comparisons, e.g. a node or attribute lookup
-   //
-   // Examples:
-   //   /menu/submenu
-   //   /menu[2]/window
-   //   /menu/window/@title
-   //   /menu/window[@title='foo']/...
-   //   /menu[=contentmatch]
-   //   /menu//window
-   //   /menu/window/* (First child of the window tag)
-   //   /menu/*[@id='5']
-   //   /root/section[@*="alpha"] (Match any attribute with value "alpha")
-
-   ERR findTag(CSTRING XPath, FUNCTION *pCallback = nullptr);
-   ERR findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback = nullptr);
-   ERR evaluate(CSTRING, std::string &);
-   ERR evaluate(const CompiledXPath &, std::string &);
-
    // Namespace utility methods
 
    inline uint32_t registerNamespace(const std::string &URI) {
@@ -371,12 +345,6 @@ class extXML : public objXML {
       return nullptr;
    }
 };
-
-#include "xpath/xpath_ast.h"
-#include "xpath/xpath_functions.h"
-#include "xpath/xpath_axis.h"
-#include "xpath/xpath_parser.h"
-#include "xpath/xpath_evaluator.h"
 
 inline ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback)
 {

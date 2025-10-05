@@ -772,7 +772,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <const name="NEW">Creates an empty XML object on initialisation - if the <fl>Path</fl> field has been set, the source file will not be loaded.</const>
       <const name="NO_ESCAPE">Turns off escape code conversion.</const>
       <const name="OMIT_TAGS">Prevents tags from being output when the XML is serialised (output content only).</const>
-      <const name="PARSE_ENTITY">Entity references in the DTD will be parsed automatically.</const>
+      <const name="PARSE_ENTITY">Enables parsing of DOCTYPE entities.</const>
       <const name="PARSE_HTML">Automatically parse HTML escape codes.</const>
       <const name="READABLE">Indent the output of serialised XML to improve readability.</const>
       <const name="STANDALONE">Automatically defined when the XML declaration specifies standalone="yes".</const>

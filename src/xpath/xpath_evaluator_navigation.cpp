@@ -2,8 +2,8 @@
 #include "xpath_evaluator_detail.h"
 #include "xpath_axis.h"
 
-#include "../schema/schema_types.h"
-#include "../xml.h"
+#include "../xml/schema/schema_types.h"
+#include "../xml/xml.h"
 
 #include <optional>
 #include <string>

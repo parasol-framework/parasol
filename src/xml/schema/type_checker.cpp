@@ -87,7 +87,7 @@ namespace xml::schema
       }
 
       if ((target_type IS SchemaType::XPathBoolean) or (target_type IS SchemaType::XSBoolean)) {
-         if (Value.type IS XPathValueType::Boolean) return true;
+         if (Value.type IS XPVT::Boolean) return true;
          auto string_value = Value.to_string();
          if (is_valid_boolean(string_value)) return true;
 
@@ -97,7 +97,7 @@ namespace xml::schema
 
       if ((target_type IS SchemaType::XPathString) or (target_type IS SchemaType::XSString)) return true;
       if (target_type IS SchemaType::XPathNodeSet) {
-         if (Value.type IS XPathValueType::NodeSet) return true;
+         if (Value.type IS XPVT::NodeSet) return true;
          assign_error("Expected a node-set value.");
          return false;
       }

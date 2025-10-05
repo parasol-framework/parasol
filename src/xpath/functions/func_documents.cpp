@@ -6,7 +6,7 @@
 #include <parasol/strings.hpp>
 
 #include "../xpath_functions.h"
-#include "../../xml.h"
+#include "../../xml/xml.h"
 #include "accessor_support.h"
 
 #include <algorithm>
@@ -137,7 +137,7 @@ static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &U
    if (!document) return nullptr;
    if (document->Tags.empty()) return nullptr;
 
-   document->getMap();
+   (void)document->getMap();
    register_document_nodes(Owner, document);
    Owner->DocumentCache[URI] = document;
    return document;
@@ -296,7 +296,7 @@ XPathValue XPathFunctionLibrary::function_root(const std::vector<XPathValue> &Ar
 
    if (!Args.empty()) {
       const XPathValue &value = Args[0];
-      if ((value.type IS XPathValueType::NodeSet) and (not value.node_set.empty())) node = value.node_set[0];
+      if ((value.type IS XPVT::NodeSet) and (not value.node_set.empty())) node = value.node_set[0];
       else return XPathValue(std::vector<XMLTag *>());
    }
    else node = Context.context_node;
@@ -551,7 +551,7 @@ XPathValue XPathFunctionLibrary::function_idref(const std::vector<XPathValue> &A
 
    for (const auto &arg : Args) {
       switch (arg.type) {
-         case XPathValueType::NodeSet: {
+         case XPVT::NodeSet: {
             if (not arg.node_set_string_values.empty()) {
                for (const auto &entry : arg.node_set_string_values) add_tokens(entry);
             }
@@ -565,18 +565,18 @@ XPathValue XPathFunctionLibrary::function_idref(const std::vector<XPathValue> &A
             break;
          }
 
-         case XPathValueType::String:
-         case XPathValueType::Date:
-         case XPathValueType::Time:
-         case XPathValueType::DateTime:
+         case XPVT::String:
+         case XPVT::Date:
+         case XPVT::Time:
+         case XPVT::DateTime:
             add_tokens(arg.string_value);
             break;
 
-         case XPathValueType::Boolean:
+         case XPVT::Boolean:
             add_tokens(arg.to_string());
             break;
 
-         case XPathValueType::Number:
+         case XPVT::Number:
             if (not std::isnan(arg.number_value)) add_tokens(arg.to_string());
             break;
       }

@@ -22,8 +22,9 @@
 #include "xpath_evaluator_detail.h"
 #include "xpath_functions.h"
 #include "xpath_axis.h"
-#include "../schema/schema_types.h"
-#include "../xml.h"
+#include "../xml/schema/schema_types.h"
+#include "../xml/xml.h"
+#include "xpath.h"
 
 #include <algorithm>
 #include <cmath>
@@ -37,20 +38,6 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
-
-namespace {
-
-// Lightweight view-based trim used for cache key normalisation.
-[[maybe_unused]] std::string_view trim_view(std::string_view Value)
-{
-   auto start = Value.find_first_not_of(" \t\r\n");
-   if (start IS std::string_view::npos) return std::string_view();
-
-   auto end = Value.find_last_not_of(" \t\r\n");
-   return Value.substr(start, end - start + 1);
-}
-
-} // namespace
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
@@ -88,15 +75,11 @@ void XPathEvaluator::record_error(std::string_view Message, bool Force)
 
 ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t CurrentPrefix)
 {
-   if (!CompiledPath.isValid()) return ERR::Syntax;
-
    // Reset the evaluator state
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
-
-   // Ensure the tag ID and ParentID values are defined
-
-   (void)xml->getMap();
+   
+   (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
    return evaluate_ast(CompiledPath.getAST(), CurrentPrefix);
 }
@@ -104,13 +87,9 @@ ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t Current
 //********************************************************************************************************************
 // Public method to evaluate complete XPath expressions and return computed values
 
-ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath, XPathValue &Result, uint32_t CurrentPrefix)
+ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath, XPathValue *Result, uint32_t CurrentPrefix)
 {
-   if (!CompiledPath.isValid()) return ERR::Syntax;
-
-   // Ensure the tag ID and ParentID values are defined
-
-   (void)xml->getMap();
+   (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
    // Set context to document root if not already set
 
@@ -120,13 +99,13 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
 
    expression_unsupported = false;
 
-   const XPathNode *expression_node = CompiledPath.getAST();
-   if (expression_node and (expression_node->type IS XPathNodeType::EXPRESSION)) {
-      if (expression_node->child_count() > 0) expression_node = expression_node->get_child(0);
-      else expression_node = nullptr;
+   const XPathNode *node = CompiledPath.getAST();
+   if (node and (node->type IS XPathNodeType::EXPRESSION)) {
+      if (node->child_count() > 0) node = node->get_child(0);
+      else node = nullptr;
    }
 
-   Result = evaluate_expression(expression_node, CurrentPrefix);
+   *Result = evaluate_expression(node, CurrentPrefix);
 
    if (expression_unsupported) {
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg = "Unsupported XPath expression.";
