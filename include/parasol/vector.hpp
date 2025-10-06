@@ -158,12 +158,14 @@ public:
 
       iterator target_iter = const_cast<iterator>(pTarget);
 
-      // Shift elements from the target to the end one position to the right
-      if (target_iter < end()) {
-         std::move_backward(target_iter, end(), end() + 1);
+      iterator old_end = end();
+
+      if (target_iter < old_end) {
+         new (old_end) T(std::move(*(old_end - 1)));
+         std::move_backward(target_iter, old_end - 1, old_end);
+         target_iter->~T();
       }
 
-      // Construct the new element at the target position
       new (target_iter) T(pValue);
       length++;
 
@@ -179,8 +181,12 @@ public:
 
       iterator target_iter = const_cast<iterator>(pTarget);
 
-      if (target_iter < end()) {
-         std::move_backward(target_iter, end(), end() + 1);
+      iterator old_end = end();
+
+      if (target_iter < old_end) {
+         new (old_end) T(std::move(*(old_end - 1)));
+         std::move_backward(target_iter, old_end - 1, old_end);
+         target_iter->~T();
       }
 
       new (target_iter) T(std::move(pValue));
@@ -207,15 +213,33 @@ public:
       }
 
       iterator target_iter = const_cast<iterator>(pTarget);
+      iterator old_end = end();
+      size_type tail_count = size_type(old_end - target_iter);
+      size_type count_sz = size_type(count);
 
-      // Shift existing elements to make space
-      if (target_iter < end()) {
-         std::move_backward(target_iter, end(), end() + count);
+      if (tail_count > 0) {
+         if (count_sz <= tail_count) {
+            iterator move_from_start = old_end - count_sz;
+            std::uninitialized_move(move_from_start, old_end, old_end);
+            std::move_backward(target_iter, move_from_start, old_end);
+            for (iterator destroy_iter = target_iter; destroy_iter != target_iter + count_sz; ++destroy_iter) {
+               destroy_iter->~T();
+            }
+         } else {
+            iterator new_tail_start = target_iter + count_sz;
+            std::uninitialized_move(target_iter, old_end, new_tail_start);
+            for (iterator destroy_iter = target_iter; destroy_iter != old_end; ++destroy_iter) {
+               destroy_iter->~T();
+            }
+         }
       }
 
-      // Copy new elements into the created space
-      std::uninitialized_copy(pStart, pEnd, target_iter);
-      length += count;
+      iterator insert_iter = target_iter;
+      for (auto src_iter = pStart; src_iter != pEnd; ++src_iter, ++insert_iter) {
+         new (insert_iter) T(*src_iter);
+      }
+
+      length += count_sz;
    }
 
    // Comparison
