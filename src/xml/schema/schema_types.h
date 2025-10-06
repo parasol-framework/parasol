@@ -9,9 +9,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 #include <ankerl/unordered_dense.h>
 #include <parasol/modules/xml.h>
-#include "../xpath/xpath_functions.h"
+#include "../xpath_value.h"
 
 namespace xml::schema
 {
@@ -56,7 +57,7 @@ namespace xml::schema
       [[nodiscard]] bool is_builtin() const noexcept;
       [[nodiscard]] bool is_derived_from(SchemaType Target) const;
       [[nodiscard]] bool can_coerce_to(SchemaType Target) const;
-      [[nodiscard]] XPathValue coerce_value(const XPathValue &Value, SchemaType Target) const;
+      [[nodiscard]] XPathVal coerce_value(const XPathVal &Value, SchemaType Target) const;
    };
 
    class SchemaTypeRegistry
@@ -71,8 +72,7 @@ namespace xml::schema
       SchemaTypeRegistry();
 
       std::shared_ptr<SchemaTypeDescriptor> register_descriptor(SchemaType Type, std::string Name,
-                                                                           std::shared_ptr<SchemaTypeDescriptor> Base = nullptr,
-                                                                             bool Builtin = false);
+         std::shared_ptr<SchemaTypeDescriptor> Base = nullptr, bool Builtin = false);
       [[nodiscard]] std::shared_ptr<SchemaTypeDescriptor> find_descriptor(SchemaType Type) const;
       [[nodiscard]] std::shared_ptr<SchemaTypeDescriptor> find_descriptor(std::string_view Name) const;
       void clear();
@@ -82,5 +82,5 @@ namespace xml::schema
 
    [[nodiscard]] bool is_numeric(SchemaType Type) noexcept;
    [[nodiscard]] bool is_string_like(SchemaType Type) noexcept;
-   [[nodiscard]] SchemaType schema_type_for_xpath(XPathValueType Type) noexcept;
+   [[nodiscard]] SchemaType schema_type_for_xpath(XPVT Type) noexcept;
 }

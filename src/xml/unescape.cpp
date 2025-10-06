@@ -1,5 +1,26 @@
+//********************************************************************************************************************
+// XML Entity Decoding and Character Reference Processing
+//
+// Provides functions for decoding XML entity references and numeric character references in XML content.  This
+// module handles both named entities (like &amp;, &lt;, &gt;) and numeric character references (&#xHH; and &#DDD;)
+// according to XML specifications.
+//
+// Key functionality:
+//   - Numeric character reference decoding (decimal and hexadecimal)
+//   - Unicode codepoint to UTF-8 conversion
+//   - Entity reference lookup and substitution
+//   - Character validation and bounds checking
+//
+// The implementation ensures safe decoding of XML escape sequences whilst preserving Unicode correctness and
+// handling edge cases like invalid references and out-of-range codepoints.
 
 #include "unescape.h"
+#include <stdint.h>
+#include <string.h>
+#include "xml.h"
+#include "../link/unicode.h"
+
+#define IS ==
 
 bool decode_numeric_reference(const char *Start, size_t Length, char *Buffer, size_t &ResultLength)
 {
@@ -301,9 +322,6 @@ static ankerl::unordered_dense::map<std::string, uint16_t> glHTML = {
 
 static void xml_unescape(extXML *Self, std::string &String)
 {
-   pf::Log log(__FUNCTION__);
-
-
    auto c = String.find('&');
    while (c != std::string::npos) {
       if ((c + 1 < String.size()) and (String[c + 1] IS '#')) {
@@ -334,7 +352,7 @@ static void xml_unescape(extXML *Self, std::string &String)
                std::string resolved;
                if (Self->resolveEntity(lookup, resolved) IS ERR::Okay) {
                   String.replace(c, end - c, resolved);
-                  // Rescan the inserted text to handle nested entity references.
+                  // TODO: Rescan the inserted text to handle nested entity references.
                }
                else c++;
             }
@@ -358,7 +376,7 @@ static void xml_unescape(extXML *Self, std::string &String)
 
 //********************************************************************************************************************
 
-static void unescape_all(extXML *Self, TAGS &Tags)
+void unescape_all(extXML *Self, TAGS &Tags)
 {
    for (auto &tag : Tags) {
       if (!tag.Children.empty()) {

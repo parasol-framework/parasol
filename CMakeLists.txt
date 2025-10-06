@@ -96,7 +96,7 @@ set (BUILD_RPATH_USE_ORIGIN TRUE)
 set (INCLUDE_OUTPUT "${PROJECT_SOURCE_DIR}/include/parasol")
 set (DOCS "${PROJECT_SOURCE_DIR}/docs/xml")
 
-set(REQUIRED_MODS core fluid xml json)
+set(REQUIRED_MODS core fluid xml xpath json)
 
 if (PARASOL_STATIC)
    set (BUILD_SHARED_LIBS OFF)
@@ -670,6 +670,7 @@ add_subdirectory (src/link)
 add_subdirectory (src/core)
 add_subdirectory (src/fluid)
 add_subdirectory (src/xml)
+add_subdirectory (src/xpath)
 add_subdirectory (src/json)
 
 add_subdirectory (src/launcher)

@@ -3,38 +3,33 @@
 set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.fdl"
+   NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
+   FILES "xml.cpp"
+   ARGS  "output-defs=xml_def.c" "output-proto=xml_def.c"
    APPEND_IDL "${MOD}_def.c")
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
+add_compile_definitions("PRV_XML_MODULE" "PRV_XML")
 
-# XPath Support Library
+# Unescape Library
 
-add_library (xml_xpath_functions OBJECT
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_common.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_navigation.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_context.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_predicates.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator_values.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_evaluator.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_functions.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_tokenizer.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/xpath/xpath_value.cpp")
+add_library (xml_unescape OBJECT "${CMAKE_CURRENT_SOURCE_DIR}/unescape.cpp")
+target_include_directories (xml_unescape PRIVATE "${PROJECT_SOURCE_DIR}/include")
+set_target_properties (xml_unescape PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+add_dependencies (xml_unescape build_headers)
 
-target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
-set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_dependencies (xml_xpath_functions build_headers)
-
-# Schema Supper Library
+# Schema Support Library
 
 add_library (xml_schema OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp")
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath_value.cpp")
 
 target_include_directories (xml_schema PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_schema PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
@@ -44,7 +39,7 @@ add_dependencies (xml_schema build_headers)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
-   $<TARGET_OBJECTS:xml_xpath_functions>
+   $<TARGET_OBJECTS:xml_unescape>
    $<TARGET_OBJECTS:xml_schema>)
 
 # Tests
@@ -65,12 +60,12 @@ flute_test (${MOD}_variables "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_setvariable
 flute_test (${MOD}_xpath_func_ext "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_func_ext.fluid")
 flute_test (${MOD}_xpath_sequences "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_sequences.fluid")
 flute_test (${MOD}_xpath_string_uri "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_string_uri.fluid")
-flute_test (${MOD}_xpath2_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_duration.fluid")
-flute_test (${MOD}_xpath2_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_datetime.fluid")
-flute_test (${MOD}_xpath2_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_qname.fluid")
+flute_test (${MOD}_xpath_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_duration.fluid")
+flute_test (${MOD}_xpath_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_datetime.fluid")
+flute_test (${MOD}_xpath_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_qname.fluid")
 flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_documents.fluid")
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
-flute_test (${MOD}_xpath2_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_accessor.fluid")
+flute_test (${MOD}_xpath_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_accessor.fluid")
 
 if (INSTALL_TESTS)
    # This test is redundant but is being retained as an example for C++

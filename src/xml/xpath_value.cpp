@@ -1,0 +1,303 @@
+//********************************************************************************************************************
+// XPath Value System Implementation
+//
+// Implements the XPathVal class and value conversion functions for XPath evaluation.  This file provides the core
+// value model used throughout XPath processing, handling conversions between node-sets, strings, numbers, and
+// booleans according to XPath 2.0 specifications.
+//
+// Key functionality:
+//   - Type conversion methods (to_boolean, to_number, to_string, to_node_set)
+//   - Node-set string value extraction
+//   - Numeric conversion with NaN and infinity handling
+//   - Schema type integration and validation
+//   - String normalisation and formatting for XPath numeric output
+//
+// The implementation ensures consistent type coercion semantics across all XPath operations, integrating with
+// the schema type system for enhanced type awareness in XPath 2.0 expressions.
+
+#include "xpath_value.h"
+
+#include <parasol/modules/xml.h>
+
+#include "../xml/schema/schema_types.h"
+#include "../xml/schema/type_checker.h"
+#include "../xml/xml.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cctype>
+#include <cstdlib>
+#include <limits>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <string_view>
+
+namespace
+{
+   std::string_view trim_view(std::string_view Value) noexcept
+   {
+      auto start = Value.find_first_not_of(" \t\r\n");
+      if (start IS std::string_view::npos) return std::string_view();
+
+      auto end = Value.find_last_not_of(" \t\r\n");
+      return Value.substr(start, end - start + 1);
+   }
+
+   void append_node_text(XMLTag *Node, std::string &Output)
+   {
+      if (!Node) return;
+
+      if (Node->isContent()) {
+         if ((!Node->Attribs.empty()) and Node->Attribs[0].isContent()) {
+            Output.append(Node->Attribs[0].Value);
+         }
+
+         for (auto &child : Node->Children) {
+            append_node_text(&child, Output);
+         }
+
+         return;
+      }
+
+      for (auto &child : Node->Children) {
+         if (child.Attribs.empty()) continue;
+
+         if (child.Attribs[0].isContent()) {
+            Output.append(child.Attribs[0].Value);
+         }
+         else append_node_text(&child, Output);
+      }
+   }
+}
+
+std::string format_xpath_number(double Value)
+{
+   if (std::isnan(Value)) return std::string("NaN");
+   if (std::isinf(Value)) return (Value > 0) ? std::string("Infinity") : std::string("-Infinity");
+   if (Value IS 0.0) return std::string("0");
+
+   std::ostringstream stream;
+   stream.setf(std::ios::fmtflags(0), std::ios::floatfield);
+   stream.precision(15);
+   stream << Value;
+
+   std::string result = stream.str();
+
+   if (not result.empty() and (result[0] IS '+')) result.erase(result.begin());
+
+   auto decimal = result.find('.');
+   if (decimal != std::string::npos)
+   {
+      while ((!result.empty()) and (result.back() IS '0')) result.pop_back();
+      if ((!result.empty()) and (result.back() IS '.')) result.pop_back();
+   }
+
+   return result;
+}
+
+std::optional<bool> parse_schema_boolean(std::string_view Value)
+{
+   auto trimmed = trim_view(Value);
+   if (trimmed.empty()) return std::nullopt;
+
+   if ((trimmed.length() IS 1) and (trimmed[0] IS '1')) return true;
+   if ((trimmed.length() IS 1) and (trimmed[0] IS '0')) return false;
+
+   std::string lowered(trimmed);
+   std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
+
+   if (lowered.compare("true") IS 0) return true;
+   if (lowered.compare("false") IS 0) return false;
+
+   return std::nullopt;
+}
+
+bool XPathVal::to_boolean() const
+{
+   auto schema_type = get_schema_type();
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed;
+      }
+   }
+
+   switch (type) {
+      case XPVT::Boolean: return boolean_value;
+      case XPVT::Number: return number_value != 0.0 and !std::isnan(number_value);
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime:
+         return !string_value.empty();
+      case XPVT::NodeSet: return !node_set.empty();
+   }
+   return false;
+}
+
+double XPathVal::string_to_number(const std::string &Value) {
+   if (Value.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+   char *end_ptr = nullptr;
+   double result = std::strtod(Value.c_str(), &end_ptr);
+   if ((end_ptr IS Value.c_str()) or (*end_ptr != '\0')) {
+      return std::numeric_limits<double>::quiet_NaN();
+   }
+
+   return result;
+}
+
+std::string XPathVal::node_string_value(XMLTag *Node)
+{
+   if (not Node) return std::string();
+
+   std::string value;
+   append_node_text(Node, value);
+   return value;
+}
+
+double XPathVal::to_number() const
+{
+   auto schema_type = get_schema_type();
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed ? 1.0 : 0.0;
+      }
+   }
+
+   switch (type)
+   {
+      case XPVT::Boolean: return boolean_value ? 1.0 : 0.0;
+      case XPVT::Number: return number_value;
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime: {
+         return string_to_number(string_value);
+      }
+      case XPVT::NodeSet: {
+         if (node_set.empty()) return std::numeric_limits<double>::quiet_NaN();
+         if (node_set_string_override.has_value()) return string_to_number(*node_set_string_override);
+         if (not node_set_attributes.empty()) {
+            const XMLAttrib *attribute = node_set_attributes[0];
+            if (attribute) return string_to_number(attribute->Value);
+         }
+         if (not node_set_string_values.empty()) return string_to_number(node_set_string_values[0]);
+         return string_to_number(node_string_value(node_set[0]));
+      }
+   }
+   return 0.0;
+}
+
+std::string XPathVal::to_string() const
+{
+   auto schema_type = get_schema_type();
+   if (xml::schema::is_numeric(schema_type) and (type != XPVT::NodeSet)) {
+      double numeric_value = to_number();
+      if (!std::isnan(numeric_value)) return format_xpath_number(numeric_value);
+   }
+
+   if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(string_value);
+         if (parsed.has_value()) return *parsed ? std::string("true") : std::string("false");
+      }
+   }
+
+   switch (type) {
+      case XPVT::Boolean: return boolean_value ? "true" : "false";
+      case XPVT::Number: return format_xpath_number(number_value);
+
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime:
+         return string_value;
+
+      case XPVT::NodeSet: {
+         if (node_set_string_override.has_value()) return *node_set_string_override;
+         if (not node_set_attributes.empty()) {
+            const XMLAttrib *attribute = node_set_attributes[0];
+            if (attribute) return attribute->Value;
+         }
+         if (not node_set_string_values.empty()) return node_set_string_values[0];
+         if (node_set.empty()) return "";
+
+         return node_string_value(node_set[0]);
+      }
+   }
+   return "";
+}
+
+NODES XPathVal::to_node_set() const
+{
+   if (type IS XPVT::NodeSet) return node_set;
+   return {};
+}
+
+bool XPathVal::is_empty() const
+{
+   switch (type) {
+      case XPVT::Boolean: return false;
+      case XPVT::Number: return false;
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime:
+         return string_value.empty();
+      case XPVT::NodeSet: return node_set.empty();
+   }
+   return true;
+}
+
+size_t XPathVal::size() const
+{
+   switch (type)
+   {
+      case XPVT::NodeSet: return node_set.size();
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime:
+         return is_empty() ? 0 : 1;
+      default: return is_empty() ? 0 : 1;
+   }
+}
+
+bool XPathVal::has_schema_info() const
+{
+   return schema_type_info != nullptr;
+}
+
+void XPathVal::set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo)
+{
+   schema_type_info = TypeInfo;
+   schema_validated = false;
+}
+
+bool XPathVal::validate_against_schema() const
+{
+   if (schema_validated and schema_type_info) return true;
+
+   auto descriptor = schema_type_info;
+   auto &registry_ref = xml::schema::registry();
+   if (not descriptor) {
+      auto inferred_type = xml::schema::schema_type_for_xpath(type);
+      descriptor = registry_ref.find_descriptor(inferred_type);
+      if (not descriptor) return false;
+      schema_type_info = descriptor;
+   }
+
+   xml::schema::TypeChecker checker(registry_ref);
+   schema_validated = checker.validate_value(*this, *descriptor);
+   return schema_validated;
+}
+
+xml::schema::SchemaType XPathVal::get_schema_type() const
+{
+   if (schema_type_info) return schema_type_info->schema_type;
+   return xml::schema::schema_type_for_xpath(type);
+}
+

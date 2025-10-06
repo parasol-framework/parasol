@@ -561,7 +561,7 @@ static ERR cache_host(HOSTMAP &Store, CSTRING Key, struct addrinfo *Host, DNSEnt
 static ERR resolve_address(CSTRING Address, const IPAddress *IP, DNSEntry &Info)
 {
    {
-      std::shared_lock<std::shared_mutex> lock(glAddressesMutex);     
+      std::shared_lock<std::shared_mutex> lock(glAddressesMutex);
       if (auto it = glAddresses.find(Address); it != glAddresses.end()) {
          Info = it->second;
          return ERR::Okay;

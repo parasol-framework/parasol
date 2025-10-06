@@ -1,3 +1,19 @@
+//********************************************************************************************************************
+// URI Utilities for XML Module
+//
+// Provides URI manipulation and normalisation functions used throughout the XML module.  These utilities handle
+// URI resolution, path normalisation, and query/fragment stripping in accordance with URI specifications.
+//
+// Key functionality:
+//   - URI separator normalisation (converting backslashes to forward slashes)
+//   - Absolute URI detection
+//   - Query and fragment stripping
+//   - Path segment normalisation (resolving . and .. components)
+//   - Relative URI resolution against base URIs
+//
+// These functions support XML Base resolution, schema import/include processing, and document URI handling
+// throughout the XML and XPath subsystems.
+
 #pragma once
 
 #include <algorithm>

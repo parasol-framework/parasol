@@ -89,6 +89,19 @@ enum class XTF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(XTF)
 
+// Type descriptors for XPathValue
+
+enum class XPVT : int {
+   NIL = 0,
+   NodeSet = 0,
+   Boolean = 1,
+   Number = 2,
+   String = 3,
+   Date = 4,
+   Time = 5,
+   DateTime = 6,
+};
+
 typedef struct XMLAttrib {
    std::string Name;    // Name of the attribute
    std::string Value;   // Value of the attribute
@@ -437,6 +450,29 @@ class objXML : public Object {
 
 };
 
+typedef struct XPathValue {
+   XPVT   type;                 // Identifies the type of value stored
+   double number_value;
+   std::string string_value;
+   pf::vector<XMLTag *> node_set;
+   std::optional<std::string> node_set_string_override;
+   std::vector<std::string> node_set_string_values;
+   std::vector<const XMLAttrib *> node_set_attributes;
+   bool boolean_value = false;
+
+   XPathValue(XPVT pType) : type(pType), number_value(0) { }
+
+   explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
+      std::optional<std::string> NodeSetString = std::nullopt,
+      std::vector<std::string> NodeSetStrings = {},
+      std::vector<const XMLAttrib *> NodeSetAttributes = {})
+      : type(XPVT::NodeSet),
+        node_set(Nodes),
+        node_set_string_override(std::move(NodeSetString)),
+        node_set_string_values(std::move(NodeSetStrings)),
+        node_set_attributes(std::move(NodeSetAttributes)) {}
+} XPATHVALUE;
+
 //********************************************************************************************************************
 
 namespace xml {
@@ -489,3 +525,34 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 }
 
 } // namespace
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_XML static struct XMLBase *XMLBase;
+#else
+#define JUMPTABLE_XML struct XMLBase *XMLBase;
+#endif
+
+struct XMLBase {
+#ifndef PARASOL_STATIC
+   ERR (*_XValueToNumber)(struct XPathValue *Value, double *Result);
+   ERR (*_XValueToString)(const struct XPathValue *Value, std::string *Result);
+   ERR (*_XValueNodes)(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
+#endif // PARASOL_STATIC
+};
+
+#ifndef PRV_XML_MODULE
+#ifndef PARASOL_STATIC
+extern struct XMLBase *XMLBase;
+namespace xml {
+inline ERR XValueToNumber(struct XPathValue *Value, double *Result) { return XMLBase->_XValueToNumber(Value,Result); }
+inline ERR XValueToString(const struct XPathValue *Value, std::string *Result) { return XMLBase->_XValueToString(Value,Result); }
+inline ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result) { return XMLBase->_XValueNodes(Value,Result); }
+} // namespace
+#else
+namespace xml {
+extern ERR XValueToNumber(struct XPathValue *Value, double *Result);
+extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
+extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
+} // namespace
+#endif // PARASOL_STATIC
+#endif
+

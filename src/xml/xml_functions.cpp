@@ -1,5 +1,17 @@
 //********************************************************************************************************************
-// String utilities and character classification
+// XML Module Functions and Utilities
+//
+// Provides string utilities, character classification, and helper functions for the XML module.  These functions
+// support XML serialisation, attribute value escaping, content formatting, and general-purpose string operations
+// used throughout the XML processing pipeline.
+//
+// Key functionality:
+//   - XML character escaping and attribute value formatting
+//   - String utilities for XML content manipulation
+//   - Character classification for XML syntax validation
+//   - URI handling and encoding utilities
+//
+// This module ensures consistent XML output formatting and provides the building blocks for safe XML generation.
 
 #include <ankerl/unordered_dense.h>
 #include <format>
@@ -884,7 +896,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.
 
-   log.branch("Parsing incoming text stream...");
+   log.branch("Parsing %" PRId64 " bytes...", Text.size());
 
    // Estimate tag count and reserve space (heuristic: 1 tag per 100 characters)
    Tags.reserve(std::max(size_t(Text.size() / 100), size_t(16)));

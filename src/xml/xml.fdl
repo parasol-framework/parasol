@@ -26,7 +26,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "PARSE_HTML: Automatically parse HTML escape codes.",
     "STRIP_CDATA: Do not serialise `CDATA` sections.  Note that this option is used as a parameter, not an object flag.",
     "LOG_ALL: Print extra log messages.",
-    "PARSE_ENTITY: Entity references in the DTD will be parsed automatically.",
+    "PARSE_ENTITY: Enables parsing of DOCTYPE entities.",
     "OMIT_TAGS: Prevents tags from being output when the XML is serialised (output content only).",
     "NAMESPACE_AWARE: Enable namespace processing during parsing.",
     "HAS_SCHEMA: Automatically defined when a schema has been loaded into the XML object.",
@@ -45,6 +45,15 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
     "NOTATION: Tag represents a notation of the format `<!XML>`.",
     "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
+    
+  enum('XPVT', { type='int', start=0, comment='Type descriptors for XPathValue' },
+     'NodeSet',
+     'Boolean',
+     'Number',
+     'String',
+     'Date',
+     'Time',
+     'DateTime')
 
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
@@ -147,7 +156,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=27, name="ValidateDocument" }
   })
 
-  class("XML", { src="xml.cpp", output="xml_def.c" }, [[
+  class("XML", { src="xml_class.cpp", output="xml_class_def.c" }, [[
     str Path         # Location of the XML data file
     str DocType      # Root element name from DOCTYPE declaration
     str PublicID     # Public identifier for external DTD
@@ -187,6 +196,32 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       auto buffer = std::to_string(Value);
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
+  ]])
+  
+  struct("XPathValue", { type="XPathValue" }, [[
+  int(XPVT) type # Identifies the type of value stored
+  double number_value
+  cpp(str) string_value
+  ]],
+  [[
+   pf::vector<XMLTag *> node_set;
+   std::optional<std::string> node_set_string_override;
+   std::vector<std::string> node_set_string_values;
+   std::vector<const XMLAttrib *> node_set_attributes;
+   bool boolean_value = false;
+
+   XPathValue(XPVT pType) : type(pType), number_value(0) { }
+
+   explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
+      std::optional<std::string> NodeSetString = std::nullopt,
+      std::vector<std::string> NodeSetStrings = {},
+      std::vector<const XMLAttrib *> NodeSetAttributes = {})
+      : type(XPVT::NodeSet),
+        node_set(Nodes),
+        node_set_string_override(std::move(NodeSetString)),
+        node_set_string_values(std::move(NodeSetStrings)),
+        node_set_attributes(std::move(NodeSetAttributes)) {}
+
   ]])
 
   c_insert([[
@@ -243,4 +278,9 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 
 } // namespace
   ]])
+
+  functionNames("xml",
+     "XValueToNumber",
+     "XValueToString",
+     "XValueNodes")
 end)
