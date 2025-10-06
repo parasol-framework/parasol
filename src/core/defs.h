@@ -225,7 +225,7 @@ public:
    };
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID OwnerID;    // The object that allocated this block.
-   uint32_t Size;       // 4GB max
+   uint32_t Size;       // 4GB max (user-requested size)
    THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
    int16_t  AccessCount = 0; // Total number of locks
@@ -703,6 +703,7 @@ extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern int glStdErrFlags; // Read only
 extern int glValidateProcessID; // Used by core thread only.
+extern size_t glPageSize;
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
@@ -1086,6 +1087,9 @@ extern "C" int winCloseHandle(WINHANDLE);
 extern "C" int winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
 extern "C" int winCreateSharedMemory(STRING, int, int, WINHANDLE *, APTR *);
 extern "C" WINHANDLE winCreateThread(APTR Function, APTR Arg, int StackSize, int *ID);
+extern "C" APTR winAllocProtectedMemory(size_t Size, int ProtectionFlags);
+extern "C" int winFreeProtectedMemory(APTR Address, size_t Size);
+extern "C" size_t winGetPageSize(void);
 extern "C" int winGetCurrentThreadId(void);
 extern "C" void winDeathBringer(int Value);
 extern "C" int winDuplicateHandle(int, int, int, int *);
@@ -1201,6 +1205,12 @@ inline uint32_t reverse_long(uint32_t Value) {
             ((Value & 0x0000FF00) <<  8) |
             ((Value & 0x00FF0000) >>  8) |
             ((Value & 0xFF000000) >> 24));
+}
+
+// Align a size to the system page size
+
+inline size_t align_page_size(size_t Size) {
+   return ((Size + glPageSize - 1) / glPageSize) * glPageSize;
 }
 
 //********************************************************************************************************************

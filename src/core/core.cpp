@@ -211,6 +211,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    seteuid(glUID);  // Ensure that the rest of our code is run under the real user name instead of admin
    setegid(glGID);  // Ensure that we run under the user's default group (important for file creation)
 
+   glPageSize = sysconf(_SC_PAGESIZE);
 #elif _WIN32
    int id = 0;
    if (glEnableCrashHandler) {
@@ -221,6 +222,8 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       #endif
    }
    else winInitialise(&id, nullptr);
+
+   glPageSize = winGetPageSize();
 #endif
 
    // Randomise the internal random variables

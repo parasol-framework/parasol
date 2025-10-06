@@ -1212,6 +1212,48 @@ extern "C" int winCreateSharedMemory(char *Name, int mapsize, int initial_size, 
 }
 
 //********************************************************************************************************************
+// Allocate memory with OS-level protection using VirtualAlloc
+
+extern "C" void * winAllocProtectedMemory(size_t Size, int ProtectionFlags)
+{
+   if (Size IS 0) return nullptr;
+
+   // Calculate page-aligned size
+   SYSTEM_INFO si;
+   GetSystemInfo(&si);
+   auto page_size = si.dwPageSize;
+   Size = ((Size + page_size - 1) / page_size) * page_size;
+
+   // Determine protection flags from MEM flags
+   DWORD protect = PAGE_NOACCESS;
+   if (ProtectionFlags IS 0x00030000) protect = PAGE_READWRITE;  // MEM::READ_WRITE
+   else if (ProtectionFlags & 0x00020000) protect = PAGE_READWRITE;  // MEM::WRITE
+   else if (ProtectionFlags & 0x00010000) protect = PAGE_READONLY;   // MEM::READ
+
+   return VirtualAlloc(nullptr, Size, MEM_COMMIT | MEM_RESERVE, protect);
+}
+
+//********************************************************************************************************************
+// Free memory allocated with VirtualAlloc
+
+extern "C" int winFreeProtectedMemory(void *Address, size_t Size)
+{
+   if (!Address) return 0;
+   // VirtualFree with MEM_RELEASE ignores the size parameter and releases the entire region
+   return VirtualFree(Address, 0, MEM_RELEASE) ? 1 : 0;
+}
+
+//********************************************************************************************************************
+// Get the system page size
+
+extern "C" size_t winGetPageSize(void)
+{
+   SYSTEM_INFO si;
+   GetSystemInfo(&si);
+   return si.dwPageSize;
+}
+
+//********************************************************************************************************************
 
 extern "C" int winDeleteFile(const char *Path)
 {

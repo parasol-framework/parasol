@@ -126,6 +126,7 @@ TIMER glProcessJanitor = 0;
 uint8_t glTimerCycle = 1;
 int8_t glFDProtected = 0;
 std::atomic_int glUniqueMsgID = 1;
+size_t glPageSize = 4096; // Overwritten on opening the Core
 
 #ifdef __unix__
   thread_local int glSocket = -1; // Implemented as thread-local because we don't want threads other than main to utilise the messaging system.
