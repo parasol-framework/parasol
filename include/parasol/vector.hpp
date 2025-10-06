@@ -222,7 +222,8 @@ public:
             iterator move_from_start = old_end - count_sz;
             std::uninitialized_move(move_from_start, old_end, old_end);
             std::move_backward(target_iter, move_from_start, old_end);
-            for (iterator destroy_iter = target_iter; destroy_iter != target_iter + count_sz; ++destroy_iter) {
+            iterator destroy_end = target_iter + count_sz;
+            for (iterator destroy_iter = target_iter; destroy_iter != destroy_end; ++destroy_iter) {
                destroy_iter->~T();
             }
          } else {
