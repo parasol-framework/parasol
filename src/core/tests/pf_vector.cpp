@@ -128,6 +128,13 @@ void test_basic_accessors(TestContext &Context) {
    Context.expect_equal(numbers.size(), std::size_t(0), "Size returns to zero after pop_back");
 }
 
+void test_zero_capacity_growth(TestContext &Context) {
+   pf::vector<int> values(0);
+   values.push_back(1);
+   Context.expect_equal(values.size(), std::size_t(1), "push_back succeeds after zero-capacity construction");
+   Context.expect_equal(values.front(), 1, "push_back stores value in zero-capacity regression");
+}
+
 void test_range_and_initializer_construction(TestContext &Context) {
    std::array<int, 3> array_values{1, 2, 3};
    pf::vector<int> from_range(array_values.begin(), array_values.end());
@@ -456,6 +463,7 @@ void test_insertion_lifecycle_management(TestContext &Context) {
 int main() {
    TestContext test_context;
    test_basic_accessors(test_context);
+   test_zero_capacity_growth(test_context);
    test_range_and_initializer_construction(test_context);
    test_copy_move_semantics(test_context);
    test_iterator_coverage(test_context);

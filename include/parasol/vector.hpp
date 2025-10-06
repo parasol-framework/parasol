@@ -41,12 +41,18 @@ private:
    };
 
 public:
-   vector(size_type capacity = MIN_CAPACITY) :
-      capacity(capacity), length(0), elements((T*)(::operator new(sizeof(T) * capacity)))
-   { }
+   vector(size_type requested_capacity = MIN_CAPACITY) :
+      capacity(requested_capacity < MIN_CAPACITY ? MIN_CAPACITY : requested_capacity), length(0), elements(nullptr)
+   {
+      if (capacity < 1) {
+         capacity = 1;
+      }
+      elements = (T*)(::operator new(sizeof(T) * capacity));
+   }
 
    template<std::input_iterator I> vector(I begin, I end) : capacity(std::distance(begin, end)), length(0) {
       if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
+      if (capacity < 1) capacity = 1;
       elements = (T*)(::operator new(sizeof(T) * capacity));
       for (auto i = begin; i != end; ++i) {
          pushBackInternal(*i);
@@ -62,6 +68,7 @@ public:
 
    vector(vector const &copy) : capacity(copy.length), length(0) {
       if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
+      if (capacity < 1) capacity = 1;
       elements = (T*)(::operator new(sizeof(T) * capacity));
       std::uninitialized_copy(copy.elements, copy.elements + copy.length, elements);
       length = copy.length;
@@ -205,6 +212,12 @@ public:
 
       if (length + count > capacity) {
          size_type new_capacity = capacity;
+         if (new_capacity < MIN_CAPACITY) {
+            new_capacity = MIN_CAPACITY;
+         }
+         if (new_capacity < 1) {
+            new_capacity = 1;
+         }
          while (new_capacity < length + count) {
             new_capacity = new_capacity * 2;
          }
@@ -292,6 +305,12 @@ private:
    }
 
    inline void reserveCapacity(size_type newCapacity) noexcept {
+      if (newCapacity < MIN_CAPACITY) {
+         newCapacity = MIN_CAPACITY;
+      }
+      if (newCapacity < 1) {
+         newCapacity = 1;
+      }
       vector<T> tmpBuffer(newCapacity);
       simpleCopy<T>(tmpBuffer);
       tmpBuffer.swap(*this);
