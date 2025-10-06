@@ -1569,6 +1569,37 @@ FreeResource(memory);  // Reference is no longer valid
   </function>
 
   <function>
+    <name>SetResourceMgr</name>
+    <category>Memory</category>
+    <comment>Define a resource manager for a memory block originating from <function>AllocMemory</function>.</comment>
+    <prototype>void SetResourceMgr(APTR Address, struct ResourceManager * Manager)</prototype>
+    <input>
+      <param type="APTR" name="Address">The address of a <code>MEM::MANAGED</code> memory block allocated by <function>AllocMemory</function>.</param>
+      <param type="struct ResourceManager *" name="Manager">Must refer to an initialised ResourceManager structure.</param>
+    </input>
+    <description>
+<p>SetResourceMgr() associates a ResourceManager with a memory block that was allocated with the <code>MEM::MANAGED</code> flag. This allows customised memory management logic to be used when an event is triggered on a memory block, such as the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with Parasol's memory management system.</p>
+<p>This working example from the XPath module ensures that <code>XPathNode</code> objects are properly destructed when passed to <function>FreeResource</function>:</p>
+<pre>static ERR xpnode_free(APTR Address)
+{
+   ((XPathNode *)Address)-&gt;~XPathNode();
+   return ERR::Okay;
+}
+
+static ResourceManager glNodeManager = {
+   &quot;XPathNode&quot;,  // Name of the custom resource type
+   &amp;xpnode_free  // Custom destructor function
+};
+
+   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&amp;node, nullptr) IS ERR::Okay) {
+      SetResourceMgr(node, &amp;glNodeManager);
+      new (node) XPathNode(); // Placement new
+   }
+</pre>
+    </description>
+  </function>
+
+  <function>
     <name>SetResourcePath</name>
     <category>System</category>
     <comment>Redefines the location of a system resource path.</comment>

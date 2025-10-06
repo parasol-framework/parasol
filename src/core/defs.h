@@ -1173,15 +1173,6 @@ extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_
 #endif
 
 //********************************************************************************************************************
-// Internal function to set the manager for an allocated resource.
-
-inline void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
-}
-
-//********************************************************************************************************************
 
 inline int64_t calc_timestamp(struct DateTime *Date) {
    return(Date->Second +

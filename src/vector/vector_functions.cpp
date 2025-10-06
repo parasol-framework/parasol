@@ -38,17 +38,11 @@ static ResourceManager glResourceSimpleVector = {
    &simplevector_free
 };
 
-static void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
-}
-
 static SimpleVector * new_simplevector(void)
 {
    SimpleVector *vector;
-   if (AllocMemory(sizeof(SimpleVector), MEM::DATA|MEM::MANAGED, &vector) != ERR::Okay) return nullptr;
-   set_memory_manager(vector, &glResourceSimpleVector);
+   if (AllocMemory(sizeof(SimpleVector), MEM::MANAGED, &vector) != ERR::Okay) return nullptr;
+   SetResourceMgr(vector, &glResourceSimpleVector);
    new(vector) SimpleVector;
    return vector;
 }

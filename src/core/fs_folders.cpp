@@ -82,7 +82,7 @@ ERR OpenDir(CSTRING Path, RDF Flags, DirInfo **Result)
          return ERR::AllocMemory;
       }
 
-      set_memory_manager(dir, &glResourceFolder);
+      SetResourceMgr(dir, &glResourceFolder);
 
       dir->Info            = (FileInfo *)(dir + 1);
       dir->Info->Name      = STRING(dir->Info + 1) + vd->DriverSize;
