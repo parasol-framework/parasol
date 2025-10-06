@@ -26,6 +26,8 @@
 #include <parasol/modules/xml.h>
 #include <parasol/modules/xpath.h>
 
+using NODES = pf::vector<XMLTag *>;
+
 namespace xml::schema
 {
    enum class SchemaType;
@@ -50,7 +52,7 @@ class XPathVal : public XPathValue
    explicit XPathVal(std::string value) : XPathValue(XPVT::String) { string_value = std::move(value); }
    explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { string_value = std::move(value); }
 
-   explicit XPathVal(const std::vector<XMLTag *> &Nodes,
+   explicit XPathVal(const pf::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,
                        std::vector<std::string> NodeSetStrings = {},
                        std::vector<const XMLAttrib *> NodeSetAttributes = {})
@@ -61,7 +63,7 @@ class XPathVal : public XPathValue
    bool to_boolean() const;
    double to_number() const;
    std::string to_string() const;
-   std::vector<XMLTag *> to_node_set() const;
+   NODES to_node_set() const;
 
    bool is_empty() const;
    size_t size() const;

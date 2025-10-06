@@ -1,6 +1,5 @@
 //********************************************************************************************************************
 // XPath Expression and Value Evaluation
-//********************************************************************************************************************
 //
 // This translation unit contains the core expression evaluation engine for XPath. It handles:
 //   - Location path evaluation (evaluate_path_expression_value, evaluate_path_from_nodes)
@@ -73,7 +72,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
       synthetic_steps.push_back(std::move(descendant_step));
    }
 
-   std::vector<XMLTag *> initial_context;
+   NODES initial_context;
 
    if (has_root) initial_context.push_back(nullptr);
    else {
@@ -113,7 +112,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
    if (attribute_step) work_steps.pop_back();
 
    bool unsupported = false;
-   std::vector<XMLTag *> node_results;
+   NODES node_results;
 
    if (work_steps.empty()) {
       for (auto *candidate : initial_context) {
@@ -173,7 +172,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
 
    if (attribute_step) {
       std::vector<std::string> attribute_values;
-      std::vector<XMLTag *> attribute_nodes;
+      NODES attribute_nodes;
       std::vector<const XMLAttrib *> attribute_refs;
       std::vector<const XPathNode *> attribute_predicates;
 
@@ -248,7 +247,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
 
 //********************************************************************************************************************
 
-XPathVal XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
+XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
    const std::vector<const XMLAttrib *> &InitialAttributes, const std::vector<const XPathNode *> &Steps,
    const XPathNode *AttributeStep, const XPathNode *AttributeTest, uint32_t CurrentPrefix)
 {
@@ -256,7 +255,7 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &I
 
    if (AttributeStep and !work_steps.empty()) work_steps.pop_back();
 
-   std::vector<XMLTag *> node_results;
+   NODES node_results;
 
    if (work_steps.empty()) {
       node_results = InitialContext;
@@ -285,7 +284,7 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &I
 
    if (AttributeStep) {
       std::vector<std::string> attribute_values;
-      std::vector<XMLTag *> attribute_nodes;
+      NODES attribute_nodes;
       std::vector<const XMLAttrib *> attribute_refs;
 
       for (auto *candidate : node_results) {
@@ -420,7 +419,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
       return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
    });
 
-   std::vector<XMLTag *> combined_nodes;
+   NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
    std::vector<std::string> combined_strings;
    combined_nodes.reserve(entries.size());
@@ -441,7 +440,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
    xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
-   if (combined_nodes.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (combined_nodes.empty()) return XPathVal(NODES());
 
    return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
@@ -574,7 +573,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
    });
 
-   std::vector<XMLTag *> combined_nodes;
+   NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
    std::vector<std::string> combined_strings;
    combined_nodes.reserve(entries.size());
@@ -595,7 +594,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
-   if (combined_nodes.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (combined_nodes.empty()) return XPathVal(NODES());
 
    return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
@@ -730,7 +729,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
    });
 
-   std::vector<XMLTag *> combined_nodes;
+   NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
    std::vector<std::string> combined_strings;
    combined_nodes.reserve(entries.size());
@@ -751,7 +750,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
-   if (combined_nodes.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (combined_nodes.empty()) return XPathVal(NODES());
 
    return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
@@ -900,7 +899,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          return XPathVal();
       }
 
-      std::vector<XMLTag *> combined_nodes;
+      NODES combined_nodes;
       std::vector<std::string> combined_strings;
       std::vector<const XMLAttrib *> combined_attributes;
       std::optional<std::string> combined_override;
@@ -1120,7 +1119,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          return XPathVal();
       }
 
-      std::vector<XMLTag *> combined_nodes;
+      NODES combined_nodes;
       std::vector<std::string> combined_strings;
       std::vector<const XMLAttrib *> combined_attributes;
       std::optional<std::string> combined_override;
@@ -1415,7 +1414,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          if (working_indices.empty()) break;
       }
 
-      std::vector<XMLTag *> filtered_nodes;
+      NODES filtered_nodes;
       filtered_nodes.reserve(working_indices.size());
 
       std::vector<std::string> filtered_strings;
@@ -1845,7 +1844,7 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
    }
 
    if (function_name IS "text") {
-      std::vector<XMLTag *> text_nodes;
+      NODES text_nodes;
       std::optional<std::string> first_value;
 
       if (context.context_node) {

@@ -454,7 +454,7 @@ typedef struct XPathValue {
    XPVT   type;                 // Identifies the type of value stored
    double number_value;
    std::string string_value;
-   std::vector<XMLTag *> node_set;
+   pf::vector<XMLTag *> node_set;
    std::optional<std::string> node_set_string_override;
    std::vector<std::string> node_set_string_values;
    std::vector<const XMLAttrib *> node_set_attributes;
@@ -462,7 +462,7 @@ typedef struct XPathValue {
 
    XPathValue(XPVT pType) : type(pType), number_value(0) { }
 
-   explicit XPathValue(const std::vector<XMLTag *> &Nodes,
+   explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
       std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {},
       std::vector<const XMLAttrib *> NodeSetAttributes = {})

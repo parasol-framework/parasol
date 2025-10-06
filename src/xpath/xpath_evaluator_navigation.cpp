@@ -46,7 +46,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
    size_t estimated_capacity = axis_evaluator.estimate_result_size(Axis, ContextNode);
    matches.reserve(estimated_capacity);
 
-   auto append_nodes = [this, &matches](std::vector<XMLTag *> &nodes) {
+   auto append_nodes = [this, &matches](NODES &nodes) {
       matches.reserve(matches.size() + nodes.size());
       for (auto *node : nodes) {
          matches.push_back({ node, nullptr });

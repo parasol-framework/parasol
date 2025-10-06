@@ -52,12 +52,12 @@ class AxisEvaluator {
 
    struct AncestorPathView {
       std::span<XMLTag *const> Path;
-      std::vector<XMLTag *> * Storage = nullptr;
+      NODES * Storage = nullptr;
       bool Cached = false;
    };
 
-   std::unordered_map<XMLTag *, std::vector<XMLTag *> *> ancestor_path_cache;
-   std::vector<std::unique_ptr<std::vector<XMLTag *>>> ancestor_path_storage;
+   std::unordered_map<XMLTag *, NODES *> ancestor_path_cache;
+   std::vector<std::unique_ptr<NODES>> ancestor_path_storage;
    std::unordered_map<uint64_t, bool> document_order_cache;
 
    // Optimized namespace handling data structures
@@ -78,20 +78,20 @@ class AxisEvaluator {
    std::vector<std::unique_ptr<XMLTag>> namespace_node_pool;
 
    // Helper methods for specific axes
-   void evaluate_child_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_descendant_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_parent_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_ancestor_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_following_sibling_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_preceding_sibling_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_following_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_preceding_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_namespace_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_descendant_or_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
-   void evaluate_ancestor_or_self_axis(XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_child_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_descendant_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_parent_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_ancestor_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_following_sibling_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_preceding_sibling_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_following_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_preceding_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_namespace_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_self_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_descendant_or_self_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_ancestor_or_self_axis(XMLTag *ContextNode, NODES &Output);
 
-   void collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output);
+   void collect_subtree_reverse(XMLTag *Node, NODES &Output);
 
    // Optimized namespace collection
    void collect_namespace_declarations(XMLTag *Node, std::vector<NamespaceDeclaration> &declarations);
@@ -101,7 +101,7 @@ class AxisEvaluator {
    void recycle_namespace_nodes();
 
    // Document order utilities
-   void sort_document_order(std::vector<XMLTag *> &Nodes);
+   void sort_document_order(NODES &Nodes);
    AncestorPathView build_ancestor_path(XMLTag *Node);
    void release_ancestor_path(AncestorPathView &View);
    uint64_t make_document_order_key(XMLTag *Left, XMLTag *Right);
@@ -115,13 +115,13 @@ class AxisEvaluator {
    explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}
 
    // Main evaluation method
-   void evaluate_axis(AxisType Axis, XMLTag *ContextNode, std::vector<XMLTag *> &Output);
+   void evaluate_axis(AxisType Axis, XMLTag *ContextNode, NODES &Output);
 
    // Evaluation lifecycle helpers
    void reset_namespace_nodes();
 
    // Node-set utilities
-   void normalise_node_set(std::vector<XMLTag *> &Nodes);
+   void normalise_node_set(NODES &Nodes);
    bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);
 
    // Utility methods

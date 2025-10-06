@@ -11,7 +11,7 @@ XPathVal XPathFunctionLibrary::function_string(const std::vector<XPathVal> &Args
       }
 
       if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_set_value(nodes);
          return XPathVal(node_set_value.to_string());
       }
@@ -75,7 +75,7 @@ XPathVal XPathFunctionLibrary::function_codepoints_to_string(const std::vector<X
 XPathVal XPathFunctionLibrary::function_string_to_codepoints(const std::vector<XPathVal> &Args,
    const XPathContext &Context)
 {
-   if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
 
    std::string input = Args[0].to_string();
 
@@ -232,7 +232,7 @@ XPathVal XPathFunctionLibrary::function_string_length(const std::vector<XPathVal
    std::string str;
    if (Args.empty()) {
       if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_set_value(nodes);
          str = node_set_value.to_string();
       }
@@ -246,7 +246,7 @@ XPathVal XPathFunctionLibrary::function_normalize_space(const std::vector<XPathV
    std::string str;
    if (Args.empty()) {
       if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_set_value(nodes);
          str = node_set_value.to_string();
       }
@@ -367,7 +367,7 @@ XPathVal XPathFunctionLibrary::function_upper_case(const std::vector<XPathVal> &
    if (Args.empty()) {
       if (Context.attribute_node) input = Context.attribute_node->Value;
       else if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_value(nodes);
          input = node_value.to_string();
       }
@@ -385,7 +385,7 @@ XPathVal XPathFunctionLibrary::function_lower_case(const std::vector<XPathVal> &
    if (Args.empty()) {
       if (Context.attribute_node) input = Context.attribute_node->Value;
       else if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_value(nodes);
          input = node_value.to_string();
       }
@@ -403,7 +403,7 @@ XPathVal XPathFunctionLibrary::function_iri_to_uri(const std::vector<XPathVal> &
    if (Args.empty()) {
       if (Context.attribute_node) input = Context.attribute_node->Value;
       else if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_value(nodes);
          input = node_value.to_string();
       }
@@ -437,7 +437,7 @@ XPathVal XPathFunctionLibrary::function_encode_for_uri(const std::vector<XPathVa
    if (Args.empty()) {
       if (Context.attribute_node) input = Context.attribute_node->Value;
       else if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_value(nodes);
          input = node_value.to_string();
       }
@@ -455,7 +455,7 @@ XPathVal XPathFunctionLibrary::function_escape_html_uri(const std::vector<XPathV
    if (Args.empty()) {
       if (Context.attribute_node) input = Context.attribute_node->Value;
       else if (Context.context_node) {
-         std::vector<XMLTag *> nodes = { Context.context_node };
+         pf::vector<XMLTag *> nodes = { Context.context_node };
          XPathVal node_value(nodes);
          input = node_value.to_string();
       }
@@ -506,7 +506,7 @@ XPathVal XPathFunctionLibrary::function_replace(const std::vector<XPathVal> &Arg
 
 XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2 or Args.size() > 3) return XPathVal(std::vector<XMLTag *>());
+   if (Args.size() < 2 or Args.size() > 3) return XPathVal(pf::vector<XMLTag *>());
 
    std::string input = Args[0].to_string();
    std::string pattern = Args[1].to_string();
@@ -524,7 +524,7 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 
       pf::Regex compiled;
       if (not compiled.compile(pattern, options)) {
-         return XPathVal(std::vector<XMLTag *>());
+         return XPathVal(pf::vector<XMLTag *>());
       }
 
       compiled.tokenize(input, -1, tokens);
@@ -532,13 +532,14 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
       if (not tokens.empty() and tokens.back().empty()) tokens.pop_back();
    }
 
-   std::vector<XMLTag *> placeholders(tokens.size(), nullptr);
+   pf::vector<XMLTag *> placeholders;
+   for (size_t i = 0; i < tokens.size(); ++i) placeholders.push_back(nullptr);
    return XPathVal(placeholders, std::nullopt, tokens);
 }
 
 XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2u or Args.size() > 3u) return XPathVal(std::vector<XMLTag *>());
+   if (Args.size() < 2u or Args.size() > 3u) return XPathVal(pf::vector<XMLTag *>());
 
    std::string input = Args[0].to_string();
    std::string pattern = Args[1].to_string();
@@ -546,7 +547,7 @@ XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVa
 
    pf::Regex compiled;
    if (not compiled.compile(pattern, build_regex_options(flags, Context.expression_unsupported))) {
-      return XPathVal(std::vector<XMLTag *>());
+      return XPathVal(pf::vector<XMLTag *>());
    }
 
    SequenceBuilder builder;

@@ -1,6 +1,5 @@
 //********************************************************************************************************************
 // XPath Axis Evaluation System Implementation
-//********************************************************************************************************************
 //
 // The axis evaluator encapsulates the traversal rules needed to support XPath's location steps in
 // Parasol's XML engine.  XPath exposes a wide variety of axes—child, ancestor, following, namespace,
@@ -55,7 +54,7 @@ constexpr std::array reverse_axes{
 // AxisEvaluator Implementation
 
 // Dispatch helper that selects the concrete traversal routine for a requested axis.
-void AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *ContextNode, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *ContextNode, NODES &Output) {
    Output.clear();
 
    switch (Axis) {
@@ -152,7 +151,7 @@ void AxisEvaluator::build_id_cache() {
    size_t estimated_nodes = xml->Tags.size() * 8; // Assume average 8 nodes per root tag
    id_lookup.reserve(estimated_nodes);
 
-   std::vector<XMLTag *> stack;
+   NODES stack;
    stack.reserve(xml->Tags.size());
 
    for (auto &root_tag : xml->Tags) {
@@ -274,7 +273,7 @@ size_t AxisEvaluator::estimate_result_size(AxisType Axis, XMLTag *ContextNode) {
 }
 
 // Standard child-axis traversal: collect direct children in document order.
-void AxisEvaluator::evaluate_child_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_child_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -286,7 +285,7 @@ void AxisEvaluator::evaluate_child_axis(XMLTag *Node, std::vector<XMLTag *> &Out
 }
 
 // Depth-first walk that flattens all descendant tags beneath the context node.
-void AxisEvaluator::evaluate_descendant_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_descendant_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -317,7 +316,7 @@ void AxisEvaluator::evaluate_descendant_axis(XMLTag *Node, std::vector<XMLTag *>
 }
 
 // Parent axis resolves a single parent node by ID reference.
-void AxisEvaluator::evaluate_parent_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_parent_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if ((Node) and (Node->ParentID != 0)) {
       if (auto *parent = find_tag_by_id(Node, Node->ParentID)) {
@@ -327,7 +326,7 @@ void AxisEvaluator::evaluate_parent_axis(XMLTag *Node, std::vector<XMLTag *> &Ou
 }
 
 // Ascend towards the root, collecting each ancestor encountered along the way.
-void AxisEvaluator::evaluate_ancestor_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_ancestor_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -341,7 +340,7 @@ void AxisEvaluator::evaluate_ancestor_axis(XMLTag *Node, std::vector<XMLTag *> &
 }
 
 // Enumerate siblings that appear after the context node under the same parent.
-void AxisEvaluator::evaluate_following_sibling_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_following_sibling_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -363,7 +362,7 @@ void AxisEvaluator::evaluate_following_sibling_axis(XMLTag *Node, std::vector<XM
 }
 
 // Enumerate siblings that appear before the context node under the same parent.
-void AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -383,7 +382,7 @@ void AxisEvaluator::evaluate_preceding_sibling_axis(XMLTag *Node, std::vector<XM
 }
 
 // Following axis enumerates nodes that appear after the context node in document order.
-void AxisEvaluator::evaluate_following_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_following_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -412,7 +411,7 @@ void AxisEvaluator::evaluate_following_axis(XMLTag *Node, std::vector<XMLTag *> 
 }
 
 // Helper that traverses a subtree in reverse document order, used by the preceding axis.
-void AxisEvaluator::collect_subtree_reverse(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::collect_subtree_reverse(XMLTag *Node, NODES &Output) {
    if (!Node) return;
 
    for (auto child = Node->Children.rbegin(); child != Node->Children.rend(); ++child) {
@@ -532,7 +531,7 @@ void AxisEvaluator::recycle_namespace_nodes() {
 }
 
 // Preceding axis mirrors the following axis but in reverse.
-void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -553,7 +552,7 @@ void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, std::vector<XMLTag *> 
 
 // Namespace axis is modelled with transient nodes that expose in-scope prefix mappings.
 // Optimized version using flat vector approach and node pooling.
-void AxisEvaluator::evaluate_namespace_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_namespace_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
 
    if (!Node) return;
@@ -582,13 +581,13 @@ void AxisEvaluator::evaluate_namespace_axis(XMLTag *Node, std::vector<XMLTag *> 
    }
 }
 
-void AxisEvaluator::evaluate_self_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_self_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (Node) Output.push_back(Node);
 }
 
 // Combine self and descendant traversal for the descendant-or-self axis.
-void AxisEvaluator::evaluate_descendant_or_self_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_descendant_or_self_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -601,7 +600,7 @@ void AxisEvaluator::evaluate_descendant_or_self_axis(XMLTag *Node, std::vector<X
 }
 
 // Combine self and ancestor traversal for the ancestor-or-self axis.
-void AxisEvaluator::evaluate_ancestor_or_self_axis(XMLTag *Node, std::vector<XMLTag *> &Output) {
+void AxisEvaluator::evaluate_ancestor_or_self_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (!Node) return;
 
@@ -617,7 +616,7 @@ void AxisEvaluator::evaluate_ancestor_or_self_axis(XMLTag *Node, std::vector<XML
 // Document Order Utilities
 
 // Stable ordering is critical for XPath equality semantics; this method enforces document order.
-void AxisEvaluator::sort_document_order(std::vector<XMLTag *> &Nodes) {
+void AxisEvaluator::sort_document_order(NODES &Nodes) {
    if (Nodes.size() < 2) return;
 
    std::sort(Nodes.begin(), Nodes.end(), [this](XMLTag *Left, XMLTag *Right) {
@@ -646,10 +645,10 @@ AxisEvaluator::AncestorPathView AxisEvaluator::build_ancestor_path(XMLTag *Node)
       }
    }
 
-   std::vector<XMLTag *> *storage = nullptr;
+   NODES *storage = nullptr;
 
    if (cacheable) {
-      ancestor_path_storage.push_back(std::make_unique<std::vector<XMLTag *>>());
+      ancestor_path_storage.push_back(std::make_unique<NODES>());
       storage = ancestor_path_storage.back().get();
    } else {
       storage = &arena.acquire_node_vector();
@@ -775,17 +774,19 @@ bool AxisEvaluator::is_before_in_document_order(XMLTag *Node1, XMLTag *Node2) {
 }
 
 // Remove null entries, enforce document order, and deduplicate the node-set to satisfy XPath rules.
-void AxisEvaluator::normalise_node_set(std::vector<XMLTag *> &Nodes)
+void AxisEvaluator::normalise_node_set(NODES &Nodes)
 {
-   std::erase_if(Nodes, [](XMLTag *Node) {
-      // Remove placeholder entries so that ordering and deduplication operate on valid nodes only.
+   // Remove placeholder entries so that ordering and deduplication operate on valid nodes only.
+   auto new_end = std::remove_if(Nodes.begin(), Nodes.end(), [](XMLTag *Node) {
       return !Node;
    });
+   Nodes.erase(new_end, Nodes.end());
+
    if (Nodes.size() < 2) return;
 
    sort_document_order(Nodes);
 
-   auto new_end = std::unique(Nodes.begin(), Nodes.end(), [](XMLTag *Left, XMLTag *Right) {
+   new_end = std::unique(Nodes.begin(), Nodes.end(), [](XMLTag *Left, XMLTag *Right) {
       // Treat identical pointers as duplicates so the resulting node-set is canonical.
       return Left IS Right;
    });

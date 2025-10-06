@@ -16,7 +16,7 @@ XPathVal XPathFunctionLibrary::function_count(const std::vector<XPathVal> &Args,
 }
 
 XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, const XPathContext &Context) {
-   std::vector<XMLTag *> results;
+   pf::vector<XMLTag *> results;
 
    if (Args.empty()) return XPathVal(results);
 

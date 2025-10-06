@@ -272,7 +272,7 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 
    if (steps.empty()) return ERR::Search;
 
-   std::vector<XMLTag *> initial_context;
+   NODES initial_context;
 
    if (has_root) {
       initial_context.push_back(nullptr);
@@ -355,7 +355,7 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
    std::vector<const XPathNode *> steps;
    steps.push_back(StepNode);
 
-   std::vector<XMLTag *> context_nodes;
+   NODES context_nodes;
    if (context.context_node) context_nodes.push_back(context.context_node);
    else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) context_nodes.push_back(&(*xml->Cursor));
    else context_nodes.push_back(nullptr);
@@ -520,7 +520,7 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
    return ERR::Okay;
 }
 
-ERR XPathEvaluator::evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
+ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
    std::vector<AxisMatch> current_context;
@@ -800,13 +800,13 @@ bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
    return (document) and (document != xml);
 }
 
-std::vector<XMLTag *> XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
+NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
                                                                  const std::vector<const XPathNode *> &Steps,
                                                                  size_t StepIndex,
                                                                  uint32_t CurrentPrefix,
                                                                  bool &Unsupported)
 {
-   std::vector<XMLTag *> results;
+   NODES results;
 
    if (Unsupported) return results;
 

@@ -5,9 +5,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-struct XMLTag;
-struct XMLAttrib;
+#include <parasol/strings.hpp>
+#include "../xml/xml.h"
 
 class XPathArena {
    private:
@@ -50,7 +49,40 @@ class XPathArena {
       }
    };
 
-   VectorPool<XMLTag *> node_vectors;
+   // Specialized pool for XMLTag * that uses pf::vector
+   struct NodeVectorPool {
+      std::vector<std::unique_ptr<NODES>> storage;
+      std::vector<NODES *> free_list;
+
+      NODES & acquire() {
+         if (!free_list.empty()) {
+            auto *vector = free_list.back();
+            free_list.pop_back();
+            vector->clear();
+            return *vector;
+         }
+
+         storage.push_back(std::make_unique<NODES>());
+         auto &vector = *storage.back();
+         vector.clear();
+         return vector;
+      }
+
+      void release(NODES &vector) {
+         vector.clear();
+         free_list.push_back(&vector);
+      }
+
+      void reset() {
+         free_list.clear();
+         for (auto &entry : storage) {
+            entry->clear();
+            free_list.push_back(entry.get());
+         }
+      }
+   };
+
+   NodeVectorPool node_vectors;
    VectorPool<const XMLAttrib *> attribute_vectors;
    VectorPool<std::string> string_vectors;
 
@@ -59,8 +91,8 @@ class XPathArena {
    XPathArena(const XPathArena &) = delete;
    XPathArena & operator=(const XPathArena &) = delete;
 
-   std::vector<XMLTag *> & acquire_node_vector() { return node_vectors.acquire(); }
-   void release_node_vector(std::vector<XMLTag *> &Vector) { node_vectors.release(Vector); }
+   NODES & acquire_node_vector() { return node_vectors.acquire(); }
+   void release_node_vector(NODES &Vector) { node_vectors.release(Vector); }
 
    std::vector<const XMLAttrib *> & acquire_attribute_vector() { return attribute_vectors.acquire(); }
    void release_attribute_vector(std::vector<const XMLAttrib *> &Vector) { attribute_vectors.release(Vector); }

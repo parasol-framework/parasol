@@ -209,7 +209,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR XValueToNodes(XPathValue *Value, std::vector<XMLTag *> *Result)
+ERR XValueNodes(XPathValue *Value, pf::vector<XMLTag *> *Result)
 {
    pf::Log log(__FUNCTION__);
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);

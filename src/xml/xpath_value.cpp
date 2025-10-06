@@ -21,6 +21,7 @@
 
 #include "../xml/schema/schema_types.h"
 #include "../xml/schema/type_checker.h"
+#include "../xml/xml.h"
 
 #include <algorithm>
 #include <cmath>
@@ -230,7 +231,7 @@ std::string XPathVal::to_string() const
    return "";
 }
 
-std::vector<XMLTag *> XPathVal::to_node_set() const
+NODES XPathVal::to_node_set() const
 {
    if (type IS XPVT::NodeSet) return node_set;
    return {};

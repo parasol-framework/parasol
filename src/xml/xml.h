@@ -346,3 +346,5 @@ constexpr char to_lower(char ch) noexcept
 {
    return to_lower_table[uint8_t(ch)];
 }
+
+using NODES = pf::vector<XMLTag *>;

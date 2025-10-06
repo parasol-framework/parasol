@@ -3,7 +3,7 @@
 
 XPathVal XPathFunctionLibrary::function_index_of(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2) return XPathVal(std::vector<XMLTag *>());
+   if (Args.size() < 2) return XPathVal(pf::vector<XMLTag *>());
 
    if ((Args.size() > 2) and Context.expression_unsupported) *Context.expression_unsupported = true;
 
@@ -11,7 +11,7 @@ XPathVal XPathFunctionLibrary::function_index_of(const std::vector<XPathVal> &Ar
    const XPathVal &lookup = Args[1];
 
    size_t length = sequence_length(sequence);
-   if (length IS 0) return XPathVal(std::vector<XMLTag *>());
+   if (length IS 0) return XPathVal(pf::vector<XMLTag *>());
 
    XPathVal target = extract_sequence_item(lookup, 0);
    SequenceBuilder builder;
@@ -38,13 +38,13 @@ XPathVal XPathFunctionLibrary::function_empty(const std::vector<XPathVal> &Args,
 
 XPathVal XPathFunctionLibrary::function_distinct_values(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
 
    if ((Args.size() > 1) and Context.expression_unsupported) *Context.expression_unsupported = true;
 
    const XPathVal &sequence = Args[0];
    size_t length = sequence_length(sequence);
-   if (length IS 0) return XPathVal(std::vector<XMLTag *>());
+   if (length IS 0) return XPathVal(pf::vector<XMLTag *>());
 
    std::unordered_set<std::string> seen;
    SequenceBuilder builder;
@@ -64,7 +64,7 @@ XPathVal XPathFunctionLibrary::function_distinct_values(const std::vector<XPathV
 XPathVal XPathFunctionLibrary::function_insert_before(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.size() < 3) {
-      if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
+      if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
       return Args[0];
    }
 
@@ -102,7 +102,7 @@ XPathVal XPathFunctionLibrary::function_insert_before(const std::vector<XPathVal
 XPathVal XPathFunctionLibrary::function_remove(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.size() < 2) {
-      if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
+      if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
       return Args[0];
    }
 
@@ -110,7 +110,7 @@ XPathVal XPathFunctionLibrary::function_remove(const std::vector<XPathVal> &Args
    double position_value = Args[1].to_number();
    size_t length = sequence_length(sequence);
 
-   if (length IS 0) return XPathVal(std::vector<XMLTag *>());
+   if (length IS 0) return XPathVal(pf::vector<XMLTag *>());
    if (std::isnan(position_value) or std::isinf(position_value)) return sequence;
 
    long long floored = (long long)std::floor(position_value);
@@ -131,7 +131,7 @@ XPathVal XPathFunctionLibrary::function_remove(const std::vector<XPathVal> &Args
 
 XPathVal XPathFunctionLibrary::function_reverse(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
 
    const XPathVal &sequence = Args[0];
    size_t length = sequence_length(sequence);
@@ -147,27 +147,27 @@ XPathVal XPathFunctionLibrary::function_reverse(const std::vector<XPathVal> &Arg
 
 XPathVal XPathFunctionLibrary::function_subsequence(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2) return XPathVal(std::vector<XMLTag *>());
+   if (Args.size() < 2) return XPathVal(pf::vector<XMLTag *>());
 
    const XPathVal &sequence = Args[0];
    size_t length = sequence_length(sequence);
-   if (length IS 0) return XPathVal(std::vector<XMLTag *>());
+   if (length IS 0) return XPathVal(pf::vector<XMLTag *>());
 
    double start_value = Args[1].to_number();
-   if (std::isnan(start_value)) return XPathVal(std::vector<XMLTag *>());
+   if (std::isnan(start_value)) return XPathVal(pf::vector<XMLTag *>());
 
    double min_position = std::ceil(start_value);
-   if (std::isnan(min_position)) return XPathVal(std::vector<XMLTag *>());
+   if (std::isnan(min_position)) return XPathVal(pf::vector<XMLTag *>());
    if (min_position < 1.0) min_position = 1.0;
 
    double max_position = std::numeric_limits<double>::infinity();
    if (Args.size() > 2) {
       double length_value = Args[2].to_number();
-      if (std::isnan(length_value)) return XPathVal(std::vector<XMLTag *>());
-      if (length_value <= 0.0) return XPathVal(std::vector<XMLTag *>());
+      if (std::isnan(length_value)) return XPathVal(pf::vector<XMLTag *>());
+      if (length_value <= 0.0) return XPathVal(pf::vector<XMLTag *>());
 
       max_position = std::ceil(start_value + length_value);
-      if (std::isnan(max_position)) return XPathVal(std::vector<XMLTag *>());
+      if (std::isnan(max_position)) return XPathVal(pf::vector<XMLTag *>());
    }
 
    SequenceBuilder builder;
@@ -185,7 +185,7 @@ XPathVal XPathFunctionLibrary::function_subsequence(const std::vector<XPathVal> 
 
 XPathVal XPathFunctionLibrary::function_unordered(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
    return Args[0];
 }
 

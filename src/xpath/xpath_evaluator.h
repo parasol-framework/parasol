@@ -47,10 +47,10 @@ class XPathEvaluator {
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    extXML * resolve_document_for_node(XMLTag *Node) const;
    bool is_foreign_document_node(XMLTag *Node) const;
-   std::vector<XMLTag *> collect_step_results(const std::vector<AxisMatch> &,
+   NODES collect_step_results(const std::vector<AxisMatch> &,
       const std::vector<const XPathNode *> &, size_t, uint32_t, bool &);
    XPathVal evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
-   XPathVal evaluate_path_from_nodes(const std::vector<XMLTag *> &,
+   XPathVal evaluate_path_from_nodes(const NODES &,
       const std::vector<const XMLAttrib *> &, const std::vector<const XPathNode *> &, const XPathNode *, 
       const XPathNode *, uint32_t);
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
@@ -89,7 +89,7 @@ class XPathEvaluator {
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
    ERR evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix);
-   ERR evaluate_step_sequence(const std::vector<XMLTag *> &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
+   ERR evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
    bool match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix);
    PredicateResult evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
 

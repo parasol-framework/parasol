@@ -221,11 +221,11 @@ static std::vector<std::string> split_whitespace_tokens(std::string_view Value)
 // Collect all nodes in the document that have an IDREF or IDREFS attribute matching one of the target IDs.
 
 static void collect_idref_matches(extXML *Document, const std::unordered_set<std::string> &Targets,
-   std::unordered_set<const XMLTag *> &Seen, std::vector<XMLTag *> &Matches)
+   std::unordered_set<const XMLTag *> &Seen, pf::vector<XMLTag *> &Matches)
 {
    if ((!Document) or Targets.empty()) return;
 
-   std::vector<XMLTag *> stack;
+   pf::vector<XMLTag *> stack;
    stack.reserve(Document->Tags.size());
    for (auto &root : Document->Tags) stack.push_back(&root);
 
@@ -297,21 +297,21 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
    if (!Args.empty()) {
       const XPathVal &value = Args[0];
       if ((value.type IS XPVT::NodeSet) and (not value.node_set.empty())) node = value.node_set[0];
-      else return XPathVal(std::vector<XMLTag *>());
+      else return XPathVal(pf::vector<XMLTag *>());
    }
    else node = Context.context_node;
 
-   if (!node) return XPathVal(std::vector<XMLTag *>());
+   if (!node) return XPathVal(pf::vector<XMLTag *>());
 
    xpath::accessor::NodeOrigin origin = xpath::accessor::locate_node_document(Context, node);
    std::shared_ptr<extXML> holder = origin.holder;
    extXML *document = origin.document;
-   if (!document) return XPathVal(std::vector<XMLTag *>());
+   if (!document) return XPathVal(pf::vector<XMLTag *>());
 
    XMLTag *root = locate_root_node(document, node);
-   if (!root) return XPathVal(std::vector<XMLTag *>());
+   if (!root) return XPathVal(pf::vector<XMLTag *>());
 
-   std::vector<XMLTag *> result = { root };
+   pf::vector<XMLTag *> result = { root };
    return XPathVal(result);
 }
 
@@ -320,19 +320,19 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 
 XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
-   if (!Context.document) return XPathVal(std::vector<XMLTag *>());
+   if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
+   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
-   if (uri.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
 
    std::string resolved;
-   if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::vector<XMLTag *>());
+   if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
    auto document = load_document(Context.document, resolved);
-   if (!document) return XPathVal(std::vector<XMLTag *>());
+   if (!document) return XPathVal(pf::vector<XMLTag *>());
 
-   std::vector<XMLTag *> nodes;
+   pf::vector<XMLTag *> nodes;
    for (auto &tag : document->Tags) {
       if ((tag.Flags & XTF::INSTRUCTION) != XTF::NIL) continue;
       nodes.push_back(&tag);
@@ -373,24 +373,24 @@ XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal
 
 XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (!Context.document) return XPathVal(std::vector<XMLTag *>());
+   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
 
    std::string resolved;
    if (Args.empty()) {
       auto base = get_context_directory(Context);
-      if (not base.has_value()) return XPathVal(std::vector<XMLTag *>());
+      if (not base.has_value()) return XPathVal(pf::vector<XMLTag *>());
       resolved = *base;
    }
    else {
       std::string uri = Args[0].to_string();
-      if (uri.empty()) return XPathVal(std::vector<XMLTag *>());
-      if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::vector<XMLTag *>());
+      if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
+      if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
    }
 
-   if (is_string_uri(resolved)) return XPathVal(std::vector<XMLTag *>());
+   if (is_string_uri(resolved)) return XPathVal(pf::vector<XMLTag *>());
 
    auto entries = enumerate_collection(resolved);
-   std::vector<XMLTag *> nodes;
+   pf::vector<XMLTag *> nodes;
 
    for (const auto &entry : entries) {
       auto document = load_document(Context.document, entry);
@@ -410,24 +410,24 @@ XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &
 
 XPathVal XPathFunctionLibrary::function_uri_collection(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (!Context.document) return XPathVal(std::vector<XMLTag *>());
+   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
 
    std::string resolved;
    if (Args.empty()) {
       auto base = get_context_directory(Context);
-      if (not base.has_value()) return XPathVal(std::vector<XMLTag *>());
+      if (not base.has_value()) return XPathVal(pf::vector<XMLTag *>());
       resolved = *base;
    }
    else {
       std::string uri = Args[0].to_string();
-      if (uri.empty()) return XPathVal(std::vector<XMLTag *>());
-      if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::vector<XMLTag *>());
+      if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
+      if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
    }
 
-   if (is_string_uri(resolved)) return XPathVal(std::vector<XMLTag *>());
+   if (is_string_uri(resolved)) return XPathVal(pf::vector<XMLTag *>());
 
    auto entries = enumerate_collection(resolved);
-   std::vector<XMLTag *> nodes;
+   pf::vector<XMLTag *> nodes;
    std::vector<std::string> values;
 
    for (const auto &entry : entries) {
@@ -496,11 +496,11 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
 XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XPathVal> &Args,
    const XPathContext &Context)
 {
-   if (Args.empty()) return XPathVal(std::vector<XMLTag *>());
-   if (!Context.document) return XPathVal(std::vector<XMLTag *>());
+   if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
+   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
-   if (uri.empty()) return XPathVal(std::vector<XMLTag *>());
+   if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
 
    std::optional<std::string> encoding;
    if (Args.size() > 1) {
@@ -509,10 +509,10 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    }
 
    std::string resolved;
-   if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::vector<XMLTag *>());
+   if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
    std::shared_ptr<std::string> text;
-   if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(std::vector<XMLTag *>());
+   if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
 
    std::vector<std::string> lines;
 
@@ -529,7 +529,8 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
       if (start > text->length()) lines.emplace_back(std::string());
    }
 
-   std::vector<XMLTag *> nodes(lines.size(), nullptr);
+   pf::vector<XMLTag *> nodes;
+   for (size_t i = 0; i < lines.size(); ++i) nodes.push_back(nullptr);
    return XPathVal(nodes, std::nullopt, lines);
 }
 
@@ -538,7 +539,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
 
 XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   std::vector<XMLTag *> results;
+   pf::vector<XMLTag *> results;
    if (Args.empty()) return XPathVal(results);
    if (!Context.document) return XPathVal(results);
 
