@@ -20,68 +20,6 @@
 #include <ranges>
 #include <algorithm>
 
-// C++20 Concepts for type safety
-
-template<typename F>
-concept XMLCallback = requires(F f, extXML* xml, XMLTag& tag, const char* attrib) {
-   { f(xml, tag, attrib) } -> std::same_as<ERR>;
-};
-
-template<typename F>
-concept XMLTagPredicate = requires(F f, const XMLTag& tag) {
-   { f(tag) } -> std::convertible_to<bool>;
-};
-
-template<typename Key>
-concept MapKey = std::equality_comparable<Key> and std::default_initializable<Key>;
-
-constexpr std::array<uint64_t, 4> name_char_table = []() {
-   std::array<uint64_t, 4> table{0, 0, 0, 0};
-   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
-   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
-   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
-   for (uint8_t c = '0'; c <= '9'; ++c) set_bit(c);
-   set_bit('.');
-   set_bit('-');
-   set_bit('_');
-   set_bit(':');
-   return table;
-}();
-
-constexpr std::array<uint64_t, 4> name_start_table = []() {
-   std::array<uint64_t, 4> table{0, 0, 0, 0};
-   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
-   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
-   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
-   set_bit('_');
-   set_bit(':');
-   return table;
-}();
-
-constexpr std::array<char, 256> to_lower_table = []() {
-   std::array<char, 256> table{};
-   for (int i = 0; i < 256; ++i) {
-      char ch = char(i);
-      table[i] = ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
-   }
-   return table;
-}();
-
-constexpr bool is_name_char(char ch) noexcept
-{
-   return (name_char_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
-}
-
-constexpr bool is_name_start(char ch) noexcept
-{
-   return (name_start_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
-}
-
-constexpr char to_lower(char ch) noexcept
-{
-   return to_lower_table[uint8_t(ch)];
-}
-
 // XML entity escape sequences
 constexpr std::string_view xml_entities[] = {
    "&amp;", "&lt;", "&gt;", "&quot;"
@@ -162,7 +100,11 @@ struct ParseState {
 typedef objXML::TAGS TAGS;
 typedef objXML::CURSOR CURSOR;
 
+//********************************************************************************************************************
 // Generic lookup templates with concepts
+
+template<typename Key>
+concept MapKey = std::equality_comparable<Key> and std::default_initializable<Key>;
 
 template<MapKey Key, typename Value>
 [[nodiscard]] inline auto find_in_map(
@@ -346,70 +288,61 @@ class extXML : public objXML {
    }
 };
 
-inline ERR extXML::findTag(CSTRING XPath, FUNCTION *pCallback)
-{
-   auto compiled_path = CompiledXPath::compile(XPath);
-   if (not compiled_path.isValid()) {
-      ErrorMsg = "XPath compilation error: ";
-      for (const auto &err : compiled_path.getErrors()) {
-         if (!ErrorMsg.empty()) ErrorMsg += "; ";
-         ErrorMsg += err;
-      }
-      return pf::Log(__FUNCTION__).warning(ERR::Syntax);
+// C++20 Concepts for type safety
+
+template<typename F>
+concept XMLCallback = requires(F f, extXML* xml, XMLTag& tag, const char* attrib) {
+   { f(xml, tag, attrib) } -> std::same_as<ERR>;
+};
+
+template<typename F>
+concept XMLTagPredicate = requires(F f, const XMLTag& tag) {
+   { f(tag) } -> std::convertible_to<bool>;
+};
+
+constexpr std::array<uint64_t, 4> name_char_table = []() {
+   std::array<uint64_t, 4> table{0, 0, 0, 0};
+   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
+   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
+   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
+   for (uint8_t c = '0'; c <= '9'; ++c) set_bit(c);
+   set_bit('.');
+   set_bit('-');
+   set_bit('_');
+   set_bit(':');
+   return table;
+}();
+
+constexpr std::array<uint64_t, 4> name_start_table = []() {
+   std::array<uint64_t, 4> table{0, 0, 0, 0};
+   auto set_bit = [&](unsigned int c) { table[c >> 6] |= (uint64_t{1} << (c & 63)); };
+   for (uint8_t c = 'A'; c <= 'Z'; ++c) set_bit(c);
+   for (uint8_t c = 'a'; c <= 'z'; ++c) set_bit(c);
+   set_bit('_');
+   set_bit(':');
+   return table;
+}();
+
+constexpr std::array<char, 256> to_lower_table = []() {
+   std::array<char, 256> table{};
+   for (int i = 0; i < 256; ++i) {
+      char ch = char(i);
+      table[i] = ((ch >= 'A') and (ch <= 'Z')) ? ch + 0x20 : ch;
    }
-   return findTag(compiled_path, pCallback);
+   return table;
+}();
+
+constexpr bool is_name_char(char ch) noexcept
+{
+   return (name_char_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
 }
 
-inline ERR extXML::findTag(const CompiledXPath &CompiledPath, FUNCTION *pCallback)
+constexpr bool is_name_start(char ch) noexcept
 {
-   this->Attrib.clear();
-
-   if (pCallback) this->Callback = *pCallback;
-   else this->Callback.Type = CALL::NIL;
-
-   this->CursorTags = &this->Tags;
-
-   Cursor = this->Tags.begin();
-
-   ErrorMsg.clear();
-
-   if ((!CursorTags) or (CursorTags->empty())) {
-      return pf::Log(__FUNCTION__).warning(ERR::SanityCheckFailed);
-   }
-
-   XPathEvaluator eval(this);
-   return eval.find_tag(CompiledPath, 0);
+   return (name_start_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
 }
 
-inline ERR extXML::evaluate(CSTRING XPath, std::string &Result)
+constexpr char to_lower(char ch) noexcept
 {
-   auto compiled_path = CompiledXPath::compile(XPath);
-   if (not compiled_path.isValid()) {
-      ErrorMsg = "XPath compilation error: ";
-      for (const auto &err : compiled_path.getErrors()) {
-         if (!ErrorMsg.empty()) ErrorMsg += "; ";
-         ErrorMsg += err;
-      }
-      return pf::Log(__FUNCTION__).warning(ERR::Syntax);
-   }
-   return evaluate(compiled_path, Result);
-}
-
-inline ERR extXML::evaluate(const CompiledXPath &CompiledPath, std::string &Result)
-{
-   this->Attrib.clear();
-   this->CursorTags = &this->Tags;
-   Cursor = this->Tags.begin();
-
-   ErrorMsg.clear();
-
-   if ((!CursorTags) or (CursorTags->empty())) {
-      return pf::Log(__FUNCTION__).warning(ERR::SanityCheckFailed);
-   }
-
-   XPathValue eval_result;
-   XPathEvaluator eval(this);
-   auto err = eval.evaluate_xpath_expression(CompiledPath, eval_result);
-   if (err IS ERR::Okay) Result = eval_result.to_string();
-   return err;
+   return to_lower_table[uint8_t(ch)];
 }

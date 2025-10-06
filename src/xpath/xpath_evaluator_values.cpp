@@ -29,21 +29,21 @@
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) {
+XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) {
    if (!PathNode) {
       expression_unsupported = true;
-      return XPathValue();
+      return XPathVal();
    }
 
    const XPathNode *location = PathNode;
    if (PathNode->type IS XPathNodeType::PATH) {
-      if (PathNode->child_count() IS 0) return XPathValue();
+      if (PathNode->child_count() IS 0) return XPathVal();
       location = PathNode->get_child(0);
    }
 
    if ((!location) or (location->type != XPathNodeType::LOCATION_PATH)) {
       expression_unsupported = true;
-      return XPathValue();
+      return XPathVal();
    }
 
    std::vector<const XPathNode *> steps;
@@ -82,7 +82,7 @@ XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathN
       else initial_context.push_back(nullptr);
    }
 
-   if (steps.empty()) return XPathValue(initial_context);
+   if (steps.empty()) return XPathVal(initial_context);
 
    const XPathNode *attribute_step = nullptr;
    const XPathNode *attribute_test = nullptr;
@@ -135,7 +135,7 @@ XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathN
 
    if (unsupported) {
       expression_unsupported = true;
-      return XPathValue();
+      return XPathVal();
    }
 
    axis_evaluator.normalise_node_set(node_results);
@@ -166,7 +166,7 @@ XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathN
 
          if (accepts_attribute) {
             std::vector<const XMLAttrib *> attribute_refs(node_results.size(), context.attribute_node);
-            return XPathValue(node_results, context.attribute_node->Value, {}, std::move(attribute_refs));
+            return XPathVal(node_results, context.attribute_node->Value, {}, std::move(attribute_refs));
          }
       }
    }
@@ -216,7 +216,7 @@ XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathN
 
                   if (predicate_result IS PredicateResult::UNSUPPORTED) {
                      expression_unsupported = true;
-                     return XPathValue();
+                     return XPathVal();
                   }
 
                   if (predicate_result IS PredicateResult::MATCH) predicate_buffer.push_back(match);
@@ -236,24 +236,21 @@ XPathValue XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathN
          }
       }
 
-      if (attribute_nodes.empty()) return XPathValue(attribute_nodes);
+      if (attribute_nodes.empty()) return XPathVal(attribute_nodes);
 
       std::optional<std::string> first_value;
       if (!attribute_values.empty()) first_value = attribute_values[0];
-      return XPathValue(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
+      return XPathVal(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
    }
 
-   return XPathValue(node_results);
+   return XPathVal(node_results);
 }
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
-                                                          const std::vector<const XMLAttrib *> &InitialAttributes,
-                                                          const std::vector<const XPathNode *> &Steps,
-                                                          const XPathNode *AttributeStep,
-                                                          const XPathNode *AttributeTest,
-                                                          uint32_t CurrentPrefix)
+XPathVal XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> &InitialContext,
+   const std::vector<const XMLAttrib *> &InitialAttributes, const std::vector<const XPathNode *> &Steps,
+   const XPathNode *AttributeStep, const XPathNode *AttributeTest, uint32_t CurrentPrefix)
 {
    std::vector<const XPathNode *> work_steps = Steps;
 
@@ -280,7 +277,7 @@ XPathValue XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> 
 
       if (unsupported) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
    }
 
@@ -305,19 +302,19 @@ XPathValue XPathEvaluator::evaluate_path_from_nodes(const std::vector<XMLTag *> 
          }
       }
 
-      if (attribute_nodes.empty()) return XPathValue(attribute_nodes);
+      if (attribute_nodes.empty()) return XPathVal(attribute_nodes);
 
       std::optional<std::string> first_value;
       if (!attribute_values.empty()) first_value = attribute_values[0];
-      return XPathValue(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
+      return XPathVal(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
    }
 
-   return XPathValue(node_results);
+   return XPathVal(node_results);
 }
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix)
+XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
       XMLTag * node;
@@ -325,8 +322,7 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
    };
 
    struct NodeIdentityHash {
-      size_t operator()(const NodeIdentity &Value) const
-      {
+      size_t operator()(const NodeIdentity &Value) const {
          size_t node_hash = std::hash<XMLTag *>()(Value.node);
          size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
          return node_hash ^ (attrib_hash << 1);
@@ -334,8 +330,7 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
    };
 
    struct NodeIdentityEqual {
-      bool operator()(const NodeIdentity &Left, const NodeIdentity &Right) const
-      {
+      bool operator()(const NodeIdentity &Left, const NodeIdentity &Right) const {
          return (Left.node IS Right.node) and (Left.attribute IS Right.attribute);
       }
    };
@@ -382,7 +377,7 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
          xml->Cursor = saved_cursor;
          xml->Attrib = saved_attrib;
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       if (branch_value.type != XPVT::NodeSet) {
@@ -393,7 +388,7 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
          xml->Cursor = saved_cursor;
          xml->Attrib = saved_attrib;
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       for (size_t index = 0; index < branch_value.node_set.size(); ++index) {
@@ -409,7 +404,7 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
          entry.attribute = attribute;
 
          if (index < branch_value.node_set_string_values.size()) entry.string_value = branch_value.node_set_string_values[index];
-         else entry.string_value = XPathValue::node_string_value(node);
+         else entry.string_value = XPathVal::node_string_value(node);
 
          if (!combined_override.has_value()) {
             if (branch_value.node_set_string_override.has_value()) combined_override = branch_value.node_set_string_override;
@@ -438,22 +433,22 @@ XPathValue XPathEvaluator::evaluate_union_value(const std::vector<const XPathNod
       combined_strings.push_back(entry.string_value);
    }
 
-   context = saved_context;
-   context_stack = saved_context_stack;
-   cursor_stack = saved_cursor_stack;
+   context         = saved_context;
+   context_stack   = saved_context_stack;
+   cursor_stack    = saved_cursor_stack;
    xml->CursorTags = saved_cursor_tags;
-   xml->Cursor = saved_cursor;
-   xml->Attrib = saved_attrib;
+   xml->Cursor     = saved_cursor;
+   xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
-   if (combined_nodes.empty()) return XPathValue(std::vector<XMLTag *>());
+   if (combined_nodes.empty()) return XPathVal(std::vector<XMLTag *>());
 
-   return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
+XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
       XMLTag * node;
@@ -461,8 +456,7 @@ XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const
    };
 
    struct NodeIdentityHash {
-      size_t operator()(const NodeIdentity &Value) const
-      {
+      size_t operator()(const NodeIdentity &Value) const {
          size_t node_hash = std::hash<XMLTag *>()(Value.node);
          size_t attrib_hash = std::hash<const XMLAttrib *>()(Value.attribute);
          return node_hash ^ (attrib_hash << 1);
@@ -470,8 +464,7 @@ XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const
    };
 
    struct NodeIdentityEqual {
-      bool operator()(const NodeIdentity &LeftIdentity, const NodeIdentity &RightIdentity) const
-      {
+      bool operator()(const NodeIdentity &LeftIdentity, const NodeIdentity &RightIdentity) const {
          return (LeftIdentity.node IS RightIdentity.node) and (LeftIdentity.attribute IS RightIdentity.attribute);
       }
    };
@@ -490,7 +483,7 @@ XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const
    auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
-   auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathValue> {
+   auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathVal> {
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
@@ -512,28 +505,28 @@ XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const
 
    auto left_value_opt = evaluate_operand(Left);
    if (!left_value_opt.has_value()) {
-      context = saved_context;
-      context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
+      context         = saved_context;
+      context_stack   = saved_context_stack;
+      cursor_stack    = saved_cursor_stack;
       xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
-      xml->Attrib = saved_attrib;
-      return XPathValue();
+      xml->Cursor     = saved_cursor;
+      xml->Attrib     = saved_attrib;
+      return XPathVal();
    }
 
    auto right_value_opt = evaluate_operand(Right);
    if (!right_value_opt.has_value()) {
-      context = saved_context;
-      context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
+      context         = saved_context;
+      context_stack   = saved_context_stack;
+      cursor_stack    = saved_cursor_stack;
       xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
-      xml->Attrib = saved_attrib;
-      return XPathValue();
+      xml->Cursor     = saved_cursor;
+      xml->Attrib     = saved_attrib;
+      return XPathVal();
    }
 
-   const XPathValue &left_value = *left_value_opt;
-   const XPathValue &right_value = *right_value_opt;
+   const XPathVal &left_value = *left_value_opt;
+   const XPathVal &right_value = *right_value_opt;
 
    std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> right_entries;
    right_entries.reserve(right_value.node_set.size() * 2);
@@ -569,7 +562,7 @@ XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const
       entry.attribute = attribute;
 
       if (index < left_value.node_set_string_values.size()) entry.string_value = left_value.node_set_string_values[index];
-      else entry.string_value = XPathValue::node_string_value(node);
+      else entry.string_value = XPathVal::node_string_value(node);
 
       if (!combined_override.has_value()) combined_override = entry.string_value;
 
@@ -595,21 +588,21 @@ XPathValue XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const
    }
 
    context = saved_context;
-   context_stack = saved_context_stack;
-   cursor_stack = saved_cursor_stack;
+   context_stack   = saved_context_stack;
+   cursor_stack    = saved_cursor_stack;
    xml->CursorTags = saved_cursor_tags;
-   xml->Cursor = saved_cursor;
-   xml->Attrib = saved_attrib;
+   xml->Cursor     = saved_cursor;
+   xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
-   if (combined_nodes.empty()) return XPathValue(std::vector<XMLTag *>());
+   if (combined_nodes.empty()) return XPathVal(std::vector<XMLTag *>());
 
-   return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
+XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix)
 {
    struct NodeIdentity {
       XMLTag * node;
@@ -638,15 +631,15 @@ XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XP
       std::string string_value;
    };
 
-   auto saved_context = context;
+   auto saved_context       = context;
    auto saved_context_stack = context_stack;
-   auto saved_cursor_stack = cursor_stack;
-   auto saved_cursor_tags = xml->CursorTags;
-   auto saved_cursor = xml->Cursor;
-   auto saved_attrib = xml->Attrib;
+   auto saved_cursor_stack  = cursor_stack;
+   auto saved_cursor_tags   = xml->CursorTags;
+   auto saved_cursor        = xml->Cursor;
+   auto saved_attrib        = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
-   auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathValue> {
+   auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathVal> {
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
@@ -674,7 +667,7 @@ XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XP
       xml->CursorTags = saved_cursor_tags;
       xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
-      return XPathValue();
+      return XPathVal();
    }
 
    auto right_value_opt = evaluate_operand(Right);
@@ -685,11 +678,11 @@ XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XP
       xml->CursorTags = saved_cursor_tags;
       xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
-      return XPathValue();
+      return XPathVal();
    }
 
-   const XPathValue &left_value = *left_value_opt;
-   const XPathValue &right_value = *right_value_opt;
+   const XPathVal &left_value = *left_value_opt;
+   const XPathVal &right_value = *right_value_opt;
 
    std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> right_entries;
    right_entries.reserve(right_value.node_set.size() * 2);
@@ -725,7 +718,7 @@ XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XP
       entry.attribute = attribute;
 
       if (index < left_value.node_set_string_values.size()) entry.string_value = left_value.node_set_string_values[index];
-      else entry.string_value = XPathValue::node_string_value(node);
+      else entry.string_value = XPathVal::node_string_value(node);
 
       if (!combined_override.has_value()) combined_override = entry.string_value;
 
@@ -758,28 +751,28 @@ XPathValue XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XP
    xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
-   if (combined_nodes.empty()) return XPathValue(std::vector<XMLTag *>());
+   if (combined_nodes.empty()) return XPathVal(std::vector<XMLTag *>());
 
-   return XPathValue(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
 }
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
+XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
       record_error("Unsupported XPath expression: empty node", true);
-      return XPathValue();
+      return XPathVal();
    }
 
    if (ExprNode->type IS XPathNodeType::NUMBER) {
       char *end_ptr = nullptr;
       double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
-      if ((end_ptr) and (*end_ptr IS '\0')) return XPathValue(value);
-      return XPathValue(std::numeric_limits<double>::quiet_NaN());
+      if ((end_ptr) and (*end_ptr IS '\0')) return XPathVal(value);
+      return XPathVal(std::numeric_limits<double>::quiet_NaN());
    }
 
    if ((ExprNode->type IS XPathNodeType::LITERAL) or (ExprNode->type IS XPathNodeType::STRING)) {
-      return XPathValue(ExprNode->value);
+      return XPathVal(ExprNode->value);
    }
 
    if (ExprNode->type IS XPathNodeType::LOCATION_PATH) {
@@ -801,7 +794,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
    if (ExprNode->type IS XPathNodeType::CONDITIONAL) {
       if (ExprNode->child_count() < 3) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       auto *condition_node = ExprNode->get_child(0);
@@ -810,11 +803,11 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       if ((!condition_node) or (!then_node) or (!else_node)) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       auto condition_value = evaluate_expression(condition_node, CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
 
       bool condition_boolean = condition_value.to_boolean();
       auto *selected_node = condition_boolean ? then_node : else_node;
@@ -827,13 +820,13 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
    if (ExprNode->type IS XPathNodeType::LET_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          record_error("LET expression requires at least one binding and a return clause.", true);
-         return XPathValue();
+         return XPathVal();
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
       if (!return_node) {
          record_error("LET expression is missing its return clause.", true);
-         return XPathValue();
+         return XPathVal();
       }
 
       std::vector<VariableBindingGuard> binding_guards;
@@ -843,24 +836,24 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          const XPathNode *binding_node = ExprNode->get_child(index);
          if ((!binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
             record_error("LET expression contains an invalid binding clause.", true);
-            return XPathValue();
+            return XPathVal();
          }
 
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
             record_error("Let binding requires a variable name and expression.", true);
-            return XPathValue();
+            return XPathVal();
          }
 
          const XPathNode *binding_expr = binding_node->get_child(0);
          if (!binding_expr) {
             record_error("Let binding requires an expression node.", true);
-            return XPathValue();
+            return XPathVal();
          }
 
-         XPathValue bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+         XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
          if (expression_unsupported) {
             record_error("Let binding expression could not be evaluated.");
-            return XPathValue();
+            return XPathVal();
          }
 
          binding_guards.emplace_back(context, binding_node->value, std::move(bound_value));
@@ -869,7 +862,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       auto result_value = evaluate_expression(return_node, CurrentPrefix);
       if (expression_unsupported) {
          record_error("Let return expression could not be evaluated.");
-         return XPathValue();
+         return XPathVal();
       }
       return result_value;
    }
@@ -879,13 +872,13 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
    if (ExprNode->type IS XPathNodeType::FLWOR_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          record_error("FLWOR expression requires at least one clause and a return expression.", true);
-         return XPathValue();
+         return XPathVal();
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
       if (!return_node) {
          record_error("FLWOR expression is missing its return clause.", true);
-         return XPathValue();
+         return XPathVal();
       }
 
       std::vector<const XPathNode *> clauses;
@@ -897,14 +890,14 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
              !((clause_node->type IS XPathNodeType::FOR_BINDING) or
                (clause_node->type IS XPathNodeType::LET_BINDING))) {
             record_error("FLWOR expression contains an invalid clause.", true);
-            return XPathValue();
+            return XPathVal();
          }
          clauses.push_back(clause_node);
       }
 
       if (clauses.empty()) {
          record_error("FLWOR expression is missing binding clauses.", true);
-         return XPathValue();
+         return XPathVal();
       }
 
       std::vector<XMLTag *> combined_nodes;
@@ -944,7 +937,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                   node_string = iteration_value.node_set_string_values[node_index];
                }
                else if (use_override) node_string = *iteration_value.node_set_string_override;
-               else if (node) node_string = XPathValue::node_string_value(node);
+               else if (node) node_string = XPathVal::node_string_value(node);
 
                combined_strings.push_back(node_string);
 
@@ -977,7 +970,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                return false;
             }
 
-            XPathValue bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+            XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
             if (expression_unsupported) {
                record_error("Let binding expression could not be evaluated.");
                return false;
@@ -1020,7 +1013,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                   item_attribute = sequence_value.node_set_attributes[index];
                }
 
-               XPathValue bound_value;
+               XPathVal bound_value;
                bound_value.type = XPVT::NodeSet;
                bound_value.node_set.push_back(item_node);
                bound_value.node_set_attributes.push_back(item_attribute);
@@ -1032,7 +1025,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                   item_string = sequence_value.node_set_string_values[index];
                }
                else if (use_override) item_string = *sequence_value.node_set_string_override;
-               else if (item_node) item_string = XPathValue::node_string_value(item_node);
+               else if (item_node) item_string = XPathVal::node_string_value(item_node);
 
                bound_value.node_set_string_values.push_back(item_string);
                bound_value.node_set_string_override = item_string;
@@ -1055,10 +1048,10 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       };
 
       bool evaluation_ok = append_return_value(0);
-      if (!evaluation_ok) return XPathValue();
-      if (expression_unsupported) return XPathValue();
+      if (!evaluation_ok) return XPathVal();
+      if (expression_unsupported) return XPathVal();
 
-      XPathValue result;
+      XPathVal result;
       result.type = XPVT::NodeSet;
       result.node_set = std::move(combined_nodes);
       result.node_set_string_values = std::move(combined_strings);
@@ -1071,13 +1064,13 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
    if (ExprNode->type IS XPathNodeType::FOR_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
       if (!return_node) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       struct ForBindingDefinition {
@@ -1095,7 +1088,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          if (binding_node and (binding_node->type IS XPathNodeType::FOR_BINDING)) {
             if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
                expression_unsupported = true;
-               return XPathValue();
+               return XPathVal();
             }
 
             bindings.push_back({ binding_node->value, binding_node->get_child(0) });
@@ -1109,13 +1102,13 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       if (legacy_layout) {
          if (ExprNode->child_count() < 2) {
             expression_unsupported = true;
-            return XPathValue();
+            return XPathVal();
          }
 
          const XPathNode *sequence_node = ExprNode->get_child(0);
          if ((!sequence_node) or (!return_node) or ExprNode->value.empty()) {
             expression_unsupported = true;
-            return XPathValue();
+            return XPathVal();
          }
 
          bindings.clear();
@@ -1124,7 +1117,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       if (bindings.empty()) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       std::vector<XMLTag *> combined_nodes;
@@ -1159,7 +1152,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                   node_string = iteration_value.node_set_string_values[node_index];
                }
                else if (use_override) node_string = *iteration_value.node_set_string_override;
-               else if (node) node_string = XPathValue::node_string_value(node);
+               else if (node) node_string = XPathVal::node_string_value(node);
 
                combined_strings.push_back(node_string);
 
@@ -1201,7 +1194,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                item_attribute = sequence_value.node_set_attributes[index];
             }
 
-            XPathValue bound_value;
+            XPathVal bound_value;
             bound_value.type = XPVT::NodeSet;
             bound_value.node_set.push_back(item_node);
             bound_value.node_set_attributes.push_back(item_attribute);
@@ -1213,7 +1206,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                item_string = sequence_value.node_set_string_values[index];
             }
             else if (use_override) item_string = *sequence_value.node_set_string_override;
-            else if (item_node) item_string = XPathValue::node_string_value(item_node);
+            else if (item_node) item_string = XPathVal::node_string_value(item_node);
 
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
@@ -1233,10 +1226,10 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       };
 
       bool evaluation_ok = evaluate_bindings(0);
-      if (!evaluation_ok) return XPathValue();
-      if (expression_unsupported) return XPathValue();
+      if (!evaluation_ok) return XPathVal();
+      if (expression_unsupported) return XPathVal();
 
-      XPathValue result;
+      XPathVal result;
       result.type = XPVT::NodeSet;
       result.node_set = std::move(combined_nodes);
       result.node_set_string_values = std::move(combined_strings);
@@ -1249,7 +1242,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
    if (ExprNode->type IS XPathNodeType::QUANTIFIED_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       bool is_some = ExprNode->value IS "some";
@@ -1257,13 +1250,13 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       if ((!is_some) and (!is_every)) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       const XPathNode *condition_node = ExprNode->get_child(ExprNode->child_count() - 1);
       if (!condition_node) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       struct QuantifiedBindingDefinition {
@@ -1278,12 +1271,12 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          const XPathNode *binding_node = ExprNode->get_child(index);
          if ((!binding_node) or (binding_node->type != XPathNodeType::QUANTIFIED_BINDING)) {
             expression_unsupported = true;
-            return XPathValue();
+            return XPathVal();
          }
 
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
             expression_unsupported = true;
-            return XPathValue();
+            return XPathVal();
          }
 
          bindings.push_back({ binding_node->value, binding_node->get_child(0) });
@@ -1291,7 +1284,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       if (bindings.empty()) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       std::function<bool(size_t)> evaluate_binding = [&](size_t binding_index) -> bool {
@@ -1328,7 +1321,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                item_attribute = sequence_value.node_set_attributes[index];
             }
 
-            XPathValue bound_value;
+            XPathVal bound_value;
             bound_value.type = XPVT::NodeSet;
             bound_value.node_set.push_back(item_node);
             bound_value.node_set_attributes.push_back(item_attribute);
@@ -1340,7 +1333,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
                item_string = sequence_value.node_set_string_values[index];
             }
             else if (use_override) item_string = *sequence_value.node_set_string_override;
-            else if (item_node) item_string = XPathValue::node_string_value(item_node);
+            else if (item_node) item_string = XPathVal::node_string_value(item_node);
 
             bound_value.node_set_string_values.push_back(item_string);
             bound_value.node_set_string_override = item_string;
@@ -1367,23 +1360,23 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       };
 
       bool quant_result = evaluate_binding(0);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
 
-      return XPathValue(quant_result);
+      return XPathVal(quant_result);
    }
 
    if (ExprNode->type IS XPathNodeType::FILTER) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       auto base_value = evaluate_expression(ExprNode->get_child(0), CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
 
       if (base_value.type != XPVT::NodeSet) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       std::vector<size_t> working_indices(base_value.node_set.size());
@@ -1412,7 +1405,7 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
             if (predicate_result IS PredicateResult::UNSUPPORTED) {
                expression_unsupported = true;
-               return XPathValue();
+               return XPathVal();
             }
 
             if (predicate_result IS PredicateResult::MATCH) passed.push_back(base_index);
@@ -1454,13 +1447,13 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          }
       }
 
-      return XPathValue(filtered_nodes, first_value, std::move(filtered_strings), std::move(filtered_attributes));
+      return XPathVal(filtered_nodes, first_value, std::move(filtered_strings), std::move(filtered_attributes));
    }
 
    if (ExprNode->type IS XPathNodeType::PATH) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       auto *first_child = ExprNode->get_child(0);
@@ -1469,10 +1462,10 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       }
 
       auto base_value = evaluate_expression(first_child, CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
 
       if (base_value.type != XPVT::NodeSet) {
-         return XPathValue(base_value.to_node_set());
+         return XPathVal(base_value.to_node_set());
       }
 
       std::vector<const XPathNode *> steps;
@@ -1518,35 +1511,30 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
    if (ExprNode->type IS XPathNodeType::FUNCTION_CALL) {
       auto value = evaluate_function_call(ExprNode, CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
       return value;
    }
 
    if (ExprNode->type IS XPathNodeType::UNARY_OP) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       auto operand = evaluate_expression(ExprNode->get_child(0), CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
 
-      if (ExprNode->value IS "-") {
-         return XPathValue(-operand.to_number());
-      }
-
-      if (ExprNode->value IS "not") {
-         return XPathValue(!operand.to_boolean());
-      }
+      if (ExprNode->value IS "-") return XPathVal(-operand.to_number());
+      if (ExprNode->value IS "not") return XPathVal(!operand.to_boolean());
 
       expression_unsupported = true;
-      return XPathValue();
+      return XPathVal();
    }
 
    if (ExprNode->type IS XPathNodeType::BINARY_OP) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
 
       auto *left_node = ExprNode->get_child(0);
@@ -1554,32 +1542,34 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
 
       const std::string &operation = ExprNode->value;
 
+      // TODO: Hash the operation with pf::strhash() and use switch-case for better performance.
+
       if (operation IS "and") {
          auto left_value = evaluate_expression(left_node, CurrentPrefix);
-         if (expression_unsupported) return XPathValue();
+         if (expression_unsupported) return XPathVal();
 
          bool left_boolean = left_value.to_boolean();
-         if (!left_boolean) return XPathValue(false);
+         if (!left_boolean) return XPathVal(false);
 
          auto right_value = evaluate_expression(right_node, CurrentPrefix);
-         if (expression_unsupported) return XPathValue();
+         if (expression_unsupported) return XPathVal();
 
          bool right_boolean = right_value.to_boolean();
-         return XPathValue(right_boolean);
+         return XPathVal(right_boolean);
       }
 
       if (operation IS "or") {
          auto left_value = evaluate_expression(left_node, CurrentPrefix);
-         if (expression_unsupported) return XPathValue();
+         if (expression_unsupported) return XPathVal();
 
          bool left_boolean = left_value.to_boolean();
-         if (left_boolean) return XPathValue(true);
+         if (left_boolean) return XPathVal(true);
 
          auto right_value = evaluate_expression(right_node, CurrentPrefix);
-         if (expression_unsupported) return XPathValue();
+         if (expression_unsupported) return XPathVal();
 
          bool right_boolean = right_value.to_boolean();
-         return XPathValue(right_boolean);
+         return XPathVal(right_boolean);
       }
 
       if (operation IS "|") {
@@ -1590,126 +1580,121 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
          return evaluate_union_value(branches, CurrentPrefix);
       }
 
-      if (operation IS "intersect") {
-         return evaluate_intersect_value(left_node, right_node, CurrentPrefix);
-      }
-
-      if (operation IS "except") {
-         return evaluate_except_value(left_node, right_node, CurrentPrefix);
-      }
+      if (operation IS "intersect") return evaluate_intersect_value(left_node, right_node, CurrentPrefix);
+      if (operation IS "except") return evaluate_except_value(left_node, right_node, CurrentPrefix);
 
       auto left_value = evaluate_expression(left_node, CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
       auto right_value = evaluate_expression(right_node, CurrentPrefix);
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
 
       if (operation IS "=") {
          bool equals = compare_xpath_values(left_value, right_value);
-         return XPathValue(equals);
+         return XPathVal(equals);
       }
 
       if (operation IS "!=") {
          bool equals = compare_xpath_values(left_value, right_value);
-         return XPathValue(!equals);
+         return XPathVal(!equals);
       }
 
       if (operation IS "eq") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool equals = compare_xpath_values(*left_scalar, *right_scalar);
-         return XPathValue(equals);
+         return XPathVal(equals);
       }
 
       if (operation IS "ne") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool equals = compare_xpath_values(*left_scalar, *right_scalar);
-         return XPathValue(!equals);
+         return XPathVal(!equals);
       }
 
       if (operation IS "<") {
          bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "<=") {
          bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS_OR_EQUAL);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS ">") {
          bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS ">=") {
          bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER_OR_EQUAL);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "lt") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "le") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS_OR_EQUAL);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "gt") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "ge") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathValue(false);
+         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER_OR_EQUAL);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "+") {
          double result = left_value.to_number() + right_value.to_number();
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "-") {
          double result = left_value.to_number() - right_value.to_number();
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "*") {
          double result = left_value.to_number() * right_value.to_number();
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "div") {
          double result = left_value.to_number() / right_value.to_number();
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       if (operation IS "mod") {
          double left_number = left_value.to_number();
          double right_number = right_value.to_number();
          double result = std::fmod(left_number, right_number);
-         return XPathValue(result);
+         return XPathVal(result);
       }
 
       expression_unsupported = true;
-      return XPathValue();
+      return XPathVal();
    }
 
    if (ExprNode->type IS XPathNodeType::VARIABLE_REFERENCE) {
@@ -1721,22 +1706,22 @@ XPathValue XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32
       // Look up variable in the XML object's variable storage
       auto it = xml->Variables.find(ExprNode->value);
       if (it != xml->Variables.end()) {
-         return XPathValue(it->second);
+         return XPathVal(it->second);
       }
       else {
          // Variable not found - XPath 1.0 spec requires this to be an error
          expression_unsupported = true;
-         return XPathValue();
+         return XPathVal();
       }
    }
 
    expression_unsupported = true;
-   return XPathValue();
+   return XPathVal();
 }
 
 //********************************************************************************************************************
 
-ERR XPathEvaluator::process_expression_node_set(const XPathValue &Value)
+ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
 {
    struct NodeEntry {
       XMLTag * node = nullptr;
@@ -1843,20 +1828,20 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
 
 //********************************************************************************************************************
 
-XPathValue XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
+XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
    if (!FuncNode or FuncNode->type != XPathNodeType::FUNCTION_CALL) {
-      return XPathValue();
+      return XPathVal();
    }
 
    std::string function_name = FuncNode->value;
 
-   std::vector<XPathValue> args;
+   std::vector<XPathVal> args;
    args.reserve(FuncNode->child_count());
 
    for (size_t index = 0; index < FuncNode->child_count(); ++index) {
       auto *argument_node = FuncNode->get_child(index);
       args.push_back(evaluate_expression(argument_node, CurrentPrefix));
-      if (expression_unsupported) return XPathValue();
+      if (expression_unsupported) return XPathVal();
    }
 
    if (function_name IS "text") {
@@ -1874,7 +1859,7 @@ XPathValue XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uin
          }
       }
 
-      return XPathValue(text_nodes, first_value);
+      return XPathVal(text_nodes, first_value);
    }
 
    return XPathFunctionLibrary::instance().call_function(function_name, args, context);

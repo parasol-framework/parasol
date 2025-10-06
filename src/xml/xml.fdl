@@ -45,6 +45,19 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
     "NOTATION: Tag represents a notation of the format `<!XML>`.",
     "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
+    
+  enum('XPVT', { type='int', start=0, comment='Type descriptors for XPathValue' },
+     'NodeSet',
+     'Boolean',
+     'Number',
+     'String',
+     'Date',
+     'Time',
+     'DateTime')
+
+  struct("XPathValue", { type="XPathValue" }, [[
+  int(XPVT) type # Identifies the type of value stored
+  ]])
 
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
@@ -147,7 +160,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=27, name="ValidateDocument" }
   })
 
-  class("XML", { src="xml.cpp", output="xml_def.c" }, [[
+  class("XML", { src="xml_class.cpp", output="xml_class_def.c" }, [[
     str Path         # Location of the XML data file
     str DocType      # Root element name from DOCTYPE declaration
     str PublicID     # Public identifier for external DTD
@@ -243,4 +256,9 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 
 } // namespace
   ]])
+
+  functionNames("xml",
+     "XValueToNumber",
+     "XValueToString",
+     "XValueNodes")
 end)

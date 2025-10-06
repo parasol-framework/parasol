@@ -46,12 +46,7 @@ Examples:
 
 JUMPTABLE_CORE
 
-#include "../xml/unescape.cpp"
-#include "xpath_axis.cpp"
-#include "xpath_parser.cpp"
 #include "xpath_evaluator.h"
-#include "xpath_evaluator.cpp"
-
 #include "xpath_def.c"
 
 // TODO: Replace with SetResourceMgr() when available
@@ -67,12 +62,12 @@ static void set_memory_manager(APTR Address, ResourceManager *Manager)
 
 static ERR xpe_free(APTR Address)
 {
-   ((CompiledXPath *)Address)->~CompiledXPath();
+   ((XPathNode *)Address)->~XPathNode();
    return ERR::Okay;
 }
 
 static ResourceManager glCompiledQuery = {
-   "XPathExpression",
+   "XPathNode",
    &xpe_free
 };
 
@@ -80,7 +75,7 @@ static ResourceManager glCompiledQuery = {
 
 static ERR xpv_free(APTR Address)
 {
-   ((XPathValue *)Address)->~XPathValue();
+   ((XPathVal *)Address)->~XPathVal();
    return ERR::Okay;
 }
 
@@ -94,6 +89,12 @@ static ResourceManager glXPVManager = {
 static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
    CoreBase = pCore;
+   return ERR::Okay;
+}
+
+static ERR MODOpen(OBJECTPTR Module)
+{
+   Module->set(FID_FunctionList, glFunctions);
    return ERR::Okay;
 }
 
@@ -111,11 +112,17 @@ Compile: Compiles an XPath or XQuery expression into an executable form.
 
 Call the Compile function to convert a valid XPath or XQuery expression string into a compiled form that can be
 executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency
-and must be freed using FreeResource when no longer needed.
+and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and
+are treated as read-only for thread-safety.
+
+The XML parameter is not required for compilation, but can potentially enhance syntax checking when parsing the 
+expression.  An additional benefit is that error messages will be defined in the #ErrorMsg field of the XML object if
+parsing fails.
 
 -INPUT-
+obj(XML) XML: The XML document context for the query (can be NULL if not needed).
 cstr Query: A valid XPath or XQuery expression string.
-!&struct(XPathExpression) Result: Receives a pointer to an CompiledXPath object on success
+!&struct(XPathNode) Result: Receives a pointer to an XPathNode object on success.
 
 -ERRORS-
 Okay
@@ -124,23 +131,44 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR Compile(CSTRING Query, XPathExpression **Result)
+ERR Compile(objXML *XML, CSTRING Query, XPathNode **Result)
 {
+   pf::Log log(__FUNCTION__);
+
    if ((not Query) or (not Result)) return ERR::NullArgs;
 
    std::vector<std::string> errors;
-   if (auto cmp = CompiledXPath::compile(std::string_view(Query), errors)) {
-      if (AllocMemory(sizeof(CompiledXPath), MEM::DATA|MEM::MANAGED, (APTR *)&Result, nullptr) IS ERR::Okay) {
-         set_memory_manager(*Result, &glCompiledQuery);
-         *Result = cmp;
-         return ERR::Okay;
+   XPathNode *cmp;
+   if (AllocMemory(sizeof(XPathNode), MEM::DATA|MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
+      set_memory_manager(cmp, &glCompiledQuery);
+
+      XPathTokenizer tokenizer;
+      XPathParser parser;
+
+      auto tokens = tokenizer.tokenize(Query);
+      auto parsed_ast = parser.parse(tokens);
+
+      if (!parsed_ast) {
+         auto xml = (extXML *)XML;
+         auto errors = parser.get_errors();
+         if (errors.empty()) xml->ErrorMsg = "Failed to parse XPath expression";
+         else {
+            xml->ErrorMsg = "XPath compilation error: ";
+            for (const auto &err : errors) {
+               if (!xml->ErrorMsg.empty()) xml->ErrorMsg += "; ";
+               xml->ErrorMsg += err;
+            }
+         }
+         log.warning("XPath compilation error: %s", xml->ErrorMsg.c_str());
+         FreeResource(cmp);
+         return ERR::Syntax;
       }
-      else return ERR::AllocMemory;
+
+      new (cmp) XPathNode(std::move(*parsed_ast)); // Move & construct the parsed AST into the allocated memory
+      *Result = cmp;
+      return ERR::Okay;
    }
-   else {
-      // TODO Need to feed errors back to the caller.
-      return ERR::Failed;
-   }
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -154,7 +182,7 @@ of data including node sets, strings, numbers, or booleans.
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
-struct(XPathExpression) Query: The compiled XPath or XQuery expression.
+struct(XPathNode) Query: The compiled XPath or XQuery expression.
 !&struct(XPathValue) Result: Receives the result of the evaluation.
 
 -ERRORS-
@@ -164,37 +192,38 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR Evaluate(objXML *XML, XPathExpression *Query, XPathValue **Result)
+ERR Evaluate(objXML *XML, XPathNode *Query, XPathValue **Result)
 {
    pf::Log log(__FUNCTION__);
 
    if ((not XML) or (not Query) or (not Result)) return log.warning(ERR::NullArgs);
 
    auto xml = (extXML *)XML;
+   *Result = nullptr;
    
    if (xml->Tags.empty()) return log.warning(ERR::NoData);
 
-   auto compiled_path = (CompiledXPath *)Query;
+   auto compiled_path = (XPathNode *)Query;
 
    xml->Attrib.clear();
    xml->ErrorMsg.clear();
    xml->CursorTags = &xml->Tags;
    xml->Cursor = xml->Tags.begin();
 
-   if (AllocMemory(sizeof(XPathValue), MEM::DATA|MEM::MANAGED, (APTR *)&Result, nullptr) != ERR::Okay) {
-      return ERR::AllocMemory;
-   }
-   
-   set_memory_manager(*Result, &glXPVManager);
-   
-   XPathEvaluator eval(xml);
-   auto err = eval.evaluate_xpath_expression(*compiled_path, *Result);
-   if (err != ERR::Okay) {
-      FreeResource(*Result);
-      *Result = nullptr;
-   }
+   XPathVal *xpv;
+   if (AllocMemory(sizeof(XPathVal), MEM::DATA|MEM::MANAGED, (APTR *)&xpv, nullptr) IS ERR::Okay) {
+      set_memory_manager(xpv, &glXPVManager);
+      new (xpv) XPathVal(); // Placement new to construct a dummy XPathVal object
 
-   return err;
+      XPathEvaluator eval(xml);
+      auto err = eval.evaluate_xpath_expression(*compiled_path, (XPathVal *)xpv);
+      if (err != ERR::Okay) {
+         FreeResource(xpv);
+      }
+      else *Result = xpv;
+      return err;
+   }
+   else return ERR::AllocMemory;
 }
 
 /*********************************************************************************************************************
@@ -212,7 +241,7 @@ Note that valid function execution can return `ERR:Search` if zero matches are f
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
-ptr(struct(XPathExpression)) Query: The compiled XPath or XQuery expression.
+ptr(struct(XPathNode)) Query: The compiled XPath or XQuery expression.
 ptr(func) Callback: Pointer to a callback function that will be called for each matching node.  Can be NULL if searching for the first matching node.
 
 -ERRORS-
@@ -225,7 +254,7 @@ Search: No matching node was found.
 
 *********************************************************************************************************************/
 
-ERR Query(objXML *XML, XPathExpression *Query, FUNCTION *Callback)
+ERR Query(objXML *XML, XPathNode *Query, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
@@ -242,9 +271,10 @@ ERR Query(objXML *XML, XPathExpression *Query, FUNCTION *Callback)
    xml->CursorTags = &xml->Tags;
    xml->Cursor = xml->Tags.begin();
    xml->ErrorMsg.clear();
+   (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
    XPathEvaluator eval(xml);
-   return eval.find_tag(*(const CompiledXPath *)Query, 0); // Returns ERR:Search if no match
+   return eval.find_tag(*Query, 0); // Returns ERR:Search if no match
 }
 
 } // namespace xp
@@ -252,11 +282,10 @@ ERR Query(objXML *XML, XPathExpression *Query, FUNCTION *Callback)
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
-   { "XPathExpression", sizeof(CompiledXPath) },
-   { "XPathValue", sizeof(XPathValue) }
+   { "XPathNode", sizeof(XPathNode) }
 };
 
 //********************************************************************************************************************
 
-PARASOL_MOD(MODInit, nullptr, nullptr, MODExpunge, MOD_IDL, &glStructures)
+PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_xpath_module() { return &ModHeader; }

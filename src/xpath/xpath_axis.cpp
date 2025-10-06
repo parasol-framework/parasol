@@ -19,15 +19,6 @@
 
 #include "xpath_axis.h"
 
-#include <algorithm>
-#include <array>
-#include <map>
-#include <ranges>
-#include <string_view>
-#include <unordered_set>
-
-#include <parasol/strings.hpp>
-
 namespace {
 
 struct AxisNameMapping {

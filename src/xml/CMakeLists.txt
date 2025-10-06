@@ -3,14 +3,18 @@
 set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl" NAME ${MOD}_defs
+idl_gen ("${MOD}.fdl" 
+   NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
+   FILES "xml.cpp"
+   ARGS  "output-defs=xml_def.c" "output-proto=xml_def.c"
    APPEND_IDL "${MOD}_def.c")
-
+   
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
+add_compile_definitions("PRV_XML_MODULE" "PRV_XML")
 
 # Unescape Library
 
@@ -24,7 +28,8 @@ add_dependencies (xml_unescape build_headers)
 add_library (xml_schema OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_types.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/schema/schema_parser.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp")
+   "${CMAKE_CURRENT_SOURCE_DIR}/schema/type_checker.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath_value.cpp")
 
 target_include_directories (xml_schema PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_schema PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
@@ -34,6 +39,7 @@ add_dependencies (xml_schema build_headers)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   $<TARGET_OBJECTS:xml_unescape>
    $<TARGET_OBJECTS:xml_schema>)
 
 # Tests

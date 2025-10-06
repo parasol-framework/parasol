@@ -39,6 +39,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+//********************************************************************************************************************
+
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
    if (!Node) return std::string("#");
@@ -73,21 +75,19 @@ void XPathEvaluator::record_error(std::string_view Message, bool Force)
 //********************************************************************************************************************
 // Public method for AST Evaluation
 
-ERR XPathEvaluator::find_tag(const CompiledXPath &CompiledPath, uint32_t CurrentPrefix)
+ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
 {
    // Reset the evaluator state
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
    
-   (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
-
-   return evaluate_ast(CompiledPath.getAST(), CurrentPrefix);
+   return evaluate_ast(&XPath, CurrentPrefix);
 }
 
 //********************************************************************************************************************
 // Public method to evaluate complete XPath expressions and return computed values
 
-ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath, XPathValue *Result, uint32_t CurrentPrefix)
+ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *Result, uint32_t CurrentPrefix)
 {
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
@@ -95,17 +95,17 @@ ERR XPathEvaluator::evaluate_xpath_expression(const CompiledXPath &CompiledPath,
 
    if (!context.context_node) push_context(&xml->Tags[0], 1, 1);
 
-   // Evaluate the compiled AST and return the XPathValue directly
+   // Evaluate the compiled AST and return the XPathVal directly
 
    expression_unsupported = false;
 
-   const XPathNode *node = CompiledPath.getAST();
-   if (node and (node->type IS XPathNodeType::EXPRESSION)) {
+   const XPathNode *node = &XPath;
+   if (node->type IS XPathNodeType::EXPRESSION) {
       if (node->child_count() > 0) node = node->get_child(0);
       else node = nullptr;
    }
 
-   *Result = evaluate_expression(node, CurrentPrefix);
+   *Result = std::move(evaluate_expression(node, CurrentPrefix));
 
    if (expression_unsupported) {
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg = "Unsupported XPath expression.";

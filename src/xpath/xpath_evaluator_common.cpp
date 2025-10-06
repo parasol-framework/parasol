@@ -1,11 +1,10 @@
+
 #include "xpath_evaluator_detail.h"
-
 #include "../xml/schema/schema_types.h"
-
 #include <cmath>
 #include <limits>
 
-std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(const XPathValue &Value)
+std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(const XPathVal &Value)
 {
    if (Value.schema_type_info) return Value.schema_type_info;
 
@@ -14,7 +13,7 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(c
    return registry.find_descriptor(type);
 }
 
-bool should_compare_as_boolean(const XPathValue &Left, const XPathValue &Right)
+bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right)
 {
    if ((Left.type IS XPVT::NodeSet) or (Right.type IS XPVT::NodeSet)) return false;
    if ((Left.type IS XPVT::Boolean) or (Right.type IS XPVT::Boolean)) return true;
@@ -27,7 +26,7 @@ bool should_compare_as_boolean(const XPathValue &Left, const XPathValue &Right)
           right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean);
 }
 
-bool should_compare_as_numeric(const XPathValue &Left, const XPathValue &Right)
+bool should_compare_as_numeric(const XPathVal &Left, const XPathVal &Right)
 {
    auto left_descriptor = schema_descriptor_for_value(Left);
    auto right_descriptor = schema_descriptor_for_value(Right);

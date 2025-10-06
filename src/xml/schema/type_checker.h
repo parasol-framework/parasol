@@ -30,7 +30,7 @@ namespace xml::schema
       [[nodiscard]] const SchemaContext * schema_context() const;
       [[nodiscard]] const std::string & last_error() const;
 
-      [[nodiscard]] bool validate_value(const XPathValue &Value, const SchemaTypeDescriptor &Descriptor) const;
+      [[nodiscard]] bool validate_value(const XPathVal &Value, const SchemaTypeDescriptor &Descriptor) const;
       [[nodiscard]] bool validate_attribute(const XMLAttrib &Attribute, const SchemaTypeDescriptor &Descriptor) const;
       [[nodiscard]] bool validate_node(const XMLTag &Tag, const SchemaTypeDescriptor &Descriptor) const;
       [[nodiscard]] bool validate_element(const XMLTag &Tag, const ElementDescriptor &Descriptor) const;

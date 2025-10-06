@@ -74,7 +74,7 @@ namespace xml::schema
    }
 
    // Validates that the provided XPath value conforms to the supplied schema descriptor.
-   bool TypeChecker::validate_value(const XPathValue &Value, const SchemaTypeDescriptor &Descriptor) const
+   bool TypeChecker::validate_value(const XPathVal &Value, const SchemaTypeDescriptor &Descriptor) const
    {
       auto effective = resolve_effective_descriptor(Descriptor);
       auto target_type = effective->schema_type;
@@ -118,7 +118,7 @@ namespace xml::schema
    // Validates an attribute against the descriptor and records detailed errors when it fails.
    bool TypeChecker::validate_attribute(const XMLAttrib &Attribute, const SchemaTypeDescriptor &Descriptor) const
    {
-      XPathValue value(Attribute.Value);
+      XPathVal value(Attribute.Value);
       if (validate_value(value, Descriptor)) return true;
 
       std::string previous_error(last_error_message);
@@ -152,7 +152,7 @@ namespace xml::schema
    bool TypeChecker::validate_element(const XMLTag &Tag, const ElementDescriptor &Descriptor) const
    {
       if (Descriptor.type and Descriptor.children.empty()) {
-         XPathValue value(Tag.getContent());
+         XPathVal value(Tag.getContent());
          if (validate_value(value, *Descriptor.type)) return true;
 
          std::string previous_error(last_error_message);
@@ -203,7 +203,7 @@ namespace xml::schema
          counters[rule]++;
 
          if (rule->type and rule->children.empty()) {
-            XPathValue child_value(Child.getContent());
+            XPathVal child_value(Child.getContent());
             if (!validate_value(child_value, *rule->type)) {
                std::string previous_error(last_error_message);
                auto child_elem_name = (!Child.Attribs.empty() and !Child.Attribs[0].Name.empty()) ? Child.Attribs[0].Name : "(unnamed)";

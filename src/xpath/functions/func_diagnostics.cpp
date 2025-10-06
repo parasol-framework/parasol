@@ -3,24 +3,24 @@
 
 #include <format>
 
-XPathValue XPathFunctionLibrary::function_error(const std::vector<XPathValue> &Args, const XPathContext &Context)
+XPathVal XPathFunctionLibrary::function_error(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    std::string error_code = "err:FOER0000";
    std::string description = "User-defined error";
    std::string detail;
 
    if (not Args.empty()) {
-      const XPathValue &code_value = Args[0];
+      const XPathVal &code_value = Args[0];
       if (not code_value.is_empty()) error_code = code_value.to_string();
    }
 
    if (Args.size() > 1) {
-      const XPathValue &description_value = Args[1];
+      const XPathVal &description_value = Args[1];
       if (not description_value.is_empty()) description = description_value.to_string();
    }
 
    if (Args.size() > 2) {
-      const XPathValue &detail_value = Args[2];
+      const XPathVal &detail_value = Args[2];
       if (not detail_value.is_empty()) detail = describe_xpath_value(detail_value);
    }
 
@@ -47,18 +47,18 @@ XPathValue XPathFunctionLibrary::function_error(const std::vector<XPathValue> &A
       }
    }
 
-   return XPathValue();
+   return XPathVal();
 }
 
-XPathValue XPathFunctionLibrary::function_trace(const std::vector<XPathValue> &Args, const XPathContext &Context)
+XPathVal XPathFunctionLibrary::function_trace(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.empty()) return XPathValue();
+   if (Args.empty()) return XPathVal();
 
-   const XPathValue &value = Args[0];
+   const XPathVal &value = Args[0];
    std::string label = "trace";
 
    if (Args.size() > 1) {
-      const XPathValue &label_value = Args[1];
+      const XPathVal &label_value = Args[1];
       if (not label_value.is_empty()) label = label_value.to_string();
    }
 

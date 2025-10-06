@@ -9,10 +9,19 @@
 #include "xpath_ast.h"
 #include "xpath_arena.h"
 
+#include <algorithm>
+#include <array>
+#include <map>
+#include <ranges>
+#include <string_view>
+#include <unordered_set>
 #include <cstdint>
 #include <memory>
 #include <span>
 #include <unordered_map>
+#include <parasol/modules/xml.h>
+#include <parasol/strings.hpp>
+#include "../xml/xml.h"
 
 //********************************************************************************************************************
 // XPath Axis Types

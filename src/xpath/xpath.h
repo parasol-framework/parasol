@@ -1,27 +1,12 @@
-// A basic class for holding the compiled AST, a record of errors, and validity status.
+// A basic class for holding the compiled AST
 
 #pragma once
 
 #include <utility>
 #include <parasol/modules/xpath.h>
 #include "xpath_ast.h"
-
-class CompiledXPath : public XPathExpression {
-   public:
-   std::shared_ptr<XPathNode> ast;
-   CompiledXPath() {}
-
-   // Compile an XPath expression
-   static CompiledXPath * compile(std::string_view XPath, std::vector<std::string> &);
-
-   // Get the compiled AST (for internal use by evaluator)
-   [[nodiscard]] const XPathNode * getAST() const { return ast.get(); }
-   [[nodiscard]] std::shared_ptr<XPathNode> getASTShared() const { return ast; }
-
-   // Disable copy constructor and assignment to avoid shared AST issues
-   CompiledXPath(const CompiledXPath &) = delete;
-   CompiledXPath & operator=(const CompiledXPath &) = delete;
-};
+#include "xpath_tokenizer.h"
+#include "xpath_parser.h"
 
 // Lightweight view-based trim used for cache key normalisation.
 

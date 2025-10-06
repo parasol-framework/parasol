@@ -1,6 +1,6 @@
 #pragma once
 
-#include "xpath_value.h"
+#include "../xml/xpath_value.h"
 
 #include <memory>
 #include <optional>
@@ -14,17 +14,17 @@ enum class RelationalOperator {
 };
 
 // Schema and type system helpers
-std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(const XPathValue &Value);
-bool should_compare_as_boolean(const XPathValue &Left, const XPathValue &Right);
-bool should_compare_as_numeric(const XPathValue &Left, const XPathValue &Right);
+std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(const XPathVal &Value);
+bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right);
+bool should_compare_as_numeric(const XPathVal &Left, const XPathVal &Right);
 
 // Numeric comparison utilities
 bool numeric_equal(double Left, double Right);
 bool numeric_compare(double Left, double Right, RelationalOperator Operation);
 
 // Predicate value extraction and comparison (implemented in xpath_evaluator_predicates.cpp)
-std::string node_set_string_value(const XPathValue &Value, size_t Index);
-double node_set_number_value(const XPathValue &Value, size_t Index);
-std::optional<XPathValue> promote_value_comparison_operand(const XPathValue &Value);
-bool compare_xpath_values(const XPathValue &LeftValue, const XPathValue &RightValue);
-bool compare_xpath_relational(const XPathValue &LeftValue, const XPathValue &RightValue, RelationalOperator Operation);
+std::string node_set_string_value(const XPathVal &Value, size_t Index);
+double node_set_number_value(const XPathVal &Value, size_t Index);
+std::optional<XPathVal> promote_value_comparison_operand(const XPathVal &Value);
+bool compare_xpath_values(const XPathVal &LeftValue, const XPathVal &RightValue);
+bool compare_xpath_relational(const XPathVal &LeftValue, const XPathVal &RightValue, RelationalOperator Operation);

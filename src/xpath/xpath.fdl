@@ -1,24 +1,79 @@
 --$FLUID:Include
 
 module({ name="XPath", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
+  c_include("<parasol/modules/xml.h>")
   cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
-  
-  enum('XPVT', { type='int', start=0, comment='' },
-     'NodeSet',
-     'Boolean',
-     'Number',
-     'String',
-     'Date',
-     'Time',
-     'DateTime')
 
-  -- The XPathExpression is an internal resource.  This definition makes it available to clients
-  -- without revealing its internal structure.
+-- XPath AST Node Structure
 
-  struct("XPathExpression", { type="XPathExpression" }, [[
-  cpp(str) original_expression
+enum('XPathNodeType', { type='int', start=0 },
+   -- Location path components
+   'LOCATION_PATH',
+   'STEP',
+   'NODE_TEST',
+   'PREDICATE',
+   'ROOT',
+
+   -- Expressions
+   'EXPRESSION',
+   'FILTER',
+   'BINARY_OP',
+   'UNARY_OP',
+   'CONDITIONAL',
+   'FOR_EXPRESSION',
+   'FOR_BINDING',
+   'LET_EXPRESSION',
+   'LET_BINDING',
+   'FLWOR_EXPRESSION',
+   'QUANTIFIED_EXPRESSION',
+   'QUANTIFIED_BINDING',
+   'FUNCTION_CALL',
+   'LITERAL',
+   'VARIABLE_REFERENCE',
+
+   -- Node tests
+   'NAME_TEST',
+   'NODE_TYPE_TEST',
+   'PROCESSING_INSTRUCTION_TEST',
+   'WILDCARD',
+
+   -- Axes
+   'AXIS_SPECIFIER',
+
+   -- Union / set expressions
+   'UNION',
+
+   -- Primary expressions
+   'NUMBER',
+   'STRING',
+   'PATH')
+
+
+  struct("XPathNode", { type="XPathNode" }, [[
+  ]],
+  [[
+   XPathNodeType type;
+   std::string value;
+   std::vector<std::unique_ptr<XPathNode>> children;
+
+   // Constructor
+   XPathNode(XPathNodeType t, std::string v = "")
+      : type(t), value(std::move(v)) {}
+
+   // Helper methods
+   void add_child(std::unique_ptr<XPathNode> child) {
+      children.push_back(std::move(child));
+   }
+
+   XPathNode * get_child(size_t index) const {
+      return index < children.size() ? children[index].get() : nullptr;
+   }
+
+   size_t child_count() const {
+      return children.size();
+   }
   ]])
-
+  
   functionNames("xp",
      "Compile",
      "Evaluate",

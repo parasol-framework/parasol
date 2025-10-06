@@ -9,9 +9,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 #include <ankerl/unordered_dense.h>
 #include <parasol/modules/xml.h>
-#include "../../xpath/xpath_functions.h"
+#include "../xpath_value.h"
 
 namespace xml::schema
 {
@@ -56,7 +57,7 @@ namespace xml::schema
       [[nodiscard]] bool is_builtin() const noexcept;
       [[nodiscard]] bool is_derived_from(SchemaType Target) const;
       [[nodiscard]] bool can_coerce_to(SchemaType Target) const;
-      [[nodiscard]] XPathValue coerce_value(const XPathValue &Value, SchemaType Target) const;
+      [[nodiscard]] XPathVal coerce_value(const XPathVal &Value, SchemaType Target) const;
    };
 
    class SchemaTypeRegistry

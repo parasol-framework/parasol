@@ -7,11 +7,8 @@
 #include <vector>
 
 #include <parasol/main.h>
+#include <parasol/modules/xml.h>
 #include <parasol/modules/xpath.h>
-
-struct XMLTag;
-struct XMLAttrib;
-class extXML;
 
 namespace xml::schema
 {
@@ -23,7 +20,7 @@ namespace xml::schema
    SchemaTypeRegistry & registry();
 }
 
-class XPathValue
+class XPathVal : public XPathValue
 {
    public:
    XPVT type;
@@ -39,12 +36,12 @@ class XPathValue
 
    // Constructors
 
-   XPathValue() : type(XPVT::Boolean) {}
-   explicit XPathValue(bool value) : type(XPVT::Boolean), boolean_value(value) {}
-   explicit XPathValue(double value) : type(XPVT::Number), number_value(value) {}
-   explicit XPathValue(std::string value) : type(XPVT::String), string_value(std::move(value)) {}
-   explicit XPathValue(XPVT ValueType, std::string value) : type(ValueType), string_value(std::move(value)) {}
-   explicit XPathValue(const std::vector<XMLTag *> &Nodes,
+   XPathVal() : type(XPVT::Boolean) {}
+   explicit XPathVal(bool value) : type(XPVT::Boolean), boolean_value(value) {}
+   explicit XPathVal(double value) : type(XPVT::Number), number_value(value) {}
+   explicit XPathVal(std::string value) : type(XPVT::String), string_value(std::move(value)) {}
+   explicit XPathVal(XPVT ValueType, std::string value) : type(ValueType), string_value(std::move(value)) {}
+   explicit XPathVal(const std::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,
                        std::vector<std::string> NodeSetStrings = {},
                        std::vector<const XMLAttrib *> NodeSetAttributes = {})

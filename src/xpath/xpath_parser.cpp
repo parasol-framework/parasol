@@ -56,7 +56,8 @@ bool XPathParser::match(XPathTokenType Type) {
    return false;
 }
 
-bool XPathParser::check_identifier_keyword(std::string_view Keyword) const {
+bool XPathParser::check_identifier_keyword(std::string_view Keyword) const 
+{
    const XPathToken &token = peek();
 
    if (Keyword IS "union") {
@@ -72,9 +73,8 @@ bool XPathParser::check_identifier_keyword(std::string_view Keyword) const {
    return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
 }
 
-bool XPathParser::match_identifier_keyword(std::string_view Keyword,
-                                           XPathTokenType KeywordType,
-                                           XPathToken &OutToken) {
+bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken) 
+{
    if (match(KeywordType)) {
       OutToken = previous();
       return true;
@@ -147,7 +147,8 @@ std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNo
    return binary_op;
 }
 
-std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand) {
+std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand) 
+{
    auto unary_op = std::make_unique<XPathNode>(XPathNodeType::UNARY_OP, std::string(Op.value));
    unary_op->add_child(std::move(Operand));
    return unary_op;
@@ -156,7 +157,8 @@ std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, st
 //********************************************************************************************************************
 // Grammar implementation
 
-std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
+std::unique_ptr<XPathNode> XPathParser::parse_location_path() 
+{
    auto path = std::make_unique<XPathNode>(XPathNodeType::LOCATION_PATH);
 
    bool is_absolute = false;
@@ -205,7 +207,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path() {
 
 //********************************************************************************************************************
 
-std::unique_ptr<XPathNode> XPathParser::parse_step() {
+std::unique_ptr<XPathNode> XPathParser::parse_step() 
+{
    auto step = std::make_unique<XPathNode>(XPathNodeType::STEP);
 
    // Handle abbreviated steps
@@ -258,7 +261,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_step() {
 
 //********************************************************************************************************************
 
-std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
+std::unique_ptr<XPathNode> XPathParser::parse_node_test() 
+{
    if (check(XPathTokenType::WILDCARD)) {
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::WILDCARD, "*");
@@ -327,7 +331,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test() {
 
 //********************************************************************************************************************
 
-std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
+std::unique_ptr<XPathNode> XPathParser::parse_predicate() 
+{
    if (!match(XPathTokenType::LBRACKET)) return nullptr;
 
    auto predicate = std::make_unique<XPathNode>(XPathNodeType::PREDICATE);
@@ -415,7 +420,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate() {
    return predicate;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_predicate_value() {
+std::unique_ptr<XPathNode> XPathParser::parse_predicate_value() 
+{
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
@@ -462,7 +468,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
    return parse_or_expr();
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr() 
+{
    std::vector<std::unique_ptr<XPathNode>> clauses;
    bool saw_for = false;
    bool saw_let = false;
@@ -613,7 +620,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr() {
    return flwor_node;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_or_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_or_expr() 
+{
    auto left = parse_and_expr();
 
    while (check(XPathTokenType::OR)) {
@@ -626,7 +634,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_or_expr() {
    return left;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_and_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_and_expr() 
+{
    auto left = parse_equality_expr();
 
    while (check(XPathTokenType::AND)) {
@@ -653,7 +662,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_equality_expr() {
    return left;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_relational_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_relational_expr() 
+{
    auto left = parse_additive_expr();
 
    while (check(XPathTokenType::LESS_THAN) or check(XPathTokenType::LESS_EQUAL) or
@@ -669,7 +679,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_relational_expr() {
    return left;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_additive_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_additive_expr() 
+{
    auto left = parse_multiplicative_expr();
 
    while (check(XPathTokenType::PLUS) or check(XPathTokenType::MINUS)) {
@@ -696,7 +707,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_multiplicative_expr() {
    return left;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_unary_expr() 
+{
    if (match(XPathTokenType::MINUS)) {
       XPathToken op = previous();
       auto operand = parse_unary_expr();
@@ -742,7 +754,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_intersect_expr() {
    return left;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_union_expr() 
+{
    auto left = parse_intersect_expr();
    if (!left) return nullptr;
 
@@ -768,7 +781,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_union_expr() {
    return union_node;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_path_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_path_expr() 
+{
    bool looks_like_path = false;
 
    if (check(XPathTokenType::SLASH) or check(XPathTokenType::DOUBLE_SLASH)) looks_like_path = true;
@@ -794,7 +808,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr() {
    return parse_filter_expr();
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() 
+{
    auto primary = parse_primary_expr();
    if (!primary) return nullptr;
 
@@ -848,7 +863,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr() {
    return current;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_if_expr() 
+{
    if (!match(XPathTokenType::IF)) return nullptr;
 
    if (!match(XPathTokenType::LPAREN)) {
@@ -884,7 +900,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr() {
    return conditional;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr() 
+{
    bool is_some = match(XPathTokenType::SOME);
    bool is_every = false;
 
@@ -940,7 +957,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr() {
    return quant_node;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
+std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() 
+{
    if (match(XPathTokenType::LPAREN)) {
       auto expr = parse_expr();
       match(XPathTokenType::RPAREN);
@@ -976,7 +994,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr() {
    return nullptr;
 }
 
-std::unique_ptr<XPathNode> XPathParser::parse_function_call() {
+std::unique_ptr<XPathNode> XPathParser::parse_function_call() 
+{
    if (!check(XPathTokenType::IDENTIFIER)) return nullptr;
 
    std::string function_name(peek().value);
@@ -1049,30 +1068,4 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
       }
    }
    return nullptr;
-}
-
-//********************************************************************************************************************
-// CompiledXPath Implementation
-
-CompiledXPath * CompiledXPath::compile(std::string_view XPath, std::vector<std::string> &Errors)
-{
-   XPathTokenizer tokenizer;
-   XPathParser parser;
-
-   auto tokens = tokenizer.tokenize(XPath);
-   auto parsed_ast = parser.parse(tokens);
-
-   if (!parsed_ast) {
-      Errors = parser.get_errors();
-      if (Errors.empty()) {
-         Errors.push_back("Failed to parse XPath expression");
-      }
-      return nullptr;
-   }
-   
-   auto result = new (std::nothrow) CompiledXPath();
-   if (!result) return nullptr;
-   result->original_expression = std::string(XPath);
-   result->ast = std::move(parsed_ast);
-   return result;
 }

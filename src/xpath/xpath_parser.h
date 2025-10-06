@@ -3,7 +3,7 @@
 // This file contains:
 // - XPath tokenization (converting string to tokens)
 // - XPath parsing (converting tokens to AST)
-// - Grammar implementation for XPath 1.0 syntax
+// - Grammar implementation for XPath syntax
 
 #pragma once
 
@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <parasol/modules/xpath.h>
 
 #include "xpath_ast.h"
 #include "xpath_tokenizer.h"
@@ -23,7 +24,7 @@ class XPathParser {
    std::vector<XPathToken> tokens;
    size_t current_token;
 
-   // Grammar rule methods (XPath 1.0 grammar)
+   // Grammar rule methods
    std::unique_ptr<XPathNode> parse_expr();
    std::unique_ptr<XPathNode> parse_flwor_expr();
    std::unique_ptr<XPathNode> parse_or_expr();

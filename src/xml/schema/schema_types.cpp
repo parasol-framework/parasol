@@ -6,20 +6,21 @@
 
 #include "schema_types.h"
 #include "../xml.h"
-#include <utility>
 
 namespace xml::schema
 {
    namespace
    {
       // Creates a descriptor instance with the supplied metadata for registration.
+
       std::shared_ptr<SchemaTypeDescriptor> make_descriptor(SchemaType Type, std::string Name,
-                                                            const std::shared_ptr<SchemaTypeDescriptor> &Base, bool Builtin)
+         const std::shared_ptr<SchemaTypeDescriptor> &Base, bool Builtin)
       {
          return std::make_shared<SchemaTypeDescriptor>(Type, std::move(Name), Base, Builtin);
       }
 
       // Tests whether the provided schema type represents a string-like value.
+
       constexpr bool is_schema_string(SchemaType Type) noexcept
       {
          switch (Type) {
@@ -32,6 +33,7 @@ namespace xml::schema
       }
 
       // Tests whether the provided schema type represents a numeric value category.
+
       constexpr bool is_schema_numeric(SchemaType Type) noexcept
       {
          switch (Type) {
@@ -52,7 +54,7 @@ namespace xml::schema
    }
 
    SchemaTypeDescriptor::SchemaTypeDescriptor(SchemaType Type, std::string Name,
-                                              std::shared_ptr<SchemaTypeDescriptor> Base, bool Builtin)
+      std::shared_ptr<SchemaTypeDescriptor> Base, bool Builtin)
       : base_type(Base), builtin_type(Builtin), schema_type(Type), type_name(std::move(Name))
    {
    }
@@ -68,6 +70,7 @@ namespace xml::schema
    }
 
    // Determines whether the descriptor ultimately derives from the requested schema type.
+
    bool SchemaTypeDescriptor::is_derived_from(SchemaType Target) const
    {
       if (schema_type IS Target) return true;
@@ -81,6 +84,7 @@ namespace xml::schema
    }
 
    // Reports whether the descriptor can legally coerce values into the requested type.
+
    bool SchemaTypeDescriptor::can_coerce_to(SchemaType Target) const
    {
       if (schema_type IS Target) return true;
@@ -97,23 +101,21 @@ namespace xml::schema
    }
 
    // Converts an XPath value into the requested schema type when permitted.
-   XPathValue SchemaTypeDescriptor::coerce_value(const XPathValue &Value, SchemaType Target) const
+
+   XPathVal SchemaTypeDescriptor::coerce_value(const XPathVal &Value, SchemaType Target) const
    {
       if ((schema_type IS Target) or (Target IS SchemaType::XSAnyType)) return Value;
 
       if ((Target IS SchemaType::XPathBoolean) or (Target IS SchemaType::XSBoolean)) {
-         return XPathValue(Value.to_boolean());
+         return XPathVal(Value.to_boolean());
       }
-
-      if (is_schema_numeric(Target)) {
-         return XPathValue(Value.to_number());
+      else if (is_schema_numeric(Target)) {
+         return XPathVal(Value.to_number());
       }
-
-      if (is_schema_string(Target)) {
-         return XPathValue(Value.to_string());
+      else if (is_schema_string(Target)) {
+         return XPathVal(Value.to_string());
       }
-
-      return Value;
+      else return Value;
    }
 
    SchemaTypeRegistry::SchemaTypeRegistry()
@@ -122,9 +124,9 @@ namespace xml::schema
    }
 
    // Registers a descriptor for the given type if one does not already exist.
+   
    std::shared_ptr<SchemaTypeDescriptor> SchemaTypeRegistry::register_descriptor(SchemaType Type, std::string Name,
-                                                                                 std::shared_ptr<SchemaTypeDescriptor> Base,
-                                                                                 bool Builtin)
+      std::shared_ptr<SchemaTypeDescriptor> Base, bool Builtin)
    {
       auto Existing = find_descriptor(Type);
       if (Existing) return Existing;
@@ -156,6 +158,7 @@ namespace xml::schema
    }
 
    // Populates the registry with the built-in schema types recognised by Parasol.
+
    void SchemaTypeRegistry::register_builtin_types()
    {
       clear();

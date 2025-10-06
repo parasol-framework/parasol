@@ -50,15 +50,15 @@ class XPathEvaluator {
    bool is_foreign_document_node(XMLTag *Node) const;
    std::vector<XMLTag *> collect_step_results(const std::vector<AxisMatch> &,
       const std::vector<const XPathNode *> &, size_t, uint32_t, bool &);
-   XPathValue evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
-   XPathValue evaluate_path_from_nodes(const std::vector<XMLTag *> &,
+   XPathVal evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
+   XPathVal evaluate_path_from_nodes(const std::vector<XMLTag *> &,
       const std::vector<const XMLAttrib *> &, const std::vector<const XPathNode *> &, const XPathNode *, 
       const XPathNode *, uint32_t);
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
-   ERR process_expression_node_set(const XPathValue &Value);
-   XPathValue evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix);
-   XPathValue evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
-   XPathValue evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
+   ERR process_expression_node_set(const XPathVal &Value);
+   XPathVal evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix);
+   XPathVal evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
+   XPathVal evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
 
    void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
@@ -94,14 +94,14 @@ class XPathEvaluator {
    bool match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix);
    PredicateResult evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
 
-   XPathValue evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
-   XPathValue evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix);
+   XPathVal evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
+   XPathVal evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix);
 
    // Entry point for compiled XPath evaluation
-   ERR find_tag(const CompiledXPath &, uint32_t);
+   ERR find_tag(const XPathNode &, uint32_t);
 
    // Full XPath expression evaluation returning computed values.  Will update the provided XPathValue
-   ERR evaluate_xpath_expression(const CompiledXPath &, XPathValue *, uint32_t CurrentPrefix = 0);
+   ERR evaluate_xpath_expression(const XPathNode &, XPathVal *, uint32_t CurrentPrefix = 0);
 
    // Context management for AST evaluation
    void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);
