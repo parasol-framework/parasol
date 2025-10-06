@@ -238,7 +238,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR XValueToString(XPathValue *Value, std::string *Result)
+ERR XValueToString(const XPathValue *Value, std::string *Result)
 {
    pf::Log log(__FUNCTION__);
 
