@@ -1,3 +1,18 @@
+//********************************************************************************************************************
+// XPath Tokenizer Implementation
+//
+// The tokenizer converts XPath query strings into a sequence of tokens that can be parsed into an abstract
+// syntax tree.  This lexical analysis stage handles all XPath token types including operators, literals,
+// keywords, identifiers, and special syntax like axis specifiers and node tests.
+//
+// The tokenizer uses a single-pass character-by-character scan with lookahead to resolve ambiguous tokens
+// (such as differentiating between the multiply operator and wildcard, or recognising multi-character
+// operators like '::' and '//').  It maintains keyword mappings for language keywords ('and', 'or', 'if', etc.)
+// and properly handles string literals, numeric constants, and qualified names.
+//
+// This implementation focuses on producing clean token streams that simplify the parser's job, allowing
+// the parser to focus on grammatical structure rather than low-level character processing.
+
 #include "xpath_tokenizer.h"
 
 #include <parasol/main.h>
@@ -86,6 +101,8 @@ char XPathTokenizer::peek(size_t offset) const
    return pos < length ? input[pos] : '\0';
 }
 
+// Advances the position pointer past all consecutive whitespace characters in the input string.
+
 void XPathTokenizer::skip_whitespace()
 {
    while (position < length and is_whitespace(input[position]))
@@ -114,6 +131,11 @@ bool XPathTokenizer::has_more() const
 {
    return position < length;
 }
+
+// Main tokenization function that converts an XPath query string into a vector of tokens. Handles operators,
+// literals, identifiers, keywords, and special XPath syntax. Resolves ambiguities such as differentiating
+// between the multiply operator and wildcard based on context. Tracks bracket and parenthesis depth to
+// inform operator disambiguation logic.
 
 std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
 {
@@ -258,6 +280,9 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
    return tokens;
 }
 
+// Scans and tokenizes an identifier or keyword from the current position. Checks the scanned name against
+// the keyword mappings to determine if it's a reserved word (like 'and', 'or', 'if') or a regular identifier.
+
 XPathToken XPathTokenizer::scan_identifier()
 {
    size_t start = position;
@@ -275,6 +300,9 @@ XPathToken XPathTokenizer::scan_identifier()
    XPathTokenType type = (match != keyword_mappings.end()) ? match->type : XPathTokenType::IDENTIFIER;
    return XPathToken(type, identifier, start, position - start);
 }
+
+// Scans numeric literals from the input, handling both integers and decimal numbers. Parses consecutive
+// digits and at most one decimal point to form a valid numeric token.
 
 XPathToken XPathTokenizer::scan_number()
 {
@@ -298,6 +326,10 @@ XPathToken XPathTokenizer::scan_number()
    auto number_view = input.substr(start, position - start);
    return XPathToken(XPathTokenType::NUMBER, number_view, start, position - start);
 }
+
+// Scans string literals enclosed in quotes (single or double). Handles escape sequences for quote characters,
+// backslashes, and wildcards. Uses optimised fast-path for strings without escapes, otherwise builds the
+// unescaped string content with proper escape processing.
 
 XPathToken XPathTokenizer::scan_string(char QuoteChar)
 {
@@ -352,6 +384,9 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
 
    return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
 }
+
+// Scans operator tokens including multi-character operators (like '//', '::', '!=') and single-character
+// operators. Returns the appropriate token type for recognised operators, or UNKNOWN for unrecognised characters.
 
 XPathToken XPathTokenizer::scan_operator()
 {

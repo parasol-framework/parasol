@@ -1,5 +1,17 @@
 //********************************************************************************************************************
-// String utilities and character classification
+// XML Module Functions and Utilities
+//
+// Provides string utilities, character classification, and helper functions for the XML module.  These functions
+// support XML serialisation, attribute value escaping, content formatting, and general-purpose string operations
+// used throughout the XML processing pipeline.
+//
+// Key functionality:
+//   - XML character escaping and attribute value formatting
+//   - String utilities for XML content manipulation
+//   - Character classification for XML syntax validation
+//   - URI handling and encoding utilities
+//
+// This module ensures consistent XML output formatting and provides the building blocks for safe XML generation.
 
 #include <ankerl/unordered_dense.h>
 #include <format>

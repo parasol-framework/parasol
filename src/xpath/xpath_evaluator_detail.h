@@ -1,3 +1,19 @@
+//********************************************************************************************************************
+// XPath Evaluator Detail - Shared Utilities
+//
+// Provides internal utility functions shared across XPath evaluator translation units.  These functions handle
+// type resolution, value comparison, and schema-aware operations used throughout the evaluation pipeline.
+//
+// Key functionality:
+//   - Schema type descriptor lookup and caching
+//   - Type comparison strategy resolution (numeric, string, boolean)
+//   - Numeric equality and relational comparison with floating-point tolerance
+//   - Node-set value extraction (string and numeric conversions)
+//   - Value promotion for comparison operations
+//
+// These utilities ensure consistent type coercion and comparison semantics across predicates, expressions,
+// and function calls in accordance with XPath 2.0 specifications.
+
 #pragma once
 
 #include "../xml/xpath_value.h"

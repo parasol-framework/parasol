@@ -1,3 +1,18 @@
+//********************************************************************************************************************
+// XML Entity Decoding and Character Reference Processing
+//
+// Provides functions for decoding XML entity references and numeric character references in XML content.  This
+// module handles both named entities (like &amp;, &lt;, &gt;) and numeric character references (&#xHH; and &#DDD;)
+// according to XML specifications.
+//
+// Key functionality:
+//   - Numeric character reference decoding (decimal and hexadecimal)
+//   - Unicode codepoint to UTF-8 conversion
+//   - Entity reference lookup and substitution
+//   - Character validation and bounds checking
+//
+// The implementation ensures safe decoding of XML escape sequences whilst preserving Unicode correctness and
+// handling edge cases like invalid references and out-of-range codepoints.
 
 #include "unescape.h"
 #include <stdint.h>

@@ -1,3 +1,22 @@
+//********************************************************************************************************************
+// XPath Evaluator Navigation and Location Path Processing
+//
+// This translation unit implements location path evaluation for XPath, including axis navigation, node test
+// matching, predicate application, and step sequencing.  It bridges the abstract syntax tree representation
+// of location paths with the concrete traversal operations provided by the axis evaluator.
+//
+// Key functionality:
+//   - Location path evaluation (evaluate_location_path, evaluate_step_ast)
+//   - Axis dispatch and candidate filtering (dispatch_axis, expand_axis_candidates)
+//   - Node test matching against tag names, wildcards, and node types (match_node_test)
+//   - Predicate application to candidate node sets (apply_predicates_to_candidates)
+//   - Step sequencing for multi-step location paths (evaluate_step_sequence)
+//   - Integration with the callback mechanism for query results (invoke_callback, process_step_matches)
+//
+// The navigation system maintains document order semantics, applies predicates in the correct context,
+// and handles both relative and absolute location paths.  By separating navigation concerns from
+// expression evaluation, the code remains modular and testable.
+
 #include "xpath_evaluator.h"
 #include "xpath_evaluator_detail.h"
 #include "xpath_axis.h"
@@ -13,6 +32,11 @@
 //********************************************************************************************************************
 // Axis Navigation Helpers
 //********************************************************************************************************************
+
+// Dispatches axis evaluation based on axis type, handling all XPath axis types (child, descendant, parent, ancestor,
+// sibling, attribute, namespace, and their variants). Manages both element and attribute contexts, and returns a
+// vector of axis matches containing node/attribute pairs. The function handles special cases like absolute paths
+// (null context node) and attribute context restrictions on certain axes.
 
 std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Axis,
    XMLTag *ContextNode, const XMLAttrib *ContextAttribute)
@@ -215,6 +239,11 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 
    return matches;
 }
+
+// Matches a candidate node or attribute against a node test expression. Handles wildcards, name tests (including
+// namespace-aware matching with prefix resolution), node type tests (node(), text(), comment()), and processing
+// instruction tests. Supports both attribute and element matching based on the axis type, with full wildcard
+// support for both prefixes and local names.
 
 bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix)
 {

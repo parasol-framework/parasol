@@ -1,3 +1,21 @@
+//********************************************************************************************************************
+// XPath Evaluator Context Management
+//
+// This translation unit manages the XPath evaluation context stack and state for the evaluator.  The context
+// includes the current node, position, size, attribute node, and variable bindings that define the environment
+// in which XPath expressions are evaluated.
+//
+// Key responsibilities:
+//   - Context stack push/pop operations for nested expression evaluation
+//   - Cursor state management for preserving and restoring document position
+//   - Integration with the legacy cursor-based XML API
+//   - Variable binding and scope management for FLWOR expressions
+//
+// The context management system allows the evaluator to properly handle location paths with predicates,
+// function calls that change the context node, and nested expressions that require isolated evaluation
+// environments.  By maintaining explicit context stacks, the evaluator can traverse complex expressions
+// whilst preserving the correct semantics for position() and last() functions.
+
 #include "xpath_evaluator.h"
 #include "xpath_evaluator_detail.h"
 #include "xpath_functions.h"

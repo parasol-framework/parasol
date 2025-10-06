@@ -42,11 +42,12 @@ Examples:
 #include <sstream>
 #include "../link/unicode.h"
 #include "../xml/xml.h"
-#include "xpath.h"
+#include "xpath_tokenizer.h"
+#include "xpath_parser.h"
+#include "xpath_evaluator.h"
 
 JUMPTABLE_CORE
 
-#include "xpath_evaluator.h"
 #include "xpath_def.c"
 
 // TODO: Replace with SetResourceMgr() when available

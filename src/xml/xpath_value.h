@@ -1,3 +1,19 @@
+//********************************************************************************************************************
+// XPath Value System Interface
+//
+// Defines the XPathVal class, which represents typed values in XPath evaluation.  XPathVal extends the public
+// XPathValue interface with implementation-specific functionality for type conversions, node-set operations,
+// and schema integration.
+//
+// This class provides:
+//   - Type conversion methods for XPath's four basic types (node-set, string, number, boolean)
+//   - Schema-aware type information and validation
+//   - Node-set string and numeric value extraction
+//   - Format functions for XPath numeric output
+//
+// The value system ensures consistent type coercion semantics across XPath operations whilst integrating with
+// XML Schema type descriptors for enhanced type awareness in XPath 2.0 expressions.
+
 #pragma once
 
 #include <memory>

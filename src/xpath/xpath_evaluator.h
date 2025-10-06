@@ -10,7 +10,6 @@ class extXML;
 
 #include "xpath_axis.h"
 #include "xpath_functions.h"
-#include "xpath.h"
 
 struct XMLAttrib;
 class CompiledXPath;

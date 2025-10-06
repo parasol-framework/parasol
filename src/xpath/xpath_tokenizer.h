@@ -1,3 +1,19 @@
+//********************************************************************************************************************
+// XPath Tokenizer Interface
+//
+// Defines the XPathTokenizer class responsible for lexical analysis of XPath query strings.  The tokenizer
+// breaks input strings into a sequence of tokens (operators, identifiers, literals, keywords) that can be
+// consumed by the parser to build an abstract syntax tree.
+//
+// The tokenizer handles:
+//   - Operator recognition (/, //, ::, etc.)
+//   - String and numeric literals
+//   - Identifiers and keywords
+//   - Whitespace handling
+//   - Character classification for XML names
+//
+// This is a single-pass tokenizer with lookahead capabilities for resolving ambiguous syntax.
+
 #pragma once
 
 #include <string>

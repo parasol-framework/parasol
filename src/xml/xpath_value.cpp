@@ -1,3 +1,20 @@
+//********************************************************************************************************************
+// XPath Value System Implementation
+//
+// Implements the XPathVal class and value conversion functions for XPath evaluation.  This file provides the core
+// value model used throughout XPath processing, handling conversions between node-sets, strings, numbers, and
+// booleans according to XPath 2.0 specifications.
+//
+// Key functionality:
+//   - Type conversion methods (to_boolean, to_number, to_string, to_node_set)
+//   - Node-set string value extraction
+//   - Numeric conversion with NaN and infinity handling
+//   - Schema type integration and validation
+//   - String normalisation and formatting for XPath numeric output
+//
+// The implementation ensures consistent type coercion semantics across all XPath operations, integrating with
+// the schema type system for enhanced type awareness in XPath 2.0 expressions.
+
 #include "xpath_value.h"
 
 #include <parasol/modules/xml.h>
