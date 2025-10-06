@@ -18,6 +18,8 @@ Name: Memory
 
 #ifdef __unix__
 #include <errno.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #endif
 
 #ifdef __ANDROID__
@@ -111,21 +113,48 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    auto full_size = Size + MEMHEADER;
    if ((Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
 
-   full_size = ((full_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+   // Check if memory protection is requested
+   bool use_protection = ((Flags & (MEM::READ|MEM::WRITE)) != MEM::NIL);
+   APTR start_mem = nullptr;
 
-   APTR start_mem;
-   #ifdef _WIN32
-      start_mem = _aligned_malloc(full_size, CACHE_LINE_SIZE);
-   #else
-      if (posix_memalign(&start_mem, CACHE_LINE_SIZE, full_size) != 0) start_mem = nullptr;
-   #endif
+   if (use_protection) {
+      // Use OS-level memory protection with mmap/VirtualAlloc
+      full_size = align_page_size(full_size);
+      #ifdef _WIN32
+         start_mem = winAllocProtectedMemory(full_size, int(Flags));
+      #else
+         int prot = PROT_NONE;
+         if ((Flags & MEM::READ) != MEM::NIL) prot |= PROT_READ;
+         if ((Flags & MEM::WRITE) != MEM::NIL) prot |= PROT_WRITE;
+
+         start_mem = mmap(nullptr, full_size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+         if (start_mem IS MAP_FAILED) start_mem = nullptr;
+      #endif
+
+      if (start_mem) {
+         Flags |= MEM::PROTECTED; // Mark as protected for proper cleanup
+         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
+      }
+   }
+   else {
+      // Use standard aligned allocation (typically 64-bit) for non-protected memory
+      full_size = ((full_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+
+      #ifdef _WIN32
+         start_mem = _aligned_malloc(full_size, CACHE_LINE_SIZE);
+      #else
+         if (posix_memalign(&start_mem, CACHE_LINE_SIZE, full_size) != 0) start_mem = nullptr;
+      #endif
+
+      if (start_mem) {
+         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
+      }
+   }
 
    if (!start_mem) {
       log.warning("Failed to allocate %d bytes.", Size);
       return ERR::AllocMemory;
    }
-
-   if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
 
    APTR data_start = (char *)start_mem + sizeof(int) + sizeof(int); // Skip MEMH and unique ID.
    if ((Flags & MEM::MANAGED) != MEM::NIL) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
@@ -258,6 +287,7 @@ ERR FreeResource(MEMORYID MemoryID)
          auto &mem = it->second;
 
          if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, int(mem.Flags), mem.OwnerID);
+
          ERR error = ERR::Okay;
          if (mem.AccessCount > 0) {
             log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem.AccessCount);
@@ -291,11 +321,23 @@ ERR FreeResource(MEMORYID MemoryID)
                DEBUG_BREAK
             }
 
-            #ifdef _WIN32
-               _aligned_free(start_mem);
-            #else
-               free(start_mem);
-            #endif
+            // Free the memory using the appropriate method based on how it was allocated
+            if ((mem.Flags & MEM::PROTECTED) != MEM::NIL) {
+               // Memory was allocated with OS-level protection
+               #ifdef _WIN32
+                  winFreeProtectedMemory(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
+               #else
+                  munmap(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
+               #endif
+            }
+            else {
+               // Standard aligned allocation
+               #ifdef _WIN32
+                  _aligned_free(start_mem);
+               #else
+                  free(start_mem);
+               #endif
+            }
 
             if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
                if (auto it = glObjectChildren.find(mem.OwnerID); it != glObjectChildren.end()) {
