@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <format>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -638,14 +639,7 @@ static std::string format_timezone(const DateTimeComponents &Components)
    int hours = offset / 60;
    int minutes = offset % 60;
 
-   std::string result;
-   result.push_back(sign);
-   if (hours < 10) result.push_back('0');
-   result.append(std::to_string(hours));
-   result.push_back(':');
-   if (minutes < 10) result.push_back('0');
-   result.append(std::to_string(minutes));
-   return result;
+   return std::format("{}{:02d}:{:02d}", sign, hours, minutes);
 }
 
 static std::string format_component(const DateTimeComponents &Components, const std::string &Token)
@@ -742,12 +736,11 @@ static std::string format_seconds_field(double Value)
 
 static std::string serialise_date_only(const DateTimeComponents &Components, bool IncludeTimezone)
 {
-   std::string result;
-   result.append(format_integer_component(Components.year, 4, true));
-   result.push_back('-');
-   result.append(format_integer_component(Components.month, 2, true));
-   result.push_back('-');
-   result.append(format_integer_component(Components.day, 2, true));
+   auto year = format_integer_component(Components.year, 4, true);
+   auto month = format_integer_component(Components.month, 2, true);
+   auto day = format_integer_component(Components.day, 2, true);
+
+   std::string result = std::format("{}-{}-{}", year, month, day);
 
    if (IncludeTimezone and Components.has_timezone) result.append(format_timezone(Components));
 
@@ -756,12 +749,11 @@ static std::string serialise_date_only(const DateTimeComponents &Components, boo
 
 static std::string serialise_time_only(const DateTimeComponents &Components, bool IncludeTimezone)
 {
-   std::string result;
-   result.append(format_integer_component(Components.hour, 2, true));
-   result.push_back(':');
-   result.append(format_integer_component(Components.minute, 2, true));
-   result.push_back(':');
-   result.append(format_seconds_field(Components.second));
+   auto hour = format_integer_component(Components.hour, 2, true);
+   auto minute = format_integer_component(Components.minute, 2, true);
+   auto second = format_seconds_field(Components.second);
+
+   std::string result = std::format("{}:{}:{}", hour, minute, second);
 
    if (IncludeTimezone and Components.has_timezone) result.append(format_timezone(Components));
 
@@ -855,13 +847,11 @@ static std::string format_timezone_duration(int OffsetMinutes)
    int minutes = OffsetMinutes % 60;
 
    if (hours != 0) {
-      result.append(std::to_string(hours));
-      result.push_back('H');
+      result.append(std::format("{}H", hours));
    }
 
    if (minutes != 0) {
-      result.append(std::to_string(minutes));
-      result.push_back('M');
+      result.append(std::format("{}M", minutes));
    }
 
    if ((hours IS 0) and (minutes IS 0)) result.append("0S");
@@ -1056,16 +1046,12 @@ static std::string describe_xpath_value(const XPathVal &Value)
          if (entries.size() > summary_limit) summary.append(", ...");
 
          if (total_count > 1) {
-            std::string result;
-            result.reserve(summary.length() + 24);
-            result.append("node-set[");
-            result.append(std::to_string(total_count));
-            result.append("]");
             if (not summary.empty()) {
-               result.append(": ");
-               result.append(summary);
+               return std::format("node-set[{}]: {}", total_count, summary);
             }
-            return result;
+            else {
+               return std::format("node-set[{}]", total_count);
+            }
          }
 
          if (not summary.empty()) return summary;

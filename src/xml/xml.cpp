@@ -193,12 +193,14 @@ ERR XValueToNumber(XPathValue *Value, double *Result)
 -FUNCTION-
 XValueNodes: For node-set XPathValue objects, returns the node-set as an array.
 
-If an XPathValue represents a node-set (type `XPVT::NODE_SET`) then XValueToNodes() will return a direct pointer to the
-node-set array.
+If an XPathValue represents a node-set (type `XPVT::NODE_SET`) then XValueToNodes() will return a direct pointer to 
+the node-set array.
+
+Note: The integrity of the array is not guaranteed if the original XML document is modified or freed.
 
 -INPUT-
 ptr(struct(XPathValue)) Value: The XPathValue to convert.
-&double Result: The numeric representation of the value is returned here.
+&cpp(array(ptr(struct(XMLTag)))) Result: The node-set is returned here as an array of !XMLTag structures.
 
 -ERRORS-
 Okay
@@ -227,7 +229,7 @@ Call XValueToString() to convert an XPathValue object into its string representa
 
 -INPUT-
 ptr(cstruct(XPathValue)) Value: The XPathValue to convert.
-cpp(str) Result: Receives the string representation of the value.
+&cpp(str) Result: Receives the string representation of the value.
 
 -ERRORS-
 Okay

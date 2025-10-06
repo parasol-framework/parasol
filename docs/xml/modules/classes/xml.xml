@@ -794,6 +794,16 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <const name="UPDATE_ONLY">SetAttrib will find the target attribute and update it.  It is not possible to rename the attribute when using this technique.  <code>ERR::Search</code> is returned if the attribute cannot be found.</const>
     </constants>
 
+    <constants lookup="XPVT" comment="Type descriptors for XPathValue">
+      <const name="Boolean"/>
+      <const name="Date"/>
+      <const name="DateTime"/>
+      <const name="NodeSet"/>
+      <const name="Number"/>
+      <const name="String"/>
+      <const name="Time"/>
+    </constants>
+
     <constants lookup="XSF" comment="Options for the Sort method.">
       <const name="CHECK_SORT">Tells the algorithm to check for a 'sort' attribute in each analysed tag and if found, the algorithm will use that as the sort value instead of that indicated in the <code>Attrib</code> field.</const>
       <const name="DESC">Sort in descending order.</const>
@@ -818,6 +828,8 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
     <struct name="XPathValue" typeName="XPATHVALUE">
       <field name="type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
+      <field name="number_value" type="DOUBLE"></field>
+      <field name="string_value" type="std::string"></field>
     </struct>
 
   </structs>

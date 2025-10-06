@@ -1,6 +1,5 @@
 //********************************************************************************************************************
 // XPath Evaluation Engine
-//********************************************************************************************************************
 //
 // The evaluator coordinates the complete XPath execution pipeline for Parasol's XML subsystem.  It
 // receives token sequences from the tokenizer, constructs an AST via the parser, and then walks that
@@ -29,6 +28,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <deque>
+#include <format>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -44,24 +44,14 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
    if (!Node) return std::string("#");
 
-   std::string signature;
-   signature.reserve(16);
-
-   signature += '(';
-   signature += std::to_string(int(Node->type));
-   signature += '|';
-   signature += Node->value;
-   signature += ':';
-
+   std::string children_sig;
    for (size_t index = 0; index < Node->child_count(); ++index) {
       auto child = Node->get_child(index);
-      signature += build_ast_signature(child);
-      signature += ',';
+      children_sig += build_ast_signature(child);
+      children_sig += ',';
    }
 
-   signature += ')';
-
-   return signature;
+   return std::format("({}|{}:{})", int(Node->type), Node->value, children_sig);
 }
 
 void XPathEvaluator::record_error(std::string_view Message, bool Force)

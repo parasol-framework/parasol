@@ -311,8 +311,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
       if (check(XPathTokenType::COLON)) {
          if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::IDENTIFIER) {
             advance(); // consume ':'
-            name += ':';
-            name += peek().value;
+            name = std::format("{}:{}", name, peek().value);
             advance();
          }
       }
@@ -361,9 +360,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
          advance();
 
          if (match(XPathTokenType::COLON)) {
-            attr_name += ':';
             if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
-               attr_name += peek().value;
+               attr_name = std::format("{}:{}", attr_name, peek().value);
                advance();
             }
             else report_error("Expected identifier or wildcard after ':' in attribute name");

@@ -55,10 +55,6 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
      'Time',
      'DateTime')
 
-  struct("XPathValue", { type="XPathValue" }, [[
-  int(XPVT) type # Identifies the type of value stored
-  ]])
-
   struct("XMLAttrib", { type="XMLAttrib" }, [[
    cpp(str) Name   # Name of the attribute
    cpp(str) Value  # Value of the attribute
@@ -200,6 +196,32 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       auto buffer = std::to_string(Value);
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
+  ]])
+  
+  struct("XPathValue", { type="XPathValue" }, [[
+  int(XPVT) type # Identifies the type of value stored
+  double number_value
+  cpp(str) string_value
+  ]],
+  [[
+   std::vector<XMLTag *> node_set;
+   std::optional<std::string> node_set_string_override;
+   std::vector<std::string> node_set_string_values;
+   std::vector<const XMLAttrib *> node_set_attributes;
+   bool boolean_value = false;
+
+   XPathValue(XPVT pType) : type(pType), number_value(0) { }
+
+   explicit XPathValue(const std::vector<XMLTag *> &Nodes,
+      std::optional<std::string> NodeSetString = std::nullopt,
+      std::vector<std::string> NodeSetStrings = {},
+      std::vector<const XMLAttrib *> NodeSetAttributes = {})
+      : type(XPVT::NodeSet),
+        node_set(Nodes),
+        node_set_string_override(std::move(NodeSetString)),
+        node_set_string_values(std::move(NodeSetStrings)),
+        node_set_attributes(std::move(NodeSetAttributes)) {}
+
   ]])
 
   c_insert([[

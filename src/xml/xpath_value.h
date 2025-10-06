@@ -39,33 +39,22 @@ namespace xml::schema
 class XPathVal : public XPathValue
 {
    public:
-   XPVT type;
-   std::vector<XMLTag *> node_set;
-   std::optional<std::string> node_set_string_override;
-   std::vector<std::string> node_set_string_values;
-   std::vector<const XMLAttrib *> node_set_attributes;
-   bool boolean_value = false;
-   double number_value = 0.0;
-   std::string string_value;
    mutable std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_type_info;
    mutable bool schema_validated = false;
 
    // Constructors
 
-   XPathVal() : type(XPVT::Boolean) {}
-   explicit XPathVal(bool value) : type(XPVT::Boolean), boolean_value(value) {}
-   explicit XPathVal(double value) : type(XPVT::Number), number_value(value) {}
-   explicit XPathVal(std::string value) : type(XPVT::String), string_value(std::move(value)) {}
-   explicit XPathVal(XPVT ValueType, std::string value) : type(ValueType), string_value(std::move(value)) {}
+   XPathVal() : XPathValue(XPVT::Boolean) {}
+   explicit XPathVal(bool value) : XPathValue(XPVT::Boolean) { boolean_value = value; }
+   explicit XPathVal(double value) : XPathValue(XPVT::Number) { number_value = value; }
+   explicit XPathVal(std::string value) : XPathValue(XPVT::String) { string_value = std::move(value); }
+   explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { string_value = std::move(value); }
+
    explicit XPathVal(const std::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,
                        std::vector<std::string> NodeSetStrings = {},
                        std::vector<const XMLAttrib *> NodeSetAttributes = {})
-      : type(XPVT::NodeSet),
-        node_set(Nodes),
-        node_set_string_override(std::move(NodeSetString)),
-        node_set_string_values(std::move(NodeSetStrings)),
-        node_set_attributes(std::move(NodeSetAttributes)) {}
+      : XPathValue(Nodes, NodeSetString, NodeSetStrings, NodeSetAttributes) {}
 
    // Methods
 

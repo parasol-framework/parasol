@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <format>
 #include <memory>
 #include <string>
 #include <string_view>

@@ -48,7 +48,6 @@ enum('XPathNodeType', { type='int', start=0 },
    'STRING',
    'PATH')
 
-
   struct("XPathNode", { type="XPathNode" }, [[
   ]],
   [[
