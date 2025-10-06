@@ -120,15 +120,15 @@ static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &U
    std::shared_ptr<extXML> document;
 
    if (is_string_uri(URI)) {
-      if (auto raw = pf::Create<extXML>::global({ 
-            fl::Statement(URI.substr(7)), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) 
+      if (auto raw = pf::Create<extXML>::global({
+            fl::Statement(URI.substr(7)), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE)
          })) {
          document = pf::make_shared_object(raw);
       }
    }
    else {
-      if (auto raw = pf::Create<extXML>::global({ 
-            fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) 
+      if (auto raw = pf::Create<extXML>::global({
+            fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE)
          })) {
          document = pf::make_shared_object(raw);
       }

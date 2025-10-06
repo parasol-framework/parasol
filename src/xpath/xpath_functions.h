@@ -1,8 +1,8 @@
 // XPath Function Library and Value System
 //
 // This file contains:
-// - XPath value types and conversions (Phase 3 of AST_PLAN.md)
-// - Function library for XPath 1.0 functions
+// - XPath value types and conversions
+// - Function library for XPath functions
 // - Context management for function evaluation
 
 #pragma once

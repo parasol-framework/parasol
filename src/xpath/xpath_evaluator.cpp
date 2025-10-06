@@ -24,7 +24,6 @@
 #include "xpath_axis.h"
 #include "../xml/schema/schema_types.h"
 #include "../xml/xml.h"
-#include "xpath.h"
 
 #include <algorithm>
 #include <cmath>
@@ -80,7 +79,7 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    // Reset the evaluator state
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
-   
+
    return evaluate_ast(&XPath, CurrentPrefix);
 }
 

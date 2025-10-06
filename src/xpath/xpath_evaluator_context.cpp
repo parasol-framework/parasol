@@ -175,7 +175,7 @@ void XPathEvaluator::pop_cursor_state()
 // AST Evaluation Methods
 
 // Dispatch AST nodes to the appropriate evaluation routine.
-ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix) 
+ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (!Node) return ERR::Failed;
 

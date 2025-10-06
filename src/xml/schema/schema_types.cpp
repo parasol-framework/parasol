@@ -124,7 +124,7 @@ namespace xml::schema
    }
 
    // Registers a descriptor for the given type if one does not already exist.
-   
+
    std::shared_ptr<SchemaTypeDescriptor> SchemaTypeRegistry::register_descriptor(SchemaType Type, std::string Name,
       std::shared_ptr<SchemaTypeDescriptor> Base, bool Builtin)
    {

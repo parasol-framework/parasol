@@ -5,7 +5,7 @@
 // XPath expressions depend on a rich set of standard functions and a loosely typed value model.  This
 // file provides both: XPathVal encapsulates conversions between node-sets, numbers, booleans, and
 // strings, while the function registry offers implementations of the core function library required by
-// the evaluator.  The code emphasises fidelity to the XPath 1.0 specification—string coercions mirror
+// the evaluator.  The code emphasises fidelity to the XPath 2.0 specification—string coercions mirror
 // the spec's edge cases, numeric conversions preserve NaN semantics, and node-set operations respect
 // document order guarantees enforced elsewhere in the module.
 //

@@ -51,8 +51,8 @@ should therefore be read only as needed and cached until the XML object is modif
 
 <header>Not Supported</header>
 
-DTD processing and validation is intentionally not supported.  While the class can parse DOCTYPE declarations, it 
-does not load or  validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for 
+DTD processing and validation is intentionally not supported.  While the class can parse DOCTYPE declarations, it
+does not load or  validate against external DTDs as this is now a legacy technology.  Use XML Schema (XSD) for
 validation instead.
 
 -END-
@@ -120,7 +120,7 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
    pf::Log log;
 
    if ((not Args) or (not Args->XPath)) return log.warning(ERR::NullArgs);
-   
+
    load_xpath();
 
    tlXMLCounter = 0;
@@ -222,7 +222,7 @@ Search: No matching tag could be found for the specified XPath expression.
 static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
-   
+
    load_xpath();
 
    XPathNode *cp;
@@ -256,7 +256,7 @@ single traversal.
 
 The C++ prototype for Callback is `ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
 
-The callback should return `ERR::Okay` to continue processing, or `ERR::Terminate` to halt the search immediately.  
+The callback should return `ERR::Okay` to continue processing, or `ERR::Terminate` to halt the search immediately.
 All other error codes are ignored to maintain search robustness.
 
 -INPUT-
@@ -279,7 +279,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
-   
+
    load_xpath();
 
    XPathNode *cp;
@@ -486,7 +486,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    if (not Args) return log.warning(ERR::NullArgs);
    if ((not Args->Key) or (not Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
    if (not Self->initialised()) return log.warning(ERR::NotInitialised);
-   
+
    load_xpath();
 
    Args->Value[0] = 0;
@@ -877,7 +877,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
    log.branch("Insert: %d, XPath: %s", int(Args->Where), Args->XPath);
-   
+
    load_xpath();
 
    XPathNode *cp;
@@ -1142,13 +1142,13 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
    if (Self->Tags.empty()) return ERR::NoData;
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
-   
+
    load_xpath();
 
    auto limit = Args->Limit;
    if (limit IS -1) limit = 0x7fffffff;
    else if (not limit) limit = 1;
-   
+
    XPathNode *cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       while (limit > 0) {
@@ -1444,7 +1444,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
-   
+
    load_xpath();
 
    XPathNode *cp;

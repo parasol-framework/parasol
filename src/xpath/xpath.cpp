@@ -115,7 +115,7 @@ executed against an XML document.  The resulting compiled expression can be reus
 and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and
 are treated as read-only for thread-safety.
 
-The XML parameter is not required for compilation, but can potentially enhance syntax checking when parsing the 
+The XML parameter is not required for compilation, but can potentially enhance syntax checking when parsing the
 expression.  An additional benefit is that error messages will be defined in the #ErrorMsg field of the XML object if
 parsing fails.
 
@@ -177,7 +177,7 @@ ERR Compile(objXML *XML, CSTRING Query, XPathNode **Result)
 Evaluate: Evaluates a compiled XPath or XQuery expression against an XML document.
 
 Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.
-The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types 
+The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types
 of data including node sets, strings, numbers, or booleans.
 
 -INPUT-
@@ -200,7 +200,7 @@ ERR Evaluate(objXML *XML, XPathNode *Query, XPathValue **Result)
 
    auto xml = (extXML *)XML;
    *Result = nullptr;
-   
+
    if (xml->Tags.empty()) return log.warning(ERR::NoData);
 
    auto compiled_path = (XPathNode *)Query;
@@ -259,14 +259,14 @@ ERR Query(objXML *XML, XPathNode *Query, FUNCTION *Callback)
    pf::Log log(__FUNCTION__);
 
    if ((not XML) or (not Query)) return ERR::NullArgs;
-   
+
    auto xml = (extXML *)XML;
-   
+
    if (xml->Tags.empty()) return log.warning(ERR::NoData);
 
    if (Callback) xml->Callback = *Callback;
    else xml->Callback.Type = CALL::NIL;
-   
+
    xml->Attrib.clear();
    xml->CursorTags = &xml->Tags;
    xml->Cursor = xml->Tags.begin();

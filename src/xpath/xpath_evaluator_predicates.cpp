@@ -3,7 +3,7 @@
 //********************************************************************************************************************
 //
 // This translation unit contains predicate and comparison logic for XPath expressions. It handles:
-// 
+//
 //   - Value comparisons (=, !=, eq, ne)
 //   - Relational comparisons (<, >, <=, >=, lt, gt, le, ge)
 //   - Node-set to scalar conversions for predicate contexts

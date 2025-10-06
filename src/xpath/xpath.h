@@ -2,9 +2,7 @@
 
 #pragma once
 
-#include <utility>
 #include <parasol/modules/xpath.h>
-#include "xpath_ast.h"
 #include "xpath_tokenizer.h"
 #include "xpath_parser.h"
 

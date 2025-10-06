@@ -2,7 +2,7 @@
 // into concrete traversals of Parasol's XMLTag tree.  The header publishes the AxisType enumeration,
 // the AxisEvaluator helper, and supporting data structures that keep namespace nodes, document order,
 // and ancestor caches consistent across evaluations.  The accompanying implementation applies these
-// declarations to realise the full set of XPath 1.0 navigation semantics.
+// declarations to realise the full set of XPath navigation semantics.
 
 #pragma once
 
@@ -10,15 +10,12 @@
 #include "xpath_arena.h"
 
 #include <algorithm>
-#include <array>
-#include <map>
-#include <ranges>
-#include <string_view>
-#include <unordered_set>
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <parasol/modules/xml.h>
 #include <parasol/strings.hpp>
 #include "../xml/xml.h"

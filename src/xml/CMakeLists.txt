@@ -3,13 +3,13 @@
 set (MOD xml)
 set (INC_MOD_XML TRUE PARENT_SCOPE)
 
-idl_gen ("${MOD}.fdl" 
+idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    FILES "xml.cpp"
    ARGS  "output-defs=xml_def.c" "output-proto=xml_def.c"
    APPEND_IDL "${MOD}_def.c")
-   
+
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 target_link_libraries (${MOD} PRIVATE link_regex)
