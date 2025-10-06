@@ -1218,11 +1218,8 @@ extern "C" void * winAllocProtectedMemory(size_t Size, int ProtectionFlags)
 {
    if (Size IS 0) return nullptr;
 
-   // Calculate page-aligned size
-   SYSTEM_INFO si;
-   GetSystemInfo(&si);
-   auto page_size = si.dwPageSize;
-   Size = ((Size + page_size - 1) / page_size) * page_size;
+   // The caller must provide a page-aligned size (see align_page_size).
+   // No need to realign here.
 
    // Determine protection flags from MEM flags
    DWORD protect = PAGE_NOACCESS;
