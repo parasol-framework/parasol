@@ -50,26 +50,18 @@ JUMPTABLE_CORE
 
 #include "xpath_def.c"
 
-// TODO: Replace with SetResourceMgr() when available
-
-static void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
-}
-
 //********************************************************************************************************************
 // C++ destructor for cleaning up compiled XPath objects
 
-static ERR xpe_free(APTR Address)
+static ERR xpnode_free(APTR Address)
 {
    ((XPathNode *)Address)->~XPathNode();
    return ERR::Okay;
 }
 
-static ResourceManager glCompiledQuery = {
+static ResourceManager glNodeManager = {
    "XPathNode",
-   &xpe_free
+   &xpnode_free
 };
 
 //********************************************************************************************************************
@@ -141,7 +133,7 @@ ERR Compile(objXML *XML, CSTRING Query, XPathNode **Result)
    std::vector<std::string> errors;
    XPathNode *cmp;
    if (AllocMemory(sizeof(XPathNode), MEM::DATA|MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
-      set_memory_manager(cmp, &glCompiledQuery);
+      SetResourceMgr(cmp, &glNodeManager);
 
       XPathTokenizer tokenizer;
       XPathParser parser;
@@ -213,7 +205,7 @@ ERR Evaluate(objXML *XML, XPathNode *Query, XPathValue **Result)
 
    XPathVal *xpv;
    if (AllocMemory(sizeof(XPathVal), MEM::DATA|MEM::MANAGED, (APTR *)&xpv, nullptr) IS ERR::Okay) {
-      set_memory_manager(xpv, &glXPVManager);
+      SetResourceMgr(xpv, &glXPVManager);
       new (xpv) XPathVal(); // Placement new to construct a dummy XPathVal object
 
       XPathEvaluator eval(xml);

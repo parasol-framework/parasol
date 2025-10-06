@@ -512,3 +512,48 @@ ERR ReallocMemory(APTR Address, uint32_t NewSize, APTR *Memory, MEMORYID *Memory
    }
    else return log.error(ERR::AllocMemory);
 }
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+SetResourceMgr: Define a resource manager for a memory block originating from ~AllocMemory().
+
+SetResourceMgr() associates a !ResourceManager with a memory block that was allocated with the `MEM::MANAGED` flag.
+This allows customised memory management logic to be used when an event is triggered on a memory block, such as
+the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with
+Parasol's memory management system.
+
+This working example from the XPath module ensures that `XPathNode` objects are properly destructed when passed to 
+~FreeResource():
+
+<pre>
+static ERR xpnode_free(APTR Address)
+{
+   ((XPathNode *)Address)->&#126;XPathNode();
+   return ERR::Okay;
+}
+
+static ResourceManager glNodeManager = {
+   "XPathNode",  // Name of the custom resource type
+   &xpnode_free  // Custom destructor function
+};
+
+   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&node, nullptr) IS ERR::Okay) {
+      SetResourceMgr(node, &glNodeManager);
+      new (node) XPathNode(); // Placement new
+   }
+</pre>
+
+-INPUT-
+ptr Address: The address of a `MEM::MANAGED` memory block allocated by ~AllocMemory().
+ptr(struct(ResourceManager)) Manager: Must refer to an initialised ResourceManager structure.
+
+-END-
+
+*********************************************************************************************************************/
+
+void SetResourceMgr(APTR Address, ResourceManager *Manager)
+{
+   auto address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
+   address_mgr[0] = Manager;
+}

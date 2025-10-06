@@ -1321,7 +1321,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
    MEMORYID head_id;
 
    if (AllocMemory(mc->Size, MEM::NO_CLEAR|MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id) IS ERR::Okay) {
-      set_memory_manager(head, &glResourceObject);
+      SetResourceMgr(head, &glResourceObject);
 
       new (head) class Object; // Class constructors aren't expected to initialise the Object header, we do it for them
       pf::clearmem(head + 1, mc->Size - sizeof(class Object));

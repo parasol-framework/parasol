@@ -2160,6 +2160,7 @@ struct CoreBase {
    CSTRING (*_ResolveUserID)(int User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
+   void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
 #endif // PARASOL_STATIC
 };
 
@@ -2254,6 +2255,7 @@ inline CSTRING ResolveGroupID(int Group) { return CoreBase->_ResolveGroupID(Grou
 inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
+inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2342,6 +2344,7 @@ extern "C" CSTRING ResolveGroupID(int Group);
 extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
+extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 #endif // PARASOL_STATIC
 #endif
 

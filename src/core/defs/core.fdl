@@ -1222,7 +1222,8 @@ struct ScriptArg { // For use with sc::Exec
     "ResolveGroupID",
     "ResolveUserID",
     "CreateLink",
-    "ParentContext")
+    "ParentContext",
+    "SetResourceMgr")
 
   c_insert([=[
 

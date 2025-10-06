@@ -2183,7 +2183,11 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       func.input = { }
       for line, content in ipairs(Def.input:split("\n")) do
          local comment = content:match("^.-:%s-(.+)$")
-         if nz(comment) then content = content:match("^(.-):%s-.+$") end
+         if nz(comment) then 
+            content = content:match("^(.-):%s-.+$") 
+         elseif nz(content) then
+            error('No comment found for function parameter in ' .. Name .. '()')
+         end
          local type, name = content:match("^%s*(.+)%s+([^%s]+)%s-$")
          if (type != nil) then
             local param = cType({
