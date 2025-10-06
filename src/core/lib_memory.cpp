@@ -325,9 +325,9 @@ ERR FreeResource(MEMORYID MemoryID)
             if ((mem.Flags & MEM::PROTECTED) != MEM::NIL) {
                // Memory was allocated with OS-level protection
                #ifdef _WIN32
-                  winFreeProtectedMemory(start_mem, align_page_size(mem.Size));
+                  winFreeProtectedMemory(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
                #else
-                  munmap(start_mem, align_page_size(mem.Size));
+                  munmap(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
                #endif
             }
             else {
