@@ -32,6 +32,7 @@ XML: Provides an interface for the management of structured data.
 JUMPTABLE_CORE
 
 static OBJECTPTR clXML = nullptr;
+static OBJECTPTR modContext = nullptr;
 static uint32_t glTagID = 1;
 
 #ifndef PARASOL_STATIC
@@ -48,7 +49,9 @@ static ERR load_xpath(void)
 {
 #ifndef PARASOL_STATIC
    if (not modXPath) {
+      auto context = SetContext(modContext);
       if (objModule::load("xpath", &modXPath, &XPathBase) != ERR::Okay) return ERR::InitModule;
+      SetContext(context);
    }
 #endif
    return ERR::Okay;
@@ -139,7 +142,7 @@ static ERR SET_Source(extXML *, OBJECTPTR);
 static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
    CoreBase = pCore;
-
+   modContext = CurrentContext();
    return add_xml_class();
 }
 

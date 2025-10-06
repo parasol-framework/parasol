@@ -60,12 +60,12 @@ flute_test (${MOD}_variables "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_setvariable
 flute_test (${MOD}_xpath_func_ext "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_func_ext.fluid")
 flute_test (${MOD}_xpath_sequences "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_sequences.fluid")
 flute_test (${MOD}_xpath_string_uri "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_string_uri.fluid")
-flute_test (${MOD}_xpath2_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_duration.fluid")
-flute_test (${MOD}_xpath2_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_datetime.fluid")
-flute_test (${MOD}_xpath2_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_qname.fluid")
+flute_test (${MOD}_xpath_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_duration.fluid")
+flute_test (${MOD}_xpath_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_datetime.fluid")
+flute_test (${MOD}_xpath_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_qname.fluid")
 flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_documents.fluid")
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
-flute_test (${MOD}_xpath2_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath2_accessor.fluid")
+flute_test (${MOD}_xpath_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_accessor.fluid")
 
 if (INSTALL_TESTS)
    # This test is redundant but is being retained as an example for C++
