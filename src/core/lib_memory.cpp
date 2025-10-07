@@ -110,7 +110,8 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
    else if (glCurrentTask) object_id = glCurrentTask->UID;
 
-   auto full_size = Size + MEMHEADER;
+   uint32_t full_size = Size + MEMHEADER;
+   uint32_t aligned_size = full_size;
    if ((Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
 
    // Check if memory protection is requested
@@ -119,21 +120,24 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
 
    if (use_protection) {
       // Use OS-level memory protection with mmap/VirtualAlloc
-      full_size = align_page_size(full_size);
+      aligned_size = align_page_size(full_size);
       #ifdef _WIN32
-         start_mem = winAllocProtectedMemory(full_size, int(Flags));
+         start_mem = winAllocProtectedMemory(aligned_size, int(Flags));
       #else
          int prot = PROT_NONE;
          if ((Flags & MEM::READ) != MEM::NIL) prot |= PROT_READ;
          if ((Flags & MEM::WRITE) != MEM::NIL) prot |= PROT_WRITE;
 
-         start_mem = mmap(nullptr, full_size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+         start_mem = mmap(nullptr, aligned_size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
          if (start_mem IS MAP_FAILED) start_mem = nullptr;
       #endif
 
       if (start_mem) {
          Flags |= MEM::PROTECTED; // Mark as protected for proper cleanup
-         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
+         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) {
+            if ((Flags & MEM::WRITE) != MEM::NIL) pf::clearmem(start_mem, full_size);
+            else log.trace("Note: Read-only memory will not be cleared.");
+         }
       }
    }
    else {
@@ -208,11 +212,20 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
       return ERR::Okay;
    }
    else {
-      #ifdef _WIN32
-         _aligned_free(start_mem);
-      #else
-         free(start_mem);
-      #endif
+      if (use_protection) {
+         #ifdef _WIN32
+            winFreeProtectedMemory(start_mem, aligned_size);
+         #else
+            munmap(start_mem, aligned_size);
+         #endif
+      }
+      else {
+         #ifdef _WIN32
+            _aligned_free(start_mem);
+         #else
+            free(start_mem);
+         #endif
+      }
       return log.warning(ERR::SystemLocked);
    }
 }
@@ -281,9 +294,8 @@ ERR FreeResource(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
-   if (auto lock = std::unique_lock{glmMemory}) {
-      auto it = glPrivateMemory.find(MemoryID);
-      if ((it != glPrivateMemory.end()) and (it->second.Address)) {
+   if (auto lock = std::unique_lock{glmMemory}) {     
+      if (auto it = glPrivateMemory.find(MemoryID); (it != glPrivateMemory.end()) and (it->second.Address)) {
          auto &mem = it->second;
 
          if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, int(mem.Flags), mem.OwnerID);
@@ -330,8 +342,7 @@ ERR FreeResource(MEMORYID MemoryID)
                   munmap(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
                #endif
             }
-            else {
-               // Standard aligned allocation
+            else { // Standard aligned allocation
                #ifdef _WIN32
                   _aligned_free(start_mem);
                #else
@@ -480,6 +491,71 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
       return ERR::MemoryDoesNotExist;
    }
    else return log.warning(ERR::SystemLocked);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+ProtectMemory: Change the access permissions of a memory block.
+
+This function changes the access permissions of a memory block that was allocated with the `MEM::READ` and/or 
+`MEM::WRITE` flags.  This allows you to tighten or relax the access permissions of a memory block as your program's 
+logic requires.
+
+-INPUT-
+ptr Address: Pointer to a memory block obtained from ~AllocMemory().
+MEM Flags:   New access flags (MEM::READ, MEM::WRITE).
+
+-ERRORS-
+Okay
+NullArgs
+-END-
+
+*********************************************************************************************************************/
+
+ERR ProtectMemory(APTR Address, MEM Flags)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Address) return ERR::NullArgs;
+   if ((Flags & (MEM::READ | MEM::WRITE)) == MEM::NIL) return ERR::Args;
+
+   if (glShowPrivate) log.branch("ProtectMemory(%p, $%.8x)", Address, int(Flags));
+
+   MemInfo meminfo;
+   if (MemoryIDInfo(GetMemoryID(Address), &meminfo, sizeof(meminfo)) IS ERR::Okay) {
+      if ((meminfo.Flags & MEM::PROTECTED) == MEM::NIL) {
+         log.warning("Memory block at %p is not protected.", Address);
+         return ERR::Args;
+      }
+
+      // Calculate the start address and size of the protected region
+      auto start_mem = (char *)Address - sizeof(int) - sizeof(int);
+      if ((meminfo.Flags & MEM::MANAGED) != MEM::NIL) {
+         start_mem -= sizeof(ResourceManager *);
+      }
+
+      auto full_size = meminfo.Size + MEMHEADER;
+      if ((meminfo.Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
+      auto aligned_size = align_page_size(full_size);
+
+      #ifdef _WIN32
+         if (winProtectMemory(start_mem, aligned_size, (Flags & MEM::READ) != MEM::NIL, (Flags & MEM::WRITE) != MEM::NIL, false)) {
+            return ERR::Okay;
+         }
+         else return log.warning(ERR::SystemCall);
+      #else
+         int prot = PROT_NONE;
+         if ((Flags & MEM::READ) != MEM::NIL) prot |= PROT_READ;
+         if ((Flags & MEM::WRITE) != MEM::NIL) prot |= PROT_WRITE;
+
+         if (mprotect(start_mem, aligned_size, prot) IS 0) {
+            return ERR::Okay;
+         }
+         else return log.warning(ERR::SystemCall);
+      #endif
+   }
+   else return ERR::MemoryDoesNotExist;
 }
 
 /*********************************************************************************************************************

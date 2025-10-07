@@ -1251,6 +1251,31 @@ extern "C" size_t winGetPageSize(void)
 }
 
 //********************************************************************************************************************
+// Change memory protection flags on an existing VirtualAlloc allocation
+
+extern "C" int winProtectMemory(void *Address, size_t Size, bool Read, bool Write, bool Exec)
+{
+   if (!Address || Size == 0) return 0;
+
+   DWORD protect = PAGE_NOACCESS;
+   if (Write && Exec)
+       protect = PAGE_EXECUTE_READWRITE;
+   else if (Write)
+       protect = PAGE_READWRITE;
+   else if (Read && Exec)
+       protect = PAGE_EXECUTE_READ;
+   else if (Read)
+       protect = PAGE_READONLY;
+   else if (Exec)
+       protect = PAGE_EXECUTE;
+   else
+       protect = PAGE_NOACCESS;
+
+   DWORD old_protect;
+   return VirtualProtect(Address, Size, protect, &old_protect) ? 1 : 0;
+}
+
+//********************************************************************************************************************
 
 extern "C" int winDeleteFile(const char *Path)
 {
