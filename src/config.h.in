@@ -35,23 +35,23 @@
 // Standard data types.
 
 #ifdef _WIN32
-typedef void * HOSTHANDLE; // Windows defines a pointer type for native handles
+using HOSTHANDLE = void *; // Windows defines a pointer type for native handles
 #define PTR_TO_HOST(a) (a)
 #else
-typedef int HOSTHANDLE;    // Unix systems use FD descriptors for handles
+using HOSTHANDLE = int;    // Unix systems use FD descriptors for handles
 #define PTR_TO_HOST(a) ((int)(intptr_t)(a))
 #endif
 
-typedef void * WINHANDLE;
+using WINHANDLE = void *;
 
 #undef MAXINT
 
 #ifdef  _LP64
- typedef int64_t MAXINT;
- typedef uint64_t UMAXINT;
+ using MAXINT = int64_t;
+ using UMAXINT = uint64_t;
 #else
- typedef int MAXINT;
- typedef uint32_t UMAXINT;
+ using MAXINT = int;
+ using UMAXINT = uint32_t;
 #endif
 
 // System specific types.
@@ -59,27 +59,27 @@ typedef void * WINHANDLE;
 #undef ERROR
 #undef OBJECTID
 
-typedef int ERROR;     // Standard error code
+using ERROR = int;     // Standard error code
 #ifndef __OBJECTID_DEFINED
- typedef int OBJECTID;  // 32-bit object ID
+ using OBJECTID = int;  // 32-bit object ID
 #endif
-typedef int MEMORYID;  // 32-bit memory ID
-typedef int64_t FIELD;    // 64-bit field ID - used for flag combos
+using MEMORYID = int;  // 32-bit memory ID
+using FIELD = int64_t;    // 64-bit field ID - used for flag combos
 
 // Pointer types.
 
 #define L64PTR(a)  (APTR)((MAXINT)(a))  // Converts a 64-bit integer to a pointer
 #define PTRL64(a)  (int64_t)((MAXINT)(a)) // Converts a pointer to an integer
 
-typedef void * TIMER;
-typedef const void * CPTR;     // Pointer with read-only content
-typedef void * APTR;           // 32 or 64 bit untyped pointer
-typedef char * STRING;         // string pointer (NULL terminated)
-typedef char * SSTRING;        // signed string pointer (NULL terminated)
-typedef const char * CSTRING;
-typedef void * OBJECT;             // Object pointer
-typedef struct Object * OBJECTPTR; // Object pointer
-typedef int64_t EVENTID;
+using TIMER = void *;
+using CPTR = const void *;     // Pointer with read-only content
+using APTR = void *;           // 32 or 64 bit untyped pointer
+using STRING = char *;         // string pointer (NULL terminated)
+using SSTRING = char *;        // signed string pointer (NULL terminated)
+using CSTRING = const char *;
+using OBJECT = void *;             // Object pointer
+using OBJECTPTR = struct Object *; // Object pointer
+using EVENTID = int64_t;
 
 #ifdef _MSC_VER
  #define __export extern "C" __declspec(dllexport)
