@@ -57,6 +57,7 @@ FDEF argsOpenDir[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_STR }, { "Flag
 FDEF argsParentContext[] = { { "Object", FD_OBJECTPTR }, { 0, 0 } };
 FDEF argsPreciseTime[] = { { "Result", FD_INT64 }, { 0, 0 } };
 FDEF argsProcessMessages[] = { { "Error", FD_INT|FD_ERROR }, { "Flags", FD_INT }, { "TimeOut", FD_INT }, { 0, 0 } };
+FDEF argsProtectMemory[] = { { "Error", FD_INT|FD_ERROR }, { "Address", FD_PTR }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF argsQueueAction[] = { { "Error", FD_INT|FD_ERROR }, { "Action", FD_INT }, { "Object", FD_OBJECTID }, { "Args", FD_PTR }, { 0, 0 } };
 FDEF argsReadFileToBuffer[] = { { "Error", FD_INT|FD_ERROR }, { "Path", FD_STR }, { "Buffer", FD_BUFFER|FD_PTR }, { "BufferSize", FD_INT|FD_BUFSIZE }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF argsReadInfoTag[] = { { "Error", FD_INT|FD_ERROR }, { "FileInfo:Info", FD_PTR|FD_STRUCT }, { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
@@ -184,6 +185,7 @@ const struct Function glFunctions[] = {
    { (APTR)CreateLink, "CreateLink", argsCreateLink },
    { (APTR)ParentContext, "ParentContext", argsParentContext },
    { (APTR)SetResourceMgr, "SetResourceMgr", argsSetResourceMgr },
+   { (APTR)ProtectMemory, "ProtectMemory", argsProtectMemory },
    { nullptr, nullptr, nullptr }
 };
 

@@ -1132,6 +1132,24 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
+    <name>ProtectMemory</name>
+    <category>Memory</category>
+    <comment>Change the access permissions of a memory block.</comment>
+    <prototype>ERR ProtectMemory(APTR Address, MEM Flags)</prototype>
+    <input>
+      <param type="APTR" name="Address">Pointer to a memory block obtained from <function>AllocMemory</function>.</param>
+      <param type="MEM" name="Flags" lookup="MEM">New access flags (MEM::READ, MEM::WRITE).</param>
+    </input>
+    <description>
+<p>This function changes the access permissions of a memory block that was allocated with the <code>MEM::READ</code> and/or <code>MEM::WRITE</code> flags.  This allows you to tighten or relax the access permissions of a memory block as your program's logic requires.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
     <name>QueueAction</name>
     <category>Objects</category>
     <comment>Delay the execution of an action by adding the call to the message queue.</comment>

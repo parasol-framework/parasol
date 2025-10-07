@@ -2162,6 +2162,7 @@ struct CoreBase {
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
    void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
+   ERR (*_ProtectMemory)(APTR Address, MEM Flags);
 #endif // PARASOL_STATIC
 };
 
@@ -2257,6 +2258,7 @@ inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); 
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
 inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
+inline ERR ProtectMemory(APTR Address, MEM Flags) { return CoreBase->_ProtectMemory(Address,Flags); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);

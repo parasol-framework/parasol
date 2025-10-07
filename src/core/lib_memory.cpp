@@ -504,7 +504,7 @@ logic requires.
 
 -INPUT-
 ptr Address: Pointer to a memory block obtained from ~AllocMemory().
-MEM Flags:   New access flags (MEM::READ, MEM::WRITE).
+int(MEM) Flags: New access flags (MEM::READ, MEM::WRITE).
 
 -ERRORS-
 Okay

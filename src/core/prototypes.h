@@ -89,3 +89,4 @@ extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext();
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager * Manager);
+extern "C" ERR ProtectMemory(APTR Address, MEM Flags);
