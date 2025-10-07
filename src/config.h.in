@@ -24,6 +24,7 @@
 #cmakedefine INC_MOD_MP3
 #cmakedefine INC_MOD_NETWORK
 #cmakedefine INC_MOD_PICTURE
+#cmakedefine INC_MOD_REGEX
 #cmakedefine INC_MOD_SCINTILLA
 #cmakedefine INC_MOD_SVG
 #cmakedefine INC_MOD_VECTOR
