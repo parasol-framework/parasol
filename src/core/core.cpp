@@ -89,13 +89,13 @@ This documentation is intended for technical reference and is not suitable as an
 #define KERR(...) fprintf(stderr, __VA_ARGS__)
 
 #ifdef __unix__
-static void CrashHandler(int, siginfo_t *, APTR) __attribute__((unused));
-static void NullHandler(int, siginfo_t *Info, APTR)  __attribute__((unused));
-static void child_handler(int, siginfo_t *Info, APTR)  __attribute__((unused));
-static void DiagnosisHandler(int, siginfo_t *Info, APTR)  __attribute__((unused));
+[[maybe_unused]] static void CrashHandler(int, siginfo_t *, APTR);
+[[maybe_unused]] static void NullHandler(int, siginfo_t *Info, APTR) ;
+[[maybe_unused]] static void child_handler(int, siginfo_t *Info, APTR) ;
+[[maybe_unused]] static void DiagnosisHandler(int, siginfo_t *Info, APTR) ;
 #elif _WIN32
-static int CrashHandler(int Code, APTR Address, int Continuable, int *Info) __attribute__((unused));
-static void BreakHandler(void)  __attribute__((unused));
+[[maybe_unused]] static int CrashHandler(int Code, APTR Address, int Continuable, int *Info);
+[[maybe_unused]] static void BreakHandler(void);
 #endif
 
 extern ERR add_archive_class(void);

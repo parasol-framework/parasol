@@ -12,6 +12,7 @@
 #cmakedefine REVERSE_BYTEORDER
 
 #ifdef PARASOL_STATIC
+// Note: Dependencies also exist in src/core/static_modules.cpp
 #cmakedefine INC_MOD_AUDIO
 #cmakedefine INC_MOD_BACKSTAGE
 #cmakedefine INC_MOD_DISPLAY

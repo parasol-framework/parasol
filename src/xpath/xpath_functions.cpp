@@ -16,6 +16,7 @@
 
 #include <parasol/modules/xml.h>
 #include <parasol/strings.hpp>
+#include <parasol/modules/regex.h>
 
 #include "xpath_functions.h"
 #include "../xml/xml.h"
@@ -38,14 +39,12 @@
 #include <unordered_set>
 #include <utility>
 
-#include "../link/regex.h"
 #include "../link/unicode.h"
 
 //********************************************************************************************************************
 // XPathVal Implementation
 
 namespace {
-
 
 static bool is_unreserved_uri_character(unsigned char Code)
 {
@@ -1062,21 +1061,17 @@ static std::string describe_xpath_value(const XPathVal &Value)
    return std::string();
 }
 
-pf::SyntaxOptions build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
+REGEX build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 {
-   pf::SyntaxOptions options = pf::SyntaxECMAScript;
+   REGEX options = REGEX::NIL;
 
    for (char flag : Flags) {
       unsigned char code = (unsigned char)flag;
       char normalised = (char)std::tolower(code);
 
-      if (normalised IS 'i') options |= pf::SyntaxIgnoreCase;
-      else if (normalised IS 'm') options |= pf::SyntaxMultiline;
-      else if (normalised IS 's') options |= pf::SyntaxDotAll;
-      else if (normalised IS 'u') options |= pf::SyntaxUnicodeSets;
-      else if (normalised IS 'y') options |= pf::SyntaxSticky;
-      else if (normalised IS 'q') options |= pf::SyntaxQuiet;
-      else if (normalised IS 'v') options |= pf::SyntaxVerboseMode;
+      if (normalised IS 'i') options |= REGEX::ICASE;
+      else if (normalised IS 'm') options |= REGEX::MULTILINE;
+      else if (normalised IS 's') options |= REGEX::DOT_ALL;
       else if (UnsupportedFlag) *UnsupportedFlag = true;
    }
 

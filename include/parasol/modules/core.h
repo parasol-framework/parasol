@@ -2066,7 +2066,7 @@ struct ScriptArg { // For use with sc::Exec
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_CORE static struct CoreBase *CoreBase;
+#define JUMPTABLE_CORE [[maybe_unused]] static struct CoreBase *CoreBase;
 #else
 #define JUMPTABLE_CORE struct CoreBase *CoreBase;
 #endif

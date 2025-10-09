@@ -108,6 +108,7 @@ Examples:
 
 #include <parasol/modules/xml.h>
 #include <parasol/modules/xpath.h>
+#include <parasol/modules/regex.h>
 #include <parasol/strings.hpp>
 #include <array>
 #include <format>
@@ -120,8 +121,27 @@ Examples:
 #include "xpath_evaluator.h"
 
 JUMPTABLE_CORE
+JUMPTABLE_REGEX
 
 #include "xpath_def.c"
+
+static OBJECTPTR glContext = nullptr;
+static OBJECTPTR modRegex = nullptr;
+
+//*********************************************************************************************************************
+// Dynamic loader for the Regex functionality.  We only load it as needed due to the size of the module.
+
+[[maybe_unused]] static ERR load_regex(void)
+{
+#ifndef PARASOL_STATIC
+   if (not modRegex) {
+      auto context = SetContext(glContext);
+      if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
+      SetContext(context);
+   }
+#endif
+   return ERR::Okay;
+}
 
 //********************************************************************************************************************
 // C++ destructor for cleaning up compiled XPath objects
@@ -155,6 +175,7 @@ static ResourceManager glXPVManager = {
 static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
    CoreBase = pCore;
+   glContext = CurrentContext();
    return ERR::Okay;
 }
 
@@ -166,6 +187,7 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
+   if (modRegex) { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
 }
 
@@ -205,7 +227,7 @@ ERR Compile(objXML *XML, CSTRING Query, XPathNode **Result)
 
    std::vector<std::string> errors;
    XPathNode *cmp;
-   if (AllocMemory(sizeof(XPathNode), MEM::DATA|MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
+   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
       SetResourceMgr(cmp, &glNodeManager);
 
       XPathTokenizer tokenizer;

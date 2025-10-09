@@ -1,27 +1,35 @@
 --$FLUID:Include
 
 module({ name="Regex", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611, src="regex.cpp" }, function()
-  flags("RX", { comment="Optional flags for the Regex functions." },
-    "OVER_SAMPLING: Enables oversampling for higher quality audio at the cost of slower mixing.",
-    "FILTER_LOW: Enable a low level of output filtering to minimise distortion.",
-    "FILTER_HIGH: Enable a high level of output filtering to minimise distortion.",
-    "STEREO: Enable stereo output (set by default if the platform supports stereo).  If not set, output is in mono.",
-    "VOL_RAMPING: Enable volume ramping for softer playback when a sample is played multiple times (enabled by default).",
-    "AUTO_SAVE: Save configuration information on exit.",
-    "SYSTEM_WIDE: Mixer changes should be applied system-wide.")
+  flags("REGEX", { comment="Optional flags for the Regex functions." },
+    "ICASE: Ignore case.",
+    "MULTILINE: `^` and `$` match line boundaries.",
+    "DOT_ALL: `.` matches newlines.",
+    "EXTENDED: Allow whitespace and comments.",
+    "AWK: AWK syntax.",
+    "GREP: GREP syntax.")
+   
+  flags("RMATCH", { },
+    "NOT_BEGIN_OF_LINE",
+    "NOT_END_OF_LINE",
+    "NOT_BEGIN_OF_WORD",
+    "NOT_END_OF_WORD",
+    "NOT_NULL",
+    "CONTINUOUS",
+    "PREV_AVAILABLE",
+    "FORMAT_NO_COPY",
+    "FORMAT_FIRST_ONLY")
+    
+  struct("Regex", { comment="Compiled regex structure." }, [[
+   cpp(str) pattern   # Original pattern string
+   cpp(str) error_msg # Error message if compilation failed
+   int(REGEX) flags   # Compilation flags
+  ]])
 
   functionNames("rx",
-     "MixContinue",
-     "MixFrequency",
-     "MixMute",
-     "MixPan",
-     "MixPlay",
-     "MixRate",
-     "MixSample",
-     "MixStop",
-     "MixStopLoop",
-     "MixVolume",
-     "MixStartSequence",
-     "MixEndSequence")
-
+    "Compile",
+    "Match",
+    "Search",
+    "Replace",
+    "Split")
 end)

@@ -44,6 +44,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/modules/regex.h>
 
 #include <inttypes.h>
 
@@ -57,12 +58,15 @@ extern "C" {
 #include "hashes.h"
 
 JUMPTABLE_CORE
+JUMPTABLE_REGEX
 
 #include "defs.h"
 
 OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
+OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
+OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
@@ -290,6 +294,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
+   glFluidContext = CurrentContext();
+
    argModule->get(FID_Root, modFluid);
 
    ActionList(&glActions, nullptr); // Get the global action table from the Core
@@ -312,6 +318,7 @@ static ERR MODExpunge(void)
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
    if (clFluid)     { FreeResource(clFluid); clFluid = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
 }
 

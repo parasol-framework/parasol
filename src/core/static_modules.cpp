@@ -13,10 +13,12 @@ extern "C" ModHeader * register_json_module();
 extern "C" ModHeader * register_mp3_module();
 extern "C" ModHeader * register_network_module();
 extern "C" ModHeader * register_picture_module();
+extern "C" ModHeader * register_regex_module();
 extern "C" ModHeader * register_scintilla_module();
 extern "C" ModHeader * register_svg_module();
 extern "C" ModHeader * register_vector_module();
 extern "C" ModHeader * register_xml_module();
+extern "C" ModHeader * register_xpath_module();
 
 //********************************************************************************************************************
 // Register all static modules that were compiled into this build.
@@ -71,6 +73,10 @@ static void register_static_modules(void)
    glStaticModules["picture"] = register_picture_module();
    #endif
 
+   #ifdef INC_MOD_REGEX
+   glStaticModules["regex"] = register_regex_module();
+   #endif
+
    #ifdef INC_MOD_SCINTILLA
    glStaticModules["scintilla"] = register_scintilla_module();
    #endif
@@ -85,6 +91,10 @@ static void register_static_modules(void)
 
    #ifdef INC_MOD_XML
    glStaticModules["xml"] = register_xml_module();
+   #endif
+
+   #ifdef INC_MOD_XPATH
+   glStaticModules["xpath"] = register_xpath_module();
    #endif
 }
 

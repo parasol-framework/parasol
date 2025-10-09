@@ -508,7 +508,10 @@ int(MEM) Flags: New access flags (MEM::READ, MEM::WRITE).
 
 -ERRORS-
 Okay
-NullArgs
+NullArgs: Address is NULL.
+Args: Invalid flags specified or memory block is not protected.
+MemoryDoesNotExist: The memory block is not valid or was not allocated with protection.
+SystemCall: A system call failed.
 -END-
 
 *********************************************************************************************************************/
