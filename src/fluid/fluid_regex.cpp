@@ -54,13 +54,13 @@ static ERR load_regex(void)
 
 //*********************************************************************************************************************
 
-static ERR match_many(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR Meta) 
+static ERR match_many(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR Meta)
 {
    pf::Log log(__FUNCTION__);
    log.warning("%d: %d captures", Index, (int)Captures.size());
 
    auto Lua = (lua_State *)Meta;
-   
+
    lua_pushinteger(Lua, Index+1);
 
    // Create match table for this result
@@ -77,13 +77,13 @@ static ERR match_many(int Index, std::vector<std::string_view> Captures, std::st
    return ERR::Okay;
 }
 
-static ERR match_one(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR Meta) 
+static ERR match_one(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR Meta)
 {
    pf::Log log(__FUNCTION__);
    log.warning("%d: %d captures", Index, (int)Captures.size());
 
    auto Lua = (lua_State *)Meta;
-   
+
    lua_pushinteger(Lua, Index+1);
 
    // Create match table for this result
@@ -100,7 +100,7 @@ static ERR match_one(int Index, std::vector<std::string_view> Captures, std::str
    return ERR::Terminate;
 }
 
-static ERR match_none(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR Meta) 
+static ERR match_none(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR Meta)
 {
    return ERR::Terminate;
 }
@@ -149,7 +149,7 @@ static int regex_test(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
-   
+
    auto cb = C_FUNCTION(match_none, Lua);
    if (rx::Search(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, nullptr) IS ERR::Okay) {
       lua_pushboolean(Lua, true);
@@ -171,7 +171,7 @@ static int regex_match(lua_State *Lua)
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
 
    auto cb = C_FUNCTION(match_one, Lua);
-   if (rx::Search(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, &cb) IS ERR::Okay) {
+   if (rx::Match(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, &cb) IS ERR::Okay) {
       return 1;
    }
    else {
@@ -193,7 +193,7 @@ static int regex_matchAll(lua_State *Lua)
    lua_createtable(Lua, 0, 0); // Result table
 
    auto cb = C_FUNCTION(match_many, Lua);
-   if (rx::Match(r->regex_obj, std::string_view(text), RMATCH::NIL, &cb) IS ERR::Okay) {
+   if (rx::Match(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, &cb) IS ERR::Okay) {
       return 1;
    }
    else {

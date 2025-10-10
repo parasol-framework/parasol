@@ -294,7 +294,7 @@ ERR FreeResource(MEMORYID MemoryID)
 {
    pf::Log log(__FUNCTION__);
 
-   if (auto lock = std::unique_lock{glmMemory}) {     
+   if (auto lock = std::unique_lock{glmMemory}) {
       if (auto it = glPrivateMemory.find(MemoryID); (it != glPrivateMemory.end()) and (it->second.Address)) {
          auto &mem = it->second;
 
@@ -498,8 +498,8 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
 -FUNCTION-
 ProtectMemory: Change the access permissions of a memory block.
 
-This function changes the access permissions of a memory block that was allocated with the `MEM::READ` and/or 
-`MEM::WRITE` flags.  This allows you to tighten or relax the access permissions of a memory block as your program's 
+This function changes the access permissions of a memory block that was allocated with the `MEM::READ` and/or
+`MEM::WRITE` flags.  This allows you to tighten or relax the access permissions of a memory block as your program's
 logic requires.
 
 -INPUT-
@@ -644,7 +644,7 @@ This allows customised memory management logic to be used when an event is trigg
 the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with
 Parasol's memory management system.
 
-This working example from the XPath module ensures that `XPathNode` objects are properly destructed when passed to 
+This working example from the XPath module ensures that `XPathNode` objects are properly destructed when passed to
 ~FreeResource():
 
 <pre>

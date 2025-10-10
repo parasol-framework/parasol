@@ -632,7 +632,7 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
       if (rx::Compile(pattern, build_regex_options(flags, Context.expression_unsupported), &error_msg, &compiled) != ERR::Okay) {
          return XPathVal(pf::vector<XMLTag *>());
       }
-      
+
       pf::vector<std::string> ptokens;
       rx::Split(compiled, input, &ptokens, RMATCH::NIL);
       tokens = std::vector<std::string>(std::make_move_iterator(ptokens.begin()), std::make_move_iterator(ptokens.end()));
@@ -650,7 +650,7 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 //********************************************************************************************************************
 // Analyses a string against a regex pattern, returning matching and non-matching segments with capture groups.
 // Example: analyze-string("Order 2024-01-15 received", "(\d+)-(\d+)-(\d+)")
-// 
+//
 // Evaluates to:
 //   <analyze-string-result>
 //     <non-match>Order </non-match>

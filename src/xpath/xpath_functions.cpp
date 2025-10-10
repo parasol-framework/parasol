@@ -1,6 +1,6 @@
 //********************************************************************************************************************
 // XPath Function Library and Value System Implementation
-// 
+//
 // XPath expressions depend on a rich set of standard functions and a loosely typed value model.  This
 // file provides both: XPathVal encapsulates conversions between node-sets, numbers, booleans, and
 // strings, while the function registry offers implementations of the core function library required by

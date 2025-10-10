@@ -819,7 +819,7 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    argModule->get(FID_Root, glModule);
 
    if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
-   
+
 #ifndef PARASOL_STATIC
 
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.

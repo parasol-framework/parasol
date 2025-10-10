@@ -35,10 +35,10 @@ static ERR MODOpen(OBJECTPTR);
 JUMPTABLE_CORE
 
 struct extRegex : public Regex {
-   srell::regex *regex_obj = nullptr;  // Compiled SRELL regex object
+   srell::regex *srell = nullptr;  // Compiled SRELL regex object
 
    ~extRegex() {
-      delete regex_obj;
+      delete srell;
    }
 };
 
@@ -49,13 +49,13 @@ static void process_result(std::string_view Text, const srell::cmatch &Native, F
    if (not Callback) return;
 
    int capture_count = Native.size();
-   
+
    const srell::sub_match<const char *> &prefix = Native.prefix();
    const srell::sub_match<const char *> &suffix = Native.suffix();
 
    auto prefix_view = prefix.matched ? std::string_view(prefix.first, prefix.length()) : std::string_view();
    auto suffix_view = suffix.matched ? std::string_view(suffix.first, suffix.length()) : std::string_view();
-   
+
    pf::SwitchContext ctx(Callback->Context);
    auto routine = (ERR(*)(int, std::string_view, std::string_view, std::string_view, APTR))Callback->Routine;
 
@@ -213,14 +213,14 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       if ((Flags & REGEX::AWK) != REGEX::NIL)       reg_flags |= srell::regex_constants::awk;
       if ((Flags & REGEX::GREP) != REGEX::NIL)      reg_flags |= srell::regex_constants::grep;
 
-      regex->regex_obj = new (std::nothrow) srell::regex(Pattern.data(), Pattern.size(), reg_flags);
-      if (!regex->regex_obj) {
+      regex->srell = new (std::nothrow) srell::regex(Pattern.data(), Pattern.size(), reg_flags);
+      if (!regex->srell) {
          static CSTRING msg = "Regex constructor failed";
          if (ErrorMsg) *ErrorMsg = msg;
          log.msg(msg);
          return ERR::AllocMemory;
       }
-      else if (auto err = regex->regex_obj->ecode(); err != 0) {
+      else if (auto err = regex->srell->ecode(); err != 0) {
          auto error_msg = map_error_code(err);
          log.warning("Regex compilation failed: %s", error_msg.c_str());
          if (ErrorMsg) *ErrorMsg = error_msg;
@@ -242,8 +242,8 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
 -FUNCTION-
 Match: Performs regex matching.
 
-Use Match() to perform a regex match on a given text. The function takes a compiled Regex object, the input Text, 
-optional Flags to modify the matching behavior, and an optional Callback function to process the match results. 
+Use Match() to perform a regex match on a given text. The function takes a compiled Regex object, the input Text,
+optional Flags to modify the matching behavior, and an optional Callback function to process the match results.
 
 If a match is found, the Callback function is invoked once for each capture.  The C++ prototype for the
 Callback function is:
@@ -268,18 +268,44 @@ Search: No matches were found.
 
 *********************************************************************************************************************/
 
+struct CaptureSpan {
+   size_t offset = 0u;
+   size_t length = 0u;
+};
+
+struct MatchResult {
+   bool matched = false;
+   CaptureSpan span;
+   std::vector<std::string> captures;
+   std::vector<CaptureSpan> capture_spans;
+   std::string prefix;
+   std::string suffix;
+};
+
 ERR Match(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
    if (not Regex) return log.warning(ERR::NullArgs);
 
-   srell::cmatch native;
-   if (((extRegex *)Regex)->regex_obj->match(Text.data(), Text.data() + Text.size(), native, convert_match_flags(Flags))) {
-      process_result(Text, native, Callback);
+   //srell::regex pattern;
+   srell::cmatch cnative;
+
+   //srell::regex_constants::syntax_option_type native = srell::regex_constants::ECMAScript;
+   //pattern.assign(Regex->pattern.data(), Regex->pattern.size(), native);
+
+   //bool success = pattern.match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags));
+   //populate_result(Text, native, success, Result);
+   //return success ? ERR::Okay : ERR::Search;
+
+   // ORIGINAL
+
+   if (((extRegex *)Regex)->srell->match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags))) {
+      process_result(Text, cnative, Callback);
       return ERR::Okay;
    }
    else return ERR::Search;
+
 }
 
 /*********************************************************************************************************************
@@ -314,7 +340,7 @@ ERR Replace(Regex *Regex, const std::string_view &Text, const std::string_view &
    Output->clear();
 
    auto native = convert_match_flags(Flags);
-   *Output = srell::regex_replace(std::string(Text), *((extRegex *)Regex)->regex_obj, std::string(Replacement), native);
+   *Output = srell::regex_replace(std::string(Text), *((extRegex *)Regex)->srell, std::string(Replacement), native);
    return ERR::Okay;
 }
 
@@ -347,7 +373,7 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 
    if (not Regex) return log.warning(ERR::NullArgs);
 
-   auto sr = ((extRegex *)Regex)->regex_obj;
+   auto sr = ((extRegex *)Regex)->srell;
 
    std::string text_str(Text); // TODO: Inefficient, but srell::sregex_iterator requires a non-const string
    auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *sr);
@@ -420,7 +446,7 @@ ERR Split(Regex *Regex, const std::string_view &Text, pf::vector<std::string> *O
 
    Output->clear();
 
-   auto sr = ((extRegex *)Regex)->regex_obj;
+   auto sr = ((extRegex *)Regex)->srell;
    std::string text_str(Text);
    srell::sregex_token_iterator iter(text_str.begin(), text_str.end(), *sr, -1, convert_match_flags(Flags));
    srell::sregex_token_iterator sentinel;
