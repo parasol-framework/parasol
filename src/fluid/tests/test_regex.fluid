@@ -41,9 +41,12 @@ function testMatchMethod()
    -- Simple match
    local word_regex = regex.new("(\\w+)")
    local matches = word_regex.search("hello world")
-   assert(matches, "Should find match")
-   assert(matches[1] == "hello", "Full match should be 'hello'")
-   assert(matches[2] == "hello", "First capture group should be 'hello'")
+   assert(matches, "Match should succeed")
+   assert(#matches == 2, "Expected two matches (hello and world)")
+   assert(matches[1][1] == "hello", "Full match should be 'hello'")
+   assert(matches[1][2] == "hello", "Capture should be 'hello'")
+   assert(matches[2][1] == "world", "Full match should be 'world'")
+   assert(matches[2][2] == "world", "Capture should be 'world'")
 
    -- Multiple capture groups
    local email_regex = regex.new("([^@]+)@([^.]+)\\.(.+)")
@@ -72,7 +75,7 @@ function testSearchMethod()
 
    -- Test with no matches
    local no_matches = digit_regex.search("hello world")
-   assert(#no_matches == 0, "Should return empty table for no matches")
+   assert(no_matches == nil, "Should return nil for no matches")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

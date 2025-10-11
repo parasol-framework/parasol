@@ -6,9 +6,21 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -MODULE-
-Regex: Provides support for regex matching.
+Regex: Provides support for regular expression pattern matching and text processing.
 
+The Regex module provides ECMAScript-compatible regex functionality with Unicode support. It offers efficient pattern 
+compilation, flexible matching modes, and text manipulation capabilities including search, replace, and split 
+operations.
 
+Key features include:
+
+<list type="bullet">
+<li>ECMAScript (JavaScript) regex syntax with optional AWK and GREP modes.</li>
+<li>Full Unicode support including character classes and properties.</li>
+<li>Case-insensitive and multiline matching options.</li>
+<li>Reusable compiled patterns for optimal performance.</li>
+<li>Callback-based result processing for custom handling.</li>
+</list>
 
 -END-
 
@@ -270,38 +282,13 @@ Search: No match was found.
 
 *********************************************************************************************************************/
 
-struct CaptureSpan {
-   size_t offset = 0u;
-   size_t length = 0u;
-};
-
-struct MatchResult {
-   bool matched = false;
-   CaptureSpan span;
-   std::vector<std::string> captures;
-   std::vector<CaptureSpan> capture_spans;
-   std::string prefix;
-   std::string suffix;
-};
-
 ERR Match(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
    if (not Regex) return log.warning(ERR::NullArgs);
 
-   //srell::regex pattern;
    srell::cmatch cnative;
-
-   //srell::regex_constants::syntax_option_type native = srell::regex_constants::ECMAScript;
-   //pattern.assign(Regex->pattern.data(), Regex->pattern.size(), native);
-
-   //bool success = pattern.match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags));
-   //populate_result(Text, native, success, Result);
-   //return success ? ERR::Okay : ERR::Search;
-
-   // ORIGINAL
-
    if (((extRegex *)Regex)->srell->match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags))) {
       process_result(Text, cnative, Callback);
       return ERR::Okay;
@@ -439,10 +426,10 @@ If no matches are found, the entire input text is returned as a single token.
 ptr(struct(Regex)) Regex: The compiled regex object.
 cpp(strview) Text: The input text to split.
 &cpp(array(cpp(str))) Output: Receives the resulting string tokens.
-int(RMATCH) Flags: Optional flags to modify the replacement behavior.
+int(RMATCH) Flags: Optional flags to modify the splitting behavior.
 
 -ERRORS-
-Okay: Successful execution, does not necessarily mean replacements were made.
+Okay: The string was successfully split into tokens. If no matches are found, the entire input text is returned as a single token.
 NullArgs: One or more required input arguments were null.
 -END-
 

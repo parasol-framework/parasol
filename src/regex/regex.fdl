@@ -9,7 +9,7 @@ module({ name="Regex", copyright="Paul Manias © 2025", version=1.0, timestamp=2
     "AWK: AWK syntax.",
     "GREP: GREP syntax.")
 
-  flags("RMATCH", { },
+  flags("RMATCH", { comment="Optional flags for regex matching and replacement operations." },
     "NOT_BEGIN_OF_LINE: Treats the first character in the sequence as NOT being at the beginning of a line, preventing `^` from matching at that position.",
     "NOT_END_OF_LINE:   Treats the last character in the sequence as NOT being at the end of a line, preventing `$` from matching at that position.",
     "NOT_BEGIN_OF_WORD: Treats the first character in the sequence as NOT being at the beginning of a word, affecting `\b` word boundary matching.",

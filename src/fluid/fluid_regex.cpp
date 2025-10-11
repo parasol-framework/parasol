@@ -27,8 +27,7 @@ extern "C" {
 
 struct regex_callback {
    lua_State *Lua;
-   int index;
-   regex_callback(lua_State* Lua) : Lua(Lua), index(1) {}
+   regex_callback(lua_State* Lua) : Lua(Lua) {}
 };
 
 //*********************************************************************************************************************
@@ -51,9 +50,9 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, std::s
 {
    auto Lua = Meta.Lua;
    
-   lua_pushinteger(Lua, Meta.index++);
+   lua_pushinteger(Lua, Index + 1);
 
-   // Create match table for this result (attached to results table)
+   // Create capture table for this result (attached to results table)
    lua_createtable(Lua, std::ssize(Captures), 0);
 
    for (int j=0; j < std::ssize(Captures); ++j) {
@@ -73,7 +72,7 @@ static ERR match_one(std::vector<std::string_view> &Captures, std::string_view P
 {
    auto Lua = Meta.Lua;
 
-   // Create match table for this result
+   // Create capture table for this result
    lua_createtable(Lua, std::ssize(Captures), 0);
 
    for (int j=0; j < std::ssize(Captures); ++j) {
@@ -81,8 +80,6 @@ static ERR match_one(std::vector<std::string_view> &Captures, std::string_view P
       lua_pushlstring(Lua, Captures[j].data(), Captures[j].length());
       lua_settable(Lua, -3);
    }
-
-   lua_settable(Lua, -3); // Add match table to results
 
    return ERR::Terminate;
 }
@@ -117,7 +114,7 @@ static int regex_new(lua_State *Lua)
       std::string error_msg;
 
       if (rx::Compile(pattern, flags, &error_msg, &r->regex_obj) != ERR::Okay) {
-         luaL_error(Lua, "Regex compilation failed");
+         luaL_error(Lua, "Regex compilation failed: %s", error_msg.c_str());
       }
 
       luaL_getmetatable(Lua, "Fluid.regex");
@@ -154,6 +151,7 @@ static int regex_test(lua_State *Lua)
 
 //********************************************************************************************************************
 // Method: regex.match(text) -> table|nil
+// Returns nil on failure, or a table of indexed captures on success.
 
 static int regex_match(lua_State *Lua)
 {
@@ -173,14 +171,15 @@ static int regex_match(lua_State *Lua)
 }
 
 //********************************************************************************************************************
-// Method: regex.search(text) -> table
+// Method: regex.search(text) -> table|nil
+// Returns nil if no matches, otherwise a table of indexed match tables.
 
 static int regex_search(lua_State *Lua)
 {
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
 
    size_t text_len = 0;
-   CSTRING text = luaL_checklstring(Lua, 1, &text_len);
+   auto text = luaL_checklstring(Lua, 1, &text_len);
 
    lua_createtable(Lua, 0, 0); // Result table
 
@@ -217,28 +216,24 @@ static int regex_replace(lua_State *Lua)
 // Method: regex.split(text) -> table
 
 static int regex_split(lua_State *Lua)
-{/*
+{
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
 
-   const char *text = luaL_checkstring(Lua, 1);
+   size_t text_len = 0;
+   const char *text = luaL_checklstring(Lua, 1, &text_len);
 
-   std::string text_str(text);
-   lua_createtable(Lua, 0, 0); // Result table
+   pf::vector<std::string> parts;
+   rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, RMATCH::NIL);
+   
+   lua_createtable(Lua, std::ssize(parts), 0); // Result table
    int part_index = 1;
-
-   // Use sregex_token_iterator for splitting
-   srell::sregex_token_iterator iter(text_str.begin(), text_str.end(), *r->regex_obj, -1);
-   srell::sregex_token_iterator end;
-
-   for (; iter != end; ++iter) {
-      std::string token = iter->str();
+   for (auto &part : parts) {
       lua_pushinteger(Lua, part_index++);
-      if (token.empty()) lua_pushstring(Lua, "");
-      else lua_pushlstring(Lua, token.c_str(), token.length());
+      if (part.empty()) lua_pushstring(Lua, "");
+      else lua_pushlstring(Lua, part.c_str(), part.length());
       lua_settable(Lua, -3);
    }
-   */
-   lua_pushnil(Lua); // TEMPORARY
+ 
    return 1;
 }
 
