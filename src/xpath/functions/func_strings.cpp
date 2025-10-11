@@ -566,6 +566,8 @@ XPathVal XPathFunctionLibrary::function_matches(const std::vector<XPathVal> &Arg
    std::string pattern = Args[1].to_string();
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
+   if (load_regex() != ERR::Okay) return XPathVal(false);
+
    std::string error_msg;
    Regex *compiled;
    if (rx::Compile(pattern, build_regex_options(flags, Context.expression_unsupported), &error_msg, &compiled) != ERR::Okay) {
@@ -589,6 +591,8 @@ XPathVal XPathFunctionLibrary::function_replace(const std::vector<XPathVal> &Arg
    std::string pattern = Args[1].to_string();
    std::string replacement = Args[2].to_string();
    std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
+   
+   if (load_regex() != ERR::Okay) return XPathVal(input);
 
    std::string error_msg;
    Regex *compiled;
@@ -620,6 +624,8 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
    std::vector<std::string> tokens;
+   
+   if (load_regex() != ERR::Okay) return XPathVal(pf::vector<XMLTag *>());
 
    if (pattern.empty()) {
       for (size_t index = 0; index < input.length(); ++index) {
@@ -696,6 +702,8 @@ XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVa
    std::string input   = Args[0].to_string();
    std::string pattern = Args[1].to_string();
    std::string flags   = (Args.size() > 2) ? Args[2].to_string() : std::string();
+
+   if (load_regex() != ERR::Okay) return XPathVal(pf::vector<XMLTag *>());
 
    std::string error_msg;
    Regex *compiled;

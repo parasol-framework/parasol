@@ -44,9 +44,9 @@ struct Regex {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_REGEX [[maybe_unused]] static struct RegexBase *RegexBase;
+#define JUMPTABLE_REGEX [[maybe_unused]] static struct RegexBase *RegexBase = nullptr;
 #else
-#define JUMPTABLE_REGEX struct RegexBase *RegexBase;
+#define JUMPTABLE_REGEX struct RegexBase *RegexBase = nullptr;
 #endif
 
 struct RegexBase {

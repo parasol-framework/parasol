@@ -119,6 +119,7 @@ Examples:
 #include "xpath_tokenizer.h"
 #include "xpath_parser.h"
 #include "xpath_evaluator.h"
+#include "xpath.h"
 
 JUMPTABLE_CORE
 JUMPTABLE_REGEX
@@ -131,7 +132,7 @@ static OBJECTPTR modRegex = nullptr;
 //*********************************************************************************************************************
 // Dynamic loader for the Regex functionality.  We only load it as needed due to the size of the module.
 
-[[maybe_unused]] static ERR load_regex(void)
+extern "C" ERR load_regex(void)
 {
 #ifndef PARASOL_STATIC
    if (not modRegex) {

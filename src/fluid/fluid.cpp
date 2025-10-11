@@ -141,23 +141,23 @@ static void flTestCall4(int Long, int64_t Large)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received long %d / $%.8x", Long, Long);
-   log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
+   log.msg("Received large %" PRId64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
 }
 
-static int flTestCall5(int LongA, int LongB, int LongC, int LongD, int LongE, int64_t LongF)
+static int flTestCall5(int LongA, int LongB, int LongC, int LongD, int LongE, int64_t LargeF)
 {
    pf::Log log(__FUNCTION__);
-   log.msg("Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
-   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (int)LongF);
-   return LongF;
+   log.msg("Received ints: %d, %d, %d, %d, %d, %" PRId64, LongA, LongB, LongC, LongD, LongE, LargeF);
+   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (int)LargeF);
+   return LargeF;
 }
 
 static int64_t flTestCall6(int long1, int64_t large1, int64_t large2, int long2, int64_t large3, double float1)
 {
    pf::Log log(__FUNCTION__);
-   log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (int)large2, (int)long2, (int)large3);
+   log.msg("Received %d, %" PRId64 ", %d, %d, %d", long1, large1, (int)large2, (int)long2, (int)large3);
    log.msg("Received double %f", float1);
-   log.msg("Returning %" PF64, large2);
+   log.msg("Returning %" PRId64, large2);
    return large2;
 }
 
