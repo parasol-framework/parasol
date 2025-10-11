@@ -193,7 +193,7 @@ ERR XValueToNumber(XPathValue *Value, double *Result)
 -FUNCTION-
 XValueNodes: For node-set XPathValue objects, returns the node-set as an array.
 
-If an XPathValue represents a node-set (type `XPVT::NODE_SET`) then XValueToNodes() will return a direct pointer to 
+If an XPathValue represents a node-set (type `XPVT::NODE_SET`) then XValueToNodes() will return a direct pointer to
 the node-set array.
 
 Note: The integrity of the array is not guaranteed if the original XML document is modified or freed.

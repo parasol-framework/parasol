@@ -238,29 +238,28 @@ concept allocator_type = requires(T alloc) {
 			return left;
 		}
 	}
-	//  namespace regex_constants
 
 	namespace regex_constants
 	{
 		enum match_flag_type
 		{
-			match_default = 0,
-			match_not_bol = 1 << 0,
-			match_not_eol = 1 << 1,
-			match_not_bow = 1 << 2,
-			match_not_eow = 1 << 3,
-			match_any = 0,
-			match_not_null = 1 << 4,
-			match_continuous = 1 << 5,
-			match_prev_avail = 1 << 6,
+			match_default = 0,         // Default matching behavior with no special constraints applied.
+			match_not_bol = 1 << 0,    // Treats the first character in the sequence as NOT being at the beginning of a line, preventing ^ from matching at that position.
+			match_not_eol = 1 << 1,    // Treats the last character in the sequence as NOT being at the end of a line, preventing $ from matching at that position.
+			match_not_bow = 1 << 2,    // Treats the first character in the sequence as NOT being at the beginning of a word, affecting \b word boundary matching.
+			match_not_eow = 1 << 3,    // Treats the last character in the sequence as NOT being at the end of a word, affecting \b word boundary matching.
+			match_any = 0,             // An alias for match_default with the same zero value.
+			match_not_null = 1 << 4,   // Prevents the regex engine from matching zero-length (empty) sequences.
+			match_continuous = 1 << 5, // Requires the match to start at the beginning of the sequence (anchored matching), used internally to implement regex_match.
+			match_prev_avail = 1 << 6, // Indicates that a valid character exists before the first position in the sequence, enabling proper lookbehind and boundary assertions.
 
-			format_default = 0,
-			format_sed = 0,
-			format_no_copy = 1 << 7,
-			format_first_only = 1 << 8,
+			format_default = 0,         // Default formatting behavior when replacing matched text.
+			format_sed = 0,             // An alias for format_default, indicating sed-style formatting.
+			format_no_copy = 1 << 7,    // In regex_replace, prevents copying non-matched portions of the input to the output.
+			format_first_only = 1 << 8, // In regex_replace, replaces only the first match and leaves subsequent matches unchanged.
 
 			//  For internal use.
-			match_match_ = 1 << 9
+			match_match_ = 1 << 9       // Internal flag used to distinguish regex_match operations from regex_search operations.
 		};
 
 		constexpr match_flag_type operator&(const match_flag_type left, const match_flag_type right) noexcept

@@ -62,7 +62,7 @@ void debug_tree(extVector *Vector, int &Level)
 
 //********************************************************************************************************************
 
-static void validate_tree(extVector *Vector) __attribute__((unused));
+[[maybe_unused]] static void validate_tree(extVector *Vector);
 static void validate_tree(extVector *Vector)
 {
    pf::Log log(__FUNCTION__);

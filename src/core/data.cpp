@@ -64,9 +64,10 @@ bool glEnableCrashHandler = true;
 struct CoreBase *LocalCoreBase = nullptr;
 
 // NB: During shutdown, elements in glPrivateMemory are not erased but will have their fields cleared.
-ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;
+// Can't use ankerl here because removal of elements is too slow.
+std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;
 
-ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
+std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 
 std::condition_variable_any cvObjects;
 std::condition_variable_any cvResources;
@@ -75,7 +76,7 @@ std::list<CoreTimer> glTimers; // Locked with glmTimer.  std::list maintains sta
 std::list<FDRecord> glFDTable;
 
 std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes;
-ankerl::unordered_dense::map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
+std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup; // Name lookups
 
 std::mutex glmPrint;
 std::recursive_mutex glmMemory;
@@ -92,9 +93,9 @@ std::timed_mutex glmVolumes;
 ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
 ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB;
 ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
-ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
-ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
-ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren;
+std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
+std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory;
+std::unordered_map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren;
 ankerl::unordered_dense::map<uint32_t, std::string> glFields;
 
 std::unordered_multimap<uint32_t, CLASSID> glWildClassMap;

@@ -12,7 +12,6 @@ idl_gen ("${MOD}.fdl"
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
-target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
 add_compile_definitions("PRV_XML_MODULE" "PRV_XML")
 

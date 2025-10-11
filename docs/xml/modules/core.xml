@@ -1145,7 +1145,10 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
-      <error code="NullArgs">Function call missing argument value(s)</error>
+      <error code="Args">Invalid flags specified or memory block is not protected.</error>
+      <error code="MemoryDoesNotExist">The memory block is not valid or was not allocated with protection.</error>
+      <error code="SystemCall">A system call failed.</error>
+      <error code="NullArgs">Address is NULL.</error>
     </result>
   </function>
 

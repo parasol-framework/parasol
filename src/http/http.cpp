@@ -367,9 +367,7 @@ static ERR  socket_outgoing(objNetSocket *);
 
 //********************************************************************************************************************
 
-inline CSTRING GETSTATUS(int Code) __attribute__((unused));
-
-inline CSTRING GETSTATUS(int Code)
+[[maybe_unused]] inline CSTRING GETSTATUS(int Code)
 {
    for (int16_t i=0; clStatus[i].Name; i++) {
       if (clStatus[i].Value IS Code) return clStatus[i].Name;
