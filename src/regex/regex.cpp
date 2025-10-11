@@ -44,9 +44,9 @@ struct extRegex : public Regex {
 
 //********************************************************************************************************************
 
-static void process_result(std::string_view Text, const srell::cmatch &Native, FUNCTION *Callback)
+static ERR process_result(std::string_view Text, const srell::cmatch &Native, FUNCTION *Callback)
 {
-   if (not Callback) return;
+   if (not Callback) return ERR::Okay;
 
    int capture_count = Native.size();
 
@@ -56,23 +56,25 @@ static void process_result(std::string_view Text, const srell::cmatch &Native, F
    auto prefix_view = prefix.matched ? std::string_view(prefix.first, prefix.length()) : std::string_view();
    auto suffix_view = suffix.matched ? std::string_view(suffix.first, suffix.length()) : std::string_view();
 
-   pf::SwitchContext ctx(Callback->Context);
-   auto routine = (ERR(*)(int, std::string_view, std::string_view, std::string_view, APTR))Callback->Routine;
-
-   for (int index = 0; index < capture_count; ++index) {
-      const srell::sub_match<const char *> &segment = Native[index];
-
-      std::string_view segment_view = segment.matched ? std::string_view(segment.first, segment.length()) : std::string_view();
-
-      ERR error;
-      if (Callback->isC()) {
-         error = routine(index, segment_view, prefix_view, suffix_view, Callback->Meta);
-         if (error IS ERR::Terminate) break;
-      }
-      else if (Callback->isScript()) {
-         // TODO: Implement script callback handling
-      }
+   std::vector<std::string_view> captures;
+   captures.reserve(capture_count);
+   for (int i = 0; i < capture_count; ++i) {
+      const srell::sub_match<const char*>& segment = Native[i];
+      captures.push_back(segment.matched ? std::string_view(segment.first, segment.length()) : std::string_view());
    }
+
+   ERR error;
+   if (Callback->isC()) {
+      pf::SwitchContext ctx(Callback->Context);
+      auto routine = (ERR(*)(std::vector<std::string_view> &, std::string_view, std::string_view, APTR))Callback->Routine;
+      error = routine(captures, prefix_view, suffix_view, Callback->Meta);
+      if (error IS ERR::Terminate) return ERR::Terminate;
+   }
+   else if (Callback->isScript()) {
+      // TODO: Implement script callback handling
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -126,8 +128,8 @@ static srell::regex_constants::match_flag_type convert_match_flags(RMATCH Flags)
    if ((Flags & RMATCH::NOT_NULL) != RMATCH::NIL)          native |= (unsigned int)srell::regex_constants::match_not_null;
    if ((Flags & RMATCH::CONTINUOUS) != RMATCH::NIL)        native |= (unsigned int)srell::regex_constants::match_continuous;
    if ((Flags & RMATCH::PREV_AVAILABLE) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_prev_avail;
-   if ((Flags & RMATCH::FORMAT_NO_COPY) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::format_no_copy;
-   if ((Flags & RMATCH::FORMAT_FIRST_ONLY) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::format_first_only;
+   if ((Flags & RMATCH::REPLACE_NO_COPY) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::format_no_copy;
+   if ((Flags & RMATCH::REPLACE_FIRST_ONLY) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::format_first_only;
 
    return (srell::regex_constants::match_flag_type)native;
 }
@@ -240,16 +242,16 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
 /*********************************************************************************************************************
 
 -FUNCTION-
-Match: Performs regex matching.
+Match: Performs a single anchored regex match.
 
-Use Match() to perform a regex match on a given text. The function takes a compiled Regex object, the input Text,
-optional Flags to modify the matching behavior, and an optional Callback function to process the match results.
+Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled 
+Regex  object, the input Text, optional Flags to modify the matching behavior, and an optional Callback function to 
+process the match results.
 
-If a match is found, the Callback function is invoked once for each capture.  The C++ prototype for the
-Callback function is:
+The C++ prototype for the Callback function is:
 
 <pre>
-ERR callback(int Index, std::string_view Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
+ERR callback(std::vector<std::string_view> &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
 </pre>
 
 For more sophisticated matching needs, consider using ~Search() instead.
@@ -263,7 +265,7 @@ ptr(func) Callback: Optional.  Receives the match results.
 -ERRORS-
 Okay: A match was found and processed.
 NullArgs: One or more required input arguments were null.
-Search: No matches were found.
+Search: No match was found.
 -END-
 
 *********************************************************************************************************************/
@@ -353,6 +355,14 @@ Call Search() to search for a regex pattern in a given text. The function takes 
 the input text, optional flags to modify the matching behavior, and a callback function to process the
 match results. For each match that is found, the callback function is invoked with details about the match.
 
+The C++ prototype for the Callback function is:
+
+<pre>
+ERR callback(int Index, std::vector<std::string_view> &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
+</pre>
+
+Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0).
+
 -INPUT-
 ptr(struct(Regex)) Regex: The compiled regex object.
 cpp(strview) Text: The input text to perform matching on.
@@ -377,7 +387,7 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 
    std::string text_str(Text); // TODO: Inefficient, but srell::sregex_iterator requires a non-const string
    auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *sr);
-   auto end = srell::sregex_iterator();
+   auto end   = srell::sregex_iterator();
 
    bool match_found = false;
    int match_index = 0;
@@ -396,7 +406,7 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
          ERR error;
          if (Callback->isC()) {
             pf::SwitchContext ctx(Callback->Context);
-            auto routine = (ERR(*)(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, APTR))Callback->Routine;
+            auto routine = (ERR(*)(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, APTR))Callback->Routine;
             error = routine(match_index, captures, std::string_view(&(*match.prefix().first), match.prefix().length()), std::string_view(&(*match.suffix().first), match.suffix().length()), Callback->Meta);
             if (error IS ERR::Terminate) break;
          }

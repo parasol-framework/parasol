@@ -13,6 +13,7 @@ local function createTestXml()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
 function testCodepointConversions()
    local xml = createTestXml()
 
@@ -24,6 +25,7 @@ function testCodepointConversions()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
 function testStringFunctions()
    local xml = createTestXml()
 
@@ -50,6 +52,7 @@ function testStringFunctions()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
 function testAnalyzeString()
    local xml = createTestXml()
 
@@ -64,6 +67,7 @@ function testAnalyzeString()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
 function testResolveUri()
    local xml = createTestXml()
 
@@ -78,6 +82,7 @@ function testResolveUri()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
 function testFormattingFunctions()
    local xml = createTestXml()
 
@@ -95,6 +100,7 @@ function testFormattingFunctions()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testCodepointConversions', 'testStringFunctions', 'testAnalyzeString',
