@@ -326,7 +326,7 @@ static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
 {
    pf::Log log("ResolvePath");
 
-   if (Source IS Dest) return log.warning(ERR::SanityCheckFailed);
+   if (&Source IS &Dest) return log.warning(ERR::SanityCheckFailed);
 
    if (get_virtual(Source)) {
       Dest.assign(Source);

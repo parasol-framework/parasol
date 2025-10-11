@@ -263,7 +263,7 @@ process the match results.
 The C++ prototype for the Callback function is:
 
 <pre>
-ERR callback(std::vector<std::string_view> &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
+ERR callback(std::vector&lt;std::string_view&gt; &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
 </pre>
 
 For more sophisticated matching needs, consider using ~Search() instead.
@@ -345,7 +345,7 @@ match results. For each match that is found, the callback function is invoked wi
 The C++ prototype for the Callback function is:
 
 <pre>
-ERR callback(int Index, std::vector<std::string_view> &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
+ERR callback(int Index, std::vector&lt;std::string_view&gt; &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
 </pre>
 
 Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0).
