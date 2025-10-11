@@ -143,9 +143,9 @@
     <constants lookup="RMATCH">
       <const name="CONTINUOUS">Requires the match to start at the beginning of the sequence (anchored matching).</const>
       <const name="NOT_BEGIN_OF_LINE">Treats the first character in the sequence as NOT being at the beginning of a line, preventing <code>^</code> from matching at that position.</const>
-      <const name="NOT_BEGIN_OF_WORD">Treats the first character in the sequence as NOT being at the beginning of a word, affecting '' word boundary matching.</const>
+      <const name="NOT_BEGIN_OF_WORD">Treats the first character in the sequence as NOT being at the beginning of a word, affecting <code>\b</code> word boundary matching.</const>
       <const name="NOT_END_OF_LINE">Treats the last character in the sequence as NOT being at the end of a line, preventing <code>$</code> from matching at that position.</const>
-      <const name="NOT_END_OF_WORD">Treats the last character in the sequence as NOT being at the end of a word, affecting '' word boundary matching.</const>
+      <const name="NOT_END_OF_WORD">Treats the last character in the sequence as NOT being at the end of a word, affecting <code>\b</code> word boundary matching.</const>
       <const name="NOT_NULL">Prevents the regex engine from matching zero-length (empty) sequences.</const>
       <const name="PREV_AVAILABLE">Indicates that a valid character exists before the first position in the sequence, enabling proper look-behind and boundary assertions.</const>
       <const name="REPLACE_FIRST_ONLY">In Replace(), replaces only the first match and leaves subsequent matches unchanged.</const>

@@ -231,7 +231,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       if (!regex->srell) {
          static CSTRING msg = "Regex constructor failed";
          if (ErrorMsg) *ErrorMsg = msg;
-         log.msg(msg);
+         log.msg("%s", msg);
          return ERR::AllocMemory;
       }
       else if (auto err = regex->srell->ecode(); err != 0) {

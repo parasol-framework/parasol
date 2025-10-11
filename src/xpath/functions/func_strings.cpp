@@ -704,8 +704,6 @@ XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVa
    }
 
    SequenceBuilder builder;
-   size_t search_offset = 0;
-
    auto cb = C_FUNCTION(&analyze_string_cb, &builder);
    if (rx::Search(compiled, input, RMATCH::NIL, &cb) != ERR::Okay) {
       builder.nodes.push_back(nullptr);
