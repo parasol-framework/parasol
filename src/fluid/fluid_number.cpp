@@ -53,6 +53,11 @@ static int number_index(lua_State *Lua)
 ** Usage: num.[type]([Value])
 */
 
+static inline void number_set_type(fnumber *Number, int Type)
+{
+   Number->Type = Type;
+}
+
 static int number_f64(lua_State *Lua)
 {
    auto f64 = lua_tonumber(Lua, 1);
@@ -60,6 +65,7 @@ static int number_f64(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->f64 = f64;
+      number_set_type(num, NUM_DOUBLE);
       return 1;
    }
 
@@ -74,6 +80,7 @@ static int number_f32(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->f32 = f32;
+      number_set_type(num, NUM_FLOAT);
       return 1;
    }
 
@@ -88,6 +95,7 @@ static int number_i32(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i32 = i32;
+      number_set_type(num, NUM_LONG);
       return 1;
    }
 
@@ -102,6 +110,7 @@ static int number_i64(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i64 = i64;
+      number_set_type(num, NUM_LARGE);
       return 1;
    }
 
@@ -116,6 +125,7 @@ static int number_i16(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i16 = i16;
+      number_set_type(num, NUM_WORD);
       return 1;
    }
 
@@ -130,6 +140,7 @@ static int number_i8(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i8 = i8;
+      number_set_type(num, NUM_BYTE);
       return 1;
    }
 
