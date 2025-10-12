@@ -1970,10 +1970,8 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
          auto subscriber = tlContext->object()->UID;
 restart:
          for (auto & [action, list] : glSubscriptions[Object->UID]) {
-            for (auto it = list.begin(); it != list.end(); ) {
-               if (it->SubscriberID IS subscriber) it = list.erase(it);
-               else it++;
-            }
+            // Use C++20 std::erase_if for cleaner removal
+            std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
             if (list.empty()) {
                Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
@@ -1994,10 +1992,8 @@ restart:
       auto subscriber = tlContext->object()->UID;
 
       auto &list = glSubscriptions[Object->UID][int(ActionID)];
-      for (auto it = list.begin(); it != list.end(); ) {
-         if (it->SubscriberID IS subscriber) it = list.erase(it);
-         else it++;
-      }
+      // Use C++20 std::erase_if for cleaner removal
+      std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
       if (list.empty()) {
          Object->NotifyFlags.fetch_and(~(1<<(int(ActionID) & 63)), std::memory_order::relaxed);

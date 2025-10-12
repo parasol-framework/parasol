@@ -15,14 +15,14 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
 
 **Build and install:**
-- Build: `cmake --build build/agents --config Release --parallel`
-- Install: `cmake --build build/agents --config Release --parallel && cmake --install build/agents`
+- Build: `cmake --build build/agents --config FastBuild --parallel`
+- Install: `cmake --build build/agents --config FastBuild --parallel && cmake --install build/agents`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.
 
 **Testing:**
 - **ALWAYS** install your latest build before running `ctest`.
-- Run all integration tests: `ctest --build-config Release --test-dir build/agents`
-- Run single integration test: `ctest --build-config Release --test-dir build/agents -L TEST_LABEL`
+- Run all integration tests: `ctest --build-config FastBuild --test-dir build/agents`
+- Run single integration test: `ctest --build-config FastBuild --test-dir build/agents -L TEST_LABEL`
 - **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
@@ -36,7 +36,7 @@ Key build options (use with `-D` flag):
 - `RUN_ANYWHERE=ON/OFF` - Build for local folder execution
 - `PARASOL_VLOG=ON/OFF` - Enables trace level log messages in debug builds (has no effect on release builds).
 
-### Development in the Cloud (Temporary Sessions)
+### Development in the Cloud
 
 When working in ephemeral cloud environments:
 
@@ -45,7 +45,7 @@ When working in ephemeral cloud environments:
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild ...` rather than deleting the entire build tree.
 - Network access is available, so you may fetch upstream documentation or dependencies if a build script expects them.
 - If `parasol` is not already installed in `install/agents` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
-- If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  You should include the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
+- If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  If *certain* that the environment is cloud-based, you can consider including the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 ## Architecture Overview
 
@@ -228,7 +228,7 @@ For Fluid code, verify:
 **Full Build Commands:**
 ```bash
 # Build everything
-cmake --build build/agents --config Release --parallel
+cmake --build build/agents --config FastBuild --parallel
 
 # Install after successful build
 cmake --install build/agents
@@ -237,12 +237,12 @@ cmake --install build/agents
 **Module Build Commands:**
 ```bash
 # Build specific module (e.g., network, vector, svg, etc.)
-cmake --build build/agents --config Release --target [module_name] --parallel
+cmake --build build/agents --config FastBuild --target [module_name] --parallel
 
 # Examples:
-cmake --build build/agents --config Release --target network --parallel    # For network changes
-cmake --build build/agents --config Release --target vector --parallel     # For vector changes
-cmake --build build/agents --config Release --target svg --parallel        # For SVG changes
+cmake --build build/agents --config FastBuild --target network --parallel    # For network changes
+cmake --build build/agents --config FastBuild --target vector --parallel     # For vector changes
+cmake --build build/agents --config FastBuild --target svg --parallel        # For SVG changes
 ```
 
 ### Documentation
