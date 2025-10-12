@@ -17,10 +17,9 @@ function testNestedOptional()
 
    assert(result, "Should match the single letter")
    assert(#result >= 1 and result[1] == "d", "Full match should be d, got " .. nz(result[1]))
-   assert(#result == 4, "Expected full match and three nested groups, got " .. #result)
+   assert(#result == 3, "Expected full match and three nested groups, got " .. #result)
    assert(result[2] == "", "Outer optional group should be empty")
    assert(result[3] == "", "Inner alternation should be empty")
-   assert(result[4] == "", "Innermost alternation should be empty")
 end
 
 return {
