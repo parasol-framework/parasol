@@ -76,9 +76,9 @@ typedef struct XPathNode {
 } XPATHNODE;
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_XPATH static struct XPathBase *XPathBase;
+#define JUMPTABLE_XPATH [[maybe_unused]] static struct XPathBase *XPathBase = nullptr;
 #else
-#define JUMPTABLE_XPATH struct XPathBase *XPathBase;
+#define JUMPTABLE_XPATH struct XPathBase *XPathBase = nullptr;
 #endif
 
 struct XPathBase {

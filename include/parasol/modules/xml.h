@@ -526,9 +526,9 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 
 } // namespace
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_XML static struct XMLBase *XMLBase;
+#define JUMPTABLE_XML [[maybe_unused]] static struct XMLBase *XMLBase = nullptr;
 #else
-#define JUMPTABLE_XML struct XMLBase *XMLBase;
+#define JUMPTABLE_XML struct XMLBase *XMLBase = nullptr;
 #endif
 
 struct XMLBase {
