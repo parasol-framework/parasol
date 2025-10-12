@@ -305,16 +305,16 @@ constexpr int FIM_DEVICE   = 2;
 struct finput {
    objScript *Script;
    struct finput *Next;
-   APTR  KeyEvent;
+   APTR   KeyEvent;
    OBJECTID SurfaceID;
-   int   InputHandle;
-   int   Callback;
-   int   InputValue;
-   JTYPE Mask;
-   int8_t  Mode;
+   int    InputHandle;
+   int    Callback;
+   int    InputValue;
+   JTYPE  Mask;
+   int8_t Mode;
 };
 
-enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
+enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_INT64, NUM_INT, NUM_INT16, NUM_BYTE };
 
 struct fnumber { // TODO: Use std::variant
    int Type;     // Expressed as an FD_ flag.
