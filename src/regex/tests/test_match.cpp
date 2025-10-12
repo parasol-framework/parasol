@@ -32,6 +32,7 @@ static void log_fail(std::string_view TestName, std::string_view Reason)
 struct TestContext {
    bool match_found = false;
    int capture_count = 0;
+   int match_total = 0;
    std::string captured;
    std::vector<std::string_view> captures;
    std::string prefix_str;
@@ -54,7 +55,8 @@ static ERR match_callback(std::vector<std::string_view> &Captures, std::string_v
 static ERR search_callback(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, TestContext &Ctx)
 {
    Ctx.match_found = true;
-   Ctx.capture_count++;
+   Ctx.match_total++;
+   Ctx.capture_count = Captures.size();
    Ctx.captures = Captures;
    Ctx.match_start = MatchStart;
    Ctx.match_end = MatchEnd;
@@ -405,13 +407,46 @@ static void test_optional_groups(int &TotalTests, int &PassedTests)
       auto callback = C_FUNCTION(&match_callback, &ctx);
 
       if (rx::Match(regex, "42", RMATCH::NIL, &callback) IS ERR::Okay) {
-         if (ctx.capture_count >= 2) {
+         if ((ctx.capture_count IS 3)
+            and (ctx.captures[0] IS "42")
+            and (ctx.captures[1] IS "42")
+            and (ctx.captures[2].empty())) {
             log_success("Optional capture groups");
             PassedTests++;
          }
-         else log_fail(__FUNCTION__, "Expected at least 2 captures");
+         else log_fail(__FUNCTION__, "Expected three captures with an empty optional group");
       }
       else log_fail(__FUNCTION__, "Match returned error");
+
+      FreeResource(regex);
+   }
+   else log_fail(__FUNCTION__, "Could not compile regex");
+}
+
+//********************************************************************************************************************
+
+static void test_search_capture_normalisation(int &TotalTests, int &PassedTests)
+{
+   TotalTests++;
+   printf("\nTest 15: Search capture normalisation\n");
+   Regex *regex;
+   if (rx::Compile("(a)?(b)", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
+      TestContext ctx;
+      ctx.input_text = "b";
+      auto callback = C_FUNCTION(&search_callback, &ctx);
+
+      if (rx::Search(regex, "b", RMATCH::NIL, &callback) IS ERR::Okay) {
+         if ((ctx.match_total IS 1)
+            and (ctx.capture_count IS 3)
+            and (ctx.captures[0] IS "b")
+            and (ctx.captures[1].empty())
+            and (ctx.captures[2] IS "b")) {
+            log_success("Search capture normalisation");
+            PassedTests++;
+         }
+         else log_fail(__FUNCTION__, "Search captures were not normalised as expected");
+      }
+      else log_fail(__FUNCTION__, "Search returned error");
 
       FreeResource(regex);
    }
@@ -423,7 +458,7 @@ static void test_optional_groups(int &TotalTests, int &PassedTests)
 static void test_search_match_flags(int &TotalTests, int &PassedTests)
 {
    TotalTests++;
-   printf("\nTest 15: Search RMATCH flag handling\n");
+   printf("\nTest 16: Search RMATCH flag handling\n");
    Regex *regex;
    if (rx::Compile("\\bworld", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
       TestContext baseline_ctx;
@@ -453,10 +488,40 @@ static void test_search_match_flags(int &TotalTests, int &PassedTests)
 
 //********************************************************************************************************************
 
+static void test_named_capture_lookup(int &TotalTests, int &PassedTests)
+{
+   TotalTests++;
+   printf("\nTest 17: Named capture lookup\n");
+   Regex *regex;
+   if (rx::Compile("(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
+      pf::vector<int> indices;
+
+      if (rx::GetCaptureIndex(regex, "month", &indices) IS ERR::Okay) {
+         if ((indices.size() IS 1) and (indices[0] IS 2)) {
+            if (rx::GetCaptureIndex(regex, "missing", &indices) IS ERR::Search) {
+               if (indices.empty()) {
+                  log_success("Named capture lookup");
+                  PassedTests++;
+               }
+               else log_fail(__FUNCTION__, "Indices should be cleared on failed lookup");
+            }
+            else log_fail(__FUNCTION__, "Missing name should return ERR::Search");
+         }
+         else log_fail(__FUNCTION__, "Expected capture index 2 for 'month'");
+      }
+      else log_fail(__FUNCTION__, "Lookup for 'month' failed");
+
+      FreeResource(regex);
+   }
+   else log_fail(__FUNCTION__, "Could not compile regex");
+}
+
+//********************************************************************************************************************
+
 static void test_null_pointer_handling(int &TotalTests, int &PassedTests)
 {
    TotalTests++;
-   printf("\nTest 16: Null regex pointer handling\n");
+   printf("\nTest 18: Null regex pointer handling\n");
    if (rx::Match(nullptr, "test", RMATCH::NIL, nullptr) IS ERR::NullArgs) {
       log_success("Null pointer handling");
       PassedTests++;
@@ -496,7 +561,9 @@ int main(int argc, CSTRING *argv)
    test_nested_capture_groups(total_tests, passed_tests);
    test_unicode_support(total_tests, passed_tests);
    test_optional_groups(total_tests, passed_tests);
+   test_search_capture_normalisation(total_tests, passed_tests);
    test_search_match_flags(total_tests, passed_tests);
+   test_named_capture_lookup(total_tests, passed_tests);
    test_null_pointer_handling(total_tests, passed_tests);
 
    printf("\n=== Test Summary ===\n");

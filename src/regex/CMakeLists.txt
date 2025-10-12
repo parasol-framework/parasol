@@ -21,6 +21,8 @@ add_executable (test_regex_match "tests/test_match.cpp")
 target_link_libraries (test_regex_match PRIVATE ${INIT_LINK})
 set_target_properties (test_regex_match PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
 
+flute_test (regex_captures "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_captures.fluid")
+
 if (PARASOL_STATIC)
    # Test can run from build directory in static mode.  Otherwise needs to be installed.
    add_test (NAME test_regex_match COMMAND test_regex_match)

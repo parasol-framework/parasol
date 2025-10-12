@@ -46,8 +46,28 @@ static ERR MODOpen(OBJECTPTR);
 
 JUMPTABLE_CORE
 
+struct regex_engine : public srell::regex {
+   using srell::regex::regex;
+
+   bool resolve_named_capture(const std::string_view &Name, pf::vector<int> *Indices) const
+   {
+      using view_type = typename srell::re_detail::groupname_mapper<char>::view_type;
+      view_type name_view(Name.data(), Name.size());
+
+      const srell::re_detail::ui_l32 *list = this->namedcaptures[name_view];
+
+      if ((not list) or (list[0] IS 0)) return false;
+
+      for (srell::re_detail::ui_l32 i = 1; i <= list[0]; ++i) {
+         Indices->push_back((int)list[i]);
+      }
+
+      return true;
+   }
+};
+
 struct extRegex : public Regex {
-   srell::regex *srell = nullptr;  // Compiled SRELL regex object
+   regex_engine *srell = nullptr;  // Compiled SRELL regex object
 
    ~extRegex() {
       delete srell;
@@ -228,7 +248,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       if ((Flags & REGEX::GREP) != REGEX::NIL)      reg_flags |= srell::regex_constants::grep;
       if ((Flags & REGEX::DOT_ALL) != REGEX::NIL)   reg_flags |= srell::regex_constants::dotall;
 
-      regex->srell = new (std::nothrow) srell::regex(Pattern.data(), Pattern.size(), reg_flags);
+      regex->srell = new (std::nothrow) regex_engine(Pattern.data(), Pattern.size(), reg_flags);
       if (!regex->srell) {
          static CSTRING msg = "Regex constructor failed";
          if (ErrorMsg) *ErrorMsg = msg;
@@ -268,6 +288,12 @@ The C++ prototype for the Callback function is:
 <pre>
 ERR callback(std::vector&lt;std::string_view&gt; &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
 </pre>
+
+The Capture vector is always normalised to include every capturing group defined by the pattern, including the full
+match at index 0. Optional groups that did not participate in the match are represented by empty std::string_view
+instances, preserving positional indexing.
+
+Example: Pattern "(a)?(b)" matching "b" yields captures: ["b", "", "b"]
 
 For more sophisticated matching needs, consider using ~Search() instead.
 
@@ -351,10 +377,14 @@ The C++ prototype for the Callback function is:
 ERR callback(int Index, std::vector&lt;std::string_view&gt; &Capture, size_t MatchStart, size_t MatchEnd, APTR Meta);
 </pre>
 
-Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0). The `MatchStart`
-and `MatchEnd` parameters provide explicit byte offsets into the input text for the matched region.
+  Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0). The `MatchStart`
+  and `MatchEnd` parameters provide explicit byte offsets into the input text for the matched region.
 
--INPUT-
+  The Capture vector is always normalised so that its size matches the total number of capturing groups defined by the
+  pattern (including the full match at index 0). Optional groups that did not match are provided as empty
+  std::string_view instances, ensuring consistent indexing across matches.
+
+  -INPUT-
 ptr(struct(Regex)) Regex: The compiled regex object.
 cpp(strview) Text: The input text to perform matching on.
 int(RMATCH) Flags: Optional flags to modify the matching behavior.
@@ -387,11 +417,13 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
       const srell::smatch &match = *i;
 
       std::vector<std::string_view> captures;
+      captures.reserve(match.size());
       for (size_t j = 0; j < match.size(); ++j) {
          if (match[j].matched) {
             captures.emplace_back(&(*match[j].first), match[j].length());
             match_found = true;
          }
+         else captures.emplace_back();
       }
 
       if ((not captures.empty()) and (Callback)) {
@@ -416,6 +448,43 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
    }
 
    if (match_found) return ERR::Okay;
+   else return ERR::Search;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+GetCaptureIndex: Retrieves capture indices for a named group.
+
+Use GetCaptureIndex() to resolve the numeric capture indices associated with a named capture group. ECMAScript allows
+multiple groups to share the same name; this function therefore returns every index that matches the provided name.
+If no capture groups match the provided name, ERR::Search is returned.
+
+-INPUT-
+ptr(struct(Regex)) Regex: The compiled regex object.
+cpp(strview) Name: The capture group name to resolve.
+&cpp(array(int)) Indices: Receives the resulting capture indices.
+
+-ERRORS-
+Okay: The name was resolved and Indices populated.
+NullArgs: One or more required arguments were null.
+Search: The provided name does not exist within the regex.
+-END-
+
+*********************************************************************************************************************/
+
+ERR GetCaptureIndex(const Regex *Regex, const std::string_view &Name, pf::vector<int> *Indices)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((not Regex) or (not Indices)) return log.warning(ERR::NullArgs);
+
+   Indices->clear();
+
+   auto sr = ((const extRegex *)Regex)->srell;
+   if (not sr) return log.warning(ERR::NullArgs);
+
+   if (sr->resolve_named_capture(Name, Indices)) return ERR::Okay;
    else return ERR::Search;
 }
 
