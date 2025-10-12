@@ -1,6 +1,6 @@
 
-static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
-static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
+[[maybe_unused]] static HSV rgb_to_hsl(FRGB Colour);
+[[maybe_unused]] static FRGB hsl_to_rgb(HSV Colour);
 
 #if defined(DEBUG)
 static void debug_tree(CSTRING Header, OBJECTPTR) __attribute__ ((unused));

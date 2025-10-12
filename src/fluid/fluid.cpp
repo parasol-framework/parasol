@@ -44,6 +44,7 @@ For more information on the Fluid syntax, please refer to the official Fluid Ref
 #include <parasol/modules/xml.h>
 #include <parasol/modules/display.h>
 #include <parasol/modules/fluid.h>
+#include <parasol/modules/regex.h>
 
 #include <inttypes.h>
 
@@ -57,12 +58,15 @@ extern "C" {
 #include "hashes.h"
 
 JUMPTABLE_CORE
+JUMPTABLE_REGEX
 
 #include "defs.h"
 
 OBJECTPTR modDisplay = nullptr; // Required by fluid_input.c
 OBJECTPTR modFluid = nullptr;
+OBJECTPTR modRegex = nullptr;
 OBJECTPTR clFluid = nullptr;
+OBJECTPTR glFluidContext = nullptr;
 struct ActionTable *glActions = nullptr;
 ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, CaseInsensitiveEqual> glActionLookup;
 ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
@@ -137,23 +141,23 @@ static void flTestCall4(int Long, int64_t Large)
 {
    pf::Log log(__FUNCTION__);
    log.msg("Received long %d / $%.8x", Long, Long);
-   log.msg("Received large %" PF64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
+   log.msg("Received large %" PRId64 " / $%.8x%.8x", Large, (uint32_t)Large, (uint32_t)(Large>>32));
 }
 
-static int flTestCall5(int LongA, int LongB, int LongC, int LongD, int LongE, int64_t LongF)
+static int flTestCall5(int LongA, int LongB, int LongC, int LongD, int LongE, int64_t LargeF)
 {
    pf::Log log(__FUNCTION__);
-   log.msg("Received ints: %d, %d, %d, %d, %d, %" PF64, LongA, LongB, LongC, LongD, LongE, LongF);
-   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (int)LongF);
-   return LongF;
+   log.msg("Received ints: %d, %d, %d, %d, %d, %" PRId64, LongA, LongB, LongC, LongD, LongE, LargeF);
+   log.msg("Received ints: $%.8x, $%.8x, $%.8x, $%.8x, $%.8x, $%.8x", LongA, LongB, LongC, LongD, LongE, (int)LargeF);
+   return LargeF;
 }
 
 static int64_t flTestCall6(int long1, int64_t large1, int64_t large2, int long2, int64_t large3, double float1)
 {
    pf::Log log(__FUNCTION__);
-   log.msg("Received %d, %" PF64 ", %d, %d, %d", long1, large1, (int)large2, (int)long2, (int)large3);
+   log.msg("Received %d, %" PRId64 ", %d, %d, %d", long1, large1, (int)large2, (int)long2, (int)large3);
    log.msg("Received double %f", float1);
-   log.msg("Returning %" PF64, large2);
+   log.msg("Returning %" PRId64, large2);
    return large2;
 }
 
@@ -290,6 +294,8 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
 {
    CoreBase = argCoreBase;
 
+   glFluidContext = CurrentContext();
+
    argModule->get(FID_Root, modFluid);
 
    ActionList(&glActions, nullptr); // Get the global action table from the Core
@@ -312,6 +318,7 @@ static ERR MODExpunge(void)
    if (glMsgThread) { FreeResource(glMsgThread); glMsgThread = nullptr; }
    if (clFluid)     { FreeResource(clFluid); clFluid = nullptr; }
    if (modDisplay)  { FreeResource(modDisplay); modDisplay = nullptr; }
+   if (modRegex)    { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
 }
 
@@ -360,7 +367,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
 
    if (Type & FD_STRING)       lua_pushstring(prv->Lua, va_arg(list, STRING));
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
-   else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, int));
+   else if (Type & FD_INT)     lua_pushinteger(prv->Lua, va_arg(list, int));
    else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, int64_t));
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, double));
    else {

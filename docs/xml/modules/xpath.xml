@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="module.xsl"?>
+
+<book>
+  <info>
+    <name>XPath</name>
+    <type>module</type>
+    <version>1</version>
+    <copyright>Paul Manias © 2025</copyright>
+  </info>
+
+  <function>
+    <name>Compile</name>
+    <comment>Compiles an XPath or XQuery expression into an executable form.</comment>
+    <prototype>ERR xp::Compile(objXML * XML, CSTRING Query, struct XPathNode ** Result)</prototype>
+    <input>
+      <param type="objXML *" name="XML">The XML document context for the query (can be NULL if not needed).</param>
+      <param type="CSTRING" name="Query">A valid XPath or XQuery expression string.</param>
+      <param type="struct XPathNode **" name="Result">Receives a pointer to an XPathNode object on success.</param>
+    </input>
+    <description>
+<p>Call the Compile function to convert a valid XPath or XQuery expression string into a compiled form that can be executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and are treated as read-only for thread-safety.</p>
+<p>The XML parameter is not required for compilation, but can potentially enhance syntax checking when parsing the expression.  An additional benefit is that error messages will be defined in the #ErrorMsg field of the XML object if parsing fails.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Evaluate</name>
+    <comment>Evaluates a compiled XPath or XQuery expression against an XML document.</comment>
+    <prototype>ERR xp::Evaluate(objXML * XML, struct XPathNode * Query, struct XPathValue ** Result)</prototype>
+    <input>
+      <param type="objXML *" name="XML">The XML document to evaluate the query against.</param>
+      <param type="struct XPathNode *" name="Query">The compiled XPath or XQuery expression.</param>
+      <param type="struct XPathValue **" name="Result">Receives the result of the evaluation.</param>
+    </input>
+    <description>
+<p>Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document. The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="NullArgs">Function call missing argument value(s)</error>
+    </result>
+  </function>
+
+  <function>
+    <name>Query</name>
+    <comment>For node-based queries, evaluates a compiled expression and calls a function for each matching node.</comment>
+    <prototype>ERR xp::Query(objXML * XML, struct XPathNode * Query, FUNCTION * Callback)</prototype>
+    <input>
+      <param type="objXML *" name="XML">The XML document to evaluate the query against.</param>
+      <param type="struct XPathNode *" name="Query">The compiled XPath or XQuery expression.</param>
+      <param type="FUNCTION *" name="Callback">Pointer to a callback function that will be called for each matching node.  Can be NULL if searching for the first matching node.</param>
+    </input>
+    <description>
+<p>Use the Query function to scan an XML document for tags or attributes that match a compiled XPath or XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
+<p>If no callback is provided, the search stops after the first match and the XML object's cursor markers will reflect the position of the node.</p>
+<p>Note that valid function execution can return <code>ERR:Search</code> if zero matches are found.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">At least one matching node was found and processed.</error>
+      <error code="Search">No matching node was found.</error>
+      <error code="NoData">The XML document contains no data to search.</error>
+      <error code="Syntax">The provided query expression has syntax errors.</error>
+      <error code="NullArgs">At least one required parameter was not provided.</error>
+    </result>
+  </function>
+
+  <types>
+    <constants lookup="XPathNodeType">
+      <const name="AXIS_SPECIFIER"/>
+      <const name="BINARY_OP"/>
+      <const name="CONDITIONAL"/>
+      <const name="EXPRESSION"/>
+      <const name="FILTER"/>
+      <const name="FLWOR_EXPRESSION"/>
+      <const name="FOR_BINDING"/>
+      <const name="FOR_EXPRESSION"/>
+      <const name="FUNCTION_CALL"/>
+      <const name="LET_BINDING"/>
+      <const name="LET_EXPRESSION"/>
+      <const name="LITERAL"/>
+      <const name="LOCATION_PATH"/>
+      <const name="NAME_TEST"/>
+      <const name="NODE_TEST"/>
+      <const name="NODE_TYPE_TEST"/>
+      <const name="NUMBER"/>
+      <const name="PATH"/>
+      <const name="PREDICATE"/>
+      <const name="PROCESSING_INSTRUCTION_TEST"/>
+      <const name="QUANTIFIED_BINDING"/>
+      <const name="QUANTIFIED_EXPRESSION"/>
+      <const name="ROOT"/>
+      <const name="STEP"/>
+      <const name="STRING"/>
+      <const name="UNARY_OP"/>
+      <const name="UNION"/>
+      <const name="VARIABLE_REFERENCE"/>
+      <const name="WILDCARD"/>
+    </constants>
+
+  </types>
+  <structs>
+    <struct name="XPathNode" typeName="XPATHNODE">
+    </struct>
+
+  </structs>
+</book>

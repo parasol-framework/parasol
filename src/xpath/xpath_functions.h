@@ -21,6 +21,7 @@
 
 #include "../xml/xpath_value.h"
 #include "../xml/xml.h"
+#include "xpath.h"
 
 struct TransparentStringHash {
    using is_transparent = void;

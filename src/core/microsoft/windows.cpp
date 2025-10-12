@@ -1255,21 +1255,14 @@ extern "C" size_t winGetPageSize(void)
 
 extern "C" int winProtectMemory(void *Address, size_t Size, bool Read, bool Write, bool Exec)
 {
-   if (!Address || Size == 0) return 0;
+   if ((not Address) or (Size == 0)) return 0;
 
    DWORD protect = PAGE_NOACCESS;
-   if (Write && Exec)
-       protect = PAGE_EXECUTE_READWRITE;
-   else if (Write)
-       protect = PAGE_READWRITE;
-   else if (Read && Exec)
-       protect = PAGE_EXECUTE_READ;
-   else if (Read)
-       protect = PAGE_READONLY;
-   else if (Exec)
-       protect = PAGE_EXECUTE;
-   else
-       protect = PAGE_NOACCESS;
+   if (Write and Exec) protect = PAGE_EXECUTE_READWRITE;
+   else if (Write) protect = PAGE_READWRITE;
+   else if (Read and Exec) protect = PAGE_EXECUTE_READ;
+   else if (Read) protect = PAGE_READONLY;
+   else if (Exec) protect = PAGE_EXECUTE;
 
    DWORD old_protect;
    return VirtualProtect(Address, Size, protect, &old_protect) ? 1 : 0;
@@ -1529,11 +1522,9 @@ extern "C" int8_t winGetCommand(char *Path, char *Buffer, int BufferSize)
 
 extern "C" int winCurrentDirectory(char *Buffer, int BufferSize)
 {
-   int16_t i, len;
-
    Buffer[0] = 0;
-   if ((len = GetModuleFileNameA(nullptr, Buffer, BufferSize))) {
-      for (i=len; i > 0; i--) {
+   if (auto len = GetModuleFileNameA(nullptr, Buffer, BufferSize)) {
+      for (auto i=len; i > 0; i--) {
          if (Buffer[i] IS '\\') {
             Buffer[i+1] = 0;
             break;

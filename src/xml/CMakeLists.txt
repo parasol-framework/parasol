@@ -12,7 +12,6 @@ idl_gen ("${MOD}.fdl"
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
-target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xml")
 add_compile_definitions("PRV_XML_MODULE" "PRV_XML")
 
@@ -66,11 +65,3 @@ flute_test (${MOD}_xpath_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_qna
 flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_documents.fluid")
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
 flute_test (${MOD}_xpath_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_accessor.fluid")
-
-if (INSTALL_TESTS)
-   # This test is redundant but is being retained as an example for C++
-   add_executable (test_xml_count_debug "tests/test_count_debug.cpp")
-   target_link_libraries (test_xml_count_debug PRIVATE ${INIT_LINK})
-   set_target_properties (test_xml_count_debug PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
-   install (TARGETS test_xml_count_debug DESTINATION "tests/")
-endif ()

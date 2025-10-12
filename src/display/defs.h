@@ -105,6 +105,7 @@
 
 #include <parasol/modules/display.h>
 #include <parasol/modules/xml.h>
+#include <parasol/modules/regex.h>
 #include <parasol/strings.hpp>
 #include "../link/linear_rgb.h"
 #include "../link/unicode.h"
@@ -405,7 +406,7 @@ extern void redraw_nonintersect(OBJECTID, const SURFACELIST &, int, const ClipRe
 extern ERR  _expose_surface(OBJECTID, const SURFACELIST &, int, int, int, int, int, EXF);
 extern ERR  _redraw_surface(OBJECTID, const SURFACELIST &, int, int, int, int, int, IRF);
 extern void _redraw_surface_do(extSurface *, const SURFACELIST &, int, ClipRectangle &, extBitmap *, IRF);
-extern void check_styles(STRING Path, OBJECTPTR *Script) __attribute__((unused));
+[[maybe_unused]] extern void check_styles(STRING Path, OBJECTPTR *Script);
 extern ERR  update_surface_copy(extSurface *);
 extern ERR  update_display(extDisplay *, extBitmap *, int X, int Y, int Width, int Height, int XDest, int YDest);
 extern void get_resolutions(extDisplay *);
@@ -417,7 +418,7 @@ extern void print_layer_list(STRING Function, SurfaceControl *Ctl, int POI)
 #endif
 
 extern bool glSixBitDisplay;
-extern OBJECTPTR glModule;
+extern OBJECTPTR glModule, glDisplayContext;
 extern OBJECTPTR clDisplay, clPointer, clBitmap, clClipboard, clSurface, clController;
 extern OBJECTID glPointerID;
 extern DISPLAYINFO glDisplayInfo;

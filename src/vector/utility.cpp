@@ -2,8 +2,8 @@
 agg::gamma_lut<uint8_t, uint16_t, 8, 12> glGamma(2.2);
 double glDisplayHDPI = 96, glDisplayVDPI = 96, glDisplayDPI = 96;
 
-static HSV rgb_to_hsl(FRGB Colour) __attribute__((unused));
-static FRGB hsl_to_rgb(HSV Colour) __attribute__((unused));
+[[maybe_unused]] static HSV rgb_to_hsl(FRGB Colour);
+[[maybe_unused]] static FRGB hsl_to_rgb(HSV Colour);
 static void read_numseq_zero(CSTRING &, std::initializer_list<double *>);
 
 //********************************************************************************************************************

@@ -364,8 +364,9 @@ function module(Options, Function)
       if mod_desc then
          local name
          name, glModule.comment, glModule.description = mod_desc:match('\n(%w+):%s+(.-)\n\n(.+)')
-
-         if (name:lower() != glModule.name:lower()) then
+         if not name then
+            error('The -MODULE- header for ' .. nz(glModule.name,'NIL') .. ' is incorrectly defined.')
+         elseif (name:lower() != glModule.name:lower()) then
             error("The name specified in the -MODULE- header '" .. name .. "' does not match the name specified in the module() call '" .. glModule.name .. "'")
          end
       end
@@ -2341,9 +2342,9 @@ function saveOutput()
          if (glOutput[a] == "__FUNCTION_TABLE__") then
             local out = ''
             out = out .. "#ifdef PARASOL_STATIC\n"
-            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " static struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " [[maybe_unused]] static struct " .. glModule.name .. "Base *" .. glModule.name .. "Base = nullptr;\n"
             out = out .. "#else\n"
-            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
+            out = out .. "#define JUMPTABLE_" .. glModule.name:upper() .. " struct " .. glModule.name .. "Base *" .. glModule.name .. "Base = nullptr;\n"
             out = out .. "#endif\n\n"
 
             out = out .. "struct " .. glModule.name .. "Base {\n"
