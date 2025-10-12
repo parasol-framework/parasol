@@ -190,8 +190,7 @@ extern "C" void end_of_stream(OBJECTPTR Object, int BytesRemaining)
 //********************************************************************************************************************
 // Stubs.
 
-static SFM sample_format(extSound *Self) __attribute__((unused));
-static SFM sample_format(extSound *Self)
+[[maybe_unused]] static SFM sample_format(extSound *Self)
 {
    if (Self->BitsPerSample IS 8) {
       if ((Self->Flags & SDF::STEREO) != SDF::NIL) return SFM::U8_BIT_STEREO;
@@ -204,8 +203,7 @@ static SFM sample_format(extSound *Self)
    return SFM::NIL;
 }
 
-static ERR snd_init_audio(extSound *Self) __attribute__((unused));
-static ERR snd_init_audio(extSound *Self)
+[[maybe_unused]] static ERR snd_init_audio(extSound *Self)
 {
    pf::Log log;
 

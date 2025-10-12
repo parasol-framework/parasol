@@ -339,17 +339,17 @@ __export void Expunge(int16_t Force)
                   if (auto error = mod_master->Expunge(); error IS ERR::Okay) {
                      ccount++;
                      if (FreeResource(mod_master) != ERR::Okay) {
-                        log.warning("RootModule data is corrupt");
+                        log.warning("RootModule is corrupt");
                         mod_count = ccount; // Break the loop because the chain links are broken.
                         break;
                      }
                   }
-                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" does not want to be flushed.",mod_master->Name.c_str());
+                  else if (error != ERR::DoNotExpunge) log.msg("Module \"%s\" rejected expunge request.",mod_master->Name.c_str());
                }
                else {
                   ccount++;
                   if (FreeResource(mod_master) != ERR::Okay) {
-                     log.warning("RootModule data is corrupt");
+                     log.warning("RootModule is corrupt");
                      mod_count = ccount; // Break the loop because the chain links are broken.
                      break;
                   }

@@ -12,7 +12,6 @@ idl_gen ("${MOD}.fdl"
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
-target_link_libraries (${MOD} PRIVATE link_regex)
 set_module_defaults (${MOD} "Xp")
 
 # XPath Support Library

@@ -1,0 +1,35 @@
+--$FLUID:Include
+
+module({ name="Regex", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611, src="regex.cpp" }, function()
+  flags("REGEX", { comment="Optional flags for the Regex functions." },
+    "ICASE: Ignore case.",
+    "MULTILINE: `^` and `$` match line boundaries.",
+    "DOT_ALL: `.` matches newlines.",
+    "EXTENDED: Allow whitespace and comments.",
+    "AWK: AWK syntax.",
+    "GREP: GREP syntax.")
+
+  flags("RMATCH", { },
+    "NOT_BEGIN_OF_LINE: Treats the first character in the sequence as NOT being at the beginning of a line, preventing `^` from matching at that position.",
+    "NOT_END_OF_LINE:   Treats the last character in the sequence as NOT being at the end of a line, preventing `$` from matching at that position.",
+    "NOT_BEGIN_OF_WORD: Treats the first character in the sequence as NOT being at the beginning of a word, affecting `\\b` word boundary matching.",
+    "NOT_END_OF_WORD:   Treats the last character in the sequence as NOT being at the end of a word, affecting `\\b` word boundary matching.",
+    "NOT_NULL:          Prevents the regex engine from matching zero-length (empty) sequences.",
+    "CONTINUOUS:        Requires the match to start at the beginning of the sequence (anchored matching).",
+    "PREV_AVAILABLE:    Indicates that a valid character exists before the first position in the sequence, enabling proper look-behind and boundary assertions.",
+    "REPLACE_NO_COPY:    In Replace(), prevents copying non-matched portions of the input to the output.",
+    "REPLACE_FIRST_ONLY: In Replace(), replaces only the first match and leaves subsequent matches unchanged.")
+
+  struct("Regex", { comment="Compiled regex structure." }, [[
+   cpp(str) pattern   # Original pattern string
+   cpp(str) error_msg # Error message if compilation failed
+   int(REGEX) flags   # Compilation flags
+  ]])
+
+  functionNames("rx",
+    "Compile",
+    "Match",
+    "Search",
+    "Replace",
+    "Split")
+end)

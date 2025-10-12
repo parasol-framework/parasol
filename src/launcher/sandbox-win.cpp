@@ -25,8 +25,8 @@ IntegrityLevel get_integrity_level();
 static const char * GetIntegrityLevelString(IntegrityLevel integrity_level);
 
 #ifdef __GNUC__
-static int str_copy(const char *String, char *Dest, int Length) __attribute__((unused));
-static ERR set_low_file(LPCWSTR pwszFileName) __attribute__((unused));
+[[maybe_unused]] static int str_copy(const char *String, char *Dest, int Length);
+[[maybe_unused]] static ERR set_low_file(LPCWSTR pwszFileName);
 #endif
 
 static int str_copy(const char *String, char *Dest, int Length)

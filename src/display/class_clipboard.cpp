@@ -29,13 +29,12 @@ there is a fixed limit to the clip count and the oldest members are automaticall
 *********************************************************************************************************************/
 
 #include "defs.h"
-#include "../link/srell/srell.hpp"
 
 #ifdef _WIN32
 using namespace display;
 #endif
 
-#define MAX_CLIPS 10 // Maximum number of clips stored in the historical buffer
+constexpr int MAX_CLIPS = 10; // Maximum number of clips stored in the historical buffer
 
 static const FieldDef glDatatypes[] = {
    { "data",   CLIPTYPE::DATA },
@@ -78,15 +77,18 @@ void clean_clipboard(void)
    if (OpenDir("clipboard:", RDF::FILE|RDF::DATE, &dir) IS ERR::Okay) {
       LocalResource free_dir(dir);
 
-      while (ScanDir(dir) IS ERR::Okay) {
-         const srell::regex txt_regex("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$");
-         if (srell::regex_match(dir->Info->Name, txt_regex)) {
-            if (dir->Info->TimeStamp < yesterday) {
-               std::string path("clipboard:");
-               path.append(dir->Info->Name);
-               DeleteFile(path.c_str(), nullptr);
+      Regex *compiled;
+      if (rx::Compile("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$", REGEX::NIL, nullptr, &compiled) IS ERR::Okay) {
+         while (ScanDir(dir) IS ERR::Okay) {
+            if (rx::Match(compiled, dir->Info->Name, RMATCH::NIL, nullptr) IS ERR::Okay) {
+               if (dir->Info->TimeStamp < yesterday) {
+                  std::string path("clipboard:");
+                  path.append(dir->Info->Name);
+                  DeleteFile(path.c_str(), nullptr);
+               }
             }
          }
+         FreeResource(compiled);
       }
    }
 }
