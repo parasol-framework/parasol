@@ -277,6 +277,43 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
 /*********************************************************************************************************************
 
 -FUNCTION-
+GetCaptureIndex: Retrieves capture indices for a named group.
+
+Use GetCaptureIndex() to resolve the numeric capture indices associated with a named capture group. ECMAScript allows
+multiple groups to share the same name; this function therefore returns every index that matches the provided name.
+If no capture groups match the provided name, `ERR::Search` is returned.
+
+-INPUT-
+ptr(struct(Regex)) Regex: The compiled regex object.
+cpp(strview) Name: The capture group name to resolve.
+&cpp(array(int)) Indices: Receives the resulting capture indices.
+
+-ERRORS-
+Okay: The name was resolved and Indices populated.
+NullArgs: One or more required arguments were null.
+Search: The provided name does not exist within the regex.
+-END-
+
+*********************************************************************************************************************/
+
+ERR GetCaptureIndex(Regex *Regex, const std::string_view &Name, pf::vector<int> *Indices)
+{
+   pf::Log log(__FUNCTION__);
+
+   if ((not Regex) or (not Indices)) return log.warning(ERR::NullArgs);
+
+   Indices->clear();
+
+   auto sr = ((const extRegex *)Regex)->srell;
+   if (not sr) return log.warning(ERR::NullArgs);
+
+   if (sr->resolve_named_capture(Name, Indices)) return ERR::Okay;
+   else return ERR::Search;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 Match: Performs a single anchored regex match.
 
 Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled
@@ -377,14 +414,14 @@ The C++ prototype for the Callback function is:
 ERR callback(int Index, std::vector&lt;std::string_view&gt; &Capture, size_t MatchStart, size_t MatchEnd, APTR Meta);
 </pre>
 
-  Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0). The `MatchStart`
-  and `MatchEnd` parameters provide explicit byte offsets into the input text for the matched region.
+Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0). The `MatchStart`
+and `MatchEnd` parameters provide explicit byte offsets into the input text for the matched region.
 
-  The Capture vector is always normalised so that its size matches the total number of capturing groups defined by the
-  pattern (including the full match at index 0). Optional groups that did not match are provided as empty
-  std::string_view instances, ensuring consistent indexing across matches.
+The Capture vector is always normalised so that its size matches the total number of capturing groups defined by the
+pattern (including the full match at index 0). Optional groups that did not match are provided as empty
+`std::string_view` instances, ensuring consistent indexing across matches.
 
-  -INPUT-
+-INPUT-
 ptr(struct(Regex)) Regex: The compiled regex object.
 cpp(strview) Text: The input text to perform matching on.
 int(RMATCH) Flags: Optional flags to modify the matching behavior.
@@ -454,43 +491,6 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 /*********************************************************************************************************************
 
 -FUNCTION-
-GetCaptureIndex: Retrieves capture indices for a named group.
-
-Use GetCaptureIndex() to resolve the numeric capture indices associated with a named capture group. ECMAScript allows
-multiple groups to share the same name; this function therefore returns every index that matches the provided name.
-If no capture groups match the provided name, ERR::Search is returned.
-
--INPUT-
-ptr(struct(Regex)) Regex: The compiled regex object.
-cpp(strview) Name: The capture group name to resolve.
-&cpp(array(int)) Indices: Receives the resulting capture indices.
-
--ERRORS-
-Okay: The name was resolved and Indices populated.
-NullArgs: One or more required arguments were null.
-Search: The provided name does not exist within the regex.
--END-
-
-*********************************************************************************************************************/
-
-ERR GetCaptureIndex(const Regex *Regex, const std::string_view &Name, pf::vector<int> *Indices)
-{
-   pf::Log log(__FUNCTION__);
-
-   if ((not Regex) or (not Indices)) return log.warning(ERR::NullArgs);
-
-   Indices->clear();
-
-   auto sr = ((const extRegex *)Regex)->srell;
-   if (not sr) return log.warning(ERR::NullArgs);
-
-   if (sr->resolve_named_capture(Name, Indices)) return ERR::Okay;
-   else return ERR::Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
 Split: Split a string into tokens, using a regex pattern to denote the delimiter.
 
 Call Split() to divide a string into multiple tokens based on a regex pattern that defines the delimiters.
@@ -540,6 +540,7 @@ ERR Split(Regex *Regex, const std::string_view &Text, pf::vector<std::string> *O
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
+   { "Regex", sizeof(struct Regex) }
 };
 
 PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)

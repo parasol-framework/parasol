@@ -55,7 +55,7 @@ struct RegexBase {
    ERR (*_Search)(struct Regex *Regex, const std::string_view & Text, RMATCH Flags, FUNCTION *Callback);
    ERR (*_Replace)(struct Regex *Regex, const std::string_view & Text, const std::string_view & Replacement, std::string *Output, RMATCH Flags);
    ERR (*_Split)(struct Regex *Regex, const std::string_view & Text, pf::vector<std::string> *Output, RMATCH Flags);
-   ERR (*_GetCaptureIndex)(const struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
+   ERR (*_GetCaptureIndex)(struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
 #endif // PARASOL_STATIC
 };
 
@@ -68,7 +68,7 @@ inline ERR Match(struct Regex *Regex, const std::string_view & Text, RMATCH Flag
 inline ERR Search(struct Regex *Regex, const std::string_view & Text, RMATCH Flags, FUNCTION *Callback) { return RegexBase->_Search(Regex,Text,Flags,Callback); }
 inline ERR Replace(struct Regex *Regex, const std::string_view & Text, const std::string_view & Replacement, std::string *Output, RMATCH Flags) { return RegexBase->_Replace(Regex,Text,Replacement,Output,Flags); }
 inline ERR Split(struct Regex *Regex, const std::string_view & Text, pf::vector<std::string> *Output, RMATCH Flags) { return RegexBase->_Split(Regex,Text,Output,Flags); }
-inline ERR GetCaptureIndex(const struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices) { return RegexBase->_GetCaptureIndex(Regex,Name,Indices); }
+inline ERR GetCaptureIndex(struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices) { return RegexBase->_GetCaptureIndex(Regex,Name,Indices); }
 } // namespace
 #else
 namespace rx {
@@ -77,7 +77,7 @@ extern ERR Match(struct Regex *Regex, const std::string_view & Text, RMATCH Flag
 extern ERR Search(struct Regex *Regex, const std::string_view & Text, RMATCH Flags, FUNCTION *Callback);
 extern ERR Replace(struct Regex *Regex, const std::string_view & Text, const std::string_view & Replacement, std::string *Output, RMATCH Flags);
 extern ERR Split(struct Regex *Regex, const std::string_view & Text, pf::vector<std::string> *Output, RMATCH Flags);
-extern ERR GetCaptureIndex(const struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
+extern ERR GetCaptureIndex(struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

@@ -42,6 +42,25 @@
   </function>
 
   <function>
+    <name>GetCaptureIndex</name>
+    <comment>Retrieves capture indices for a named group.</comment>
+    <prototype>ERR rx::GetCaptureIndex(struct Regex * Regex, const std::string_view &amp; Name, pf::vector&lt;int&gt; * Indices)</prototype>
+    <input>
+      <param type="struct Regex *" name="Regex">The compiled regex object.</param>
+      <param type="const std::string_view &amp;" name="Name">The capture group name to resolve.</param>
+      <param type="pf::vector&lt;int&gt; *" name="Indices">Receives the resulting capture indices.</param>
+    </input>
+    <description>
+<p>Use GetCaptureIndex() to resolve the numeric capture indices associated with a named capture group. ECMAScript allows multiple groups to share the same name; this function therefore returns every index that matches the provided name. If no capture groups match the provided name, <code>ERR::Search</code> is returned.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">The name was resolved and Indices populated.</error>
+      <error code="Search">The provided name does not exist within the regex.</error>
+      <error code="NullArgs">One or more required arguments were null.</error>
+    </result>
+  </function>
+
+  <function>
     <name>Match</name>
     <comment>Performs a single anchored regex match.</comment>
     <prototype>ERR rx::Match(struct Regex * Regex, const std::string_view &amp; Text, RMATCH Flags, FUNCTION * Callback)</prototype>
@@ -56,6 +75,8 @@
 <p>The C++ prototype for the Callback function is:</p>
 <pre>ERR callback(std::vector&lt;std::string_view&gt; &amp;Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
 </pre>
+<p>The Capture vector is always normalised to include every capturing group defined by the pattern, including the full match at index 0. Optional groups that did not participate in the match are represented by empty std::string_view instances, preserving positional indexing.</p>
+<p>Example: Pattern &quot;(a)?(b)&quot; matching &quot;b&quot; yields captures: [&quot;b&quot;, &quot;&quot;, &quot;b&quot;]</p>
 <p>For more sophisticated matching needs, consider using <function>Search</function> instead.</p>
     </description>
     <result type="ERR">
@@ -101,6 +122,7 @@
 <pre>ERR callback(int Index, std::vector&lt;std::string_view&gt; &amp;Capture, size_t MatchStart, size_t MatchEnd, APTR Meta);
 </pre>
 <p>Note the inclusion of the <code>Index</code> parameter, which indicates the match number (starting from 0). The <code>MatchStart</code> and <code>MatchEnd</code> parameters provide explicit byte offsets into the input text for the matched region.</p>
+<p>The Capture vector is always normalised so that its size matches the total number of capturing groups defined by the pattern (including the full match at index 0). Optional groups that did not match are provided as empty <code>std::string_view</code> instances, ensuring consistent indexing across matches.</p>
     </description>
     <result type="ERR">
       <error code="Okay">At least one match was found and processed.</error>
