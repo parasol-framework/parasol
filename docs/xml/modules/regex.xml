@@ -155,9 +155,8 @@
   </types>
   <structs>
     <struct name="Regex" comment="Compiled regex structure.">
-      <field name="pattern" type="std::string">Original pattern string</field>
-      <field name="error_msg" type="std::string">Error message if compilation failed</field>
-      <field name="flags" type="REGEX" lookup="REGEX">Compilation flags</field>
+      <field name="Pattern" type="std::string">Original pattern string</field>
+      <field name="Flags" type="REGEX" lookup="REGEX">Compilation flags</field>
     </struct>
 
   </structs>

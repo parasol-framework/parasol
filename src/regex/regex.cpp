@@ -217,8 +217,8 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
    if (AllocMemory(sizeof(struct extRegex), MEM::MANAGED, &regex) IS ERR::Okay) {
       SetResourceMgr(regex, &glRegexMgr);
       new (regex) extRegex();
-      regex->pattern = Pattern;
-      regex->flags = Flags;
+      regex->Pattern = Pattern;
+      regex->Flags = Flags;
 
       auto reg_flags = srell::regex_constants::ECMAScript; // Default syntax
       if ((Flags & REGEX::ICASE) != REGEX::NIL)     reg_flags |= srell::regex_constants::icase;
@@ -232,12 +232,14 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
          static CSTRING msg = "Regex constructor failed";
          if (ErrorMsg) *ErrorMsg = msg;
          log.msg("%s", msg);
+         FreeResource(regex);
          return ERR::AllocMemory;
       }
       else if (auto err = regex->srell->ecode(); err != 0) {
          auto error_msg = map_error_code(err);
          log.warning("Regex compilation failed: %s", error_msg.c_str());
          if (ErrorMsg) *ErrorMsg = error_msg;
+         FreeResource(regex);
          return ERR::Syntax;
       }
       else {

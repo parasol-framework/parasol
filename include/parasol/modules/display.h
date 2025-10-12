@@ -1700,9 +1700,9 @@ class objSurface : public Object {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_DISPLAY [[maybe_unused]] static struct DisplayBase *DisplayBase;
+#define JUMPTABLE_DISPLAY [[maybe_unused]] static struct DisplayBase *DisplayBase = nullptr;
 #else
-#define JUMPTABLE_DISPLAY struct DisplayBase *DisplayBase;
+#define JUMPTABLE_DISPLAY struct DisplayBase *DisplayBase = nullptr;
 #endif
 
 struct DisplayBase {

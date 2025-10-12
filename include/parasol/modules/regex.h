@@ -38,9 +38,8 @@ enum class RMATCH : uint32_t {
 DEFINE_ENUM_FLAG_OPERATORS(RMATCH)
 
 struct Regex {
-   std::string pattern;    // Original pattern string
-   std::string error_msg;  // Error message if compilation failed
-   REGEX flags;            // Compilation flags
+   std::string Pattern;    // Original pattern string
+   REGEX Flags;            // Compilation flags
 };
 
 #ifdef PARASOL_STATIC

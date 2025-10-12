@@ -21,9 +21,8 @@ module({ name="Regex", copyright="Paul Manias © 2025", version=1.0, timestamp=2
     "REPLACE_FIRST_ONLY: In Replace(), replaces only the first match and leaves subsequent matches unchanged.")
 
   struct("Regex", { comment="Compiled regex structure." }, [[
-   cpp(str) pattern   # Original pattern string
-   cpp(str) error_msg # Error message if compilation failed
-   int(REGEX) flags   # Compilation flags
+   cpp(str)   Pattern   # Original pattern string
+   int(REGEX) Flags     # Compilation flags
   ]])
 
   functionNames("rx",
