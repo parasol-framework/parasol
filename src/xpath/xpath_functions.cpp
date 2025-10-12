@@ -276,9 +276,9 @@ enum class DurationParseStatus { Empty, Error, Value };
 
 static void normalise_duration_components(DurationComponents &Components)
 {
-   long long total_months = (long long)Components.years.count() * 12ll + (long long)Components.months.count();
-   long long normalised_years = total_months / 12ll;
-   long long normalised_months = total_months % 12ll;
+   int64_t total_months = (int64_t)Components.years.count() * 12ll + (int64_t)Components.months.count();
+   int64_t normalised_years = total_months / 12ll;
+   int64_t normalised_months = total_months % 12ll;
 
    Components.years = std::chrono::years(normalised_years);
    Components.months = std::chrono::months(normalised_months);
@@ -607,10 +607,10 @@ static bool parse_date_time_components(std::string_view Text, DateTimeComponents
    return parse_time_value(Text, Components);
 }
 
-static std::string format_integer_component(long long Value, int Width, bool ZeroPad)
+static std::string format_integer_component(int64_t Value, int Width, bool ZeroPad)
 {
    bool negative = Value < 0;
-   unsigned long long absolute = negative ? (unsigned long long)(-Value) : (unsigned long long)Value;
+   uint64_t absolute = negative ? (uint64_t)(-Value) : (uint64_t)Value;
    std::string digits = std::to_string(absolute);
 
    if ((Width > 0) and ((int)digits.length() < Width)) {
@@ -663,7 +663,7 @@ static std::string format_component(const DateTimeComponents &Components, const 
       case 'H': return format_integer_component(Components.hour, (width > 0) ? width : 2, true);
       case 'm': return format_integer_component(Components.minute, (width > 0) ? width : 2, true);
       case 's': {
-         long long rounded = (long long)std::llround(Components.second);
+         int64_t rounded = (int64_t)std::llround(Components.second);
          return format_integer_component(rounded, (width > 0) ? width : 2, true);
       }
       case 'Z':
@@ -709,8 +709,8 @@ static std::string format_seconds_field(double Value)
    double integral_part = 0.0;
    double fractional_part = std::modf(Value, &integral_part);
 
-   long long integral_seconds = (long long)integral_part;
-   long long fractional_microseconds = (long long)std::llround(fractional_part * 1000000.0);
+   int64_t integral_seconds = (int64_t)integral_part;
+   int64_t fractional_microseconds = (int64_t)std::llround(fractional_part * 1000000.0);
 
    if (fractional_microseconds >= 1000000ll) {
       fractional_microseconds -= 1000000ll;
@@ -819,7 +819,7 @@ static bool parse_timezone_duration(const std::string &Text, int &OffsetMinutes)
    if (components.has_year or components.has_month or components.has_day) return false;
    if (components.has_second) return false;
 
-   long long total_minutes = components.hours.count() * 60ll + components.minutes.count();
+   int64_t total_minutes = components.hours.count() * 60ll + components.minutes.count();
    if (components.negative) total_minutes = -total_minutes;
 
    if (total_minutes < -14ll * 60ll or total_minutes > 14ll * 60ll) return false;
@@ -884,8 +884,8 @@ static bool components_to_utc_time(const DateTimeComponents &Components, int Imp
    double integral_part = 0.0;
    double fractional_part = std::modf(seconds_value, &integral_part);
 
-   long long integral_seconds = (long long)integral_part;
-   long long microseconds_value = (long long)std::llround(fractional_part * 1000000.0);
+   int64_t integral_seconds = (int64_t)integral_part;
+   int64_t microseconds_value = (int64_t)std::llround(fractional_part * 1000000.0);
 
    if (microseconds_value >= 1000000ll) {
       microseconds_value -= 1000000ll;
@@ -943,10 +943,10 @@ static DateTimeComponents components_from_utc_time(const std::chrono::sys_time<s
    return result;
 }
 
-static std::string format_integer_picture(long long Value, const std::string &Picture)
+static std::string format_integer_picture(int64_t Value, const std::string &Picture)
 {
    bool negative = Value < 0;
-   unsigned long long absolute = negative ? (unsigned long long)(-Value) : (unsigned long long)Value;
+   uint64_t absolute = negative ? (uint64_t)(-Value) : (uint64_t)Value;
    std::string digits = std::to_string(absolute);
 
    size_t digit_slots = 0u;

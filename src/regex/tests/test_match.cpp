@@ -491,10 +491,9 @@ int main(int argc, CSTRING *argv)
    printf("\n=== Test Summary ===\n");
    printf("Passed: %d/%d tests\n", passed_tests, total_tests);
 
-   int result;
+   int result = 0;
    if (passed_tests IS total_tests) {
       printf("✓ All tests PASSED!\n");
-      result = 0;
    }
    else {
       printf("✗ Some tests FAILED!\n");
@@ -504,5 +503,6 @@ int main(int argc, CSTRING *argv)
    printf("\n=== Test Complete ===\n");
 
    FreeResource(modRegex);
+   close_parasol();
    return result;
 }

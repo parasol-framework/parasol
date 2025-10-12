@@ -61,17 +61,17 @@ XPathVal XPathFunctionLibrary::function_codepoints_to_string(const std::vector<X
 
    const XPathVal &sequence = Args[0];
    size_t length = sequence_length(sequence);
-   if (length IS 0u) return XPathVal(std::string());
+   if (length IS 0) return XPathVal(std::string());
 
    std::string output;
    output.reserve(length * 4u);
 
-   for (size_t index = 0u; index < length; ++index) {
+   for (size_t index = 0; index < length; ++index) {
       XPathVal item = extract_sequence_item(sequence, index);
       double numeric = item.to_number();
       if (std::isnan(numeric)) continue;
 
-      long long rounded = (long long)std::llround(numeric);
+      auto rounded = (int64_t)std::llround(numeric);
       if (rounded < 0) {
          append_codepoint_utf8(output, 0xFFFDu);
          continue;
@@ -96,7 +96,7 @@ XPathVal XPathFunctionLibrary::function_string_to_codepoints(const std::vector<X
    std::string input = Args[0].to_string();
 
    SequenceBuilder builder;
-   size_t offset = 0u;
+   size_t offset = 0;
 
    while (offset < input.length()) {
       int length = 0;
@@ -123,12 +123,12 @@ XPathVal XPathFunctionLibrary::function_string_to_codepoints(const std::vector<X
 
 XPathVal XPathFunctionLibrary::function_compare(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2u) return XPathVal();
+   if (Args.size() < 2) return XPathVal();
    if (Args[0].is_empty() or Args[1].is_empty()) return XPathVal();
 
    std::string left = Args[0].to_string();
    std::string right = Args[1].to_string();
-   std::string collation = (Args.size() > 2u) ? Args[2].to_string() : std::string();
+   std::string collation = (Args.size() > 2) ? Args[2].to_string() : std::string();
 
    if (!collation.empty() and (collation != "http://www.w3.org/2005/xpath-functions/collation/codepoint") and
        (collation != "unicode")) {
@@ -151,7 +151,7 @@ XPathVal XPathFunctionLibrary::function_compare(const std::vector<XPathVal> &Arg
 XPathVal XPathFunctionLibrary::function_codepoint_equal(const std::vector<XPathVal> &Args,
    const XPathContext &Context)
 {
-   if (Args.size() < 2u) return XPathVal();
+   if (Args.size() < 2) return XPathVal();
    if (Args[0].is_empty() or Args[1].is_empty()) return XPathVal();
 
    std::string first = Args[0].to_string();
@@ -179,7 +179,7 @@ XPathVal XPathFunctionLibrary::function_starts_with(const std::vector<XPathVal> 
 
 XPathVal XPathFunctionLibrary::function_ends_with(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() != 2u) return XPathVal(false);
+   if (Args.size() != 2) return XPathVal(false);
 
    std::string input = Args[0].to_string();
    std::string suffix = Args[1].to_string();
@@ -346,7 +346,7 @@ XPathVal XPathFunctionLibrary::function_normalize_unicode(const std::vector<XPat
    if (Args.empty()) return XPathVal(std::string());
 
    std::string input = Args[0].to_string();
-   std::string form = (Args.size() > 1u) ? Args[1].to_string() : std::string("NFC");
+   std::string form = (Args.size() > 1) ? Args[1].to_string() : std::string("NFC");
 
    bool unsupported = false;
    std::string normalised = simple_normalise_unicode(input, form, &unsupported);
@@ -364,14 +364,14 @@ XPathVal XPathFunctionLibrary::function_string_join(const std::vector<XPathVal> 
    if (Args.empty()) return XPathVal(std::string());
 
    const XPathVal &sequence = Args[0];
-   std::string separator = (Args.size() > 1u) ? Args[1].to_string() : std::string();
+   std::string separator = (Args.size() > 1) ? Args[1].to_string() : std::string();
 
    size_t length = sequence_length(sequence);
-   if (length IS 0u) return XPathVal(std::string());
+   if (length IS 0) return XPathVal(std::string());
 
    std::string result;
-   for (size_t index = 0u; index < length; ++index) {
-      if (index > 0u) result.append(separator);
+   for (size_t index = 0; index < length; ++index) {
+      if (index > 0) result.append(separator);
       result.append(sequence_item_string(sequence, index));
    }
 
@@ -668,9 +668,6 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 //     <non-match> received</non-match>
 //   </analyze-string-result>
 
-namespace
-{
-
 struct AnalyzeStringState
 {
    SequenceBuilder *builder;
@@ -690,9 +687,6 @@ static void append_analyze_string_segment(SequenceBuilder &Builder, std::string_
 
 static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, AnalyzeStringState &State)
 {
-   (void)Index;
-   (void)Suffix;
-
    if (Captures.empty()) return ERR::Okay;
 
    SequenceBuilder &builder = *State.builder;
@@ -723,8 +717,6 @@ static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures,
    return ERR::Okay;
 }
 
-} // namespace
-
 XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if ((Args.size() < 2) or (Args.size() > 3)) return XPathVal(pf::vector<XMLTag *>());
@@ -742,7 +734,7 @@ XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVa
    }
 
    SequenceBuilder builder;
-   AnalyzeStringState state{ &builder, input.data(), input.length(), 0u };
+   AnalyzeStringState state{ &builder, input.data(), input.length(), 0 };
    auto cb = C_FUNCTION(&analyze_string_cb, &state);
    ERR search_result = rx::Search(compiled, input, RMATCH::NIL, &cb);
 
@@ -773,7 +765,7 @@ XPathVal XPathFunctionLibrary::function_resolve_uri(const std::vector<XPathVal> 
    std::string relative = Args[0].to_string();
    std::string base;
 
-   if (Args.size() > 1u and not Args[1].is_empty()) base = Args[1].to_string();
+   if ((Args.size() > 1) and (not Args[1].is_empty())) base = Args[1].to_string();
    else if (Context.document) base = Context.document->Path;
 
    if (relative.empty()) {
@@ -794,13 +786,13 @@ XPathVal XPathFunctionLibrary::function_resolve_uri(const std::vector<XPathVal> 
 
 XPathVal XPathFunctionLibrary::function_format_date(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2u) return XPathVal(std::string());
+   if (Args.size() < 2) return XPathVal(std::string());
    if (Args[0].is_empty()) return XPathVal();
 
    std::string value = Args[0].to_string();
    std::string picture = Args[1].to_string();
 
-   if (Args.size() > 2u and not Args[2].is_empty()) {
+   if (Args.size() > 2 and not Args[2].is_empty()) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
    }
 
@@ -817,7 +809,7 @@ XPathVal XPathFunctionLibrary::function_format_date(const std::vector<XPathVal> 
 
 XPathVal XPathFunctionLibrary::function_format_time(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2u) return XPathVal(std::string());
+   if (Args.size() < 2) return XPathVal(std::string());
    if (Args[0].is_empty()) return XPathVal();
 
    std::string value = Args[0].to_string();
@@ -839,7 +831,7 @@ XPathVal XPathFunctionLibrary::function_format_time(const std::vector<XPathVal> 
 
 XPathVal XPathFunctionLibrary::function_format_date_time(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2u) return XPathVal(std::string());
+   if (Args.size() < 2) return XPathVal(std::string());
    if (Args[0].is_empty()) return XPathVal();
 
    auto value = Args[0].to_string();
@@ -861,16 +853,16 @@ XPathVal XPathFunctionLibrary::function_format_date_time(const std::vector<XPath
 
 XPathVal XPathFunctionLibrary::function_format_integer(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (Args.size() < 2u) return XPathVal(std::string());
+   if (Args.size() < 2) return XPathVal(std::string());
 
    double number = Args[0].to_number();
    if (std::isnan(number) or std::isinf(number)) return XPathVal(std::string());
 
-   if (Args.size() > 2u and not Args[2].is_empty()) {
+   if (Args.size() > 2 and not Args[2].is_empty()) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
    }
 
-   long long rounded = (long long)std::llround(number);
+   auto rounded = (int64_t)std::llround(number);
    std::string picture = Args[1].to_string();
    std::string formatted = format_integer_picture(rounded, picture);
    return XPathVal(formatted);
