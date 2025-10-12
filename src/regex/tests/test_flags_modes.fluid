@@ -1,0 +1,51 @@
+-- Behavioural coverage for regex compilation and match flags
+
+function testCaseInsensitiveFlag()
+   local matcher = regex.new("hello", regex.ICASE)
+   assert(matcher.test("HeLlO"), "ICASE should ignore letter case")
+   assert(not matcher.test("yellow"), "ICASE should still reject different words")
+end
+
+function testMultilineAnchors()
+   local matcher = regex.new("^line", regex.MULTILINE)
+   assert(matcher.test("first\nline two"), "MULTILINE should let caret match after newline")
+   assert(not matcher.test("line\nfragment"), "Without caret at start of any line match should fail")
+end
+
+function testDotAllMatchesNewlines()
+   local matcher = regex.new("foo.*bar", regex.DOT_ALL)
+   assert(matcher.test("foo\n\nbar"), "DOT_ALL should allow dot to traverse newlines")
+   local baseline = regex.new("foo.*bar")
+   assert(not baseline.test("foo\nbar"), "Default dot should stop at newline")
+end
+
+function testExtendedModeWhitespace()
+   local matcher = regex.new([[\d+  # capture digits
+      [ ]letters]], regex.EXTENDED)
+   local match = matcher.match("123 letters")
+   assert(match, "EXTENDED should ignore whitespace and comments")
+   assert(match[1] == "123 letters", "Extended mode should still capture the full phrase")
+end
+
+function testAwkModeLiteralPlus()
+   local matcher = regex.new("a+b", regex.AWK)
+   assert(matcher.test("a+b"), "AWK mode should treat plus as literal")
+   assert(not matcher.test("ab"), "Literal plus should prevent collapse into quantifier semantics")
+end
+
+function testGrepModeBraceQuantifier()
+   local matcher = regex.new("a\\{2\\}", regex.GREP)
+   assert(matcher.test("aa"), "GREP mode should allow brace quantifiers")
+   assert(not matcher.test("a{2}"), "Brace quantifier should not match literal braces in GREP mode")
+end
+
+return {
+   tests = {
+      'testCaseInsensitiveFlag',
+      'testMultilineAnchors',
+      'testDotAllMatchesNewlines',
+      'testExtendedModeWhitespace',
+      'testAwkModeLiteralPlus',
+      'testGrepModeBraceQuantifier'
+   }
+}

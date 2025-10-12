@@ -1,0 +1,51 @@
+-- Validation for character classes, escapes, and custom ranges
+
+function testDigitClass()
+   local matcher = regex.new("\\d+")
+   local match = matcher.match("abc123def")
+   assert(match, "\\d+ should capture digits")
+   assert(match[1] == "123", "Digit capture should equal the numeric run")
+end
+
+function testWordClass()
+   local matcher = regex.new("(\\w+)")
+   local results = matcher.search("mix_of words42")
+   assert(results and #results >= 3, "search should capture multiple words")
+   assert(results[1][1] == "mix_of", "Word class should include underscore")
+   assert(results[3][1] == "words42", "Word class should include trailing digits")
+end
+
+function testWhitespaceClass()
+   local matcher = regex.new("^foo\\s+bar$")
+   assert(matcher.test("foo\t bar"), "\\s should consume tabs")
+   assert(not matcher.test("foo bar baz"), "Anchors should enforce full match with whitespace class")
+end
+
+function testPosixAlpha()
+   local matcher = regex.new("^[[:alpha:]]+$")
+   assert(matcher.test("Parasol"), "POSIX alpha class should allow letters")
+   assert(not matcher.test("Alpha123"), "POSIX alpha class should reject digits")
+end
+
+function testNegatedClass()
+   local matcher = regex.new("[^aeiou]+")
+   local match = matcher.match("strength")
+   assert(match[1] == "str", "Negated vowel class should consume consonant prefix")
+end
+
+function testEscapedDot()
+   local matcher = regex.new("a\\.b")
+   assert(matcher.test("a.b"), "Escaped dot should match literal period")
+   assert(not matcher.test("acb"), "Escaped dot should not behave as wildcard")
+end
+
+return {
+   tests = {
+      'testDigitClass',
+      'testWordClass',
+      'testWhitespaceClass',
+      'testPosixAlpha',
+      'testNegatedClass',
+      'testEscapedDot'
+   }
+}

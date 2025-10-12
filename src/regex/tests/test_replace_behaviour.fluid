@@ -1,0 +1,41 @@
+-- Replacement semantics including backreferences and flag-driven behaviour
+
+function testSimpleReplacement()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("v1.2.3", "X")
+   assert(result == "vX.X.X", "All numeric segments should be replaced")
+end
+
+function testBackreferenceReplacement()
+   local matcher = regex.new("(\\w+)-(\\w+)")
+   local result = matcher.replace("first-second", "$2:$1")
+   assert(result == "second:first", "Replacement should allow positional swaps")
+end
+
+function testLiteralDollarEscape()
+   local matcher = regex.new("(\\d+)")
+   local result = matcher.replace("Cost 15", "$$$1")
+   assert(result == "Cost $15", "Double dollar should escape literal currency")
+end
+
+function testReplaceNoCopyFlag()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("abc123def456", "#", regex.REPLACE_NO_COPY)
+   assert(result == "##", "REPLACE_NO_COPY should omit unmatched segments")
+end
+
+function testReplaceFirstOnlyFlag()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("1-2-3", "X", regex.REPLACE_FIRST_ONLY)
+   assert(result == "X-2-3", "REPLACE_FIRST_ONLY should only rewrite the first occurrence")
+end
+
+return {
+   tests = {
+      'testSimpleReplacement',
+      'testBackreferenceReplacement',
+      'testLiteralDollarEscape',
+      'testReplaceNoCopyFlag',
+      'testReplaceFirstOnlyFlag'
+   }
+}

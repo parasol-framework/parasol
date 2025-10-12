@@ -138,10 +138,11 @@ static int regex_test(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
+   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_none, &meta);
-   if (rx::Search(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, &cb) IS ERR::Okay) {
+   if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
       lua_pushboolean(Lua, true);
       return 1;
    }
@@ -160,10 +161,11 @@ static int regex_match(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
+   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_one, &meta);
-   if (rx::Match(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, &cb) IS ERR::Okay) {
+   if (rx::Match(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
       return 1;
    }
    else {
@@ -182,12 +184,13 @@ static int regex_search(lua_State *Lua)
 
    size_t text_len = 0;
    auto text = luaL_checklstring(Lua, 1, &text_len);
+   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    lua_createtable(Lua, 0, 0); // Result table
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_many, &meta);
-   if (rx::Search(r->regex_obj, std::string_view(text, text_len), RMATCH::NIL, &cb) IS ERR::Okay) {
+   if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
       return 1;
    }
    else {
@@ -206,9 +209,10 @@ static int regex_replace(lua_State *Lua)
    size_t text_len = 0, replace_len = 0;
    auto text = luaL_checklstring(Lua, 1, &text_len);
    auto replacement = luaL_checklstring(Lua, 2, &replace_len);
+   RMATCH flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
 
    std::string output;
-   rx::Replace(r->regex_obj, std::string_view(text, text_len), std::string_view(replacement, replace_len), &output, RMATCH::NIL);
+   rx::Replace(r->regex_obj, std::string_view(text, text_len), std::string_view(replacement, replace_len), &output, flags);
 
    lua_pushlstring(Lua, output.c_str(), output.length());
    return 1;
@@ -223,9 +227,10 @@ static int regex_split(lua_State *Lua)
 
    size_t text_len = 0;
    const char *text = luaL_checklstring(Lua, 1, &text_len);
+   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    pf::vector<std::string> parts;
-   rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, RMATCH::NIL);
+   rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, flags);
 
    lua_createtable(Lua, std::ssize(parts), 0); // Result table
    int part_index = 1;
@@ -384,6 +389,33 @@ void register_regex_class(lua_State *Lua)
 
       lua_pushinteger(Lua, int(REGEX::GREP));
       lua_setfield(Lua, -2, "GREP");
+
+      lua_pushinteger(Lua, int(RMATCH::NOT_BEGIN_OF_LINE));
+      lua_setfield(Lua, -2, "NOT_BEGIN_OF_LINE");
+
+      lua_pushinteger(Lua, int(RMATCH::NOT_END_OF_LINE));
+      lua_setfield(Lua, -2, "NOT_END_OF_LINE");
+
+      lua_pushinteger(Lua, int(RMATCH::NOT_BEGIN_OF_WORD));
+      lua_setfield(Lua, -2, "NOT_BEGIN_OF_WORD");
+
+      lua_pushinteger(Lua, int(RMATCH::NOT_END_OF_WORD));
+      lua_setfield(Lua, -2, "NOT_END_OF_WORD");
+
+      lua_pushinteger(Lua, int(RMATCH::NOT_NULL));
+      lua_setfield(Lua, -2, "NOT_NULL");
+
+      lua_pushinteger(Lua, int(RMATCH::CONTINUOUS));
+      lua_setfield(Lua, -2, "CONTINUOUS");
+
+      lua_pushinteger(Lua, int(RMATCH::PREV_AVAILABLE));
+      lua_setfield(Lua, -2, "PREV_AVAILABLE");
+
+      lua_pushinteger(Lua, int(RMATCH::REPLACE_NO_COPY));
+      lua_setfield(Lua, -2, "REPLACE_NO_COPY");
+
+      lua_pushinteger(Lua, int(RMATCH::REPLACE_FIRST_ONLY));
+      lua_setfield(Lua, -2, "REPLACE_FIRST_ONLY");
    }
 
    lua_pop(Lua, 1); // Remove regex table from stack

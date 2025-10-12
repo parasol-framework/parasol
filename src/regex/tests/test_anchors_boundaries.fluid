@@ -1,0 +1,52 @@
+-- Anchors, boundaries, and runtime match flag coverage
+
+function testStartEndAnchors()
+   local matcher = regex.new("^begin.*end$")
+   assert(matcher.test("begin middle end"), "Anchors should succeed for full string match")
+   assert(not matcher.test("in the beginning end"), "Caret anchor should reject embedded start")
+end
+
+function testAbsoluteAnchors()
+   local matcher = regex.new("\\Astart.+finish\\Z")
+   assert(matcher.test("start...finish"), "\\A and \\Z should bind to absolute string edges")
+   assert(not matcher.test("restart...finish"), "\\A should not allow prefix text")
+end
+
+function testWordBoundaries()
+   local matcher = regex.new("\\bword\\b")
+   assert(matcher.test("a word!"), "Word boundary should isolate token")
+   assert(not matcher.test("swordfish"), "Word boundary should prevent embedded matches")
+end
+
+function testBoundaryNegationFlags()
+   local matcher = regex.new("\\bword")
+   assert(matcher.test("wordplay"), "Baseline word boundary should match at string start")
+   assert(not matcher.test("wordplay", regex.NOT_BEGIN_OF_WORD), "NOT_BEGIN_OF_WORD should disable boundary at start")
+
+   local tail = regex.new("word\\b")
+   assert(tail.test("password"), "Word boundary should match at word end")
+   assert(not tail.test("password", regex.NOT_END_OF_WORD), "NOT_END_OF_WORD should suppress trailing boundary")
+end
+
+function testContinuousFlag()
+   local matcher = regex.new("\\d+")
+   assert(matcher.search("abc123") ~= nil, "Search should find digits without CONTINUOUS flag")
+   assert(matcher.search("abc123", regex.CONTINUOUS) == nil, "CONTINUOUS should force match to start of string")
+end
+
+function testNotNullFlag()
+   local matcher = regex.new("a*")
+   assert(matcher.match("bbb"), "Zero length match should succeed by default")
+   assert(matcher.match("bbb", regex.NOT_NULL) == nil, "NOT_NULL should disallow zero length results")
+end
+
+return {
+   tests = {
+      'testStartEndAnchors',
+      'testAbsoluteAnchors',
+      'testWordBoundaries',
+      'testBoundaryNegationFlags',
+      'testContinuousFlag',
+      'testNotNullFlag'
+   }
+}
