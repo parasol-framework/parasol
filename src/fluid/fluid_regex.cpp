@@ -55,6 +55,7 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
    // Create capture table for this result (attached to results table)
    lua_createtable(Lua, std::ssize(Captures), 0);
 
+   // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
    for (int j=0; j < std::ssize(Captures); ++j) {
       lua_pushinteger(Lua, (lua_Integer)(j + 1));
       lua_pushlstring(Lua, Captures[j].data(), Captures[j].length());
@@ -75,6 +76,7 @@ static ERR match_one(std::vector<std::string_view> &Captures, std::string_view P
    // Create capture table for this result
    lua_createtable(Lua, std::ssize(Captures), 0);
 
+   // Captures are normalised: unmatched optional groups appear as empty entries to preserve indices.
    for (int j=0; j < std::ssize(Captures); ++j) {
       lua_pushinteger(Lua, (lua_Integer)(j + 1));
       lua_pushlstring(Lua, Captures[j].data(), Captures[j].length());

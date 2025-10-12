@@ -25,10 +25,12 @@ module({ name="Regex", copyright="Paul Manias © 2025", version=1.0, timestamp=2
    int(REGEX) Flags     # Compilation flags
   ]])
 
+  -- Capture vectors delivered to callbacks are always normalised to include every group.
   functionNames("rx",
     "Compile",
     "Match",
     "Search",
     "Replace",
-    "Split")
+    "Split",
+    "GetCaptureIndex")
 end)
