@@ -691,16 +691,15 @@ static void append_analyze_string_segment(SequenceBuilder &Builder, std::string_
 static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, AnalyzeStringState &State)
 {
    (void)Index;
-   (void)Prefix;
    (void)Suffix;
 
    if (Captures.empty()) return ERR::Okay;
 
    SequenceBuilder &builder = *State.builder;
 
-   size_t match_offset = (size_t)(Captures[0].data() - State.input_data);
-   if (match_offset > State.last_offset) {
-      std::string_view gap(State.input_data + State.last_offset, match_offset - State.last_offset);
+   size_t prefix_length = Prefix.length();
+   if (prefix_length > State.last_offset) {
+      std::string_view gap(State.input_data + State.last_offset, prefix_length - State.last_offset);
       append_analyze_string_segment(builder, gap);
    }
 
@@ -714,7 +713,10 @@ static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures,
       builder.strings.push_back(std::format("group{}:{}", index, Captures[index]));
    }
 
-   State.last_offset = match_offset + Captures[0].length();
+   size_t match_length = Captures[0].length();
+   size_t next_offset = prefix_length + match_length;
+   if (next_offset < prefix_length) next_offset = State.input_length;
+   State.last_offset = next_offset;
 
    if (State.last_offset > State.input_length) State.last_offset = State.input_length;
 
