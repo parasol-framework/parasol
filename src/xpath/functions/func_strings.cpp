@@ -668,14 +668,6 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 //     <non-match> received</non-match>
 //   </analyze-string-result>
 
-struct AnalyzeStringState
-{
-   SequenceBuilder *builder;
-   const char *input_data;
-   size_t input_length;
-   size_t last_offset;
-};
-
 inline void append_analyze_string_segment(SequenceBuilder &Builder, std::string_view Segment)
 {
    if (Segment.empty()) return;

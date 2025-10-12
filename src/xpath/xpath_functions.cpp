@@ -1141,6 +1141,14 @@ struct SequenceBuilder
    std::vector<std::string> strings;
 };
 
+struct AnalyzeStringState
+{
+   SequenceBuilder *builder;
+   const char *input_data;
+   size_t input_length;
+   size_t last_offset;
+};
+
 static size_t sequence_length(const XPathVal &Value)
 {
    if (Value.type IS XPVT::NodeSet) {
