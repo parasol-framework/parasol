@@ -668,7 +668,7 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 //     <non-match> received</non-match>
 //   </analyze-string-result>
 
-ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, SequenceBuilder &Builder)
+static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, SequenceBuilder &Builder)
 {
    if (not Prefix.empty()) {
       Builder.nodes.push_back(nullptr);
@@ -676,9 +676,11 @@ ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::s
       Builder.strings.push_back(std::format("non-match:{}", Prefix));
    }
 
-   Builder.nodes.push_back(nullptr);
-   Builder.attributes.push_back(nullptr);
-   Builder.strings.push_back("match:");
+   if (not Captures.empty()) {
+      Builder.nodes.push_back(nullptr);
+      Builder.attributes.push_back(nullptr);
+      Builder.strings.push_back(std::format("match:{}", Captures[0]));
+   }
 
    for (size_t index = 1; index < Captures.size(); ++index) {
       Builder.nodes.push_back(nullptr);
@@ -784,15 +786,14 @@ XPathVal XPathFunctionLibrary::function_format_time(const std::vector<XPathVal> 
    std::string value = Args[0].to_string();
    std::string picture = Args[1].to_string();
 
-   if (Args.size() > 2u and not Args[2].is_empty()) {
+   if ((Args.size() > 2) and (not Args[2].is_empty())) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
    }
 
    DateTimeComponents components;
    if (!parse_time_value(value, components)) return XPathVal(value);
 
-   std::string formatted = format_with_picture(components, picture);
-   return XPathVal(formatted);
+   return XPathVal(format_with_picture(components, picture));
 }
 
 //********************************************************************************************************************
@@ -804,18 +805,17 @@ XPathVal XPathFunctionLibrary::function_format_date_time(const std::vector<XPath
    if (Args.size() < 2u) return XPathVal(std::string());
    if (Args[0].is_empty()) return XPathVal();
 
-   std::string value = Args[0].to_string();
-   std::string picture = Args[1].to_string();
+   auto value = Args[0].to_string();
+   auto picture = Args[1].to_string();
 
-   if (Args.size() > 2u and not Args[2].is_empty()) {
+   if ((Args.size() > 2) and (not Args[2].is_empty())) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
    }
 
    DateTimeComponents components;
    if (!parse_date_time_components(value, components)) return XPathVal(value);
 
-   std::string formatted = format_with_picture(components, picture);
-   return XPathVal(formatted);
+   return XPathVal(format_with_picture(components, picture));
 }
 
 //********************************************************************************************************************
