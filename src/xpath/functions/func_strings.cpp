@@ -668,7 +668,7 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 //     <non-match> received</non-match>
 //   </analyze-string-result>
 
-ERR analyze_string_cb(int Index, std::vector<std::string_view> Captures, std::string_view Prefix, std::string_view Suffix, SequenceBuilder &Builder)
+ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, SequenceBuilder &Builder)
 {
    if (not Prefix.empty()) {
       Builder.nodes.push_back(nullptr);

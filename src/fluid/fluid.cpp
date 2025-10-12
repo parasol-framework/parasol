@@ -367,7 +367,7 @@ static ERR flSetVariable(objScript *Script, CSTRING Name, int Type, ...)
 
    if (Type & FD_STRING)       lua_pushstring(prv->Lua, va_arg(list, STRING));
    else if (Type & FD_POINTER) lua_pushlightuserdata(prv->Lua, va_arg(list, APTR));
-   else if (Type & FD_INT)    lua_pushinteger(prv->Lua, va_arg(list, int));
+   else if (Type & FD_INT)     lua_pushinteger(prv->Lua, va_arg(list, int));
    else if (Type & FD_INT64)   lua_pushnumber(prv->Lua, va_arg(list, int64_t));
    else if (Type & FD_DOUBLE)  lua_pushnumber(prv->Lua, va_arg(list, double));
    else {
