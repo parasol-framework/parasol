@@ -680,7 +680,7 @@ ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::s
    Builder.attributes.push_back(nullptr);
    Builder.strings.push_back("match:");
 
-   for (size_t index = 1u; index < Captures.size(); ++index) {
+   for (size_t index = 1; index < Captures.size(); ++index) {
       Builder.nodes.push_back(nullptr);
       Builder.attributes.push_back(nullptr);
       Builder.strings.push_back(std::format("group{}:{}", index, Captures[index]));

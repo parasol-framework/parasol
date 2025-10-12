@@ -46,14 +46,14 @@ end
 function testAnalyzeString()
    local xml = glTestXML
 
-   --local first = xml.getKey("analyze-string('abc123','([0-9]+)')[1]")
-   --assert(first == 'non-match:abc', "analyze-string should report unmatched prefix, got '" .. nz(first,'NIL') .. "'")
+   local first = xml.getKey("analyze-string('abc123','([0-9]+)')[1]")
+   assert(first == 'non-match:abc', "analyze-string should report unmatched prefix, got '" .. nz(first,'NIL') .. "'")
 
    local second = xml.getKey("analyze-string('abc123','([0-9]+)')[2]")
    assert(second == 'match:123', "analyze-string should report matched text, got '" .. nz(second,'NIL') .. "'")
 
-   --local third = xml.getKey("analyze-string('abc123','([0-9]+)')[3]")
-   --assert(third == 'group1:123', "analyze-string should include capture groups, got '" .. nz(third,'NIL') .. "'")
+   local third = xml.getKey("analyze-string('abc123','([0-9]+)')[3]")
+   assert(third == 'group1:123', "analyze-string should include capture groups, got '" .. nz(third,'NIL') .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
