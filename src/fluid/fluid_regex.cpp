@@ -46,10 +46,10 @@ static ERR load_regex(void)
 
 //*********************************************************************************************************************
 
-static ERR match_many(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, regex_callback &Meta)
+static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
    auto Lua = Meta.Lua;
-   
+
    lua_pushinteger(Lua, Index + 1);
 
    // Create capture table for this result (attached to results table)
@@ -86,7 +86,7 @@ static ERR match_one(std::vector<std::string_view> &Captures, std::string_view P
 
 //*********************************************************************************************************************
 
-static ERR match_none(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, regex_callback &Meta)
+static ERR match_none(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
    return ERR::Terminate;
 }

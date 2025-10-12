@@ -345,10 +345,11 @@ match results. For each match that is found, the callback function is invoked wi
 The C++ prototype for the Callback function is:
 
 <pre>
-ERR callback(int Index, std::vector&lt;std::string_view&gt; &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
+ERR callback(int Index, std::vector&lt;std::string_view&gt; &Capture, size_t MatchStart, size_t MatchEnd, APTR Meta);
 </pre>
 
-Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0).
+Note the inclusion of the `Index` parameter, which indicates the match number (starting from 0). The `MatchStart`
+and `MatchEnd` parameters provide explicit byte offsets into the input text for the matched region.
 
 -INPUT-
 ptr(struct(Regex)) Regex: The compiled regex object.
@@ -391,11 +392,15 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
       }
 
       if ((not captures.empty()) and (Callback)) {
+         // Calculate explicit match offsets
+         size_t match_start = match.position(0);
+         size_t match_end = match_start + match.length(0);
+
          ERR error;
          if (Callback->isC()) {
             pf::SwitchContext ctx(Callback->Context);
-            auto routine = (ERR(*)(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, APTR))Callback->Routine;
-            error = routine(match_index, captures, std::string_view(&(*match.prefix().first), match.prefix().length()), std::string_view(&(*match.suffix().first), match.suffix().length()), Callback->Meta);
+            auto routine = (ERR(*)(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, APTR))Callback->Routine;
+            error = routine(match_index, captures, match_start, match_end, Callback->Meta);
             if (error IS ERR::Terminate) break;
          }
          else if (Callback->isScript()) {

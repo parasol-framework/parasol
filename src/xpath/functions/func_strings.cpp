@@ -685,34 +685,32 @@ static void append_analyze_string_segment(SequenceBuilder &Builder, std::string_
    Builder.strings.push_back(std::format("non-match:{}", Segment));
 }
 
-static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, AnalyzeStringState &State)
+static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, AnalyzeStringState &State)
 {
    if (Captures.empty()) return ERR::Okay;
 
    SequenceBuilder &builder = *State.builder;
 
-   size_t prefix_length = Prefix.length();
-   if (prefix_length > State.last_offset) {
-      std::string_view gap(State.input_data + State.last_offset, prefix_length - State.last_offset);
+   // Handle gap between last match and this match
+   if (MatchStart > State.last_offset) {
+      std::string_view gap(State.input_data + State.last_offset, MatchStart - State.last_offset);
       append_analyze_string_segment(builder, gap);
    }
 
+   // Add the match itself
    builder.nodes.push_back(nullptr);
    builder.attributes.push_back(nullptr);
    builder.strings.push_back(std::format("match:{}", Captures[0]));
 
+   // Add capture groups
    for (size_t index = 1; index < Captures.size(); ++index) {
       builder.nodes.push_back(nullptr);
       builder.attributes.push_back(nullptr);
       builder.strings.push_back(std::format("group{}:{}", index, Captures[index]));
    }
 
-   size_t match_length = Captures[0].length();
-   size_t next_offset = prefix_length + match_length;
-   if (next_offset < prefix_length) next_offset = State.input_length;
-   State.last_offset = next_offset;
-
-   if (State.last_offset > State.input_length) State.last_offset = State.input_length;
+   // Update last offset to end of this match
+   State.last_offset = MatchEnd;
 
    return ERR::Okay;
 }

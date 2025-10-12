@@ -36,6 +36,9 @@ struct TestContext {
    std::vector<std::string_view> captures;
    std::string prefix_str;
    std::string suffix_str;
+   size_t match_start = 0;
+   size_t match_end = 0;
+   std::string_view input_text;
 };
 
 static ERR match_callback(std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, TestContext &Ctx)
@@ -48,13 +51,20 @@ static ERR match_callback(std::vector<std::string_view> &Captures, std::string_v
    return ERR::Okay;
 }
 
-static ERR search_callback(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, TestContext &Ctx)
+static ERR search_callback(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, TestContext &Ctx)
 {
    Ctx.match_found = true;
    Ctx.capture_count++;
    Ctx.captures = Captures;
-   Ctx.prefix_str = Prefix;
-   Ctx.suffix_str = Suffix;
+   Ctx.match_start = MatchStart;
+   Ctx.match_end = MatchEnd;
+
+   // Reconstruct prefix and suffix from offsets for tests that need them
+   if (not Ctx.input_text.empty()) {
+      Ctx.prefix_str = std::string(Ctx.input_text.substr(0, MatchStart));
+      Ctx.suffix_str = std::string(Ctx.input_text.substr(MatchEnd));
+   }
+
    return ERR::Okay;
 }
 
@@ -219,9 +229,10 @@ static void test_prefix_suffix(int &TotalTests, int &PassedTests)
    Regex *regex;
    if (rx::Compile("middle", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
       TestContext ctx;
+      ctx.input_text = "start middle end";
       auto callback = C_FUNCTION(&search_callback, &ctx);
 
-      if (rx::Search(regex, "start middle end", RMATCH::NIL, &callback) IS ERR::Okay) {
+      if (rx::Search(regex, ctx.input_text, RMATCH::NIL, &callback) IS ERR::Okay) {
          if ((ctx.prefix_str IS "start ") and (ctx.suffix_str IS " end")) {
             log_success("Prefix and suffix extraction");
             PassedTests++;

@@ -98,9 +98,9 @@
     <description>
 <p>Call Search() to search for a regex pattern in a given text. The function takes a compiled regex object, the input text, optional flags to modify the matching behavior, and a callback function to process the match results. For each match that is found, the callback function is invoked with details about the match.</p>
 <p>The C++ prototype for the Callback function is:</p>
-<pre>ERR callback(int Index, std::vector&lt;std::string_view&gt; &amp;Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
+<pre>ERR callback(int Index, std::vector&lt;std::string_view&gt; &amp;Capture, size_t MatchStart, size_t MatchEnd, APTR Meta);
 </pre>
-<p>Note the inclusion of the <code>Index</code> parameter, which indicates the match number (starting from 0).</p>
+<p>Note the inclusion of the <code>Index</code> parameter, which indicates the match number (starting from 0). The <code>MatchStart</code> and <code>MatchEnd</code> parameters provide explicit byte offsets into the input text for the matched region.</p>
     </description>
     <result type="ERR">
       <error code="Okay">At least one match was found and processed.</error>
