@@ -54,6 +54,18 @@ function testAnalyzeString()
 
    local third = xml.getKey("analyze-string('abc123','([0-9]+)')[3]")
    assert(third == 'group1:123', "analyze-string should include capture groups, got '" .. nz(third,'NIL') .. "'")
+
+   local gap = xml.getKey("analyze-string('ab12cd34ef','([0-9]+)')[4]")
+   assert(gap == 'non-match:cd', "analyze-string should report intermediate gaps once, got '" .. nz(gap,'NIL') .. "'")
+
+   local secondMatch = xml.getKey("analyze-string('ab12cd34ef','([0-9]+)')[5]")
+   assert(secondMatch == 'match:34', "analyze-string should capture subsequent matches, got '" .. nz(secondMatch,'NIL') .. "'")
+
+   local secondGroup = xml.getKey("analyze-string('ab12cd34ef','([0-9]+)')[6]")
+   assert(secondGroup == 'group1:34', "analyze-string should report groups for each match, got '" .. nz(secondGroup,'NIL') .. "'")
+
+   local tail = xml.getKey("analyze-string('ab12cd34ef','([0-9]+)')[7]")
+   assert(tail == 'non-match:ef', "analyze-string should append the trailing suffix once, got '" .. nz(tail,'NIL') .. "'")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

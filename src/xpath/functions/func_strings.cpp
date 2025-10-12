@@ -668,34 +668,60 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
 //     <non-match> received</non-match>
 //   </analyze-string-result>
 
-static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, SequenceBuilder &Builder)
+namespace
 {
-   if (not Prefix.empty()) {
-      Builder.nodes.push_back(nullptr);
-      Builder.attributes.push_back(nullptr);
-      Builder.strings.push_back(std::format("non-match:{}", Prefix));
+
+struct AnalyzeStringState
+{
+   SequenceBuilder *builder;
+   const char *input_data;
+   size_t input_length;
+   size_t last_offset;
+};
+
+static void append_analyze_string_segment(SequenceBuilder &Builder, std::string_view Segment)
+{
+   if (Segment.empty()) return;
+
+   Builder.nodes.push_back(nullptr);
+   Builder.attributes.push_back(nullptr);
+   Builder.strings.push_back(std::format("non-match:{}", Segment));
+}
+
+static ERR analyze_string_cb(int Index, std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, AnalyzeStringState &State)
+{
+   (void)Index;
+   (void)Prefix;
+   (void)Suffix;
+
+   if (Captures.empty()) return ERR::Okay;
+
+   SequenceBuilder &builder = *State.builder;
+
+   size_t match_offset = (size_t)(Captures[0].data() - State.input_data);
+   if (match_offset > State.last_offset) {
+      std::string_view gap(State.input_data + State.last_offset, match_offset - State.last_offset);
+      append_analyze_string_segment(builder, gap);
    }
 
-   if (not Captures.empty()) {
-      Builder.nodes.push_back(nullptr);
-      Builder.attributes.push_back(nullptr);
-      Builder.strings.push_back(std::format("match:{}", Captures[0]));
-   }
+   builder.nodes.push_back(nullptr);
+   builder.attributes.push_back(nullptr);
+   builder.strings.push_back(std::format("match:{}", Captures[0]));
 
    for (size_t index = 1; index < Captures.size(); ++index) {
-      Builder.nodes.push_back(nullptr);
-      Builder.attributes.push_back(nullptr);
-      Builder.strings.push_back(std::format("group{}:{}", index, Captures[index]));
+      builder.nodes.push_back(nullptr);
+      builder.attributes.push_back(nullptr);
+      builder.strings.push_back(std::format("group{}:{}", index, Captures[index]));
    }
 
-   if (not Suffix.empty()) {
-      Builder.nodes.push_back(nullptr);
-      Builder.attributes.push_back(nullptr);
-      Builder.strings.push_back(std::format("non-match:{}", Suffix));
-   }
+   State.last_offset = match_offset + Captures[0].length();
+
+   if (State.last_offset > State.input_length) State.last_offset = State.input_length;
 
    return ERR::Okay;
 }
+
+} // namespace
 
 XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
@@ -714,8 +740,17 @@ XPathVal XPathFunctionLibrary::function_analyze_string(const std::vector<XPathVa
    }
 
    SequenceBuilder builder;
-   auto cb = C_FUNCTION(&analyze_string_cb, &builder);
-   if (rx::Search(compiled, input, RMATCH::NIL, &cb) != ERR::Okay) {
+   AnalyzeStringState state{ &builder, input.data(), input.length(), 0u };
+   auto cb = C_FUNCTION(&analyze_string_cb, &state);
+   ERR search_result = rx::Search(compiled, input, RMATCH::NIL, &cb);
+
+   if (search_result IS ERR::Okay) {
+      if (state.last_offset < state.input_length) {
+         std::string_view tail(state.input_data + state.last_offset, state.input_length - state.last_offset);
+         append_analyze_string_segment(builder, tail);
+      }
+   }
+   else {
       builder.nodes.push_back(nullptr);
       builder.attributes.push_back(nullptr);
       builder.strings.push_back(std::format("non-match:{}", input));

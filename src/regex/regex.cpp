@@ -373,7 +373,8 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
    auto sr = ((extRegex *)Regex)->srell;
 
    std::string text_str(Text); // TODO: Inefficient, but srell::sregex_iterator requires a non-const string
-   auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *sr);
+   auto native = convert_match_flags(Flags);
+   auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *sr, native);
    auto end   = srell::sregex_iterator();
 
    bool match_found = false;

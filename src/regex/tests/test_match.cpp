@@ -409,10 +409,43 @@ static void test_optional_groups(int &TotalTests, int &PassedTests)
 
 //********************************************************************************************************************
 
+static void test_search_match_flags(int &TotalTests, int &PassedTests)
+{
+   TotalTests++;
+   printf("\nTest 15: Search RMATCH flag handling\n");
+   Regex *regex;
+   if (rx::Compile("\\bworld", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
+      TestContext baseline_ctx;
+      auto baseline_callback = C_FUNCTION(&search_callback, &baseline_ctx);
+
+      if (rx::Search(regex, "world stage", RMATCH::NIL, &baseline_callback) IS ERR::Okay) {
+         if (not baseline_ctx.match_found) {
+            log_fail(__FUNCTION__, "Baseline search did not report a match");
+         }
+         else {
+            TestContext flagged_ctx;
+            auto flagged_callback = C_FUNCTION(&search_callback, &flagged_ctx);
+
+            if (rx::Search(regex, "world stage", RMATCH::NOT_BEGIN_OF_WORD, &flagged_callback) IS ERR::Search) {
+               log_success("Search honours RMATCH flags");
+               PassedTests++;
+            }
+            else log_fail(__FUNCTION__, "NOT_BEGIN_OF_WORD flag should suppress the boundary match");
+         }
+      }
+      else log_fail(__FUNCTION__, "Search without flags should have matched");
+
+      FreeResource(regex);
+   }
+   else log_fail(__FUNCTION__, "Could not compile regex");
+}
+
+//********************************************************************************************************************
+
 static void test_null_pointer_handling(int &TotalTests, int &PassedTests)
 {
    TotalTests++;
-   printf("\nTest 15: Null regex pointer handling\n");
+   printf("\nTest 16: Null regex pointer handling\n");
    if (rx::Match(nullptr, "test", RMATCH::NIL, nullptr) IS ERR::NullArgs) {
       log_success("Null pointer handling");
       PassedTests++;
@@ -452,6 +485,7 @@ int main(int argc, CSTRING *argv)
    test_nested_capture_groups(total_tests, passed_tests);
    test_unicode_support(total_tests, passed_tests);
    test_optional_groups(total_tests, passed_tests);
+   test_search_match_flags(total_tests, passed_tests);
    test_null_pointer_handling(total_tests, passed_tests);
 
    printf("\n=== Test Summary ===\n");
