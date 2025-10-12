@@ -224,7 +224,7 @@ static int regex_split(lua_State *Lua)
 
    pf::vector<std::string> parts;
    rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, RMATCH::NIL);
-   
+
    lua_createtable(Lua, std::ssize(parts), 0); // Result table
    int part_index = 1;
    for (auto &part : parts) {
@@ -233,7 +233,7 @@ static int regex_split(lua_State *Lua)
       else lua_pushlstring(Lua, part.c_str(), part.length());
       lua_settable(Lua, -3);
    }
- 
+
    return 1;
 }
 

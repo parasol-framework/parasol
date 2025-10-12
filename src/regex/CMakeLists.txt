@@ -22,13 +22,10 @@ target_link_libraries (test_regex_match PRIVATE ${INIT_LINK})
 set_target_properties (test_regex_match PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
 
 if (PARASOL_STATIC)
+   # Test can run from build directory in static mode.  Otherwise needs to be installed.
    add_test (NAME test_regex_match COMMAND test_regex_match)
-else () # Have to run from install directory to find Parasol modules
-   add_test (NAME test_regex_match COMMAND test_regex_match
-      WORKING_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
+   set_tests_properties (test_regex_match PROPERTIES LABELS regex)
 endif ()
-
-set_tests_properties (test_regex_match PROPERTIES LABELS regex)
 
 if (INSTALL_TESTS)
    install (TARGETS test_regex_match DESTINATION "tests/")

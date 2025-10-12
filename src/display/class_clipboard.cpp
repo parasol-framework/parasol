@@ -76,7 +76,7 @@ void clean_clipboard(void)
    DirInfo *dir;
    if (OpenDir("clipboard:", RDF::FILE|RDF::DATE, &dir) IS ERR::Okay) {
       LocalResource free_dir(dir);
-      
+
       Regex *compiled;
       if (rx::Compile("^\\d+(?:_text|_image|_file|_object)\\d*\\.\\d{3}$", REGEX::NIL, nullptr, &compiled) IS ERR::Okay) {
          while (ScanDir(dir) IS ERR::Okay) {

@@ -8,8 +8,8 @@ that is distributed with this package.  Please refer to it for further informati
 -MODULE-
 Regex: Provides support for regular expression pattern matching and text processing.
 
-The Regex module provides ECMAScript-compatible regex functionality with Unicode support. It offers efficient pattern 
-compilation, flexible matching modes, and text manipulation capabilities including search, replace, and split 
+The Regex module provides ECMAScript-compatible regex functionality with Unicode support. It offers efficient pattern
+compilation, flexible matching modes, and text manipulation capabilities including search, replace, and split
 operations.
 
 Key features include:
@@ -256,8 +256,8 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
 -FUNCTION-
 Match: Performs a single anchored regex match.
 
-Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled 
-Regex  object, the input Text, optional Flags to modify the matching behavior, and an optional Callback function to 
+Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled
+Regex  object, the input Text, optional Flags to modify the matching behavior, and an optional Callback function to
 process the match results.
 
 The C++ prototype for the Callback function is:

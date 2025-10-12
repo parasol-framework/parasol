@@ -591,7 +591,7 @@ XPathVal XPathFunctionLibrary::function_replace(const std::vector<XPathVal> &Arg
    std::string pattern = Args[1].to_string();
    std::string replacement = Args[2].to_string();
    std::string flags = (Args.size() IS 4) ? Args[3].to_string() : std::string();
-   
+
    if (load_regex() != ERR::Okay) return XPathVal(input);
 
    std::string error_msg;
@@ -624,7 +624,7 @@ XPathVal XPathFunctionLibrary::function_tokenize(const std::vector<XPathVal> &Ar
    std::string flags = (Args.size() IS 3) ? Args[2].to_string() : std::string();
 
    std::vector<std::string> tokens;
-   
+
    if (load_regex() != ERR::Okay) return XPathVal(pf::vector<XMLTag *>());
 
    if (pattern.empty()) {
@@ -676,7 +676,7 @@ struct AnalyzeStringState
    size_t last_offset;
 };
 
-static void append_analyze_string_segment(SequenceBuilder &Builder, std::string_view Segment)
+inline void append_analyze_string_segment(SequenceBuilder &Builder, std::string_view Segment)
 {
    if (Segment.empty()) return;
 

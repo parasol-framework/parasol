@@ -471,7 +471,7 @@ int main(int argc, CSTRING *argv)
    pf::Log log;
 
    if (auto msg = init_parasol(argc, argv)) {
-      log.error("%s", msg);
+      printf("%s", msg);
       return -1;
    }
 
