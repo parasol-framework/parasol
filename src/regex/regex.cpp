@@ -226,6 +226,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       if ((Flags & REGEX::MULTILINE) != REGEX::NIL) reg_flags |= srell::regex_constants::multiline;
       if ((Flags & REGEX::AWK) != REGEX::NIL)       reg_flags |= srell::regex_constants::awk;
       if ((Flags & REGEX::GREP) != REGEX::NIL)      reg_flags |= srell::regex_constants::grep;
+      if ((Flags & REGEX::DOT_ALL) != REGEX::NIL)   reg_flags |= srell::regex_constants::dotall;
 
       regex->srell = new (std::nothrow) srell::regex(Pattern.data(), Pattern.size(), reg_flags);
       if (!regex->srell) {
