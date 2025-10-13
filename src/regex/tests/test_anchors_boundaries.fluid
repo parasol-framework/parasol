@@ -8,7 +8,7 @@ end
 
 function testAbsoluteAnchors()
    local ex, matcher = catch(function() return regex.new("\\Astart.+finish\\Z") end)
-   assert(matcher == nil, "\\A and \\Z are not support by ECMAScript")
+   assert(matcher == nil, "\\A and \\Z are not supported by ECMAScript")
 end
 
 function testWordBoundaries()
