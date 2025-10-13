@@ -510,7 +510,7 @@ struct ClassRecord {
    std::string Header;
    std::string Icon;
 
-   static const int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
+   static constexpr int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
 
    ClassRecord() { }
 

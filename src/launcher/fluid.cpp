@@ -17,7 +17,7 @@ static bool glTime = false;
 static STRING glProcedure = nullptr;
 static STRING glTargetFile = nullptr;
 
-static const char glHelp[] = {
+static constexpr char glHelp[] = {
 "Usage: fluid [options...] script.fluid [--arg1=v1 --arg2=v2 ...]\n\
 \n\
 Special options are:\n\

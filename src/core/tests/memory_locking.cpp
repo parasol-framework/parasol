@@ -80,15 +80,15 @@ static void * test_locking(void *Arg)
 //********************************************************************************************************************
 // Allocate and free sets of memory blocks at random intervals.
 
-static const int TOTAL_ALLOC = 2000;
+static constexpr int glTotalAlloc = 2000;
 
 static void * test_allocation(void *Arg)
 {
-   APTR memory[TOTAL_ALLOC];
+   APTR memory[glTotalAlloc];
 
    int i, j;
    int start = 0;
-   for (i=0; i < TOTAL_ALLOC; i++) {
+   for (i=0; i < glTotalAlloc; i++) {
       AllocMemory(1024, MEM::DATA|MEM::NO_CLEAR, &memory[i], nullptr);
       if (rand() % 10 > 7) {
          for (j=start; j < i; j++) {
