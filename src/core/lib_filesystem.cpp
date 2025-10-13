@@ -296,8 +296,7 @@ ERR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
       if (!Info->Tags) return ERR::CreateResource;
    }
 
-   auto &tags = *Info->Tags;
-   tags[Name] = Value;
+   (*Info->Tags)[Name] = Value;
    return ERR::Okay;
 }
 
