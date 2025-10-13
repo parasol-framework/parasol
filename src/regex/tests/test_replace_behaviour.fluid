@@ -30,12 +30,19 @@ function testReplaceFirstOnlyFlag()
    assert(result == "X-2-3", "REPLACE_FIRST_ONLY should only rewrite the first occurrence")
 end
 
+function testPrefixPlaceholderAcrossMatches()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("abc123def123ghi", "$`X")
+   assert(result == "abcabcXdefabc123defXghi", "Prefix placeholder should include the full original prefix")
+end
+
 return {
    tests = {
       'testSimpleReplacement',
       'testBackreferenceReplacement',
       'testLiteralDollarEscape',
       'testReplaceNoCopyFlag',
-      'testReplaceFirstOnlyFlag'
+      'testReplaceFirstOnlyFlag',
+      'testPrefixPlaceholderAcrossMatches'
    }
 }
