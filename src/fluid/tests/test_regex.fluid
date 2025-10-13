@@ -137,10 +137,6 @@ function testFlags()
    assert(icase_regex.test("HELLO"), "ICASE flag should work")
    assert(icase_regex.test("Hello"), "ICASE flag should work")
    assert(icase_regex.test("hello"), "ICASE flag should work")
-
-   -- Multiple flags (test combining)
-   local multi_flag_regex = regex.new("hello", regex.ICASE + regex.EXTENDED)
-   assert(multi_flag_regex.flags == (regex.ICASE + regex.EXTENDED), "Multiple flags should combine")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -159,14 +155,14 @@ end
 
 function testRealWorldPatterns()
    -- Email validation
-   local email_validator = regex.new("^[\\w._%+-]+@[\\w.-]+\\.[A-Za-z]{2,}$")
+   local email_validator = regex.new("^[\\w._%+\\-]+@[\\w.\\-]+\\.[A-Za-z]{2,}$")
    assert(email_validator.test("user@example.com"), "Valid email should pass")
    assert(email_validator.test("test.email+tag@domain.co.uk"), "Complex email should pass")
    assert(not email_validator.test("invalid.email"), "Invalid email should fail")
    assert(not email_validator.test("@invalid.com"), "Invalid email should fail")
 
    -- URL extraction
-   local url_extractor = regex.new("https?://[\\w.-]+(?:/[\\w./?%&=]*)?")
+   local url_extractor = regex.new("https?://[\\w.\\-]+(?:/[\\w.\\/?%&=]*)?")
    local url_matches = url_extractor.search("Visit https://example.com or http://test.org/path")
    assert(#url_matches == 2, "Should find 2 URLs")
    assert(url_matches[1][1] == "https://example.com", "First URL incorrect")

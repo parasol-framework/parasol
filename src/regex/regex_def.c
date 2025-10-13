@@ -2,7 +2,6 @@
 
 namespace rx {
 extern ERR Compile(const std::string_view & Pattern, REGEX Flags, std::string * ErrorMsg, struct Regex ** Result);
-extern ERR Match(struct Regex * Regex, const std::string_view & Text, RMATCH Flags, FUNCTION * Callback);
 extern ERR Search(struct Regex * Regex, const std::string_view & Text, RMATCH Flags, FUNCTION * Callback);
 extern ERR Replace(struct Regex * Regex, const std::string_view & Text, const std::string_view & Replacement, std::string * Output, RMATCH Flags);
 extern ERR Split(struct Regex * Regex, const std::string_view & Text, pf::vector<std::string> * Output, RMATCH Flags);
@@ -15,14 +14,12 @@ extern ERR GetCaptureIndex(struct Regex * Regex, const std::string_view & Name, 
 
 FDEF argsCompile[] = { { "Error", FD_INT|FD_ERROR }, { "Pattern", FD_CPP|FD_STR }, { "Flags", FD_INT }, { "ErrorMsg", FD_CPP|FD_STR|FD_RESULT }, { "Result", FD_PTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsGetCaptureIndex[] = { { "Error", FD_INT|FD_ERROR }, { "Regex", FD_PTR }, { "Name", FD_CPP|FD_STR }, { "Indices", FD_CPP|FD_ARRAY|FD_INT|FD_RESULT }, { 0, 0 } };
-FDEF argsMatch[] = { { "Error", FD_INT|FD_ERROR }, { "Regex", FD_PTR }, { "Text", FD_CPP|FD_STR }, { "Flags", FD_INT }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsReplace[] = { { "Error", FD_INT|FD_ERROR }, { "Regex", FD_PTR }, { "Text", FD_CPP|FD_STR }, { "Replacement", FD_CPP|FD_STR }, { "Output", FD_CPP|FD_STR|FD_RESULT }, { "Flags", FD_INT }, { 0, 0 } };
 FDEF argsSearch[] = { { "Error", FD_INT|FD_ERROR }, { "Regex", FD_PTR }, { "Text", FD_CPP|FD_STR }, { "Flags", FD_INT }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF argsSplit[] = { { "Error", FD_INT|FD_ERROR }, { "Regex", FD_PTR }, { "Text", FD_CPP|FD_STR }, { "Output", FD_CPP|FD_ARRAY|FD_CPP|FD_STR|FD_RESULT }, { "Flags", FD_INT }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)rx::Compile, "Compile", argsCompile },
-   { (APTR)rx::Match, "Match", argsMatch },
    { (APTR)rx::Search, "Search", argsSearch },
    { (APTR)rx::Replace, "Replace", argsReplace },
    { (APTR)rx::Split, "Split", argsSplit },
@@ -31,4 +28,4 @@ const struct Function glFunctions[] = {
 };
 
 #undef MOD_IDL
-#define MOD_IDL "s.Regex:zsPattern,lFlags\nc.REGEX:AWK=0x10,DOT_ALL=0x4,EXTENDED=0x8,GREP=0x20,ICASE=0x1,MULTILINE=0x2\nc.RMATCH:CONTINUOUS=0x20,NOT_BEGIN_OF_LINE=0x1,NOT_BEGIN_OF_WORD=0x4,NOT_END_OF_LINE=0x2,NOT_END_OF_WORD=0x8,NOT_NULL=0x10,PREV_AVAILABLE=0x40,REPLACE_FIRST_ONLY=0x100,REPLACE_NO_COPY=0x80\n"
+#define MOD_IDL "s.Regex:zsPattern,lFlags\nc.REGEX:DOT_ALL=0x4,ICASE=0x1,MULTILINE=0x2\nc.RMATCH:CONTINUOUS=0x20,NOT_BEGIN_OF_LINE=0x1,NOT_BEGIN_OF_WORD=0x4,NOT_END_OF_LINE=0x2,NOT_END_OF_WORD=0x8,NOT_NULL=0x10,PREV_AVAILABLE=0x40,REPLACE_FIRST_ONLY=0x100,REPLACE_NO_COPY=0x80,WHOLE=0x200\n"
