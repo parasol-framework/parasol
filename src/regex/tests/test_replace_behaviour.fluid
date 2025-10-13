@@ -12,10 +12,34 @@ function testBackreferenceReplacement()
    assert(result == "second:first", "Replacement should allow positional swaps")
 end
 
+function testZeroCaptureReplacement()
+   local matcher = regex.new("(\\d+)")
+   local result = matcher.replace("42-54", "[$0]")
+   assert(result == "[42]-[54]", "$0 should expand to the entire match (got '" .. result .. "')")
+end
+
 function testLiteralDollarEscape()
    local matcher = regex.new("(\\d+)")
    local result = matcher.replace("Cost 15", "$$$1")
    assert(result == "Cost $15", "Double dollar should escape literal currency")
+end
+
+function testWholeMatchPlaceholder()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("a1b22c333", "<$&>")
+   assert(result == "a<1>b<22>c<333>", "$& should expand to the entire match")
+end
+
+function testSuffixPlaceholderAcrossMatches()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("123-456-789", "X$'")
+   assert(result == "X-456-789-X-789-X", "Suffix placeholder should include the remaining text")
+end
+
+function testNamedCaptureReplacement()
+   local matcher = regex.new("(?<area>\\d{3})-(?<local>\\d{4})")
+   local result = matcher.replace("555-1234", "$<area>/$<local>")
+   assert(result == "555/1234", "Named capture placeholder should resolve by name")
 end
 
 function testReplaceNoCopyFlag()
@@ -30,12 +54,23 @@ function testReplaceFirstOnlyFlag()
    assert(result == "X-2-3", "REPLACE_FIRST_ONLY should only rewrite the first occurrence")
 end
 
+function testPrefixPlaceholderAcrossMatches()
+   local matcher = regex.new("\\d+")
+   local result = matcher.replace("abc123def123ghi", "$`X")
+   assert(result == "abcabcXdefabc123defXghi", "Prefix placeholder should include the full original prefix (got '" .. result .. "')")
+end
+
 return {
    tests = {
       'testSimpleReplacement',
       'testBackreferenceReplacement',
+      'testZeroCaptureReplacement',
       'testLiteralDollarEscape',
+      'testWholeMatchPlaceholder',
+      'testSuffixPlaceholderAcrossMatches',
+      'testNamedCaptureReplacement',
       'testReplaceNoCopyFlag',
-      'testReplaceFirstOnlyFlag'
+      'testReplaceFirstOnlyFlag',
+      'testPrefixPlaceholderAcrossMatches'
    }
 }
