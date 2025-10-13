@@ -23,7 +23,8 @@ end
 function testNegativeLookbehind()
    local matcher = regex.new("(?<!USD)\\d+")
    assert(matcher.test("EUR99"), "Negative lookbehind should allow alternative prefix")
-   assert(not matcher.test("USD99"), "Negative lookbehind should block matching digits after USD")
+   local match = matcher.search("USD99")
+   assert(match[1][1] == '9', "Expected the final '9' to produce a match")
 end
 
 function testLookaroundDoesNotConsume()
