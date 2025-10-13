@@ -43,6 +43,7 @@ void stop_async_actions(void)
 
    // Give threads time to respond to stop request
    constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+   constexpr auto POLL_INTERVAL = std::chrono::milliseconds(50);
    auto start_time = std::chrono::steady_clock::now();
 
    while (!glAsyncThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
@@ -50,7 +51,7 @@ void stop_async_actions(void)
       std::erase_if(glAsyncThreads, [](const auto &ptr) { return !ptr or !ptr->joinable(); });
 
       if (!glAsyncThreads.empty()) {
-         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+         std::this_thread::sleep_for(POLL_INTERVAL);
       }
    }
 
@@ -1968,21 +1969,25 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    if (ActionID IS AC::NIL) { // Unsubscribe all actions associated with the subscriber.
       if (glSubscriptions.contains(Object->UID)) {
          auto subscriber = tlContext->object()->UID;
-restart:
-         for (auto & [action, list] : glSubscriptions[Object->UID]) {
-            // Use C++20 std::erase_if for cleaner removal
-            std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
+         bool need_restart = true;
+         while (need_restart) {
+            need_restart = false;
+            for (auto & [action, list] : glSubscriptions[Object->UID]) {
+               // Use C++20 std::erase_if for cleaner removal
+               std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
-            if (list.empty()) {
-               Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
+               if (list.empty()) {
+                  Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
 
-               if (!Object->NotifyFlags.load()) {
-                  glSubscriptions.erase(Object->UID);
-                  break;
-               }
-               else {
-                  glSubscriptions[Object->UID].erase(action);
-                  goto restart;
+                  if (!Object->NotifyFlags.load()) {
+                     glSubscriptions.erase(Object->UID);
+                     break;
+                  }
+                  else {
+                     glSubscriptions[Object->UID].erase(action);
+                     need_restart = true;
+                     break;
+                  }
                }
             }
          }

@@ -15,11 +15,14 @@ function testConsecutiveDelimiters()
 end
 
 function testLeadingTrailingDelimiters()
+   -- Expecting [ "", "start", "end", "" ]
    local matcher = regex.new("\\|")
    local result = matcher.split("|start|end|")
-   assert(#result == 4, "Leading and trailing separators should generate empty tokens")
    assert(result[1] == "", "Leading separator should produce empty string")
+   assert(result[2] == "start", "Expected 'start' at index 2")
+   assert(result[3] == "end", "Expected 'end' at index 3")
    assert(result[4] == "", "Trailing separator should produce empty string")
+   assert(#result == 4, "Expected 4 tokens, got " .. #result)
 end
 
 function testWhitespaceSplit()
