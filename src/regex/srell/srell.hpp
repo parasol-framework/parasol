@@ -5226,27 +5226,7 @@ private:
 							}
 							//  "(?-:"
 							goto ERROR_MODIFIER;
-#if !defined(SRELL_NO_UBMOD)
-						case meta_char::mc_rbracl:	//  ')':
-							if (modified)
-							{
-								cvars.soflags = localflags;
-								if (boffset == 2)
-								{
-									this->soflags = localflags;
-								}
-								else if (modified & regex_constants::sticky)
-									goto ERROR_MODIFIER;
 
-								if (boffset == 2)	//  Restricts so that unbounded forms (?ims-ims) can be used only at the beginning of an expression.
-								{
-									++curpos;
-									return true;
-								}
-							}
-							//  "(?)" or "(?-)"
-							goto ERROR_MODIFIER;
-#endif
 						case meta_char::mc_minus:	//  '-':
 							if (negate)
 								goto ERROR_MODIFIER;
