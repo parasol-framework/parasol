@@ -131,7 +131,7 @@ static std::string map_error_code(uint32_t ErrorCode)
       case srell::regex_constants::error_stack:      return "Stack exhausted";
       case srell::regex_constants::error_utf8:       return "Invalid UTF-8 sequence";
       case srell::regex_constants::error_property:   return "Unknown Unicode property";
-      case srell::regex_constants::error_noescape:   return "Escape is required in Unicode set mode";
+      case srell::regex_constants::error_noescape:   return "Escape is required in Unicode set mode for: ( ) [ ] { } / - |";
       case srell::regex_constants::error_operator:   return "Invalid set operator in Unicode set mode";
       case srell::regex_constants::error_complement: return "Invalid complement in Unicode set mode";
       case srell::regex_constants::error_modifier:   return "Duplicated or misplaced inline modifier";

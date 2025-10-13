@@ -280,7 +280,7 @@ static void test_complex_email(int &TotalTests, int &PassedTests)
    TotalTests++;
    printf("\nTest 9: Complex email pattern\n");
    Regex *regex;
-   if (rx::Compile("^([\\w._%+-]+)@([\\w.-]+)\\.([A-Za-z]{2,})$", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
+   if (rx::Compile("^([\\w._%+\\-]+)@([\\w.\\-]+)\\.([A-Za-z]{2,})$", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
       TestContext ctx;
       auto callback = C_FUNCTION(&match_callback, &ctx);
 
