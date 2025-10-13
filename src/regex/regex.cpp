@@ -304,7 +304,7 @@ namespace {
 
 static bool has_flag(RMATCH Flags, RMATCH Flag)
 {
-   return ((Flags & Flag) IS RMATCH::NIL) ? false : true;
+   return (Flags & Flag) != RMATCH::NIL;
 }
 
 static void append_range(std::string *Output, const char *Begin, const char *End)
