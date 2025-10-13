@@ -7923,31 +7923,6 @@ public:
 		return matched ? std::distance(this->first, this->second) : 0;
 	}
 
-	operator string_type() const
-	{
-		return matched ? string_type(this->first, this->second) : string_type();
-	}
-
-	string_type str() const
-	{
-		return matched ? string_type(this->first, this->second) : string_type();
-	}
-
-	int compare(const sub_match &s) const
-	{
-		return str().compare(s.str());
-	}
-
-	int compare(const string_type &s) const
-	{
-		return str().compare(s);
-	}
-
-	int compare(const value_type *const s) const
-	{
-		return str().compare(s);
-	}
-
 	void swap(sub_match &s)
 	{
 		if (this != &s)
@@ -7965,378 +7940,6 @@ public:
 	}
 };
 
-//  const reference, const reference.
-template <class BiIter>
-bool operator==(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
-{
-	return lhs.compare(rhs) == 0;	//  1
-}
-
-template <class BiIter>
-bool operator!=(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
-{
-	return lhs.compare(rhs) != 0;	//  2
-}
-
-template <class BiIter>
-bool operator<(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
-{
-	return lhs.compare(rhs) < 0;	//  3
-}
-
-template <class BiIter>
-bool operator<=(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
-{
-	return lhs.compare(rhs) <= 0;	//  4
-}
-
-template <class BiIter>
-bool operator>=(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
-{
-	return lhs.compare(rhs) >= 0;	//  5
-}
-
-template <class BiIter>
-bool operator>(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
-{
-	return lhs.compare(rhs) > 0;	//  6
-}
-
-//  basic_string, const reference.
-template <class BiIter, class ST, class SA>
-bool operator==(
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs.compare(lhs.c_str()) == 0;	//  7
-}
-
-template <class BiIter, class ST, class SA>
-bool operator!=(
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(lhs == rhs);	//  8
-}
-
-template <class BiIter, class ST, class SA>
-bool operator<(
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs.compare(lhs.c_str()) > 0;	//  9
-}
-
-template <class BiIter, class ST, class SA>
-bool operator>(
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs < lhs;	//  10
-}
-
-template <class BiIter, class ST, class SA>
-bool operator>=(
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(lhs < rhs);	//  11
-}
-
-template <class BiIter, class ST, class SA>
-bool operator<=(
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(rhs < lhs);	//  12
-}
-
-//  const reference, basic_string.
-template <class BiIter, class ST, class SA>
-bool operator==(
-	const sub_match<BiIter> &lhs,
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &rhs
-)
-{
-	return lhs.compare(rhs.c_str()) == 0;	//  13
-}
-
-template <class BiIter, class ST, class SA>
-bool operator!=(
-	const sub_match<BiIter> &lhs,
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &rhs
-)
-{
-	return !(lhs == rhs);	//  14
-}
-
-template <class BiIter, class ST, class SA>
-bool operator<(
-	const sub_match<BiIter> &lhs,
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &rhs
-)
-{
-	return lhs.compare(rhs.c_str()) < 0;	//  15
-}
-
-template <class BiIter, class ST, class SA>
-bool operator>(
-	const sub_match<BiIter> &lhs,
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &rhs
-)
-{
-	return rhs < lhs;	//  16
-}
-
-template <class BiIter, class ST, class SA>
-bool operator>=(
-	const sub_match<BiIter> &lhs,
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &rhs
-)
-{
-	return !(lhs < rhs);	//  17
-}
-
-template <class BiIter, class ST, class SA>
-bool operator<=(
-	const sub_match<BiIter> &lhs,
-	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &rhs
-)
-{
-	return !(rhs < lhs);	//  18
-}
-
-//  pointer, const reference.
-template <class BiIter>
-bool operator==(
-	typename std::iterator_traits<BiIter>::value_type const *lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs.compare(lhs) == 0;	//  19
-}
-
-template <class BiIter>
-bool operator!=(
-	typename std::iterator_traits<BiIter>::value_type const *lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(lhs == rhs);	//  20
-}
-
-template <class BiIter>
-bool operator<(
-	typename std::iterator_traits<BiIter>::value_type const *lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs.compare(lhs) > 0;	//  21
-}
-
-template <class BiIter>
-bool operator>(
-	typename std::iterator_traits<BiIter>::value_type const *lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs < lhs;	//  22
-}
-
-template <class BiIter>
-bool operator>=(
-	typename std::iterator_traits<BiIter>::value_type const *lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(lhs < rhs);	//  23
-}
-
-template <class BiIter>
-bool operator<=(
-	typename std::iterator_traits<BiIter>::value_type const *lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(rhs < lhs);	//  24
-}
-
-//  const reference, pointer.
-template <class BiIter>
-bool operator==(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const *rhs
-)
-{
-	return lhs.compare(rhs) == 0;	//  25
-}
-
-template <class BiIter>
-bool operator!=(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const *rhs
-)
-{
-	return !(lhs == rhs);	//  26
-}
-
-template <class BiIter>
-bool operator<(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const *rhs
-)
-{
-	return lhs.compare(rhs) < 0;	//  27
-}
-
-template <class BiIter>
-bool operator>(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const *rhs
-)
-{
-	return rhs < lhs;	//  28
-}
-
-template <class BiIter>
-bool operator>=(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const *rhs
-)
-{
-	return !(lhs < rhs);	//  29
-}
-
-template <class BiIter>
-bool operator<=(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const *rhs
-)
-{
-	return !(rhs < lhs);	//  30
-}
-
-//  charT, const reference.
-template <class BiIter>
-bool operator==(
-	typename std::iterator_traits<BiIter>::value_type const &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs.compare(typename sub_match<BiIter>::string_type(1, lhs)) == 0;	//  31
-}
-
-template <class BiIter>
-bool operator!=(
-	typename std::iterator_traits<BiIter>::value_type const &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(lhs == rhs);	//  32
-}
-
-template <class BiIter>
-bool operator<(
-	typename std::iterator_traits<BiIter>::value_type const &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs.compare(typename sub_match<BiIter>::string_type(1, lhs)) > 0;	//  33
-}
-
-template <class BiIter>
-bool operator>(
-	typename std::iterator_traits<BiIter>::value_type const &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return rhs < lhs;	//  34
-}
-
-template <class BiIter>
-bool operator>=(
-	typename std::iterator_traits<BiIter>::value_type const &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(lhs < rhs);	//  35
-}
-
-template <class BiIter>
-bool operator<=(
-	typename std::iterator_traits<BiIter>::value_type const &lhs,
-	const sub_match<BiIter> &rhs
-)
-{
-	return !(rhs < lhs);	//  36
-}
-
-//  const reference, charT.
-template <class BiIter>
-bool operator==(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const &rhs
-)
-{
-	return lhs.compare(typename sub_match<BiIter>::string_type(1, rhs)) == 0;	//  37
-}
-
-template <class BiIter>
-bool operator!=(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const &rhs
-)
-{
-	return !(lhs == rhs);	//  38
-}
-
-template <class BiIter>
-bool operator<(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const &rhs
-)
-{
-	return lhs.compare(typename sub_match<BiIter>::string_type(1, rhs)) < 0;	//  39
-}
-
-template <class BiIter>
-bool operator>(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const &rhs
-)
-{
-	return rhs < lhs;	//  40
-}
-
-template <class BiIter>
-bool operator>=(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const &rhs
-)
-{
-	return !(lhs < rhs);	//  41
-}
-
-template <class BiIter>
-bool operator<=(
-	const sub_match<BiIter> &lhs,
-	typename std::iterator_traits<BiIter>::value_type const &rhs
-)
-{
-	return !(rhs < lhs);	//  42
-}
-
-template <class charT, class ST, class BiIter>
-std::basic_ostream<charT, ST> &operator<<(std::basic_ostream<charT, ST> &os, const sub_match<BiIter> &m)
-{
-	return (os << m.str());
-}
 
 //  ... "regex_sub_match.hpp"]
 //  ["regex_match_results.hpp" ...
@@ -8444,204 +8047,6 @@ public:
 	difference_type position(const size_type sub = 0) const
 	{
 		return std::distance(base_, (*this)[sub].first);
-	}
-
-	string_type str(const size_type sub = 0) const
-	{
-		return (*this)[sub].str();
-	}
-
-	const_reference prefix() const
-	{
-		return prefix_;
-	}
-
-	const_reference suffix() const
-	{
-		return suffix_;
-	}
-
-	const_iterator begin() const
-	{
-		return sub_matches_.begin();
-	}
-
-	const_iterator end() const
-	{
-		return sub_matches_.end();
-	}
-
-	const_iterator cbegin() const
-	{
-		return sub_matches_.begin();
-	}
-
-	const_iterator cend() const
-	{
-		return sub_matches_.end();
-	}
-
-	template <class OutputIter>
-	OutputIter format(
-		OutputIter out,
-		const char_type *fmt_first,
-		const char_type *const fmt_last,
-		regex_constants::match_flag_type /* flags */ = regex_constants::format_default
-	) const
-	{
-		if (this->ready() && this->size() > 0)
-		{
-			const bool no_groupnames = gnames_.size() == 0;
-			const value_type &m0 = (*this)[0];
-
-			while (fmt_first != fmt_last)
-			{
-				if (*fmt_first != static_cast<char_type>(re_detail::meta_char::mc_dollar))	//  '$'
-				{
-					*out++ = *fmt_first++;
-					continue;
-				}
-
-				++fmt_first;
-				if (fmt_first == fmt_last)
-				{
-					*out++ = re_detail::meta_char::mc_dollar;	//  '$';
-				}
-				else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_amp))	//  '&', $&
-				{
-					out = std::copy(m0.first, m0.second, out);
-					++fmt_first;
-				}
-				else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_grav))	//  '`', $`, prefix.
-				{
-					out = std::copy(this->prefix().first, this->prefix().second, out);
-					++fmt_first;
-				}
-				else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_apos))	//  '\'', $', suffix.
-				{
-					out = std::copy(this->suffix().first, this->suffix().second, out);
-					++fmt_first;
-				}
-				else if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_lt) && !no_groupnames)	//  '<', $<
-				{
-					const char_type *const lt_pos = fmt_first;
-
-					for (++fmt_first;; ++fmt_first)
-					{
-						if (fmt_first == fmt_last)
-						{
-							fmt_first = lt_pos;
-							*out++ = re_detail::meta_char::mc_dollar;	//  '$';
-							break;
-						}
-
-						if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_gt))
-						{
-							const re_detail::ui_l32 backref_number = lookup_backref_number(lt_pos + 1, fmt_first);
-
-							if (backref_number != gnamemap_type::notfound)
-							{
-								const value_type &mn = (*this)[backref_number];
-
-								if (mn.matched)
-									out = std::copy(mn.first, mn.second, out);
-							}
-							++fmt_first;
-							break;
-						}
-					}
-				}
-				else
-				{
-					const char_type *const afterdollar_pos = fmt_first;
-					size_type backref_number = 0;
-
-					if (fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
-					{
-						backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
-
-						if (++fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
-						{
-							backref_number *= 10;
-							backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
-							++fmt_first;
-						}
-					}
-
-					if (backref_number && backref_number < this->size())
-					{
-						const value_type &mn = (*this)[backref_number];
-
-						if (mn.matched)
-							out = std::copy(mn.first, mn.second, out);
-					}
-					else
-					{
-						*out++ = re_detail::meta_char::mc_dollar;	//  '$';
-
-						fmt_first = afterdollar_pos;
-						if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_dollar))
-							++fmt_first;
-					}
-				}
-			}
-		}
-		return out;
-	}
-
-	template <class OutputIter, class ST, class SA>
-	OutputIter format(
-		OutputIter out,
-		const std::basic_string<char_type, ST, SA> &fmt,
-		regex_constants::match_flag_type flags = regex_constants::format_default
-	) const
-	{
-		return format(out, fmt.data(), fmt.data() + fmt.size(), flags);
-	}
-
-	template <class ST, class SA>
-	std::basic_string<char_type, ST, SA> format(
-		const string_type &fmt,
-		regex_constants::match_flag_type flags = regex_constants::format_default
-	) const
-	{
-		std::basic_string<char_type, ST, SA> result;
-
-//		format(std::back_insert_iterator<string_type>(result), fmt, flags);
-		format(std::back_inserter(result), fmt, flags);
-		return result;
-	}
-
-	string_type format(const char_type *fmt, regex_constants::match_flag_type flags = regex_constants::format_default) const
-	{
-		string_type result;
-
-		format(std::back_inserter(result), fmt, fmt + std::char_traits<char_type>::length(fmt), flags);
-		return result;
-	}
-
-	allocator_type get_allocator() const
-	{
-		return allocator_type();
-	}
-
-	void swap(match_results &that)
-	{
-		{
-			const re_detail::ui_l32 tmp(ready_);
-			ready_ = that.ready_;
-			that.ready_ = tmp;
-		}
-		sub_matches_.swap(that.sub_matches_);
-		prefix_.swap(that.prefix_);
-		suffix_.swap(that.suffix_);
-		std::swap(base_, that.base_);
-		gnames_.swap(that.gnames_);
-	}
-
-	regex_constants::error_type ecode() const
-	{
-		return static_cast<regex_constants::error_type>(ready_ >> 1);
 	}
 
 public:	//  For internal.
@@ -8788,53 +8193,10 @@ private:
 	gnamemap_type gnames_;
 };
 
-template <class BidirectionalIterator, class Allocator>
-void swap(
-	match_results<BidirectionalIterator, Allocator> &m1,
-	match_results<BidirectionalIterator, Allocator> &m2
-)
-{
-	m1.swap(m2);
-}
-
-template <class BidirectionalIterator, class Allocator>
-bool operator==(
-	const match_results<BidirectionalIterator, Allocator> &m1,
-	const match_results<BidirectionalIterator, Allocator> &m2
-)
-{
-	const bool m1_ready = m1.ready();
-	const bool m2_ready = m2.ready();
-
-	if (!m1_ready && !m2_ready)
-		return true;
-
-	if (m1_ready && m2_ready)
-	{
-		const bool m1_has = m1.size() > 0;
-		const bool m2_has = m2.size() > 0;
-
-		if (!m1_has && !m2_has)
-			return true;
-
-		if (m1_has && m2_has)
-		{
-			return m1.prefix() == m2.prefix() && m1.size() == m2.size() && std::equal(m1.begin(), m1.end(), m2.begin()) && m1.suffix() == m2.suffix();
-		}
-	}
-	return false;
-}
-
-template <class BidirectionalIterator, class Allocator>
-bool operator!=(
-	const match_results<BidirectionalIterator, Allocator> &m1,
-	const match_results<BidirectionalIterator, Allocator> &m2
-)
-{
-	return !(m1 == m2);
-}
 
 //  ... "regex_match_results.hpp"]
+
+
 //  ["rei_algorithm.hpp" ...
 
 	namespace re_detail
@@ -10253,395 +9615,62 @@ bool regex_search(
 	return e.search(first, last, lookbehind_limit, m, flags);
 }
 
-template <class OutputIterator, class BidirectionalIterator, class traits, class charT, class ST, class SA>
-OutputIterator regex_replace(
-	OutputIterator out,
-	const BidirectionalIterator first,
-	const BidirectionalIterator last,
-	const basic_regex<charT, traits> &e,
-	const std::basic_string<charT, ST, SA> &fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default)
-{
-	typedef regex_iterator<BidirectionalIterator, charT, traits> iterator_type;
-
-	const bool do_copy = !(flags & regex_constants::format_no_copy);
-	const iterator_type eos;
-	iterator_type i(first, last, e, flags);
-	typename iterator_type::value_type::value_type last_m_suffix;
-
-	last_m_suffix.first = first;
-	last_m_suffix.second = last;
-
-	for (; i != eos; ++i)
-	{
-		if (do_copy)
-			out = std::copy(i->prefix().first, i->prefix().second, out);
-
-		out = i->format(out, fmt, flags);
-		last_m_suffix = i->suffix();
-
-		if (flags & regex_constants::format_first_only)
-			break;
-	}
-
-	if (do_copy)
-		out = std::copy(last_m_suffix.first, last_m_suffix.second, out);
-
-	return out;
-}
-
-template <class OutputIterator, class BidirectionalIterator, class traits, class charT>
-OutputIterator regex_replace(
-	OutputIterator out,
-	const BidirectionalIterator first,
-	const BidirectionalIterator last,
-	const basic_regex<charT, traits> &e,
-	const charT *const fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default)
-{
-	//  Strictly speaking, this should be implemented as a version different
-	//  from the above with changing the line i->format(out, fmt, flags) to
-	//  i->format(out, fmt, fmt + char_traits<charT>::length(fmt), flags).
-
-	const std::basic_string<charT> fs(fmt, fmt + std::char_traits<charT>::length(fmt));
-
-	return regex_replace(out, first, last, e, fs, flags);
-}
-
-template <class traits, class charT, class ST, class SA, class FST, class FSA>
-std::basic_string<charT, ST, SA> regex_replace(
-	const std::basic_string<charT, ST, SA> &s,
-	const basic_regex<charT, traits> &e,
-	const std::basic_string<charT, FST, FSA> &fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default)
-{
-	std::basic_string<charT, ST, SA> result;
-
-	regex_replace(std::back_inserter(result), s.begin(), s.end(), e, fmt, flags);
-	return result;
-}
-
-template <class traits, class charT, class ST, class SA>
-std::basic_string<charT, ST, SA> regex_replace(
-	const std::basic_string<charT, ST, SA> &s,
-	const basic_regex<charT, traits> &e,
-	const charT *const fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default)
-{
-	std::basic_string<charT, ST, SA> result;
-
-	regex_replace(std::back_inserter(result), s.begin(), s.end(), e, fmt, flags);
-	return result;
-}
-
-template <class traits, class charT, class ST, class SA>
-std::basic_string<charT> regex_replace(
-	const charT *const s,
-	const basic_regex<charT, traits> &e,
-	const std::basic_string<charT, ST, SA> &fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default)
-{
-	std::basic_string<charT> result;
-
-	regex_replace(std::back_inserter(result), s, s + std::char_traits<charT>::length(s), e, fmt, flags);
-	return result;
-}
-
-template <class traits, class charT>
-std::basic_string<charT> regex_replace(
-	const charT *const s,
-	const basic_regex<charT, traits> &e,
-	const charT *const fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default)
-{
-	std::basic_string<charT> result;
-
-	regex_replace(std::back_inserter(result), s, s + std::char_traits<charT>::length(s), e, fmt, flags);
-	return result;
-}
-
 //  ... "regex_algorithm.hpp"]
-//  ["regex_token_iterator.hpp" ...
 
-template <class BidirectionalIterator, class charT = typename std::iterator_traits<BidirectionalIterator>::value_type, class traits = regex_traits<charT> >
-class regex_token_iterator
-{
-public:
+typedef sub_match<const char *> u8ccsub_match;
+typedef sub_match<std::string::const_iterator> u8cssub_match;
 
-	typedef basic_regex<charT, traits> regex_type;
-	typedef sub_match<BidirectionalIterator> value_type;
-	typedef std::ptrdiff_t difference_type;
-	typedef const value_type *pointer;
-	typedef const value_type &reference;
-	typedef std::forward_iterator_tag iterator_category;
+typedef match_results<const char *> u8ccmatch;
+typedef match_results<std::string::const_iterator> u8csmatch;
 
-	regex_token_iterator() : result_(NULL)
-	{
-		//  Constructs the end-of-sequence iterator.
-	}
-
-	regex_token_iterator(
-		const BidirectionalIterator a,
-		const BidirectionalIterator b,
-		const regex_type &re,
-		const int submatch = 0,
-		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(2)
-	{
-		post_constructor_(a, b, &submatch, 1);
-	}
-
-	regex_token_iterator(
-		const BidirectionalIterator a,
-		const BidirectionalIterator b,
-		const regex_type &re,
-		const std::vector<int> &submatches,
-		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(submatches.size() + 1)
-	{
-		post_constructor_(a, b, submatches.data(), submatches.size());
-	}
-
-#if defined(__cpp_initializer_lists)
-	regex_token_iterator(
-		const BidirectionalIterator a,
-		const BidirectionalIterator b,
-		const regex_type &re,
-		const std::initializer_list<int> submatches,
-		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(submatches.size() + 1)
-	{
-		post_constructor_(a, b, submatches.begin(), submatches.size());
-	}
-#endif
-
-	template <std::size_t N>	//  Was R in TR1.
-	regex_token_iterator(
-		const BidirectionalIterator a,
-		const BidirectionalIterator b,
-		const regex_type &re,
-		const int (&submatches)[N],
-		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(N + 1)
-	{
-		post_constructor_(a, b, submatches, N);
-	}
-
-	regex_token_iterator(const regex_token_iterator &that)
-	{
-		operator=(that);
-	}
-
-	regex_token_iterator &operator=(const regex_token_iterator &that)
-	{
-		if (this != &that)
-		{
-			this->result_ = that.result_;
-			if (this->result_)
-			{
-				this->position_ = that.position_;
-				this->suffix_ = that.suffix_;
-				this->N_ = that.N_;
-				this->subs_ = that.subs_;
-			}
-		}
-		return *this;
-	}
-
-	bool operator==(const regex_token_iterator &right)
-	{
-		if (right.result_ == NULL || this->result_ == NULL)
-			return this->result_ == right.result_;
-
-		if (this->result_ == &this->suffix_ || right.result_ == &right.suffix_)
-			return this->suffix_ == right.suffix_;
-
-		return this->position_ == right.position_
-			&& this->N_ == right.N_
-			&& this->subs_ == right.subs_;
-	}
-
-	bool operator!=(const regex_token_iterator &right)
-	{
-		return !(*this == right);
-	}
-
-	const value_type &operator*()
-	{
-		return *result_;
-	}
-
-	const value_type *operator->()
-	{
-		return result_;
-	}
-
-	regex_token_iterator &operator++()
-	{
-		if (result_ == &suffix_)
-			result_ = NULL;
-		else if (result_ != NULL)
-		{
-			if (++this->N_ >= subs_.size())
-			{
-				this->N_ = 1;
-				suffix_ = position_->suffix();
-				if ((++position_)->size() == 0)
-				{
-					result_ = (suffix_.matched && subs_[0] == -1) ? &suffix_ : NULL;
-					return *this;
-				}
-			}
-			result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
-		}
-		return *this;
-	}
-
-	regex_token_iterator operator++(int)
-	{
-		const regex_token_iterator tmp(*this);
-		++(*this);
-		return tmp;
-	}
-
-	regex_constants::error_type ecode() const
-	{
-		return position_->ecode();
-	}
-
-private:
-
-	void post_constructor_(const BidirectionalIterator a, const BidirectionalIterator b, const int *const data, const std::size_t num)
-	{
-		this->N_ = 1;
-
-		subs_[0] = 0;
-		for (std::size_t i = 0; i < num; ++i)
-		{
-			this->subs_[i + 1] = data[i];
-			if (data[i] == -1)
-				subs_[0] = -1;
-		}
-
-		if (position_->size() && this->N_ < subs_.size())
-		{
-			result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
-			return;
-		}
-
-		if (subs_[0] == -1)
-		{
-			suffix_.matched = a != b;
-
-			if (suffix_.matched)
-			{
-				suffix_.first = a;
-				suffix_.second = b;
-				result_ = &suffix_;
-				return;
-			}
-		}
-		result_ = NULL;
-	}
-
-private:
-
-	typedef regex_iterator<BidirectionalIterator, charT, traits> position_iterator;
-	position_iterator position_;
-	const value_type *result_;
-	value_type suffix_;
-	std::size_t N_;
-	re_detail::simple_array<int> subs_;
-};
-
-//  ... "regex_token_iterator.hpp"]
-
-typedef sub_match<const char *> csub_match;
-typedef sub_match<const wchar_t *> wcsub_match;
-typedef sub_match<std::string::const_iterator> ssub_match;
-typedef sub_match<std::wstring::const_iterator> wssub_match;
-typedef csub_match u8ccsub_match;
-typedef ssub_match u8cssub_match;
-
-typedef match_results<const char *> cmatch;
-typedef match_results<const wchar_t *> wcmatch;
-typedef match_results<std::string::const_iterator> smatch;
-typedef match_results<std::wstring::const_iterator> wsmatch;
-typedef cmatch u8ccmatch;
-typedef smatch u8csmatch;
-
-typedef basic_regex<char> regex;
-typedef basic_regex<wchar_t> wregex;
 typedef basic_regex<char, u8regex_traits<char> > u8cregex;
-
-typedef regex_iterator<const char *> cregex_iterator;
-typedef regex_iterator<const wchar_t *> wcregex_iterator;
-typedef regex_iterator<std::string::const_iterator> sregex_iterator;
-typedef regex_iterator<std::wstring::const_iterator> wsregex_iterator;
 
 typedef regex_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
 typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
 
 
-
-typedef regex_token_iterator<const char *> cregex_token_iterator;
-typedef regex_token_iterator<const wchar_t *> wcregex_token_iterator;
-typedef regex_token_iterator<std::string::const_iterator> sregex_token_iterator;
-typedef regex_token_iterator<std::wstring::const_iterator> wsregex_token_iterator;
-
-typedef regex_token_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_token_iterator;
-typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_token_iterator;
-
 #if defined(WCHAR_MAX)
-	#if (WCHAR_MAX >= 0x10ffff)
-		typedef wcsub_match u32wcsub_match;
-		typedef wssub_match u32wssub_match;
-		typedef u32wcsub_match u1632wcsub_match;
-		typedef u32wssub_match u1632wssub_match;
+        #if (WCHAR_MAX >= 0x10ffff)
+                typedef sub_match<const wchar_t *> u32wcsub_match;
+                typedef sub_match<std::wstring::const_iterator> u32wssub_match;
+                typedef u32wcsub_match u1632wcsub_match;
+                typedef u32wssub_match u1632wssub_match;
 
-		typedef wcmatch u32wcmatch;
-		typedef wsmatch u32wsmatch;
-		typedef u32wcmatch u1632wcmatch;
-		typedef u32wsmatch u1632wsmatch;
+                typedef match_results<const wchar_t *> u32wcmatch;
+                typedef match_results<std::wstring::const_iterator> u32wsmatch;
+                typedef u32wcmatch u1632wcmatch;
+                typedef u32wsmatch u1632wsmatch;
 
-		typedef wregex u32wregex;
-		typedef u32wregex u1632wregex;
+                typedef basic_regex<wchar_t> u32wregex;
+                typedef u32wregex u1632wregex;
 
-		typedef wcregex_iterator u32wcregex_iterator;
-		typedef wsregex_iterator u32wsregex_iterator;
-		typedef u32wcregex_iterator u1632wcregex_iterator;
-		typedef u32wsregex_iterator u1632wsregex_iterator;
-
-
-		typedef wcregex_token_iterator u32wcregex_token_iterator;
-		typedef wsregex_token_iterator u32wsregex_token_iterator;
-		typedef u32wcregex_token_iterator u1632wcregex_token_iterator;
-		typedef u32wsregex_token_iterator u1632wsregex_token_iterator;
-	#elif (WCHAR_MAX >= 0xffff)
-		typedef wcsub_match u16wcsub_match;
-		typedef wssub_match u16wssub_match;
-		typedef u16wcsub_match u1632wcsub_match;
-		typedef u16wssub_match u1632wssub_match;
-
-		typedef wcmatch u16wcmatch;
-		typedef wsmatch u16wsmatch;
-		typedef u16wcmatch u1632wcmatch;
-		typedef u16wsmatch u1632wsmatch;
-
-		typedef basic_regex<wchar_t, u16regex_traits<wchar_t> > u16wregex;
-		typedef u16wregex u1632wregex;
-
-		typedef regex_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
-		typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
-		typedef u16wcregex_iterator u1632wcregex_iterator;
-		typedef u16wsregex_iterator u1632wsregex_iterator;
+                typedef regex_iterator<const wchar_t *> u32wcregex_iterator;
+                typedef regex_iterator<std::wstring::const_iterator> u32wsregex_iterator;
+                typedef u32wcregex_iterator u1632wcregex_iterator;
+                typedef u32wsregex_iterator u1632wsregex_iterator;
 
 
-		typedef regex_token_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_token_iterator;
-		typedef regex_token_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_token_iterator;
-		typedef u16wcregex_token_iterator u1632wcregex_token_iterator;
-		typedef u16wsregex_token_iterator u1632wsregex_token_iterator;
-	#endif
+        #elif (WCHAR_MAX >= 0xffff)
+                typedef sub_match<const wchar_t *> u16wcsub_match;
+                typedef sub_match<std::wstring::const_iterator> u16wssub_match;
+                typedef u16wcsub_match u1632wcsub_match;
+                typedef u16wssub_match u1632wssub_match;
+
+                typedef match_results<const wchar_t *> u16wcmatch;
+                typedef match_results<std::wstring::const_iterator> u16wsmatch;
+                typedef u16wcmatch u1632wcmatch;
+                typedef u16wsmatch u1632wsmatch;
+
+                typedef basic_regex<wchar_t, u16regex_traits<wchar_t> > u16wregex;
+                typedef u16wregex u1632wregex;
+
+                typedef regex_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
+                typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
+                typedef u16wcregex_iterator u1632wcregex_iterator;
+                typedef u16wsregex_iterator u1632wsregex_iterator;
+
+
+        #endif
 #endif
 
 #if defined(__cpp_unicode_characters)
@@ -10664,10 +9693,6 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 	typedef regex_iterator<std::u32string::const_iterator> u32sregex_iterator;
 
 
-	typedef regex_token_iterator<const char16_t *> u16cregex_token_iterator;
-	typedef regex_token_iterator<const char32_t *> u32cregex_token_iterator;
-	typedef regex_token_iterator<std::u16string::const_iterator> u16sregex_token_iterator;
-	typedef regex_token_iterator<std::u32string::const_iterator> u32sregex_token_iterator;
 #endif
 
 #if defined(__cpp_char8_t)
@@ -10688,8 +9713,6 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 	typedef regex_iterator<SRELLTMP_U8S_CI> u8sregex_iterator;
 
 
-	typedef regex_token_iterator<const char8_t *> u8cregex_token_iterator;
-	typedef regex_token_iterator<SRELLTMP_U8S_CI> u8sregex_token_iterator;
 	#undef SRELLTMP_U8S_CI
 #else
 	typedef u8ccsub_match u8csub_match;
@@ -10704,8 +9727,6 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 	typedef u8csregex_iterator u8sregex_iterator;
 
 
-	typedef u8ccregex_token_iterator u8cregex_token_iterator;
-	typedef u8csregex_token_iterator u8sregex_token_iterator;
 #endif
 
 }		//  namespace srell

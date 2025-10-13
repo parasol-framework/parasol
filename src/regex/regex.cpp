@@ -300,6 +300,144 @@ NullArgs: One or more required input arguments were null.
 
 *********************************************************************************************************************/
 
+namespace {
+
+static bool has_flag(RMATCH Flags, RMATCH Flag)
+{
+   return ((Flags & Flag) IS RMATCH::NIL) ? false : true;
+}
+
+static void append_range(std::string *Output, const char *Begin, const char *End)
+{
+   if ((not Output) or (not Begin) or (not End)) return;
+
+   if (End >= Begin) Output->append(Begin, (size_t)(End - Begin));
+}
+
+static void append_match_substring(std::string *Output, const srell::u8ccmatch &Match, size_t Index)
+{
+   if (not Output) return;
+
+   if (Index >= Match.size()) return;
+
+   const auto &sub = Match[Index];
+   if (not sub.matched) return;
+
+   append_range(Output, &(*sub.first), &(*sub.second));
+}
+
+static void append_named_capture(std::string *Output, const srell::u8ccmatch &Match, const std::string_view &Name, regex_engine *Engine)
+{
+   if ((not Output) or (not Engine) or Name.empty()) return;
+
+   pf::vector<int> indices;
+   if (not Engine->resolve_named_capture(Name, &indices)) return;
+
+   for (size_t i = 0; i < indices.size(); ++i) {
+      const int value = indices[i];
+      if (value < 0) continue;
+
+      const size_t index = (size_t)value;
+      if (index >= Match.size()) continue;
+
+      const auto &sub = Match[index];
+      if (sub.matched) {
+         append_range(Output, &(*sub.first), &(*sub.second));
+         break;
+      }
+   }
+}
+
+static void append_replacement(std::string *Output, const std::string_view &Text, size_t PrefixBegin, size_t MatchBegin, size_t MatchEnd, const srell::u8ccmatch &Match, const std::string_view &Replacement, regex_engine *Engine)
+{
+   if (not Output) return;
+
+   const char *cursor = Replacement.data();
+   const char *const end = cursor + Replacement.size();
+
+   while (cursor != end) {
+      if (*cursor != '$') {
+         Output->push_back(*cursor);
+         ++cursor;
+         continue;
+      }
+
+      ++cursor;
+      if (cursor IS end) {
+         Output->push_back('$');
+         break;
+      }
+
+      const char marker = *cursor;
+
+      if (marker IS '$') {
+         Output->push_back('$');
+         ++cursor;
+      }
+      else if (marker IS '&') {
+         append_match_substring(Output, Match, 0);
+         ++cursor;
+      }
+      else if (marker IS '`') {
+         const size_t prefix_length = (MatchBegin > PrefixBegin) ? (MatchBegin - PrefixBegin) : 0;
+         append_range(Output, Text.data() + PrefixBegin, Text.data() + PrefixBegin + prefix_length);
+         ++cursor;
+      }
+      else if (marker IS char(39)) {
+         append_range(Output, Text.data() + MatchEnd, Text.data() + Text.size());
+         ++cursor;
+      }
+      else if ((marker IS '<') and Engine) {
+         const char *const lt_position = cursor;
+         ++cursor;
+         const char *const name_begin = cursor;
+
+         while ((cursor != end) and (*cursor != '>')) ++cursor;
+
+         if (cursor IS end) {
+            Output->push_back('$');
+            cursor = lt_position;
+         }
+         else {
+            const std::string_view name(name_begin, (size_t)(cursor - name_begin));
+            append_named_capture(Output, Match, name, Engine);
+            ++cursor;
+         }
+      }
+      else if ((marker >= '0') and (marker <= '9')) {
+         size_t number = (size_t)(marker - '0');
+         ++cursor;
+
+         if ((cursor != end) and (*cursor >= '0') and (*cursor <= '9')) {
+            number *= 10;
+            number += (size_t)(*cursor - '0');
+            ++cursor;
+         }
+
+         if ((number != 0u) and (number < Match.size())) {
+            append_match_substring(Output, Match, number);
+         }
+         else {
+            Output->push_back('$');
+            if (number >= 10u) {
+               const size_t first_digit = number / 10u;
+               const size_t second_digit = number % 10u;
+               Output->push_back(char('0' + first_digit));
+               Output->push_back(char('0' + second_digit));
+            }
+            else Output->push_back(char('0' + number));
+         }
+      }
+      else {
+         Output->push_back('$');
+         Output->push_back(marker);
+         ++cursor;
+      }
+   }
+}
+
+} // namespace
+
 ERR Replace(Regex *Regex, const std::string_view &Text, const std::string_view &Replacement, std::string *Output, RMATCH Flags)
 {
    pf::Log log(__FUNCTION__);
@@ -308,8 +446,49 @@ ERR Replace(Regex *Regex, const std::string_view &Text, const std::string_view &
 
    Output->clear();
 
-   auto native = convert_match_flags(Flags);
-   *Output = srell::regex_replace(std::string(Text), *((extRegex *)Regex)->srell, std::string(Replacement), native);
+   auto sr = ((extRegex *)Regex)->srell;
+   if (not sr) return log.warning(ERR::NullArgs);
+
+   const auto native_flags = convert_match_flags(Flags);
+   const char *const text_begin = Text.data();
+   const char *const text_end = text_begin + Text.size();
+
+   srell::u8ccregex_iterator iter(text_begin, text_end, *sr, native_flags);
+   srell::u8ccregex_iterator sentinel;
+
+   if (iter IS sentinel) {
+      if (not has_flag(Flags, RMATCH::REPLACE_NO_COPY)) Output->assign(Text);
+      return ERR::Okay;
+   }
+
+   std::string result;
+   result.reserve(Text.size() + Replacement.size());
+
+   size_t copy_position = 0;
+   const bool copy_segments = not has_flag(Flags, RMATCH::REPLACE_NO_COPY);
+
+   for (; not (iter IS sentinel); ++iter) {
+      const srell::u8ccmatch &match = *iter;
+      const size_t match_begin = (size_t)match.position(0);
+      const size_t match_length = (size_t)match.length(0);
+      const size_t match_end = match_begin + match_length;
+
+      if (copy_segments and (match_begin > copy_position)) {
+         append_range(&result, text_begin + copy_position, text_begin + match_begin);
+      }
+
+      append_replacement(&result, Text, copy_position, match_begin, match_end, match, Replacement, sr);
+
+      copy_position = match_end;
+
+      if (has_flag(Flags, RMATCH::REPLACE_FIRST_ONLY)) break;
+   }
+
+   if (copy_segments and (copy_position < Text.size())) {
+      append_range(&result, text_begin + copy_position, text_end);
+   }
+
+   *Output = std::move(result);
    return ERR::Okay;
 }
 
