@@ -35,8 +35,8 @@ end
 
 function testNotNullFlag()
    local matcher = regex.new("a*") -- Match zero or more of 'a'
-   assert(matcher.match("bbb"), "Zero length match should succeed by default")
-   assert(matcher.match("bbb", regex.NOT_NULL) == nil, "NOT_NULL should disallow zero length results")
+   assert(matcher.search("bbb"), "Zero length match should succeed by default")
+   assert(matcher.search("bbb", regex.NOT_NULL) == nil, "NOT_NULL should disallow zero length results")
 end
 
 return {

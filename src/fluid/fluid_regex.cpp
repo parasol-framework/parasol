@@ -204,7 +204,7 @@ static int regex_match(lua_State *Lua)
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_one, &meta);
-   if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
+   if (rx::Match(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
       return 1;
    }
    else {
