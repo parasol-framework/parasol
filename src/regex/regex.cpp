@@ -15,12 +15,15 @@ operations.
 Key features include:
 
 <list type="bullet">
-<li>ECMAScript (JavaScript) regex syntax with optional AWK and GREP modes.</li>
+<li>ECMAScript (JavaScript) regex syntax.</li>
 <li>Full Unicode support including character classes and properties.</li>
 <li>Case-insensitive and multiline matching options.</li>
 <li>Reusable compiled patterns for optimal performance.</li>
 <li>Callback-based result processing for custom handling.</li>
 </list>
+
+Note: Fluid scripts are expected to use the built-in regex functions for better integration as opposed to this
+module.
 
 -END-
 
@@ -46,8 +49,8 @@ static ERR MODOpen(OBJECTPTR);
 
 JUMPTABLE_CORE
 
-struct regex_engine : public srell::regex {
-   using srell::regex::regex;
+struct regex_engine : public srell::u8cregex {
+   using srell::u8cregex::u8cregex;
 
    bool resolve_named_capture(const std::string_view &Name, pf::vector<int> *Indices) const
    {
@@ -76,41 +79,6 @@ struct extRegex : public Regex {
 
 //********************************************************************************************************************
 
-static ERR process_result(std::string_view Text, const srell::cmatch &Native, FUNCTION *Callback)
-{
-   if (not Callback) return ERR::Okay;
-
-   int capture_count = Native.size();
-
-   const srell::sub_match<const char *> &prefix = Native.prefix();
-   const srell::sub_match<const char *> &suffix = Native.suffix();
-
-   auto prefix_view = prefix.matched ? std::string_view(prefix.first, prefix.length()) : std::string_view();
-   auto suffix_view = suffix.matched ? std::string_view(suffix.first, suffix.length()) : std::string_view();
-
-   std::vector<std::string_view> captures;
-   captures.reserve(capture_count);
-   for (int i = 0; i < capture_count; ++i) {
-      const srell::sub_match<const char*>& segment = Native[i];
-      captures.push_back(segment.matched ? std::string_view(segment.first, segment.length()) : std::string_view());
-   }
-
-   ERR error;
-   if (Callback->isC()) {
-      pf::SwitchContext ctx(Callback->Context);
-      auto routine = (ERR(*)(std::vector<std::string_view> &, std::string_view, std::string_view, APTR))Callback->Routine;
-      error = routine(captures, prefix_view, suffix_view, Callback->Meta);
-      if (error IS ERR::Terminate) return ERR::Terminate;
-   }
-   else if (Callback->isScript()) {
-      // TODO: Implement script callback handling
-   }
-
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
-
 static std::string map_error_code(uint32_t ErrorCode)
 {
    if (not ErrorCode) return "Okay";
@@ -131,7 +99,7 @@ static std::string map_error_code(uint32_t ErrorCode)
       case srell::regex_constants::error_stack:      return "Stack exhausted";
       case srell::regex_constants::error_utf8:       return "Invalid UTF-8 sequence";
       case srell::regex_constants::error_property:   return "Unknown Unicode property";
-      case srell::regex_constants::error_noescape:   return "Escape is required in Unicode set mode";
+      case srell::regex_constants::error_noescape:   return "Escape is required in Unicode set mode for: ( ) [ ] { } / - |";
       case srell::regex_constants::error_operator:   return "Invalid set operator in Unicode set mode";
       case srell::regex_constants::error_complement: return "Invalid complement in Unicode set mode";
       case srell::regex_constants::error_modifier:   return "Duplicated or misplaced inline modifier";
@@ -153,13 +121,14 @@ static srell::regex_constants::match_flag_type convert_match_flags(RMATCH Flags)
 {
    unsigned int native = 0;
 
-   if ((Flags & RMATCH::NOT_BEGIN_OF_LINE) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::match_not_bol;
-   if ((Flags & RMATCH::NOT_END_OF_LINE) != RMATCH::NIL)   native |= (unsigned int)srell::regex_constants::match_not_eol;
-   if ((Flags & RMATCH::NOT_BEGIN_OF_WORD) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::match_not_bow;
-   if ((Flags & RMATCH::NOT_END_OF_WORD) != RMATCH::NIL)   native |= (unsigned int)srell::regex_constants::match_not_eow;
-   if ((Flags & RMATCH::NOT_NULL) != RMATCH::NIL)          native |= (unsigned int)srell::regex_constants::match_not_null;
-   if ((Flags & RMATCH::CONTINUOUS) != RMATCH::NIL)        native |= (unsigned int)srell::regex_constants::match_continuous;
-   if ((Flags & RMATCH::PREV_AVAILABLE) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_prev_avail;
+   if ((Flags & RMATCH::NOT_BEGIN_OF_LINE) != RMATCH::NIL)  native |= (unsigned int)srell::regex_constants::match_not_bol;
+   if ((Flags & RMATCH::NOT_END_OF_LINE) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_not_eol;
+   if ((Flags & RMATCH::NOT_BEGIN_OF_WORD) != RMATCH::NIL)  native |= (unsigned int)srell::regex_constants::match_not_bow;
+   if ((Flags & RMATCH::NOT_END_OF_WORD) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_not_eow;
+   if ((Flags & RMATCH::NOT_NULL) != RMATCH::NIL)           native |= (unsigned int)srell::regex_constants::match_not_null;
+   if ((Flags & RMATCH::CONTINUOUS) != RMATCH::NIL)         native |= (unsigned int)srell::regex_constants::match_continuous;
+   if ((Flags & RMATCH::PREV_AVAILABLE) != RMATCH::NIL)     native |= (unsigned int)srell::regex_constants::match_prev_avail;
+   if ((Flags & RMATCH::WHOLE) != RMATCH::NIL)              native |= (unsigned int)srell::regex_constants::match_whole;
    if ((Flags & RMATCH::REPLACE_NO_COPY) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::format_no_copy;
    if ((Flags & RMATCH::REPLACE_FIRST_ONLY) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::format_first_only;
 
@@ -240,12 +209,9 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       regex->Pattern = Pattern;
       regex->Flags = Flags;
 
-      auto reg_flags = srell::regex_constants::ECMAScript; // Default syntax
+      auto reg_flags = srell::regex_constants::ECMAScript | srell::regex_constants::unicodesets;  // Default syntax with Unicode support
       if ((Flags & REGEX::ICASE) != REGEX::NIL)     reg_flags |= srell::regex_constants::icase;
-      if ((Flags & REGEX::EXTENDED) != REGEX::NIL)  reg_flags |= srell::regex_constants::extended;
       if ((Flags & REGEX::MULTILINE) != REGEX::NIL) reg_flags |= srell::regex_constants::multiline;
-      if ((Flags & REGEX::AWK) != REGEX::NIL)       reg_flags |= srell::regex_constants::awk;
-      if ((Flags & REGEX::GREP) != REGEX::NIL)      reg_flags |= srell::regex_constants::grep;
       if ((Flags & REGEX::DOT_ALL) != REGEX::NIL)   reg_flags |= srell::regex_constants::dotall;
 
       regex->srell = new (std::nothrow) regex_engine(Pattern.data(), Pattern.size(), reg_flags);
@@ -309,58 +275,6 @@ ERR GetCaptureIndex(Regex *Regex, const std::string_view &Name, pf::vector<int> 
 
    if (sr->resolve_named_capture(Name, Indices)) return ERR::Okay;
    else return ERR::Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-Match: Performs a single anchored regex match.
-
-Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled
-Regex  object, the input Text, optional Flags to modify the matching behavior, and an optional Callback function to
-process the match results.
-
-The C++ prototype for the Callback function is:
-
-<pre>
-ERR callback(std::vector&lt;std::string_view&gt; &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
-</pre>
-
-The Capture vector is always normalised to include every capturing group defined by the pattern, including the full
-match at index 0. Optional groups that did not participate in the match are represented by empty std::string_view
-instances, preserving positional indexing.
-
-Example: Pattern "(a)?(b)" matching "b" yields captures: ["b", "", "b"]
-
-For more sophisticated matching needs, consider using ~Search() instead.
-
--INPUT-
-ptr(struct(Regex)) Regex: The compiled regex object.
-cpp(strview) Text: The input text to perform matching on.
-int(RMATCH) Flags: Optional.  Flags to modify the matching behavior.
-ptr(func) Callback: Optional.  Receives the match results.
-
--ERRORS-
-Okay: A match was found and processed.
-NullArgs: One or more required input arguments were null.
-Search: No match was found.
--END-
-
-*********************************************************************************************************************/
-
-ERR Match(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *Callback)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (not Regex) return log.warning(ERR::NullArgs);
-
-   srell::cmatch cnative;
-   if (((extRegex *)Regex)->srell->match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags))) {
-      process_result(Text, cnative, Callback);
-      return ERR::Okay;
-   }
-   else return ERR::Search;
-
 }
 
 /*********************************************************************************************************************
@@ -443,16 +357,13 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 
    auto sr = ((extRegex *)Regex)->srell;
 
-   std::string text_str(Text); // TODO: Inefficient, but srell::sregex_iterator requires a non-const string
-   auto native = convert_match_flags(Flags);
-   auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *sr, native);
-   auto end   = srell::sregex_iterator();
+   auto begin = srell::u8ccregex_iterator(Text.data(), Text.data() + Text.size(), *sr, convert_match_flags(Flags));
+   auto end   = srell::u8ccregex_iterator();
 
    bool match_found = false;
    int match_index = 0;
-   for (srell::sregex_iterator i = begin; i != end; ++i) {
-      const srell::smatch &match = *i;
-
+   for (srell::u8ccregex_iterator i = begin; not (i IS end); ++i) {
+      const srell::u8ccmatch &match = *i;
       std::vector<std::string_view> captures;
       captures.reserve(match.size());
       for (size_t j = 0; j < match.size(); ++j) {
@@ -522,12 +433,33 @@ ERR Split(Regex *Regex, const std::string_view &Text, pf::vector<std::string> *O
    Output->clear();
 
    auto sr = ((extRegex *)Regex)->srell;
-   std::string text_str(Text);
-   srell::sregex_token_iterator iter(text_str.begin(), text_str.end(), *sr, -1, convert_match_flags(Flags));
-   srell::sregex_token_iterator sentinel;
+   auto native_flags = convert_match_flags(Flags);
 
-   for (; not (iter IS sentinel); ++iter) {
-      Output->emplace_back(iter->str());
+   const char *text_begin = Text.data();
+   const char *text_end = text_begin + Text.size();
+   size_t last_index = 0;
+   const size_t text_length = Text.size();
+
+   srell::u8ccregex_iterator begin(text_begin, text_end, *sr, native_flags);
+   srell::u8ccregex_iterator sentinel;
+
+   for (srell::u8ccregex_iterator iter = begin; not (iter IS sentinel); ++iter) {
+      const srell::u8ccmatch &current = *iter;
+      size_t match_pos = (size_t)current.position(0);
+      size_t match_length = current.length(0);
+
+      if (match_pos > text_length) match_pos = text_length;
+
+      Output->emplace_back(std::string(Text.substr(last_index, match_pos - last_index)));
+
+      size_t next_index = match_pos + match_length;
+      if ((match_length IS 0) and (match_pos < text_length)) next_index = match_pos + 1;
+      if (next_index > text_length) next_index = text_length;
+      last_index = next_index;
+   }
+
+   if (last_index <= text_length) {
+      Output->emplace_back(std::string(Text.substr(last_index)));
    }
 
    return ERR::Okay;

@@ -326,7 +326,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
    pf::Log log(__FUNCTION__);
 
    if (PathType) *PathType = LOC::NIL;
-   if (!Path) return ERR::NullArgs;
+   if ((not Path) or (not Path[0])) return ERR::NullArgs;
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 

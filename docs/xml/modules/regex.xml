@@ -12,12 +12,13 @@
 <p>The Regex module provides ECMAScript-compatible regex functionality with Unicode support. It offers efficient pattern compilation, flexible matching modes, and text manipulation capabilities including search, replace, and split operations.</p>
 <p>Key features include:</p>
 <list type="bullet">
-<li>ECMAScript (JavaScript) regex syntax with optional AWK and GREP modes.</li>
+<li>ECMAScript (JavaScript) regex syntax.</li>
 <li>Full Unicode support including character classes and properties.</li>
 <li>Case-insensitive and multiline matching options.</li>
 <li>Reusable compiled patterns for optimal performance.</li>
 <li>Callback-based result processing for custom handling.</li>
-</list></description>
+</list>
+<p>Note: Fluid scripts are expected to use the built-in regex functions for better integration as opposed to this module.</p></description>
   </info>
 
   <function>
@@ -57,32 +58,6 @@
       <error code="Okay">The name was resolved and Indices populated.</error>
       <error code="Search">The provided name does not exist within the regex.</error>
       <error code="NullArgs">One or more required arguments were null.</error>
-    </result>
-  </function>
-
-  <function>
-    <name>Match</name>
-    <comment>Performs a single anchored regex match.</comment>
-    <prototype>ERR rx::Match(struct Regex * Regex, const std::string_view &amp; Text, RMATCH Flags, FUNCTION * Callback)</prototype>
-    <input>
-      <param type="struct Regex *" name="Regex">The compiled regex object.</param>
-      <param type="const std::string_view &amp;" name="Text">The input text to perform matching on.</param>
-      <param type="RMATCH" name="Flags" lookup="RMATCH">Optional.  Flags to modify the matching behavior.</param>
-      <param type="FUNCTION *" name="Callback">Optional.  Receives the match results.</param>
-    </input>
-    <description>
-<p>Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled Regex  object, the input Text, optional Flags to modify the matching behavior, and an optional Callback function to process the match results.</p>
-<p>The C++ prototype for the Callback function is:</p>
-<pre>ERR callback(std::vector&lt;std::string_view&gt; &amp;Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
-</pre>
-<p>The Capture vector is always normalised to include every capturing group defined by the pattern, including the full match at index 0. Optional groups that did not participate in the match are represented by empty std::string_view instances, preserving positional indexing.</p>
-<p>Example: Pattern &quot;(a)?(b)&quot; matching &quot;b&quot; yields captures: [&quot;b&quot;, &quot;&quot;, &quot;b&quot;]</p>
-<p>For more sophisticated matching needs, consider using <function>Search</function> instead.</p>
-    </description>
-    <result type="ERR">
-      <error code="Okay">A match was found and processed.</error>
-      <error code="Search">No match was found.</error>
-      <error code="NullArgs">One or more required input arguments were null.</error>
     </result>
   </function>
 
@@ -154,10 +129,7 @@
 
   <types>
     <constants lookup="REGEX" comment="Optional flags for the Regex functions.">
-      <const name="AWK">AWK syntax.</const>
       <const name="DOT_ALL"><code>.</code> matches newlines.</const>
-      <const name="EXTENDED">Allow whitespace and comments.</const>
-      <const name="GREP">GREP syntax.</const>
       <const name="ICASE">Ignore case.</const>
       <const name="MULTILINE"><code>^</code> and <code>$</code> match line boundaries.</const>
     </constants>
@@ -172,6 +144,7 @@
       <const name="PREV_AVAILABLE">Indicates that a valid character exists before the first position in the sequence, enabling proper look-behind and boundary assertions.</const>
       <const name="REPLACE_FIRST_ONLY">In Replace(), replaces only the first match and leaves subsequent matches unchanged.</const>
       <const name="REPLACE_NO_COPY">In Replace(), prevents copying non-matched portions of the input to the output.</const>
+      <const name="WHOLE">Implicit <code>^...$</code> around the pattern.</const>
     </constants>
 
   </types>

@@ -42,13 +42,15 @@ struct TestContext {
    std::string_view input_text;
 };
 
-static ERR match_callback(std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, TestContext &Ctx)
+static ERR match_callback(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, TestContext &Ctx)
 {
    Ctx.match_found = true;
    Ctx.capture_count = Captures.size();
    Ctx.captures = Captures;
-   Ctx.prefix_str = Prefix;
-   Ctx.suffix_str = Suffix;
+   if (not Ctx.input_text.empty()) {
+      Ctx.prefix_str = std::string(Ctx.input_text.substr(0, MatchStart));
+      Ctx.suffix_str = std::string(Ctx.input_text.substr(MatchEnd));
+   }
    return ERR::Okay;
 }
 
@@ -280,7 +282,7 @@ static void test_complex_email(int &TotalTests, int &PassedTests)
    TotalTests++;
    printf("\nTest 9: Complex email pattern\n");
    Regex *regex;
-   if (rx::Compile("^([\\w._%+-]+)@([\\w.-]+)\\.([A-Za-z]{2,})$", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
+   if (rx::Compile("^([\\w._%+\\-]+)@([\\w.\\-]+)\\.([A-Za-z]{2,})$", REGEX::NIL, nullptr, &regex) IS ERR::Okay) {
       TestContext ctx;
       auto callback = C_FUNCTION(&match_callback, &ctx);
 
