@@ -27,7 +27,7 @@ extern "C" {
 
 struct regex_callback {
    lua_State *Lua;
-   regex_callback(lua_State* Lua) : Lua(Lua) {}
+   regex_callback(lua_State *) : Lua(Lua) {}
 };
 
 //*********************************************************************************************************************
@@ -106,7 +106,7 @@ static int regex_new(lua_State *Lua)
    }
 
    const char *pattern = luaL_checkstring(Lua, 1);
-   REGEX flags = REGEX(luaL_optint(Lua, 2, 0));
+   auto flags = REGEX(luaL_optint(Lua, 2, 0));
 
    log.trace("Creating regex with pattern: '%s', flags: %d", pattern, int(flags));
 
@@ -138,7 +138,7 @@ static int regex_test(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
-   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
+   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_none, &meta);
@@ -161,7 +161,7 @@ static int regex_match(lua_State *Lua)
    auto r = (struct fregex *)get_meta(Lua, lua_upvalueindex(1), "Fluid.regex");
    size_t text_len = 0;
    CSTRING text = luaL_checklstring(Lua, 1, &text_len);
-   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
+   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_one, &meta);
@@ -209,7 +209,7 @@ static int regex_replace(lua_State *Lua)
    size_t text_len = 0, replace_len = 0;
    auto text = luaL_checklstring(Lua, 1, &text_len);
    auto replacement = luaL_checklstring(Lua, 2, &replace_len);
-   RMATCH flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
+   auto flags = RMATCH(luaL_optint(Lua, 3, int(RMATCH::NIL)));
 
    std::string output;
    rx::Replace(r->regex_obj, std::string_view(text, text_len), std::string_view(replacement, replace_len), &output, flags);
@@ -227,7 +227,7 @@ static int regex_split(lua_State *Lua)
 
    size_t text_len = 0;
    const char *text = luaL_checklstring(Lua, 1, &text_len);
-   RMATCH flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
+   auto flags = RMATCH(luaL_optint(Lua, 2, int(RMATCH::NIL)));
 
    pf::vector<std::string> parts;
    rx::Split(r->regex_obj, std::string_view(text, text_len), &parts, flags);
@@ -317,6 +317,7 @@ static int regex_destruct(lua_State *Lua)
 
 //********************************************************************************************************************
 // String representation: __tostring
+// Returns: regex(pattern, flags=flags)
 
 static int regex_tostring(lua_State *Lua)
 {
