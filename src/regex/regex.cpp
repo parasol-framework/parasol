@@ -413,7 +413,7 @@ static void append_replacement(std::string *Output, const std::string_view &Text
             ++cursor;
          }
 
-         if ((number != 0u) and (number < Match.size())) {
+         if (number < Match.size()) {
             append_match_substring(Output, Match, number);
          }
          else {

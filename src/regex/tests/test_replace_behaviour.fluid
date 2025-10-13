@@ -12,6 +12,12 @@ function testBackreferenceReplacement()
    assert(result == "second:first", "Replacement should allow positional swaps")
 end
 
+function testZeroCaptureReplacement()
+   local matcher = regex.new("(\\d+)")
+   local result = matcher.replace("42-54", "[$0]")
+   assert(result == "[42]-[54]", "$0 should expand to the entire match")
+end
+
 function testLiteralDollarEscape()
    local matcher = regex.new("(\\d+)")
    local result = matcher.replace("Cost 15", "$$$1")
@@ -40,6 +46,7 @@ return {
    tests = {
       'testSimpleReplacement',
       'testBackreferenceReplacement',
+      'testZeroCaptureReplacement',
       'testLiteralDollarEscape',
       'testReplaceNoCopyFlag',
       'testReplaceFirstOnlyFlag',
