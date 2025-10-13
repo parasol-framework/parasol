@@ -42,13 +42,15 @@ struct TestContext {
    std::string_view input_text;
 };
 
-static ERR match_callback(std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, TestContext &Ctx)
+static ERR match_callback(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, TestContext &Ctx)
 {
    Ctx.match_found = true;
    Ctx.capture_count = Captures.size();
    Ctx.captures = Captures;
-   Ctx.prefix_str = Prefix;
-   Ctx.suffix_str = Suffix;
+   if (not Ctx.input_text.empty()) {
+      Ctx.prefix_str = std::string(Ctx.input_text.substr(0, MatchStart));
+      Ctx.suffix_str = std::string(Ctx.input_text.substr(MatchEnd));
+   }
    return ERR::Okay;
 }
 

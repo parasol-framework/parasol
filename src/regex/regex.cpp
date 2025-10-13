@@ -15,12 +15,15 @@ operations.
 Key features include:
 
 <list type="bullet">
-<li>ECMAScript (JavaScript) regex syntax with optional AWK and GREP modes.</li>
+<li>ECMAScript (JavaScript) regex syntax.</li>
 <li>Full Unicode support including character classes and properties.</li>
 <li>Case-insensitive and multiline matching options.</li>
 <li>Reusable compiled patterns for optimal performance.</li>
 <li>Callback-based result processing for custom handling.</li>
 </list>
+
+Note: Fluid scripts are expected to use the built-in regex functions for better integration as opposed to this
+module.
 
 -END-
 
@@ -76,41 +79,6 @@ struct extRegex : public Regex {
 
 //********************************************************************************************************************
 
-static ERR process_result(std::string_view Text, const srell::u8ccmatch &Native, FUNCTION *Callback)
-{
-   if (not Callback) return ERR::Okay;
-
-   int capture_count = Native.size();
-
-   const srell::sub_match<const char *> &prefix = Native.prefix();
-   const srell::sub_match<const char *> &suffix = Native.suffix();
-
-   auto prefix_view = prefix.matched ? std::string_view(prefix.first, prefix.length()) : std::string_view();
-   auto suffix_view = suffix.matched ? std::string_view(suffix.first, suffix.length()) : std::string_view();
-
-   std::vector<std::string_view> captures;
-   captures.reserve(capture_count);
-   for (int i = 0; i < capture_count; ++i) {
-      const srell::sub_match<const char*>& segment = Native[i];
-      captures.push_back(segment.matched ? std::string_view(segment.first, segment.length()) : std::string_view());
-   }
-
-   ERR error;
-   if (Callback->isC()) {
-      pf::SwitchContext ctx(Callback->Context);
-      auto routine = (ERR(*)(std::vector<std::string_view> &, std::string_view, std::string_view, APTR))Callback->Routine;
-      error = routine(captures, prefix_view, suffix_view, Callback->Meta);
-      if (error IS ERR::Terminate) return ERR::Terminate;
-   }
-   else if (Callback->isScript()) {
-      // TODO: Implement script callback handling
-   }
-
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
-
 static std::string map_error_code(uint32_t ErrorCode)
 {
    if (not ErrorCode) return "Okay";
@@ -153,13 +121,14 @@ static srell::regex_constants::match_flag_type convert_match_flags(RMATCH Flags)
 {
    unsigned int native = 0;
 
-   if ((Flags & RMATCH::NOT_BEGIN_OF_LINE) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::match_not_bol;
-   if ((Flags & RMATCH::NOT_END_OF_LINE) != RMATCH::NIL)   native |= (unsigned int)srell::regex_constants::match_not_eol;
-   if ((Flags & RMATCH::NOT_BEGIN_OF_WORD) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::match_not_bow;
-   if ((Flags & RMATCH::NOT_END_OF_WORD) != RMATCH::NIL)   native |= (unsigned int)srell::regex_constants::match_not_eow;
-   if ((Flags & RMATCH::NOT_NULL) != RMATCH::NIL)          native |= (unsigned int)srell::regex_constants::match_not_null;
-   if ((Flags & RMATCH::CONTINUOUS) != RMATCH::NIL)        native |= (unsigned int)srell::regex_constants::match_continuous;
-   if ((Flags & RMATCH::PREV_AVAILABLE) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_prev_avail;
+   if ((Flags & RMATCH::NOT_BEGIN_OF_LINE) != RMATCH::NIL)  native |= (unsigned int)srell::regex_constants::match_not_bol;
+   if ((Flags & RMATCH::NOT_END_OF_LINE) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_not_eol;
+   if ((Flags & RMATCH::NOT_BEGIN_OF_WORD) != RMATCH::NIL)  native |= (unsigned int)srell::regex_constants::match_not_bow;
+   if ((Flags & RMATCH::NOT_END_OF_WORD) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::match_not_eow;
+   if ((Flags & RMATCH::NOT_NULL) != RMATCH::NIL)           native |= (unsigned int)srell::regex_constants::match_not_null;
+   if ((Flags & RMATCH::CONTINUOUS) != RMATCH::NIL)         native |= (unsigned int)srell::regex_constants::match_continuous;
+   if ((Flags & RMATCH::PREV_AVAILABLE) != RMATCH::NIL)     native |= (unsigned int)srell::regex_constants::match_prev_avail;
+   if ((Flags & RMATCH::WHOLE) != RMATCH::NIL)              native |= (unsigned int)srell::regex_constants::match_whole;
    if ((Flags & RMATCH::REPLACE_NO_COPY) != RMATCH::NIL)    native |= (unsigned int)srell::regex_constants::format_no_copy;
    if ((Flags & RMATCH::REPLACE_FIRST_ONLY) != RMATCH::NIL) native |= (unsigned int)srell::regex_constants::format_first_only;
 
@@ -242,10 +211,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
 
       auto reg_flags = srell::regex_constants::ECMAScript | srell::regex_constants::unicodesets;  // Default syntax with Unicode support
       if ((Flags & REGEX::ICASE) != REGEX::NIL)     reg_flags |= srell::regex_constants::icase;
-      if ((Flags & REGEX::EXTENDED) != REGEX::NIL)  reg_flags |= srell::regex_constants::extended;
       if ((Flags & REGEX::MULTILINE) != REGEX::NIL) reg_flags |= srell::regex_constants::multiline;
-      if ((Flags & REGEX::AWK) != REGEX::NIL)       reg_flags |= srell::regex_constants::awk;
-      if ((Flags & REGEX::GREP) != REGEX::NIL)      reg_flags |= srell::regex_constants::grep;
       if ((Flags & REGEX::DOT_ALL) != REGEX::NIL)   reg_flags |= srell::regex_constants::dotall;
 
       regex->srell = new (std::nothrow) regex_engine(Pattern.data(), Pattern.size(), reg_flags);
@@ -309,58 +275,6 @@ ERR GetCaptureIndex(Regex *Regex, const std::string_view &Name, pf::vector<int> 
 
    if (sr->resolve_named_capture(Name, Indices)) return ERR::Okay;
    else return ERR::Search;
-}
-
-/*********************************************************************************************************************
-
--FUNCTION-
-Match: Performs a single anchored regex match.
-
-Use Match() to perform a singular anchored regex match (no searching) on a given text. The function takes a compiled
-Regex  object, the input Text, optional Flags to modify the matching behavior, and an optional Callback function to
-process the match results.
-
-The C++ prototype for the Callback function is:
-
-<pre>
-ERR callback(std::vector&lt;std::string_view&gt; &Capture, std::string_view Prefix, std::string_view Suffix, APTR Meta);
-</pre>
-
-The Capture vector is always normalised to include every capturing group defined by the pattern, including the full
-match at index 0. Optional groups that did not participate in the match are represented by empty std::string_view
-instances, preserving positional indexing.
-
-Example: Pattern "(a)?(b)" matching "b" yields captures: ["b", "", "b"]
-
-For more sophisticated matching needs, consider using ~Search() instead.
-
--INPUT-
-ptr(struct(Regex)) Regex: The compiled regex object.
-cpp(strview) Text: The input text to perform matching on.
-int(RMATCH) Flags: Optional.  Flags to modify the matching behavior.
-ptr(func) Callback: Optional.  Receives the match results.
-
--ERRORS-
-Okay: A match was found and processed.
-NullArgs: One or more required input arguments were null.
-Search: No match was found.
--END-
-
-*********************************************************************************************************************/
-
-ERR Match(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *Callback)
-{
-   pf::Log log(__FUNCTION__);
-
-   if (not Regex) return log.warning(ERR::NullArgs);
-
-   srell::u8ccmatch cnative;
-   if (((extRegex *)Regex)->srell->match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags))) {
-      process_result(Text, cnative, Callback);
-      return ERR::Okay;
-   }
-   else return ERR::Search;
-
 }
 
 /*********************************************************************************************************************

@@ -103,8 +103,9 @@ static ERR match_many(int Index, std::vector<std::string_view> &Captures, size_t
 }
 
 //*********************************************************************************************************************
+// Differs to match_many() in that it only ever returns one match without the indexed table.
 
-static ERR match_one(std::vector<std::string_view> &Captures, std::string_view Prefix, std::string_view Suffix, regex_callback &Meta)
+static ERR match_one(int Index, std::vector<std::string_view> &Captures, size_t MatchStart, size_t MatchEnd, regex_callback &Meta)
 {
    auto lua_state = Meta.lua_state;
 
@@ -203,7 +204,7 @@ static int regex_match(lua_State *Lua)
 
    auto meta = regex_callback { Lua };
    auto cb = C_FUNCTION(match_one, &meta);
-   if (rx::Match(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
+   if (rx::Search(r->regex_obj, std::string_view(text, text_len), flags, &cb) IS ERR::Okay) {
       return 1;
    }
    else {
@@ -409,7 +410,7 @@ void register_regex_class(lua_State *Lua)
    luaL_openlib(Lua, "regex", functions, 0);
 
    // Add flag constants to regex module.  These match the REGEX_* flags but making them available
-   // in this way means that scritps don't need to include the regex module.
+   // in this way means that scripts don't need to include the regex module.
 
    lua_getglobal(Lua, "regex");
    if (lua_istable(Lua, -1)) {
@@ -421,15 +422,6 @@ void register_regex_class(lua_State *Lua)
 
       lua_pushinteger(Lua, int(REGEX::DOT_ALL));
       lua_setfield(Lua, -2, "DOT_ALL");
-
-      lua_pushinteger(Lua, int(REGEX::EXTENDED));
-      lua_setfield(Lua, -2, "EXTENDED");
-
-      lua_pushinteger(Lua, int(REGEX::AWK));
-      lua_setfield(Lua, -2, "AWK");
-
-      lua_pushinteger(Lua, int(REGEX::GREP));
-      lua_setfield(Lua, -2, "GREP");
 
       lua_pushinteger(Lua, int(RMATCH::NOT_BEGIN_OF_LINE));
       lua_setfield(Lua, -2, "NOT_BEGIN_OF_LINE");

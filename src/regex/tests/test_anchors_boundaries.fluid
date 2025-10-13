@@ -7,9 +7,8 @@ function testStartEndAnchors()
 end
 
 function testAbsoluteAnchors()
-   local matcher = regex.new("\\Astart.+finish\\Z")
-   assert(matcher.test("start...finish"), "\\A and \\Z should bind to absolute string edges")
-   assert(not matcher.test("restart...finish"), "\\A should not allow prefix text")
+   local ex, matcher = catch(function() return regex.new("\\Astart.+finish\\Z") end)
+   assert(matcher == nil, "\\A and \\Z are not support by ECMAScript")
 end
 
 function testWordBoundaries()
@@ -35,7 +34,7 @@ function testContinuousFlag()
 end
 
 function testNotNullFlag()
-   local matcher = regex.new("a*")
+   local matcher = regex.new("a*") -- Match zero or more of 'a'
    assert(matcher.match("bbb"), "Zero length match should succeed by default")
    assert(matcher.match("bbb", regex.NOT_NULL) == nil, "NOT_NULL should disallow zero length results")
 end

@@ -222,7 +222,7 @@ concept allocator_type = requires(T alloc) {
 			format_first_only = 1 << 8, // In regex_replace, replaces only the first match and leaves subsequent matches unchanged.
 
 			//  For internal use.
-			match_match_ = 1 << 9       // Internal flag used to distinguish regex_match operations from regex_search operations.
+			match_whole = 1 << 9       // Internal flag used to distinguish regex_match operations from regex_search operations.
 		};
 
 		constexpr match_flag_type operator&(const match_flag_type left, const match_flag_type right) noexcept
@@ -9807,7 +9807,7 @@ SRELL_NO_VCWARNING_END
 				(
 					(!(sstate.flags & regex_constants::match_not_null) || !(sstate.ssc.iter == sstate.curbegin))
 					&&
-					(!(sstate.flags & regex_constants::match_match_) || sstate.ssc.iter == sstate.srchend)
+					(!(sstate.flags & regex_constants::match_whole) || sstate.ssc.iter == sstate.srchend)
 				)
 					return 1;
 
@@ -9967,7 +9967,7 @@ public:
 		match_results<BidirectionalIterator, MA> &m,
 		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
-		return base_type::search(begin, end, begin, m, flags | regex_constants::match_continuous | regex_constants::match_match_);
+		return base_type::search(begin, end, begin, m, flags | regex_constants::match_continuous | regex_constants::match_whole);
 	}
 
 	template <typename MA>

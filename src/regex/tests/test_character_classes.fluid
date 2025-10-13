@@ -24,9 +24,10 @@ end
 
 function testNegatedClass()
    local matcher = regex.new("[^aeiou]+")
-   local match = matcher.match("strength")
+   local match = matcher.search("strength")
+   -- Expecting [ "str", "ngth" ]
    assert(match, "No match found for negated vowel class")
-   assert(match[1] == "str", "Negated vowel class should consume consonant prefix, got " .. tostring(match[1]))
+   assert(match[1][1] == "str", "Negated vowel class should consume consonant prefix, got " .. tostring(match[1][1]))
 end
 
 function testEscapedDot()

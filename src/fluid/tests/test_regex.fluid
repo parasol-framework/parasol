@@ -137,10 +137,6 @@ function testFlags()
    assert(icase_regex.test("HELLO"), "ICASE flag should work")
    assert(icase_regex.test("Hello"), "ICASE flag should work")
    assert(icase_regex.test("hello"), "ICASE flag should work")
-
-   -- Multiple flags (test combining)
-   local multi_flag_regex = regex.new("hello", regex.ICASE + regex.EXTENDED)
-   assert(multi_flag_regex.flags == (regex.ICASE + regex.EXTENDED), "Multiple flags should combine")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
