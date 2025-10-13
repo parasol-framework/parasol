@@ -382,7 +382,7 @@ static void append_replacement(std::string *Output, const std::string_view &Text
          append_range(Output, Text.data(), Text.data() + MatchBegin);
          ++cursor;
       }
-      else if (marker IS char(39)) {
+      else if (marker IS '\'') {
          append_range(Output, Text.data() + MatchEnd, Text.data() + Text.size());
          ++cursor;
       }
