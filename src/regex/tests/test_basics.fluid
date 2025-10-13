@@ -16,14 +16,14 @@ end
 function testToStringOutput()
    local matcher = regex.new("words?", regex.ICASE)
    local description = tostring(matcher)
-   assert(description:find("regex(words?)"), "Description should contain pattern")
+   assert(description:startsWith("regex(words?"), "Description should contain pattern, got: " .. description)
    assert(description:find("flags="), "Description should include flag summary when flags are set")
 end
 
 function testInvalidPatternRaises()
-   local err, message = catch(function() return regex.new("(broken") end)
-   assert(err != nil, "Invalid pattern should raise an error")
-   assert(tostring(message):find("Regex compilation failed"), "Error message should mention compilation failure")
+   local ex = catch(function() return regex.new("(broken") end)
+   assert(ex != nil, "Invalid pattern should raise an exception")
+   assert(ex.message:find("Regex compilation failed"), "Error message should mention compilation failure, got: " .. ex.message)
 end
 
 return {

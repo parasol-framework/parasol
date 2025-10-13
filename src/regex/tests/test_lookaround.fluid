@@ -27,7 +27,7 @@ function testNegativeLookbehind()
 end
 
 function testLookaroundDoesNotConsume()
-   local matcher = regex.new("(?<=@)([a-z]+)(?=\.)")
+   local matcher = regex.new("(?<=@)([a-z]+)(?=\\.)")
    local match = matcher.match("Contact @support.example")
    assert(match and match[1] == "support", "Lookarounds should not consume delimiter characters")
 end

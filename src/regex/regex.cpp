@@ -443,15 +443,13 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 
    auto sr = ((extRegex *)Regex)->srell;
 
-   std::string text_str(Text); // TODO: Inefficient, but srell::sregex_iterator requires a non-const string
-   auto native = convert_match_flags(Flags);
-   auto begin = srell::sregex_iterator(text_str.begin(), text_str.end(), *sr, native);
-   auto end   = srell::sregex_iterator();
+   auto begin = srell::cregex_iterator(Text.data(), Text.data() + Text.size(), *sr, convert_match_flags(Flags));
+   auto end   = srell::cregex_iterator();
 
    bool match_found = false;
    int match_index = 0;
-   for (srell::sregex_iterator i = begin; i != end; ++i) {
-      const srell::smatch &match = *i;
+   for (srell::cregex_iterator i = begin; not (i IS end); ++i) {
+      const srell::cmatch &match = *i;
 
       std::vector<std::string_view> captures;
       captures.reserve(match.size());
@@ -522,9 +520,8 @@ ERR Split(Regex *Regex, const std::string_view &Text, pf::vector<std::string> *O
    Output->clear();
 
    auto sr = ((extRegex *)Regex)->srell;
-   std::string text_str(Text);
-   srell::sregex_token_iterator iter(text_str.begin(), text_str.end(), *sr, -1, convert_match_flags(Flags));
-   srell::sregex_token_iterator sentinel;
+   srell::cregex_token_iterator iter(Text.data(), Text.data() + Text.size(), *sr, -1, convert_match_flags(Flags));
+   srell::cregex_token_iterator sentinel;
 
    for (; not (iter IS sentinel); ++iter) {
       Output->emplace_back(iter->str());
