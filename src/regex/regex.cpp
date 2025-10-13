@@ -383,7 +383,7 @@ static void append_replacement(std::string *Output, const std::string_view &Text
          append_range(Output, Text.data() + PrefixBegin, Text.data() + PrefixBegin + prefix_length);
          ++cursor;
       }
-      else if (marker IS char(39)) {
+      else if (marker IS '\'') {
          append_range(Output, Text.data() + MatchEnd, Text.data() + Text.size());
          ++cursor;
       }
