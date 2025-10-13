@@ -46,8 +46,8 @@ static ERR MODOpen(OBJECTPTR);
 
 JUMPTABLE_CORE
 
-struct regex_engine : public srell::regex {
-   using srell::regex::regex;
+struct regex_engine : public srell::u8cregex {
+   using srell::u8cregex::u8cregex;
 
    bool resolve_named_capture(const std::string_view &Name, pf::vector<int> *Indices) const
    {
@@ -76,7 +76,7 @@ struct extRegex : public Regex {
 
 //********************************************************************************************************************
 
-static ERR process_result(std::string_view Text, const srell::cmatch &Native, FUNCTION *Callback)
+static ERR process_result(std::string_view Text, const srell::u8ccmatch &Native, FUNCTION *Callback)
 {
    if (not Callback) return ERR::Okay;
 
@@ -240,7 +240,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       regex->Pattern = Pattern;
       regex->Flags = Flags;
 
-      auto reg_flags = srell::regex_constants::ECMAScript; // Default syntax
+      auto reg_flags = srell::regex_constants::ECMAScript | srell::regex_constants::unicodesets;  // Default syntax with Unicode support
       if ((Flags & REGEX::ICASE) != REGEX::NIL)     reg_flags |= srell::regex_constants::icase;
       if ((Flags & REGEX::EXTENDED) != REGEX::NIL)  reg_flags |= srell::regex_constants::extended;
       if ((Flags & REGEX::MULTILINE) != REGEX::NIL) reg_flags |= srell::regex_constants::multiline;
@@ -354,7 +354,7 @@ ERR Match(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *Ca
 
    if (not Regex) return log.warning(ERR::NullArgs);
 
-   srell::cmatch cnative;
+   srell::u8ccmatch cnative;
    if (((extRegex *)Regex)->srell->match(Text.data(), Text.data() + Text.size(), cnative, convert_match_flags(Flags))) {
       process_result(Text, cnative, Callback);
       return ERR::Okay;
@@ -443,14 +443,13 @@ ERR Search(Regex *Regex, const std::string_view &Text, RMATCH Flags, FUNCTION *C
 
    auto sr = ((extRegex *)Regex)->srell;
 
-   auto begin = srell::cregex_iterator(Text.data(), Text.data() + Text.size(), *sr, convert_match_flags(Flags));
-   auto end   = srell::cregex_iterator();
+   auto begin = srell::u8ccregex_iterator(Text.data(), Text.data() + Text.size(), *sr, convert_match_flags(Flags));
+   auto end   = srell::u8ccregex_iterator();
 
    bool match_found = false;
    int match_index = 0;
-   for (srell::cregex_iterator i = begin; not (i IS end); ++i) {
-      const srell::cmatch &match = *i;
-
+   for (srell::u8ccregex_iterator i = begin; not (i IS end); ++i) {
+      const srell::u8ccmatch &match = *i;
       std::vector<std::string_view> captures;
       captures.reserve(match.size());
       for (size_t j = 0; j < match.size(); ++j) {
@@ -520,11 +519,33 @@ ERR Split(Regex *Regex, const std::string_view &Text, pf::vector<std::string> *O
    Output->clear();
 
    auto sr = ((extRegex *)Regex)->srell;
-   srell::cregex_token_iterator iter(Text.data(), Text.data() + Text.size(), *sr, -1, convert_match_flags(Flags));
-   srell::cregex_token_iterator sentinel;
+   auto native_flags = convert_match_flags(Flags);
 
-   for (; not (iter IS sentinel); ++iter) {
-      Output->emplace_back(iter->str());
+   const char *text_begin = Text.data();
+   const char *text_end = text_begin + Text.size();
+   size_t last_index = 0;
+   const size_t text_length = Text.size();
+
+   srell::u8ccregex_iterator begin(text_begin, text_end, *sr, native_flags);
+   srell::u8ccregex_iterator sentinel;
+
+   for (srell::u8ccregex_iterator iter = begin; not (iter IS sentinel); ++iter) {
+      const srell::u8ccmatch &current = *iter;
+      size_t match_pos = (size_t)current.position(0);
+      size_t match_length = current.length(0);
+
+      if (match_pos > text_length) match_pos = text_length;
+
+      Output->emplace_back(std::string(Text.substr(last_index, match_pos - last_index)));
+
+      size_t next_index = match_pos + match_length;
+      if ((match_length IS 0) and (match_pos < text_length)) next_index = match_pos + 1;
+      if (next_index > text_length) next_index = text_length;
+      last_index = next_index;
+   }
+
+   if (last_index <= text_length) {
+      Output->emplace_back(std::string(Text.substr(last_index)));
    }
 
    return ERR::Okay;
