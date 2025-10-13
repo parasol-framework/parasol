@@ -13,7 +13,7 @@ Name: Events
 
 #include "defs.h"
 
-static const std::array<CSTRING, int(EVG::END)> glEventGroups = {
+static constexpr std::array<CSTRING, int(EVG::END)> glEventGroups = {
    nullptr,
    "filesystem",
    "network",

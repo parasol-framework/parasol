@@ -97,8 +97,8 @@ struct ParseState {
    }
 };
 
-typedef objXML::TAGS TAGS;
-typedef objXML::CURSOR CURSOR;
+using TAGS = objXML::TAGS;
+using CURSOR = objXML::CURSOR;
 
 //********************************************************************************************************************
 // Generic lookup templates with concepts
