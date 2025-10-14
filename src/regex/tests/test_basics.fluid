@@ -26,11 +26,18 @@ function testInvalidPatternRaises()
    assert(ex.message:find("Regex compilation failed"), "Error message should mention compilation failure, got: " .. ex.message)
 end
 
+function testMatchWholeEnforcement()
+   local matcher = regex.new("foo")
+   assert(matcher.match("foo") ~= nil, "match() should succeed for an exact string")
+   assert(matcher.match("foobar") == nil, "match() should enforce whole-string semantics")
+end
+
 return {
    tests = {
       'testConstructionMetadata',
       'testFlagPersistence',
       'testToStringOutput',
-      'testInvalidPatternRaises'
+      'testInvalidPatternRaises',
+      'testMatchWholeEnforcement'
    }
 }
