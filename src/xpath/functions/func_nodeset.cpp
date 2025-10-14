@@ -114,6 +114,7 @@ XPathVal XPathFunctionLibrary::function_local_name(const std::vector<XPathVal> &
 
    if (target_attribute) {
       std::string_view name = target_attribute->Name;
+      if (!name.empty() and name.front() IS '?') return XPathVal(std::string(name.substr(1)));
       auto colon = name.find(':');
       if (colon IS std::string::npos) return XPathVal(std::string(name));
       return XPathVal(std::string(name.substr(colon + 1)));
@@ -123,6 +124,7 @@ XPathVal XPathFunctionLibrary::function_local_name(const std::vector<XPathVal> &
    if (target_node->Attribs.empty()) return XPathVal(std::string());
 
    std::string_view node_name = target_node->Attribs[0].Name;
+   if (!node_name.empty() and node_name.front() IS '?') return XPathVal(std::string(node_name.substr(1)));
    if (node_name.empty()) return XPathVal(std::string());
 
    auto colon = node_name.find(':');
@@ -205,6 +207,8 @@ XPathVal XPathFunctionLibrary::function_name(const std::vector<XPathVal> &Args, 
    if (not target_node) return XPathVal(std::string());
    if (target_node->Attribs.empty()) return XPathVal(std::string());
 
-   return XPathVal(target_node->Attribs[0].Name);
+   std::string name = target_node->Attribs[0].Name;
+   if (!name.empty() and name.front() IS '?') name.erase(0, 1);
+   return XPathVal(std::move(name));
 }
 

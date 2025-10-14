@@ -70,10 +70,39 @@ function testDocumentConstructor()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Attribute and sequence content should merge correctly inside constructors
+
+function testConstructorAttributeSequences()
+   local xml = obj.new("xml", { statement = '<root/>' })
+
+   local mergedCount = tonumber(xml.getKey('count(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@*)'))
+   assert(mergedCount == 2, 'Element constructor should merge attribute sequences into the result, got ' .. tostring(mergedCount))
+
+   local mergedAttr = xml.getKey('string(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@second)')
+   assert(mergedAttr == '2', 'Element constructor should preserve attribute values from sequences, got ' .. nz(mergedAttr, 'NIL'))
+
+   local firstChild = xml.getKey('name((element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/node())[1])')
+   assert(firstChild == 'child', 'Element constructor should retain subsequent child nodes after attributes, got ' .. nz(firstChild, 'NIL'))
+
+   local dynamicAttr = xml.getKey('string((let $attrs := (attribute id { "main" }, attribute role { "admin" }) return element wrapper { $attrs, text { "ready" } })/@role)')
+   assert(dynamicAttr == 'admin', 'Element constructor should append dynamic attribute sequences before content, got ' .. nz(dynamicAttr, 'NIL'))
+
+   local firstText = xml.getKey('string((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[1])')
+   assert(firstText == 'ready', 'Element constructor should keep constructed text content before atomic values, got ' .. nz(firstText, 'NIL'))
+
+   local secondText = xml.getKey('string((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[2])')
+   assert(secondText == '!', 'Element constructor should append atomic values as subsequent text nodes, got ' .. nz(secondText, 'NIL'))
+
+   local combinedText = xml.getKey('concat((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[1], (let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[2])')
+   assert(combinedText == 'ready!', 'Element constructor should preserve text node ordering when combined explicitly, got ' .. nz(combinedText, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testDirectConstructorEvaluation', 'testComputedConstructors',
-      'testNonElementConstructors', 'testDocumentConstructor'
+      'testNonElementConstructors', 'testDocumentConstructor',
+      'testConstructorAttributeSequences'
    }
 }
