@@ -132,6 +132,7 @@ bool XPathTokenizer::has_more() const
    return position < length;
 }
 
+//********************************************************************************************************************
 // Main tokenization function that converts an XPath query string into a vector of tokens. Handles operators,
 // literals, identifiers, keywords, and special XPath syntax. Resolves ambiguities such as differentiating
 // between the multiply operator and wildcard based on context. Tracks bracket and parenthesis depth to
@@ -408,6 +409,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
    return tokens;
 }
 
+//********************************************************************************************************************
 // Scans and tokenizes an identifier or keyword from the current position. Checks the scanned name against
 // the keyword mappings to determine if it's a reserved word (like 'and', 'or', 'if') or a regular identifier.
 
@@ -429,6 +431,7 @@ XPathToken XPathTokenizer::scan_identifier()
    return XPathToken(type, identifier, start, position - start);
 }
 
+//********************************************************************************************************************
 // Scans numeric literals from the input, handling both integers and decimal numbers. Parses consecutive
 // digits and at most one decimal point to form a valid numeric token.
 
@@ -455,6 +458,7 @@ XPathToken XPathTokenizer::scan_number()
    return XPathToken(XPathTokenType::NUMBER, number_view, start, position - start);
 }
 
+//********************************************************************************************************************
 // Scans string literals enclosed in quotes (single or double). Handles escape sequences for quote characters,
 // backslashes, and wildcards. Uses optimised fast-path for strings without escapes, otherwise builds the
 // unescaped string content with proper escape processing.
@@ -493,12 +497,8 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
       {
          position++;
          char escaped = input[position];
-         if (escaped IS QuoteChar or escaped IS '\\' or escaped IS '*')
-         {
-            value += escaped;
-         }
-         else
-         {
+         if (escaped IS QuoteChar or escaped IS '\\' or escaped IS '*') value += escaped;
+         else {
             value += '\\';
             value += escaped;
          }
@@ -513,6 +513,10 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
    return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
 }
 
+//********************************************************************************************************************
+// Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the 
+// string into literal and expression parts so the parser can construct attribute value templates.
+
 XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemplates)
 {
    size_t start = position;
@@ -524,25 +528,20 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
    bool in_expression = false;
    int brace_depth = 0;
 
-   while (position < length)
-   {
+   while (position < length) {
       char ch = input[position];
 
-      if (not in_expression)
-      {
+      if (not in_expression) {
          if (ch IS QuoteChar) break;
 
-         if (ProcessTemplates and ch IS '{')
-         {
-            if ((position + 1 < length) and (input[position + 1] IS '{'))
-            {
+         if (ProcessTemplates and ch IS '{') {
+            if ((position + 1 < length) and (input[position + 1] IS '{')) {
                current_literal += '{';
                position += 2;
                continue;
             }
 
-            if (!current_literal.empty())
-            {
+            if (!current_literal.empty()) {
                XPathAttributeValuePart literal_part;
                literal_part.is_expression = false;
                literal_part.text = std::move(current_literal);
@@ -557,8 +556,7 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
             continue;
          }
 
-         if (ProcessTemplates and ch IS '}' and (position + 1 < length) and (input[position + 1] IS '}'))
-         {
+         if (ProcessTemplates and ch IS '}' and (position + 1 < length) and (input[position + 1] IS '}')) {
             current_literal += '}';
             position += 2;
             continue;
@@ -569,19 +567,16 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
          continue;
       }
 
-      if (ch IS '\'' or ch IS '"')
-      {
+      if (ch IS '\'' or ch IS '"') {
          char expr_quote = ch;
          current_expression += ch;
          position++;
-         while (position < length)
-         {
+         while (position < length) {
             char inner = input[position];
             current_expression += inner;
             position++;
             if (inner IS expr_quote) break;
-            if (inner IS '\\' and position < length)
-            {
+            if (inner IS '\\' and position < length) {
                current_expression += input[position];
                position++;
             }
@@ -589,19 +584,16 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
          continue;
       }
 
-      if (ch IS '{')
-      {
+      if (ch IS '{') {
          brace_depth++;
          current_expression += ch;
          position++;
          continue;
       }
 
-      if (ch IS '}')
-      {
+      if (ch IS '}') {
          brace_depth--;
-         if (brace_depth IS 0)
-         {
+         if (brace_depth IS 0) {
             position++;
             XPathAttributeValuePart expr_part;
             expr_part.is_expression = true;
@@ -621,8 +613,7 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
       position++;
    }
 
-   if (in_expression)
-   {
+   if (in_expression) {
       std::string recovery;
       recovery += '{';
       recovery += current_expression;
@@ -630,8 +621,7 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
       current_expression.clear();
    }
 
-   if (!current_literal.empty() or parts.empty())
-   {
+   if (!current_literal.empty() or parts.empty()) {
       XPathAttributeValuePart literal_tail;
       literal_tail.is_expression = false;
       literal_tail.text = std::move(current_literal);
@@ -659,20 +649,17 @@ XPathToken XPathTokenizer::scan_operator()
    size_t start = position;
    char ch = input[position];
 
-   for (const auto &[text, token_type] : multi_char_operators)
-   {
+   for (const auto &[text, token_type] : multi_char_operators) {
       size_t length_required = text.size();
       if (position + length_required > length) continue;
-      if (input.compare(position, length_required, text) IS 0)
-      {
+      if (input.compare(position, length_required, text) IS 0) {
          position += length_required;
          return XPathToken(token_type, input.substr(start, length_required), start, length_required);
       }
    }
 
    auto single_char = input.substr(position, 1);
-   switch (ch)
-   {
+   switch (ch) {
       case '/': position++; return XPathToken(XPathTokenType::SLASH, single_char, start, 1);
       case '.': position++; return XPathToken(XPathTokenType::DOT, single_char, start, 1);
       case '*': position++; return XPathToken(XPathTokenType::WILDCARD, single_char, start, 1);

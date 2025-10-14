@@ -1073,6 +1073,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
    return nullptr;
 }
 
+<<<<<<< HEAD
+=======
+// Determines whether the supplied token introduces a computed constructor keyword,
+// enabling the parser to divert from normal name lookup rules.
+>>>>>>> test/codex-implement-xml-node-constructors-for-xpath-module-36ozji
 bool XPathParser::is_constructor_keyword(const XPathToken &Token) const
 {
    if (Token.type IS XPathTokenType::IDENTIFIER)
@@ -1095,6 +1100,11 @@ bool XPathParser::consume_token(XPathTokenType type, std::string_view ErrorMessa
    return false;
 }
 
+<<<<<<< HEAD
+=======
+// Parses the QName that follows constructor tokens, handling prefixed names and
+// returning both the prefix and local part for later namespace resolution.
+>>>>>>> test/codex-implement-xml-node-constructors-for-xpath-module-36ozji
 std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname()
 {
    ConstructorName name;
@@ -1123,10 +1133,14 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
    return name;
 }
 
+//********************************************************************************************************************
+// Parses direct element constructors beginning with '<', capturing namespace
+// declarations, attribute value templates, and nested content until the matching
+// closing tag is encountered.
+
 std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 {
-   if (!consume_token(XPathTokenType::TAG_OPEN, "Expected '<' to start direct constructor"))
-   {
+   if (!consume_token(XPathTokenType::TAG_OPEN, "Expected '<' to start direct constructor")) {
       return nullptr;
    }
 
@@ -1145,8 +1159,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
    while (!check(XPathTokenType::TAG_CLOSE) and !check(XPathTokenType::EMPTY_TAG_CLOSE))
    {
-      if (is_at_end())
-      {
+      if (is_at_end()) {
          report_error("Unexpected end of input in direct constructor start tag");
          return nullptr;
       }
@@ -1159,13 +1172,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       attribute.name = attribute_name->LocalName;
       attribute.is_namespace_declaration = (attribute.prefix.empty() and attribute.name IS "xmlns") or (attribute.prefix IS "xmlns");
 
-      if (!consume_token(XPathTokenType::EQUALS, "Expected '=' after attribute name"))
-      {
+      if (!consume_token(XPathTokenType::EQUALS, "Expected '=' after attribute name")) {
          return nullptr;
       }
 
-      if (!check(XPathTokenType::STRING))
-      {
+      if (!check(XPathTokenType::STRING)) {
          report_error("Expected quoted attribute value in direct constructor");
          return nullptr;
       }
@@ -1174,17 +1185,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       advance();
 
       std::vector<XPathAttributeValuePart> parts;
-      if (!attribute_token.attribute_value_parts.empty())
-      {
+      if (!attribute_token.attribute_value_parts.empty()) {
          parts.reserve(attribute_token.attribute_value_parts.size());
          size_t part_index = 0;
-         for (const auto &token_part : attribute_token.attribute_value_parts)
-         {
+         for (const auto &token_part : attribute_token.attribute_value_parts) {
             XPathAttributeValuePart part;
             part.is_expression = token_part.is_expression;
             part.text = token_part.text;
-            if (part.is_expression)
-            {
+            if (part.is_expression) {
                auto expr = parse_embedded_expr(part.text);
                if (!expr) return nullptr;
                attribute.set_expression_for_part(part_index, std::move(expr));
@@ -1210,8 +1218,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       attributes.push_back(std::move(attribute));
    }
 
-   if (check(XPathTokenType::EMPTY_TAG_CLOSE))
-   {
+   if (check(XPathTokenType::EMPTY_TAG_CLOSE)) {
       match(XPathTokenType::EMPTY_TAG_CLOSE);
       info.is_empty_element = true;
       info.attributes = std::move(attributes);
@@ -1219,8 +1226,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       return element_node;
    }
 
-   if (!consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close start tag"))
-   {
+   if (!consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close start tag")) {
       return nullptr;
    }
 
@@ -1228,8 +1234,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
    std::string text_buffer;
 
-   auto flush_text = [&]()
-   {
+   auto flush_text = [&]() {
       if (text_buffer.empty()) return;
       auto text_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT, text_buffer);
       element_node->add_child(std::move(text_node));
@@ -1253,8 +1258,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
          continue;
       }
 
-      if (check(XPathTokenType::LBRACE))
-      {
+      if (check(XPathTokenType::LBRACE)) {
          flush_text();
          auto expr = parse_enclosed_expr();
          if (!expr) return nullptr;
@@ -1265,8 +1269,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       }
 
       const XPathToken &token = peek();
-      if (token.type IS XPathTokenType::END_OF_INPUT)
-      {
+      if (token.type IS XPathTokenType::END_OF_INPUT) {
          report_error("Unexpected end of input in direct constructor content");
          return nullptr;
       }
@@ -1277,21 +1280,18 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
    flush_text();
 
-   if (!consume_token(XPathTokenType::CLOSE_TAG_OPEN, "Expected closing tag"))
-   {
+   if (!consume_token(XPathTokenType::CLOSE_TAG_OPEN, "Expected closing tag")) {
       return nullptr;
    }
 
    auto closing_name = parse_constructor_qname();
    if (!closing_name) return nullptr;
 
-   if (!consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close end tag"))
-   {
+   if (!consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close end tag")) {
       return nullptr;
    }
 
-   if (not (closing_name->Prefix IS info.prefix and closing_name->LocalName IS info.name))
-   {
+   if (not (closing_name->Prefix IS info.prefix and closing_name->LocalName IS info.name)) {
       report_error("Mismatched closing tag in direct constructor");
       return nullptr;
    }
@@ -1302,16 +1302,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_enclosed_expr()
 {
-   if (!consume_token(XPathTokenType::LBRACE, "Expected '{' to begin expression"))
-   {
+   if (!consume_token(XPathTokenType::LBRACE, "Expected '{' to begin expression")) {
       return nullptr;
    }
 
    auto expr = parse_expr();
    if (!expr) return nullptr;
 
-   if (!consume_token(XPathTokenType::RBRACE, "Expected '}' to close expression"))
-   {
+   if (!consume_token(XPathTokenType::RBRACE, "Expected '}' to close expression")) {
       return nullptr;
    }
 
@@ -1326,12 +1324,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Sou
    XPathParser embedded_parser;
    auto expr = embedded_parser.parse(token_list);
 
-   if (!expr or embedded_parser.has_errors())
-   {
-      if (embedded_parser.has_errors())
-      {
-         for (const auto &message : embedded_parser.get_errors())
-         {
+   if (!expr or embedded_parser.has_errors()) {
+      if (embedded_parser.has_errors()) {
+         for (const auto &message : embedded_parser.get_errors()) {
             report_error(message);
          }
       }
@@ -1346,6 +1341,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Sou
 
    return expr;
 }
+
+//********************************************************************************************************************
+// Dispatches to the appropriate computed constructor parser based on the leading keyword so each form can apply its 
+// specialised grammar.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_constructor()
 {
@@ -1363,6 +1362,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_constructor()
    return nullptr;
 }
 
+//********************************************************************************************************************
+// Parses computed element constructors, optionally accepting enclosed expressions for the element name and always 
+// parsing the content expression sequence.
+
 std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR);
@@ -1370,14 +1373,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
    info.is_direct = false;
    info.is_empty_element = false;
 
-   if (check(XPathTokenType::LBRACE))
-   {
+   if (check(XPathTokenType::LBRACE)) {
       auto name_expr = parse_enclosed_expr();
       if (!name_expr) return nullptr;
       node->set_name_expression(std::move(name_expr));
    }
-   else
-   {
+   else {
       auto name = parse_constructor_qname();
       if (!name) return nullptr;
       info.prefix = name->Prefix;
@@ -1395,6 +1396,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
    return node;
 }
 
+//********************************************************************************************************************
+// Parses computed attribute constructors which may provide the attribute name either as a literal QName or as an 
+// enclosed expression, followed by the attribute value expression.
+
 std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR);
@@ -1402,14 +1407,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
    info.is_direct = false;
    info.is_empty_element = false;
 
-   if (check(XPathTokenType::LBRACE))
-   {
+   if (check(XPathTokenType::LBRACE)) {
       auto name_expr = parse_enclosed_expr();
       if (!name_expr) return nullptr;
       node->set_name_expression(std::move(name_expr));
    }
-   else
-   {
+   else {
       auto name = parse_constructor_qname();
       if (!name) return nullptr;
       info.prefix = name->Prefix;
@@ -1427,6 +1430,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
    return node;
 }
 
+//********************************************************************************************************************
+// Parses computed text constructors by wrapping the enclosed expression inside a CONSTRUCTOR_CONTENT node so the 
+// evaluator can produce the resulting text node.
+
 std::unique_ptr<XPathNode> XPathParser::parse_computed_text_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::TEXT_CONSTRUCTOR);
@@ -1438,6 +1445,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_text_constructor()
    node->add_child(std::move(content_node));
    return node;
 }
+
+//********************************************************************************************************************
+// Parses computed comment constructors mirroring the text constructor structure but targeting comment nodes in the AST.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_comment_constructor()
 {
@@ -1451,6 +1461,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_comment_constructor()
    return node;
 }
 
+//********************************************************************************************************************
+// Parses computed processing-instruction constructors, supporting literal or computed targets along with the 
+// required content expression.
+
 std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::PI_CONSTRUCTOR);
@@ -1458,29 +1472,24 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
    info.is_direct = false;
    info.is_empty_element = false;
 
-   if (check(XPathTokenType::LBRACE))
-   {
+   if (check(XPathTokenType::LBRACE)) {
       auto target_expr = parse_enclosed_expr();
       if (!target_expr) return nullptr;
       node->set_name_expression(std::move(target_expr));
    }
-   else if (check(XPathTokenType::STRING))
-   {
+   else if (check(XPathTokenType::STRING)) {
       info.name = std::string(peek().value);
       advance();
    }
-   else if (check(XPathTokenType::IDENTIFIER))
-   {
+   else if (check(XPathTokenType::IDENTIFIER)) {
       info.name = std::string(peek().value);
       advance();
-      if (check(XPathTokenType::COLON))
-      {
+      if (check(XPathTokenType::COLON)) {
          report_error("Processing-instruction target must be an NCName");
          return nullptr;
       }
    }
-   else
-   {
+   else {
       report_error("Expected processing-instruction target");
       return nullptr;
    }
@@ -1495,6 +1504,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
    node->set_constructor_info(std::move(info));
    return node;
 }
+
+//********************************************************************************************************************
+// Parses computed document constructors that evaluate their enclosed expression to populate a synthetic document 
+// node.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_document_constructor()
 {

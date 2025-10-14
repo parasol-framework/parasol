@@ -33,6 +33,8 @@ class XPathEvaluator {
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
 
+   // Tracks in-scope namespace declarations while building constructed nodes so nested
+   // constructors inherit and override prefixes correctly.
    struct ConstructorNamespaceScope
    {
       const ConstructorNamespaceScope * parent = nullptr;

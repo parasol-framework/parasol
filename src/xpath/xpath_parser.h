@@ -74,8 +74,10 @@ class XPathParser {
    bool check_identifier_keyword(std::string_view Keyword) const;
    bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
    bool is_constructor_keyword(const XPathToken &Token) const;
-   struct ConstructorName
-   {
+
+   // Lightweight representation of a QName recognised within constructor syntax.
+
+   struct ConstructorName {
       std::string Prefix;
       std::string LocalName;
    };

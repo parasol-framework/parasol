@@ -27,106 +27,122 @@
 #include <cstdint>
 #include <unordered_set>
 
+namespace {
+
 //********************************************************************************************************************
 
-namespace
+bool is_ncname_start(char Ch)
 {
-   bool is_ncname_start(char Ch)
+   if ((Ch >= 'A') and (Ch <= 'Z')) return true;
+   if ((Ch >= 'a') and (Ch <= 'z')) return true;
+   return Ch IS '_';
+}
+
+bool is_ncname_char(char Ch)
+{
+   if (is_ncname_start(Ch)) return true;
+   if ((Ch >= '0') and (Ch <= '9')) return true;
+   if (Ch IS '-') return true;
+   return Ch IS '.';
+}
+
+// Determines if the supplied string adheres to the NCName production so constructor
+// names can be validated without deferring to the XML runtime.
+
+bool is_valid_ncname(std::string_view Value)
+{
+   if (Value.empty()) return false;
+   if (!is_ncname_start(Value.front())) return false;
+
+   for (size_t index = 1; index < Value.length(); ++index)
    {
-      if ((Ch >= 'A') and (Ch <= 'Z')) return true;
-      if ((Ch >= 'a') and (Ch <= 'z')) return true;
-      return Ch IS '_';
+      if (!is_ncname_char(Value[index])) return false;
    }
 
-   bool is_ncname_char(char Ch)
-   {
-      if (is_ncname_start(Ch)) return true;
-      if ((Ch >= '0') and (Ch <= '9')) return true;
-      if (Ch IS '-') return true;
-      return Ch IS '.';
-   }
+   return true;
+}
 
-   bool is_valid_ncname(std::string_view Value)
-   {
-      if (Value.empty()) return false;
-      if (!is_ncname_start(Value.front())) return false;
 
-      for (size_t index = 1; index < Value.length(); ++index)
-      {
-         if (!is_ncname_char(Value[index])) return false;
-      }
+//********************************************************************************************************************
+// Removes leading and trailing XML whitespace characters from constructor data so that lexical comparisons can be 
+// performed using the normalised string.
 
-      return true;
-   }
+std::string trim_constructor_whitespace(std::string_view Value)
+{
+   size_t start = 0;
+   size_t end = Value.length();
 
-   std::string trim_constructor_whitespace(std::string_view Value)
-   {
-      size_t start = 0;
-      size_t end = Value.length();
+   while ((start < end) and (uint8_t(Value[start]) <= 0x20u)) ++start;
+   while ((end > start) and (uint8_t(Value[end - 1]) <= 0x20u)) --end;
 
-      while ((start < end) and (uint8_t(Value[start]) <= 0x20u)) ++start;
-      while ((end > start) and (uint8_t(Value[end - 1]) <= 0x20u)) --end;
+   return std::string(Value.substr(start, end - start));
+}
 
-      return std::string(Value.substr(start, end - start));
-   }
 
-   struct ConstructorQName
-   {
-      bool valid = false;
-      std::string prefix;
-      std::string local;
-      std::string namespace_uri;
-   };
+//********************************************************************************************************************
+// Represents a QName or expanded QName parsed from constructor syntax, capturing the prefix, local part, and resolved 
+// namespace URI when known.
 
-   ConstructorQName parse_constructor_qname_string(std::string_view Value)
-   {
-      ConstructorQName result;
-      if (Value.empty()) return result;
+struct ConstructorQName {
+   bool valid = false;
+   std::string prefix;
+   std::string local;
+   std::string namespace_uri;
+};
 
-      std::string trimmed = trim_constructor_whitespace(Value);
-      if (trimmed.empty()) return result;
+//********************************************************************************************************************
+// Parses a QName or expanded QName literal used by computed constructors.  The function recognises the "Q{uri}local" 
+// form as well as prefixed names and produces a structured representation that downstream evaluators can inspect.
 
-      std::string_view working(trimmed);
+ConstructorQName parse_constructor_qname_string(std::string_view Value)
+{
+   ConstructorQName result;
+   if (Value.empty()) return result;
 
-      if ((working.length() >= 2) and (working[0] IS 'Q') and (working[1] IS '{'))
-      {
-         size_t closing = working.find('}');
-         if (closing IS std::string_view::npos) return result;
+   std::string trimmed = trim_constructor_whitespace(Value);
+   if (trimmed.empty()) return result;
 
-         result.namespace_uri = std::string(working.substr(2, closing - 2));
-         std::string_view remainder = working.substr(closing + 1);
-         if (remainder.empty()) return result;
-         if (!is_valid_ncname(remainder)) return result;
+   std::string_view working(trimmed);
 
-         result.local = std::string(remainder);
-         result.valid = true;
-         return result;
-      }
+   if ((working.length() >= 2) and (working[0] IS 'Q') and (working[1] IS '{')) {
+      size_t closing = working.find('}');
+      if (closing IS std::string_view::npos) return result;
 
-      size_t colon = working.find(':');
-      if (colon IS std::string_view::npos)
-      {
-         if (!is_valid_ncname(working)) return result;
-         result.local = std::string(working);
-         result.valid = true;
-         return result;
-      }
+      result.namespace_uri = std::string(working.substr(2, closing - 2));
+      std::string_view remainder = working.substr(closing + 1);
+      if (remainder.empty()) return result;
+      if (!is_valid_ncname(remainder)) return result;
 
-      std::string_view prefix_view = working.substr(0, colon);
-      std::string_view local_view = working.substr(colon + 1);
-      if (prefix_view.empty() or local_view.empty()) return result;
-      if (!is_valid_ncname(prefix_view) or !is_valid_ncname(local_view)) return result;
-
-      result.prefix = std::string(prefix_view);
-      result.local = std::string(local_view);
+      result.local = std::string(remainder);
       result.valid = true;
       return result;
    }
+
+   size_t colon = working.find(':');
+   if (colon IS std::string_view::npos) {
+      if (!is_valid_ncname(working)) return result;
+      result.local = std::string(working);
+      result.valid = true;
+      return result;
+   }
+
+   std::string_view prefix_view = working.substr(0, colon);
+   std::string_view local_view = working.substr(colon + 1);
+   if (prefix_view.empty() or local_view.empty()) return result;
+   if (!is_valid_ncname(prefix_view) or !is_valid_ncname(local_view)) return result;
+
+   result.prefix = std::string(prefix_view);
+   result.local = std::string(local_view);
+   result.valid = true;
+   return result;
 }
+
+} // Anonymous namespace
 
 //********************************************************************************************************************
 
-XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) {
+XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) 
+{
    if (!PathNode) {
       expression_unsupported = true;
       return XPathVal();
@@ -854,12 +870,18 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 }
 
 //********************************************************************************************************************
+// Registers the supplied namespace URI with the owning XML document so constructed nodes reference consistent 
+// namespace identifiers.
 
 uint32_t XPathEvaluator::register_constructor_namespace(const std::string &URI) const
 {
    if (!xml) return 0;
    return xml->registerNamespace(URI);
 }
+
+//********************************************************************************************************************
+// Resolves a prefix within the chained constructor namespace scopes, honouring the nearest declaration and falling 
+// back to the default namespace when the prefix is empty.
 
 std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
    std::string_view Prefix) const
@@ -887,6 +909,10 @@ std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const Constru
    return std::nullopt;
 }
 
+//********************************************************************************************************************
+// Recursively clones an XML node subtree so constructor operations can duplicate existing content without mutating 
+// the original document tree.
+
 XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
 {
    XMLTag clone(next_constructed_node_id--, Source.LineNo);
@@ -896,8 +922,7 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
    clone.Attribs = Source.Attribs;
 
    clone.Children.reserve(Source.Children.size());
-   for (const auto &child : Source.Children)
-   {
+   for (const auto &child : Source.Children) {
       XMLTag child_clone = clone_node_subtree(child, clone.ID);
       clone.Children.push_back(std::move(child_clone));
    }
@@ -905,25 +930,26 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
    return clone;
 }
 
-bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value,
-   uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope)
+//********************************************************************************************************************
+// Appends a sequence value produced by constructor content into the target element, handling node cloning, attribute
+// creation, and text concatenation according to the XPath constructor rules.
+
+bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix, 
+   const ConstructorNamespaceScope &Scope)
 {
    (void)CurrentPrefix;
    (void)Scope;
 
-   if (Value.Type IS XPVT::NodeSet)
-   {
+   if (Value.Type IS XPVT::NodeSet) {
       Parent.Children.reserve(Parent.Children.size() + Value.node_set.size());
 
-      for (size_t index = 0; index < Value.node_set.size(); ++index)
-      {
+      for (size_t index = 0; index < Value.node_set.size(); ++index) {
          XMLTag *node = Value.node_set[index];
          if (!node) continue;
 
          const XMLAttrib *attribute = nullptr;
          if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
-         if (attribute)
-         {
+         if (attribute) {
             record_error("Attribute nodes cannot appear within element content.", true);
             return false;
          }
@@ -947,23 +973,25 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
    return true;
 }
 
+//********************************************************************************************************************
+// Evaluates an attribute value template (AVT) collected during parsing.  The template
+// parts alternate between literal text and embedded expressions, and the resolved
+// string is returned for assignment to the constructed attribute.
+
 std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
    uint32_t CurrentPrefix)
 {
    std::string result;
 
-   for (size_t index = 0; index < Attribute.value_parts.size(); ++index)
-   {
+   for (size_t index = 0; index < Attribute.value_parts.size(); ++index) {
       const auto &part = Attribute.value_parts[index];
-      if (!part.is_expression)
-      {
+      if (!part.is_expression) {
          result += part.text;
          continue;
       }
 
       auto *expr = Attribute.get_expression_for_part(index);
-      if (!expr)
-      {
+      if (!expr) {
          record_error("Attribute value template part is missing its expression.", true);
          return std::nullopt;
       }
@@ -979,6 +1007,10 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
    return result;
 }
+
+//********************************************************************************************************************
+// Reduces the child expressions beneath a constructor content node to a single string value.  Each child expression 
+// is evaluated and the textual representation is concatenated to form the returned content.
 
 std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1036,6 +1068,11 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
    return result;
 }
 
+//********************************************************************************************************************
+// Resolves the lexical name of a constructor by evaluating the optional expression or using the literal metadata 
+// captured by the parser.  The resulting string retains the raw QName form so later stages can validate namespace 
+// bindings.
+
 std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (!Node) return std::string();
@@ -1056,17 +1093,20 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(cons
    return trim_constructor_whitespace(raw);
 }
 
+//********************************************************************************************************************
+// Builds an XMLTag representing a direct element constructor.  The function walks the parsed constructor metadata, 
+// creates namespace scopes, instantiates attributes, and recursively processes nested constructors and enclosed 
+// expressions.
+
 std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
    ConstructorNamespaceScope *ParentScope, int ParentID)
 {
-   if ((!Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR))
-   {
+   if ((!Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)) {
       record_error("Invalid direct constructor node encountered.", true);
       return std::nullopt;
    }
 
-   if (!Node->has_constructor_info())
-   {
+   if (!Node->has_constructor_info()) {
       record_error("Direct constructor is missing structural metadata.", true);
       return std::nullopt;
    }
@@ -1075,13 +1115,11 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
    ConstructorNamespaceScope element_scope;
    element_scope.parent = ParentScope;
-   if (ParentScope and ParentScope->default_namespace.has_value())
-   {
+   if (ParentScope and ParentScope->default_namespace.has_value()) {
       element_scope.default_namespace = ParentScope->default_namespace;
    }
 
-   struct EvaluatedAttribute
-   {
+   struct EvaluatedAttribute {
       const XPathConstructorAttribute *definition = nullptr;
       std::string value;
    };
@@ -1089,8 +1127,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    std::vector<EvaluatedAttribute> evaluated_attributes;
    evaluated_attributes.reserve(info.attributes.size());
 
-   for (const auto &attribute : info.attributes)
-   {
+   for (const auto &attribute : info.attributes) {
       auto value = evaluate_attribute_value_template(attribute, CurrentPrefix);
       if (!value) return std::nullopt;
 
@@ -1104,8 +1141,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
    std::string element_name;
    if (info.prefix.empty()) element_name = info.name;
-   else
-   {
+   else {
       element_name = info.prefix;
       element_name += ':';
       element_name += info.name;
@@ -1120,21 +1156,17 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
       if (!attribute->is_namespace_declaration) continue;
 
-      if (attribute->prefix.empty() and (attribute->name IS "xmlns"))
-      {
+      if (attribute->prefix.empty() and (attribute->name IS "xmlns")) {
          if (value.empty()) element_scope.default_namespace = uint32_t{0};
          else element_scope.default_namespace = register_constructor_namespace(value);
       }
-      else if (attribute->prefix IS "xmlns")
-      {
-         if (attribute->name IS "xml")
-         {
+      else if (attribute->prefix IS "xmlns") {
+         if (attribute->name IS "xml") {
             record_error("Cannot redeclare the xml prefix in constructor scope.", true);
             return std::nullopt;
          }
 
-         if (value.empty())
-         {
+         if (value.empty()) {
             record_error("Namespace prefix declarations require a non-empty URI.", true);
             return std::nullopt;
          }
@@ -1144,8 +1176,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
       std::string attribute_name;
       if (attribute->prefix.empty()) attribute_name = attribute->name;
-      else
-      {
+      else {
          attribute_name = attribute->prefix;
          attribute_name += ':';
          attribute_name += attribute->name;
@@ -1154,15 +1185,13 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
       element_attributes.emplace_back(attribute_name, value);
    }
 
-   for (const auto &entry : evaluated_attributes)
-   {
+   for (const auto &entry : evaluated_attributes) {
       const auto *attribute = entry.definition;
       const std::string &value = entry.value;
 
       if (attribute->is_namespace_declaration) continue;
 
-      if (!attribute->prefix.empty())
-      {
+      if (!attribute->prefix.empty()) {
          auto resolved = resolve_constructor_prefix(element_scope, attribute->prefix);
          if (!resolved.has_value())
          {
@@ -1173,8 +1202,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
       std::string attribute_name;
       if (attribute->prefix.empty()) attribute_name = attribute->name;
-      else
-      {
+      else {
          attribute_name = attribute->prefix;
          attribute_name += ':';
          attribute_name += attribute->name;
@@ -1185,11 +1213,9 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
    uint32_t namespace_id = 0;
    if (!info.namespace_uri.empty()) namespace_id = register_constructor_namespace(info.namespace_uri);
-   else if (!info.prefix.empty())
-   {
+   else if (!info.prefix.empty()) {
       auto resolved = resolve_constructor_prefix(element_scope, info.prefix);
-      if (!resolved.has_value())
-      {
+      if (!resolved.has_value()) {
          record_error("Element prefix is not declared within constructor scope.", true);
          return std::nullopt;
       }
@@ -1218,10 +1244,8 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          continue;
       }
 
-      if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT)
-      {
-         if (!child->value.empty())
-         {
+      if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT) {
+         if (!child->value.empty()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", child->value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
@@ -1252,6 +1276,10 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    return element;
 }
 
+//********************************************************************************************************************
+// Entry point used by the evaluator to execute direct element constructors in the expression tree.  The resulting 
+// element is appended to the constructed node list and wrapped in an XPathVal for downstream consumers.
+
 XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    auto element = build_direct_element_node(Node, CurrentPrefix, nullptr, 0);
@@ -1271,38 +1299,37 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
    return XPathVal(nodes, node_string, std::move(string_values));
 }
 
+//********************************************************************************************************************
+// Handles computed element constructors where the element name or namespace is driven by runtime expressions.  The 
+// method prepares the namespace scope and evaluates the content sequence before emitting the constructed element.
+
 XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR))
-   {
+   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR)) {
       record_error("Invalid computed element constructor node encountered.", true);
       return XPathVal();
    }
 
-   if (!Node->has_constructor_info())
-   {
+   if (!Node->has_constructor_info()) {
       record_error("Computed element constructor is missing metadata.", true);
       return XPathVal();
    }
 
    ConstructorQName name_info;
 
-   if (Node->has_name_expression())
-   {
+   if (Node->has_name_expression()) {
       auto name_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
       if (!name_string) return XPathVal();
 
       auto parsed = parse_constructor_qname_string(*name_string);
-      if (!parsed.valid)
-      {
+      if (!parsed.valid) {
          record_error("Computed element name must resolve to a QName.", true);
          return XPathVal();
       }
 
       name_info = std::move(parsed);
    }
-   else
-   {
+   else {
       const auto &info = *Node->constructor_info;
       name_info.valid = true;
       name_info.prefix = info.prefix;
@@ -1310,14 +1337,12 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
       name_info.namespace_uri = info.namespace_uri;
    }
 
-   if (name_info.local.empty())
-   {
+   if (name_info.local.empty()) {
       record_error("Computed element constructor requires a local name.", true);
       return XPathVal();
    }
 
-   auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t>
-   {
+   auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t> {
       if (Prefix.empty()) return uint32_t{0};
       if (!xml) return std::nullopt;
       if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
@@ -1361,24 +1386,19 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    ConstructorNamespaceScope scope;
    scope.parent = nullptr;
 
-   if (Node->child_count() > 0)
-   {
+   if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
-      if (content_node)
-      {
-         if (!content_node->value.empty())
-         {
+      if (content_node) {
+         if (!content_node->value.empty()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", content_node->value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = element.ID;
             element.Children.push_back(std::move(text_node));
          }
-         else if (content_node->child_count() > 0)
-         {
+         else if (content_node->child_count() > 0) {
             const XPathNode *expr = content_node->get_child(0);
-            if (expr)
-            {
+            if (expr) {
                size_t previous_constructed = constructed_nodes.size();
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
@@ -1405,30 +1425,30 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    return XPathVal(nodes, node_string, std::move(string_values));
 }
 
+//********************************************************************************************************************
+// Implements computed attribute constructors, resolving the attribute name at runtime and constructing a single 
+// attribute node according to the XPath specification.
+
 XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR))
-   {
+   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR)) {
       record_error("Invalid computed attribute constructor node encountered.", true);
       return XPathVal();
    }
 
-   if (!Node->has_constructor_info())
-   {
+   if (!Node->has_constructor_info()) {
       record_error("Computed attribute constructor is missing metadata.", true);
       return XPathVal();
    }
 
    ConstructorQName name_info;
 
-   if (Node->has_name_expression())
-   {
+   if (Node->has_name_expression()) {
       auto name_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
       if (!name_string) return XPathVal();
 
       auto parsed = parse_constructor_qname_string(*name_string);
-      if (!parsed.valid)
-      {
+      if (!parsed.valid) {
          record_error("Computed attribute name must resolve to a QName.", true);
          return XPathVal();
       }
@@ -1438,8 +1458,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
       name_info.namespace_uri = parsed.namespace_uri;
       name_info.valid = true;
    }
-   else
-   {
+   else {
       const auto &info = *Node->constructor_info;
       name_info.valid = true;
       name_info.prefix = info.prefix;
@@ -1447,8 +1466,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
       name_info.namespace_uri = info.namespace_uri;
    }
 
-   if (name_info.local.empty())
-   {
+   if (name_info.local.empty()) {
       record_error("Computed attribute constructor requires a local name.", true);
       return XPathVal();
    }
@@ -1467,11 +1485,9 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
    uint32_t namespace_id = 0;
    if (!name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
-   else if (!name_info.prefix.empty())
-   {
+   else if (!name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
-      if (!resolved.has_value())
-      {
+      if (!resolved.has_value()) {
          record_error("Attribute prefix is not bound in scope.", true);
          return XPathVal();
       }
@@ -1480,8 +1496,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
    std::string attribute_name;
    if (name_info.prefix.empty()) attribute_name = name_info.local;
-   else
-   {
+   else {
       attribute_name = name_info.prefix;
       attribute_name += ':';
       attribute_name += name_info.local;
@@ -1514,10 +1529,13 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    return XPathVal(nodes, std::nullopt, {}, std::move(attributes));
 }
 
+//********************************************************************************************************************
+// Evaluates text constructors by flattening the enclosed expression into a string and returning it as a text node 
+// for inclusion in the result sequence.
+
 XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR))
-   {
+   if ((!Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR)) {
       record_error("Invalid text constructor node encountered.", true);
       return XPathVal();
    }
@@ -1547,10 +1565,13 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
    return XPathVal(nodes, *content, std::move(string_values));
 }
 
+//********************************************************************************************************************
+// Evaluates comment constructors by producing the textual content and wrapping it in a
+// comment node for downstream processing.
+
 XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR))
-   {
+   if ((!Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR)) {
       record_error("Invalid comment constructor node encountered.", true);
       return XPathVal();
    }
@@ -1593,10 +1614,13 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
    return XPathVal(nodes, *content, std::move(string_values));
 }
 
+//********************************************************************************************************************
+// Executes processing-instruction constructors, resolving the target name and content while enforcing NCName rules 
+// defined by XPath.
+
 XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR))
-   {
+   if ((!Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR)) {
       record_error("Invalid processing-instruction constructor encountered.", true);
       return XPathVal();
    }
@@ -1613,14 +1637,12 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
 
    target = trim_constructor_whitespace(target);
 
-   if (target.empty())
-   {
+   if (target.empty()) {
       record_error("Processing-instruction constructor requires a target name.", true);
       return XPathVal();
    }
 
-   if (!is_valid_ncname(target))
-   {
+   if (!is_valid_ncname(target)) {
       record_error("Processing-instruction target must be an NCName.", true);
       return XPathVal();
    }
@@ -1660,6 +1682,10 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
    return XPathVal(nodes, *content, std::move(string_values));
 }
 
+//********************************************************************************************************************
+// Produces document nodes by evaluating the enclosed content, constructing a temporary
+// root scope, and appending the resulting children to a synthetic document element.
+
 XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if ((!Node) or (Node->type != XPathNodeType::DOCUMENT_CONSTRUCTOR))
@@ -1679,24 +1705,19 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
    ConstructorNamespaceScope scope;
    scope.parent = nullptr;
 
-   if (Node->child_count() > 0)
-   {
+   if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
-      if (content_node)
-      {
-         if (!content_node->value.empty())
-         {
+      if (content_node) {
+         if (!content_node->value.empty()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", content_node->value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = document_node.ID;
             document_node.Children.push_back(std::move(text_node));
          }
-         else if (content_node->child_count() > 0)
-         {
+         else if (content_node->child_count() > 0) {
             const XPathNode *expr = content_node->get_child(0);
-            if (expr)
-            {
+            if (expr) {
                size_t previous_constructed = constructed_nodes.size();
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
