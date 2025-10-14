@@ -1678,8 +1678,7 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
       return XPathVal();
    }
 
-   std::string attribute_name("?");
-   attribute_name += target;
+   std::string attribute_name = "?" + target;
 
    pf::vector<XMLAttrib> instruction_attribs;
    instruction_attribs.emplace_back(attribute_name, *content);
