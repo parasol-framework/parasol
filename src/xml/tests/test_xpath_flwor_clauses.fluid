@@ -1,0 +1,234 @@
+-- Comprehensive FLWOR clause behaviour tests
+
+   include 'xml'
+
+-----------------------------------------------------------------------------------------------------------------------
+-- WHERE clause should filter bound sequences using boolean predicates
+
+function testFlworWhereClauseFiltersNodes()
+   print('FLWOR where clause support not yet implemented; this test asserts expected filtering behaviour once available.')
+   local xml = obj.new('xml', {
+      statement = '<library>' ..
+                  '<book id="bk-1" genre="fiction" price="25"/>' ..
+                  '<book id="bk-2" genre="reference" price="55"/>' ..
+                  '<book id="bk-3" genre="fiction" price="32"/>' ..
+                  '<book id="bk-4" genre="history" price="41"/>' ..
+                  '</library>'
+   })
+
+   local filtered = {}
+   local err = xml.mtFindTag('for $book in /library/book where number($book/@price) < 40 return $book',
+      function(XML, TagID)
+         local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
+         assert(errAttr == ERR_Okay,
+            'WHERE clause should preserve attribute access: ' .. mSys.GetErrorMsg(errAttr))
+         table.insert(filtered, idValue)
+      end)
+
+   assert(err == ERR_Okay, 'WHERE clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   table.sort(filtered)
+   assert(#filtered == 2 and filtered[1] == 'bk-1' and filtered[2] == 'bk-3',
+      'Filtered identifiers should match price predicate, got ' .. table.concat(filtered, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- ORDER BY clause should support ascending lexical ordering on attributes
+
+function testFlworOrderByClauseAscendingStrings()
+   print('FLWOR order by clause support not yet implemented; this test asserts expected ascending ordering behaviour once available.')
+   local xml = obj.new('xml', {
+      statement = '<library>' ..
+                  '<book id="bk-3" title="Gamma" price="19"/>' ..
+                  '<book id="bk-1" title="Alpha" price="42"/>' ..
+                  '<book id="bk-4" title="Delta" price="13"/>' ..
+                  '<book id="bk-2" title="Beta" price="27"/>' ..
+                  '</library>'
+   })
+
+   local ordered = {}
+   local err = xml.mtFindTag('for $book in /library/book order by $book/@title ascending return $book',
+      function(XML, TagID)
+         local errId, idValue = xml.mtGetAttrib(TagID, 'id')
+         assert(errId == ERR_Okay,
+            'ORDER BY clause should expose node attributes post-sort: ' .. mSys.GetErrorMsg(errId))
+         table.insert(ordered, idValue)
+      end)
+
+   assert(err == ERR_Okay, 'ORDER BY clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(#ordered == 4,
+      'ORDER BY clause should yield all nodes, got ' .. table.concat(ordered, ','))
+   for index, expected in ipairs({'bk-1', 'bk-2', 'bk-3', 'bk-4'}) do
+      assert(ordered[index] == expected,
+         'ORDER BY ascending should align lexically, expected ' .. expected .. ' at position ' .. index .. ', got ' .. nz(ordered[index], 'nil'))
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- ORDER BY clause should support descending numeric ordering and tiebreakers
+
+function testFlworOrderByClauseDescendingNumbers()
+   print('FLWOR order by clause support not yet implemented; this test asserts expected descending ordering behaviour once available.')
+   local xml = obj.new('xml', {
+      statement = '<library>' ..
+                  '<book id="bk-1" title="Alpha" price="25"/>' ..
+                  '<book id="bk-2" title="Beta" price="25"/>' ..
+                  '<book id="bk-3" title="Gamma" price="42"/>' ..
+                  '<book id="bk-4" title="Delta" price="31"/>' ..
+                  '</library>'
+   })
+
+   local ordered = {}
+   local err = xml.mtFindTag('for $book in /library/book order by number($book/@price) descending, $book/@title ascending return $book',
+      function(XML, TagID)
+         local errId, idValue = xml.mtGetAttrib(TagID, 'id')
+         assert(errId == ERR_Okay,
+            'ORDER BY with numeric descending should expose node attributes: ' .. mSys.GetErrorMsg(errId))
+         table.insert(ordered, idValue)
+      end)
+
+   assert(err == ERR_Okay, 'ORDER BY clause with descending numeric sort should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   for index, expected in ipairs({'bk-3', 'bk-4', 'bk-1', 'bk-2'}) do
+      assert(ordered[index] == expected,
+         'ORDER BY descending should honour numeric values and tie-breakers, expected ' .. expected .. ' at position ' .. index .. ', got ' .. nz(ordered[index], 'nil'))
+   end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- GROUP BY clause should bucket items and expose grouped bindings
+
+function testFlworGroupByClauseAggregatesSequences()
+   print('FLWOR group by clause support not yet implemented; this test asserts expected grouping behaviour once available.')
+   local xml = obj.new('xml', {
+      statement = '<library>' ..
+                  '<book id="bk-1" genre="fiction" price="25"/>' ..
+                  '<book id="bk-2" genre="reference" price="55"/>' ..
+                  '<book id="bk-3" genre="fiction" price="32"/>' ..
+                  '<book id="bk-4" genre="reference" price="26"/>' ..
+                  '<book id="bk-5" genre="history" price="41"/>' ..
+                  '</library>'
+   })
+
+   local groups = {}
+   local err = xml.mtFindTag('for $book in /library/book group by $genre := string($book/@genre) return <group genre="{$genre}" count="{count($book)}"/>',
+      function(XML, TagID)
+         local errGenre, genreValue = xml.mtGetAttrib(TagID, 'genre')
+         assert(errGenre == ERR_Okay,
+            'GROUP BY clause should expose computed grouping key: ' .. mSys.GetErrorMsg(errGenre))
+         local errCount, countValue = xml.mtGetAttrib(TagID, 'count')
+         assert(errCount == ERR_Okay,
+            'GROUP BY clause should allow aggregated count output: ' .. mSys.GetErrorMsg(errCount))
+         groups[genreValue] = tonumber(countValue)
+      end)
+
+   assert(err == ERR_Okay, 'GROUP BY clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(groups['fiction'] == 2, 'Fiction group should contain two members, got ' .. tostring(groups['fiction']))
+   assert(groups['reference'] == 2, 'Reference group should contain two members, got ' .. tostring(groups['reference']))
+   assert(groups['history'] == 1, 'History group should contain one member, got ' .. tostring(groups['history']))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- GROUP BY clause should maintain access to grouped sequences for derived output
+
+function testFlworGroupByClauseSequenceAccess()
+   print('FLWOR group by clause support not yet implemented; this test asserts sequence visibility behaviour once available.')
+   local xml = obj.new('xml', {
+      statement = '<library>' ..
+                  '<book id="bk-1" genre="fiction" price="25"/>' ..
+                  '<book id="bk-2" genre="fiction" price="31"/>' ..
+                  '<book id="bk-3" genre="history" price="41"/>' ..
+                  '</library>'
+   })
+
+   local members = {}
+   local err = xml.mtFindTag('for $book in /library/book group by $genre := $book/@genre return <group genre="{$genre}" members="{string-join(for $member in $book return string($member/@id), ",")}"/>',
+      function(XML, TagID)
+         local errGenre, genreValue = xml.mtGetAttrib(TagID, 'genre')
+         assert(errGenre == ERR_Okay,
+            'GROUP BY sequence access should expose genre attribute: ' .. mSys.GetErrorMsg(errGenre))
+         local errMembers, memberList = xml.mtGetAttrib(TagID, 'members')
+         assert(errMembers == ERR_Okay,
+            'GROUP BY sequence access should expose concatenated member identifiers: ' .. mSys.GetErrorMsg(errMembers))
+         members[genreValue] = memberList
+      end)
+
+   assert(err == ERR_Okay, 'GROUP BY sequence FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(members['fiction'] == 'bk-1,bk-2', 'Fiction group should expose concatenated identifiers, got ' .. tostring(members['fiction']))
+   assert(members['history'] == 'bk-3', 'History group should expose single identifier, got ' .. tostring(members['history']))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- COUNT clause should expose positional counters during iteration
+
+function testFlworCountClauseProvidesPosition()
+   print('FLWOR count clause support not yet implemented; this test asserts positional tracking behaviour once available.')
+   local xml = obj.new('xml', {
+      statement = '<library>' ..
+                  '<book id="bk-1" price="25"/>' ..
+                  '<book id="bk-2" price="55"/>' ..
+                  '<book id="bk-3" price="32"/>' ..
+                  '</library>'
+   })
+
+   local order = {}
+   local err = xml.mtFindTag('for $book in /library/book order by number($book/@price) ascending count $position return <entry pos="{$position}" id="{$book/@id}"/>',
+      function(XML, TagID)
+         local errPos, posValue = xml.mtGetAttrib(TagID, 'pos')
+         assert(errPos == ERR_Okay,
+            'COUNT clause should expose generated positional attribute: ' .. mSys.GetErrorMsg(errPos))
+         local errId, idValue = xml.mtGetAttrib(TagID, 'id')
+         assert(errId == ERR_Okay,
+            'COUNT clause should maintain binding access after sorting: ' .. mSys.GetErrorMsg(errId))
+         table.insert(order, posValue .. ':' .. idValue)
+      end)
+
+   assert(err == ERR_Okay, 'COUNT clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(order[1] == '1:bk-1' and order[2] == '2:bk-3' and order[3] == '3:bk-2',
+      'COUNT clause should align positional counters with sorted order, got ' .. table.concat(order, ','))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Invalid clause ordering should report descriptive syntax errors
+
+function testFlworInvalidClauseOrdering()
+   print('FLWOR clause validation not yet implemented; this test asserts expected syntax diagnostics once available.')
+   local xml = obj.new('xml', { statement = '<root><value/></root>' })
+
+   local err = xml.mtFindTag('for $node in /root/value order by $node where $node return $node')
+   assert(err == ERR_Syntax,
+      'ORDER BY followed by WHERE should be rejected as syntax error, got ' .. mSys.GetErrorMsg(err))
+   local message = nz(xml.errorMsg, '')
+   assert(string.find(message, 'where clause must precede order by', 1, true),
+      'Error message should describe WHERE/ORDER BY ordering requirement, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Incompatible grouping expressions should surface evaluation errors
+
+function testFlworInvalidGroupByExpression()
+   print('FLWOR group by diagnostics not yet implemented; this test asserts expected error handling once available.')
+   local xml = obj.new('xml', {
+      statement = '<root>' ..
+                  '<item id="a"/><item id="b"/>' ..
+                  '</root>'
+   })
+
+   local err = xml.mtFindTag('for $item in /root/item group by $key := $undefined return $item')
+   assert(err != ERR_Okay, 'Group by referencing undefined bindings should fail evaluation')
+   local message = nz(xml.errorMsg, '')
+   assert(string.find(message, 'group by key expression must reference bound variables', 1, true),
+      'Error message should describe invalid grouping expression, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+return {
+   tests = {
+      'testFlworWhereClauseFiltersNodes',
+      'testFlworOrderByClauseAscendingStrings',
+      'testFlworOrderByClauseDescendingNumbers',
+      'testFlworGroupByClauseAggregatesSequences',
+      'testFlworGroupByClauseSequenceAccess',
+      'testFlworCountClauseProvidesPosition',
+      'testFlworInvalidClauseOrdering',
+      'testFlworInvalidGroupByExpression'
+   }
+}
