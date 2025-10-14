@@ -59,6 +59,7 @@ typedef int HANDLE;
 #include <errno.h>
 #include <map>
 #include <mutex>
+#include <bit>
 
 #ifdef _WIN32
  #include <io.h>
@@ -101,18 +102,17 @@ struct extCacheFile : public CacheFile {
    std::vector<int8_t> Buffer;
    int16_t Locks;       // Internal count of active locks for this element.
 
-   extCacheFile() {}
+   extCacheFile() = default;
 
-   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp) {
-      FullPath  = pPath;
+   extCacheFile(std::string_view pPath, int64_t pSize, int64_t pTimestamp)
+      : FullPath(pPath), Buffer(pSize + 1), Locks(1)
+   {
       Path      = FullPath.c_str();
-      Locks     = 1;
       Size      = pSize;
       TimeStamp = pTimestamp;
       LastUse   = PreciseTime();
 
-      Buffer.resize(pSize + 1);
-      Buffer[pSize] = 0; // Null terminator is added to help with text file processing
+      Buffer.back() = 0; // Null terminator is added to help with text file processing
       Data = Buffer.data(); // Client has direct access
    }
 };
@@ -122,27 +122,30 @@ struct extCacheFile : public CacheFile {
 class CacheFileIndex {
 public:
    std::string path;
-   int64_t timestamp;
-   int64_t size;
+   int64_t timestamp{};
+   int64_t size{};
 
-   CacheFileIndex(std::string Path, int64_t Timestamp, int64_t Size) {
-      path      = Path;
-      timestamp = Timestamp;
-      size      = Size;
+   CacheFileIndex() = default;
+
+   CacheFileIndex(std::string_view Path, int64_t Timestamp, int64_t Size)
+      : path(Path), timestamp(Timestamp), size(Size)
+   {
    }
 
-   bool operator==(const CacheFileIndex &other) const {
-      return (path == other.path && timestamp == other.timestamp && size == other.size);
-   }
+   friend bool operator==(const CacheFileIndex &, const CacheFileIndex &) = default;
 };
 
 namespace std {
    template <>
    struct hash<CacheFileIndex> {
-      std::size_t operator()(const CacheFileIndex& k) const {
-         return ((std::hash<std::string>()(k.path)
-            ^ (std::hash<int64_t>()(k.timestamp) << 1)) >> 1)
-            ^ (std::hash<int64_t>()(k.size) << 1);
+      std::size_t operator()(const CacheFileIndex& Index) const noexcept {
+         std::size_t path_hash = std::hash<std::string>()(Index.path);
+         const auto timestamp_hash = std::hash<int64_t>()(Index.timestamp);
+         const auto size_hash = std::hash<int64_t>()(Index.size);
+
+         path_hash ^= std::rotl(timestamp_hash, 1);
+         path_hash ^= std::rotl(size_hash, 1);
+         return path_hash;
       }
    };
 }
@@ -152,16 +155,16 @@ static std::mutex glCacheLock;
 
 //********************************************************************************************************************
 
-static const uint32_t get_volume_id(std::string_view Path)
+[[nodiscard]] constexpr uint32_t get_volume_id(std::string_view Path) noexcept
 {
    if ((Path.starts_with(':')) or (Path.empty())) return 0;
 
    uint32_t hash = 5381;
-   for (int len=0; (len < std::ssize(Path)) and (Path[len] != ':'); len++) {
-      char c = Path[len];
+   for (char c : Path) {
+      if (c IS ':') break;
       if ((c IS '/') or (c IS '\\')) return 0; // If a slash is encountered early, the path belongs to the local FS
       if ((c >= 'A') and (c <= 'Z')) hash = (hash<<5) + hash + c - 'A' + 'a';
-      else hash = (hash<<5) + hash + c;
+      else hash = (hash<<5) + hash + uint8_t(std::tolower(c));
    }
    return hash;
 }
@@ -281,12 +284,19 @@ NullArgs:
 
 ERR AddInfoTag(FileInfo *Info, CSTRING Name, CSTRING Value)
 {
+   if ((!Info) or (!Name)) return ERR::NullArgs;
+
+   if (!Value) {
+      if (Info->Tags) Info->Tags->erase(Name);
+      return ERR::Okay;
+   }
+
    if (!Info->Tags) {
       Info->Tags = new (std::nothrow) ankerl::unordered_dense::map<std::string, std::string>();
       if (!Info->Tags) return ERR::CreateResource;
    }
 
-   Info->Tags[0][Name] = std::string(Value);
+   (*Info->Tags)[Name] = Value;
    return ERR::Okay;
 }
 
