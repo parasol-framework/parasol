@@ -296,7 +296,7 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 
    if (!Args.empty()) {
       const XPathVal &value = Args[0];
-      if ((value.type IS XPVT::NodeSet) and (not value.node_set.empty())) node = value.node_set[0];
+      if ((value.Type IS XPVT::NodeSet) and (not value.node_set.empty())) node = value.node_set[0];
       else return XPathVal(pf::vector<XMLTag *>());
    }
    else node = Context.context_node;
@@ -551,7 +551,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
    };
 
    for (const auto &arg : Args) {
-      switch (arg.type) {
+      switch (arg.Type) {
          case XPVT::NodeSet: {
             if (not arg.node_set_string_values.empty()) {
                for (const auto &entry : arg.node_set_string_values) add_tokens(entry);
@@ -570,7 +570,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
          case XPVT::Date:
          case XPVT::Time:
          case XPVT::DateTime:
-            add_tokens(arg.string_value);
+            add_tokens(arg.StringValue);
             break;
 
          case XPVT::Boolean:
@@ -578,7 +578,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
             break;
 
          case XPVT::Number:
-            if (not std::isnan(arg.number_value)) add_tokens(arg.to_string());
+            if (not std::isnan(arg.NumberValue)) add_tokens(arg.to_string());
             break;
       }
    }

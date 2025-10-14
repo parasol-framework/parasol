@@ -751,19 +751,19 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
       return PredicateResult::UNSUPPORTED;
    }
 
-   if (result_value.type IS XPVT::NodeSet) {
+   if (result_value.Type IS XPVT::NodeSet) {
       return result_value.node_set.empty() ? PredicateResult::NO_MATCH : PredicateResult::MATCH;
    }
 
-   if (result_value.type IS XPVT::Boolean) {
+   if (result_value.Type IS XPVT::Boolean) {
       return result_value.to_boolean() ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
    }
 
-   if (result_value.type IS XPVT::String) {
+   if (result_value.Type IS XPVT::String) {
       return result_value.to_string().empty() ? PredicateResult::NO_MATCH : PredicateResult::MATCH;
    }
 
-   if (result_value.type IS XPVT::Number) {
+   if (result_value.Type IS XPVT::Number) {
       double expected = result_value.to_number();
       if (std::isnan(expected)) return PredicateResult::NO_MATCH;
 

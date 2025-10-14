@@ -221,7 +221,7 @@ XPathVal XPathFunctionLibrary::function_resolve_QName(const std::vector<XPathVal
    }
 
    XMLTag *element_node = nullptr;
-   if (Args[1].type IS XPVT::NodeSet) {
+   if (Args[1].Type IS XPVT::NodeSet) {
       if (not Args[1].node_set.empty()) element_node = Args[1].node_set[0];
    }
 
@@ -294,7 +294,7 @@ XPathVal XPathFunctionLibrary::function_namespace_uri_for_prefix(const std::vect
    if (not Args[0].is_empty()) prefix = trim_whitespace(Args[0].to_string());
 
    XMLTag *element_node = nullptr;
-   if (Args[1].type IS XPVT::NodeSet) {
+   if (Args[1].Type IS XPVT::NodeSet) {
       if (not Args[1].node_set.empty()) element_node = Args[1].node_set[0];
    }
 
@@ -312,7 +312,7 @@ XPathVal XPathFunctionLibrary::function_namespace_uri_for_prefix(const std::vect
 XPathVal XPathFunctionLibrary::function_in_scope_prefixes(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    XMLTag *element_node = nullptr;
-   if (not Args.empty() and (Args[0].type IS XPVT::NodeSet)) {
+   if (not Args.empty() and (Args[0].Type IS XPVT::NodeSet)) {
       if (not Args[0].node_set.empty()) element_node = Args[0].node_set[0];
    }
 
