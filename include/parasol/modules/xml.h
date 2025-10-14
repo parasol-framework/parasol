@@ -458,7 +458,6 @@ typedef struct XPathValue {
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
-   bool BooleanValue = false;
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
