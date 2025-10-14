@@ -141,7 +141,7 @@ class XPathFunctionLibrary {
    static XPathVal function_doc(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_doc_available(const std::vector<XPathVal> &Args, const XPathContext &Context);
 
-   // Accessor Functions (Phase 9)
+   // Accessor Functions
    static XPathVal function_base_uri(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_data(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_document_uri(const std::vector<XPathVal> &Args, const XPathContext &Context);
@@ -241,12 +241,9 @@ class XPathFunctionLibrary {
    static XPathVal function_minutes_from_time(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_seconds_from_time(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_timezone_from_time(const std::vector<XPathVal> &Args, const XPathContext &Context);
-   static XPathVal function_adjust_date_time_to_timezone(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_adjust_date_to_timezone(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_adjust_time_to_timezone(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
+   static XPathVal function_adjust_date_time_to_timezone(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_adjust_date_to_timezone(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_adjust_time_to_timezone(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_implicit_timezone(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_years_from_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_months_from_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
@@ -254,18 +251,12 @@ class XPathFunctionLibrary {
    static XPathVal function_hours_from_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_minutes_from_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_seconds_from_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
-   static XPathVal function_years_from_year_month_duration(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_months_from_year_month_duration(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_days_from_day_time_duration(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_hours_from_day_time_duration(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_minutes_from_day_time_duration(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
-   static XPathVal function_seconds_from_day_time_duration(const std::vector<XPathVal> &Args,
-      const XPathContext &Context);
+   static XPathVal function_years_from_year_month_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_months_from_year_month_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_days_from_day_time_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_hours_from_day_time_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_minutes_from_day_time_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
+   static XPathVal function_seconds_from_day_time_duration(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_matches(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_replace(const std::vector<XPathVal> &Args, const XPathContext &Context);
    static XPathVal function_tokenize(const std::vector<XPathVal> &Args, const XPathContext &Context);
