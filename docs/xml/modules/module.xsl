@@ -253,7 +253,10 @@
         <li class="api-ref"><a href="fluid.html" class="rounded">Fluid</a></li>
         <li class="api-ref"><a href="font.html" class="rounded">Font</a></li>
         <li class="api-ref"><a href="network.html" class="rounded">Network</a></li>
+        <li class="api-ref"><a href="regex.html" class="rounded">Regex</a></li>
         <li class="api-ref"><a href="vector.html" class="rounded">Vector</a></li>
+        <li class="api-ref"><a href="xml.html" class="rounded">XML</a></li>
+        <li class="api-ref"><a href="xpath.html" class="rounded">XPath</a></li>
       </ul>
     </div>
   </li>
@@ -293,6 +296,7 @@
           <div class="collapse" id="data-collapse">
             <ul class="btn-toggle-nav list-unstyled pb-1">
               <li><a href="classes/compression.html" class="rounded">Compression</a></li>
+              <li><a href="classes/compressedstream.html" class="rounded">CompressedStream</a></li>
               <li><a href="classes/config.html" class="rounded">Config</a></li>
               <li><a href="classes/script.html" class="rounded">Script</a></li>
               <li><a href="classes/xml.html" class="rounded">XML</a></li>
@@ -362,6 +366,7 @@
               <li><a class="rounded" href="classes/clientsocket.html">ClientSocket</a></li>
               <li><a class="rounded" href="classes/http.html">HTTP</a></li>
               <li><a class="rounded" href="classes/netclient.html">NetClient</a></li>
+              <li><a class="rounded" href="classes/netlookup.html">NetLookup</a></li>
               <li><a class="rounded" href="classes/netsocket.html">NetSocket</a></li>
               <li><a class="rounded" href="classes/proxy.html">Proxy</a></li>
             </ul>
