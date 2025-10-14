@@ -62,20 +62,20 @@
 #if (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
 // Modern SIMD detection - prefer newer instruction sets
 #if defined(__AVX512F__)
-	#define SRELL_HAS_AVX512
-	#define SRELL_HAS_AVX2
-	#define SRELL_HAS_SSE42
+#   define SRELL_HAS_AVX512
+#   define SRELL_HAS_AVX2
+#   define SRELL_HAS_SSE42
 #elif defined(__AVX2__)
-	#define SRELL_HAS_AVX2
-	#define SRELL_HAS_SSE42
+#   define SRELL_HAS_AVX2
+#   define SRELL_HAS_SSE42
 #elif defined(__SSE4_2__)
-	#define SRELL_HAS_SSE42
+#   define SRELL_HAS_SSE42
 #elif defined(_MSC_VER) && (_MSC_VER >= 1500)
-	#define SRELL_HAS_SSE42
+#   define SRELL_HAS_SSE42
 #elif defined(__clang__) && defined(__clang_major__) && ((__clang_major__ >= 4) || ((__clang_major__ == 3) && defined(__clang_minor__) && (__clang_minor__ >= 8)))
-	#define SRELL_HAS_SSE42
+#   define SRELL_HAS_SSE42
 #elif defined(__GNUC__) && ((__GNUC__ >= 5) || ((__GNUC__ == 4) && defined(__GNUC_MINOR__) && (__GNUC_MINOR__ >= 9)))
-	#define SRELL_HAS_SSE42
+#   define SRELL_HAS_SSE42
 #endif	//  SIMD instruction sets
 #endif	//  x86/x64.
 #endif
@@ -86,31 +86,31 @@
 
 #if defined(SRELL_HAS_SSE42) or defined(SRELL_HAS_AVX2) or defined(SRELL_HAS_AVX512)
 #if defined(_MSC_VER)
-	#include <intrin.h>
+#   include <intrin.h>
 #else
-	#include <x86intrin.h>
+#   include <x86intrin.h>
 
-	#if !defined(__SSE4_2__)
-	#undef SRELL_AT_SSE42
-	#define SRELL_AT_SSE42 __attribute__((target("sse4.2")))
-	#endif
+#   if !defined(__SSE4_2__)
+#      undef SRELL_AT_SSE42
+#      define SRELL_AT_SSE42 __attribute__((target("sse4.2")))
+#   endif
 
-	#if !defined(__AVX2__)
-	#undef SRELL_AT_AVX2
-	#define SRELL_AT_AVX2 __attribute__((target("avx2")))
-	#endif
+#   if !defined(__AVX2__)
+#      undef SRELL_AT_AVX2
+#      define SRELL_AT_AVX2 __attribute__((target("avx2")))
+#   endif
 
-	#if !defined(__AVX512F__)
-	#undef SRELL_AT_AVX512
-	#define SRELL_AT_AVX512 __attribute__((target("avx512f")))
-	#endif
+#   if !defined(__AVX512F__)
+#      undef SRELL_AT_AVX512
+#      define SRELL_AT_AVX512 __attribute__((target("avx512f")))
+#   endif
 #endif
 #endif
 
 #if defined(_MSC_VER)
 #define SRELL_NO_VCWARNING(n) \
-	__pragma(warning(push)) \
-	__pragma(warning(disable:n))
+   __pragma(warning(push)) \
+   __pragma(warning(disable:n))
 #define SRELL_NO_VCWARNING_END __pragma(warning(pop))
 #else
 #define SRELL_NO_VCWARNING(x)
@@ -123,20 +123,21 @@ namespace srell
 {
 //  C++20 Concepts for better template constraints
 template<typename T>
-concept character_type = std::same_as<T, char> or
-                        std::same_as<T, wchar_t> or
-                        std::same_as<T, char8_t> or
-                        std::same_as<T, char16_t> or
-                        std::same_as<T, char32_t>;
+concept character_type =
+   std::same_as<T, char> or
+   std::same_as<T, wchar_t> or
+   std::same_as<T, char8_t> or
+   std::same_as<T, char16_t> or
+   std::same_as<T, char32_t>;
 
 template<typename T>
 concept bidirectional_iterator = std::bidirectional_iterator<T>;
 
 template<typename T>
 concept allocator_type = requires(T alloc) {
-    typename T::value_type;
-    { alloc.allocate(std::size_t{1}) } -> std::convertible_to<typename T::value_type*>;
-    { alloc.deallocate(std::declval<typename T::value_type*>(), std::size_t{1}) } -> std::same_as<void>;
+   typename T::value_type;
+   { alloc.allocate(std::size_t{1}) } -> std::convertible_to<typename T::value_type*>;
+   { alloc.deallocate(std::declval<typename T::value_type*>(), std::size_t{1}) } -> std::same_as<void>;
 };
 
 //  ["regex_constants.h" ...
@@ -261,47 +262,47 @@ concept allocator_type = requires(T alloc) {
 
 	namespace regex_constants
 	{
-		typedef unsigned int error_type;
+                using error_type = unsigned int;
 
-		static const error_type error_collate = 100;
-		static const error_type error_ctype = 101;
-		static const error_type error_escape = 102;
-		static const error_type error_backref = 103;
-		static const error_type error_brack = 104;
-		static const error_type error_paren = 105;
-		static const error_type error_brace = 106;
-		static const error_type error_badbrace = 107;
-		static const error_type error_range = 108;
-		static const error_type error_space = 109;
-		static const error_type error_badrepeat = 110;
-		static const error_type error_complexity = 111;
-		static const error_type error_stack = 112;
+                inline constexpr error_type error_collate{100};
+                inline constexpr error_type error_ctype{101};
+                inline constexpr error_type error_escape{102};
+                inline constexpr error_type error_backref{103};
+                inline constexpr error_type error_brack{104};
+                inline constexpr error_type error_paren{105};
+                inline constexpr error_type error_brace{106};
+                inline constexpr error_type error_badbrace{107};
+                inline constexpr error_type error_range{108};
+                inline constexpr error_type error_space{109};
+                inline constexpr error_type error_badrepeat{110};
+                inline constexpr error_type error_complexity{111};
+                inline constexpr error_type error_stack{112};
 
 		//  SRELL's extensions.
-		static const error_type error_utf8 = 113;
+                inline constexpr error_type error_utf8{113};
 			//  The expression contained an invalid UTF-8 sequence.
 
-		static const error_type error_property = 114;
+                inline constexpr error_type error_property{114};
 			//  The expression contained an invalid Unicode property name or value.
 
-		static const error_type error_noescape = 115;
+                inline constexpr error_type error_noescape{115};
 			//  (Only in v-mode) ( ) [ ] { } / - \ | need to be escaped in a character class.
 
-		static const error_type error_operator = 116;
+                inline constexpr error_type error_operator{116};
 			//  (Only in v-mode) A character class contained a reserved double punctuation
 			//  operator or different types of operators at the same level, such as [ab--cd].
 
-		static const error_type error_complement = 117;
+                inline constexpr error_type error_complement{117};
 			//  (Only in v-mode) \P or a negated character class contained a property of strings.
 
-		static const error_type error_modifier = 118;
+                inline constexpr error_type error_modifier{118};
 			//  A specific flag modifier appeared more then once, or the un-bounded form
 			//  ((?ism-ism)) appeared at a position other than the beginning of the expression.
 
-		static const error_type error_first_ = error_collate;
-		static const error_type error_last_ = error_modifier;
+                inline constexpr error_type error_first_{error_collate};
+                inline constexpr error_type error_last_{error_modifier};
 
-		static const error_type error_internal = 999;
+                inline constexpr error_type error_internal{999};
 	}
 	//  namespace regex_constants
 
@@ -315,15 +316,15 @@ concept allocator_type = requires(T alloc) {
 
 #if defined(__cpp_unicode_characters)
 
-		typedef char32_t ui_l32;	//  uint_least32.
+		using ui_l32 = char32_t;	//  uint_least32.
 
 #elif defined(UINT_MAX) && UINT_MAX >= 0xFFFFFFFF
 
-		typedef unsigned int ui_l32;
+		using ui_l32 = unsigned int;
 
 #elif defined(ULONG_MAX) && ULONG_MAX >= 0xFFFFFFFF
 
-		typedef unsigned long ui_l32;
+		using ui_l32 = unsigned long;
 
 #else
 #error could not find a suitable type for 32-bit Unicode integer values.
@@ -948,7 +949,7 @@ struct u16regex_traits : public regex_traits<charT>
 template <typename charT>
 struct concon_view
 {
-	typedef std::size_t size_type;
+	using size_type = std::size_t;
 
 	const charT *data_;
 	size_type size_;
@@ -982,45 +983,45 @@ class simple_array
 {
 public:
 
-	typedef ElemT value_type;
-	typedef std::size_t size_type;
-	typedef ElemT &reference;
-	typedef const ElemT &const_reference;
-	typedef ElemT *pointer;
-	typedef const ElemT *const_pointer;
-	typedef const_pointer const_iterator;
-	typedef concon_view<ElemT> sa_view;
+	using value_type = ElemT;
+	using size_type = std::size_t;
+	using reference = ElemT &;
+	using const_reference = const ElemT &;
+	using pointer = ElemT *;
+	using const_pointer = const ElemT *;
+	using const_iterator = const_pointer;
+	using sa_view = concon_view<ElemT>;
 
-	static const size_type npos = static_cast<size_type>(-1);
+	inline static constexpr size_type npos = static_cast<size_type>(-1);
 
 public:
 
 	simple_array()
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(nullptr), size_(0), capacity_p1_(1)
 	{
 	}
 
 	simple_array(const size_type initsize)
 		: buffer_(static_cast<pointer>(std::malloc(initsize * sizeof (ElemT)))), size_(initsize), capacity_p1_(initsize + 1)
 	{
-		if (buffer_ == NULL)
+		if (buffer_ IS nullptr)
 			abort();
 	}
 
 	simple_array(const simple_array &right)
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(nullptr), size_(0), capacity_p1_(1)
 	{
 		operator=(right);
 	}
 
 	simple_array(const sa_view &v)
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(nullptr), size_(0), capacity_p1_(1)
 	{
 		operator=(v);
 	}
 
 	simple_array(Alloc)
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(nullptr), size_(0), capacity_p1_(1)
 	{
 	}
 
@@ -1071,7 +1072,7 @@ public:
 			std::free(buffer_);
 	}
 
-	size_type size() const
+        [[nodiscard]] size_type size() const noexcept
 	{
 		return size_;
 	}
@@ -1312,12 +1313,12 @@ public:
 		return buffer_ + size_;
 	}
 
-	size_type max_size() const
+        [[nodiscard]] size_type max_size() const noexcept
 	{
 		return maxsize_;
 	}
 
-	bool no_alloc_failure() const
+        [[nodiscard]] bool no_alloc_failure() const noexcept
 	{
 		return capacity_p1_ > 0;
 	}
@@ -1360,11 +1361,11 @@ protected:
 			buffer_ = static_cast<pointer>(std::realloc(static_cast<void *>(buffer_), newsize * sizeof (ElemT)));
 			capacity_p1_ = newsize + 1;
 
-			if (buffer_ != NULL)
+			if (buffer_ != nullptr)
 				return;
 
 			std::free(oldbuffer);
-//			buffer_ = NULL;
+//			buffer_ = nullptr;
 			size_ = 0;
 			capacity_p1_ = 1;
 		}
@@ -1487,14 +1488,14 @@ class bitset : private bitsetbase<Bits>
 public:
 
 	bitset()
-		: buffer_(NULL)
+		: buffer_(nullptr)
 	{
 		ensure_alloc_();
 		std::memset(buffer_, 0, size_in_byte_);
 	}
 
 	bitset(const bitset &right)
-		: buffer_(NULL)
+		: buffer_(nullptr)
 	{
 		ensure_alloc_();
 		std::memcpy(buffer_, right.buffer_, size_in_byte_);
@@ -1504,7 +1505,7 @@ public:
 	bitset(bitset &&right) SRELL_NOEXCEPT
 		: buffer_(right.buffer_)
 	{
-		right.buffer_ = NULL;
+		right.buffer_ = nullptr;
 	}
 #endif
 
@@ -1523,11 +1524,11 @@ public:
 	{
 		if (this != &right)
 		{
-			if (this->buffer_ != NULL)
+			if (this->buffer_ != nullptr)
 				std::free(this->buffer_);
 
 			this->buffer_ = right.buffer_;
-			right.buffer_ = NULL;
+			right.buffer_ = nullptr;
 		}
 		return *this;
 	}
@@ -1535,7 +1536,7 @@ public:
 
 	~bitset()
 	{
-		if (buffer_ != NULL)
+		if (buffer_ != nullptr)
 			std::free(buffer_);
 	}
 
@@ -1545,10 +1546,10 @@ public:
 		std::memset(buffer_, 0, size_in_byte_);
 	}
 
-	std::size_t size() const
-	{
-		return buffer_ != NULL ? Bits : 0;
-	}
+        [[nodiscard]] std::size_t size() const noexcept
+        {
+                return buffer_ != nullptr ? Bits : 0;
+        }
 
 	bitset &reset(const std::size_t bit)
 	{
@@ -1562,10 +1563,10 @@ public:
 		return *this;
 	}
 
-	bool test(const std::size_t bit) const
-	{
-		return ((buffer_[bit / base_type::bits_per_elem_] >> (bit & bitmask_)) & 1) != 0;
-	}
+        [[nodiscard]] bool test(const std::size_t bit) const noexcept
+        {
+                return ((buffer_[bit / base_type::bits_per_elem_] >> (bit & bitmask_)) & 1) != 0;
+        }
 
 	void swap(bitset &right)
 	{
@@ -1581,11 +1582,11 @@ private:
 
 	void ensure_alloc_()
 	{
-		if (buffer_ != NULL)
+		if (buffer_ != nullptr)
 			return;
 
 		buffer_ = static_cast<array_type *>(std::malloc(size_in_byte_));
-		if (buffer_ != NULL)
+		if (buffer_ != nullptr)
 			return;
 
 		abort();
@@ -2414,7 +2415,7 @@ private:
 
 public:	//  For debug.
 
-	void print_pairs(const int, const char *const = NULL, const char *const = NULL) const;
+	void print_pairs(const int, const char *const = nullptr, const char *const = nullptr) const;
 };
 //  range_pairs
 
@@ -2801,7 +2802,7 @@ public:
 
 	typedef simple_array<charT> gname_string;
 	typedef typename gname_string::sa_view view_type;
-	typedef std::size_t size_type;
+	using size_type = std::size_t;
 	static const ui_l32 notfound = 0u;
 
 	groupname_mapper()
@@ -2868,7 +2869,7 @@ public:
 			pos += keysize;
 			i += keynum + 1;
 		}
-		return NULL;
+		return nullptr;
 	}
 
 	view_type operator[](const ui_l32 indexno) const
@@ -2898,7 +2899,7 @@ public:
 	{
 		const ui_l32 *list = operator[](gname);
 
-		if (list == NULL)
+		if (list IS nullptr)
 		{
 			size_type curpos = keysize_classno_.size();
 
@@ -2947,7 +2948,7 @@ public:
 	{
 		const ui_l32 *list = operator[](gname);
 
-		if (list == NULL)
+		if (list IS nullptr)
 		{
 			size_type curpos = keysize_classno_.size();
 
@@ -4425,19 +4426,19 @@ protected:
 
 	re_object_core()
 		: limit_counter(lcounter_defnum_)
-		, bmdata(NULL)
+		, bmdata(nullptr)
 	{
 	}
 
 	re_object_core(const re_object_core &right)
-		: bmdata(NULL)
+		: bmdata(nullptr)
 	{
 		operator=(right);
 	}
 
 #if defined(__cpp_rvalue_references)
 	re_object_core(re_object_core &&right) SRELL_NOEXCEPT
-		: bmdata(NULL)
+		: bmdata(nullptr)
 	{
 		operator=(std::move(right));
 	}
@@ -4468,7 +4469,7 @@ protected:
 
 		if (bmdata)
 			delete bmdata;
-		bmdata = NULL;
+		bmdata = nullptr;
 	}
 
 	re_object_core &operator=(const re_object_core &that)
@@ -4499,7 +4500,7 @@ protected:
 			else if (this->bmdata)
 			{
 				delete this->bmdata;
-				this->bmdata = NULL;
+				this->bmdata = nullptr;
 			}
 #if defined(SRELL_HAS_SSE42)
 			simdranges = that.simdranges;
@@ -4533,7 +4534,7 @@ protected:
 			if (this->bmdata)
 				delete this->bmdata;
 			this->bmdata = that.bmdata;
-			that.bmdata = NULL;
+			that.bmdata = nullptr;
 #if defined(SRELL_HAS_SSE42)
 			simdranges = that.simdranges;
 #endif
@@ -4682,7 +4683,7 @@ protected:
                 {
                         if (this->bmdata)
                                 delete this->bmdata;
-                        this->bmdata = NULL;
+                        this->bmdata = nullptr;
                         return false;
                 }
                 return true;
@@ -6544,7 +6545,7 @@ private:
 
 					const ui_l32 *list = this->namedcaptures[cvars.unresolved_gnames[backrefno]];
 
-					if (list == NULL || *list < 1)
+					if (list IS nullptr or *list < 1)
 						return this->set_error(regex_constants::error_backref);
 
 					const ui_l32 num = list[0];
@@ -6831,12 +6832,12 @@ private:
 			if (state.next1 || state.type == st_character || state.type == st_character_class)
 				state.next_state1 = &this->NFA_states[pos + state.next1];
 			else
-				state.next_state1 = NULL;
+				state.next_state1 = nullptr;
 
 			if (state.next2)
 				state.next_state2 = &this->NFA_states[pos + state.next2];
 			else
-				state.next_state2 = NULL;
+				state.next_state2 = nullptr;
 		}
 	}
 
@@ -7663,7 +7664,7 @@ private:
 	{
 		const state_size_type begin = cur;
 		state_size_type charatomseq_endpos = cur;
-		const state_type *charatomseq_begin = NULL;
+		const state_type *charatomseq_begin = nullptr;
 
 		for (; cur < end;)
 		{
@@ -7673,7 +7674,7 @@ private:
 			{
 			case st_character:
 			case st_character_class:
-				if (charatomseq_begin == NULL)
+				if (charatomseq_begin IS nullptr)
 					charatomseq_begin = &cst;
 				else if (separate || !charatomseq_begin->is_same_character_or_charclass(cst))
 					return charatomseq_endpos;
@@ -7710,7 +7711,7 @@ private:
 					{
 						const state_type &repatom = NFAs[cur + 1];
 
-						if (charatomseq_begin == NULL)
+						if (charatomseq_begin IS nullptr)
 							charatomseq_begin = &repatom;
 						else if (separate || !charatomseq_begin->is_same_character_or_charclass(repatom))
 							return charatomseq_endpos;
