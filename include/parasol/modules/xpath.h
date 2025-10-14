@@ -37,31 +37,37 @@ enum class XPathNodeType : int {
    LET_EXPRESSION = 12,
    LET_BINDING = 13,
    FLWOR_EXPRESSION = 14,
-   QUANTIFIED_EXPRESSION = 15,
-   QUANTIFIED_BINDING = 16,
-   FUNCTION_CALL = 17,
-   LITERAL = 18,
-   VARIABLE_REFERENCE = 19,
-   NAME_TEST = 20,
-   NODE_TYPE_TEST = 21,
-   PROCESSING_INSTRUCTION_TEST = 22,
-   WILDCARD = 23,
-   AXIS_SPECIFIER = 24,
-   UNION = 25,
-   NUMBER = 26,
-   STRING = 27,
-   PATH = 28,
-   DIRECT_ELEMENT_CONSTRUCTOR = 29,
-   DIRECT_ATTRIBUTE_CONSTRUCTOR = 30,
-   DIRECT_TEXT_CONSTRUCTOR = 31,
-   COMPUTED_ELEMENT_CONSTRUCTOR = 32,
-   COMPUTED_ATTRIBUTE_CONSTRUCTOR = 33,
-   TEXT_CONSTRUCTOR = 34,
-   COMMENT_CONSTRUCTOR = 35,
-   PI_CONSTRUCTOR = 36,
-   DOCUMENT_CONSTRUCTOR = 37,
-   CONSTRUCTOR_CONTENT = 38,
-   ATTRIBUTE_VALUE_TEMPLATE = 39,
+   WHERE_CLAUSE = 15,
+   GROUP_CLAUSE = 16,
+   GROUP_KEY = 17,
+   ORDER_CLAUSE = 18,
+   ORDER_SPEC = 19,
+   COUNT_CLAUSE = 20,
+   QUANTIFIED_EXPRESSION = 21,
+   QUANTIFIED_BINDING = 22,
+   FUNCTION_CALL = 23,
+   LITERAL = 24,
+   VARIABLE_REFERENCE = 25,
+   NAME_TEST = 26,
+   NODE_TYPE_TEST = 27,
+   PROCESSING_INSTRUCTION_TEST = 28,
+   WILDCARD = 29,
+   AXIS_SPECIFIER = 30,
+   UNION = 31,
+   NUMBER = 32,
+   STRING = 33,
+   PATH = 34,
+   DIRECT_ELEMENT_CONSTRUCTOR = 35,
+   DIRECT_ATTRIBUTE_CONSTRUCTOR = 36,
+   DIRECT_TEXT_CONSTRUCTOR = 37,
+   COMPUTED_ELEMENT_CONSTRUCTOR = 38,
+   COMPUTED_ATTRIBUTE_CONSTRUCTOR = 39,
+   TEXT_CONSTRUCTOR = 40,
+   COMMENT_CONSTRUCTOR = 41,
+   PI_CONSTRUCTOR = 42,
+   DOCUMENT_CONSTRUCTOR = 43,
+   CONSTRUCTOR_CONTENT = 44,
+   ATTRIBUTE_VALUE_TEMPLATE = 45,
 };
 
 typedef struct XPathNode {
@@ -102,6 +108,29 @@ typedef struct XPathNode {
       std::vector<XPathConstructorAttribute> attributes;
    };
 
+   struct XPathOrderSpecOptions
+   {
+      bool is_descending = false;
+      bool has_empty_mode = false;
+      bool empty_is_greatest = false;
+      std::string collation_uri;
+
+      [[nodiscard]] bool has_collation() const
+      {
+         return !collation_uri.empty();
+      }
+   };
+
+   struct XPathGroupKeyInfo
+   {
+      std::string variable_name;
+
+      [[nodiscard]] bool has_variable() const
+      {
+         return !variable_name.empty();
+      }
+   };
+
    XPathNodeType type;
    std::string value;
    std::vector<std::unique_ptr<XPathNode>> children;
@@ -109,6 +138,9 @@ typedef struct XPathNode {
    std::vector<XPathAttributeValuePart> attribute_value_parts;
    bool attribute_value_has_expressions = false;
    std::unique_ptr<XPathNode> name_expression;
+   bool order_clause_is_stable = false;
+   std::optional<XPathOrderSpecOptions> order_spec_options;
+   std::optional<XPathGroupKeyInfo> group_key_info;
 
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
@@ -153,6 +185,36 @@ typedef struct XPathNode {
    [[nodiscard]] bool has_name_expression() const
    {
       return name_expression != nullptr;
+   }
+
+   void set_order_spec_options(XPathOrderSpecOptions Options)
+   {
+      order_spec_options = std::move(Options);
+   }
+
+   [[nodiscard]] bool has_order_spec_options() const
+   {
+      return order_spec_options.has_value();
+   }
+
+   [[nodiscard]] const XPathOrderSpecOptions * get_order_spec_options() const
+   {
+      return order_spec_options ? &(*order_spec_options) : nullptr;
+   }
+
+   void set_group_key_info(XPathGroupKeyInfo Info)
+   {
+      group_key_info = std::move(Info);
+   }
+
+   [[nodiscard]] bool has_group_key_info() const
+   {
+      return group_key_info.has_value();
+   }
+
+   [[nodiscard]] const XPathGroupKeyInfo * get_group_key_info() const
+   {
+      return group_key_info ? &(*group_key_info) : nullptr;
    }
 } XPATHNODE;
 

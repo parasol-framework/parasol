@@ -484,8 +484,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
    auto expression = parse_expr_single();
    if (!expression) return nullptr;
 
-   while (match(XPathTokenType::COMMA))
-   {
+   while (match(XPathTokenType::COMMA)) {
       XPathToken comma = previous();
       auto right = parse_expr_single();
       if (!right) return nullptr;
@@ -496,12 +495,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr() {
 }
 
 //********************************************************************************************************************
-// Parses FLWOR (For, Let, Where, Order by, Return) expressions, handling 'for' and 'let' clauses with variable
-// bindings and mandatory 'return' clauses.
+// Parses FLWOR (For, Let, Where, Order by, Return) expressions with ordered optional clauses.
 
 std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 {
-   std::vector<std::unique_ptr<XPathNode>> clauses;
+   std::vector<std::unique_ptr<XPathNode>> binding_nodes;
+   std::vector<std::unique_ptr<XPathNode>> clause_nodes;
    bool saw_for = false;
    bool saw_let = false;
 
@@ -536,10 +535,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
             auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
             binding_node->add_child(std::move(sequence_expr));
-            clauses.push_back(std::move(binding_node));
+            binding_nodes.push_back(std::move(binding_node));
 
-            if (match(XPathTokenType::COMMA)) expect_binding = true;
-            else expect_binding = false;
+            expect_binding = match(XPathTokenType::COMMA);
          }
 
          continue;
@@ -584,10 +582,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
             auto binding_node = std::make_unique<XPathNode>(XPathNodeType::LET_BINDING, variable_name);
             binding_node->add_child(std::move(binding_expr));
-            clauses.push_back(std::move(binding_node));
+            binding_nodes.push_back(std::move(binding_node));
 
-            if (match(XPathTokenType::COMMA)) parsing_bindings = true;
-            else parsing_bindings = false;
+            parsing_bindings = match(XPathTokenType::COMMA);
          }
 
          continue;
@@ -596,9 +593,117 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
       break;
    }
 
-   if (clauses.empty()) {
+   if (binding_nodes.empty()) {
       report_error("Expected 'for' or 'let' expression");
       return nullptr;
+   }
+
+   bool saw_where = false;
+   bool saw_group = false;
+   bool saw_order = false;
+   bool saw_count_clause = false;
+   bool has_non_binding_clause = false;
+
+   while (true) {
+      if (check_identifier_keyword("where")) {
+         if (saw_where) {
+            report_error("Multiple where clauses are not permitted in FLWOR expression");
+            return nullptr;
+         }
+         if (saw_group) {
+            report_error("where clause must precede group by clause");
+            return nullptr;
+         }
+         if (saw_order) {
+            report_error("where clause must precede order by clause");
+            return nullptr;
+         }
+         if (saw_count_clause) {
+            report_error("where clause must precede count clause");
+            return nullptr;
+         }
+
+         auto where_clause = parse_where_clause();
+         if (!where_clause) return nullptr;
+         clause_nodes.push_back(std::move(where_clause));
+         saw_where = true;
+         has_non_binding_clause = true;
+         continue;
+      }
+
+      if (check_identifier_keyword("group")) {
+         if (saw_group) {
+            report_error("Multiple group by clauses are not permitted in FLWOR expression");
+            return nullptr;
+         }
+         if (saw_order) {
+            report_error("group by clause must precede order by clause");
+            return nullptr;
+         }
+         if (saw_count_clause) {
+            report_error("group by clause must precede count clause");
+            return nullptr;
+         }
+
+         auto group_clause = parse_group_clause();
+         if (!group_clause) return nullptr;
+         clause_nodes.push_back(std::move(group_clause));
+         saw_group = true;
+         has_non_binding_clause = true;
+         continue;
+      }
+
+      if (check_identifier_keyword("stable")) {
+         if (saw_order) {
+            report_error("Multiple order by clauses are not permitted in FLWOR expression");
+            return nullptr;
+         }
+         if (saw_count_clause) {
+            report_error("order by clause must precede count clause");
+            return nullptr;
+         }
+
+         auto order_clause = parse_order_clause(true);
+         if (!order_clause) return nullptr;
+         clause_nodes.push_back(std::move(order_clause));
+         saw_order = true;
+         has_non_binding_clause = true;
+         continue;
+      }
+
+      if (check_identifier_keyword("order")) {
+         if (saw_order) {
+            report_error("Multiple order by clauses are not permitted in FLWOR expression");
+            return nullptr;
+         }
+         if (saw_count_clause) {
+            report_error("order by clause must precede count clause");
+            return nullptr;
+         }
+
+         auto order_clause = parse_order_clause(false);
+         if (!order_clause) return nullptr;
+         clause_nodes.push_back(std::move(order_clause));
+         saw_order = true;
+         has_non_binding_clause = true;
+         continue;
+      }
+
+      if (check_identifier_keyword("count")) {
+         if (saw_count_clause) {
+            report_error("Multiple count clauses are not permitted in FLWOR expression");
+            return nullptr;
+         }
+
+         auto count_clause = parse_count_clause();
+         if (!count_clause) return nullptr;
+         clause_nodes.push_back(std::move(count_clause));
+         saw_count_clause = true;
+         has_non_binding_clause = true;
+         continue;
+      }
+
+      break;
    }
 
    XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view());
@@ -613,34 +718,41 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
       return nullptr;
    }
 
-   if (saw_for and !saw_let) {
+   if (!has_non_binding_clause and saw_for and !saw_let) {
       auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION);
-      for (auto &clause : clauses) {
-         if ((!clause) or !(clause->type IS XPathNodeType::FOR_BINDING)) {
+      for (auto &binding : binding_nodes) {
+         if ((!binding) or !(binding->type IS XPathNodeType::FOR_BINDING)) {
             report_error("Invalid for binding in FLWOR expression");
             return nullptr;
          }
-         for_node->add_child(std::move(clause));
+         for_node->add_child(std::move(binding));
       }
       for_node->add_child(std::move(return_expr));
       return for_node;
    }
 
-   if (saw_let and !saw_for) {
+   if (!has_non_binding_clause and saw_let and !saw_for) {
       auto let_node = std::make_unique<XPathNode>(XPathNodeType::LET_EXPRESSION);
-      for (auto &clause : clauses) {
-         if ((!clause) or !(clause->type IS XPathNodeType::LET_BINDING)) {
+      for (auto &binding : binding_nodes) {
+         if ((!binding) or !(binding->type IS XPathNodeType::LET_BINDING)) {
             report_error("Invalid let binding in FLWOR expression");
             return nullptr;
          }
-         let_node->add_child(std::move(clause));
+         let_node->add_child(std::move(binding));
       }
       let_node->add_child(std::move(return_expr));
       return let_node;
    }
 
    auto flwor_node = std::make_unique<XPathNode>(XPathNodeType::FLWOR_EXPRESSION);
-   for (auto &clause : clauses) {
+   for (auto &binding : binding_nodes) {
+      if (!binding) {
+         report_error("Invalid clause in FLWOR expression");
+         return nullptr;
+      }
+      flwor_node->add_child(std::move(binding));
+   }
+   for (auto &clause : clause_nodes) {
       if (!clause) {
          report_error("Invalid clause in FLWOR expression");
          return nullptr;
@@ -649,6 +761,205 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
    }
    flwor_node->add_child(std::move(return_expr));
    return flwor_node;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_where_clause()
+{
+   XPathToken where_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("where", XPathTokenType::WHERE, where_token)) {
+      report_error("Expected 'where' clause");
+      return nullptr;
+   }
+
+   auto predicate = parse_expr_single();
+   if (!predicate) {
+      report_error("Expected expression after 'where'");
+      return nullptr;
+   }
+
+   auto clause = std::make_unique<XPathNode>(XPathNodeType::WHERE_CLAUSE);
+   clause->add_child(std::move(predicate));
+   return clause;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
+{
+   XPathToken group_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("group", XPathTokenType::GROUP, group_token)) {
+      report_error("Expected 'group' clause");
+      return nullptr;
+   }
+
+   XPathToken by_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("by", XPathTokenType::BY, by_token)) {
+      report_error("Expected 'by' after 'group'");
+      return nullptr;
+   }
+
+   auto clause = std::make_unique<XPathNode>(XPathNodeType::GROUP_CLAUSE);
+
+   bool expect_key = true;
+   while (expect_key) {
+      if (!match(XPathTokenType::DOLLAR)) {
+         report_error("Expected '$' to begin group by key binding");
+         return nullptr;
+      }
+
+      std::string variable_name;
+      if (check(XPathTokenType::IDENTIFIER)) {
+         variable_name = peek().value;
+         advance();
+      }
+      else {
+         report_error("Expected variable name in group by key binding");
+         return nullptr;
+      }
+
+      if (!match(XPathTokenType::ASSIGN)) {
+         report_error("Expected ':=' after group by variable name");
+         return nullptr;
+      }
+
+      auto key_expr = parse_expr_single();
+      if (!key_expr) {
+         report_error("Expected expression after ':=' in group by clause");
+         return nullptr;
+      }
+
+      auto key_node = std::make_unique<XPathNode>(XPathNodeType::GROUP_KEY);
+      XPathNode::XPathGroupKeyInfo info;
+      info.variable_name = std::move(variable_name);
+      key_node->set_group_key_info(std::move(info));
+      key_node->add_child(std::move(key_expr));
+      clause->add_child(std::move(key_node));
+
+      expect_key = match(XPathTokenType::COMMA);
+   }
+
+   return clause;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_order_clause(bool StartsWithStable)
+{
+   bool clause_is_stable = false;
+
+   if (StartsWithStable) {
+      XPathToken stable_token(XPathTokenType::UNKNOWN, std::string_view());
+      if (!match_identifier_keyword("stable", XPathTokenType::STABLE, stable_token)) {
+         report_error("Expected 'stable' keyword to start stable order by clause");
+         return nullptr;
+      }
+      clause_is_stable = true;
+   }
+
+   XPathToken order_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("order", XPathTokenType::ORDER, order_token)) {
+      report_error("Expected 'order' in order by clause");
+      return nullptr;
+   }
+
+   XPathToken by_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("by", XPathTokenType::BY, by_token)) {
+      report_error("Expected 'by' after 'order'");
+      return nullptr;
+   }
+
+   auto clause = std::make_unique<XPathNode>(XPathNodeType::ORDER_CLAUSE);
+   clause->order_clause_is_stable = clause_is_stable;
+
+   auto first_spec = parse_order_spec();
+   if (!first_spec) return nullptr;
+   clause->add_child(std::move(first_spec));
+
+   while (match(XPathTokenType::COMMA)) {
+      auto next_spec = parse_order_spec();
+      if (!next_spec) return nullptr;
+      clause->add_child(std::move(next_spec));
+   }
+
+   return clause;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
+{
+   auto order_expr = parse_expr_single();
+   if (!order_expr) {
+      report_error("Expected expression in order by clause");
+      return nullptr;
+   }
+
+   auto spec_node = std::make_unique<XPathNode>(XPathNodeType::ORDER_SPEC);
+   spec_node->add_child(std::move(order_expr));
+
+   XPathNode::XPathOrderSpecOptions options;
+   bool has_options = false;
+
+   XPathToken keyword_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (match_identifier_keyword("ascending", XPathTokenType::ASCENDING, keyword_token)) {
+      has_options = true;
+      options.is_descending = false;
+   }
+   else if (match_identifier_keyword("descending", XPathTokenType::DESCENDING, keyword_token)) {
+      has_options = true;
+      options.is_descending = true;
+   }
+
+   if (match_identifier_keyword("empty", XPathTokenType::EMPTY, keyword_token)) {
+      has_options = true;
+      options.has_empty_mode = true;
+      if (match_identifier_keyword("greatest", XPathTokenType::GREATEST, keyword_token)) {
+         options.empty_is_greatest = true;
+      }
+      else if (match_identifier_keyword("least", XPathTokenType::LEAST, keyword_token)) {
+         options.empty_is_greatest = false;
+      }
+      else
+      {
+         report_error("Expected 'greatest' or 'least' after 'empty' in order by clause");
+         return nullptr;
+      }
+   }
+
+   if (match_identifier_keyword("collation", XPathTokenType::COLLATION, keyword_token)) {
+      has_options = true;
+      if (!check(XPathTokenType::STRING)) {
+         report_error("Expected string literal after 'collation' in order by clause");
+         return nullptr;
+      }
+
+      std::string collation_value(peek().value);
+      advance();
+      options.collation_uri = std::move(collation_value);
+   }
+
+   if (has_options) spec_node->set_order_spec_options(std::move(options));
+   return spec_node;
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_count_clause()
+{
+   XPathToken count_token(XPathTokenType::UNKNOWN, std::string_view());
+   if (!match_identifier_keyword("count", XPathTokenType::COUNT, count_token)) {
+      report_error("Expected 'count' clause");
+      return nullptr;
+   }
+
+   if (!match(XPathTokenType::DOLLAR)) {
+      report_error("Expected '$' after 'count'");
+      return nullptr;
+   }
+
+   std::string variable_name;
+   if (check(XPathTokenType::IDENTIFIER)) {
+      variable_name = peek().value;
+      advance();
+   }
+   else {
+      report_error("Expected variable name in count clause");
+      return nullptr;
+   }
+
+   return std::make_unique<XPathNode>(XPathNodeType::COUNT_CLAUSE, std::move(variable_name));
 }
 
 //********************************************************************************************************************
@@ -855,15 +1166,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
          if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
             looks_like_path = false;
          }
-         else if (is_constructor_keyword(peek()))
-         {
+         else if (is_constructor_keyword(peek())) {
             size_t lookahead = current_token + 1;
             while ((lookahead < tokens.size()) and (tokens[lookahead].type IS XPathTokenType::IDENTIFIER)) {
                lookahead++;
             }
 
-            if (lookahead < tokens.size())
-            {
+            if (lookahead < tokens.size()) {
                auto next_type = tokens[lookahead].type;
                if ((next_type IS XPathTokenType::LBRACE) or (next_type IS XPathTokenType::STRING)) {
                   looks_like_path = false;
@@ -1060,8 +1369,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
       return parse_direct_constructor();
    }
 
-   if (is_constructor_keyword(peek()))
-   {
+   if (is_constructor_keyword(peek())) {
       size_t next_index = current_token + 1;
       bool is_function_call = (next_index < tokens.size()) and (tokens[next_index].type IS XPathTokenType::LPAREN);
       if (!is_function_call) return parse_computed_constructor();
@@ -1211,8 +1519,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
 {
    ConstructorName name;
 
-   if (!check(XPathTokenType::IDENTIFIER))
-   {
+   if (!check(XPathTokenType::IDENTIFIER)) {
       report_error("Expected name in constructor");
       return std::nullopt;
    }
@@ -1220,8 +1527,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
    name.LocalName = std::string(peek().value);
    advance();
 
-   if (match(XPathTokenType::COLON))
-   {
+   if (match(XPathTokenType::COLON)) {
       name.Prefix = name.LocalName;
       if (!check(XPathTokenType::IDENTIFIER)) {
          report_error("Expected local name after ':' in constructor");
@@ -1258,8 +1564,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
    std::vector<XPathConstructorAttribute> attributes;
 
-   while (!check(XPathTokenType::TAG_CLOSE) and !check(XPathTokenType::EMPTY_TAG_CLOSE))
-   {
+   while (!check(XPathTokenType::TAG_CLOSE) and !check(XPathTokenType::EMPTY_TAG_CLOSE)) {
       if (is_at_end()) {
          report_error("Unexpected end of input in direct constructor start tag");
          return nullptr;
@@ -1309,8 +1614,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
          parts.push_back(std::move(literal_part));
       }
 
-      if (attribute.is_namespace_declaration and !parts.empty() and !parts.front().is_expression)
-      {
+      if (attribute.is_namespace_declaration and !parts.empty() and !parts.front().is_expression) {
          attribute.namespace_uri = parts.front().text;
       }
 

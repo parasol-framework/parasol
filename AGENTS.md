@@ -214,9 +214,10 @@ For Fluid code, verify:
 - Use three spaces for tabulation in C++ and Fluid code.
 - C++ functions that use global variables must be written with thread safety in mind.
 - Use modern C++ conventions, targeting features up to and including C++20.
-- C++ global variables are prefixed with `gl` and written in upper camel-case, e.g. `glSomeVariable`
+- C++ global variable names are prefixed with `gl` and written in upper camel-case, e.g. `glSomeVariable`
 - The default column width is 120 characters for all languages.
 - Always default to British English spelling in code and comments.
+- For C++ `if`, `while`, `else`, `for`, `switch` and `struct` keywords, the opening curly brace must be on the same line if no word-wrapping has occurred.
 
 ### Testing
 

@@ -24,7 +24,14 @@ enum('XPathNodeType', { type='int', start=0 },
    'FOR_BINDING',
    'LET_EXPRESSION',
    'LET_BINDING',
+   -- FLWOR clauses are emitted in declaration order so the evaluator can stream them without reordering.
    'FLWOR_EXPRESSION',
+   'WHERE_CLAUSE',
+   'GROUP_CLAUSE',
+   'GROUP_KEY',
+   'ORDER_CLAUSE',
+   'ORDER_SPEC',
+   'COUNT_CLAUSE',
    'QUANTIFIED_EXPRESSION',
    'QUANTIFIED_BINDING',
    'FUNCTION_CALL',
@@ -101,6 +108,29 @@ enum('XPathNodeType', { type='int', start=0 },
       std::vector<XPathConstructorAttribute> attributes;
    };
 
+   struct XPathOrderSpecOptions
+   {
+      bool is_descending = false;
+      bool has_empty_mode = false;
+      bool empty_is_greatest = false;
+      std::string collation_uri;
+
+      [[nodiscard]] bool has_collation() const
+      {
+         return !collation_uri.empty();
+      }
+   };
+
+   struct XPathGroupKeyInfo
+   {
+      std::string variable_name;
+
+      [[nodiscard]] bool has_variable() const
+      {
+         return !variable_name.empty();
+      }
+   };
+
    XPathNodeType type;
    std::string value;
    std::vector<std::unique_ptr<XPathNode>> children;
@@ -108,6 +138,9 @@ enum('XPathNodeType', { type='int', start=0 },
    std::vector<XPathAttributeValuePart> attribute_value_parts;
    bool attribute_value_has_expressions = false;
    std::unique_ptr<XPathNode> name_expression;
+   bool order_clause_is_stable = false;
+   std::optional<XPathOrderSpecOptions> order_spec_options;
+   std::optional<XPathGroupKeyInfo> group_key_info;
 
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
@@ -152,6 +185,36 @@ enum('XPathNodeType', { type='int', start=0 },
    [[nodiscard]] bool has_name_expression() const
    {
       return name_expression != nullptr;
+   }
+
+   void set_order_spec_options(XPathOrderSpecOptions Options)
+   {
+      order_spec_options = std::move(Options);
+   }
+
+   [[nodiscard]] bool has_order_spec_options() const
+   {
+      return order_spec_options.has_value();
+   }
+
+   [[nodiscard]] const XPathOrderSpecOptions * get_order_spec_options() const
+   {
+      return order_spec_options ? &(*order_spec_options) : nullptr;
+   }
+
+   void set_group_key_info(XPathGroupKeyInfo Info)
+   {
+      group_key_info = std::move(Info);
+   }
+
+   [[nodiscard]] bool has_group_key_info() const
+   {
+      return group_key_info.has_value();
+   }
+
+   [[nodiscard]] const XPathGroupKeyInfo * get_group_key_info() const
+   {
+      return group_key_info ? &(*group_key_info) : nullptr;
    }
   ]==])
   
