@@ -78,6 +78,18 @@ typedef struct XPathNode {
       std::string namespace_uri;
       bool is_namespace_declaration = false;
       std::vector<XPathAttributeValuePart> value_parts;
+      std::vector<std::unique_ptr<XPathNode>> expression_parts;
+
+      void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr)
+      {
+         if (expression_parts.size() <= index) expression_parts.resize(index + 1);
+         expression_parts[index] = std::move(expr);
+      }
+
+      [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const
+      {
+         return index < expression_parts.size() ? expression_parts[index].get() : nullptr;
+      }
    };
 
    struct XPathConstructorInfo
@@ -96,6 +108,7 @@ typedef struct XPathNode {
    std::optional<XPathConstructorInfo> constructor_info;
    std::vector<XPathAttributeValuePart> attribute_value_parts;
    bool attribute_value_has_expressions = false;
+   std::unique_ptr<XPathNode> name_expression;
 
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
@@ -125,6 +138,21 @@ typedef struct XPathNode {
          }
       }
       attribute_value_parts = std::move(parts);
+   }
+
+   void set_name_expression(std::unique_ptr<XPathNode> expr)
+   {
+      name_expression = std::move(expr);
+   }
+
+   [[nodiscard]] XPathNode * get_name_expression() const
+   {
+      return name_expression.get();
+   }
+
+   [[nodiscard]] bool has_name_expression() const
+   {
+      return name_expression != nullptr;
    }
 } XPATHNODE;
 
