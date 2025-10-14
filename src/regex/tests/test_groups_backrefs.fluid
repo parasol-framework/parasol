@@ -38,12 +38,33 @@ function testSearchCapturesPreserveIndices()
    assert(results[3][2] == "a", "Third match should record captured character")
 end
 
+function testNamedBackreference()
+   local matcher = regex.new("(?<word>\\w+)-\\k<word>")
+   assert(matcher.test("repeat-repeat"), "Named backreference should accept identical tokens")
+   assert(not matcher.test("repeat-other"), "Named backreference should reject differing suffix")
+end
+
+function testLookaheadNamedBackreference()
+   local matcher = regex.new("^(?=(?<prefix>\\w{3}))\\w+\\k<prefix>$")
+   assert(matcher.test("foobarfoo"), "Lookahead capture should be reusable later in the pattern")
+   assert(not matcher.test("foobarbar"), "Lookahead capture should still enforce the trailing repetition")
+end
+
+function testMixedNamedAndNumberedReferences()
+   local matcher = regex.new("^(?<word>\\w+)-(\\d+) \\1 \\k<word>$")
+   assert(matcher.test("value-01 value value"), "Named and numbered references should target the same capture")
+   assert(not matcher.test("value-01 value other"), "Mismatch should cause the combined reference check to fail")
+end
+
 return {
    tests = {
       'testNestedCaptures',
       'testNonCapturingGroupCount',
       'testOptionalBackreference',
       'testBackreferenceInReplace',
-      'testSearchCapturesPreserveIndices'
+      'testSearchCapturesPreserveIndices',
+      'testNamedBackreference',
+      'testLookaheadNamedBackreference',
+      'testMixedNamedAndNumberedReferences'
    }
 }

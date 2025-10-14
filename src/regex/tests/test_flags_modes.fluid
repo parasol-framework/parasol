@@ -18,10 +18,21 @@ function testDotAllMatchesNewlines()
    assert(not baseline.test("foo\nbar"), "Default dot should stop at newline")
 end
 
+function testPrevAvailableSupportsLookbehind()
+   local matcher = regex.new("(?<=a)b")
+   local source = "ab"
+   local baseline = matcher.search(source)
+   assert(baseline and baseline[1][1] == "b", "Baseline lookbehind should succeed inside the string")
+
+   local flagged = matcher.search(source, regex.PREV_AVAILABLE)
+   assert(flagged and flagged[1][1] == "b", "PREV_AVAILABLE should preserve lookbehind results when context is present")
+end
+
 return {
    tests = {
       'testCaseInsensitiveFlag',
       'testMultilineAnchors',
-      'testDotAllMatchesNewlines'
+      'testDotAllMatchesNewlines',
+      'testPrevAvailableSupportsLookbehind'
    }
 }
