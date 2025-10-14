@@ -12,6 +12,7 @@
 
 #ifdef __cplusplus
 #include <functional>
+#include <optional>
 #include <sstream>
 #ifndef STRINGS_HPP
 #include <parasol/strings.hpp>
@@ -50,18 +51,81 @@ enum class XPathNodeType : int {
    NUMBER = 26,
    STRING = 27,
    PATH = 28,
+   DIRECT_ELEMENT_CONSTRUCTOR = 29,
+   DIRECT_ATTRIBUTE_CONSTRUCTOR = 30,
+   DIRECT_TEXT_CONSTRUCTOR = 31,
+   COMPUTED_ELEMENT_CONSTRUCTOR = 32,
+   COMPUTED_ATTRIBUTE_CONSTRUCTOR = 33,
+   TEXT_CONSTRUCTOR = 34,
+   COMMENT_CONSTRUCTOR = 35,
+   PI_CONSTRUCTOR = 36,
+   DOCUMENT_CONSTRUCTOR = 37,
+   CONSTRUCTOR_CONTENT = 38,
+   ATTRIBUTE_VALUE_TEMPLATE = 39,
 };
 
 typedef struct XPathNode {
+   struct XPathAttributeValuePart
+   {
+      bool is_expression = false;
+      std::string text;
+   };
+
+   struct XPathConstructorAttribute
+   {
+      std::string prefix;
+      std::string name;
+      std::string namespace_uri;
+      bool is_namespace_declaration = false;
+      std::vector<XPathAttributeValuePart> value_parts;
+   };
+
+   struct XPathConstructorInfo
+   {
+      std::string prefix;
+      std::string name;
+      std::string namespace_uri;
+      bool is_empty_element = false;
+      bool is_direct = false;
+      std::vector<XPathConstructorAttribute> attributes;
+   };
+
    XPathNodeType type;
    std::string value;
    std::vector<std::unique_ptr<XPathNode>> children;
+   std::optional<XPathConstructorInfo> constructor_info;
+   std::vector<XPathAttributeValuePart> attribute_value_parts;
+   bool attribute_value_has_expressions = false;
 
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
    void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
    [[nodiscard]] XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
    [[nodiscard]] size_t child_count() const { return children.size(); }
+
+   void set_constructor_info(XPathConstructorInfo info)
+   {
+      constructor_info = std::move(info);
+   }
+
+   [[nodiscard]] bool has_constructor_info() const
+   {
+      return constructor_info.has_value();
+   }
+
+   void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts)
+   {
+      attribute_value_has_expressions = false;
+      for (const auto &part : parts)
+      {
+         if (part.is_expression)
+         {
+            attribute_value_has_expressions = true;
+            break;
+         }
+      }
+      attribute_value_parts = std::move(parts);
+   }
 } XPATHNODE;
 
 #ifdef PARASOL_STATIC

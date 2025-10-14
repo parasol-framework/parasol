@@ -146,10 +146,138 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
    tokens.reserve(XPath.size() + 1);
    int bracket_depth = 0;
    int paren_depth = 0;
+   int direct_constructor_depth = 0;
+   bool inside_direct_tag = false;
+   bool pending_close_tag = false;
+
+   auto lookahead_non_whitespace = [&](size_t index) -> size_t
+   {
+      size_t lookahead = index;
+      while (lookahead < length and is_whitespace(input[lookahead])) lookahead++;
+      return lookahead;
+   };
+
+   auto last_token_is_operand = [&](const std::vector<XPathToken> &TokenList) -> bool
+   {
+      if (TokenList.empty()) return false;
+      const auto &token = TokenList.back();
+      switch (token.type)
+      {
+         case XPathTokenType::IDENTIFIER:
+         case XPathTokenType::NUMBER:
+         case XPathTokenType::STRING:
+         case XPathTokenType::RPAREN:
+         case XPathTokenType::RBRACKET:
+            return true;
+         default:
+            return false;
+      }
+   };
 
    while (position < length) {
       skip_whitespace();
       if (position >= length) break;
+
+      char ch = current();
+
+      if (inside_direct_tag and ch IS '/' and peek(1) IS '>') {
+         size_t start = position;
+         position += 2;
+         tokens.emplace_back(XPathTokenType::EMPTY_TAG_CLOSE, input.substr(start, 2), start, 2);
+         inside_direct_tag = false;
+         pending_close_tag = false;
+         if (direct_constructor_depth > 0) direct_constructor_depth--;
+         continue;
+      }
+
+      if (inside_direct_tag and ch IS '?' and peek(1) IS '>') {
+         size_t start = position;
+         position += 2;
+         tokens.emplace_back(XPathTokenType::PI_END, input.substr(start, 2), start, 2);
+         inside_direct_tag = false;
+         pending_close_tag = false;
+         continue;
+      }
+
+      if (inside_direct_tag and (ch IS '\'' or ch IS '"')) {
+         XPathToken token = scan_attribute_value(ch, true);
+         tokens.push_back(std::move(token));
+         continue;
+      }
+
+      if (inside_direct_tag and ch IS '>') {
+         size_t start = position;
+         position++;
+         tokens.emplace_back(XPathTokenType::TAG_CLOSE, input.substr(start, 1), start, 1);
+         inside_direct_tag = false;
+         if (pending_close_tag and direct_constructor_depth > 0) direct_constructor_depth--;
+         pending_close_tag = false;
+         continue;
+      }
+
+      if (ch IS '{') {
+         size_t start = position;
+         position++;
+         tokens.emplace_back(XPathTokenType::LBRACE, input.substr(start, 1), start, 1);
+         continue;
+      }
+
+      if (ch IS '}') {
+         size_t start = position;
+         position++;
+         tokens.emplace_back(XPathTokenType::RBRACE, input.substr(start, 1), start, 1);
+         continue;
+      }
+
+      if (ch IS '<') {
+         size_t start = position;
+
+         if (position + 1 < length and input[position + 1] IS '=') {
+            position += 2;
+            tokens.emplace_back(XPathTokenType::LESS_EQUAL, input.substr(start, 2), start, 2);
+            continue;
+         }
+
+         bool prev_is_operand = last_token_is_operand(tokens);
+         size_t name_pos = lookahead_non_whitespace(position + 1);
+         char lookahead_char = name_pos < length ? input[name_pos] : '\0';
+
+         bool starts_close = lookahead_char IS '/';
+         bool starts_pi = lookahead_char IS '?';
+         bool starts_name = is_name_start_char(lookahead_char);
+
+         bool constructor_candidate = starts_close or starts_pi or starts_name;
+         bool treat_as_constructor = constructor_candidate and (!prev_is_operand or (direct_constructor_depth > 0) or tokens.empty());
+
+         if (treat_as_constructor) {
+            if (starts_close) {
+               position += 2;
+               tokens.emplace_back(XPathTokenType::CLOSE_TAG_OPEN, input.substr(start, 2), start, 2);
+               inside_direct_tag = true;
+               pending_close_tag = true;
+               continue;
+            }
+
+            if (starts_pi) {
+               position += 2;
+               tokens.emplace_back(XPathTokenType::PI_START, input.substr(start, 2), start, 2);
+               inside_direct_tag = true;
+               pending_close_tag = false;
+               continue;
+            }
+
+            position++;
+            tokens.emplace_back(XPathTokenType::TAG_OPEN, input.substr(start, 1), start, 1);
+            inside_direct_tag = true;
+            pending_close_tag = false;
+            direct_constructor_depth++;
+            continue;
+         }
+
+         position++;
+         tokens.emplace_back(XPathTokenType::LESS_THAN, input.substr(start, 1), start, 1);
+         continue;
+      }
 
       if (input[position] IS '*') {
          size_t start = position;
@@ -383,6 +511,144 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
    if (position < length) position++;
 
    return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
+}
+
+XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemplates)
+{
+   size_t start = position;
+   position++;
+
+   std::vector<XPathAttributeValuePart> parts;
+   std::string current_literal;
+   std::string current_expression;
+   bool in_expression = false;
+   int brace_depth = 0;
+
+   while (position < length)
+   {
+      char ch = input[position];
+
+      if (not in_expression)
+      {
+         if (ch IS QuoteChar) break;
+
+         if (ProcessTemplates and ch IS '{')
+         {
+            if ((position + 1 < length) and (input[position + 1] IS '{'))
+            {
+               current_literal += '{';
+               position += 2;
+               continue;
+            }
+
+            if (!current_literal.empty())
+            {
+               XPathAttributeValuePart literal_part;
+               literal_part.is_expression = false;
+               literal_part.text = std::move(current_literal);
+               parts.push_back(std::move(literal_part));
+               current_literal.clear();
+            }
+
+            in_expression = true;
+            brace_depth = 1;
+            position++;
+            current_expression.clear();
+            continue;
+         }
+
+         if (ProcessTemplates and ch IS '}' and (position + 1 < length) and (input[position + 1] IS '}'))
+         {
+            current_literal += '}';
+            position += 2;
+            continue;
+         }
+
+         current_literal += ch;
+         position++;
+         continue;
+      }
+
+      if (ch IS '\'' or ch IS '"')
+      {
+         char expr_quote = ch;
+         current_expression += ch;
+         position++;
+         while (position < length)
+         {
+            char inner = input[position];
+            current_expression += inner;
+            position++;
+            if (inner IS expr_quote) break;
+            if (inner IS '\\' and position < length)
+            {
+               current_expression += input[position];
+               position++;
+            }
+         }
+         continue;
+      }
+
+      if (ch IS '{')
+      {
+         brace_depth++;
+         current_expression += ch;
+         position++;
+         continue;
+      }
+
+      if (ch IS '}')
+      {
+         brace_depth--;
+         if (brace_depth IS 0)
+         {
+            position++;
+            XPathAttributeValuePart expr_part;
+            expr_part.is_expression = true;
+            expr_part.text = current_expression;
+            parts.push_back(std::move(expr_part));
+            current_expression.clear();
+            in_expression = false;
+            continue;
+         }
+
+         current_expression += ch;
+         position++;
+         continue;
+      }
+
+      current_expression += ch;
+      position++;
+   }
+
+   if (in_expression)
+   {
+      std::string recovery;
+      recovery += '{';
+      recovery += current_expression;
+      current_literal += recovery;
+      current_expression.clear();
+   }
+
+   if (!current_literal.empty() or parts.empty())
+   {
+      XPathAttributeValuePart literal_tail;
+      literal_tail.is_expression = false;
+      literal_tail.text = std::move(current_literal);
+      parts.push_back(std::move(literal_tail));
+      current_literal.clear();
+   }
+
+   size_t content_end = position;
+
+   if (position < length) position++;
+
+   auto content_view = input.substr(start + 1, content_end - (start + 1));
+   XPathToken token(XPathTokenType::STRING, content_view, start, position - start);
+   token.is_attribute_value = true;
+   token.attribute_value_parts = std::move(parts);
+
+   return token;
 }
 
 // Scans operator tokens including multi-character operators (like '//', '::', '!=') and single-character

@@ -39,6 +39,7 @@ class XPathTokenizer
    XPathToken scan_identifier();
    XPathToken scan_number();
    XPathToken scan_string(char QuoteChar);
+   XPathToken scan_attribute_value(char QuoteChar, bool ProcessTemplates);
    XPathToken scan_operator();
 
    [[nodiscard]] char peek(size_t offset = 0) const;
