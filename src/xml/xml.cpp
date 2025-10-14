@@ -181,7 +181,7 @@ ERR XValueToNumber(XPathValue *Value, double *Result)
    pf::Log log(__FUNCTION__);
 
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
-   if (Value->type IS XPVT::NIL) return log.warning(ERR::NoData);
+   if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);
 
    auto val = (XPathVal *)Value;
    *Result = val->to_number();
@@ -213,8 +213,8 @@ ERR XValueNodes(XPathValue *Value, pf::vector<XMLTag *> *Result)
 {
    pf::Log log(__FUNCTION__);
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
-   if (Value->type IS XPVT::NIL) return log.warning(ERR::NoData);
-   if (Value->type != XPVT::NodeSet) return log.warning(ERR::Mismatch);
+   if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);
+   if (Value->Type != XPVT::NodeSet) return log.warning(ERR::Mismatch);
    auto val = (XPathVal *)Value;
    *Result = val->to_node_set();
    return ERR::Okay;
@@ -243,7 +243,7 @@ ERR XValueToString(const XPathValue *Value, std::string *Result)
    pf::Log log(__FUNCTION__);
 
    if ((not Value) or (not Result)) return log.warning(ERR::NullArgs);
-   if (Value->type IS XPVT::NIL) return log.warning(ERR::NoData);
+   if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);
 
    auto val = (XPathVal *)Value;
    *Result = val->to_string();

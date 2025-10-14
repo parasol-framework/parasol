@@ -87,7 +87,7 @@ namespace xml::schema
       }
 
       if ((target_type IS SchemaType::XPathBoolean) or (target_type IS SchemaType::XSBoolean)) {
-         if (Value.type IS XPVT::Boolean) return true;
+         if (Value.Type IS XPVT::Boolean) return true;
          auto string_value = Value.to_string();
          if (is_valid_boolean(string_value)) return true;
 
@@ -97,12 +97,12 @@ namespace xml::schema
 
       if ((target_type IS SchemaType::XPathString) or (target_type IS SchemaType::XSString)) return true;
       if (target_type IS SchemaType::XPathNodeSet) {
-         if (Value.type IS XPVT::NodeSet) return true;
+         if (Value.Type IS XPVT::NodeSet) return true;
          assign_error("Expected a node-set value.");
          return false;
       }
 
-      auto SourceType = schema_type_for_xpath(Value.type);
+      auto SourceType = schema_type_for_xpath(Value.Type);
       auto SourceDescriptor = registry().find_descriptor(SourceType);
       if (not SourceDescriptor) {
          assign_error("Unsupported value type for schema coercion.");

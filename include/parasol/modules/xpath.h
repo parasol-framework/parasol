@@ -57,22 +57,11 @@ typedef struct XPathNode {
    std::string value;
    std::vector<std::unique_ptr<XPathNode>> children;
 
-   // Constructor
-   XPathNode(XPathNodeType t, std::string v = "")
-      : type(t), value(std::move(v)) {}
+   XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
-   // Helper methods
-   void add_child(std::unique_ptr<XPathNode> child) {
-      children.push_back(std::move(child));
-   }
-
-   XPathNode * get_child(size_t index) const {
-      return index < children.size() ? children[index].get() : nullptr;
-   }
-
-   size_t child_count() const {
-      return children.size();
-   }
+   void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
+   [[nodiscard]] XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
+   [[nodiscard]] size_t child_count() const { return children.size(); }
 } XPATHNODE;
 
 #ifdef PARASOL_STATIC

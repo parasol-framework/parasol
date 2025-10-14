@@ -37,8 +37,8 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(c
 
 bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right)
 {
-   if ((Left.type IS XPVT::NodeSet) or (Right.type IS XPVT::NodeSet)) return false;
-   if ((Left.type IS XPVT::Boolean) or (Right.type IS XPVT::Boolean)) return true;
+   if ((Left.Type IS XPVT::NodeSet) or (Right.Type IS XPVT::NodeSet)) return false;
+   if ((Left.Type IS XPVT::Boolean) or (Right.Type IS XPVT::Boolean)) return true;
 
    auto left_descriptor = schema_descriptor_for_value(Left);
    auto right_descriptor = schema_descriptor_for_value(Right);

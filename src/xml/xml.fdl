@@ -199,24 +199,24 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
   ]])
   
   struct("XPathValue", { type="XPathValue" }, [[
-  int(XPVT) type # Identifies the type of value stored
-  double number_value
-  cpp(str) string_value
+  int(XPVT) Type         # Identifies the type of value stored
+  double    NumberValue  # Defined if the type is Number or Boolean
+  cpp(str)  StringValue  # Defined if the type is String
   ]],
   [[
-   pf::vector<XMLTag *> node_set;
-   std::optional<std::string> node_set_string_override;
-   std::vector<std::string> node_set_string_values;
-   std::vector<const XMLAttrib *> node_set_attributes;
-   bool boolean_value = false;
+   pf::vector<XMLTag *> node_set; // Defined if the type is NodeSet
+   std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
+   std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
+   std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   bool BooleanValue = false;
 
-   XPathValue(XPVT pType) : type(pType), number_value(0) { }
+   XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
    explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
       std::optional<std::string> NodeSetString = std::nullopt,
       std::vector<std::string> NodeSetStrings = {},
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
-      : type(XPVT::NodeSet),
+      : Type(XPVT::NodeSet),
         node_set(Nodes),
         node_set_string_override(std::move(NodeSetString)),
         node_set_string_values(std::move(NodeSetStrings)),

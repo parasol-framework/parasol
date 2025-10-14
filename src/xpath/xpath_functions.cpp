@@ -986,9 +986,9 @@ static std::string format_integer_picture(int64_t Value, const std::string &Pict
 
 static std::string describe_xpath_value(const XPathVal &Value)
 {
-   switch (Value.type) {
+   switch (Value.Type) {
       case XPVT::Boolean:
-         return Value.boolean_value ? std::string("true") : std::string("false");
+         return Value.BooleanValue ? std::string("true") : std::string("false");
 
       case XPVT::Number:
          return Value.to_string();
@@ -997,7 +997,7 @@ static std::string describe_xpath_value(const XPathVal &Value)
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime:
-         return Value.string_value;
+         return Value.StringValue;
 
       case XPVT::NodeSet: {
          std::vector<std::string> entries;
@@ -1113,20 +1113,20 @@ static void append_numbers_from_nodeset(const XPathVal &Value, std::vector<doubl
 
 static void append_numbers_from_value(const XPathVal &Value, std::vector<double> &Numbers)
 {
-   switch (Value.type) {
+   switch (Value.Type) {
       case XPVT::Number:
-         if (not std::isnan(Value.number_value)) Numbers.push_back(Value.number_value);
+         if (not std::isnan(Value.NumberValue)) Numbers.push_back(Value.NumberValue);
          break;
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime: {
-         double number = XPathVal::string_to_number(Value.string_value);
+         double number = XPathVal::string_to_number(Value.StringValue);
          if (not std::isnan(number)) Numbers.push_back(number);
          break;
       }
       case XPVT::Boolean:
-         Numbers.push_back(Value.boolean_value ? 1.0 : 0.0);
+         Numbers.push_back(Value.BooleanValue ? 1.0 : 0.0);
          break;
       case XPVT::NodeSet:
          append_numbers_from_nodeset(Value, Numbers);
@@ -1151,7 +1151,7 @@ struct AnalyzeStringState
 
 static size_t sequence_length(const XPathVal &Value)
 {
-   if (Value.type IS XPVT::NodeSet) {
+   if (Value.Type IS XPVT::NodeSet) {
       size_t length = Value.node_set.size();
       if (length < Value.node_set_attributes.size()) length = Value.node_set_attributes.size();
       if (length < Value.node_set_string_values.size()) length = Value.node_set_string_values.size();
@@ -1164,7 +1164,7 @@ static size_t sequence_length(const XPathVal &Value)
 
 static std::string sequence_item_string(const XPathVal &Value, size_t Index)
 {
-   if (Value.type IS XPVT::NodeSet) {
+   if (Value.Type IS XPVT::NodeSet) {
       if (Index < Value.node_set_string_values.size()) return Value.node_set_string_values[Index];
 
       bool use_override = Value.node_set_string_override.has_value() and (Index IS 0) and
@@ -1203,7 +1203,7 @@ static void append_sequence_item(const XPathVal &Value, size_t Index, SequenceBu
 
 static void append_value_to_sequence(const XPathVal &Value, SequenceBuilder &Builder)
 {
-   if (Value.type IS XPVT::NodeSet) {
+   if (Value.Type IS XPVT::NodeSet) {
       size_t length = sequence_length(Value);
       for (size_t index = 0; index < length; ++index) append_sequence_item(Value, index, Builder);
       return;
@@ -1219,7 +1219,7 @@ static void append_value_to_sequence(const XPathVal &Value, SequenceBuilder &Bui
 static XPathVal make_sequence_value(SequenceBuilder &&Builder)
 {
    XPathVal result;
-   result.type = XPVT::NodeSet;
+   result.Type = XPVT::NodeSet;
    result.node_set = std::move(Builder.nodes);
    result.node_set_attributes = std::move(Builder.attributes);
    result.node_set_string_values = std::move(Builder.strings);
@@ -1234,12 +1234,12 @@ static XPathVal make_sequence_value(SequenceBuilder &&Builder)
 
 static XPathVal extract_sequence_item(const XPathVal &Value, size_t Index)
 {
-   if (Value.type IS XPVT::NodeSet) {
+   if (Value.Type IS XPVT::NodeSet) {
       size_t length = sequence_length(Value);
       if (Index >= length) return XPathVal();
 
       XPathVal result;
-      result.type = XPVT::NodeSet;
+      result.Type = XPVT::NodeSet;
 
       XMLTag *node = nullptr;
       if (Index < Value.node_set.size()) node = Value.node_set[Index];
@@ -1284,8 +1284,8 @@ static bool numeric_equal(double Left, double Right)
 
 static bool xpath_values_equal(const XPathVal &Left, const XPathVal &Right)
 {
-   auto left_type = Left.type;
-   auto right_type = Right.type;
+   auto left_type = Left.Type;
+   auto right_type = Right.Type;
 
    if ((left_type IS XPVT::Boolean) or (right_type IS XPVT::Boolean)) {
       bool left_boolean = Left.to_boolean();
@@ -1632,12 +1632,12 @@ size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &A
    size_t total = 0;
    for (const auto &arg : Args) {
       // Conservative estimate based on type
-      switch (arg.type) {
+      switch (arg.Type) {
          case XPVT::String:
          case XPVT::Date:
          case XPVT::Time:
          case XPVT::DateTime:
-            total += arg.string_value.length();
+            total += arg.StringValue.length();
             break;
          case XPVT::Number:
             total += 32; // Conservative estimate for number formatting

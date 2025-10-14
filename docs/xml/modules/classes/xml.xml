@@ -827,9 +827,9 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     </struct>
 
     <struct name="XPathValue" typeName="XPATHVALUE">
-      <field name="type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
-      <field name="number_value" type="DOUBLE"></field>
-      <field name="string_value" type="std::string"></field>
+      <field name="Type" type="XPVT" lookup="XPVT">Identifies the type of value stored</field>
+      <field name="NumberValue" type="DOUBLE">Defined if the type is Number or Boolean</field>
+      <field name="StringValue" type="std::string">Defined if the type is String</field>
     </struct>
 
   </structs>

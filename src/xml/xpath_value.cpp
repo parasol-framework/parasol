@@ -117,20 +117,20 @@ bool XPathVal::to_boolean() const
 {
    auto schema_type = get_schema_type();
    if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
-      if (type IS XPVT::String) {
-         auto parsed = parse_schema_boolean(string_value);
+      if (Type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(StringValue);
          if (parsed.has_value()) return *parsed;
       }
    }
 
-   switch (type) {
-      case XPVT::Boolean: return boolean_value;
-      case XPVT::Number: return number_value != 0.0 and !std::isnan(number_value);
+   switch (Type) {
+      case XPVT::Boolean: return BooleanValue;
+      case XPVT::Number: return NumberValue != 0.0 and !std::isnan(NumberValue);
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime:
-         return !string_value.empty();
+         return !StringValue.empty();
       case XPVT::NodeSet: return !node_set.empty();
    }
    return false;
@@ -161,21 +161,21 @@ double XPathVal::to_number() const
 {
    auto schema_type = get_schema_type();
    if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
-      if (type IS XPVT::String) {
-         auto parsed = parse_schema_boolean(string_value);
+      if (Type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(StringValue);
          if (parsed.has_value()) return *parsed ? 1.0 : 0.0;
       }
    }
 
-   switch (type)
+   switch (Type)
    {
-      case XPVT::Boolean: return boolean_value ? 1.0 : 0.0;
-      case XPVT::Number: return number_value;
+      case XPVT::Boolean: return BooleanValue ? 1.0 : 0.0;
+      case XPVT::Number: return NumberValue;
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime: {
-         return string_to_number(string_value);
+         return string_to_number(StringValue);
       }
       case XPVT::NodeSet: {
          if (node_set.empty()) return std::numeric_limits<double>::quiet_NaN();
@@ -194,27 +194,27 @@ double XPathVal::to_number() const
 std::string XPathVal::to_string() const
 {
    auto schema_type = get_schema_type();
-   if (xml::schema::is_numeric(schema_type) and (type != XPVT::NodeSet)) {
+   if (xml::schema::is_numeric(schema_type) and (Type != XPVT::NodeSet)) {
       double numeric_value = to_number();
       if (!std::isnan(numeric_value)) return format_xpath_number(numeric_value);
    }
 
    if ((schema_type IS xml::schema::SchemaType::XPathBoolean) or (schema_type IS xml::schema::SchemaType::XSBoolean)) {
-      if (type IS XPVT::String) {
-         auto parsed = parse_schema_boolean(string_value);
+      if (Type IS XPVT::String) {
+         auto parsed = parse_schema_boolean(StringValue);
          if (parsed.has_value()) return *parsed ? std::string("true") : std::string("false");
       }
    }
 
-   switch (type) {
-      case XPVT::Boolean: return boolean_value ? "true" : "false";
-      case XPVT::Number: return format_xpath_number(number_value);
+   switch (Type) {
+      case XPVT::Boolean: return BooleanValue ? "true" : "false";
+      case XPVT::Number: return format_xpath_number(NumberValue);
 
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime:
-         return string_value;
+         return StringValue;
 
       case XPVT::NodeSet: {
          if (node_set_string_override.has_value()) return *node_set_string_override;
@@ -233,20 +233,20 @@ std::string XPathVal::to_string() const
 
 NODES XPathVal::to_node_set() const
 {
-   if (type IS XPVT::NodeSet) return node_set;
+   if (Type IS XPVT::NodeSet) return node_set;
    return {};
 }
 
 bool XPathVal::is_empty() const
 {
-   switch (type) {
+   switch (Type) {
       case XPVT::Boolean: return false;
       case XPVT::Number: return false;
       case XPVT::String:
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime:
-         return string_value.empty();
+         return StringValue.empty();
       case XPVT::NodeSet: return node_set.empty();
    }
    return true;
@@ -254,7 +254,7 @@ bool XPathVal::is_empty() const
 
 size_t XPathVal::size() const
 {
-   switch (type)
+   switch (Type)
    {
       case XPVT::NodeSet: return node_set.size();
       case XPVT::String:
@@ -284,7 +284,7 @@ bool XPathVal::validate_against_schema() const
    auto descriptor = schema_type_info;
    auto &registry_ref = xml::schema::registry();
    if (not descriptor) {
-      auto inferred_type = xml::schema::schema_type_for_xpath(type);
+      auto inferred_type = xml::schema::schema_type_for_xpath(Type);
       descriptor = registry_ref.find_descriptor(inferred_type);
       if (not descriptor) return false;
       schema_type_info = descriptor;
@@ -298,6 +298,6 @@ bool XPathVal::validate_against_schema() const
 xml::schema::SchemaType XPathVal::get_schema_type() const
 {
    if (schema_type_info) return schema_type_info->schema_type;
-   return xml::schema::schema_type_for_xpath(type);
+   return xml::schema::schema_type_for_xpath(Type);
 }
 

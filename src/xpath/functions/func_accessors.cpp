@@ -21,7 +21,7 @@ XPathVal XPathFunctionLibrary::function_base_uri(const std::vector<XPathVal> &Ar
       target_node = Context.context_node;
       target_attribute = Context.attribute_node;
    }
-   else if (Args[0].type IS XPVT::NodeSet) {
+   else if (Args[0].Type IS XPVT::NodeSet) {
       const XPathVal &value = Args[0];
       if (!value.node_set_attributes.empty()) target_attribute = value.node_set_attributes[0];
       if (!value.node_set.empty()) target_node = value.node_set[0];
@@ -41,7 +41,7 @@ XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, 
 
    if (Args.empty()) {
       if (Context.attribute_node) {
-         context_value.type = XPVT::NodeSet;
+         context_value.Type = XPVT::NodeSet;
          context_value.node_set.push_back(Context.context_node);
          context_value.node_set_attributes.push_back(Context.attribute_node);
          sequence_value = &context_value;
@@ -63,7 +63,7 @@ XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, 
    for (size_t index = 0u; index < length; ++index) {
       XPathVal item = extract_sequence_item(*sequence_value, index);
 
-      if (item.type IS XPVT::NodeSet) {
+      if (item.Type IS XPVT::NodeSet) {
          XMLTag *node = item.node_set.empty() ? nullptr : item.node_set[0];
          const XMLAttrib *attribute = item.node_set_attributes.empty() ? nullptr : item.node_set_attributes[0];
 
@@ -107,7 +107,7 @@ XPathVal XPathFunctionLibrary::function_document_uri(const std::vector<XPathVal>
    XMLTag *target_node = nullptr;
 
    if (Args.empty()) target_node = Context.context_node;
-   else if (Args[0].type IS XPVT::NodeSet) {
+   else if (Args[0].Type IS XPVT::NodeSet) {
       if (!Args[0].node_set.empty()) target_node = Args[0].node_set[0];
    }
    else return XPathVal(pf::vector<XMLTag *>());
@@ -127,7 +127,7 @@ XPathVal XPathFunctionLibrary::function_node_name(const std::vector<XPathVal> &A
       target_node = Context.context_node;
       target_attribute = Context.attribute_node;
    }
-   else if (Args[0].type IS XPVT::NodeSet) {
+   else if (Args[0].Type IS XPVT::NodeSet) {
       const XPathVal &value = Args[0];
       if (!value.node_set_attributes.empty()) target_attribute = value.node_set_attributes[0];
       if (!value.node_set.empty()) target_node = value.node_set[0];
@@ -152,7 +152,7 @@ XPathVal XPathFunctionLibrary::function_nilled(const std::vector<XPathVal> &Args
    XMLTag *target_node = nullptr;
 
    if (Args.empty()) target_node = Context.context_node;
-   else if (Args[0].type IS XPVT::NodeSet) {
+   else if (Args[0].Type IS XPVT::NodeSet) {
       if (!Args[0].node_set.empty()) target_node = Args[0].node_set[0];
    }
    else return XPathVal(pf::vector<XMLTag *>());

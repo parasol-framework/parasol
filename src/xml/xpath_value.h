@@ -47,10 +47,10 @@ class XPathVal : public XPathValue
    // Constructors
 
    XPathVal() : XPathValue(XPVT::Boolean) {}
-   explicit XPathVal(bool value) : XPathValue(XPVT::Boolean) { boolean_value = value; }
-   explicit XPathVal(double value) : XPathValue(XPVT::Number) { number_value = value; }
-   explicit XPathVal(std::string value) : XPathValue(XPVT::String) { string_value = std::move(value); }
-   explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { string_value = std::move(value); }
+   explicit XPathVal(bool value) : XPathValue(XPVT::Boolean) { BooleanValue = value; }
+   explicit XPathVal(double value) : XPathValue(XPVT::Number) { NumberValue = value; }
+   explicit XPathVal(std::string value) : XPathValue(XPVT::String) { StringValue = std::move(value); }
+   explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { StringValue = std::move(value); }
 
    explicit XPathVal(const pf::vector<XMLTag *> &Nodes,
                        std::optional<std::string> NodeSetString = std::nullopt,

@@ -289,7 +289,6 @@ static int object_index(lua_State *Lua)
 {
    if (auto def = (struct object *)luaL_checkudata(Lua, 1, "Fluid.obj")) {
       auto keyname = luaL_checkstring(Lua, 2);
-      build_read_table(def);
 
       if (!def->UID) { // Check if the object has been dereferenced by free() or similar
          luaL_error(Lua, "Object dereferenced, unable to read field %s", keyname);
@@ -298,6 +297,7 @@ static int object_index(lua_State *Lua)
          return 0;
       }
 
+      build_read_table(def);
       if (auto func = def->ReadTable->find(obj_read(simple_hash(keyname))); func != def->ReadTable->end()) {
          return func->Call(Lua, *func, def);
       }

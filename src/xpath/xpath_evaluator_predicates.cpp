@@ -53,7 +53,7 @@ double node_set_number_value(const XPathVal &Value, size_t Index)
 
 std::optional<XPathVal> promote_value_comparison_operand(const XPathVal &Value)
 {
-   if (Value.type IS XPVT::NodeSet) {
+   if (Value.Type IS XPVT::NodeSet) {
       if (Value.node_set.empty()) return std::nullopt;
       auto str = Value.to_string();
       return std::make_optional<XPathVal>(str);
@@ -67,8 +67,8 @@ std::optional<XPathVal> promote_value_comparison_operand(const XPathVal &Value)
 
 bool compare_xpath_values(const XPathVal &LeftValue, const XPathVal &RightValue)
 {
-   auto left_type = LeftValue.type;
-   auto right_type = RightValue.type;
+   auto left_type = LeftValue.Type;
+   auto right_type = RightValue.Type;
 
    bool schema_boolean = should_compare_as_boolean(LeftValue, RightValue);
    if (schema_boolean) {
@@ -178,8 +178,8 @@ bool compare_xpath_values(const XPathVal &LeftValue, const XPathVal &RightValue)
 
 bool compare_xpath_relational(const XPathVal &LeftValue, const XPathVal &RightValue, RelationalOperator Operation)
 {
-   auto left_type = LeftValue.type;
-   auto right_type = RightValue.type;
+   auto left_type = LeftValue.Type;
+   auto right_type = RightValue.Type;
    bool schema_numeric = should_compare_as_numeric(LeftValue, RightValue);
 
    if ((left_type IS XPVT::NodeSet) or (right_type IS XPVT::NodeSet)) {
@@ -201,7 +201,7 @@ bool compare_xpath_relational(const XPathVal &LeftValue, const XPathVal &RightVa
       const XPathVal &node_value = (left_type IS XPVT::NodeSet) ? LeftValue : RightValue;
       const XPathVal &other_value = (left_type IS XPVT::NodeSet) ? RightValue : LeftValue;
 
-      if (other_value.type IS XPVT::Boolean) {
+      if (other_value.Type IS XPVT::Boolean) {
          bool node_boolean = node_value.to_boolean();
          bool other_boolean = other_value.to_boolean();
          double node_number = node_boolean ? 1.0 : 0.0;
