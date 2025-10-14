@@ -47,7 +47,7 @@ class XPathVal : public XPathValue
    // Constructors
 
    XPathVal() : XPathValue(XPVT::Boolean) {}
-   explicit XPathVal(bool value) : XPathValue(XPVT::Boolean) { BooleanValue = value; }
+   explicit XPathVal(bool value) : XPathValue(XPVT::Boolean) { NumberValue = value ? 1.0 : 0.0; }
    explicit XPathVal(double value) : XPathValue(XPVT::Number) { NumberValue = value; }
    explicit XPathVal(std::string value) : XPathValue(XPVT::String) { StringValue = std::move(value); }
    explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { StringValue = std::move(value); }

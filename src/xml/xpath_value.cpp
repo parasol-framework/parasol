@@ -124,7 +124,7 @@ bool XPathVal::to_boolean() const
    }
 
    switch (Type) {
-      case XPVT::Boolean: return BooleanValue;
+      case XPVT::Boolean: return NumberValue != 0.0 and !std::isnan(NumberValue);
       case XPVT::Number: return NumberValue != 0.0 and !std::isnan(NumberValue);
       case XPVT::String:
       case XPVT::Date:
@@ -169,7 +169,7 @@ double XPathVal::to_number() const
 
    switch (Type)
    {
-      case XPVT::Boolean: return BooleanValue ? 1.0 : 0.0;
+      case XPVT::Boolean: return NumberValue;
       case XPVT::Number: return NumberValue;
       case XPVT::String:
       case XPVT::Date:
@@ -207,7 +207,7 @@ std::string XPathVal::to_string() const
    }
 
    switch (Type) {
-      case XPVT::Boolean: return BooleanValue ? "true" : "false";
+      case XPVT::Boolean: return (NumberValue != 0.0 and !std::isnan(NumberValue)) ? "true" : "false";
       case XPVT::Number: return format_xpath_number(NumberValue);
 
       case XPVT::String:
