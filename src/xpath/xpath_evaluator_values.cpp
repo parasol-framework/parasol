@@ -949,9 +949,29 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
 
          const XMLAttrib *attribute = nullptr;
          if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
-         if (attribute) {
-            record_error("Attribute nodes cannot appear within element content.", true);
-            return false;
+         if (attribute)
+         {
+            std::string_view attribute_name = attribute->Name;
+            if (attribute_name.empty()) continue;
+
+            bool duplicate = false;
+            for (size_t attrib_index = 1; attrib_index < Parent.Attribs.size(); ++attrib_index)
+            {
+               if (Parent.Attribs[attrib_index].Name IS attribute_name)
+               {
+                  duplicate = true;
+                  break;
+               }
+            }
+
+            if (duplicate)
+            {
+               record_error("Duplicate attribute name in constructor content.", true);
+               return false;
+            }
+
+            Parent.Attribs.emplace_back(std::string(attribute_name), attribute->Value);
+            continue;
          }
 
          XMLTag clone = clone_node_subtree(*node, Parent.ID);
@@ -2598,6 +2618,88 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       if (operation IS "intersect") return evaluate_intersect_value(left_node, right_node, CurrentPrefix);
       if (operation IS "except") return evaluate_except_value(left_node, right_node, CurrentPrefix);
+
+      if (operation IS ",")
+      {
+         auto left_value = evaluate_expression(left_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         auto right_value = evaluate_expression(right_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         struct SequenceEntry
+         {
+            XMLTag *node = nullptr;
+            const XMLAttrib *attribute = nullptr;
+            std::string string_value;
+         };
+
+         std::vector<SequenceEntry> entries;
+         entries.reserve(left_value.node_set.size() + right_value.node_set.size());
+
+         auto append_value = [&](const XPathVal &value)
+         {
+            if (value.Type IS XPVT::NodeSet)
+            {
+               bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty();
+               for (size_t index = 0; index < value.node_set.size(); ++index)
+               {
+                  XMLTag *node = value.node_set[index];
+                  if (!node) continue;
+
+                  const XMLAttrib *attribute = nullptr;
+                  if (index < value.node_set_attributes.size()) attribute = value.node_set_attributes[index];
+
+                  std::string item_string;
+                  if (index < value.node_set_string_values.size()) item_string = value.node_set_string_values[index];
+                  else if (use_override) item_string = *value.node_set_string_override;
+                  else if (attribute) item_string = attribute->Value;
+                  else item_string = XPathVal::node_string_value(node);
+
+                  entries.push_back({ node, attribute, std::move(item_string) });
+               }
+               return;
+            }
+
+            std::string text = value.to_string();
+            pf::vector<XMLAttrib> text_attribs;
+            text_attribs.emplace_back("", text);
+
+            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            text_node.ParentID = 0;
+
+            auto stored = std::make_unique<XMLTag>(std::move(text_node));
+            XMLTag *root = stored.get();
+            constructed_nodes.push_back(std::move(stored));
+
+            entries.push_back({ root, nullptr, std::move(text) });
+         };
+
+         append_value(left_value);
+         append_value(right_value);
+
+         if (entries.empty())
+         {
+            NODES empty_nodes;
+            return XPathVal(empty_nodes);
+         }
+
+         NODES combined_nodes;
+         combined_nodes.reserve(entries.size());
+         std::vector<const XMLAttrib *> combined_attributes;
+         combined_attributes.reserve(entries.size());
+         std::vector<std::string> combined_strings;
+         combined_strings.reserve(entries.size());
+
+         for (auto &entry : entries)
+         {
+            combined_nodes.push_back(entry.node);
+            combined_attributes.push_back(entry.attribute);
+            combined_strings.push_back(std::move(entry.string_value));
+         }
+
+         return XPathVal(combined_nodes, std::nullopt, std::move(combined_strings), std::move(combined_attributes));
+      }
 
       auto left_value = evaluate_expression(left_node, CurrentPrefix);
       if (expression_unsupported) return XPathVal();

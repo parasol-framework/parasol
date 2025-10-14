@@ -463,23 +463,36 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
 
 // Expression parsing for XPath precedence rules
 
-std::unique_ptr<XPathNode> XPathParser::parse_expr() {
-   // Handle conditional expressions at the top level
+std::unique_ptr<XPathNode> XPathParser::parse_expr_single()
+{
    if (check(XPathTokenType::IF)) {
       return parse_if_expr();
    }
 
-   // Handle FLWOR expressions (for/let) at the top level
    if (check(XPathTokenType::FOR) or check(XPathTokenType::LET) or check_identifier_keyword("let")) {
       return parse_flwor_expr();
    }
 
-   // Handle quantified expressions at the top level
    if (check(XPathTokenType::SOME) or check(XPathTokenType::EVERY)) {
       return parse_quantified_expr();
    }
 
    return parse_or_expr();
+}
+
+std::unique_ptr<XPathNode> XPathParser::parse_expr() {
+   auto expression = parse_expr_single();
+   if (!expression) return nullptr;
+
+   while (match(XPathTokenType::COMMA))
+   {
+      XPathToken comma = previous();
+      auto right = parse_expr_single();
+      if (!right) return nullptr;
+      expression = create_binary_op(std::move(expression), comma, std::move(right));
+   }
+
+   return expression;
 }
 
 //********************************************************************************************************************
@@ -518,7 +531,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
-            auto sequence_expr = parse_expr();
+            auto sequence_expr = parse_expr_single();
             if (!sequence_expr) return nullptr;
 
             auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
@@ -563,7 +576,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
-            auto binding_expr = parse_expr();
+            auto binding_expr = parse_expr_single();
             if (!binding_expr) {
                report_error("Expected expression after ':=' in let binding");
                return nullptr;
@@ -594,7 +607,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
       return nullptr;
    }
 
-   auto return_expr = parse_expr();
+   auto return_expr = parse_expr_single();
    if (!return_expr) {
       report_error("Expected expression after 'return'");
       return nullptr;
@@ -642,7 +655,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 // Parses logical OR expressions, building left-associative binary operation trees from 'or' operators.
 
 std::unique_ptr<XPathNode> XPathParser::parse_or_expr()
-{
+{ 
    auto left = parse_and_expr();
 
    while (check(XPathTokenType::OR)) {
@@ -842,6 +855,21 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
          if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
             looks_like_path = false;
          }
+         else if (is_constructor_keyword(peek()))
+         {
+            size_t lookahead = current_token + 1;
+            while ((lookahead < tokens.size()) and (tokens[lookahead].type IS XPathTokenType::IDENTIFIER)) {
+               lookahead++;
+            }
+
+            if (lookahead < tokens.size())
+            {
+               auto next_type = tokens[lookahead].type;
+               if ((next_type IS XPathTokenType::LBRACE) or (next_type IS XPathTokenType::STRING)) {
+                  looks_like_path = false;
+               }
+            }
+         }
       }
    }
 
@@ -940,14 +968,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr()
       return nullptr;
    }
 
-   auto then_branch = parse_expr();
+   auto then_branch = parse_expr_single();
 
    if (!match(XPathTokenType::ELSE)) {
       report_error("Expected 'else' in if expression");
       return nullptr;
    }
 
-   auto else_branch = parse_expr();
+   auto else_branch = parse_expr_single();
 
    auto conditional = std::make_unique<XPathNode>(XPathNodeType::CONDITIONAL);
    conditional->add_child(std::move(condition));
@@ -993,7 +1021,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
          return nullptr;
       }
 
-      auto sequence_expr = parse_expr();
+      auto sequence_expr = parse_expr_single();
       if (!sequence_expr) return nullptr;
 
       auto binding_node = std::make_unique<XPathNode>(XPathNodeType::QUANTIFIED_BINDING, variable_name);
@@ -1009,7 +1037,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
       return nullptr;
    }
 
-   auto condition_expr = parse_expr();
+   auto condition_expr = parse_expr_single();
    if (!condition_expr) return nullptr;
 
    quant_node->add_child(std::move(condition_expr));
@@ -1083,11 +1111,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call()
    auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, function_name);
 
    while (!check(XPathTokenType::RPAREN) and !is_at_end()) {
-      auto arg = parse_expr();
-      if (arg) function_node->add_child(std::move(arg));
+      auto arg = parse_expr_single();
+      if (!arg) break;
+      function_node->add_child(std::move(arg));
 
-      if (check(XPathTokenType::COMMA)) advance();
-      else break;
+      if (!match(XPathTokenType::COMMA)) break;
    }
 
    match(XPathTokenType::RPAREN);
@@ -1114,7 +1142,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_abbreviated_step() {
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_argument() {
-   return parse_expr();
+   return parse_expr_single();
 }
 
 std::unique_ptr<XPathNode> XPathParser::parse_number()
