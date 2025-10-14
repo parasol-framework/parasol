@@ -14,6 +14,12 @@
 #include <string_view>
 #include <vector>
 
+#include <parasol/modules/xpath.h>
+
+using XPathAttributeValuePart = XPathNode::XPathAttributeValuePart;
+using XPathConstructorAttribute = XPathNode::XPathConstructorAttribute;
+using XPathConstructorInfo = XPathNode::XPathConstructorInfo;
+
 //********************************************************************************************************************
 // XPath Tokenization Infrastructure
 
@@ -88,7 +94,18 @@ enum class XPathTokenType {
    DOLLAR,            // $
    ASSIGN,            // :=
 
+   // Constructor delimiters
+   LBRACE,            // {
+   RBRACE,            // }
+   TAG_OPEN,          // < (direct constructors)
+   CLOSE_TAG_OPEN,    // </
+   TAG_CLOSE,         // >
+   EMPTY_TAG_CLOSE,   // />
+   PI_START,          // <?
+   PI_END,            // ?>
+
    // Special tokens
+   TEXT_CONTENT,      // literal content inside direct constructors
    END_OF_INPUT,
    UNKNOWN
 };
@@ -101,6 +118,8 @@ struct XPathToken {
 
    // For tokens that need string storage (e.g., processed strings with escapes)
    std::string stored_value;
+   bool is_attribute_value = false;
+   std::vector<XPathAttributeValuePart> attribute_value_parts;
 
    // Constructor for string_view tokens (no copying)
    XPathToken(XPathTokenType t, std::string_view v, size_t pos = 0, size_t len = 0)
@@ -110,5 +129,10 @@ struct XPathToken {
    XPathToken(XPathTokenType t, std::string v, size_t pos = 0, size_t len = 0)
       : type(t), position(pos), length(len), stored_value(std::move(v)) {
       value = stored_value;
+   }
+
+   [[nodiscard]] bool has_attribute_template() const
+   {
+      return is_attribute_value and !attribute_value_parts.empty();
    }
 };

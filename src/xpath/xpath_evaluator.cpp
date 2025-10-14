@@ -87,6 +87,8 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
    // Evaluate the compiled AST and return the XPathVal directly
 
    expression_unsupported = false;
+   constructed_nodes.clear();
+   next_constructed_node_id = -1;
 
    const XPathNode *node = &XPath;
    if (node->type IS XPathNodeType::EXPRESSION) {

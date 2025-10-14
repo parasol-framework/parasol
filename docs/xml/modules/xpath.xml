@@ -71,9 +71,18 @@
 
   <types>
     <constants lookup="XPathNodeType">
+      <const name="ATTRIBUTE_VALUE_TEMPLATE"/>
       <const name="AXIS_SPECIFIER"/>
       <const name="BINARY_OP"/>
+      <const name="COMMENT_CONSTRUCTOR"/>
+      <const name="COMPUTED_ATTRIBUTE_CONSTRUCTOR"/>
+      <const name="COMPUTED_ELEMENT_CONSTRUCTOR"/>
       <const name="CONDITIONAL"/>
+      <const name="CONSTRUCTOR_CONTENT"/>
+      <const name="DIRECT_ATTRIBUTE_CONSTRUCTOR"/>
+      <const name="DIRECT_ELEMENT_CONSTRUCTOR"/>
+      <const name="DIRECT_TEXT_CONSTRUCTOR"/>
+      <const name="DOCUMENT_CONSTRUCTOR"/>
       <const name="EXPRESSION"/>
       <const name="FILTER"/>
       <const name="FLWOR_EXPRESSION"/>
@@ -89,6 +98,7 @@
       <const name="NODE_TYPE_TEST"/>
       <const name="NUMBER"/>
       <const name="PATH"/>
+      <const name="PI_CONSTRUCTOR"/>
       <const name="PREDICATE"/>
       <const name="PROCESSING_INSTRUCTION_TEST"/>
       <const name="QUANTIFIED_BINDING"/>
@@ -96,6 +106,7 @@
       <const name="ROOT"/>
       <const name="STEP"/>
       <const name="STRING"/>
+      <const name="TEXT_CONSTRUCTOR"/>
       <const name="UNARY_OP"/>
       <const name="UNION"/>
       <const name="VARIABLE_REFERENCE"/>
