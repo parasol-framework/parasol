@@ -65,3 +65,4 @@ flute_test (${MOD}_xpath_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_qna
 flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_documents.fluid")
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
 flute_test (${MOD}_xpath_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_accessor.fluid")
+flute_test (${MOD}_xpath_constructors "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xpath_constructors.fluid")

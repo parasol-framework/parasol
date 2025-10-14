@@ -988,7 +988,7 @@ static std::string describe_xpath_value(const XPathVal &Value)
 {
    switch (Value.Type) {
       case XPVT::Boolean:
-         return Value.BooleanValue ? std::string("true") : std::string("false");
+         return (Value.NumberValue != 0.0 and !std::isnan(Value.NumberValue)) ? std::string("true") : std::string("false");
 
       case XPVT::Number:
          return Value.to_string();
@@ -1126,7 +1126,7 @@ static void append_numbers_from_value(const XPathVal &Value, std::vector<double>
          break;
       }
       case XPVT::Boolean:
-         Numbers.push_back(Value.BooleanValue ? 1.0 : 0.0);
+         Numbers.push_back(Value.NumberValue);
          break;
       case XPVT::NodeSet:
          append_numbers_from_nodeset(Value, Numbers);
