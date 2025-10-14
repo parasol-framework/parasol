@@ -215,7 +215,7 @@ ERR Compile(const std::string_view &Pattern, REGEX Flags, std::string *ErrorMsg,
       if ((Flags & REGEX::DOT_ALL) != REGEX::NIL)   reg_flags |= srell::regex_constants::dotall;
 
       regex->srell = new (std::nothrow) regex_engine(Pattern.data(), Pattern.size(), reg_flags);
-      if (!regex->srell) {
+      if (not regex->srell) {
          static CSTRING msg = "Regex constructor failed";
          if (ErrorMsg) *ErrorMsg = msg;
          log.msg("%s", msg);
@@ -466,7 +466,7 @@ ERR Replace(Regex *Regex, const std::string_view &Text, const std::string_view &
    size_t copy_position = 0;
    const bool copy_segments = not has_flag(Flags, RMATCH::REPLACE_NO_COPY);
 
-   for (; not (iter IS sentinel); ++iter) {
+   for (; iter != sentinel; ++iter) {
       const srell::u8ccmatch &match = *iter;
       const size_t match_begin = (size_t)match.position(0);
       const size_t match_length = (size_t)match.length(0);
