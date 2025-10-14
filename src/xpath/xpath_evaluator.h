@@ -3,8 +3,12 @@
 
 #pragma once
 
+#include <memory>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 class extXML;
 
@@ -28,6 +32,16 @@ class XPathEvaluator {
    XPathArena arena;
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
+
+   struct ConstructorNamespaceScope
+   {
+      const ConstructorNamespaceScope * parent = nullptr;
+      std::unordered_map<std::string, uint32_t> prefix_bindings;
+      std::optional<uint32_t> default_namespace;
+   };
+
+   std::vector<std::unique_ptr<XMLTag>> constructed_nodes;
+   int next_constructed_node_id = -1;
 
    struct AxisMatch {
       XMLTag * node = nullptr;
@@ -59,6 +73,18 @@ class XPathEvaluator {
    XPathVal evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    XPathVal evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   std::optional<uint32_t> resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
+      std::string_view Prefix) const;
+   uint32_t register_constructor_namespace(const std::string &URI) const;
+   XMLTag clone_node_subtree(const XMLTag &Source, int ParentID);
+   bool append_constructor_sequence(XMLTag &Parent, const XPathVal &Value,
+      uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope);
+   std::optional<std::string> evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
+      uint32_t CurrentPrefix);
+   std::optional<XMLTag> build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
+      ConstructorNamespaceScope *ParentScope, int ParentID);
+   XPathVal evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
 
    void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
       const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches);

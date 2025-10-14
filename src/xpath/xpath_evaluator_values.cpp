@@ -757,6 +757,348 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 
 //********************************************************************************************************************
 
+uint32_t XPathEvaluator::register_constructor_namespace(const std::string &URI) const
+{
+   if (!xml) return 0;
+   return xml->registerNamespace(URI);
+}
+
+std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
+   std::string_view Prefix) const
+{
+   std::string prefix_key(Prefix);
+   const ConstructorNamespaceScope *cursor = &Scope;
+
+   if (prefix_key.empty())
+   {
+      while (cursor)
+      {
+         if (cursor->default_namespace.has_value()) return cursor->default_namespace;
+         cursor = cursor->parent;
+      }
+      return uint32_t{0};
+   }
+
+   while (cursor)
+   {
+      auto iter = cursor->prefix_bindings.find(prefix_key);
+      if (iter != cursor->prefix_bindings.end()) return iter->second;
+      cursor = cursor->parent;
+   }
+
+   return std::nullopt;
+}
+
+XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
+{
+   XMLTag clone(next_constructed_node_id--, Source.LineNo);
+   clone.ParentID = ParentID;
+   clone.Flags = Source.Flags;
+   clone.NamespaceID = Source.NamespaceID;
+   clone.Attribs = Source.Attribs;
+
+   clone.Children.reserve(Source.Children.size());
+   for (const auto &child : Source.Children)
+   {
+      XMLTag child_clone = clone_node_subtree(child, clone.ID);
+      clone.Children.push_back(std::move(child_clone));
+   }
+
+   return clone;
+}
+
+bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value,
+   uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope)
+{
+   (void)CurrentPrefix;
+   (void)Scope;
+
+   if (Value.Type IS XPVT::NodeSet)
+   {
+      Parent.Children.reserve(Parent.Children.size() + Value.node_set.size());
+
+      for (size_t index = 0; index < Value.node_set.size(); ++index)
+      {
+         XMLTag *node = Value.node_set[index];
+         if (!node) continue;
+
+         const XMLAttrib *attribute = nullptr;
+         if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
+         if (attribute)
+         {
+            record_error("Attribute nodes cannot appear within element content.", true);
+            return false;
+         }
+
+         XMLTag clone = clone_node_subtree(*node, Parent.ID);
+         Parent.Children.push_back(std::move(clone));
+      }
+
+      return true;
+   }
+
+   std::string text = Value.to_string();
+   if (text.empty()) return true;
+
+   pf::vector<XMLAttrib> text_attribs;
+   text_attribs.emplace_back("", text);
+
+   XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+   text_node.ParentID = Parent.ID;
+   Parent.Children.push_back(std::move(text_node));
+   return true;
+}
+
+std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
+   uint32_t CurrentPrefix)
+{
+   std::string result;
+
+   for (size_t index = 0; index < Attribute.value_parts.size(); ++index)
+   {
+      const auto &part = Attribute.value_parts[index];
+      if (!part.is_expression)
+      {
+         result += part.text;
+         continue;
+      }
+
+      auto *expr = Attribute.get_expression_for_part(index);
+      if (!expr)
+      {
+         record_error("Attribute value template part is missing its expression.", true);
+         return std::nullopt;
+      }
+
+      size_t previous_constructed = constructed_nodes.size();
+      auto saved_id = next_constructed_node_id;
+      XPathVal value = evaluate_expression(expr, CurrentPrefix);
+      if (expression_unsupported) return std::nullopt;
+      result += value.to_string();
+      constructed_nodes.resize(previous_constructed);
+      next_constructed_node_id = saved_id;
+   }
+
+   return result;
+}
+
+std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
+   ConstructorNamespaceScope *ParentScope, int ParentID)
+{
+   if ((!Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR))
+   {
+      record_error("Invalid direct constructor node encountered.", true);
+      return std::nullopt;
+   }
+
+   if (!Node->has_constructor_info())
+   {
+      record_error("Direct constructor is missing structural metadata.", true);
+      return std::nullopt;
+   }
+
+   const auto &info = *Node->constructor_info;
+
+   ConstructorNamespaceScope element_scope;
+   element_scope.parent = ParentScope;
+   if (ParentScope and ParentScope->default_namespace.has_value())
+   {
+      element_scope.default_namespace = ParentScope->default_namespace;
+   }
+
+   struct EvaluatedAttribute
+   {
+      const XPathConstructorAttribute *definition = nullptr;
+      std::string value;
+   };
+
+   std::vector<EvaluatedAttribute> evaluated_attributes;
+   evaluated_attributes.reserve(info.attributes.size());
+
+   for (const auto &attribute : info.attributes)
+   {
+      auto value = evaluate_attribute_value_template(attribute, CurrentPrefix);
+      if (!value) return std::nullopt;
+
+      EvaluatedAttribute evaluated;
+      evaluated.definition = &attribute;
+      evaluated.value = std::move(*value);
+      evaluated_attributes.push_back(std::move(evaluated));
+   }
+
+   pf::vector<XMLAttrib> element_attributes;
+
+   std::string element_name;
+   if (info.prefix.empty()) element_name = info.name;
+   else
+   {
+      element_name = info.prefix;
+      element_name += ':';
+      element_name += info.name;
+   }
+
+   element_attributes.emplace_back(element_name, "");
+
+   for (const auto &entry : evaluated_attributes)
+   {
+      const auto *attribute = entry.definition;
+      const std::string &value = entry.value;
+
+      if (!attribute->is_namespace_declaration) continue;
+
+      if (attribute->prefix.empty() and (attribute->name IS "xmlns"))
+      {
+         if (value.empty()) element_scope.default_namespace = uint32_t{0};
+         else element_scope.default_namespace = register_constructor_namespace(value);
+      }
+      else if (attribute->prefix IS "xmlns")
+      {
+         if (attribute->name IS "xml")
+         {
+            record_error("Cannot redeclare the xml prefix in constructor scope.", true);
+            return std::nullopt;
+         }
+
+         if (value.empty())
+         {
+            record_error("Namespace prefix declarations require a non-empty URI.", true);
+            return std::nullopt;
+         }
+
+         element_scope.prefix_bindings[attribute->name] = register_constructor_namespace(value);
+      }
+
+      std::string attribute_name;
+      if (attribute->prefix.empty()) attribute_name = attribute->name;
+      else
+      {
+         attribute_name = attribute->prefix;
+         attribute_name += ':';
+         attribute_name += attribute->name;
+      }
+
+      element_attributes.emplace_back(attribute_name, value);
+   }
+
+   for (const auto &entry : evaluated_attributes)
+   {
+      const auto *attribute = entry.definition;
+      const std::string &value = entry.value;
+
+      if (attribute->is_namespace_declaration) continue;
+
+      if (!attribute->prefix.empty())
+      {
+         auto resolved = resolve_constructor_prefix(element_scope, attribute->prefix);
+         if (!resolved.has_value())
+         {
+            record_error("Attribute prefix is not bound in constructor scope.", true);
+            return std::nullopt;
+         }
+      }
+
+      std::string attribute_name;
+      if (attribute->prefix.empty()) attribute_name = attribute->name;
+      else
+      {
+         attribute_name = attribute->prefix;
+         attribute_name += ':';
+         attribute_name += attribute->name;
+      }
+
+      element_attributes.emplace_back(attribute_name, value);
+   }
+
+   uint32_t namespace_id = 0;
+   if (!info.namespace_uri.empty()) namespace_id = register_constructor_namespace(info.namespace_uri);
+   else if (!info.prefix.empty())
+   {
+      auto resolved = resolve_constructor_prefix(element_scope, info.prefix);
+      if (!resolved.has_value())
+      {
+         record_error("Element prefix is not declared within constructor scope.", true);
+         return std::nullopt;
+      }
+      namespace_id = *resolved;
+   }
+   else if (element_scope.default_namespace.has_value()) namespace_id = *element_scope.default_namespace;
+
+   XMLTag element(next_constructed_node_id--, 0);
+   element.ParentID = ParentID;
+   element.Flags = XTF::NIL;
+   element.NamespaceID = namespace_id;
+   element.Attribs = element_attributes;
+
+   element.Children.reserve(Node->child_count());
+
+   for (size_t index = 0; index < Node->child_count(); ++index)
+   {
+      const XPathNode *child = Node->get_child(index);
+      if (!child) continue;
+
+      if (child->type IS XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)
+      {
+         auto nested = build_direct_element_node(child, CurrentPrefix, &element_scope, element.ID);
+         if (!nested) return std::nullopt;
+         element.Children.push_back(std::move(*nested));
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT)
+      {
+         if (!child->value.empty())
+         {
+            pf::vector<XMLAttrib> text_attribs;
+            text_attribs.emplace_back("", child->value);
+            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            text_node.ParentID = element.ID;
+            element.Children.push_back(std::move(text_node));
+            continue;
+         }
+
+         if (child->child_count() IS 0) continue;
+
+         const XPathNode *expr = child->get_child(0);
+         if (!expr) continue;
+
+         size_t previous_constructed = constructed_nodes.size();
+         auto saved_id = next_constructed_node_id;
+         XPathVal value = evaluate_expression(expr, CurrentPrefix);
+         if (expression_unsupported) return std::nullopt;
+         if (!append_constructor_sequence(element, value, CurrentPrefix, element_scope)) return std::nullopt;
+         constructed_nodes.resize(previous_constructed);
+         next_constructed_node_id = saved_id;
+         continue;
+      }
+
+      record_error("Unsupported node encountered within direct constructor content.", true);
+      return std::nullopt;
+   }
+
+   return element;
+}
+
+XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   auto element = build_direct_element_node(Node, CurrentPrefix, nullptr, 0);
+   if (!element) return XPathVal();
+
+   auto stored = std::make_unique<XMLTag>(*element);
+   XMLTag *root = stored.get();
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(root);
+
+   std::vector<std::string> string_values;
+   std::string node_string = XPathVal::node_string_value(root);
+   string_values.push_back(node_string);
+
+   return XPathVal(nodes, node_string, std::move(string_values));
+}
+
+//********************************************************************************************************************
+
 XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
       record_error("Unsupported XPath expression: empty node", true);
@@ -772,6 +1114,10 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
    if ((ExprNode->type IS XPathNodeType::LITERAL) or (ExprNode->type IS XPathNodeType::STRING)) {
       return XPathVal(ExprNode->value);
+   }
+
+   if (ExprNode->type IS XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR) {
+      return evaluate_direct_element_constructor(ExprNode, CurrentPrefix);
    }
 
    if (ExprNode->type IS XPathNodeType::LOCATION_PATH) {
