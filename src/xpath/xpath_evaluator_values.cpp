@@ -24,7 +24,105 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <cstdint>
 #include <unordered_set>
+
+//********************************************************************************************************************
+
+namespace
+{
+   bool is_ncname_start(char Ch)
+   {
+      if ((Ch >= 'A') and (Ch <= 'Z')) return true;
+      if ((Ch >= 'a') and (Ch <= 'z')) return true;
+      return Ch IS '_';
+   }
+
+   bool is_ncname_char(char Ch)
+   {
+      if (is_ncname_start(Ch)) return true;
+      if ((Ch >= '0') and (Ch <= '9')) return true;
+      if (Ch IS '-') return true;
+      return Ch IS '.';
+   }
+
+   bool is_valid_ncname(std::string_view Value)
+   {
+      if (Value.empty()) return false;
+      if (!is_ncname_start(Value.front())) return false;
+
+      for (size_t index = 1; index < Value.length(); ++index)
+      {
+         if (!is_ncname_char(Value[index])) return false;
+      }
+
+      return true;
+   }
+
+   std::string trim_constructor_whitespace(std::string_view Value)
+   {
+      size_t start = 0;
+      size_t end = Value.length();
+
+      while ((start < end) and (uint8_t(Value[start]) <= 0x20u)) ++start;
+      while ((end > start) and (uint8_t(Value[end - 1]) <= 0x20u)) --end;
+
+      return std::string(Value.substr(start, end - start));
+   }
+
+   struct ConstructorQName
+   {
+      bool valid = false;
+      std::string prefix;
+      std::string local;
+      std::string namespace_uri;
+   };
+
+   ConstructorQName parse_constructor_qname_string(std::string_view Value)
+   {
+      ConstructorQName result;
+      if (Value.empty()) return result;
+
+      std::string trimmed = trim_constructor_whitespace(Value);
+      if (trimmed.empty()) return result;
+
+      std::string_view working(trimmed);
+
+      if ((working.length() >= 2) and (working[0] IS 'Q') and (working[1] IS '{'))
+      {
+         size_t closing = working.find('}');
+         if (closing IS std::string_view::npos) return result;
+
+         result.namespace_uri = std::string(working.substr(2, closing - 2));
+         std::string_view remainder = working.substr(closing + 1);
+         if (remainder.empty()) return result;
+         if (!is_valid_ncname(remainder)) return result;
+
+         result.local = std::string(remainder);
+         result.valid = true;
+         return result;
+      }
+
+      size_t colon = working.find(':');
+      if (colon IS std::string_view::npos)
+      {
+         if (!is_valid_ncname(working)) return result;
+         result.local = std::string(working);
+         result.valid = true;
+         return result;
+      }
+
+      std::string_view prefix_view = working.substr(0, colon);
+      std::string_view local_view = working.substr(colon + 1);
+      if (prefix_view.empty() or local_view.empty()) return result;
+      if (!is_valid_ncname(prefix_view) or !is_valid_ncname(local_view)) return result;
+
+      result.prefix = std::string(prefix_view);
+      result.local = std::string(local_view);
+      result.valid = true;
+      return result;
+   }
+}
 
 //********************************************************************************************************************
 
@@ -882,6 +980,82 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
    return result;
 }
 
+std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if (!Node) return std::string();
+   if (!Node->value.empty()) return Node->value;
+
+   if (Node->child_count() IS 0) return std::string();
+
+   const XPathNode *expr = Node->get_child(0);
+   if (!expr) return std::string();
+
+   size_t previous_constructed = constructed_nodes.size();
+   auto saved_id = next_constructed_node_id;
+   XPathVal value = evaluate_expression(expr, CurrentPrefix);
+   if (expression_unsupported)
+   {
+      constructed_nodes.resize(previous_constructed);
+      next_constructed_node_id = saved_id;
+      return std::nullopt;
+   }
+
+   std::string result;
+
+   if (value.Type IS XPVT::NodeSet)
+   {
+      if (value.node_set_string_override.has_value()) result += *value.node_set_string_override;
+      else
+      {
+         for (size_t index = 0; index < value.node_set.size(); ++index)
+         {
+            const XMLAttrib *attribute = nullptr;
+            if (index < value.node_set_attributes.size()) attribute = value.node_set_attributes[index];
+            if (attribute)
+            {
+               result += attribute->Value;
+               continue;
+            }
+
+            if (!value.node_set_string_values.empty() and (index < value.node_set_string_values.size()))
+            {
+               result += value.node_set_string_values[index];
+               continue;
+            }
+
+            XMLTag *node = value.node_set[index];
+            if (!node) continue;
+            result += XPathVal::node_string_value(node);
+         }
+      }
+   }
+   else result = value.to_string();
+
+   constructed_nodes.resize(previous_constructed);
+   next_constructed_node_id = saved_id;
+   return result;
+}
+
+std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if (!Node) return std::string();
+
+   size_t previous_constructed = constructed_nodes.size();
+   auto saved_id = next_constructed_node_id;
+   XPathVal value = evaluate_expression(Node, CurrentPrefix);
+   if (expression_unsupported)
+   {
+      constructed_nodes.resize(previous_constructed);
+      next_constructed_node_id = saved_id;
+      return std::nullopt;
+   }
+
+   std::string raw = value.to_string();
+   constructed_nodes.resize(previous_constructed);
+   next_constructed_node_id = saved_id;
+   return trim_constructor_whitespace(raw);
+}
+
 std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
    ConstructorNamespaceScope *ParentScope, int ParentID)
 {
@@ -1097,6 +1271,458 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
    return XPathVal(nodes, node_string, std::move(string_values));
 }
 
+XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR))
+   {
+      record_error("Invalid computed element constructor node encountered.", true);
+      return XPathVal();
+   }
+
+   if (!Node->has_constructor_info())
+   {
+      record_error("Computed element constructor is missing metadata.", true);
+      return XPathVal();
+   }
+
+   ConstructorQName name_info;
+
+   if (Node->has_name_expression())
+   {
+      auto name_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
+      if (!name_string) return XPathVal();
+
+      auto parsed = parse_constructor_qname_string(*name_string);
+      if (!parsed.valid)
+      {
+         record_error("Computed element name must resolve to a QName.", true);
+         return XPathVal();
+      }
+
+      name_info = std::move(parsed);
+   }
+   else
+   {
+      const auto &info = *Node->constructor_info;
+      name_info.valid = true;
+      name_info.prefix = info.prefix;
+      name_info.local = info.name;
+      name_info.namespace_uri = info.namespace_uri;
+   }
+
+   if (name_info.local.empty())
+   {
+      record_error("Computed element constructor requires a local name.", true);
+      return XPathVal();
+   }
+
+   auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t>
+   {
+      if (Prefix.empty()) return uint32_t{0};
+      if (!xml) return std::nullopt;
+      if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
+      if (!context.context_node) return std::nullopt;
+
+      uint32_t resolved_hash = 0;
+      if (xml->resolvePrefix(Prefix, context.context_node->ID, resolved_hash) IS ERR::Okay) return resolved_hash;
+      return std::nullopt;
+   };
+
+   uint32_t namespace_id = 0;
+   if (!name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
+   else if (!name_info.prefix.empty())
+   {
+      auto resolved = resolve_prefix_in_context(name_info.prefix);
+      if (!resolved.has_value())
+      {
+         record_error("Element prefix is not bound in scope.", true);
+         return XPathVal();
+      }
+      namespace_id = *resolved;
+   }
+
+   std::string element_name;
+   if (name_info.prefix.empty()) element_name = name_info.local;
+   else
+   {
+      element_name = name_info.prefix;
+      element_name += ':';
+      element_name += name_info.local;
+   }
+
+   pf::vector<XMLAttrib> element_attributes;
+   element_attributes.emplace_back(element_name, "");
+
+   XMLTag element(next_constructed_node_id--, 0, element_attributes);
+   element.ParentID = 0;
+   element.Flags = XTF::NIL;
+   element.NamespaceID = namespace_id;
+
+   ConstructorNamespaceScope scope;
+   scope.parent = nullptr;
+
+   if (Node->child_count() > 0)
+   {
+      const XPathNode *content_node = Node->get_child(0);
+      if (content_node)
+      {
+         if (!content_node->value.empty())
+         {
+            pf::vector<XMLAttrib> text_attribs;
+            text_attribs.emplace_back("", content_node->value);
+            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            text_node.ParentID = element.ID;
+            element.Children.push_back(std::move(text_node));
+         }
+         else if (content_node->child_count() > 0)
+         {
+            const XPathNode *expr = content_node->get_child(0);
+            if (expr)
+            {
+               size_t previous_constructed = constructed_nodes.size();
+               auto saved_id = next_constructed_node_id;
+               XPathVal value = evaluate_expression(expr, CurrentPrefix);
+               if (expression_unsupported) return XPathVal();
+               if (!append_constructor_sequence(element, value, CurrentPrefix, scope)) return XPathVal();
+               constructed_nodes.resize(previous_constructed);
+               next_constructed_node_id = saved_id;
+            }
+         }
+      }
+   }
+
+   auto stored = std::make_unique<XMLTag>(std::move(element));
+   XMLTag *root = stored.get();
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(root);
+
+   std::vector<std::string> string_values;
+   std::string node_string = XPathVal::node_string_value(root);
+   string_values.push_back(node_string);
+
+   return XPathVal(nodes, node_string, std::move(string_values));
+}
+
+XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR))
+   {
+      record_error("Invalid computed attribute constructor node encountered.", true);
+      return XPathVal();
+   }
+
+   if (!Node->has_constructor_info())
+   {
+      record_error("Computed attribute constructor is missing metadata.", true);
+      return XPathVal();
+   }
+
+   ConstructorQName name_info;
+
+   if (Node->has_name_expression())
+   {
+      auto name_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
+      if (!name_string) return XPathVal();
+
+      auto parsed = parse_constructor_qname_string(*name_string);
+      if (!parsed.valid)
+      {
+         record_error("Computed attribute name must resolve to a QName.", true);
+         return XPathVal();
+      }
+
+      if (!parsed.prefix.empty()) name_info.prefix = parsed.prefix;
+      name_info.local = parsed.local;
+      name_info.namespace_uri = parsed.namespace_uri;
+      name_info.valid = true;
+   }
+   else
+   {
+      const auto &info = *Node->constructor_info;
+      name_info.valid = true;
+      name_info.prefix = info.prefix;
+      name_info.local = info.name;
+      name_info.namespace_uri = info.namespace_uri;
+   }
+
+   if (name_info.local.empty())
+   {
+      record_error("Computed attribute constructor requires a local name.", true);
+      return XPathVal();
+   }
+
+   auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t>
+   {
+      if (Prefix.empty()) return uint32_t{0};
+      if (!xml) return std::nullopt;
+      if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
+      if (!context.context_node) return std::nullopt;
+
+      uint32_t resolved_hash = 0;
+      if (xml->resolvePrefix(Prefix, context.context_node->ID, resolved_hash) IS ERR::Okay) return resolved_hash;
+      return std::nullopt;
+   };
+
+   uint32_t namespace_id = 0;
+   if (!name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
+   else if (!name_info.prefix.empty())
+   {
+      auto resolved = resolve_prefix_in_context(name_info.prefix);
+      if (!resolved.has_value())
+      {
+         record_error("Attribute prefix is not bound in scope.", true);
+         return XPathVal();
+      }
+      namespace_id = *resolved;
+   }
+
+   std::string attribute_name;
+   if (name_info.prefix.empty()) attribute_name = name_info.local;
+   else
+   {
+      attribute_name = name_info.prefix;
+      attribute_name += ':';
+      attribute_name += name_info.local;
+   }
+
+   const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
+   auto value_string = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   if (!value_string) return XPathVal();
+
+   pf::vector<XMLAttrib> attribute_attribs;
+   attribute_attribs.emplace_back("$attribute", "");
+   attribute_attribs.emplace_back(attribute_name, *value_string);
+
+   XMLTag attribute_tag(next_constructed_node_id--, 0, attribute_attribs);
+   attribute_tag.ParentID = 0;
+   attribute_tag.Flags = XTF::NIL;
+   attribute_tag.NamespaceID = namespace_id;
+
+   auto stored = std::make_unique<XMLTag>(std::move(attribute_tag));
+   XMLTag *owner = stored.get();
+   const XMLAttrib *attribute_ptr = owner->Attribs.size() > 1 ? &owner->Attribs[1] : nullptr;
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(owner);
+
+   std::vector<const XMLAttrib *> attributes;
+   attributes.push_back(attribute_ptr);
+
+   return XPathVal(nodes, std::nullopt, {}, std::move(attributes));
+}
+
+XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR))
+   {
+      record_error("Invalid text constructor node encountered.", true);
+      return XPathVal();
+   }
+
+   const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   if (!content) return XPathVal();
+
+   pf::vector<XMLAttrib> text_attribs;
+   text_attribs.emplace_back("", *content);
+
+   XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+   text_node.ParentID = 0;
+   text_node.Flags = XTF::NIL;
+   text_node.NamespaceID = 0;
+
+   auto stored = std::make_unique<XMLTag>(std::move(text_node));
+   XMLTag *root = stored.get();
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(root);
+
+   std::vector<std::string> string_values;
+   string_values.push_back(*content);
+
+   return XPathVal(nodes, *content, std::move(string_values));
+}
+
+XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR))
+   {
+      record_error("Invalid comment constructor node encountered.", true);
+      return XPathVal();
+   }
+
+   const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   if (!content) return XPathVal();
+
+   auto double_dash = content->find("--");
+   if (!(double_dash IS std::string::npos))
+   {
+      record_error("Comments cannot contain consecutive hyphen characters.", true);
+      return XPathVal();
+   }
+
+   if (!content->empty() and (content->back() IS '-'))
+   {
+      record_error("Comments cannot end with a hyphen.", true);
+      return XPathVal();
+   }
+
+   pf::vector<XMLAttrib> comment_attribs;
+   comment_attribs.emplace_back("", *content);
+
+   XMLTag comment_node(next_constructed_node_id--, 0, comment_attribs);
+   comment_node.ParentID = 0;
+   comment_node.Flags = XTF::COMMENT;
+   comment_node.NamespaceID = 0;
+
+   auto stored = std::make_unique<XMLTag>(std::move(comment_node));
+   XMLTag *root = stored.get();
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(root);
+
+   std::vector<std::string> string_values;
+   string_values.push_back(*content);
+
+   return XPathVal(nodes, *content, std::move(string_values));
+}
+
+XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR))
+   {
+      record_error("Invalid processing-instruction constructor encountered.", true);
+      return XPathVal();
+   }
+
+   std::string target;
+
+   if (Node->has_name_expression())
+   {
+      auto target_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
+      if (!target_string) return XPathVal();
+      target = *target_string;
+   }
+   else if (Node->has_constructor_info()) target = Node->constructor_info->name;
+
+   target = trim_constructor_whitespace(target);
+
+   if (target.empty())
+   {
+      record_error("Processing-instruction constructor requires a target name.", true);
+      return XPathVal();
+   }
+
+   if (!is_valid_ncname(target))
+   {
+      record_error("Processing-instruction target must be an NCName.", true);
+      return XPathVal();
+   }
+
+   const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   if (!content) return XPathVal();
+
+   auto terminator = content->find("?>");
+   if (!(terminator IS std::string::npos))
+   {
+      record_error("Processing-instruction content cannot contain '?>'.", true);
+      return XPathVal();
+   }
+
+   std::string attribute_name("?");
+   attribute_name += target;
+
+   pf::vector<XMLAttrib> instruction_attribs;
+   instruction_attribs.emplace_back(attribute_name, *content);
+
+   XMLTag instruction(next_constructed_node_id--, 0, instruction_attribs);
+   instruction.ParentID = 0;
+   instruction.Flags = XTF::INSTRUCTION;
+   instruction.NamespaceID = 0;
+
+   auto stored = std::make_unique<XMLTag>(std::move(instruction));
+   XMLTag *root = stored.get();
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(root);
+
+   std::vector<std::string> string_values;
+   string_values.push_back(*content);
+
+   return XPathVal(nodes, *content, std::move(string_values));
+}
+
+XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if ((!Node) or (Node->type != XPathNodeType::DOCUMENT_CONSTRUCTOR))
+   {
+      record_error("Invalid document constructor node encountered.", true);
+      return XPathVal();
+   }
+
+   pf::vector<XMLAttrib> document_attribs;
+   document_attribs.emplace_back("#document", "");
+
+   XMLTag document_node(next_constructed_node_id--, 0, document_attribs);
+   document_node.ParentID = 0;
+   document_node.Flags = XTF::NIL;
+   document_node.NamespaceID = 0;
+
+   ConstructorNamespaceScope scope;
+   scope.parent = nullptr;
+
+   if (Node->child_count() > 0)
+   {
+      const XPathNode *content_node = Node->get_child(0);
+      if (content_node)
+      {
+         if (!content_node->value.empty())
+         {
+            pf::vector<XMLAttrib> text_attribs;
+            text_attribs.emplace_back("", content_node->value);
+            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+            text_node.ParentID = document_node.ID;
+            document_node.Children.push_back(std::move(text_node));
+         }
+         else if (content_node->child_count() > 0)
+         {
+            const XPathNode *expr = content_node->get_child(0);
+            if (expr)
+            {
+               size_t previous_constructed = constructed_nodes.size();
+               auto saved_id = next_constructed_node_id;
+               XPathVal value = evaluate_expression(expr, CurrentPrefix);
+               if (expression_unsupported) return XPathVal();
+               if (!append_constructor_sequence(document_node, value, CurrentPrefix, scope)) return XPathVal();
+               constructed_nodes.resize(previous_constructed);
+               next_constructed_node_id = saved_id;
+            }
+         }
+      }
+   }
+
+   auto stored = std::make_unique<XMLTag>(std::move(document_node));
+   XMLTag *root = stored.get();
+   constructed_nodes.push_back(std::move(stored));
+
+   NODES nodes;
+   nodes.push_back(root);
+
+   std::vector<std::string> string_values;
+   std::string node_string = XPathVal::node_string_value(root);
+   string_values.push_back(node_string);
+
+   return XPathVal(nodes, node_string, std::move(string_values));
+}
+
 //********************************************************************************************************************
 
 XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
@@ -1118,6 +1744,30 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
    if (ExprNode->type IS XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR) {
       return evaluate_direct_element_constructor(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR) {
+      return evaluate_computed_element_constructor(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR) {
+      return evaluate_computed_attribute_constructor(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::TEXT_CONSTRUCTOR) {
+      return evaluate_text_constructor(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::COMMENT_CONSTRUCTOR) {
+      return evaluate_comment_constructor(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::PI_CONSTRUCTOR) {
+      return evaluate_pi_constructor(ExprNode, CurrentPrefix);
+   }
+
+   if (ExprNode->type IS XPathNodeType::DOCUMENT_CONSTRUCTOR) {
+      return evaluate_document_constructor(ExprNode, CurrentPrefix);
    }
 
    if (ExprNode->type IS XPathNodeType::LOCATION_PATH) {

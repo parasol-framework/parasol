@@ -82,9 +82,17 @@ class XPathEvaluator {
       uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope);
    std::optional<std::string> evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
       uint32_t CurrentPrefix);
+   std::optional<std::string> evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix);
+   std::optional<std::string> evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix);
    std::optional<XMLTag> build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
       ConstructorNamespaceScope *ParentScope, int ParentID);
    XPathVal evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
 
    void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
       const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches);
