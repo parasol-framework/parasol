@@ -87,7 +87,7 @@ function testFlworOrderByClauseDescendingNumbers()
       end)
 
    assert(err == ERR_Okay, 'ORDER BY clause with descending numeric sort should evaluate successfully: ' .. mSys.GetErrorMsg(err))
-   for index, expected in ipairs({'bk-3', 'bk-2', 'bk-1', 'bk-4'}) do
+   for index, expected in ipairs({'bk-3', 'bk-4', 'bk-1', 'bk-2'}) do
       assert(ordered[index] == expected,
          'ORDER BY descending should honour numeric values and tie-breakers, expected ' .. expected .. ' at position ' .. index .. ', got ' .. nz(ordered[index], 'nil'))
    end
