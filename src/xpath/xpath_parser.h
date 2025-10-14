@@ -9,6 +9,7 @@
 
 #include <format>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -56,12 +57,31 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_number();
    std::unique_ptr<XPathNode> parse_literal();
    std::unique_ptr<XPathNode> parse_variable_reference();
+   std::unique_ptr<XPathNode> parse_direct_constructor();
+   std::unique_ptr<XPathNode> parse_computed_constructor();
+   std::unique_ptr<XPathNode> parse_computed_element_constructor();
+   std::unique_ptr<XPathNode> parse_computed_attribute_constructor();
+   std::unique_ptr<XPathNode> parse_computed_text_constructor();
+   std::unique_ptr<XPathNode> parse_computed_comment_constructor();
+   std::unique_ptr<XPathNode> parse_computed_pi_constructor();
+   std::unique_ptr<XPathNode> parse_computed_document_constructor();
+   std::unique_ptr<XPathNode> parse_enclosed_expr();
+   std::unique_ptr<XPathNode> parse_embedded_expr(std::string_view Source);
 
    // Utility methods
    bool check(XPathTokenType type) const;
    bool match(XPathTokenType type);
    bool check_identifier_keyword(std::string_view Keyword) const;
    bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
+   bool is_constructor_keyword(const XPathToken &Token) const;
+   // Lightweight representation of a QName recognised within constructor syntax.
+   struct ConstructorName
+   {
+      std::string Prefix;
+      std::string LocalName;
+   };
+   std::optional<ConstructorName> parse_constructor_qname();
+   bool consume_token(XPathTokenType type, std::string_view ErrorMessage);
    const XPathToken & peek() const;
    const XPathToken & previous() const;
    bool is_at_end() const;
