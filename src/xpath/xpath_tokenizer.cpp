@@ -48,6 +48,18 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "let", XPathTokenType::LET },
    KeywordMapping{ "in", XPathTokenType::IN },
    KeywordMapping{ "return", XPathTokenType::RETURN },
+   KeywordMapping{ "where", XPathTokenType::WHERE },
+   KeywordMapping{ "group", XPathTokenType::GROUP },
+   KeywordMapping{ "by", XPathTokenType::BY },
+   KeywordMapping{ "order", XPathTokenType::ORDER },
+   KeywordMapping{ "stable", XPathTokenType::STABLE },
+   KeywordMapping{ "ascending", XPathTokenType::ASCENDING },
+   KeywordMapping{ "descending", XPathTokenType::DESCENDING },
+   KeywordMapping{ "empty", XPathTokenType::EMPTY },
+   KeywordMapping{ "greatest", XPathTokenType::GREATEST },
+   KeywordMapping{ "least", XPathTokenType::LEAST },
+   KeywordMapping{ "collation", XPathTokenType::COLLATION },
+   KeywordMapping{ "count", XPathTokenType::COUNT },
    KeywordMapping{ "some", XPathTokenType::SOME },
    KeywordMapping{ "every", XPathTokenType::EVERY },
    KeywordMapping{ "satisfies", XPathTokenType::SATISFIES }
@@ -461,7 +473,48 @@ XPathToken XPathTokenizer::scan_identifier()
       return identifier IS entry.text;
    });
 
-   XPathTokenType type = (match != keyword_mappings.end()) ? match->type : XPathTokenType::IDENTIFIER;
+   auto is_followed_by_word = [&](std::string_view Expected) -> bool
+   {
+      size_t lookahead = position;
+      bool saw_separator = false;
+      while (lookahead < length and is_whitespace(input[lookahead]))
+      {
+         saw_separator = true;
+         lookahead++;
+      }
+
+      if (!saw_separator) return false;
+
+      size_t word_end = lookahead;
+      while (word_end < length and is_name_char(input[word_end])) word_end++;
+
+      size_t word_length = word_end - lookahead;
+      if (word_length != Expected.size()) return false;
+
+      return input.compare(lookahead, Expected.size(), Expected) IS 0;
+   };
+
+   XPathTokenType type = XPathTokenType::IDENTIFIER;
+
+   if (match != keyword_mappings.end())
+   {
+      switch (match->type)
+      {
+         case XPathTokenType::ORDER:
+            if (is_followed_by_word("by")) type = match->type;
+            break;
+         case XPathTokenType::GROUP:
+            if (is_followed_by_word("by")) type = match->type;
+            break;
+         case XPathTokenType::STABLE:
+            if (is_followed_by_word("order")) type = match->type;
+            break;
+         default:
+            type = match->type;
+            break;
+      }
+   }
+
    return XPathToken(type, identifier, start, position - start);
 }
 

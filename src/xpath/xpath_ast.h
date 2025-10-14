@@ -75,6 +75,18 @@ enum class XPathTokenType {
    LET,               // let
    IN,                // in
    RETURN,            // return
+   WHERE,             // where
+   GROUP,             // group
+   BY,                // by
+   ORDER,             // order
+   STABLE,            // stable
+   ASCENDING,         // ascending
+   DESCENDING,        // descending
+   EMPTY,             // empty
+   GREATEST,          // greatest
+   LEAST,             // least
+   COLLATION,         // collation
+   COUNT,             // count
    SOME,              // some
    EVERY,             // every
    SATISFIES,         // satisfies

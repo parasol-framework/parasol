@@ -30,6 +30,11 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_expr();
    std::unique_ptr<XPathNode> parse_expr_single();
    std::unique_ptr<XPathNode> parse_flwor_expr();
+   std::unique_ptr<XPathNode> parse_where_clause();
+   std::unique_ptr<XPathNode> parse_group_clause();
+   std::unique_ptr<XPathNode> parse_order_clause(bool StartsWithStable);
+   std::unique_ptr<XPathNode> parse_order_spec();
+   std::unique_ptr<XPathNode> parse_count_clause();
    std::unique_ptr<XPathNode> parse_or_expr();
    std::unique_ptr<XPathNode> parse_and_expr();
    std::unique_ptr<XPathNode> parse_equality_expr();
