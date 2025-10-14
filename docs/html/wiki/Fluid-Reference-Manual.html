@@ -127,7 +127,10 @@
       <li class="api-ref"><a href="../modules/fluid.html" class="rounded">Fluid</a></li>
       <li class="api-ref"><a href="../modules/font.html" class="rounded">Font</a></li>
       <li class="api-ref"><a href="../modules/network.html" class="rounded">Network</a></li>
+      <li class="api-ref"><a href="../modules/regex.html" class="rounded">Regex</a></li>
       <li class="api-ref"><a href="../modules/vector.html" class="rounded">Vector</a></li>
+      <li class="api-ref"><a href="../modules/xml.html" class="rounded">XML</a></li>
+      <li class="api-ref"><a href="../modules/xpath.html" class="rounded">XPath</a></li>
       </ul>
     </div>
   </li>
@@ -162,6 +165,7 @@
         <li>
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#data-collapse" aria-expanded="false">Data</button><div class="collapse" id="data-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a href="../modules/classes/compression.html" class="rounded">Compression</a></li>
+        <li><a href="../modules/classes/compressedstream.html" class="rounded">CompressedStream</a></li>
         <li><a href="../modules/classes/config.html" class="rounded">Config</a></li>
         <li><a href="../modules/classes/script.html" class="rounded">Script</a></li>
         <li><a href="../modules/classes/xml.html" class="rounded">XML</a></li>
@@ -213,6 +217,8 @@
         <button class="btn btn-toggle align-items-center rounded collapsed" data-bs-toggle="collapse" data-bs-target="#net-collapse" aria-expanded="false">Network</button><div class="collapse" id="net-collapse"><ul class="btn-toggle-nav list-unstyled pb-1">
         <li><a class="rounded" href="../modules/classes/clientsocket.html">ClientSocket</a></li>
         <li><a class="rounded" href="../modules/classes/http.html">HTTP</a></li>
+        <li><a class="rounded" href="../modules/classes/netclient.html">NetClient</a></li>
+        <li><a class="rounded" href="../modules/classes/netlookup.html">NetLookup</a></li>
         <li><a class="rounded" href="../modules/classes/netsocket.html">NetSocket</a></li>
         <li><a class="rounded" href="../modules/classes/proxy.html">Proxy</a></li>
         </ul></div>
@@ -254,13 +260,89 @@
 <p>Fluid is a Lua-based scripting language, specially customised for integration with the Parasol Framework. It supports garbage collection, dynamic typing and a bytecode interpreter for compiled code. Lua was chosen as our preferred programming language due to its extensive popularity amongst game developers, a testament to its low overhead, speed and lightweight processing when compared to common scripting languages.</p>
 <p>Full compatibility with Parasol&#39;s C++ APIs is included. This includes support for all common constants found in the C headers (e.g. error codes, action ID&#39;s and special flags). Object classes are self-describing, so the need for external libraries or header files to communicate with a given type of object is unnecessary under normal circumstances. Module functions are also self-describing, offering the same level of access to function calls as one would expect when programming in C.</p>
 <p>This manual expands on the information in the existing <a href="http://www.lua.org">Lua Reference Manual</a>, and covers features that are exclusive to Fluid. The official Lua 5.1 Reference Manual is required reading before you continue with this document, as a working knowledge of the Lua language is assumed.</p>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#further-reading">Further Reading</a></li>
+<li><a href="#usage">Usage</a>
+<ul>
+<li><a href="#file-recognition">File Recognition</a></li>
+</ul></li>
+<li><a href="#lua-extensions">Lua Extensions</a>
+<ul>
+<li><a href="#removed-features">Removed Features</a></li>
+<li><a href="#bitwise-operations">Bitwise Operations</a></li>
+<li><a href="#comments">Comments</a></li>
+<li><a href="#script-parameters">Script Parameters</a></li>
+<li><a href="#non-zero-value-detection">Non-Zero Value Detection</a></li>
+</ul></li>
+<li><a href="#string-api-additions">String API Additions</a></li>
+<li><a href="#script-management">Script Management</a>
+<ul>
+<li><a href="#include">include</a></li>
+<li><a href="#require">require</a></li>
+<li><a href="#exception-handling">Exception Handling</a></li>
+</ul></li>
+<li><a href="#module-interface">Module Interface</a>
+<ul>
+<li><a href="#type-conversion">Type Conversion</a></li>
+<li><a href="#buffer-handling">Buffer Handling</a></li>
+<li><a href="#multiple-result-values">Multiple Result Values</a></li>
+</ul></li>
+<li><a href="#object-interface">Object Interface</a>
+<ul>
+<li><a href="#object-creation">Object Creation</a></li>
+<li><a href="#object-relationships">Object Relationships</a></li>
+<li><a href="#accessing-objects">Accessing Objects</a></li>
+<li><a href="#garbage-collection">Garbage Collection</a></li>
+<li><a href="#action-and-method-calls">Action and Method Calls</a></li>
+<li><a href="#field-interface">Field Interface</a></li>
+<li><a href="#bit-fields">Bit Fields</a></li>
+</ul></li>
+<li><a href="#action--method-subscriptions">Action &amp; Method Subscriptions</a></li>
+<li><a href="#processing-interface">Processing Interface</a>
+<ul>
+<li><a href="#signals">Signals</a></li>
+</ul></li>
+<li><a href="#math-interface">Math Interface</a></li>
+<li><a href="#strings-interface">Strings Interface</a></li>
+<li><a href="#thread-interface">Thread Interface</a></li>
+<li><a href="#structure-interface">Structure Interface</a>
+<ul>
+<li><a href="#creating-a-structure">Creating a Structure</a></li>
+<li><a href="#additional-functionality">Additional Functionality</a></li>
+<li><a href="#custom-structures">Custom Structures</a></li>
+</ul></li>
+<li><a href="#regular-expression-interface">Regular Expression Interface</a>
+<ul>
+<li><a href="#creating-a-regex">Creating a Regex</a></li>
+<li><a href="#flag-constants">Flag Constants</a></li>
+<li><a href="#pattern-testing">Pattern Testing</a></li>
+<li><a href="#pattern-matching-with-capture-groups">Pattern Matching with Capture Groups</a></li>
+<li><a href="#global-matching">Global Matching</a></li>
+<li><a href="#string-replacement">String Replacement</a></li>
+<li><a href="#pattern-based-splitting">Pattern-Based Splitting</a></li>
+<li><a href="#regex-properties">Regex Properties</a></li>
+<li><a href="#performance-considerations">Performance Considerations</a></li>
+</ul></li>
+<li><a href="#array-interface">Array Interface</a>
+<ul>
+<li><a href="#array-indexes">Array Indexes</a></li>
+<li><a href="#arraygetstring">array.getstring()</a></li>
+<li><a href="#arraycopy">array.copy()</a></li>
+</ul></li>
+<li><a href="#logging">Logging</a>
+<ul>
+<li><a href="#event-subsystem">Event Subsystem</a></li>
+</ul></li>
+<li><a href="#credits">Credits</a></li>
+</ul>
 <h3 id="further-reading">Further Reading</h3>
 <p>For more information on the usage of available classes and modules, please refer to the Parasol API at <a href="https://www.parasol.ws"><span>www.parasol.ws</span></a>.</p>
 <p>For general information on the syntax provided by Lua, please read the following online manuals:</p>
 <ul>
-<li><a href="www.lua.org/manual/"><span>http://www.lua.org/manual/</span></a></li>
-<li><a href="/www.lua.org/pil/"><span>http://www.lua.org/pil/</span></a></li>
-<li><a href="lua-users.org/wiki/SampleCode"><span>http://lua-users.org/wiki/SampleCode</span></a></li>
+<li><a href="http://www.lua.org/manual/"><span>www.lua.org/manual/</span></a></li>
+<li><a href="http://www.lua.org/pil/"><span>www.lua.org/pil/</span></a></li>
+<li><a href="http://lua-users.org/wiki/SampleCode">lua-users.org/wiki/SampleCode</a></li>
 </ul>
 <hr>
 <h2 id="usage">Usage</h2>
@@ -278,7 +360,7 @@
 <h3 id="removed-features">Removed Features</h3>
 <p>The Package, IO and OS libraries normally found in Lua are removed as they duplicate features already found in Parasol&#39;s Script, File and Time classes. The introspective debug library is also removed for the purpose of reducing size.</p>
 <h3 id="bitwise-operations">Bitwise Operations</h3>
-<p>Bitwise operations are supported via the [<a href="https://bitop.luajit.org/api.html">https://bitop.luajit.org/api.html</a>](bitop API).</p>
+<p>Bitwise operations are supported via the <a href="https://bitop.luajit.org/api.html">bitop API</a>.</p>
 <h3 id="comments">Comments</h3>
 <p>Single-line C++ style comments are supported in addition to Lua&#39;s commenting standard. For example:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">//</span> <span class="va">This</span> <span class="va">is</span> <span class="va">a</span> <span class="cn">C</span><span class="er">++</span> <span class="va">style</span><span class="op">,</span> <span class="va">single</span> <span class="va">line</span> <span class="va">comment</span><span class="op">.</span></span>
@@ -526,9 +608,9 @@ end)</code></pre>
 <hr>
 <h2 id="processing-interface">Processing Interface</h2>
 <p>The processing interface assists with the management of your program&#39;s idle state and reaction to signals. Its most basic feature is the commonly used <code>sleep()</code> function, as follows:</p>
-<p><code>processing.sleep([Timeout], [WakeOnSignal=true], [ResetState=true])</code></p>
+<p><code>processing.sleep([Timeout], [WakeOnSignal=true])</code></p>
 <p>Calling <code>sleep()</code> in this way will put the script to sleep until a message is received to awaken it. Typically this means that the function won&#39;t return until a <code>QUIT</code> message is received, which would be delivered if the user opts to close the main window.</p>
-<p><code>sleep()</code> can also return early if a <code>Timeout</code> in seconds is specified in the first parameter. Waking on signal can be disabled by setting the second parameter to <code>false</code>. The third parameter controls whether Lua&#39;s internal signal state is reset before sleeping. If set to <code>false</code> and there have been <code>signal()</code> calls that have gone unprocessed, <code>sleep()</code> will return immediately and reset the signal state.</p>
+<p><code>sleep()</code> can also return early if a <code>Timeout</code> in seconds is specified in the first parameter. Waking on signal can be disabled by setting the second parameter to <code>false</code>.</p>
 <h3 id="signals">Signals</h3>
 <p>If a Fluid script is utilising threads, synchronisation can be an important issue that requires careful management. The processing interface makes it possible to put the main thread to sleep and wake it once a series of signals has been triggered. In the following working example, we create a basic thread that prints a message and then signals two XML objects in order to wake the main thread. This might be plausible if we were asking the thread to process XML data for instance:</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> testSignals<span class="op">()</span></span>
@@ -555,6 +637,9 @@ end)</code></pre>
 <p>Notice that we called <code>processing.new()</code> to create a dedicated interface for signal management. The two objects that will be signalled are passed in via the <code>signals</code> field. When the thread completes, it calls <code>acSignal()</code> on the objects to change their signal state. It is necessary for both objects to change state in order to wake the main thread.</p>
 <h3 id="signal">signal()</h3>
 <p>If no signal objects are listed in a call to <code>processing.new()</code>, it is possible to manually call the <code>signal()</code> method to wake the sleeping thread instead. This simple technique is sometimes used in passive event systems, e.g. the user clicking a mouse button could result in a <code>signal()</code> call that wakes the main thread.</p>
+<h3 id="flush">flush()</h3>
+<p>The <code>flush()</code> method will clear pending signals associated with the script and processing object.</p>
+<p>Using <code>flush()</code> is rarely necessary expect in special circumstances. For instance if a prior call to <code>sleep()</code> resulted in a timeout, clearing pending signals guarantees a fresh start.</p>
 <h3 id="task">task()</h3>
 <p>The <code>task()</code> function returns a Fluid object that references the current task:</p>
 <p><code>local currentTask = processing.task()</code></p>
@@ -650,7 +735,7 @@ processing.sleep()</code></pre>
 <p><code>address = xmltag.ptr()</code></p>
 <p>Note that nil is returned if the address is set to zero.</p>
 <h3 id="additional-functionality">Additional Functionality</h3>
-<p>The byte size of a structure can be retrieved with the <code>structsize()</code> method, for example:</P></p>
+<p>The byte size of a structure can be retrieved with the <code>structsize()</code> method, for example:</p>
 <p><code>print(&#39;The size of the structure is &#39; .. xmltag.structsize())</code></p>
 <p>To get the total number of fields in the structure, use <code>#</code>, e.g. <code>#xmltag</code>.</p>
 <h3 id="custom-structures">Custom Structures</h3>
@@ -723,6 +808,7 @@ processing.sleep()</code></pre>
 <hr>
 <h2 id="regular-expression-interface">Regular Expression Interface</h2>
 <p>The regular expression interface provides compiled regex objects for high-performance pattern matching and text manipulation. Unlike Lua&#39;s basic pattern matching, the regex interface offers full PCRE-compatible regular expression support through compiled objects that can be created once and reused multiple times.</p>
+<p>For more information on our regex implementation, please refer to our <a href="./Regex-Manual">Regex Manual</a>.</p>
 <h3 id="creating-a-regex">Creating a Regex</h3>
 <p>To create a compiled regex object, use the <code>new()</code> method with the following prototype:</p>
 <p><code>myregex = regex.new(Pattern, [Flags])</code></p>
@@ -734,6 +820,7 @@ processing.sleep()</code></pre>
 <span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">email</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">ICASE</span><span class="op">)</span></span></code></pre></div>
 <p>If the provided pattern is invalid, an error will be raised. For this reason it is advisable to use <code>catch()</code> when creating regex objects that use untested patterns, e.g. from user input.</p>
 <h3 id="flag-constants">Flag Constants</h3>
+<h4 id="compilation-flags">Compilation Flags</h4>
 <p>The following flags can be combined to modify regex compilation:</p>
 <table>
 <thead>
@@ -755,77 +842,130 @@ processing.sleep()</code></pre>
 <td><code>regex.DOTALL</code></td>
 <td>. matches newlines</td>
 </tr>
-<tr>
-<td><code>regex.EXTENDED</code></td>
-<td>Allow whitespace and comments in patterns</td>
-</tr>
 </tbody>
 </table>
 <p>Flags can be combined using addition: <code>regex.ICASE + regex.MULTILINE</code>.</p>
+<h4 id="match-flags">Match Flags</h4>
+<p>The following flags can be used with the optional <code>flags</code> parameter in <code>test()</code>, <code>match()</code>, <code>search()</code>, <code>replace()</code>, and <code>split()</code> methods:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>regex.NOT_BEGIN_OF_LINE</code></td>
+<td>Do not treat the beginning of text as start of line</td>
+</tr>
+<tr>
+<td><code>regex.NOT_END_OF_LINE</code></td>
+<td>Do not treat the end of text as end of line</td>
+</tr>
+<tr>
+<td><code>regex.NOT_BEGIN_OF_WORD</code></td>
+<td>Do not treat the beginning of text as start of word</td>
+</tr>
+<tr>
+<td><code>regex.NOT_END_OF_WORD</code></td>
+<td>Do not treat the end of text as end of word</td>
+</tr>
+<tr>
+<td><code>regex.NOT_NULL</code></td>
+<td>Do not match empty sequences</td>
+</tr>
+<tr>
+<td><code>regex.CONTINUOUS</code></td>
+<td>Only match at the beginning of text</td>
+</tr>
+<tr>
+<td><code>regex.PREV_AVAILABLE</code></td>
+<td>Previous character is available for look-behind</td>
+</tr>
+<tr>
+<td><code>regex.REPLACE_NO_COPY</code></td>
+<td>Do not copy non-matching parts in replace operations</td>
+</tr>
+<tr>
+<td><code>regex.REPLACE_FIRST_ONLY</code></td>
+<td>Replace only the first occurrence</td>
+</tr>
+</tbody>
+</table>
+<p>Example usage:</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">w+&#39;</span><span class="op">)</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Replace only the first word</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">result</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;hello world&#39;</span><span class="op">,</span> <span class="st">&#39;goodbye&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">REPLACE_FIRST_ONLY</span><span class="op">)</span></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;goodbye world&#39;</span></span></code></pre></div>
 <h3 id="pattern-testing">Pattern Testing</h3>
 <p>Use the <code>test()</code> method to perform boolean pattern matching:</p>
-<p><code>result = myregex:test(text)</code></p>
+<p><code>result = myregex.test(text, [flags])</code></p>
 <p>This returns <code>true</code> if the pattern matches anywhere in the text, <code>false</code> otherwise.</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{4}&#39;</span><span class="op">)</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">phoneRegex</span><span class="op">.</span>test<span class="op">(</span><span class="va">userInput</span><span class="op">)</span> <span class="cf">then</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Valid phone number format&#39;</span><span class="op">)</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{4}&#39;</span><span class="op">)</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">phoneRegex</span><span class="op">.</span>test<span class="op">(</span><span class="va">userInput</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Valid phone number format&#39;</span><span class="op">)</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <h3 id="pattern-matching-with-capture-groups">Pattern Matching with Capture Groups</h3>
-<p>Use the <code>match()</code> method to find the first match and return capture groups:</p>
-<p><code>matches = myregex.match(text)</code></p>
+<p>Use the <code>match()</code> method to perform a whole-string match and return capture groups:</p>
+<p><code>matches = myregex.match(text, [flags])</code></p>
 <p>Returns a table containing the full match and any capture groups, or <code>nil</code> if no match is found. Array indices start at 1 (full match), with capture groups at indices 2, 3, etc.</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">urlRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(https?)://([^/]+)(.*)&#39;</span><span class="op">)</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">matches</span> <span class="op">=</span> <span class="va">urlRegex</span><span class="op">.</span>match<span class="op">(</span><span class="st">&#39;https://example.com/path&#39;</span><span class="op">)</span></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[1] = &#39;https://example.com/path&#39; (full match)</span></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[2] = &#39;https&#39; (first capture group)</span></span>
-<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[3] = &#39;example.com&#39; (second capture group)</span></span>
-<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[4] = &#39;/path&#39; (third capture group)</span></span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">urlRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(https?)://([^/]+)(.*)&#39;</span><span class="op">)</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">matches</span> <span class="op">=</span> <span class="va">urlRegex</span><span class="op">.</span>match<span class="op">(</span><span class="st">&#39;https://example.com/path&#39;</span><span class="op">)</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[1] = &#39;https://example.com/path&#39; (full match)</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[2] = &#39;https&#39; (first capture group)</span></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[3] = &#39;example.com&#39; (second capture group)</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[4] = &#39;/path&#39; (third capture group)</span></span></code></pre></div>
 <h3 id="global-matching">Global Matching</h3>
-<p>Use the <code>matchAll()</code> method to find all matches in the text:</p>
-<p><code>allMatches = myregex.matchAll(text)</code></p>
-<p>Returns a table where each element is a match table (as returned by <code>match()</code>).</p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">w+)&#39;</span><span class="op">)</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">allWords</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>matchAll<span class="op">(</span><span class="st">&#39;hello world test&#39;</span><span class="op">)</span></span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[1][1] = &#39;hello&#39;, allWords[1][2] = &#39;hello&#39;</span></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[2][1] = &#39;world&#39;, allWords[2][2] = &#39;world&#39;</span></span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[3][1] = &#39;test&#39;, allWords[3][2] = &#39;test&#39;</span></span></code></pre></div>
+<p>Use the <code>search()</code> method to find all matches in the text:</p>
+<p><code>allMatches = myregex.search(text, [flags])</code></p>
+<p>Returns a table where each element is a match table (as returned by <code>match()</code>), or <code>nil</code> if no matches are found.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">w+)&#39;</span><span class="op">)</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">allWords</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>search<span class="op">(</span><span class="st">&#39;hello world test&#39;</span><span class="op">)</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[1][1] = &#39;hello&#39;, allWords[1][2] = &#39;hello&#39;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[2][1] = &#39;world&#39;, allWords[2][2] = &#39;world&#39;</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[3][1] = &#39;test&#39;, allWords[3][2] = &#39;test&#39;</span></span></code></pre></div>
 <h3 id="string-replacement">String Replacement</h3>
-<p>Use the <code>replace()</code> method to replace the first occurrence:</p>
-<p><code>result = myregex.replace(text, replacement)</code></p>
-<p>Use the <code>replaceAll()</code> method to replace all occurrences:</p>
-<p><code>result = myregex.replaceAll(text, replacement)</code></p>
+<p>Use the <code>replace()</code> method to replace all occurrences of a pattern:</p>
+<p><code>result = myregex.replace(text, replacement, [flags])</code></p>
 <p>Replacement strings support backreferences using <code>$1</code>, <code>$2</code>, etc., to reference capture groups.</p>
-<div class="sourceCode" id="cb27"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{4})&#39;</span><span class="op">)</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">formatted</span> <span class="op">=</span> <span class="va">phoneRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;555-123-4567&#39;</span><span class="op">,</span> <span class="st">&#39;($1) $2-$3&#39;</span><span class="op">)</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;(555) 123-4567&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{4})&#39;</span><span class="op">)</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">formatted</span> <span class="op">=</span> <span class="va">phoneRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;555-123-4567&#39;</span><span class="op">,</span> <span class="st">&#39;($1) $2-$3&#39;</span><span class="op">)</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;(555) 123-4567&#39;</span></span></code></pre></div>
 <h3 id="pattern-based-splitting">Pattern-Based Splitting</h3>
 <p>Use the <code>split()</code> method to split text using the regex pattern as a delimiter:</p>
-<p><code>parts = myregex.split(text)</code></p>
+<p><code>parts = myregex.split(text, [flags])</code></p>
 <p>Returns a table containing the split parts (empty strings are excluded).</p>
-<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">csvRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">s*,</span><span class="sc">\\</span><span class="st">s*&#39;</span><span class="op">)</span></span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">fields</span> <span class="op">=</span> <span class="va">csvRegex</span><span class="op">.</span>split<span class="op">(</span><span class="st">&#39;apple, banana,  cherry&#39;</span><span class="op">)</span></span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- fields[1] = &#39;apple&#39;, fields[2] = &#39;banana&#39;, fields[3] = &#39;cherry&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">csvRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">s*,</span><span class="sc">\\</span><span class="st">s*&#39;</span><span class="op">)</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">fields</span> <span class="op">=</span> <span class="va">csvRegex</span><span class="op">.</span>split<span class="op">(</span><span class="st">&#39;apple, banana,  cherry&#39;</span><span class="op">)</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- fields[1] = &#39;apple&#39;, fields[2] = &#39;banana&#39;, fields[3] = &#39;cherry&#39;</span></span></code></pre></div>
 <h3 id="regex-properties">Regex Properties</h3>
 <p>Compiled regex objects provide the following read-only properties:</p>
 <ul>
 <li><code>pattern</code>: The original pattern string</li>
 <li><code>flags</code>: The compilation flags used</li>
-<li><code>valid</code>: Boolean indicating if compilation succeeded</li>
-<li><code>error</code>: Error message if compilation failed (or <code>nil</code> if valid)</li>
+<li><code>error</code>: Error message if compilation failed (only available in internal error states)</li>
 </ul>
-<div class="sourceCode" id="cb29"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">regex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[invalid&#39;</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span></span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> <span class="va">regex</span><span class="op">.</span><span class="va">valid</span> <span class="cf">then</span></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Regex error: &#39;</span> <span class="op">..</span> <span class="va">regex</span><span class="op">.</span><span class="va">error</span><span class="op">)</span></span>
-<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">myregex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d+&#39;</span><span class="op">)</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="st">&#39;Pattern: &#39;</span> <span class="op">..</span> <span class="va">myregex</span><span class="op">.</span><span class="va">pattern</span><span class="op">)</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="st">&#39;Flags: &#39;</span> <span class="op">..</span> <span class="va">myregex</span><span class="op">.</span><span class="va">flags</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Note</strong>: Invalid regex patterns will raise an error during construction. Use <code>catch()</code> or <code>pcall()</code> to handle potential compilation errors:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">myregex</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">err</span> <span class="op">=</span> catch<span class="op">(</span><span class="kw">function</span><span class="op">()</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">myregex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[invalid&#39;</span><span class="op">)</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">err</span> <span class="cf">then</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Regex compilation failed: &#39;</span> <span class="op">..</span> <span class="va">err</span><span class="op">.</span><span class="va">message</span><span class="op">)</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <h3 id="performance-considerations">Performance Considerations</h3>
 <p>Regex objects are compiled once and can be reused many times, making them significantly more efficient than traditional string matching for complex patterns. Store frequently used regex objects in variables rather than recreating them:</p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Efficient: compile once, use many times</span></span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span></span>
-<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">email</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">emailList</span><span class="op">)</span> <span class="cf">do</span></span>
-<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">emailValidator</span><span class="op">.</span>test<span class="op">(</span><span class="va">email</span><span class="op">)</span> <span class="cf">then</span></span>
-<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>      processEmail<span class="op">(</span><span class="va">email</span><span class="op">)</span></span>
-<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
-<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Efficient: compile once, use many times</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">email</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">emailList</span><span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">emailValidator</span><span class="op">.</span>test<span class="op">(</span><span class="va">email</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>      processEmail<span class="op">(</span><span class="va">email</span><span class="op">)</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <hr>
 <h2 id="array-interface">Array Interface</h2>
 <p>The array interface is used to manage the arrays that are returned by object fields, actions, methods and certain functions. Although Lua includes native support for arrays, their functionality is particular to the Lua environment. Arrays for use within the Parasol API must use the interface that we provide.</p>
