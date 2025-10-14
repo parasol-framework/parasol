@@ -36,7 +36,7 @@ static bool glBackstage = false;
 
 static ERR exec_source(CSTRING, int, const std::string);
 
-static const char glHelp[] = {
+static constexpr char glHelp[] = {
 "This command-line program can execute Fluid scripts and PARC files developed for the Parasol framework.\n\
 \n\
    parasol [options] [script.ext] arg1 arg2=value ...\n\

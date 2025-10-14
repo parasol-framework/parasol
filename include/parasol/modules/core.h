@@ -297,6 +297,7 @@ enum class MEM : uint32_t {
    COLLECT = 0x00001000,
    NO_BLOCKING = 0x00002000,
    NO_BLOCK = 0x00002000,
+   PROTECTED = 0x00004000,
    READ = 0x00010000,
    WRITE = 0x00020000,
    READ_WRITE = 0x00030000,
@@ -1099,19 +1100,18 @@ enum class RES : int {
    STATIC_BUILD = 9,
    LOG_LEVEL = 10,
    TOTAL_SHARED_MEMORY = 11,
-   MAX_PROCESSES = 12,
-   LOG_DEPTH = 13,
-   JNI_ENV = 14,
-   THREAD_ID = 15,
-   OPEN_INFO = 16,
-   EXCEPTION_HANDLER = 17,
-   NET_PROCESSING = 18,
-   PROCESS_STATE = 19,
-   TOTAL_MEMORY = 20,
-   TOTAL_SWAP = 21,
-   CPU_SPEED = 22,
-   FREE_MEMORY = 23,
-   MEMORY_USAGE = 24,
+   LOG_DEPTH = 12,
+   JNI_ENV = 13,
+   THREAD_ID = 14,
+   OPEN_INFO = 15,
+   EXCEPTION_HANDLER = 16,
+   NET_PROCESSING = 17,
+   PROCESS_STATE = 18,
+   TOTAL_MEMORY = 19,
+   TOTAL_SWAP = 20,
+   CPU_SPEED = 21,
+   FREE_MEMORY = 22,
+   MEMORY_USAGE = 23,
 };
 
 // Path types for SetResourcePath()
@@ -2066,9 +2066,9 @@ struct ScriptArg { // For use with sc::Exec
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_CORE static struct CoreBase *CoreBase;
+#define JUMPTABLE_CORE [[maybe_unused]] static struct CoreBase *CoreBase = nullptr;
 #else
-#define JUMPTABLE_CORE struct CoreBase *CoreBase;
+#define JUMPTABLE_CORE struct CoreBase *CoreBase = nullptr;
 #endif
 
 struct CoreBase {
@@ -2161,6 +2161,8 @@ struct CoreBase {
    CSTRING (*_ResolveUserID)(int User);
    ERR (*_CreateLink)(CSTRING From, CSTRING To);
    OBJECTPTR (*_ParentContext)(void);
+   void (*_SetResourceMgr)(APTR Address, struct ResourceManager *Manager);
+   ERR (*_ProtectMemory)(APTR Address, MEM Flags);
 #endif // PARASOL_STATIC
 };
 
@@ -2255,6 +2257,8 @@ inline CSTRING ResolveGroupID(int Group) { return CoreBase->_ResolveGroupID(Grou
 inline CSTRING ResolveUserID(int User) { return CoreBase->_ResolveUserID(User); }
 inline ERR CreateLink(CSTRING From, CSTRING To) { return CoreBase->_CreateLink(From,To); }
 inline OBJECTPTR ParentContext(void) { return CoreBase->_ParentContext(); }
+inline void SetResourceMgr(APTR Address, struct ResourceManager *Manager) { return CoreBase->_SetResourceMgr(Address,Manager); }
+inline ERR ProtectMemory(APTR Address, MEM Flags) { return CoreBase->_ProtectMemory(Address,Flags); }
 #else
 extern "C" ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result);
 extern "C" ERR Action(AC Action, OBJECTPTR Object, APTR Parameters);
@@ -2343,6 +2347,8 @@ extern "C" CSTRING ResolveGroupID(int Group);
 extern "C" CSTRING ResolveUserID(int User);
 extern "C" ERR CreateLink(CSTRING From, CSTRING To);
 extern "C" OBJECTPTR ParentContext(void);
+extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
+extern "C" ERR ProtectMemory(APTR Address, MEM Flags);
 #endif // PARASOL_STATIC
 #endif
 

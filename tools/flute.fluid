@@ -31,6 +31,10 @@ function runTests()
    end
 
    local body = loadFile(glFile)
+   if not body then
+      print("The Flute test file did not return a configuration table.  It is either not a Flute script or is misconfigured.")
+      return
+   end
 
    if (body.init != nil) then
       local folder = file.splitPath(glFile)

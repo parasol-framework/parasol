@@ -7,6 +7,8 @@ that is distributed with this package.  Please refer to it for further informati
 
 #include "defs.h"
 
+JUMPTABLE_REGEX
+
 #ifdef _WIN32
 using namespace display;
 #endif
@@ -180,7 +182,8 @@ static objCompression *glIconArchive = nullptr;
 struct CoreBase *CoreBase;
 ColourFormat glColourFormat;
 bool glHeadless = false;
-OBJECTPTR glModule = nullptr;
+OBJECTPTR glModule = nullptr, glDisplayContext = nullptr;
+static OBJECTPTR modRegex = nullptr;
 OBJECTPTR clDisplay = nullptr, clPointer = nullptr, clBitmap = nullptr, clClipboard = nullptr, clSurface = nullptr, clController = nullptr;
 OBJECTID glPointerID = 0;
 DISPLAYINFO glDisplayInfo;
@@ -811,10 +814,14 @@ static ERR MODInit(OBJECTPTR argModule, struct CoreBase *argCoreBase)
    #endif
 
    CoreBase = argCoreBase;
+   glDisplayContext = CurrentContext();
 
    argModule->get(FID_Root, glModule);
 
+   if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
+
 #ifndef PARASOL_STATIC
+
    if (GetSystemState()->Stage < 0) { // An early load indicates that classes are being probed, so just return them.
       glHeadless = true;
       create_pointer_class();
@@ -1235,6 +1242,7 @@ static ERR MODExpunge(void)
    if (clClipboard)   { FreeResource(clClipboard);   clClipboard   = nullptr; }
    if (clSurface)     { FreeResource(clSurface);     clSurface     = nullptr; }
    if (clController)  { FreeResource(clController);  clController  = nullptr; }
+   if (modRegex)      { FreeResource(modRegex);      modRegex      = nullptr; }
 
    #ifdef _GLES_
       free_egl();

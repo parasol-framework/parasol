@@ -97,7 +97,7 @@ function testValidateHeaderCustomError()
    local err = proc.sleep()
    msg('Test woke up; HTTP error: ' .. mSys.GetErrorMsg(http.error))
    assert(err == ERR_Okay, 'Custom error processing failed: ' .. mSys.GetErrorMsg(err))
-   assert(http.status == 403, 'Custom error should return 403, got: ' .. http.status)
+   assert(http.status == 403, 'Custom error should return 403 (Forbidden), got: ' .. http.status)
 
    print('validateHeader custom error test passed - 403 received; HTTP Error: ' .. mSys.GetErrorMsg(http.error))
 end

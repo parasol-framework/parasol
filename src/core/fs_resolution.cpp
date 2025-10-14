@@ -67,22 +67,22 @@ virtual driver does not support this check.  This is common when working with ne
 -INPUT-
 cpp(strview) Path: The path to be resolved.
 int(RSF) Flags: Optional flags.
-&cpp(str) Result: Must point to a `std::string` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.
+&cpp(str) Result: Must point to a `std::string` variable so that the resolved path can be stored.  If `NULL`, ResolvePath() will work as normal and return a valid error code without the result string.  The value is unchanged if the error code is not `ERR::Okay`.
 
 -ERRORS-
 Okay:        The `Path` was resolved.
 NullArgs:    Invalid parameters were specified.
-AllocMemory: The result string could not be allocated.
-LockFailed:
 Search:       The given volume does not exist.
 FileNotFound: The path was resolved, but the referenced file or folder does not exist (use `NO_FILE_CHECK` to avoid this error code).
 Loop:         The volume refers back to itself.
+VirtualVolume: The path refers to a virtual volume (use `CHECK_VIRTUAL` to return `Okay` instead).
+InvalidPath:  The path is malformed.
 
 -END-
 
 *********************************************************************************************************************/
 
-static ERR resolve(std::string &, std::string &, RSF);
+static ERR resolve(const std::string &, std::string &, RSF);
 static ERR resolve_path_env(std::string_view, std::string *);
 static thread_local bool tlClassLoaded;
 
@@ -174,7 +174,7 @@ ERR ResolvePath(const std::string_view &pPath, RSF Flags, std::string *Result)
       if (error IS ERR::VirtualVolume) {
          log.trace("Detected virtual volume '%s'", dest);
 
-         // If RSF::CHECK_VIRTUAL is set, return ERR::VirtualVolume for reserved volume names.
+         // If RSF::CHECK_VIRTUAL is set, return ERR::VirtualVolume for reserved volume names, otherwise Okay.
 
          if ((Flags & RSF::CHECK_VIRTUAL) IS RSF::NIL) error = ERR::Okay;
 
@@ -320,11 +320,13 @@ static ERR resolve_path_env(std::string_view RelativePath, std::string *Result)
 ** Flags   - Optional RSF flags.
 */
 
-static ERR resolve_object_path(std::string &, std::string &, std::string &);
+static ERR resolve_object_path(const std::string &, const std::string &, std::string &);
 
-static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
+static ERR resolve(const std::string &Source, std::string &Dest, RSF Flags)
 {
    pf::Log log("ResolvePath");
+
+   if (&Source IS &Dest) return log.warning(ERR::SanityCheckFailed);
 
    if (get_virtual(Source)) {
       Dest.assign(Source);
@@ -448,10 +450,10 @@ static ERR resolve(std::string &Source, std::string &Dest, RSF Flags)
 // If the path is merely ":" or resolve_virtual() returns ERR::VirtualVolume, return the VirtualVolume error code to
 // indicate that no further resolution is required.
 
-static ERR resolve_object_path(std::string &Path, std::string &Source, std::string &Dest)
+static ERR resolve_object_path(const std::string &Path, const std::string &Source, std::string &Dest)
 {
    pf::Log log("ResolvePath");
-   ERR (*resolve_virtual)(OBJECTPTR, std::string &, std::string &);
+   ERR (*resolve_virtual)(OBJECTPTR, const std::string &, std::string &);
    ERR error = ERR::VirtualVolume;
 
    if (!Path.empty()) {

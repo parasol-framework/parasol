@@ -43,6 +43,7 @@ void stop_async_actions(void)
 
    // Give threads time to respond to stop request
    constexpr auto STOP_TIMEOUT = std::chrono::milliseconds(2000);
+   constexpr auto POLL_INTERVAL = std::chrono::milliseconds(50);
    auto start_time = std::chrono::steady_clock::now();
 
    while (!glAsyncThreads.empty() and (std::chrono::steady_clock::now() - start_time) < STOP_TIMEOUT) {
@@ -50,7 +51,7 @@ void stop_async_actions(void)
       std::erase_if(glAsyncThreads, [](const auto &ptr) { return !ptr or !ptr->joinable(); });
 
       if (!glAsyncThreads.empty()) {
-         std::this_thread::sleep_for(std::chrono::milliseconds(50));
+         std::this_thread::sleep_for(POLL_INTERVAL);
       }
    }
 
@@ -1321,7 +1322,7 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
    MEMORYID head_id;
 
    if (AllocMemory(mc->Size, MEM::NO_CLEAR|MEM::MANAGED|MEM::OBJECT|MEM::NO_LOCK|(((Flags & NF::UNTRACKED) != NF::NIL) ? MEM::UNTRACKED : MEM::NIL), (APTR *)&head, &head_id) IS ERR::Okay) {
-      set_memory_manager(head, &glResourceObject);
+      SetResourceMgr(head, &glResourceObject);
 
       new (head) class Object; // Class constructors aren't expected to initialise the Object header, we do it for them
       pf::clearmem(head + 1, mc->Size - sizeof(class Object));
@@ -1968,23 +1969,25 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
    if (ActionID IS AC::NIL) { // Unsubscribe all actions associated with the subscriber.
       if (glSubscriptions.contains(Object->UID)) {
          auto subscriber = tlContext->object()->UID;
-restart:
-         for (auto & [action, list] : glSubscriptions[Object->UID]) {
-            for (auto it = list.begin(); it != list.end(); ) {
-               if (it->SubscriberID IS subscriber) it = list.erase(it);
-               else it++;
-            }
+         bool need_restart = true;
+         while (need_restart) {
+            need_restart = false;
+            for (auto & [action, list] : glSubscriptions[Object->UID]) {
+               // Use C++20 std::erase_if for cleaner removal
+               std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
-            if (list.empty()) {
-               Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
+               if (list.empty()) {
+                  Object->NotifyFlags.fetch_and(~(1<<(action & 63)), std::memory_order::relaxed);
 
-               if (!Object->NotifyFlags.load()) {
-                  glSubscriptions.erase(Object->UID);
-                  break;
-               }
-               else {
-                  glSubscriptions[Object->UID].erase(action);
-                  goto restart;
+                  if (!Object->NotifyFlags.load()) {
+                     glSubscriptions.erase(Object->UID);
+                     break;
+                  }
+                  else {
+                     glSubscriptions[Object->UID].erase(action);
+                     need_restart = true;
+                     break;
+                  }
                }
             }
          }
@@ -1994,10 +1997,8 @@ restart:
       auto subscriber = tlContext->object()->UID;
 
       auto &list = glSubscriptions[Object->UID][int(ActionID)];
-      for (auto it = list.begin(); it != list.end(); ) {
-         if (it->SubscriberID IS subscriber) it = list.erase(it);
-         else it++;
-      }
+      // Use C++20 std::erase_if for cleaner removal
+      std::erase_if(list, [subscriber](const auto &sub) { return sub.SubscriberID IS subscriber; });
 
       if (list.empty()) {
          Object->NotifyFlags.fetch_and(~(1<<(int(ActionID) & 63)), std::memory_order::relaxed);

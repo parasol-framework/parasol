@@ -109,9 +109,9 @@
 <p>Parameter values must be specified as an array of ScriptArg structures.  The following example illustrates:</p>
 <pre>
 struct ScriptArg args[] = {
-   { "Object",       FD_OBJECTID, { .Int = Self-&gt;UID } },
-   { "Output",       FD_PTR,      { .Address = output } },
-   { "OutputLength", FD_INT,      { .Int = len } }
+   { &quot;Object&quot;,       FD_OBJECTID, { .Int = Self-&gt;UID } },
+   { &quot;Output&quot;,       FD_PTR,      { .Address = output } },
+   { &quot;OutputLength&quot;, FD_INT,      { .Int = len } }
 };
 </pre>
 <p>The ScriptArg structure follows this arrangement:</p>

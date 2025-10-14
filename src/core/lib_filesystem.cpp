@@ -241,9 +241,11 @@ ERR check_cache(OBJECTPTR Subscriber, int64_t Elapsed, int64_t CurrentTime)
 
    log.branch("Scanning file cache for unused entries...");
 
+   constexpr int64_t CACHE_EXPIRY_MICROSECONDS = 60LL * 1000000LL; // 60 seconds in microseconds
+
    const std::lock_guard<std::mutex> lock(glCacheLock);
    for (auto it=glCache.begin(); it != glCache.end(); ) {
-      if ((CurrentTime - it->second.LastUse >= 60LL * 1000000LL) and (it->second.Locks <= 0)) {
+      if ((CurrentTime - it->second.LastUse >= CACHE_EXPIRY_MICROSECONDS) and (it->second.Locks <= 0)) {
          log.msg("Removing expired cache file: %.80s", it->second.Path);
          it = glCache.erase(it);
       }
@@ -326,7 +328,7 @@ ERR AnalysePath(CSTRING Path, LOC *PathType)
    pf::Log log(__FUNCTION__);
 
    if (PathType) *PathType = LOC::NIL;
-   if (!Path) return ERR::NullArgs;
+   if ((not Path) or (not Path[0])) return ERR::NullArgs;
 
    // Special volumes 'string:' and 'memory:' are considered to be file paths.
 

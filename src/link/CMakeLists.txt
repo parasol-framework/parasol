@@ -11,4 +11,3 @@ else ()
    target_include_directories (init-unix PRIVATE "${PROJECT_SOURCE_DIR}/core/include")
    target_link_libraries (init-unix PRIVATE dl)
 endif ()
-

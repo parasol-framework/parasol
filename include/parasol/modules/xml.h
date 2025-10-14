@@ -45,8 +45,8 @@ enum class XMF : uint32_t {
    WELL_FORMED = 0x00000001,
    INCLUDE_COMMENTS = 0x00000002,
    STRIP_CONTENT = 0x00000004,
-   INDENT = 0x00000008,
    READABLE = 0x00000008,
+   INDENT = 0x00000008,
    LOCK_REMOVE = 0x00000010,
    STRIP_HEADERS = 0x00000020,
    NEW = 0x00000040,
@@ -57,6 +57,9 @@ enum class XMF : uint32_t {
    LOG_ALL = 0x00000800,
    PARSE_ENTITY = 0x00001000,
    OMIT_TAGS = 0x00002000,
+   NAMESPACE_AWARE = 0x00004000,
+   HAS_SCHEMA = 0x00008000,
+   STANDALONE = 0x00010000,
    INCLUDE_SIBLINGS = 0x80000000,
 };
 
@@ -81,9 +84,23 @@ enum class XTF : uint32_t {
    CDATA = 0x00000001,
    INSTRUCTION = 0x00000002,
    NOTATION = 0x00000004,
+   COMMENT = 0x00000008,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(XTF)
+
+// Type descriptors for XPathValue
+
+enum class XPVT : int {
+   NIL = 0,
+   NodeSet = 0,
+   Boolean = 1,
+   Number = 2,
+   String = 3,
+   Date = 4,
+   Time = 5,
+   DateTime = 6,
+};
 
 typedef struct XMLAttrib {
    std::string Name;    // Name of the attribute
@@ -95,18 +112,19 @@ typedef struct XMLAttrib {
 } XMLATTRIB;
 
 typedef struct XMLTag {
-   int ID;                           // Unique ID assigned to the tag on creation
-   int ParentID;                     // Unique ID of the parent tag
-   int LineNo;                       // Line number on which this tag was encountered
-   XTF Flags;                        // Optional flags
+   int      ID;                      // Unique ID assigned to the tag on creation
+   int      ParentID;                // Unique ID of the parent tag
+   int      LineNo;                  // Line number on which this tag was encountered
+   XTF      Flags;                   // Optional flags
+   uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace
    pf::vector<XMLAttrib> Attribs;    // Array of attributes for this tag
    pf::vector<XMLTag> Children;      // Array of child tags
    XMLTag(int pID, int pLine = 0) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0)
       { }
 
    XMLTag(int pID, int pLine, pf::vector<XMLAttrib> pAttribs) :
-      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), Attribs(pAttribs)
+      ID(pID), ParentID(0), LineNo(pLine), Flags(XTF::NIL), NamespaceID(0), Attribs(pAttribs)
       { }
 
    XMLTag() { XMLTag(0); }
@@ -131,14 +149,24 @@ typedef struct XMLTag {
    }
 
    inline std::string getContent() const {
-      if (Children.empty()) return std::string("");
+      if (Children.empty()) return std::string();
 
-      std::ostringstream str;
+      std::string result;
+      // Pre-calculate total size to avoid reallocations
+      size_t total_size = 0;
       for (auto &scan : Children) {
-         if (scan.Attribs.empty()) continue; // Sanity check
-         if (scan.Attribs[0].isContent()) str << scan.Attribs[0].Value;
+         if (not scan.Attribs.empty() and scan.Attribs[0].isContent()) {
+            total_size += scan.Attribs[0].Value.size();
+         }
       }
-      return str.str();
+      result.reserve(total_size);
+
+      for (auto &scan : Children) {
+         if (not scan.Attribs.empty() and scan.Attribs[0].isContent()) {
+            result += scan.Attribs[0].Value;
+         }
+      }
+      return result;
    }
 } XMLTAG;
 
@@ -164,6 +192,15 @@ struct Count { CSTRING XPath; int Result; static const AC id = AC(-13); ERR call
 struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct LoadSchema { CSTRING Path; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ValidateDocument { static const AC id = AC(-27); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -174,13 +211,16 @@ class objXML : public Object {
 
    using create = pf::Create<objXML>;
 
-   STRING    Path;      // Set this field if the XML document originates from a file source.
-   OBJECTPTR Source;    // Set this field if the XML data is to be sourced from another object.
-   XMF       Flags;     // Controls XML parsing behaviour and processing options.
-   int       Start;     // Set a starting cursor to affect the starting point for some XML operations.
-   int       Modified;  // A timestamp of when the XML data was last modified.
+   STRING    Path;    // Set this field if the XML document originates from a file source.
+   STRING    DocType; // Root element name from DOCTYPE declaration
+   STRING    PublicID; // Public identifier for external DTD
+   STRING    SystemID; // System identifier for external DTD
+   OBJECTPTR Source;  // Set this field if the XML data is to be sourced from another object.
+   XMF       Flags;   // Controls XML parsing behaviour and processing options.
+   int       Start;   // Set a starting cursor to affect the starting point for some XML operations.
+   int       Modified; // A timestamp of when the XML data was last modified.
    ERR       ParseError; // Private
-   int       LineNo;    // Private
+   int       LineNo;  // Private
    public:
    typedef pf::vector<XMLTag> TAGS;
    typedef pf::vector<XMLTag>::iterator CURSOR;
@@ -308,12 +348,75 @@ class objXML : public Object {
       if (Result) *Result = args.Result;
       return(error);
    }
+   inline ERR registerNamespace(CSTRING URI, uint32_t * Result) noexcept {
+      struct xml::RegisterNamespace args = { URI, (uint32_t)0 };
+      ERR error = Action(AC(-19), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR getNamespaceURI(uint32_t NamespaceID, CSTRING * Result) noexcept {
+      struct xml::GetNamespaceURI args = { NamespaceID, (CSTRING)0 };
+      ERR error = Action(AC(-20), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR setTagNamespace(int TagID, int NamespaceID) noexcept {
+      struct xml::SetTagNamespace args = { TagID, NamespaceID };
+      return(Action(AC(-21), this, &args));
+   }
+   inline ERR resolvePrefix(CSTRING Prefix, int TagID, uint32_t * Result) noexcept {
+      struct xml::ResolvePrefix args = { Prefix, TagID, (uint32_t)0 };
+      ERR error = Action(AC(-22), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
+   inline ERR setVariable(CSTRING Key, CSTRING Value) noexcept {
+      struct xml::SetVariable args = { Key, Value };
+      return(Action(AC(-23), this, &args));
+   }
+   inline ERR getEntity(CSTRING Name, CSTRING * Value) noexcept {
+      struct xml::GetEntity args = { Name, (CSTRING)0 };
+      ERR error = Action(AC(-24), this, &args);
+      if (Value) *Value = args.Value;
+      return(error);
+   }
+   inline ERR getNotation(CSTRING Name, CSTRING * Value) noexcept {
+      struct xml::GetNotation args = { Name, (CSTRING)0 };
+      ERR error = Action(AC(-25), this, &args);
+      if (Value) *Value = args.Value;
+      return(error);
+   }
+   inline ERR loadSchema(CSTRING Path) noexcept {
+      struct xml::LoadSchema args = { Path };
+      return(Action(AC(-26), this, &args));
+   }
+   inline ERR validateDocument() noexcept {
+      return(Action(AC(-27), this, nullptr));
+   }
 
    // Customised field setting
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
+      auto field = &this->Class->Dictionary[12];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setDocType(T && Value) noexcept {
+      auto target = this;
       auto field = &this->Class->Dictionary[9];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setPublic(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[17];
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+   }
+
+   template <class T> inline ERR setSystem(T && Value) noexcept {
+      auto target = this;
+      auto field = &this->Class->Dictionary[7];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -335,17 +438,40 @@ class objXML : public Object {
 
    inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[18];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[11];
+      auto field = &this->Class->Dictionary[14];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 
 };
+
+typedef struct XPathValue {
+   XPVT   type;                 // Identifies the type of value stored
+   double number_value;
+   std::string string_value;
+   pf::vector<XMLTag *> node_set;
+   std::optional<std::string> node_set_string_override;
+   std::vector<std::string> node_set_string_values;
+   std::vector<const XMLAttrib *> node_set_attributes;
+   bool boolean_value = false;
+
+   XPathValue(XPVT pType) : type(pType), number_value(0) { }
+
+   explicit XPathValue(const pf::vector<XMLTag *> &Nodes,
+      std::optional<std::string> NodeSetString = std::nullopt,
+      std::vector<std::string> NodeSetStrings = {},
+      std::vector<const XMLAttrib *> NodeSetAttributes = {})
+      : type(XPVT::NodeSet),
+        node_set(Nodes),
+        node_set_string_override(std::move(NodeSetString)),
+        node_set_string_values(std::move(NodeSetStrings)),
+        node_set_attributes(std::move(NodeSetAttributes)) {}
+} XPATHVALUE;
 
 //********************************************************************************************************************
 
@@ -399,3 +525,34 @@ inline void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &
 }
 
 } // namespace
+#ifdef PARASOL_STATIC
+#define JUMPTABLE_XML [[maybe_unused]] static struct XMLBase *XMLBase = nullptr;
+#else
+#define JUMPTABLE_XML struct XMLBase *XMLBase = nullptr;
+#endif
+
+struct XMLBase {
+#ifndef PARASOL_STATIC
+   ERR (*_XValueToNumber)(struct XPathValue *Value, double *Result);
+   ERR (*_XValueToString)(const struct XPathValue *Value, std::string *Result);
+   ERR (*_XValueNodes)(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
+#endif // PARASOL_STATIC
+};
+
+#ifndef PRV_XML_MODULE
+#ifndef PARASOL_STATIC
+extern struct XMLBase *XMLBase;
+namespace xml {
+inline ERR XValueToNumber(struct XPathValue *Value, double *Result) { return XMLBase->_XValueToNumber(Value,Result); }
+inline ERR XValueToString(const struct XPathValue *Value, std::string *Result) { return XMLBase->_XValueToString(Value,Result); }
+inline ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result) { return XMLBase->_XValueNodes(Value,Result); }
+} // namespace
+#else
+namespace xml {
+extern ERR XValueToNumber(struct XPathValue *Value, double *Result);
+extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
+extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
+} // namespace
+#endif // PARASOL_STATIC
+#endif
+

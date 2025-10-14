@@ -1212,6 +1212,63 @@ extern "C" int winCreateSharedMemory(char *Name, int mapsize, int initial_size, 
 }
 
 //********************************************************************************************************************
+// Allocate memory with OS-level protection using VirtualAlloc
+
+extern "C" void * winAllocProtectedMemory(size_t Size, int ProtectionFlags)
+{
+   if (Size IS 0) return nullptr;
+
+   // The caller must provide a page-aligned size (see align_page_size).
+   // No need to realign here.
+
+   // Determine protection flags from MEM flags
+   DWORD protect = PAGE_NOACCESS;
+   if (ProtectionFlags IS 0x00030000) protect = PAGE_READWRITE;  // MEM::READ_WRITE
+   else if (ProtectionFlags & 0x00020000) protect = PAGE_READWRITE;  // MEM::WRITE
+   else if (ProtectionFlags & 0x00010000) protect = PAGE_READONLY;   // MEM::READ
+
+   return VirtualAlloc(nullptr, Size, MEM_COMMIT | MEM_RESERVE, protect);
+}
+
+//********************************************************************************************************************
+// Free memory allocated with VirtualAlloc
+
+extern "C" int winFreeProtectedMemory(void *Address, size_t Size)
+{
+   if (!Address) return 0;
+   // VirtualFree with MEM_RELEASE ignores the size parameter and releases the entire region
+   return VirtualFree(Address, 0, MEM_RELEASE) ? 1 : 0;
+}
+
+//********************************************************************************************************************
+// Get the system page size
+
+extern "C" size_t winGetPageSize(void)
+{
+   SYSTEM_INFO si;
+   GetSystemInfo(&si);
+   return si.dwPageSize;
+}
+
+//********************************************************************************************************************
+// Change memory protection flags on an existing VirtualAlloc allocation
+
+extern "C" int winProtectMemory(void *Address, size_t Size, bool Read, bool Write, bool Exec)
+{
+   if ((not Address) or (Size == 0)) return 0;
+
+   DWORD protect = PAGE_NOACCESS;
+   if (Write and Exec) protect = PAGE_EXECUTE_READWRITE;
+   else if (Write) protect = PAGE_READWRITE;
+   else if (Read and Exec) protect = PAGE_EXECUTE_READ;
+   else if (Read) protect = PAGE_READONLY;
+   else if (Exec) protect = PAGE_EXECUTE;
+
+   DWORD old_protect;
+   return VirtualProtect(Address, Size, protect, &old_protect) ? 1 : 0;
+}
+
+//********************************************************************************************************************
 
 extern "C" int winDeleteFile(const char *Path)
 {
@@ -1465,11 +1522,9 @@ extern "C" int8_t winGetCommand(char *Path, char *Buffer, int BufferSize)
 
 extern "C" int winCurrentDirectory(char *Buffer, int BufferSize)
 {
-   int16_t i, len;
-
    Buffer[0] = 0;
-   if ((len = GetModuleFileNameA(nullptr, Buffer, BufferSize))) {
-      for (i=len; i > 0; i--) {
+   if (auto len = GetModuleFileNameA(nullptr, Buffer, BufferSize)) {
+      for (auto i=len; i > 0; i--) {
          if (Buffer[i] IS '\\') {
             Buffer[i+1] = 0;
             break;

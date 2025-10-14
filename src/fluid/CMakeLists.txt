@@ -35,6 +35,7 @@ if (MSVC)
    set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
 
    # NOTE: Binaries are built amongst the source files when building with MSVC
+   # Use full path to MSVC linker to avoid conflicts with Git's link.exe
 
    ExternalProject_Add(
       luajit
@@ -42,7 +43,7 @@ if (MSVC)
       CONFIGURE_COMMAND ""
       BUILD_IN_SOURCE TRUE
       BUILD_ALWAYS TRUE
-      BUILD_COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild.bat" "static"
+      BUILD_COMMAND ${LUAJIT_SRC}/msvcbuild.bat static
       BUILD_BYPRODUCTS ${LUAJIT_LINK}
       INSTALL_COMMAND ""
       UPDATE_COMMAND ""

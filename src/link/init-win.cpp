@@ -16,8 +16,8 @@ extern "C" {
 DLLCALL APTR WINAPI GetProcAddress(APTR, CSTRING);
 DLLCALL int WINAPI FreeLibrary(APTR);
 }
-typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
-typedef void CLOSECORE(void);
+using OPENCORE = ERR(struct OpenInfo *, struct CoreBase **);
+using CLOSECORE = void(void);
 
 struct CoreBase *CoreBase;
 static APTR find_core(char *PathBuffer, int Size);
@@ -56,7 +56,7 @@ extern "C" const char * init_parasol(int argc, CSTRING *argv)
    info.Error = ERR::Okay;
    info.Flags = OPF::ARGS|OPF::ERROR;
 
-   if (OpenCore(&info, &CoreBase) == ERR::Okay) return nullptr;
+   if (OpenCore(&info, &CoreBase) IS ERR::Okay) return nullptr;
    else if (info.Error IS ERR::CoreVersion) {
       return "This program requires the latest version of the Parasol framework.\nPlease visit www.parasol.ws to upgrade.";
    }

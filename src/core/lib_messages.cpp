@@ -143,7 +143,7 @@ ERR AddMsgHandler(MSGID MsgType, FUNCTION *Routine, MsgHandler **Handle)
    if (auto lock = std::unique_lock{glmMsgHandler}) {
       MsgHandler *handler;
       if (AllocMemory(sizeof(MsgHandler), MEM::MANAGED, (APTR *)&handler, nullptr) IS ERR::Okay) {
-         set_memory_manager(handler, &glResourceMsgHandler);
+         SetResourceMgr(handler, &glResourceMsgHandler);
 
          handler->Prev     = nullptr;
          handler->Next     = nullptr;
@@ -614,7 +614,7 @@ ERR WaitForObjects(PMF Flags, int TimeOut, ObjectSignal *ObjectSignals)
    // Refer to the Task class for the message interception routines
    pf::Log log(__FUNCTION__);
 
-   ankerl::unordered_dense::map<OBJECTID, ObjectSignal> saved_list;
+   std::unordered_map<OBJECTID, ObjectSignal> saved_list;
 
    // Message processing is only possible from the main thread (for system design and synchronisation reasons)
    if (!tlMainThread) return log.warning(ERR::OutsideMainThread);

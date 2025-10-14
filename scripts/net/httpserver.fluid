@@ -1208,7 +1208,15 @@ local function matchRoute(serverInstance, method, path)
          -- Convert route pattern to proper regex pattern
          -- :param becomes ([^/]+), * becomes (.*), escape regex special chars
          local regexPattern = pattern
-         regexPattern = regexPattern:gsub('([%.%+%-%*%?%[%]%(%)])', '\\%1') -- Escape regex chars
+
+         -- NOTE: SRELL follows the ECMAScript grammar strictly and treats escapes for
+         -- characters that do not require escaping (like '-') as literal backslashes.
+         -- std::regex previously accepted these permissive escapes, so existing route
+         -- patterns with dashes kept working.  Avoid escaping '-' so the resulting
+         -- pattern remains portable across engines.
+
+         -- regexPattern = regexPattern:gsub('([%.%+%-%*%?%[%]%(%)])', '\\%1') -- Escape regex chars for std::regex
+         regexPattern = regexPattern:gsub('([%.%+%*%?%[%]%(%)])', '\\%1') -- Escape regex for SRELL
          regexPattern = regexPattern:gsub(':([%w_]+)', '([^/]+)') -- :param -> ([^/]+)
          regexPattern = regexPattern:gsub('\\%*', '(.*)') -- \* -> (.*)
          regexPattern = '^' .. regexPattern .. '$'
@@ -1815,6 +1823,7 @@ httpServer.start = function(Options)
       feedback = function(Server, ClientSocket, State)
          if State == NTC_CONNECTED then
             -- New client connection
+            msg('New client connection')
          elseif State == NTC_DISCONNECTED then
             -- Client disconnected
          end

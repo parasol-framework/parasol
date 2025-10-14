@@ -601,10 +601,12 @@ class objBitmap : public Object {
       return (RGB.Red << ColourFormat->RedPos) | (RGB.Green << ColourFormat->GreenPos) | (RGB.Blue << ColourFormat->BluePos) | (Alpha << ColourFormat->AlphaPos);
    }
 
+   // Modify the Data pointer to point to a specific pixel offset, return the original Data value which must be restored later.
+
    inline uint8_t * offset(int X, int Y) {
-      auto r_data = Data;
+      auto orig_data = Data;
       Data += (X * BytesPerPixel) + (Y * LineWidth);
-      return r_data;
+      return orig_data;
    }
 
    // Colour unpacking routines
@@ -1698,9 +1700,9 @@ class objSurface : public Object {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_DISPLAY static struct DisplayBase *DisplayBase;
+#define JUMPTABLE_DISPLAY [[maybe_unused]] static struct DisplayBase *DisplayBase = nullptr;
 #else
-#define JUMPTABLE_DISPLAY struct DisplayBase *DisplayBase;
+#define JUMPTABLE_DISPLAY struct DisplayBase *DisplayBase = nullptr;
 #endif
 
 struct DisplayBase {

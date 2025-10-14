@@ -96,8 +96,8 @@ public:
       spline_point(pf::POINT<float> pPoint, float pAngle) : point(pPoint), angle(pAngle) { }
    };
 
-   typedef std::vector<float> DISTANCES;
-   typedef std::vector<spline_point> SPLINE_POINTS;
+   using DISTANCES = std::vector<float>;
+   using SPLINE_POINTS = std::vector<spline_point>;
 
    class spline_path {
    public:

@@ -20,6 +20,7 @@
 # cl /nologo /c /O2 /W3 /D_CRT_SECURE_NO_DEPRECATE /D_CRT_STDIO_INLINE=__declspec(dllexport)__inline lj_*.c lib_*.c
 # lib /nologo /nodefaultlib /OUT:lua51.lib lj_*.obj lib_*.obj
 
+cmake_minimum_required(VERSION 3.15)
 project(LuaJIT C ASM)
 
 if (APPLE)
@@ -38,41 +39,44 @@ include (CheckFunctionExists)
 include (CheckCSourceCompiles)
 include (CheckTypeSize)
 
-add_compile_definitions("LUAJIT_ENABLE_LUA52COMPAT")
-add_compile_definitions("LUAJIT_DISABLE_FFI")
+# Accumulate common compile definitions for later, apply per-target.
+set(LJ_COMMON_DEFS LUAJIT_ENABLE_LUA52COMPAT)
 
 if (LUAJIT_DISABLE_JIT)
-   add_compile_definitions("LUAJIT_DISABLE_JIT")
+   list(APPEND LJ_COMMON_DEFS LUAJIT_DISABLE_JIT)
 endif ()
 
 if (LUAJIT_CPU_SSE2)
-   add_compile_definitions("LUAJIT_CPU_SSE2")
+   list(APPEND LJ_COMMON_DEFS LUAJIT_CPU_SSE2)
 endif ()
 
 if (LUAJIT_CPU_NOCMOV)
-   add_compile_definitions("LUAJIT_CPU_NOCMOV")
+   list(APPEND LJ_COMMON_DEFS LUAJIT_CPU_NOCMOV)
 endif ()
 
 if (LUAJIT_USE_SYSMALLOC)
-   add_compile_definitions("LUAJIT_USE_SYSMALLOC")
+   list(APPEND LJ_COMMON_DEFS LUAJIT_USE_SYSMALLOC)
 endif ()
 
 if (LUAJIT_USE_GDBJIT)
-   add_compile_definitions("LUAJIT_USE_GDBJIT")
+   list(APPEND LJ_COMMON_DEFS LUAJIT_USE_GDBJIT)
 endif ()
 
 if (LUA_USE_ASSERT)
-   add_compile_definitions("LUA_USE_ASSERT")
+   list(APPEND LJ_COMMON_DEFS LUA_USE_ASSERT)
 endif ()
 
 check_type_size ("void*" SIZEOF_VOID_P)
 if (SIZEOF_VOID_P EQUAL 8)
-   add_compile_definitions("_FILE_OFFSET_BITS=64" "_LARGEFILE_SOURCE")
+   list(APPEND LJ_COMMON_DEFS _FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE)
 endif ()
 
 if ( WIN32 AND NOT CYGWIN )
-  add_compile_definitions ("LUAJIT_OS=LUAJIT_OS_WINDOWS")
-  add_compile_options("-malign-double")
+  list(APPEND LJ_COMMON_DEFS LUAJIT_OS=LUAJIT_OS_WINDOWS)
+  # Only GCC/Clang understand -malign-double; avoid on MSVC.
+  if (NOT MSVC)
+    add_compile_options("-malign-double")
+  endif ()
   set ( LJVM_MODE coffasm )
 elseif ( APPLE )
   set ( CMAKE_EXE_LINKER_FLAGS "-pagezero_size 10000 -image_base 100000000 ${CMAKE_EXE_LINKER_FLAGS}" )
@@ -191,14 +195,15 @@ if (TARGET_LJARCH STREQUAL "ppc")
 endif ()
 
 add_executable (minilua src/host/minilua.c)
-set_target_properties (minilua PROPERTIES COMPILE_DEFINITIONS "${TARGET_ARCH}")
+target_compile_definitions(minilua PRIVATE ${TARGET_ARCH} ${LJ_COMMON_DEFS})
+target_include_directories(minilua PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 check_library_exists (m sin "" MINILUA_USE_LIBM)
 if (MINILUA_USE_LIBM)
   target_link_libraries (minilua m)
 endif ()
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h
-  COMMAND minilua ${CMAKE_CURRENT_SOURCE_DIR}/dynasm/dynasm.lua ${DASM_FLAGS} -o ${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h ${CMAKE_CURRENT_SOURCE_DIR}/src/vm_${DASM_ARCH}.dasc
+  COMMAND $<TARGET_FILE:minilua> ${CMAKE_CURRENT_SOURCE_DIR}/dynasm/dynasm.lua ${DASM_FLAGS} -o ${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h ${CMAKE_CURRENT_SOURCE_DIR}/src/vm_${DASM_ARCH}.dasc
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/dynasm/dynasm.lua minilua
 )
 
@@ -226,11 +231,12 @@ ${CMAKE_CURRENT_BINARY_DIR}/buildvm_arch.h)
 
 ## GENERATE
 add_executable (buildvm ${SRC_BUILDVM})
-set_target_properties (buildvm PROPERTIES COMPILE_DEFINITIONS "${TARGET_ARCH}")
+target_compile_definitions(buildvm PRIVATE ${TARGET_ARCH} ${LJ_COMMON_DEFS})
+target_include_directories(buildvm PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/dynasm ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 macro(add_buildvm_target _target _mode)
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${_target}
-    COMMAND buildvm ARGS -m ${_mode} -o ${CMAKE_CURRENT_BINARY_DIR}/${_target} ${ARGN}
+    COMMAND $<TARGET_FILE:buildvm> -m ${_mode} -o ${CMAKE_CURRENT_BINARY_DIR}/${_target} ${ARGN}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     DEPENDS buildvm ${ARGN}
   )
@@ -244,23 +250,65 @@ else ()
    set (LJ_VM_SRC ${CMAKE_CURRENT_BINARY_DIR}/lj_vm.s)
 endif ()
 
-add_buildvm_target ( lj_ffdef.h   ffdef   ${SRC_LJLIB} )
-add_buildvm_target ( lj_bcdef.h  bcdef  ${SRC_LJLIB} )
-add_buildvm_target ( lj_folddef.h folddef src/lj_opt_fold.c )
-add_buildvm_target ( lj_recdef.h  recdef  ${SRC_LJLIB} )
-add_buildvm_target ( lj_libdef.h  libdef  ${SRC_LJLIB} )
-add_buildvm_target ( vmdef.lua  vmdef  ${SRC_LJLIB} )
+# Generate headers into the source tree so quoted includes prefer them.
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_ffdef.h
+  COMMAND $<TARGET_FILE:buildvm> -m ffdef -o ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_ffdef.h ${SRC_LJLIB}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS buildvm ${SRC_LJLIB}
+)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_bcdef.h
+  COMMAND $<TARGET_FILE:buildvm> -m bcdef -o ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_bcdef.h ${SRC_LJLIB}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS buildvm ${SRC_LJLIB}
+)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_folddef.h
+  COMMAND $<TARGET_FILE:buildvm> -m folddef -o ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_folddef.h src/lj_opt_fold.c
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS buildvm src/lj_opt_fold.c
+)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_recdef.h
+  COMMAND $<TARGET_FILE:buildvm> -m recdef -o ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_recdef.h ${SRC_LJLIB}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS buildvm ${SRC_LJLIB}
+)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_libdef.h
+  COMMAND $<TARGET_FILE:buildvm> -m libdef -o ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_libdef.h ${SRC_LJLIB}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS buildvm ${SRC_LJLIB}
+)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/jit/vmdef.lua
+  COMMAND $<TARGET_FILE:buildvm> -m vmdef -o ${CMAKE_CURRENT_SOURCE_DIR}/src/jit/vmdef.lua ${SRC_LJLIB}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS buildvm ${SRC_LJLIB}
+)
 
 set (DEPS
   ${LJ_VM_SRC}
-  ${CMAKE_CURRENT_BINARY_DIR}/lj_ffdef.h
-  ${CMAKE_CURRENT_BINARY_DIR}/lj_bcdef.h
-  ${CMAKE_CURRENT_BINARY_DIR}/lj_libdef.h
-  ${CMAKE_CURRENT_BINARY_DIR}/lj_recdef.h
-  ${CMAKE_CURRENT_BINARY_DIR}/lj_folddef.h
-  ${CMAKE_CURRENT_BINARY_DIR}/vmdef.lua
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_ffdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_bcdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_libdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_recdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_folddef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/jit/vmdef.lua
   )
 
-include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR} dynasm src)
+set_source_files_properties(
+  ${LJ_VM_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_ffdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_bcdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_libdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_recdef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/lj_folddef.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/jit/vmdef.lua
+  PROPERTIES GENERATED TRUE)
 
 add_library(luajit STATIC src/ljamalg.c ${DEPS})
+set_target_properties(luajit PROPERTIES OUTPUT_NAME lua51)
+target_compile_definitions(luajit PRIVATE ${TARGET_ARCH} ${LJ_COMMON_DEFS})
+target_include_directories(luajit PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)

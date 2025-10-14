@@ -70,6 +70,7 @@ if file == nil then
    file = { ui = { } }
 end
 
+-- Read an entire file as a string.
 -- Will throw an exception if the file is not found or the complete data cannot be read.
 
 file.readAll = function(Path)
@@ -79,14 +80,22 @@ file.readAll = function(Path)
       error('Failed to open file "' .. nz(Path,'NIL') .. '": ' .. ex.message)
    end
 
-   local fileBuffer = string.alloc(fl.size)
-   local err, bytesRead = fl.acRead(fileBuffer)
+   local file_buffer = string.alloc(fl.size)
+   local err, bytes_read = fl.acRead(file_buffer)
    fl.free()
-   if err == ERR_Okay then
-      return fileBuffer
+   if (err == ERR_Okay) or (bytes_read != #file_buffer) then
+      return file_buffer
    else
-      error('Failed to read ' .. fl.size .. ' bytes from "' .. Path .. '"')
+      error('Failed to read ' .. #file_buffer .. ' bytes from "' .. Path .. '"')
    end
+end
+
+------------------------------------------------------------------------------
+
+file.writeAll = function(Path, Content)
+   local fl = obj.new('file', { path = Path, flags = 'WRITE|NEW' })
+   fl.acWrite(Content)
+   fl.free()
 end
 
 ------------------------------------------------------------------------------

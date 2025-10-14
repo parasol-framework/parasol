@@ -21,7 +21,6 @@ using namespace std::chrono_literals;
 
 #define PRV_CORE
 #define PRV_CORE_MODULE
-#define PRV_THREAD
 #ifndef __system__
 #define __system__
 #endif
@@ -33,20 +32,11 @@ using namespace std::chrono_literals;
  #include <semaphore.h>
 #endif
 
-#define PRV_METACLASS 1
-#define PRV_MODULE 1
-
 #include "microsoft/windefs.h"
 
 // See the makefile for optional defines
 
-constexpr int MAX_TASKS = 50;  // Maximum number of tasks allowed to run at once
-
-constexpr int SIZE_SYSTEM_PATH = 100;  // Max characters for the Parasol system path
-
 constexpr int MAX_THREADS   = 20;  // Maximum number of threads per process.
-constexpr int MAX_NB_LOCKS  = 20;  // Non-blocking locks apply when locking 'free-for-all' public memory blocks.  The maximum value is per-task, so keep the value low.
-constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit on the maximum number of threads/processes that can be active at any time.
 
 #define CLASSDB_HEADER 0x7f887f89
 
@@ -63,8 +53,6 @@ constexpr int MAX_WAITLOCKS = 60;  // This value is effectively imposing a limit
 #else
 #define WIN32OPEN 0
 #endif
-
-constexpr int LEN_VOLUME_NAME = 40;
 
 constexpr int DRIVETYPE_REMOVABLE = 1;
 constexpr int DRIVETYPE_CDROM     = 2;
@@ -104,15 +92,16 @@ struct RGB8;
 struct pfBase64Decode;
 struct FileInfo;
 struct DirInfo;
+struct ActionTable;
+struct FileFeedback;
+struct ResourceManager;
+struct MsgHandler;
+
 class objFile;
 class objStorageDevice;
 class objConfig;
 class objMetaClass;
 class objTask;
-struct ActionTable;
-struct FileFeedback;
-struct ResourceManager;
-struct MsgHandler;
 
 enum class RES    : int;
 enum class RP     : int;
@@ -143,8 +132,6 @@ enum class ALF    : uint16_t;
 enum class EVG    : int;
 enum class AC     : int;
 enum class MSGID  : int;
-
-#define STAT_FOLDER 0x0001
 
 struct THREADID : strong_typedef<THREADID, int> { // Internal thread ID, unrelated to the host platform.
    // Make constructors available
@@ -238,7 +225,7 @@ public:
    };
    MEMORYID MemoryID;   // Unique identifier
    OBJECTID OwnerID;    // The object that allocated this block.
-   uint32_t Size;       // 4GB max
+   uint32_t Size;       // 4GB max (user-requested size)
    THREADID ThreadLockID = THREADID(0);
    MEM      Flags;
    int16_t  AccessCount = 0; // Total number of locks
@@ -523,7 +510,7 @@ struct ClassRecord {
    std::string Header;
    std::string Icon;
 
-   static const int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
+   static constexpr int MIN_SIZE = sizeof(CLASSID) + sizeof(CLASSID) + sizeof(int) + (sizeof(int) * 4);
 
    ClassRecord() { }
 
@@ -696,17 +683,17 @@ extern extTask *glCurrentTask;
 extern "C" const ActionTable ActionTable[];
 extern const Function    glFunctions[];
 extern std::list<CoreTimer> glTimers;           // Locked with glmTimer
-extern ankerl::unordered_dense::map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup;  // Locked with glmObjectlookup
 extern ankerl::unordered_dense::map<std::string, struct ModHeader *> glStaticModules;
-extern ankerl::unordered_dense::map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
-extern ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.
-extern ankerl::unordered_dense::map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.
 extern ankerl::unordered_dense::map<CLASSID, ClassRecord> glClassDB; // Class DB populated either by static_modules.cpp or by pre-generated file if modular.
 extern ankerl::unordered_dense::map<CLASSID, extMetaClass *> glClassMap;
 extern ankerl::unordered_dense::map<uint32_t, std::string> glFields; // Reverse lookup for converting field hashes back to their respective names.
-extern ankerl::unordered_dense::map<OBJECTID, ObjectSignal> glWFOList;
+extern std::set<std::shared_ptr<std::jthread>> glAsyncThreads;
+extern std::unordered_map<std::string, std::vector<Object *>, CaseInsensitiveHash, CaseInsensitiveEqual> glObjectLookup;  // Locked with glmObjectlookup
+extern std::unordered_map<MEMORYID, PrivateAddress> glPrivateMemory;  // Locked with glmMemory: Using ankerl::unordered_dense for superior performance
+extern std::unordered_map<OBJECTID, ankerl::unordered_dense::set<MEMORYID>> glObjectMemory; // Locked with glmMemory.
+extern std::unordered_map<OBJECTID, ankerl::unordered_dense::set<OBJECTID>> glObjectChildren; // Locked with glmMemory.
+extern std::unordered_map<OBJECTID, ObjectSignal> glWFOList;
 extern std::map<std::string, ConfigKeys, CaseInsensitiveMap> glVolumes; // VolumeName = { Key, Value }
-extern ankerl::unordered_dense::set<std::shared_ptr<std::jthread>> glAsyncThreads;
 extern std::unordered_multimap<uint32_t, CLASSID> glWildClassMap; // Fast lookup for identifying classes by file extension
 extern int glWildClassMapTotal;
 extern std::vector<TaskRecord> glTasks;
@@ -716,6 +703,7 @@ extern "C" int glProcessID;   // Read only
 extern HOSTHANDLE glConsoleFD;
 extern int glStdErrFlags; // Read only
 extern int glValidateProcessID; // Used by core thread only.
+extern size_t glPageSize;
 extern std::atomic_int glMessageIDCount;
 extern std::atomic_int glGlobalIDCount;
 extern std::atomic_int glPrivateIDCounter;
@@ -1099,6 +1087,10 @@ extern "C" int winCloseHandle(WINHANDLE);
 extern "C" int winCreatePipe(WINHANDLE *Read, WINHANDLE *Write);
 extern "C" int winCreateSharedMemory(STRING, int, int, WINHANDLE *, APTR *);
 extern "C" WINHANDLE winCreateThread(APTR Function, APTR Arg, int StackSize, int *ID);
+extern "C" APTR winAllocProtectedMemory(size_t Size, int ProtectionFlags);
+extern "C" int winFreeProtectedMemory(APTR Address, size_t Size);
+extern "C" size_t winGetPageSize(void);
+extern "C" int winProtectMemory(APTR Address, size_t Size, bool, bool, bool);
 extern "C" int winGetCurrentThreadId(void);
 extern "C" void winDeathBringer(int Value);
 extern "C" int winDuplicateHandle(int, int, int, int *);
@@ -1186,15 +1178,6 @@ extern "C" int winSetSystemTime(int16_t Year, int16_t Month, int16_t Day, int16_
 #endif
 
 //********************************************************************************************************************
-// Internal function to set the manager for an allocated resource.
-
-inline void set_memory_manager(APTR Address, ResourceManager *Manager)
-{
-   ResourceManager **address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
-   address_mgr[0] = Manager;
-}
-
-//********************************************************************************************************************
 
 inline int64_t calc_timestamp(struct DateTime *Date) {
    return(Date->Second +
@@ -1214,6 +1197,12 @@ inline uint32_t reverse_long(uint32_t Value) {
             ((Value & 0x0000FF00) <<  8) |
             ((Value & 0x00FF0000) >>  8) |
             ((Value & 0xFF000000) >> 24));
+}
+
+// Align a size to the system page size
+
+inline size_t align_page_size(size_t Size) {
+   return ((Size + glPageSize - 1) / glPageSize) * glPageSize;
 }
 
 //********************************************************************************************************************

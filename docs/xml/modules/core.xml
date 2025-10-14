@@ -136,14 +136,14 @@
 <p>This function returns an array of all actions supported by the Core, including name, arguments and structure size.  The ID of each action is indicated by its index within the array.</p>
 <p>The <code>Name</code> field specifies the name of the action.  The <code>Args</code> field refers to the action's argument definition structure, which lists the argument names and their relevant types.  This is matched by the <code>Size</code> field, which indicates the byte-size of the action's related argument structure.  If the action does not support arguments, the <code>Args</code> and <code>Size</code> fields will be set to <code>NULL</code>.  The following illustrates two argument definition examples:</p>
 <pre>struct FunctionField argsCopyData[] = {
-   { "Destination", FD_INT  },
+   { &quot;Destination&quot;, FD_INT  },
    { nullptr, 0 }
 };
 
 struct FunctionField argsResize[] = {
-   { "Width",  FD_DOUBLE },
-   { "Height", FD_DOUBLE },
-   { "Depth",  FD_DOUBLE },
+   { &quot;Width&quot;,  FD_DOUBLE },
+   { &quot;Height&quot;, FD_DOUBLE },
+   { &quot;Depth&quot;,  FD_DOUBLE },
    { nullptr, 0 }
 };
 </pre>
@@ -523,7 +523,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <prototype>objTask * CurrentTask()</prototype>
     <description>
 <p>This function returns the <class name="Task">Task</class> object of the active process.</p>
-<p>If there is a legitimate circumstance where there is no current task (e.g. if this function is called during Core initialisation) then the "system task" may be returned, which has ownership of Core resources.</p>
+<p>If there is a legitimate circumstance where there is no current task (e.g. if this function is called during Core initialisation) then the &quot;system task&quot; may be returned, which has ownership of Core resources.</p>
     </description>
     <result type="objTask *">Returns a pointer to the current Task object or NULL if failure.</result>
   </function>
@@ -615,7 +615,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
     <description>
 <p>The FindField() function checks if an object supports a specified field by scanning its class descriptor for a <code>FieldID</code>. If a matching field is declared, its descriptor is returned.  For example:</p>
 <pre>if (auto field = FindField(Display, FID_Width, NULL)) {
-   log.msg("The field name is \"%s\".", field-&gt;Name);
+   log.msg(&quot;The field name is \&quot;%s\&quot;.&quot;, field-&gt;Name);
 }
 </pre>
 <p>The resulting <st>Field</st> structure is immutable.</p>
@@ -639,7 +639,7 @@ typedef struct { EVENTID EventID; OBJECTID TaskID; OBJECTID ProcessID; } evTaskR
 <p>The FindObject() function searches for all objects that match a given name and can filter by class.</p>
 <p>The following example illustrates typical usage, and finds the most recent object created with a given name:</p>
 <pre>OBJECTID id;
-FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
+FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
 </pre>
 <p>If FindObject() cannot find any matching objects then it will return an error code.</p>
     </description>
@@ -727,7 +727,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
       <param type="ERR" name="Error">The error code to lookup.</param>
     </input>
     <description>
-<p>The GetErrorMsg() function converts error codes into human readable strings.  If the <code>Error</code> is invalid, a string of "Unknown error code" is returned.</p>
+<p>The GetErrorMsg() function converts error codes into human readable strings.  If the <code>Error</code> is invalid, a string of &quot;Unknown error code&quot; is returned.</p>
     </description>
     <result type="CSTRING">A human readable string for the error code is returned.  By default error codes are returned in English, however if a translation table exists for the user's own language, the string will be translated.</result>
   </function>
@@ -934,7 +934,7 @@ FindObject("SystemPointer", CLASSID::POINTER, FOF::NIL, &amp;id);
 <p>This function returns the attributes of a memory block, including the start address, parent object, memory ID, size and flags.  The following example illustrates correct use of this function:</p>
 <pre>MemInfo info;
 if (!MemoryIDInfo(memid, &amp;info)) {
-   log.msg("Memory block #%d is %d bytes large.", info.MemoryID, info.Size);
+   log.msg(&quot;Memory block #%d is %d bytes large.&quot;, info.MemoryID, info.Size);
 }
 </pre>
 <p>If the call fails, the <st>MemInfo</st> structure's fields will be driven to <code>NULL</code> and an error code is returned.</p>
@@ -962,7 +962,7 @@ if (!MemoryIDInfo(memid, &amp;info)) {
 <p>This function returns the attributes of a memory block.  Information includes the start address, parent object, memory ID, size and flags of the memory address that you are querying.  The following code segment illustrates correct use of this function:</p>
 <pre>MemInfo info;
 if (!MemoryPtrInfo(ptr, &amp;info)) {
-   log.msg("Address %p is %d bytes large.", info.Start, info.Size);
+   log.msg(&quot;Address %p is %d bytes large.&quot;, info.Start, info.Size);
 }
 </pre>
 <p>If the call to MemoryPtrInfo() fails then the <st>MemInfo</st> structure's fields will be driven to <code>NULL</code> and an error code will be returned.</p>
@@ -1132,6 +1132,27 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
   </function>
 
   <function>
+    <name>ProtectMemory</name>
+    <category>Memory</category>
+    <comment>Change the access permissions of a memory block.</comment>
+    <prototype>ERR ProtectMemory(APTR Address, MEM Flags)</prototype>
+    <input>
+      <param type="APTR" name="Address">Pointer to a memory block obtained from <function>AllocMemory</function>.</param>
+      <param type="MEM" name="Flags" lookup="MEM">New access flags (MEM::READ, MEM::WRITE).</param>
+    </input>
+    <description>
+<p>This function changes the access permissions of a memory block that was allocated with the <code>MEM::READ</code> and/or <code>MEM::WRITE</code> flags.  This allows you to tighten or relax the access permissions of a memory block as your program's logic requires.</p>
+    </description>
+    <result type="ERR">
+      <error code="Okay">Operation successful.</error>
+      <error code="Args">Invalid flags specified or memory block is not protected.</error>
+      <error code="MemoryDoesNotExist">The memory block is not valid or was not allocated with protection.</error>
+      <error code="SystemCall">A system call failed.</error>
+      <error code="NullArgs">Address is NULL.</error>
+    </result>
+  </function>
+
+  <function>
     <name>QueueAction</name>
     <category>Objects</category>
     <comment>Delay the execution of an action by adding the call to the message queue.</comment>
@@ -1241,7 +1262,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function will register a file descriptor that will be monitored for activity when the task is sleeping.  When activity occurs on the descriptor, the callback referenced in <code>Routine</code> will be called.  The callback should read all information from the descriptor, as the process will not be able to sleep if data is back-logged.</p>
 <p>The file descriptor should be configured as non-blocking before registration.  Blocking descriptors may cause the program to hang if not handled carefully.</p>
 <p>File descriptors support read and write states simultaneously, and a callback routine can be applied to either state. Set the <code>RFD::READ</code> flag to apply the <code>Routine</code> to the read callback and <code>RFD::WRITE</code> for the write callback.  If neither flag is specified, <code>RFD::READ</code> is assumed.  A file descriptor may have up to one subscription per flag, for example a read callback can be registered, followed by a write callback in a second call. Individual callbacks can be removed by combining the read/write flags with <code>RFD::REMOVE</code>.</p>
-<p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions do not apply, except to sockets.</p>
+<p>The capabilities of this function and FD handling in general is developed to suit the host platform. On POSIX compliant systems, standard file descriptors are used.  In Microsoft Windows, object handles are used and blocking restrictions are not imposed.</p>
 <p>Call the <code>DeregisterFD()</code> macro to simplify unsubscribing once the file descriptor is no longer needed or is destroyed.</p>
     </description>
     <result type="ERR">
@@ -1334,7 +1355,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
     <input>
       <param type="const std::string_view &amp;" name="Path">The path to be resolved.</param>
       <param type="RSF" name="Flags" lookup="RSF">Optional flags.</param>
-      <param type="std::string *" name="Result">Must point to a <code>std::string</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.</param>
+      <param type="std::string *" name="Result">Must point to a <code>std::string</code> variable so that the resolved path can be stored.  If <code>NULL</code>, ResolvePath() will work as normal and return a valid error code without the result string.  The value is unchanged if the error code is not <code>ERR::Okay</code>.</param>
     </input>
     <description>
 <p>This function will convert a file path to its resolved form, according to the host system.  For example, a Linux system might resolve <code>drive1:documents/readme.txt</code> to <code>/documents/readme.txt</code>.  A Windows system might resolve the path to <code>c:\documents\readme.txt</code>.</p>
@@ -1350,8 +1371,8 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
       <error code="Okay">The <code>Path</code> was resolved.</error>
       <error code="Search">The given volume does not exist.</error>
       <error code="FileNotFound">The path was resolved, but the referenced file or folder does not exist (use <code>NO_FILE_CHECK</code> to avoid this error code).</error>
-      <error code="LockFailed">Failed to lock a required resource.</error>
-      <error code="AllocMemory">The result string could not be allocated.</error>
+      <error code="InvalidPath">The path is malformed.</error>
+      <error code="VirtualVolume">The path refers to a virtual volume (use <code>CHECK_VIRTUAL</code> to return <code>Okay</code> instead).</error>
       <error code="Loop">The volume refers back to itself.</error>
       <error code="NullArgs">Invalid parameters were specified.</error>
     </result>
@@ -1384,7 +1405,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <pre>DirInfo *info;
 if (!OpenDir(path, RDF::FILE|RDF::FOLDER, &amp;info)) {
    while (!ScanDir(info)) {
-      log.msg("File: %s", info-&gt;Name);
+      log.msg(&quot;File: %s&quot;, info-&gt;Name);
    }
    FreeResource(info);
 }
@@ -1569,6 +1590,37 @@ FreeResource(memory);  // Reference is no longer valid
   </function>
 
   <function>
+    <name>SetResourceMgr</name>
+    <category>Memory</category>
+    <comment>Define a resource manager for a memory block originating from <function>AllocMemory</function>.</comment>
+    <prototype>void SetResourceMgr(APTR Address, struct ResourceManager * Manager)</prototype>
+    <input>
+      <param type="APTR" name="Address">The address of a <code>MEM::MANAGED</code> memory block allocated by <function>AllocMemory</function>.</param>
+      <param type="struct ResourceManager *" name="Manager">Must refer to an initialised ResourceManager structure.</param>
+    </input>
+    <description>
+<p>SetResourceMgr() associates a ResourceManager with a memory block that was allocated with the <code>MEM::MANAGED</code> flag. This allows customised memory management logic to be used when an event is triggered on a memory block, such as the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with Parasol's memory management system.</p>
+<p>This working example from the XPath module ensures that <code>XPathNode</code> objects are properly destructed when passed to <function>FreeResource</function>:</p>
+<pre>static ERR xpnode_free(APTR Address)
+{
+   ((XPathNode *)Address)-&gt;~XPathNode();
+   return ERR::Okay;
+}
+
+static ResourceManager glNodeManager = {
+   &quot;XPathNode&quot;,  // Name of the custom resource type
+   &amp;xpnode_free  // Custom destructor function
+};
+
+   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&amp;node, nullptr) IS ERR::Okay) {
+      SetResourceMgr(node, &amp;glNodeManager);
+      new (node) XPathNode(); // Placement new
+   }
+</pre>
+    </description>
+  </function>
+
+  <function>
     <name>SetResourcePath</name>
     <category>System</category>
     <comment>Redefines the location of a system resource path.</comment>
@@ -1623,7 +1675,7 @@ FreeResource(memory);  // Reference is no longer valid
       <param type="FUNCTION *" name="Callback">A C/C++ function to callback when the action is triggered.</param>
     </input>
     <description>
-<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This strategy is referred to as "action monitoring" and is often used for responding to UI events and the termination of objects.</p>
+<p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This strategy is referred to as &quot;action monitoring&quot; and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the <code>Callback</code> will execute in the space attributed to to the caller.</p>
 <p>The following example illustrates how to listen to a <class name="Surface">Surface</class> object's Redimension action and respond to resize events:</p>
 <pre>SubscribeAction(surface, AC::Redimension, C_FUNCTION(notify_resize, meta_ptr));
@@ -2665,7 +2717,6 @@ FreeResource(memory);  // Reference is no longer valid
       <const name="KEY_STATE">Maintains the state of key qualifiers such as caps-lock and the shift keys.</const>
       <const name="LOG_DEPTH">The current depth of log messages.</const>
       <const name="LOG_LEVEL">The current level of log detail (larger numbers indicate more detail).</const>
-      <const name="MAX_PROCESSES">The maximum number of processes that can be supported at any time.</const>
       <const name="MEMORY_USAGE">The total amount of memory used by the current process, in bytes.</const>
       <const name="OPEN_INFO">Pointer to the OpenInfo structure originally used to initialise the system.</const>
       <const name="PRIVILEGED">This is set to <code>true</code> if the process has elevated privileges (such as superuser or administrative rights).</const>

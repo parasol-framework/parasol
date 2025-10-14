@@ -649,9 +649,9 @@ inline ERR nsCreate(objNetSocket **NewNetSocketOut, OBJECTID ListenerID, APTR Cl
    else return ERR::CreateObject;
 }
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_NETWORK static struct NetworkBase *NetworkBase;
+#define JUMPTABLE_NETWORK [[maybe_unused]] static struct NetworkBase *NetworkBase = nullptr;
 #else
-#define JUMPTABLE_NETWORK struct NetworkBase *NetworkBase;
+#define JUMPTABLE_NETWORK struct NetworkBase *NetworkBase = nullptr;
 #endif
 
 struct NetworkBase {

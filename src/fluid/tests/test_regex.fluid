@@ -40,10 +40,13 @@ end
 function testMatchMethod()
    -- Simple match
    local word_regex = regex.new("(\\w+)")
-   local matches = word_regex.match("hello world")
-   assert(matches, "Should find match")
-   assert(matches[1] == "hello", "Full match should be 'hello'")
-   assert(matches[2] == "hello", "First capture group should be 'hello'")
+   local matches = word_regex.search("hello world")
+   assert(matches, "Match should succeed")
+   assert(#matches == 2, "Expected two matches (hello and world)")
+   assert(matches[1][1] == "hello", "Full match should be 'hello'")
+   assert(matches[1][2] == "hello", "Capture should be 'hello'")
+   assert(matches[2][1] == "world", "Full match should be 'world'")
+   assert(matches[2][2] == "world", "Capture should be 'world'")
 
    -- Multiple capture groups
    local email_regex = regex.new("([^@]+)@([^.]+)\\.(.+)")
@@ -61,9 +64,9 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testMatchAllMethod()
+function testSearchMethod()
    local digit_regex = regex.new("(\\d+)")
-   local all_matches = digit_regex.matchAll("abc123def456ghi")
+   local all_matches = digit_regex.search("abc123def456ghi")
    assert(#all_matches == 2, "Should find 2 digit sequences")
    assert(all_matches[1][1] == "123", "First match should be '123'")
    assert(all_matches[1][2] == "123", "First capture group should be '123'")
@@ -71,8 +74,8 @@ function testMatchAllMethod()
    assert(all_matches[2][2] == "456", "Second capture group should be '456'")
 
    -- Test with no matches
-   local no_matches = digit_regex.matchAll("hello world")
-   assert(#no_matches == 0, "Should return empty table for no matches")
+   local no_matches = digit_regex.search("hello world")
+   assert(no_matches == nil, "Should return nil for no matches")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -80,7 +83,7 @@ end
 function testReplaceMethod()
    local replace_regex = regex.new("\\d+")
    local result1 = replace_regex.replace("abc123def456", "XXX")
-   assert(result1 == "abcXXXdef456", "Should replace only first occurrence")
+   assert(result1 == "abcXXXdefXXX", "Failed to replace both occurrences")
 
    -- Test with backreferences
    local phone_regex = regex.new("(\\d{3})-(\\d{3})-(\\d{4})")
@@ -90,18 +93,14 @@ function testReplaceMethod()
    -- Test no match
    local no_replace = replace_regex.replace("hello world", "XXX")
    assert(no_replace == "hello world", "Should return original if no match")
-end
 
------------------------------------------------------------------------------------------------------------------------
-
-function testReplaceAllMethod()
    local all_replace_regex = regex.new("\\d+")
-   local all_result = all_replace_regex.replaceAll("abc123def456ghi", "XXX")
+   local all_result = all_replace_regex.replace("abc123def456ghi", "XXX")
    assert(all_result == "abcXXXdefXXXghi", "Should replace all occurrences")
 
    -- Test global replacement with backreferences
    local word_regex2 = regex.new("(\\w+)")
-   local caps_result = word_regex2.replaceAll("hello world", "[$1]")
+   local caps_result = word_regex2.replace("hello world", "[$1]")
    assert(caps_result == "[hello] [world]", "Should wrap all words in brackets")
 end
 
@@ -138,10 +137,6 @@ function testFlags()
    assert(icase_regex.test("HELLO"), "ICASE flag should work")
    assert(icase_regex.test("Hello"), "ICASE flag should work")
    assert(icase_regex.test("hello"), "ICASE flag should work")
-
-   -- Multiple flags (test combining)
-   local multi_flag_regex = regex.new("hello", regex.ICASE + regex.EXTENDED)
-   assert(multi_flag_regex.flags == (regex.ICASE + regex.EXTENDED), "Multiple flags should combine")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -160,27 +155,27 @@ end
 
 function testRealWorldPatterns()
    -- Email validation
-   local email_validator = regex.new("^[\\w._%+-]+@[\\w.-]+\\.[A-Za-z]{2,}$")
+   local email_validator = regex.new("^[\\w._%+\\-]+@[\\w.\\-]+\\.[A-Za-z]{2,}$")
    assert(email_validator.test("user@example.com"), "Valid email should pass")
    assert(email_validator.test("test.email+tag@domain.co.uk"), "Complex email should pass")
    assert(not email_validator.test("invalid.email"), "Invalid email should fail")
    assert(not email_validator.test("@invalid.com"), "Invalid email should fail")
 
    -- URL extraction
-   local url_extractor = regex.new("https?://[\\w.-]+(?:/[\\w./?%&=]*)?")
-   local url_matches = url_extractor.matchAll("Visit https://example.com or http://test.org/path")
+   local url_extractor = regex.new("https?://[\\w.\\-]+(?:/[\\w.\\/?%&=]*)?")
+   local url_matches = url_extractor.search("Visit https://example.com or http://test.org/path")
    assert(#url_matches == 2, "Should find 2 URLs")
    assert(url_matches[1][1] == "https://example.com", "First URL incorrect")
    assert(url_matches[2][1] == "http://test.org/path", "Second URL incorrect")
 
    -- HTML tag removal
    local html_stripper = regex.new("<[^>]*>")
-   local clean_text = html_stripper.replaceAll("<p>Hello <b>world</b>!</p>", "")
+   local clean_text = html_stripper.replace("<p>Hello <b>world</b>!</p>", "")
    assert(clean_text == "Hello world!", "Should strip HTML tags")
 
    -- Phone number formatting
    local phone_formatter = regex.new("\\D")
-   local digits_only = phone_formatter.replaceAll("(555) 123-4567", "")
+   local digits_only = phone_formatter.replace("(555) 123-4567", "")
    assert(digits_only == "5551234567", "Should extract digits only")
 end
 
@@ -206,9 +201,8 @@ end
          'testConstruction',
          'testTestMethod',
          'testMatchMethod',
-         'testMatchAllMethod',
+         'testSearchMethod',
          'testReplaceMethod',
-         'testReplaceAllMethod',
          'testSplitMethod',
          'testFlags',
          'testErrorHandling',

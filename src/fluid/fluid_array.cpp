@@ -593,7 +593,7 @@ static int array_copy(lua_State *Lua)
          // Convert and store based on array type
          switch(a->Type & (FD_DOUBLE|FD_INT64|FD_FLOAT|FD_POINTER|FD_STRING|FD_INT|FD_WORD|FD_BYTE)) {
             case FD_STRING:
-               if (auto str = lua_tostring(Lua, -1)) {
+               if (lua_tostring(Lua, -1)) {
                   luaL_error(Lua, "Writing to string arrays from tables is not yet supported.");
                   lua_pop(Lua, 1);
                   return 0;

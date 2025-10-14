@@ -37,9 +37,9 @@ static int number_index(lua_State *Lua)
          switch (num->Type) {
             case NUM_DOUBLE: lua_pushnumber(Lua, num->f64); break;
             case NUM_FLOAT:  lua_pushnumber(Lua, num->f32); break;
-            case NUM_LARGE:  lua_pushnumber(Lua, num->i64); break;
-            case NUM_LONG:   lua_pushinteger(Lua, num->i32); break;
-            case NUM_WORD:   lua_pushinteger(Lua, num->i16); break;
+            case NUM_INT64:  lua_pushnumber(Lua, num->i64); break;
+            case NUM_INT:    lua_pushinteger(Lua, num->i32); break;
+            case NUM_INT16:  lua_pushinteger(Lua, num->i16); break;
             case NUM_BYTE:   lua_pushinteger(Lua, num->i8); break;
             default: lua_pushstring(Lua, "?");
          }
@@ -60,6 +60,7 @@ static int number_f64(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->f64 = f64;
+      num->Type = NUM_DOUBLE;
       return 1;
    }
 
@@ -74,6 +75,7 @@ static int number_f32(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->f32 = f32;
+      num->Type = NUM_FLOAT;
       return 1;
    }
 
@@ -88,6 +90,7 @@ static int number_i32(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i32 = i32;
+      num->Type = NUM_INT;
       return 1;
    }
 
@@ -102,6 +105,7 @@ static int number_i64(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i64 = i64;
+      num->Type = NUM_INT64;
       return 1;
    }
 
@@ -116,6 +120,7 @@ static int number_i16(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i16 = i16;
+      num->Type = NUM_INT16;
       return 1;
    }
 
@@ -130,6 +135,7 @@ static int number_i8(lua_State *Lua)
       luaL_getmetatable(Lua, "Fluid.num");
       lua_setmetatable(Lua, -2);
       num->i8 = i8;
+      num->Type = NUM_BYTE;
       return 1;
    }
 
@@ -147,9 +153,9 @@ static int number_tostring(lua_State *Lua)
       switch (num->Type) {
          case NUM_DOUBLE: lua_pushfstring(Lua, std::to_string(num->f64).c_str()); return 1;
          case NUM_FLOAT:  lua_pushfstring(Lua, std::to_string(num->f32).c_str()); return 1;
-         case NUM_LARGE:  lua_pushstring(Lua, std::to_string(num->i64).c_str()); return 1;
-         case NUM_LONG:   lua_pushstring(Lua, std::to_string(num->i32).c_str()); return 1;
-         case NUM_WORD:   lua_pushstring(Lua, std::to_string(num->i16).c_str()); return 1;
+         case NUM_INT64:  lua_pushstring(Lua, std::to_string(num->i64).c_str()); return 1;
+         case NUM_INT:    lua_pushstring(Lua, std::to_string(num->i32).c_str()); return 1;
+         case NUM_INT16:  lua_pushstring(Lua, std::to_string(num->i16).c_str()); return 1;
          case NUM_BYTE:   lua_pushstring(Lua, std::to_string(num->i8).c_str()); return 1;
       }
    }
@@ -166,13 +172,15 @@ void register_number_class(lua_State *Lua)
 {
    static const luaL_Reg numlib_functions[] = {
       { "int",    number_i32 },
-      { "long",   number_i32 },
-      { "large",  number_i64 },
+      { "long",   number_i32 }, // Deprecated
+      { "int64",  number_i64 },
+      { "large",  number_i64 }, // Deprecated
       { "double", number_f64 },
       { "float",  number_f32 },
       { "byte",   number_i8 },
-      { "word",   number_i16 },
-      { "short",  number_i16 },
+      { "char",   number_i8 },
+      { "int16",  number_i16 },
+      { "short",  number_i16 }, // Deprecated
       { nullptr, nullptr }
    };
 

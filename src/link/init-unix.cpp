@@ -22,8 +22,8 @@ This file is in the public domain and may be distributed and modified without re
 
 struct CoreBase *CoreBase;
 static APTR glCoreHandle = nullptr;
-typedef ERR OPENCORE(struct OpenInfo *, struct CoreBase **);
-typedef void CLOSECORE(void);
+using OPENCORE = ERR(struct OpenInfo *, struct CoreBase **);
+using CLOSECORE = void(void);
 static CLOSECORE *CloseCore = nullptr;
 #else
 static struct CoreBase *CoreBase; // Dummy

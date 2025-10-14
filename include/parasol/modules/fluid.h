@@ -9,9 +9,9 @@
 #define MODVERSION_FLUID (1)
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_FLUID static struct FluidBase *FluidBase;
+#define JUMPTABLE_FLUID [[maybe_unused]] static struct FluidBase *FluidBase = nullptr;
 #else
-#define JUMPTABLE_FLUID struct FluidBase *FluidBase;
+#define JUMPTABLE_FLUID struct FluidBase *FluidBase = nullptr;
 #endif
 
 struct FluidBase {

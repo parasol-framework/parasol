@@ -112,8 +112,8 @@ For information about the HTTP protocol, please refer to the official protocol w
 constexpr int MAX_AUTH_RETRIES = 5;
 constexpr int HASHLEN = 16;
 constexpr int HASHHEXLEN = 32;
-typedef char HASH[HASHLEN];
-typedef char HASHHEX[HASHHEXLEN+1];
+using HASH = char[HASHLEN];
+using HASHHEX = char[HASHHEXLEN+1];
 
 // Security limits
 constexpr int64_t MAX_CONTENT_LENGTH = 10LL * 1024 * 1024 * 1024; // 10GB max
@@ -367,9 +367,7 @@ static ERR  socket_outgoing(objNetSocket *);
 
 //********************************************************************************************************************
 
-inline CSTRING GETSTATUS(int Code) __attribute__((unused));
-
-inline CSTRING GETSTATUS(int Code)
+[[maybe_unused]] inline CSTRING GETSTATUS(int Code)
 {
    for (int16_t i=0; clStatus[i].Name; i++) {
       if (clStatus[i].Value IS Code) return clStatus[i].Name;

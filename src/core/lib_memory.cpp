@@ -18,6 +18,8 @@ Name: Memory
 
 #ifdef __unix__
 #include <errno.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #endif
 
 #ifdef __ANDROID__
@@ -108,24 +110,55 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
    else if (glCurrentTask) object_id = glCurrentTask->UID;
 
-   auto full_size = Size + MEMHEADER;
+   uint32_t full_size = Size + MEMHEADER;
+   uint32_t aligned_size = full_size;
    if ((Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
 
-   full_size = ((full_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+   // Check if memory protection is requested
+   bool use_protection = ((Flags & (MEM::READ|MEM::WRITE)) != MEM::NIL);
+   APTR start_mem = nullptr;
 
-   APTR start_mem;
-   #ifdef _WIN32
-      start_mem = _aligned_malloc(full_size, CACHE_LINE_SIZE);
-   #else
-      if (posix_memalign(&start_mem, CACHE_LINE_SIZE, full_size) != 0) start_mem = nullptr;
-   #endif
+   if (use_protection) {
+      // Use OS-level memory protection with mmap/VirtualAlloc
+      aligned_size = align_page_size(full_size);
+      #ifdef _WIN32
+         start_mem = winAllocProtectedMemory(aligned_size, int(Flags));
+      #else
+         int prot = PROT_NONE;
+         if ((Flags & MEM::READ) != MEM::NIL) prot |= PROT_READ;
+         if ((Flags & MEM::WRITE) != MEM::NIL) prot |= PROT_WRITE;
+
+         start_mem = mmap(nullptr, aligned_size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+         if (start_mem IS MAP_FAILED) start_mem = nullptr;
+      #endif
+
+      if (start_mem) {
+         Flags |= MEM::PROTECTED; // Mark as protected for proper cleanup
+         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) {
+            if ((Flags & MEM::WRITE) != MEM::NIL) pf::clearmem(start_mem, full_size);
+            else log.trace("Note: Read-only memory will not be cleared.");
+         }
+      }
+   }
+   else {
+      // Use standard aligned allocation (typically 64-bit) for non-protected memory
+      full_size = ((full_size + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE) * CACHE_LINE_SIZE;
+
+      #ifdef _WIN32
+         start_mem = _aligned_malloc(full_size, CACHE_LINE_SIZE);
+      #else
+         if (posix_memalign(&start_mem, CACHE_LINE_SIZE, full_size) != 0) start_mem = nullptr;
+      #endif
+
+      if (start_mem) {
+         if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
+      }
+   }
 
    if (!start_mem) {
       log.warning("Failed to allocate %d bytes.", Size);
       return ERR::AllocMemory;
    }
-
-   if ((Flags & MEM::NO_CLEAR) IS MEM::NIL) pf::clearmem(start_mem, full_size);
 
    APTR data_start = (char *)start_mem + sizeof(int) + sizeof(int); // Skip MEMH and unique ID.
    if ((Flags & MEM::MANAGED) != MEM::NIL) data_start = (char *)data_start + sizeof(ResourceManager *); // Skip managed resource reference.
@@ -179,11 +212,20 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
       return ERR::Okay;
    }
    else {
-      #ifdef _WIN32
-         _aligned_free(start_mem);
-      #else
-         free(start_mem);
-      #endif
+      if (use_protection) {
+         #ifdef _WIN32
+            winFreeProtectedMemory(start_mem, aligned_size);
+         #else
+            munmap(start_mem, aligned_size);
+         #endif
+      }
+      else {
+         #ifdef _WIN32
+            _aligned_free(start_mem);
+         #else
+            free(start_mem);
+         #endif
+      }
       return log.warning(ERR::SystemLocked);
    }
 }
@@ -253,11 +295,11 @@ ERR FreeResource(MEMORYID MemoryID)
    pf::Log log(__FUNCTION__);
 
    if (auto lock = std::unique_lock{glmMemory}) {
-      auto it = glPrivateMemory.find(MemoryID);
-      if ((it != glPrivateMemory.end()) and (it->second.Address)) {
+      if (auto it = glPrivateMemory.find(MemoryID); (it != glPrivateMemory.end()) and (it->second.Address)) {
          auto &mem = it->second;
 
          if (glShowPrivate) log.branch("FreeResource(#%d, %p, Size: %d, $%.8x, Owner: #%d)", MemoryID, mem.Address, mem.Size, int(mem.Flags), mem.OwnerID);
+
          ERR error = ERR::Okay;
          if (mem.AccessCount > 0) {
             log.msg("Block #%d marked for collection (open count %d).", MemoryID, mem.AccessCount);
@@ -291,11 +333,22 @@ ERR FreeResource(MEMORYID MemoryID)
                DEBUG_BREAK
             }
 
-            #ifdef _WIN32
-               _aligned_free(start_mem);
-            #else
-               free(start_mem);
-            #endif
+            // Free the memory using the appropriate method based on how it was allocated
+            if ((mem.Flags & MEM::PROTECTED) != MEM::NIL) {
+               // Memory was allocated with OS-level protection
+               #ifdef _WIN32
+                  winFreeProtectedMemory(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
+               #else
+                  munmap(start_mem, align_page_size(mem.Size + MEMHEADER + ((mem.Flags & MEM::MANAGED) != MEM::NIL ? sizeof(ResourceManager *) : 0)));
+               #endif
+            }
+            else { // Standard aligned allocation
+               #ifdef _WIN32
+                  _aligned_free(start_mem);
+               #else
+                  free(start_mem);
+               #endif
+            }
 
             if ((mem.Flags & MEM::OBJECT) != MEM::NIL) {
                if (auto it = glObjectChildren.find(mem.OwnerID); it != glObjectChildren.end()) {
@@ -443,6 +496,74 @@ ERR MemoryPtrInfo(APTR Memory, MemInfo *MemInfo, int Size)
 /*********************************************************************************************************************
 
 -FUNCTION-
+ProtectMemory: Change the access permissions of a memory block.
+
+This function changes the access permissions of a memory block that was allocated with the `MEM::READ` and/or
+`MEM::WRITE` flags.  This allows you to tighten or relax the access permissions of a memory block as your program's
+logic requires.
+
+-INPUT-
+ptr Address: Pointer to a memory block obtained from ~AllocMemory().
+int(MEM) Flags: New access flags (MEM::READ, MEM::WRITE).
+
+-ERRORS-
+Okay
+NullArgs: Address is NULL.
+Args: Invalid flags specified or memory block is not protected.
+MemoryDoesNotExist: The memory block is not valid or was not allocated with protection.
+SystemCall: A system call failed.
+-END-
+
+*********************************************************************************************************************/
+
+ERR ProtectMemory(APTR Address, MEM Flags)
+{
+   pf::Log log(__FUNCTION__);
+
+   if (not Address) return ERR::NullArgs;
+   if ((Flags & (MEM::READ | MEM::WRITE)) == MEM::NIL) return ERR::Args;
+
+   if (glShowPrivate) log.branch("ProtectMemory(%p, $%.8x)", Address, int(Flags));
+
+   MemInfo meminfo;
+   if (MemoryIDInfo(GetMemoryID(Address), &meminfo, sizeof(meminfo)) IS ERR::Okay) {
+      if ((meminfo.Flags & MEM::PROTECTED) == MEM::NIL) {
+         log.warning("Memory block at %p is not protected.", Address);
+         return ERR::Args;
+      }
+
+      // Calculate the start address and size of the protected region
+      auto start_mem = (char *)Address - sizeof(int) - sizeof(int);
+      if ((meminfo.Flags & MEM::MANAGED) != MEM::NIL) {
+         start_mem -= sizeof(ResourceManager *);
+      }
+
+      auto full_size = meminfo.Size + MEMHEADER;
+      if ((meminfo.Flags & MEM::MANAGED) != MEM::NIL) full_size += sizeof(ResourceManager *);
+      auto aligned_size = align_page_size(full_size);
+
+      #ifdef _WIN32
+         if (winProtectMemory(start_mem, aligned_size, (Flags & MEM::READ) != MEM::NIL, (Flags & MEM::WRITE) != MEM::NIL, false)) {
+            return ERR::Okay;
+         }
+         else return log.warning(ERR::SystemCall);
+      #else
+         int prot = PROT_NONE;
+         if ((Flags & MEM::READ) != MEM::NIL) prot |= PROT_READ;
+         if ((Flags & MEM::WRITE) != MEM::NIL) prot |= PROT_WRITE;
+
+         if (mprotect(start_mem, aligned_size, prot) IS 0) {
+            return ERR::Okay;
+         }
+         else return log.warning(ERR::SystemCall);
+      #endif
+   }
+   else return ERR::MemoryDoesNotExist;
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
 ReallocMemory: Reallocates memory blocks.
 
 This function is used to reallocate memory blocks to new lengths. You can shrink or expand a memory block as you
@@ -511,4 +632,49 @@ ERR ReallocMemory(APTR Address, uint32_t NewSize, APTR *Memory, MEMORYID *Memory
       return ERR::Okay;
    }
    else return log.error(ERR::AllocMemory);
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+SetResourceMgr: Define a resource manager for a memory block originating from ~AllocMemory().
+
+SetResourceMgr() associates a !ResourceManager with a memory block that was allocated with the `MEM::MANAGED` flag.
+This allows customised memory management logic to be used when an event is triggered on a memory block, such as
+the block being destroyed.  Most commonly, resource managers are used to allow C++ destructors to be integrated with
+Parasol's memory management system.
+
+This working example from the XPath module ensures that `XPathNode` objects are properly destructed when passed to
+~FreeResource():
+
+<pre>
+static ERR xpnode_free(APTR Address)
+{
+   ((XPathNode *)Address)->&#126;XPathNode();
+   return ERR::Okay;
+}
+
+static ResourceManager glNodeManager = {
+   "XPathNode",  // Name of the custom resource type
+   &xpnode_free  // Custom destructor function
+};
+
+   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&node, nullptr) IS ERR::Okay) {
+      SetResourceMgr(node, &glNodeManager);
+      new (node) XPathNode(); // Placement new
+   }
+</pre>
+
+-INPUT-
+ptr Address: The address of a `MEM::MANAGED` memory block allocated by ~AllocMemory().
+ptr(struct(ResourceManager)) Manager: Must refer to an initialised ResourceManager structure.
+
+-END-
+
+*********************************************************************************************************************/
+
+void SetResourceMgr(APTR Address, ResourceManager *Manager)
+{
+   auto address_mgr = (ResourceManager **)((char *)Address - sizeof(int) - sizeof(int) - sizeof(ResourceManager *));
+   address_mgr[0] = Manager;
 }

@@ -89,13 +89,13 @@ This documentation is intended for technical reference and is not suitable as an
 #define KERR(...) fprintf(stderr, __VA_ARGS__)
 
 #ifdef __unix__
-static void CrashHandler(int, siginfo_t *, APTR) __attribute__((unused));
-static void NullHandler(int, siginfo_t *Info, APTR)  __attribute__((unused));
-static void child_handler(int, siginfo_t *Info, APTR)  __attribute__((unused));
-static void DiagnosisHandler(int, siginfo_t *Info, APTR)  __attribute__((unused));
+[[maybe_unused]] static void CrashHandler(int, siginfo_t *, APTR);
+[[maybe_unused]] static void NullHandler(int, siginfo_t *Info, APTR) ;
+[[maybe_unused]] static void child_handler(int, siginfo_t *Info, APTR) ;
+[[maybe_unused]] static void DiagnosisHandler(int, siginfo_t *Info, APTR) ;
 #elif _WIN32
-static int CrashHandler(int Code, APTR Address, int Continuable, int *Info) __attribute__((unused));
-static void BreakHandler(void)  __attribute__((unused));
+[[maybe_unused]] static int CrashHandler(int Code, APTR Address, int Continuable, int *Info);
+[[maybe_unused]] static void BreakHandler(void);
 #endif
 
 extern ERR add_archive_class(void);
@@ -211,6 +211,7 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
    seteuid(glUID);  // Ensure that the rest of our code is run under the real user name instead of admin
    setegid(glGID);  // Ensure that we run under the user's default group (important for file creation)
 
+   glPageSize = sysconf(_SC_PAGESIZE);
 #elif _WIN32
    int id = 0;
    if (glEnableCrashHandler) {
@@ -221,6 +222,8 @@ ERR OpenCore(OpenInfo *Info, struct CoreBase **JumpTable)
       #endif
    }
    else winInitialise(&id, nullptr);
+
+   glPageSize = winGetPageSize();
 #endif
 
    // Randomise the internal random variables

@@ -6,8 +6,8 @@ constexpr int SIZE_READ = 1024;
 #include <unordered_set>
 #include <set>
 #include <array>
-#include <regex>
 #include <parasol/strings.hpp>
+#include <parasol/modules/regex.h>
 #include <thread>
 #include <string_view>
 
@@ -42,6 +42,8 @@ extern ankerl::unordered_dense::map<std::string, ACTIONID, CaseInsensitiveHash, 
 extern struct ActionTable *glActions;
 extern OBJECTPTR modDisplay; // Required by fluid_input.c
 extern OBJECTPTR modFluid;
+extern OBJECTPTR modRegex;
+extern OBJECTPTR glFluidContext;
 extern OBJECTPTR clFluid;
 extern ankerl::unordered_dense::map<std::string, uint32_t> glStructSizes;
 
@@ -271,8 +273,8 @@ struct array {
 
 struct fstruct {
    APTR Data;          // Pointer to the structure data
-   int StructSize;    // Size of the structure
-   int AlignedSize;   // 64-bit alignment size of the structure.
+   int StructSize;     // Size of the structure
+   int AlignedSize;    // 64-bit alignment size of the structure.
    struct struct_record *Def; // The structure definition
    bool Deallocate;    // Deallocate the struct when Lua collects this resource.
 };
@@ -284,11 +286,11 @@ struct fprocessing {
 
 class fregex {
 public:
-   std::regex *regex_obj = nullptr;  // Compiled regex object
+   Regex *regex_obj = nullptr;  // Compiled regex object
    std::string pattern;     // Original pattern string
    std::string error_msg;   // Error message if compilation failed
-   int flags;               // Compilation flags
-   fregex(std::string_view Pattern, int Flags) : pattern(Pattern), flags(Flags) { }
+   REGEX flags;             // Compilation flags
+   fregex(std::string_view Pattern, REGEX Flags) : pattern(Pattern), flags(Flags) { }
 };
 
 struct metafield {
@@ -303,16 +305,16 @@ constexpr int FIM_DEVICE   = 2;
 struct finput {
    objScript *Script;
    struct finput *Next;
-   APTR  KeyEvent;
+   APTR   KeyEvent;
    OBJECTID SurfaceID;
-   int   InputHandle;
-   int   Callback;
-   int   InputValue;
-   JTYPE Mask;
-   int8_t  Mode;
+   int    InputHandle;
+   int    Callback;
+   int    InputValue;
+   JTYPE  Mask;
+   int8_t Mode;
 };
 
-enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_LARGE, NUM_LONG, NUM_WORD, NUM_BYTE };
+enum { NUM_DOUBLE=1, NUM_FLOAT, NUM_INT64, NUM_INT, NUM_INT16, NUM_BYTE };
 
 struct fnumber { // TODO: Use std::variant
    int Type;     // Expressed as an FD_ flag.
@@ -400,10 +402,10 @@ typedef std::set<obj_write, decltype(write_hash)> WRITE_TABLE;
 struct object {
    OBJECTPTR ObjectPtr;   // If the object is local then we can have the address
    objMetaClass *Class;   // Direct pointer to the object's class
-   READ_TABLE *ReadTable;
-   WRITE_TABLE *WriteTable;
+   READ_TABLE   *ReadTable;
+   WRITE_TABLE  *WriteTable;
    OBJECTID UID;          // If the object is referenced externally, access is managed by ID
-   uint16_t AccessCount;     // Controlled by access_object() and release_object()
+   uint16_t AccessCount;  // Controlled by access_object() and release_object()
    bool  Detached;        // True if the object is an external reference or is not to be garbage collected
    bool  Locked;          // Can be true ONLY if a lock has been acquired from AccessObject()
 };
@@ -418,18 +420,18 @@ std::vector<lua_ref> * alloc_references(void);
 void auto_load_include(lua_State *, objMetaClass *);
 ERR build_args(lua_State *, const struct FunctionField *, int, int8_t *, int *);
 const char * code_reader(lua_State *, void *, size_t *);
-int code_writer_id(lua_State *, CPTR, size_t, void *) __attribute__((unused));
-int code_writer(lua_State *, CPTR, size_t, void *) __attribute__((unused));
+[[maybe_unused]] int code_writer_id(lua_State *, CPTR, size_t, void *);
+[[maybe_unused]] int code_writer(lua_State *, CPTR, size_t, void *);
 ERR create_fluid(void);
 void get_line(objScript *, int, STRING, int);
 APTR get_meta(lua_State *Lua, int Arg, CSTRING);
 void hook_debug(lua_State *, lua_Debug *) __attribute__ ((unused));
 ERR load_include(objScript *, CSTRING);
 int MAKESTRUCT(lua_State *);
-void make_any_table(lua_State *, int, CSTRING, int, CPTR ) __attribute__((unused));
+[[maybe_unused]] void make_any_table(lua_State *, int, CSTRING, int, CPTR );
 void make_array(lua_State *, int, CSTRING, APTR *, int, bool);
-void make_table(lua_State *, int, int, CPTR ) __attribute__((unused));
-ERR make_struct(lua_State *, std::string_view, CSTRING) __attribute__((unused));
+[[maybe_unused]] void make_table(lua_State *, int, int, CPTR );
+[[maybe_unused]] ERR make_struct(lua_State *, std::string_view, CSTRING);
 ERR named_struct_to_table(lua_State *, std::string_view, CPTR);
 void make_struct_ptr_table(lua_State *, CSTRING, int, CPTR *);
 void make_struct_serial_table(lua_State *, CSTRING, int, CPTR);
