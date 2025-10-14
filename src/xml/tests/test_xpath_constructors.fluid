@@ -19,6 +19,23 @@ function testDirectConstructorEvaluation()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Direct constructors should preserve literal whitespace inside element content
+
+function testDirectConstructorWhitespace()
+   local xml = obj.new("xml", { statement = '<root/>' })
+
+   local singleSpace = xml.getKey('string(<a>hello world</a>)')
+   assert(singleSpace == 'hello world', 'Direct constructor should preserve single spaces, got ' .. nz(singleSpace, 'NIL'))
+
+   local leading = xml.getKey('string(<a>  padded  </a>)')
+   assert(leading == '  padded  ', 'Direct constructor should retain leading and trailing spaces, got ' .. nz(leading, 'NIL'))
+
+   local multiline = xml.getKey([[string(<a>line 1
+   line 2</a>)]])
+   assert(multiline == "line 1\n   line 2", 'Direct constructor should keep newline indentation, got ' .. nz(multiline, 'NIL'))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Computed constructors should honour dynamic names and content expressions
 
 function testComputedConstructors()
@@ -101,7 +118,7 @@ end
 
 return {
    tests = {
-      'testDirectConstructorEvaluation', 'testComputedConstructors',
+      'testDirectConstructorEvaluation', 'testDirectConstructorWhitespace', 'testComputedConstructors',
       'testNonElementConstructors', 'testDocumentConstructor',
       'testConstructorAttributeSequences'
    }

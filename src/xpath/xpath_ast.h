@@ -105,6 +105,7 @@ enum class XPathTokenType {
    PI_END,            // ?>
 
    // Special tokens
+   TEXT_CONTENT,      // literal content inside direct constructors
    END_OF_INPUT,
    UNKNOWN
 };

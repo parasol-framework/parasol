@@ -150,6 +150,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
    int direct_constructor_depth = 0;
    bool inside_direct_tag = false;
    bool pending_close_tag = false;
+   int constructor_expr_depth = 0;
 
    auto lookahead_non_whitespace = [&](size_t index) -> size_t
    {
@@ -167,6 +168,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
          case XPathTokenType::IDENTIFIER:
          case XPathTokenType::NUMBER:
          case XPathTokenType::STRING:
+         case XPathTokenType::TEXT_CONTENT:
          case XPathTokenType::RPAREN:
          case XPathTokenType::RBRACKET:
             return true;
@@ -176,7 +178,37 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
    };
 
    while (position < length) {
-      skip_whitespace();
+      bool in_constructor_content = (direct_constructor_depth > 0) and (not inside_direct_tag) and (constructor_expr_depth IS 0);
+
+      if (!in_constructor_content) {
+         skip_whitespace();
+         if (position >= length) break;
+      }
+      else if (position >= length) {
+         break;
+      }
+
+      if (in_constructor_content) {
+         char content_char = current();
+         if (content_char IS '<' or content_char IS '{') {
+            // fall through to structural handling
+         }
+         else {
+            size_t start = position;
+            while (position < length) {
+               char segment_char = input[position];
+               if (segment_char IS '<' or segment_char IS '{') break;
+               position++;
+            }
+
+            size_t segment_length = position - start;
+            if (segment_length > 0) {
+               tokens.emplace_back(XPathTokenType::TEXT_CONTENT, input.substr(start, segment_length), start, segment_length);
+               continue;
+            }
+         }
+      }
+
       if (position >= length) break;
 
       char ch = current();
@@ -220,6 +252,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
          size_t start = position;
          position++;
          tokens.emplace_back(XPathTokenType::LBRACE, input.substr(start, 1), start, 1);
+         if ((direct_constructor_depth > 0) and (not inside_direct_tag)) constructor_expr_depth++;
          continue;
       }
 
@@ -227,6 +260,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
          size_t start = position;
          position++;
          tokens.emplace_back(XPathTokenType::RBRACE, input.substr(start, 1), start, 1);
+         if ((direct_constructor_depth > 0) and (not inside_direct_tag) and (constructor_expr_depth > 0)) constructor_expr_depth--;
          continue;
       }
 
