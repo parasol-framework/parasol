@@ -62,20 +62,20 @@
 #if (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
 // Modern SIMD detection - prefer newer instruction sets
 #if defined(__AVX512F__)
-#   define SRELL_HAS_AVX512
-#   define SRELL_HAS_AVX2
-#   define SRELL_HAS_SSE42
+	#define SRELL_HAS_AVX512
+	#define SRELL_HAS_AVX2
+	#define SRELL_HAS_SSE42
 #elif defined(__AVX2__)
-#   define SRELL_HAS_AVX2
-#   define SRELL_HAS_SSE42
+	#define SRELL_HAS_AVX2
+	#define SRELL_HAS_SSE42
 #elif defined(__SSE4_2__)
-#   define SRELL_HAS_SSE42
+	#define SRELL_HAS_SSE42
 #elif defined(_MSC_VER) && (_MSC_VER >= 1500)
-#   define SRELL_HAS_SSE42
+	#define SRELL_HAS_SSE42
 #elif defined(__clang__) && defined(__clang_major__) && ((__clang_major__ >= 4) || ((__clang_major__ == 3) && defined(__clang_minor__) && (__clang_minor__ >= 8)))
-#   define SRELL_HAS_SSE42
+	#define SRELL_HAS_SSE42
 #elif defined(__GNUC__) && ((__GNUC__ >= 5) || ((__GNUC__ == 4) && defined(__GNUC_MINOR__) && (__GNUC_MINOR__ >= 9)))
-#   define SRELL_HAS_SSE42
+	#define SRELL_HAS_SSE42
 #endif	//  SIMD instruction sets
 #endif	//  x86/x64.
 #endif
@@ -86,31 +86,31 @@
 
 #if defined(SRELL_HAS_SSE42) or defined(SRELL_HAS_AVX2) or defined(SRELL_HAS_AVX512)
 #if defined(_MSC_VER)
-#   include <intrin.h>
+	#include <intrin.h>
 #else
-#   include <x86intrin.h>
+	#include <x86intrin.h>
 
-#   if !defined(__SSE4_2__)
-#      undef SRELL_AT_SSE42
-#      define SRELL_AT_SSE42 __attribute__((target("sse4.2")))
-#   endif
+	#if !defined(__SSE4_2__)
+	#undef SRELL_AT_SSE42
+	#define SRELL_AT_SSE42 __attribute__((target("sse4.2")))
+	#endif
 
-#   if !defined(__AVX2__)
-#      undef SRELL_AT_AVX2
-#      define SRELL_AT_AVX2 __attribute__((target("avx2")))
-#   endif
+	#if !defined(__AVX2__)
+	#undef SRELL_AT_AVX2
+	#define SRELL_AT_AVX2 __attribute__((target("avx2")))
+	#endif
 
-#   if !defined(__AVX512F__)
-#      undef SRELL_AT_AVX512
-#      define SRELL_AT_AVX512 __attribute__((target("avx512f")))
-#   endif
+	#if !defined(__AVX512F__)
+	#undef SRELL_AT_AVX512
+	#define SRELL_AT_AVX512 __attribute__((target("avx512f")))
+	#endif
 #endif
 #endif
 
 #if defined(_MSC_VER)
 #define SRELL_NO_VCWARNING(n) \
-   __pragma(warning(push)) \
-   __pragma(warning(disable:n))
+	__pragma(warning(push)) \
+	__pragma(warning(disable:n))
 #define SRELL_NO_VCWARNING_END __pragma(warning(pop))
 #else
 #define SRELL_NO_VCWARNING(x)
@@ -262,54 +262,49 @@ concept allocator_type = requires(T alloc) {
 
 	namespace regex_constants
 	{
-                using error_type = unsigned int;
-
-                inline constexpr error_type error_collate{100};
-                inline constexpr error_type error_ctype{101};
-                inline constexpr error_type error_escape{102};
-                inline constexpr error_type error_backref{103};
-                inline constexpr error_type error_brack{104};
-                inline constexpr error_type error_paren{105};
-                inline constexpr error_type error_brace{106};
-                inline constexpr error_type error_badbrace{107};
-                inline constexpr error_type error_range{108};
-                inline constexpr error_type error_space{109};
-                inline constexpr error_type error_badrepeat{110};
-                inline constexpr error_type error_complexity{111};
-                inline constexpr error_type error_stack{112};
+      using error_type = unsigned int;
+      
+      inline constexpr error_type error_collate{100};
+      inline constexpr error_type error_ctype{101};
+      inline constexpr error_type error_escape{102};
+      inline constexpr error_type error_backref{103};
+      inline constexpr error_type error_brack{104};
+      inline constexpr error_type error_paren{105};
+      inline constexpr error_type error_brace{106};
+      inline constexpr error_type error_badbrace{107};
+      inline constexpr error_type error_range{108};
+      inline constexpr error_type error_space{109};
+      inline constexpr error_type error_badrepeat{110};
+      inline constexpr error_type error_complexity{111};
+      inline constexpr error_type error_stack{112};
 
 		//  SRELL's extensions.
-                inline constexpr error_type error_utf8{113};
-			//  The expression contained an invalid UTF-8 sequence.
+      inline constexpr error_type error_utf8{113};
+		//  The expression contained an invalid UTF-8 sequence.
 
-                inline constexpr error_type error_property{114};
-			//  The expression contained an invalid Unicode property name or value.
+      inline constexpr error_type error_property{114};
+		//  The expression contained an invalid Unicode property name or value.
 
-                inline constexpr error_type error_noescape{115};
-			//  (Only in v-mode) ( ) [ ] { } / - \ | need to be escaped in a character class.
+      inline constexpr error_type error_noescape{115};
+		//  (Only in v-mode) ( ) [ ] { } / - \ | need to be escaped in a character class.
 
-                inline constexpr error_type error_operator{116};
-			//  (Only in v-mode) A character class contained a reserved double punctuation
-			//  operator or different types of operators at the same level, such as [ab--cd].
+      inline constexpr error_type error_operator{116};
+		//  (Only in v-mode) A character class contained a reserved double punctuation
+		//  operator or different types of operators at the same level, such as [ab--cd].
 
-                inline constexpr error_type error_complement{117};
-			//  (Only in v-mode) \P or a negated character class contained a property of strings.
+      inline constexpr error_type error_complement{117};
+		//  (Only in v-mode) \P or a negated character class contained a property of strings.
 
-                inline constexpr error_type error_modifier{118};
-			//  A specific flag modifier appeared more then once, or the un-bounded form
-			//  ((?ism-ism)) appeared at a position other than the beginning of the expression.
+      inline constexpr error_type error_modifier{118};
+		//  A specific flag modifier appeared more then once, or the un-bounded form
+		//  ((?ism-ism)) appeared at a position other than the beginning of the expression.
 
-                inline constexpr error_type error_first_{error_collate};
-                inline constexpr error_type error_last_{error_modifier};
+      inline constexpr error_type error_first_{error_collate};
+      inline constexpr error_type error_last_{error_modifier};
 
-                inline constexpr error_type error_internal{999};
+      inline constexpr error_type error_internal{999};
 	}
 	//  namespace regex_constants
-
-//  ... "regex_constants.h"]
-
-//  ... "regex_error.hpp"]
-//  ["rei_type.h" ...
 
 	namespace re_detail
 	{
@@ -6225,23 +6220,16 @@ private:
 
 		name_or_value.clear();
 
-		for (;; ++curpos)
-		{
-			if (curpos == end)
-				break;
+		for (;; ++curpos) {
+			if (curpos == end) break;
 
 			const ui_l32 curchar = *curpos;
 
-			if (curchar >= char_alnum::ch_A && curchar <= char_alnum::ch_Z)
-				;
-			else if (curchar >= char_alnum::ch_a && curchar <= char_alnum::ch_z)
-				;
-			else if (curchar == char_other::co_ll)	//  '_'
-				;
-			else if (curchar >= char_alnum::ch_0 && curchar <= char_alnum::ch_9)
-				number_found = true;
-			else
-				break;
+			if (curchar >= char_alnum::ch_A && curchar <= char_alnum::ch_Z);
+			else if (curchar >= char_alnum::ch_a && curchar <= char_alnum::ch_z);
+			else if (curchar == char_other::co_ll);	//  '_'
+			else if (curchar >= char_alnum::ch_0 && curchar <= char_alnum::ch_9) number_found = true;
+			else break;
 
 			name_or_value.append(1, static_cast<typename pstring::value_type>(curchar));
 		}
@@ -6250,18 +6238,13 @@ private:
 		return number_found;
 	}
 
-
-
-	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
+	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars) {
 		charT mbstr[utf_traits::maxseqlen];
 		gname_string groupname;
 
 		cvars.idchecker.setup();
-		for (;;)
-		{
-			if (curpos == end)
-			{
+		for (;;) {
+			if (curpos == end) {
 				groupname.clear();
 				break;
 			}
@@ -6274,13 +6257,10 @@ private:
 			if (curchar == meta_char::mc_escape && curpos != end && *curpos == char_alnum::ch_u)	//  '\\', 'u'.
 				curchar = parse_escape_u(++curpos, end);
 
-			if (cvars.idchecker.is_identifier(curchar, groupname.size() != 0))
-				;	//  OK.
-			else
-				curchar = constants::invalid_u32value;
+			if (cvars.idchecker.is_identifier(curchar, groupname.size() != 0));	//  OK.
+			else curchar = constants::invalid_u32value;
 
-			if (curchar == constants::invalid_u32value)
-			{
+			if (curchar == constants::invalid_u32value) {
 				groupname.clear();
 				break;
 			}
@@ -6331,22 +6311,18 @@ private:
 					branch.shrink(seqlen + 1);
 					branch[seqlen] = jumpstate;
 
-					for (ui_l32 count = 0; offset < seqend; ++offset)
-					{
+					for (ui_l32 count = 0; offset < seqend; ++offset) {
 						const ui_l32 seqch = pos.seqs[offset];
 						state_type *const ost = &branch[count++];
 
 						ost->char_num = seqch & masks::pos_char;
 						this->NFA_states[0].flags |= ost->flags = (seqch & masks::pos_cf) ? sflags::icase : 0u;
 
-						if (count == seqlen)
-						{
+						if (count == seqlen) {
 							state_size_type bpos = 0;
 
-							for (state_size_type ppos = 0; ppos < piece.size();)
-							{
-								if (bpos + 1 == branch.size())
-								{
+							for (state_size_type ppos = 0; ppos < piece.size();) {
+								if (bpos + 1 == branch.size()) {
 									piece.push_back_c(piece[ppos]);
 
 									state_type &pst = piece[ppos];
@@ -6367,15 +6343,12 @@ private:
 
 								state_type &pst = piece[ppos];
 
-								if (pst.char_num == branch[bpos].char_num)
-								{
+								if (pst.char_num == branch[bpos].char_num) {
 									++bpos;
 									ppos += pst.next1;
 								}
-								else if (pst.next2)
-									ppos += pst.next2;
-								else
-								{
+								else if (pst.next2) ppos += pst.next2;
+								else {
 									pst.next2 = static_cast<std::ptrdiff_t>(piece.size()) - ppos;
 									break;
 								}
@@ -6384,8 +6357,7 @@ private:
 							{
 								const state_size_type alen = branch.size() - bpos;
 
-								if (piece.size())
-									piece[prevbranch_end].next1 = piece.size() + alen - 1 - prevbranch_end;
+								if (piece.size()) piece[prevbranch_end].next1 = piece.size() + alen - 1 - prevbranch_end;
 
 								piece.append(branch, bpos, alen);
 								prevbranch_end = piece.size() - 1;
@@ -6429,20 +6401,16 @@ private:
 			if (hooked)
 				reorder_piece(piece);
 
-			if ((this->soflags ^ cvars.soflags) & regex_constants::icase)
-			{
+			if ((this->soflags ^ cvars.soflags) & regex_constants::icase) {
 				range_pairs charclass;
 
-				if (cvars.is_icase())
-				{
+				if (cvars.is_icase()) {
 					ui_l32 ucftable[ucf_constants::rev_maxset] = {};
 
-					for (state_size_type i = 0; i < piece.size(); ++i)
-					{
+					for (state_size_type i = 0; i < piece.size(); ++i) {
 						state_type &st = piece[i];
 
-						if (st.type == st_character && (st.flags & sflags::icase))
-						{
+						if (st.type == st_character && (st.flags & sflags::icase)) {
 							const ui_l32 setnum = unicode_case_folding::do_caseunfolding(ucftable, st.char_num);
 
 							charclass.clear();
@@ -6481,10 +6449,8 @@ private:
 		ui_l32 u32value = 0;
 		ui_l32 num;
 
-		for (; maxsize == 0 || count < maxsize; ++curpos, ++count)
-		{
-			if (curpos == end)
-				break;
+		for (; maxsize == 0 || count < maxsize; ++curpos, ++count) {
+			if (curpos == end) break;
 
 			const ui_l32 ch = *curpos;
 
@@ -6504,14 +6470,12 @@ private:
 
 			const ui_l32 nextvalue = u32value * radix + num;
 
-			if ((/* maxvalue != 0 && */ nextvalue > maxvalue) || nextvalue < u32value)
-				break;
+			if ((/* maxvalue != 0 && */ nextvalue > maxvalue) || nextvalue < u32value) break;
 
 			u32value = nextvalue;
 		}
 
-		if (count >= minsize)
-			return u32value;
+		if (count >= minsize) return u32value;
 
 		return constants::invalid_u32value;
 	}
@@ -6524,8 +6488,7 @@ private:
 
 		gno_found.resize(this->number_of_brackets, false);
 
-		for (state_size_type backrefpos = 1; backrefpos < orgsize; ++backrefpos)
-		{
+		for (state_size_type backrefpos = 1; backrefpos < orgsize; ++backrefpos) {
 			state_type &brs = this->NFA_states[backrefpos];
 
 			if (brs.type == st_roundbracket_close)
