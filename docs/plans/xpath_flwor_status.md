@@ -39,3 +39,13 @@
 2. Investigate the grouped return expression failure by probing `append_constructor_sequence` and related aggregators for unhandled empty node-sets, and ensure `record_error` surfaces a message when `xml->ErrorMsg` remains blank.【F:src/xpath/xpath_evaluator_values.cpp†L2661-L2707】【393af0†L58-L82】
 3. Audit COUNT handling immediately after order-by to ensure positional counters are initialised from the sorted tuple list rather than the pre-sort sequence.【e199d0†L64-L75】
 4. Capture and document the `--log-api` segmentation fault so we can either guard the logger or file a separate stability fix for the diagnostics harness.【fca96e†L1-L40】
+
+## Diagnostic Findings (18 Oct)
+- Order-by instrumentation confirms the callback pipeline now consumes the sorted tuple sequence `[1,3,2,0]`, yielding `bk-1,bk-2,bk-4,bk-3`. The Fluid expectations still anticipate `bk-3` ahead of `bk-4`, so we need to reconcile the fixture with codepoint collation rules before closing out Step 1.【F:src/xpath/xpath_evaluator_values.cpp†L3696-L3734】【f89e16†L16-L46】
+- Group-by and count clauses continue to abort before emitting nodes. The new constructor tracing shows attribute value template evaluation failing for grouped tuples, but the AST signatures need deeper inspection to isolate the missing binding or unsupported expression.【F:src/xpath/xpath_evaluator_values.cpp†L1071-L1103】【f89e16†L47-L92】
+- Added `record_error` tracing ensures XPath diagnostics populate `xml->ErrorMsg` when attribute or constructor expressions fail, preventing silent `General failure` reports during Fluid execution.【F:src/xpath/xpath_evaluator.cpp†L151-L160】【F:src/xpath/xpath_evaluator_values.cpp†L1094-L1110】
+
+## Current Actions
+1. Compare the Fluid order-by expectations with the W3C codepoint collation to decide whether the fixture or comparator requires adjustment now that callback order matches the sorted tuples.【f89e16†L16-L46】
+2. Use the new constructor tracing to step through the grouped return clause and identify which attribute expression marks `expression_unsupported`, then patch the evaluator so grouped bindings survive the return clause.【F:src/xpath/xpath_evaluator_values.cpp†L1045-L1132】
+3. Keep the count-clause instrumentation enabled while debugging the grouped return fix so we can verify positional variables (`$position`) align with the sorted tuple list once the return clause stops aborting.【F:src/xpath/xpath_evaluator_values.cpp†L2619-L2656】

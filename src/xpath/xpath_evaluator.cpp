@@ -157,6 +157,11 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
+   if (is_trace_enabled(TraceCategory::XPath))
+   {
+      pf::Log log("XPath");
+      log.msg(trace_detail_level, "record_error: %s", std::string(Message).c_str());
+   }
    if (!xml) return;
    if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
 }
