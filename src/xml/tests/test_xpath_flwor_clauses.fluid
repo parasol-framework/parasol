@@ -41,7 +41,7 @@ function testOrderByAscendingStrings()
                   '<book id="bk-2" title="Beta" price="27"/>' ..
                   '</library>'
    })
-
+   -- Expecting A,B,D,G order based on title attribute (bk-1, bk-2, bk-4, bk-3)
    local ordered = {}
    local err = xml.mtFindTag('for $book in /library/book order by $book/@title ascending return $book',
       function(XML, TagID)
@@ -51,14 +51,8 @@ function testOrderByAscendingStrings()
       end)
 
    local recv_order = table.concat(ordered, ',')
-   print('Received order: ' .. recv_order)
-
    assert(err == ERR_Okay, 'ORDER BY clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
-   assert(#ordered == 4, 'ORDER BY clause should yield all nodes, got ' .. recv_order)
-   for index, expected in ipairs({'bk-1', 'bk-2', 'bk-3', 'bk-4'}) do
-      assert(ordered[index] == expected,
-         'ORDER BY ascending should align lexically, expected ' .. expected .. ' at position ' .. index .. ', got ' .. tostring(ordered[index]))
-   end
+   assert(recv_order == 'bk-1,bk-2,bk-4,bk-3', 'Expected order of bk-1,bk-2,bk-4,bk-3, got ' .. recv_order)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -83,13 +77,9 @@ function testOrderByDescendingNumbers()
       end)
       
    local recv_order = table.concat(ordered, ',')
-   print('Received order: ' .. recv_order)
-
+   
    assert(err == ERR_Okay, 'ORDER BY clause with descending numeric sort should evaluate successfully: ' .. tostring(xml.errorMsg))
-   for index, expected in ipairs({'bk-3', 'bk-4', 'bk-1', 'bk-2'}) do
-      assert(ordered[index] == expected,
-         'ORDER BY descending should honour numeric values and tie-breakers, expected ' .. expected .. ' at position ' .. index .. ', got ' .. nz(ordered[index], 'nil'))
-   end
+   assert(recv_order == 'bk-3,bk-4,bk-1,bk-2', 'Expected order of bk-3,bk-4,bk-1,bk-2, got ' .. recv_order)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
