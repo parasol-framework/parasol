@@ -3702,7 +3702,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (is_trace_enabled(TraceCategory::XPath)) {
          pf::Log log("XPath");
          log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
-         if (!context.variables->empty()) {
+         if (context.variables && !context.variables->empty()) {
             std::string binding_list;
             binding_list.reserve(context.variables->size() * 16);
             bool first_binding = true;
