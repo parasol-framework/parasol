@@ -25,6 +25,7 @@
 #include "../xml/xml.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <deque>
@@ -39,6 +40,105 @@
 #include <unordered_set>
 
 //********************************************************************************************************************
+
+namespace
+{
+std::optional<std::string> normalise_env_value(const char *Value)
+{
+   if (!Value) return std::nullopt;
+
+   while ((*Value IS ' ') or (*Value IS '\t') or (*Value IS '\r') or (*Value IS '\n')) ++Value;
+   if (*Value IS '\0') return std::nullopt;
+
+   std::string normalised(Value);
+   while (!normalised.empty() and ((normalised.back() IS ' ') or (normalised.back() IS '\t') or (normalised.back() IS '\r') or (normalised.back() IS '\n')))
+   {
+      normalised.pop_back();
+   }
+
+   std::transform(normalised.begin(), normalised.end(), normalised.begin(),
+      [](unsigned char Ch) -> char { return (char)std::tolower((unsigned char)Ch); });
+
+   return normalised;
+}
+
+bool env_flag_enabled(const char *Value)
+{
+   auto normalised = normalise_env_value(Value);
+   if (!normalised.has_value()) return false;
+
+   if ((*normalised IS "0") or (*normalised IS "false") or (*normalised IS "off") or (*normalised IS "no") or (*normalised IS "disable") or (*normalised IS "disabled"))
+   {
+      return false;
+   }
+
+   return true;
+}
+
+struct TraceLevelConfig
+{
+   VLF detail = VLF::API;
+   VLF verbose = VLF::DETAIL;
+};
+
+TraceLevelConfig parse_trace_levels(const char *Value)
+{
+   TraceLevelConfig config;
+
+   auto normalised = normalise_env_value(Value);
+   if (!normalised.has_value()) return config;
+
+   const std::string &level = *normalised;
+
+   if ((level IS "warning") or (level IS "warn"))
+   {
+      config.detail = VLF::WARNING;
+      config.verbose = VLF::API;
+      return config;
+   }
+
+   if (level IS "info")
+   {
+      config.detail = VLF::INFO;
+      config.verbose = VLF::WARNING;
+      return config;
+   }
+
+   if ((level IS "detail") or (level IS "detailed"))
+   {
+      config.detail = VLF::DETAIL;
+      config.verbose = VLF::TRACE;
+      return config;
+   }
+
+   if ((level IS "trace") or (level IS "verbose"))
+   {
+      config.detail = VLF::TRACE;
+      config.verbose = VLF::TRACE;
+      return config;
+   }
+
+   if ((level IS "warning+api") or (level IS "warn+api"))
+   {
+      config.detail = VLF::WARNING;
+      config.verbose = VLF::API;
+      return config;
+   }
+
+   return config;
+}
+} // namespace
+
+XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
+{
+   trace_xpath_enabled = env_flag_enabled(std::getenv("PARASOL_TRACE_XPATH"));
+   auto trace_levels = parse_trace_levels(std::getenv("PARASOL_TRACE_XPATH_LEVEL"));
+   trace_detail_level = trace_levels.detail;
+   trace_verbose_level = trace_levels.verbose;
+   context.document = XML;
+   context.expression_unsupported = &expression_unsupported;
+   context.schema_registry = &xml::schema::registry();
+}
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
@@ -71,6 +171,17 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    arena.reset();
 
    return evaluate_ast(&XPath, CurrentPrefix);
+}
+
+void XPathEvaluator::set_trace_enabled(TraceCategory Category, bool Enabled)
+{
+   if (Category IS TraceCategory::XPath) trace_xpath_enabled = Enabled;
+}
+
+bool XPathEvaluator::is_trace_enabled(TraceCategory Category) const
+{
+   if (Category IS TraceCategory::XPath) return trace_xpath_enabled;
+   return false;
 }
 
 //********************************************************************************************************************

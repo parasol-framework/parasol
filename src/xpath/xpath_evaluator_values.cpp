@@ -1848,6 +1848,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return XPathVal();
    }
 
+   bool tracing_flwor = is_trace_enabled(TraceCategory::XPath);
+
    struct FlworTuple
    {
       std::unordered_map<std::string, XPathVal> bindings;
@@ -1935,6 +1937,104 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       }
 
       return std::string();
+   };
+
+   auto trace_detail = [&](const char *Format, auto ...Args)
+   {
+      if (!tracing_flwor) return;
+      pf::Log log("XPath");
+      log.msg(trace_detail_level, Format, Args...);
+   };
+
+   auto trace_verbose = [&](const char *Format, auto ...Args)
+   {
+      if (!tracing_flwor) return;
+      pf::Log log("XPath");
+      log.msg(trace_verbose_level, Format, Args...);
+   };
+
+   auto describe_value_for_trace = [&](const XPathVal &value) -> std::string
+   {
+      switch (value.Type)
+      {
+         case XPVT::Boolean:
+            return value.to_boolean() ? std::string("true") : std::string("false");
+
+         case XPVT::Number:
+            return value.to_string();
+
+         case XPVT::String:
+         case XPVT::Date:
+         case XPVT::Time:
+         case XPVT::DateTime:
+            return value.to_string();
+
+         case XPVT::NodeSet:
+         {
+            size_t length = nodeset_length(value);
+            std::string summary("node-set[");
+            summary.append(std::to_string(length));
+            summary.push_back(']');
+
+            if (length > 0)
+            {
+               std::string preview = nodeset_string_at(value, 0);
+               if (!preview.empty())
+               {
+                  summary.append(": ");
+                  summary.append(preview);
+               }
+            }
+
+            return summary;
+         }
+
+         default:
+            break;
+      }
+
+      return value.to_string();
+   };
+
+   auto describe_tuple_bindings = [&](const FlworTuple &tuple) -> std::string
+   {
+      if (tuple.bindings.empty()) return std::string();
+
+      std::vector<std::string> entries;
+      entries.reserve(tuple.bindings.size());
+
+      for (const auto &entry : tuple.bindings)
+      {
+         std::string binding = entry.first;
+         binding.append("=");
+         binding.append(describe_value_for_trace(entry.second));
+         entries.push_back(std::move(binding));
+      }
+
+      std::sort(entries.begin(), entries.end());
+
+      std::string summary;
+      for (size_t index = 0; index < entries.size(); ++index)
+      {
+         if (index > 0) summary.append(", ");
+         summary.append(entries[index]);
+      }
+
+      return summary;
+   };
+
+   auto describe_value_sequence = [&](const auto &values) -> std::string
+   {
+      if (values.empty()) return std::string();
+
+      std::string summary;
+      for (size_t index = 0; index < values.size(); ++index)
+      {
+         if (index > 0) summary.append(" | ");
+         summary.append(describe_value_for_trace(values[index]));
+      }
+
+      return summary;
    };
 
    auto ensure_nodeset_binding = [&](XPathVal &value)
@@ -2244,9 +2344,17 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       std::vector<FlworTuple> grouped;
       grouped.reserve(tuples.size());
 
-      for (const auto &tuple : tuples) {
+      if (tracing_flwor) {
+         trace_detail("FLWOR group-by: tuple-count=%zu, key-count=%zu", tuples.size(), group_clause->child_count());
+      }
+
+      for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+         const FlworTuple &tuple = tuples[tuple_index];
          GroupKey key;
          key.values.reserve(group_clause->child_count());
+
+         std::string tuple_binding_summary;
+         if (tracing_flwor) tuple_binding_summary = describe_tuple_bindings(tuple);
 
          {
             TupleScope scope(*this, context, tuple);
@@ -2270,8 +2378,17 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
                }
 
                key.values.push_back(std::move(key_value));
+
+               if (tracing_flwor) {
+                  const XPathVal &evaluated_value = key.values.back();
+                  std::string value_summary = describe_value_for_trace(evaluated_value);
+                  trace_verbose("FLWOR group key[%zu,%zu]: %s", tuple_index, key_index, value_summary.c_str());
+               }
             }
          }
+
+         std::string key_summary;
+         if (tracing_flwor) key_summary = describe_value_sequence(key.values);
 
          auto lookup = group_lookup.find(key);
          if (lookup == group_lookup.end()) {
@@ -2290,6 +2407,18 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             }
 
             grouped.push_back(std::move(grouped_tuple));
+
+            if (tracing_flwor) {
+               if (tuple_binding_summary.empty()) {
+                  trace_detail("FLWOR group create tuple[%zu] -> group %zu, keys: %s", tuple_index, group_index,
+                     key_summary.c_str());
+               }
+               else {
+                  trace_detail("FLWOR group create tuple[%zu] -> group %zu, keys: %s, bindings: %s", tuple_index,
+                     group_index, key_summary.c_str(), tuple_binding_summary.c_str());
+               }
+            }
+
             group_lookup.emplace(std::move(key), group_index);
             continue;
          }
@@ -2303,6 +2432,15 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             const auto *info = key_node->get_group_key_info();
             if ((info) and info->has_variable()) {
                existing_group.bindings[info->variable_name] = key.values[key_index];
+            }
+         }
+
+         if (tracing_flwor) {
+            std::string merged_summary = describe_tuple_bindings(existing_group);
+            trace_detail("FLWOR group merge tuple[%zu] into group %zu, keys: %s", tuple_index, lookup->second,
+               key_summary.c_str());
+            if (!merged_summary.empty()) {
+               trace_verbose("FLWOR group[%zu] bindings: %s", lookup->second, merged_summary.c_str());
             }
          }
       }
@@ -2364,14 +2502,49 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          order_specs.push_back(metadata);
       }
 
-      for (auto &tuple : tuples) {
+      if (tracing_flwor) {
+         trace_detail("FLWOR order-by: tuple-count=%zu, spec-count=%zu", tuples.size(), order_specs.size());
+         for (size_t spec_index = 0; spec_index < order_specs.size(); ++spec_index) {
+            const auto &spec = order_specs[spec_index];
+            const XPathNode *spec_expr = spec.node ? spec.node->get_child(0) : nullptr;
+            std::string expression_signature;
+            if (spec_expr) expression_signature = build_ast_signature(spec_expr);
+            else expression_signature = std::string("<missing>");
+
+            std::string collation = spec.comparator_options.has_collation ? spec.comparator_options.collation_uri :
+               std::string("(default)");
+            const char *direction = spec.comparator_options.descending ? "descending" : "ascending";
+            const char *empty_mode = "no-empty-order";
+            if (spec.comparator_options.has_empty_mode) {
+               empty_mode = spec.comparator_options.empty_is_greatest ? "empty-greatest" : "empty-least";
+            }
+
+            trace_detail("FLWOR order spec[%zu]: expr=%s, collation=%s, direction=%s, empty=%s", spec_index,
+               expression_signature.c_str(), collation.c_str(), direction, empty_mode);
+         }
+      }
+
+      for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+         FlworTuple &tuple = tuples[tuple_index];
          tuple.order_keys.clear();
          tuple.order_key_empty.clear();
          tuple.order_keys.reserve(order_specs.size());
          tuple.order_key_empty.reserve(order_specs.size());
 
+         if (tracing_flwor) {
+            std::string binding_summary = describe_tuple_bindings(tuple);
+            if (binding_summary.empty()) {
+               trace_detail("FLWOR order tuple[%zu] original=%zu has no bindings", tuple_index, tuple.original_index);
+            }
+            else {
+               trace_detail("FLWOR order tuple[%zu] original=%zu bindings: %s", tuple_index, tuple.original_index,
+                  binding_summary.c_str());
+            }
+         }
+
          TupleScope scope(*this, context, tuple);
-         for (const auto &spec : order_specs) {
+         for (size_t spec_index = 0; spec_index < order_specs.size(); ++spec_index) {
+            const auto &spec = order_specs[spec_index];
             const XPathNode *spec_expr = spec.node ? spec.node->get_child(0) : nullptr;
             if (!spec_expr) {
                record_error("Order by clause requires an expression.", true);
@@ -2388,6 +2561,19 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
             tuple.order_keys.push_back(std::move(key_value));
             tuple.order_key_empty.push_back(is_empty_key);
+
+            if (tracing_flwor) {
+               const XPathVal &stored_value = tuple.order_keys.back();
+               std::string value_summary = describe_value_for_trace(stored_value);
+               trace_verbose("FLWOR order key[%zu,%zu]: %s%s", tuple_index, spec_index,
+                  value_summary.c_str(), is_empty_key ? " (empty)" : "");
+            }
+         }
+
+         if (tracing_flwor) {
+            std::string key_summary = describe_value_sequence(tuple.order_keys);
+            trace_detail("FLWOR order tuple[%zu] generated %zu key(s): %s", tuple_index, tuple.order_keys.size(),
+               key_summary.c_str());
          }
       }
 
@@ -2419,6 +2605,18 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (order_clause->order_clause_is_stable) std::stable_sort(tuples.begin(), tuples.end(), comparator);
       else std::sort(tuples.begin(), tuples.end(), comparator);
+
+      if (tracing_flwor) {
+         std::string index_summary;
+         index_summary.reserve(tuples.size() * 4);
+         for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+            if (tuple_index > 0) index_summary.append(", ");
+            index_summary.append(std::to_string(tuples[tuple_index].original_index));
+         }
+
+         const char *sort_mode = order_clause->order_clause_is_stable ? "stable" : "unstable";
+         trace_detail("FLWOR order-by sorted (%s), original indices: %s", sort_mode, index_summary.c_str());
+      }
    }
 
    if (count_clause) {

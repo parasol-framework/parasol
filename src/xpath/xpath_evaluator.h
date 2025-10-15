@@ -20,6 +20,11 @@ class CompiledXPath;
 
 class XPathEvaluator {
    public:
+   enum class TraceCategory
+   {
+      XPath
+   };
+
    enum class PredicateResult {
       MATCH,
       NO_MATCH,
@@ -32,6 +37,9 @@ class XPathEvaluator {
    XPathArena arena;
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
+   bool trace_xpath_enabled = false;
+   VLF trace_detail_level = VLF::API;
+   VLF trace_verbose_level = VLF::DETAIL;
 
    // Tracks in-scope namespace declarations while building constructed nodes so nested
    // constructors inherit and override prefixes correctly.
@@ -117,11 +125,7 @@ class XPathEvaluator {
    void record_error(std::string_view Message, bool Force = false);
 
    public:
-   explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) {
-      context.document = XML;
-      context.expression_unsupported = &expression_unsupported;
-      context.schema_registry = &xml::schema::registry();
-   }
+   explicit XPathEvaluator(extXML *XML);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -135,6 +139,9 @@ class XPathEvaluator {
 
    // Entry point for compiled XPath evaluation
    ERR find_tag(const XPathNode &, uint32_t);
+
+   void set_trace_enabled(TraceCategory Category, bool Enabled);
+   bool is_trace_enabled(TraceCategory Category) const;
 
    // Full XPath expression evaluation returning computed values.  Will update the provided XPathValue
    ERR evaluate_xpath_expression(const XPathNode &, XPathVal *, uint32_t CurrentPrefix = 0);
