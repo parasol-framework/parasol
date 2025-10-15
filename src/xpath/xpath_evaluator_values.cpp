@@ -1140,7 +1140,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
          return std::nullopt;
       }
 
-      if (xml and (xml->ErrorMsg.compare(previous_xml_error) != 0)) xml->ErrorMsg = previous_xml_error;
+      if (xml and (xml->ErrorMsg != previous_xml_error)) xml->ErrorMsg = previous_xml_error;
       result += value.to_string();
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
