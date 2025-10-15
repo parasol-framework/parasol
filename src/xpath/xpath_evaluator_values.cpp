@@ -465,18 +465,64 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
       std::vector<std::string> attribute_values;
       NODES attribute_nodes;
       std::vector<const XMLAttrib *> attribute_refs;
+      std::vector<const XPathNode *> attribute_predicates;
+
+      for (size_t index = 0; index < AttributeStep->child_count(); ++index) {
+         auto *child = AttributeStep->get_child(index);
+         if (child and (child->type IS XPathNodeType::PREDICATE)) attribute_predicates.push_back(child);
+      }
 
       for (auto *candidate : node_results) {
          if (!candidate) continue;
 
          auto matches = dispatch_axis(AxisType::ATTRIBUTE, candidate);
+         if (matches.empty()) continue;
+
+         std::vector<AxisMatch> filtered;
+         filtered.reserve(matches.size());
+
          for (auto &match : matches) {
             if (!match.attribute) continue;
             if (!match_node_test(AttributeTest, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
+            filtered.push_back(match);
+         }
+
+         if (filtered.empty()) continue;
+
+         if (!attribute_predicates.empty()) {
+            std::vector<AxisMatch> predicate_buffer;
+            predicate_buffer.reserve(filtered.size());
+
+            for (auto *predicate_node : attribute_predicates) {
+               predicate_buffer.clear();
+               predicate_buffer.reserve(filtered.size());
+
+               for (size_t index = 0; index < filtered.size(); ++index) {
+                  auto &match = filtered[index];
+
+                  push_context(match.node, index + 1, filtered.size(), match.attribute);
+                  auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
+                  pop_context();
+
+                  if (predicate_result IS PredicateResult::UNSUPPORTED) {
+                     expression_unsupported = true;
+                     return XPathVal();
+                  }
+
+                  if (predicate_result IS PredicateResult::MATCH) predicate_buffer.push_back(match);
+               }
+
+               filtered.swap(predicate_buffer);
+               if (filtered.empty()) break;
+            }
+
+            if (filtered.empty()) continue;
+         }
+
+         for (auto &match : filtered) {
             attribute_values.push_back(match.attribute->Value);
             attribute_nodes.push_back(match.node);
             attribute_refs.push_back(match.attribute);
-
          }
       }
 
