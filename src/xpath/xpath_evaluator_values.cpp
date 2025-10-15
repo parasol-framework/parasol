@@ -1081,21 +1081,66 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
          return std::nullopt;
       }
 
+      std::string previous_xml_error;
+      if (xml) previous_xml_error = xml->ErrorMsg;
+
       size_t previous_constructed = constructed_nodes.size();
       auto saved_id = next_constructed_node_id;
+      bool previous_flag = expression_unsupported;
+      expression_unsupported = false;
       XPathVal value = evaluate_expression(expr, CurrentPrefix);
-      if (expression_unsupported) {
-         if (is_trace_enabled(TraceCategory::XPath)) {
-            std::string signature = build_ast_signature(expr);
-            pf::Log log("XPath");
-            log.msg(trace_detail_level, "AVT expression failed: %s", signature.c_str());
+
+      bool evaluation_failed = expression_unsupported;
+      std::string evaluation_error;
+      if (xml) evaluation_error = xml->ErrorMsg;
+
+      if (evaluation_failed) {
+         std::string signature = build_ast_signature(expr);
+         std::string variable_list;
+         if (context.variables.empty()) variable_list.assign("[]");
+         else {
+            variable_list.reserve(context.variables.size() * 16);
+            variable_list.push_back('[');
+            bool first_binding = true;
+            for (const auto &binding : context.variables) {
+               if (!first_binding) variable_list.append(", ");
+               variable_list.append(binding.first);
+               first_binding = false;
+            }
+            variable_list.push_back(']');
          }
-         record_error("Attribute value template expression could not be evaluated.");
-         if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
+
+         if (is_trace_enabled(TraceCategory::XPath)) {
+            pf::Log log("XPath");
+            log.msg(trace_detail_level, "AVT context variable count: %zu", context.variables.size());
+            log.msg(trace_detail_level, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
+               signature.c_str(), variable_list.c_str(), previous_flag ? "true" : "false");
+         }
+
+         std::string message = "Attribute value template expression could not be evaluated for part ";
+         message += std::to_string(index);
+         message.append(". AST signature: ");
+         message += signature;
+         message.push_back('.');
+         if (!evaluation_error.empty()) {
+            message.append(" XPath error: ");
+            message += evaluation_error;
+            if (evaluation_error.back() != '.') message.push_back('.');
+         }
+         if (context.variables.empty()) message.append(" No context variables were in scope.");
+         else {
+            message.append(" In-scope variables: ");
+            message += variable_list;
+            message.push_back('.');
+         }
+
+         record_error(message, true);
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
          return std::nullopt;
       }
+
+      if (xml and (xml->ErrorMsg.compare(previous_xml_error) != 0)) xml->ErrorMsg = previous_xml_error;
       result += value.to_string();
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
@@ -3639,6 +3684,22 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       auto local_variable = context.variables.find(ExprNode->value);
       if (local_variable != context.variables.end()) {
          return local_variable->second;
+      }
+
+      if (is_trace_enabled(TraceCategory::XPath)) {
+         pf::Log log("XPath");
+         log.msg(trace_detail_level, "Variable lookup failed for '%s'", ExprNode->value.c_str());
+         if (!context.variables.empty()) {
+            std::string binding_list;
+            binding_list.reserve(context.variables.size() * 16);
+            bool first_binding = true;
+            for (const auto &entry : context.variables) {
+               if (!first_binding) binding_list.append(", ");
+               binding_list.append(entry.first);
+               first_binding = false;
+            }
+            log.msg(trace_detail_level, "Context bindings available: [%s]", binding_list.c_str());
+         }
       }
 
       // Look up variable in the XML object's variable storage
