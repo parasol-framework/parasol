@@ -15,14 +15,14 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 - Static build: Add `-DPARASOL_STATIC=ON` to any configuration
 
 **Build and install:**
-- Build: `cmake --build build/agents --config FastBuild --parallel`
-- Install: `cmake --build build/agents --config FastBuild --parallel && cmake --install build/agents`
+- Build: `cmake --build build/agents --config [BuildType] --parallel`
+- Install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents`
 - To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.
 
 **Testing:**
 - **ALWAYS** install your latest build before running `ctest`.
-- Run all integration tests: `ctest --build-config FastBuild --test-dir build/agents`
-- Run single integration test: `ctest --build-config FastBuild --test-dir build/agents -L TEST_LABEL`
+- Run all integration tests: `ctest --build-config [BuildType] --test-dir build/agents`
+- Run single integration test: `ctest --build-config [BuildType] --test-dir build/agents -L TEST_LABEL`
 - **ALWAYS** write Fluid tests using Flute unless instructed otherwise (see Flute Testing section below)
 - When running the Parasol executable for individual tests, **ALWAYS** append `--log-warning` at a minimum for log messages, or `--log-api` if more detail is required.
 - If modifying files in the `scripts` folder, **ALWAYS** append `--set-volume scripts=/absolute/path/to/parasol/scripts` to ensure your modified files are being loaded over the installed versions.
@@ -40,7 +40,7 @@ Key build options (use with `-D` flag):
 
 When working in ephemeral cloud environments:
 
-- Always enable the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild`.
+- Prefer to use the fast build configuration `-DCMAKE_BUILD_TYPE=FastBuild`.
 - Prefer the pre-created build tree at `build/agents` and install tree at `install/agents` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config FastBuild --parallel`.
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild ...` rather than deleting the entire build tree.
 - Network access is available, so you may fetch upstream documentation or dependencies if a build script expects them.
@@ -229,7 +229,7 @@ For Fluid code, verify:
 **Full Build Commands:**
 ```bash
 # Build everything
-cmake --build build/agents --config FastBuild --parallel
+cmake --build build/agents --config [BuildType] --parallel
 
 # Install after successful build
 cmake --install build/agents
@@ -238,12 +238,12 @@ cmake --install build/agents
 **Module Build Commands:**
 ```bash
 # Build specific module (e.g., network, vector, svg, etc.)
-cmake --build build/agents --config FastBuild --target [module_name] --parallel
+cmake --build build/agents --config [BuildType] --target [module_name] --parallel
 
 # Examples:
-cmake --build build/agents --config FastBuild --target network --parallel    # For network changes
-cmake --build build/agents --config FastBuild --target vector --parallel     # For vector changes
-cmake --build build/agents --config FastBuild --target svg --parallel        # For SVG changes
+cmake --build build/agents --config [BuildType] --target network --parallel    # For network changes
+cmake --build build/agents --config [BuildType] --target vector --parallel     # For vector changes
+cmake --build build/agents --config [BuildType] --target svg --parallel        # For SVG changes
 ```
 
 ### Documentation

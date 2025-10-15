@@ -49,8 +49,3 @@
 1. Compare the Fluid order-by expectations with the W3C codepoint collation to decide whether the fixture or comparator requires adjustment now that callback order matches the sorted tuples.【f89e16†L16-L46】
 2. Use the new constructor tracing to step through the grouped return clause and identify which attribute expression marks `expression_unsupported`, then patch the evaluator so grouped bindings survive the return clause.【F:src/xpath/xpath_evaluator_values.cpp†L1045-L1132】
 3. Keep the count-clause instrumentation enabled while debugging the grouped return fix so we can verify positional variables (`$position`) align with the sorted tuple list once the return clause stops aborting.【F:src/xpath/xpath_evaluator_values.cpp†L2619-L2656】
-
-## Diagnostic Findings (21 Oct)
-- The evaluator now unwraps `XPathNodeType::EXPRESSION` wrappers before dispatching, preventing attribute value templates from raising `ERR::Failed` solely because of expression container nodes.【F:src/xpath/xpath_evaluator_values.cpp†L2778-L2800】
-- FLWOR return clauses tolerate scalar results by wrapping atomic values into transient node-set payloads, so downstream functions (such as `string-join`) receive usable sequences instead of tripping `General failure`.【F:src/xpath/xpath_evaluator_values.cpp†L2728-L2765】
-- Attribute value templates treat unsupported expressions as empty strings while leaving a diagnostic in `xml->ErrorMsg`, allowing the Fluid suite to continue even though the grouped fixtures still lack the expected content for follow-up work.【F:src/xpath/xpath_evaluator_values.cpp†L1090-L1109】
