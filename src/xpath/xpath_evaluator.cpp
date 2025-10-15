@@ -47,6 +47,7 @@ XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, aren
    context.document = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
+   context.variables = &variable_storage;
 }
 
 //********************************************************************************************************************
@@ -133,17 +134,17 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
 
    // Optionally include variable bindings present in the current context
 
-   if (!context.variables.empty()) {
+   if (!context.variables->empty()) {
       // Build a comma-separated list of variable names (best-effort, avoid allocations where possible)
       std::string names;
       names.reserve(64);
       bool first = true;
-      for (const auto &entry : context.variables) {
+      for (const auto &entry : *context.variables) {
          if (!first) names += ", ";
          first = false;
          names += entry.first;
       }
-      log.detail("Variables: count=%u names=[%s]", int(context.variables.size()), names.c_str());
+      log.detail("Variables: count=%u names=[%s]", unsigned(context.variables->size()), names.c_str());
    }
 }
 

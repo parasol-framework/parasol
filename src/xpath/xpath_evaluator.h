@@ -39,6 +39,9 @@ class XPathEvaluator {
    bool expression_unsupported = false;
    bool trace_xpath_enabled = false;
 
+   // Variable storage owned by the evaluator
+   ankerl::unordered_dense::map<std::string, XPathVal> variable_storage;
+
    // Tracks in-scope namespace declarations while building constructed nodes so nested
    // constructors inherit and override prefixes correctly.
    struct ConstructorNamespaceScope

@@ -59,7 +59,7 @@ struct XPathContext
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
    size_t size = 1;
-   ankerl::unordered_dense::map<std::string, XPathVal> variables;
+   ankerl::unordered_dense::map<std::string, XPathVal> * variables = nullptr;
    extXML * document = nullptr;
    bool * expression_unsupported = nullptr;
    xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
@@ -67,9 +67,10 @@ struct XPathContext
    XPathContext() = default;
    XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
                 extXML *Document = nullptr, bool *UnsupportedFlag = nullptr,
-                xml::schema::SchemaTypeRegistry *Registry = nullptr)
-      : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), document(Document),
-        expression_unsupported(UnsupportedFlag), schema_registry(Registry) {}
+                xml::schema::SchemaTypeRegistry *Registry = nullptr,
+                ankerl::unordered_dense::map<std::string, XPathVal> *Variables = nullptr)
+      : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), variables(Variables),
+        document(Document), expression_unsupported(UnsupportedFlag), schema_registry(Registry) {}
 };
 
 class VariableBindingGuard
@@ -84,17 +85,17 @@ class VariableBindingGuard
    VariableBindingGuard(XPathContext &Context, std::string Name, XPathVal Value)
       : context(Context), variable_name(std::move(Name))
    {
-      auto existing = context.variables.find(variable_name);
-      had_previous_value = (existing != context.variables.end());
+      auto existing = context.variables->find(variable_name);
+      had_previous_value = (existing != context.variables->end());
       if (had_previous_value) previous_value = existing->second;
 
-      context.variables[variable_name] = std::move(Value);
+      (*context.variables)[variable_name] = std::move(Value);
    }
 
    ~VariableBindingGuard()
    {
-      if (had_previous_value) context.variables[variable_name] = *previous_value;
-      else context.variables.erase(variable_name);
+      if (had_previous_value) (*context.variables)[variable_name] = *previous_value;
+      else context.variables->erase(variable_name);
    }
 
    VariableBindingGuard(const VariableBindingGuard &) = delete;
