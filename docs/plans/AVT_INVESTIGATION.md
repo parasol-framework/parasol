@@ -75,6 +75,12 @@ return <group genre="{$genre}" count="{count($book)}"/>
 - Likely issue with how grouped sequences are stored in the variable
 - May need to ensure proper NodeSet structure when creating grouped sequences
 
+**2025-10-15 Findings**:
+- Running `xml.mtFindTag` directly with debugging confirms the GROUP BY clause forms three grouped tuples, yet no `<group>` nodes are emitted and both `genre`/`count` attributes remain empty.
+- The callback bound to the FLWOR query never fires, implying the return expression currently yields an empty node-set even though tuples exist after grouping.
+- Instrumentation showed the grouping phase executes, so the fault likely resides in how the grouped bindings are surfaced to the return clause (e.g. the aggregated `$book` value is not exposed as the expected node-set when the return expression runs).
+- Next session should focus on the return-clause evaluation path after grouping, especially how `TupleScope` materialises grouped bindings for attribute value templates such as `count($book)`.
+
 ---
 
 ### 2. Path Expressions on Variables in AVTs (Test 6)
