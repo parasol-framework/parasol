@@ -20,7 +20,7 @@ if (XXD_CMD STREQUAL "XXD_CMD-NOTFOUND")
    elseif (NOT (OD_CMD STREQUAL "OD_CMD-NOTFOUND"))
       # Linux/Unix fallback using od
       add_custom_command (OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/auth.c"
-         COMMAND bash -c "{ printf 'unsigned char glAuthScript[] = {\\n'; od -An -tx1 -v '${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid' | awk '{for(i=1;i<=NF;i++){if(NR>1||i>1)printf \", \"; if((NR-1)*16+i-1)%20==0&&(NR>1||i>1))printf \"\\n  \"; printf \"0x%s\",$i}} END{printf \"\\n};\\n\"}'; stat -c 'unsigned int glAuthScriptLength = %s;' '${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid' 2>/dev/null || stat -f 'unsigned int glAuthScriptLength = %z;' '${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid'; } > auth.c"
+         COMMAND bash -c "{ printf 'unsigned char glAuthScript[] = {\\n'; od -An -tx1 -v '${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid' | awk '{for(i=1;i<=NF;i++){if(NR>1||i>1)printf \", \"; if((((NR-1)*16+i-1)%20)==0 && (NR>1||i>1))printf \"\\n  \"; printf \"0x%s\",$i}} END{printf \"\\n};\\n\"}'; stat -c 'unsigned int glAuthScriptLength = %s;' '${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid' 2>/dev/null || stat -f 'unsigned int glAuthScriptLength = %z;' '${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid'; } > auth.c"
          DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/auth.fluid"
          WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
          COMMENT "Generating C binary from auth.fluid using od"
