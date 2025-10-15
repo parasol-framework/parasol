@@ -103,7 +103,9 @@ bool xpath_collation_supported(const std::string &Uri)
 {
    if (Uri.empty()) return true;
    if (Uri IS "http://www.w3.org/2005/xpath-functions/collation/codepoint") return true;
-   return Uri IS "unicode";
+   // Optionally support HTML ASCII case-insensitive collation if implemented:
+   // if (Uri IS "http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive") return true;
+   return false;
 }
 
 bool xpath_order_key_is_empty(const XPathVal &Value)

@@ -81,6 +81,9 @@ std::string trim_constructor_whitespace(std::string_view Value)
 
 size_t combine_group_hash(size_t Seed, size_t Value)
 {
+   // 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to
+   // decorrelate values when mixing hashes.  Incorporating it here improves the
+   // distribution of combined group hashes.
    Seed ^= Value + 0x9e3779b97f4a7c15ull + (Seed << 6) + (Seed >> 2);
    return Seed;
 }
@@ -1934,24 +1937,66 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return std::string();
    };
 
-   auto merge_binding_values = [&](XPathVal &target, const XPathVal &source)
+   auto ensure_nodeset_binding = [&](XPathVal &value)
    {
-      if ((target.Type IS XPVT::NodeSet) and (source.Type IS XPVT::NodeSet)) {
-         size_t length = nodeset_length(source);
+      if (value.Type IS XPVT::NodeSet) return;
+
+      bool has_existing = !value.is_empty();
+      std::string preserved_string;
+      if (has_existing) preserved_string = value.to_string();
+
+      value.Type = XPVT::NodeSet;
+      value.NumberValue = 0.0;
+      value.StringValue.clear();
+      value.node_set.clear();
+      value.node_set_attributes.clear();
+      value.node_set_string_values.clear();
+      value.node_set_string_override.reset();
+      value.schema_type_info.reset();
+      value.schema_validated = false;
+
+      if (has_existing) {
+         value.node_set.push_back(nullptr);
+         value.node_set_attributes.push_back(nullptr);
+         value.node_set_string_values.push_back(std::move(preserved_string));
+         value.node_set_string_override = value.node_set_string_values.back();
+      }
+   };
+
+   auto append_binding_value = [&](XPathVal &target_nodeset, const XPathVal &source_value)
+   {
+      if (source_value.Type IS XPVT::NodeSet) {
+         size_t length = nodeset_length(source_value);
          for (size_t value_index = 0; value_index < length; ++value_index) {
-            XMLTag *node = value_index < source.node_set.size() ? source.node_set[value_index] : nullptr;
-            target.node_set.push_back(node);
+            XMLTag *node = value_index < source_value.node_set.size() ? source_value.node_set[value_index] : nullptr;
+            target_nodeset.node_set.push_back(node);
 
             const XMLAttrib *attribute = nullptr;
-            if (value_index < source.node_set_attributes.size()) attribute = source.node_set_attributes[value_index];
-            target.node_set_attributes.push_back(attribute);
+            if (value_index < source_value.node_set_attributes.size()) attribute = source_value.node_set_attributes[value_index];
+            target_nodeset.node_set_attributes.push_back(attribute);
 
-            std::string node_string = nodeset_string_at(source, value_index);
-            target.node_set_string_values.push_back(std::move(node_string));
+            std::string node_string = nodeset_string_at(source_value, value_index);
+            target_nodeset.node_set_string_values.push_back(std::move(node_string));
          }
 
-         if (!target.node_set_string_values.empty()) target.node_set_string_override.reset();
+         if (!target_nodeset.node_set_string_values.empty()) target_nodeset.node_set_string_override.reset();
+         return;
       }
+
+      if (source_value.is_empty()) return;
+
+      std::string atomic_string = source_value.to_string();
+      target_nodeset.node_set.push_back(nullptr);
+      target_nodeset.node_set_attributes.push_back(nullptr);
+      target_nodeset.node_set_string_values.push_back(std::move(atomic_string));
+
+      if (!target_nodeset.node_set_string_values.empty()) target_nodeset.node_set_string_override.reset();
+   };
+
+   auto merge_binding_values = [&](XPathVal &target, const XPathVal &source)
+   {
+      ensure_nodeset_binding(target);
+      append_binding_value(target, source);
    };
 
    auto merge_binding_maps = [&](FlworTuple &target_tuple, const FlworTuple &source_tuple)
@@ -2373,7 +2418,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       };
 
       if (order_clause->order_clause_is_stable) std::stable_sort(tuples.begin(), tuples.end(), comparator);
-      else std::stable_sort(tuples.begin(), tuples.end(), comparator);
+      else std::sort(tuples.begin(), tuples.end(), comparator);
    }
 
    if (count_clause) {
