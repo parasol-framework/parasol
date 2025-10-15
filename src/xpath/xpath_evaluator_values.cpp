@@ -2642,16 +2642,51 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    std::vector<std::string> combined_strings;
    std::optional<std::string> combined_override;
 
-   for (const auto &tuple : tuples) {
+   for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+      const auto &tuple = tuples[tuple_index];
+      if (tracing_flwor) {
+         std::string binding_summary = describe_tuple_bindings(tuple);
+         if (binding_summary.empty()) {
+            trace_detail("FLWOR return tuple[%zu] original=%zu context=%zu/%zu evaluating", tuple_index,
+               tuple.original_index, tuple.context_position, tuple.context_size);
+         }
+         else {
+            trace_detail("FLWOR return tuple[%zu] original=%zu context=%zu/%zu bindings: %s", tuple_index,
+               tuple.original_index, tuple.context_position, tuple.context_size, binding_summary.c_str());
+         }
+      }
+
       TupleScope scope(*this, context, tuple);
       XPathVal iteration_value = evaluate_expression(return_node, CurrentPrefix);
       if (expression_unsupported) {
+         if (tracing_flwor) {
+            const char *error_msg = xml ? xml->ErrorMsg.c_str() : "<no-xml>";
+            trace_detail("FLWOR return tuple[%zu] evaluation failed: %s", tuple_index, error_msg);
+         }
          record_error("FLWOR return expression could not be evaluated.");
          return XPathVal();
       }
 
       if (iteration_value.Type IS XPVT::NodeSet) {
          size_t length = nodeset_length(iteration_value);
+         if (tracing_flwor) {
+            trace_detail("FLWOR return tuple[%zu] produced node-set length=%zu", tuple_index, length);
+            if (length > 0) {
+               for (size_t value_index = 0; value_index < length; ++value_index) {
+                  XMLTag *node = value_index < iteration_value.node_set.size() ? iteration_value.node_set[value_index] : nullptr;
+                  int node_id = node ? node->ID : -1;
+                  const XMLAttrib *attribute = value_index < iteration_value.node_set_attributes.size() ?
+                     iteration_value.node_set_attributes[value_index] : nullptr;
+                  const char *attribute_name = (attribute and !attribute->Name.empty()) ?
+                     attribute->Name.c_str() : "<node>";
+                  trace_verbose("FLWOR return tuple[%zu] value[%zu]: node-id=%d attribute=%s", tuple_index,
+                     value_index, node_id, attribute_name);
+               }
+            }
+            else {
+               trace_verbose("FLWOR return tuple[%zu] produced empty node-set", tuple_index);
+            }
+         }
          if (length IS 0) continue;
 
          for (size_t value_index = 0; value_index < length; ++value_index) {
@@ -2677,6 +2712,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (iteration_value.is_empty()) continue;
 
+      if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced non-node-set type %d", tuple_index,
+         int(iteration_value.Type));
       record_error("FLWOR return expressions must yield node-sets.", true);
       return XPathVal();
    }
@@ -3580,6 +3617,21 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
 ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
 {
+   bool tracing_xpath = is_trace_enabled(TraceCategory::XPath);
+   auto trace_nodes_detail = [&](const char *Format, auto ...Args)
+   {
+      if (!tracing_xpath) return;
+      pf::Log log("XPath");
+      log.msg(trace_detail_level, Format, Args...);
+   };
+
+   auto trace_nodes_verbose = [&](const char *Format, auto ...Args)
+   {
+      if (!tracing_xpath) return;
+      pf::Log log("XPath");
+      log.msg(trace_verbose_level, Format, Args...);
+   };
+
    struct NodeEntry {
       XMLTag * node = nullptr;
       const XMLAttrib * attribute = nullptr;
@@ -3599,6 +3651,27 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       entries.push_back({ candidate, attribute, index });
    }
 
+   if (tracing_xpath) {
+      std::string original_summary;
+      original_summary.reserve(entries.size() * 4);
+      for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
+         if (entry_index > 0) original_summary.append(", ");
+         original_summary.append(std::to_string(entries[entry_index].original_index));
+      }
+
+      trace_nodes_detail("FLWOR emit initial tuple materialisation: nodes=%zu, attributes=%zu, order=[%s]",
+         entries.size(), Value.node_set_attributes.size(), original_summary.c_str());
+
+      for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
+         const auto &entry = entries[entry_index];
+         int node_id = entry.node ? entry.node->ID : -1;
+         const char *attribute_name = (entry.attribute and !entry.attribute->Name.empty()) ?
+            entry.attribute->Name.c_str() : "<node>";
+         trace_nodes_verbose("FLWOR emit initial entry[%zu]: node-id=%d, attribute=%s, original=%zu",
+            entry_index, node_id, attribute_name, entry.original_index);
+      }
+   }
+
    if (entries.empty()) {
       xml->Attrib.clear();
       return ERR::Search;
@@ -3616,6 +3689,17 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
    });
    entries.erase(unique_end, entries.end());
 
+   if (tracing_xpath) {
+      std::string sorted_summary;
+      sorted_summary.reserve(entries.size() * 4);
+      for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
+         if (entry_index > 0) sorted_summary.append(", ");
+         sorted_summary.append(std::to_string(entries[entry_index].original_index));
+      }
+
+      trace_nodes_detail("FLWOR emit document-order pass: unique=%zu, order=[%s]", entries.size(), sorted_summary.c_str());
+   }
+
    bool matched = false;
 
    for (size_t index = 0; index < entries.size(); ++index) {
@@ -3629,6 +3713,13 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       }
 
       bool should_terminate = false;
+      if (tracing_xpath) {
+         int node_id = candidate ? candidate->ID : -1;
+         const char *attribute_name = (entry.attribute and !entry.attribute->Name.empty()) ?
+            entry.attribute->Name.c_str() : "<node>";
+         trace_nodes_detail("FLWOR emit invoking callback index=%zu node-id=%d attribute=%s original=%zu",
+            index, node_id, attribute_name, entry.original_index);
+      }
       auto callback_error = invoke_callback(candidate, entry.attribute, matched, should_terminate);
       pop_context();
 
