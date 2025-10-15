@@ -108,6 +108,19 @@ bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenT
    return false;
 }
 
+bool XPathParser::is_identifier_token(const XPathToken &Token) const
+{
+   switch (Token.type)
+   {
+      case XPathTokenType::IDENTIFIER:
+      case XPathTokenType::COUNT:
+      case XPathTokenType::EMPTY:
+         return true;
+      default:
+         return false;
+   }
+}
+
 const XPathToken & XPathParser::peek() const
 {
    return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
@@ -135,6 +148,8 @@ bool XPathParser::is_step_start_token(XPathTokenType type) const
       case XPathTokenType::DOUBLE_DOT:
       case XPathTokenType::AT:
       case XPathTokenType::IDENTIFIER:
+      case XPathTokenType::COUNT:
+      case XPathTokenType::EMPTY:
       case XPathTokenType::WILDCARD:
          return true;
       default:
@@ -251,7 +266,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_step()
    }
 
    // Handle explicit axis specifiers (axis::node-test)
-   if (check(XPathTokenType::IDENTIFIER)) {
+   if (is_identifier_token(peek())) {
       // Look ahead for axis separator
       if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::AXIS_SEPARATOR) {
          std::string axis_name(peek().value);
@@ -293,7 +308,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::WILDCARD, "*");
    }
-   else if (check(XPathTokenType::IDENTIFIER)) {
+   else if (is_identifier_token(peek())) {
       std::string name(peek().value);
 
       bool is_node_type = false;
@@ -315,7 +330,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
             std::string target;
 
             if (!check(XPathTokenType::RPAREN)) {
-               if (check(XPathTokenType::STRING) or check(XPathTokenType::IDENTIFIER)) {
+               if (check(XPathTokenType::STRING) or is_identifier_token(peek())) {
                   target = peek().value;
                   advance();
                }
@@ -341,7 +356,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
       advance();
 
       if (check(XPathTokenType::COLON)) {
-         if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::IDENTIFIER) {
+         if (current_token + 1 < tokens.size() and is_identifier_token(tokens[current_token + 1])) {
             advance(); // consume ':'
             name = std::format("{}:{}", name, peek().value);
             advance();
@@ -389,12 +404,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
       bool handled_attribute = false;
       std::unique_ptr<XPathNode> attribute_expression;
 
-      if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
+      if (is_identifier_token(peek()) or check(XPathTokenType::WILDCARD)) {
          std::string attr_name(peek().value);
          advance();
 
          if (match(XPathTokenType::COLON)) {
-            if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::WILDCARD)) {
+            if (is_identifier_token(peek()) or check(XPathTokenType::WILDCARD)) {
                attr_name = std::format("{}:{}", attr_name, peek().value);
                advance();
             }
@@ -457,7 +472,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
       return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
    }
 
-   if (check(XPathTokenType::IDENTIFIER) or check(XPathTokenType::NUMBER)) {
+   if (is_identifier_token(peek()) or check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
       advance();
 
@@ -531,7 +546,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             }
 
             std::string variable_name;
-            if (check(XPathTokenType::IDENTIFIER)) {
+            if (is_identifier_token(peek())) {
                variable_name = peek().value;
                advance();
             }
@@ -575,7 +590,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             }
 
             std::string variable_name;
-            if (check(XPathTokenType::IDENTIFIER)) {
+            if (is_identifier_token(peek())) {
                variable_name = peek().value;
                advance();
             }
@@ -821,7 +836,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
       }
 
       std::string variable_name;
-      if (check(XPathTokenType::IDENTIFIER)) {
+      if (is_identifier_token(peek())) {
          variable_name = peek().value;
          advance();
       }
@@ -965,7 +980,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_count_clause()
    }
 
    std::string variable_name;
-   if (check(XPathTokenType::IDENTIFIER)) {
+   if (is_identifier_token(peek())) {
       variable_name = peek().value;
       advance();
    }
@@ -1177,13 +1192,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
    else if (is_step_start_token(peek().type)) {
       looks_like_path = true;
 
-      if (peek().type IS XPathTokenType::IDENTIFIER) {
+      if (is_identifier_token(peek())) {
          if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
             looks_like_path = false;
          }
          else if (is_constructor_keyword(peek())) {
             size_t lookahead = current_token + 1;
-            while ((lookahead < tokens.size()) and (tokens[lookahead].type IS XPathTokenType::IDENTIFIER)) {
+            while ((lookahead < tokens.size()) and is_identifier_token(tokens[lookahead])) {
                lookahead++;
             }
 
@@ -1331,7 +1346,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
       }
 
       std::string variable_name;
-      if (check(XPathTokenType::IDENTIFIER)) {
+      if (is_identifier_token(peek())) {
          variable_name = peek().value;
          advance();
       }
@@ -1406,7 +1421,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
       return parse_variable_reference();
    }
 
-   if (check(XPathTokenType::IDENTIFIER)) {
+   if (is_identifier_token(peek())) {
       if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
          return parse_function_call();
       }
@@ -1424,7 +1439,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_function_call()
 {
-   if (!check(XPathTokenType::IDENTIFIER)) return nullptr;
+   if (!is_identifier_token(peek())) return nullptr;
 
    std::string function_name(peek().value);
    advance();
@@ -1492,7 +1507,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
 {
    if (check(XPathTokenType::DOLLAR)) {
       advance();
-      if (check(XPathTokenType::IDENTIFIER)) {
+      if (is_identifier_token(peek())) {
          std::string name(peek().value);
          advance();
          return std::make_unique<XPathNode>(XPathNodeType::VARIABLE_REFERENCE, name);
@@ -1534,7 +1549,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
 {
    ConstructorName name;
 
-   if (!check(XPathTokenType::IDENTIFIER)) {
+   if (!is_identifier_token(peek())) {
       report_error("Expected name in constructor");
       return std::nullopt;
    }
@@ -1544,7 +1559,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
 
    if (match(XPathTokenType::COLON)) {
       name.Prefix = name.LocalName;
-      if (!check(XPathTokenType::IDENTIFIER)) {
+      if (!is_identifier_token(peek())) {
          report_error("Expected local name after ':' in constructor");
          return std::nullopt;
       }
@@ -1894,7 +1909,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
       info.name = std::string(peek().value);
       advance();
    }
-   else if (check(XPathTokenType::IDENTIFIER)) {
+   else if (is_identifier_token(peek())) {
       info.name = std::string(peek().value);
       advance();
       if (check(XPathTokenType::COLON)) {
