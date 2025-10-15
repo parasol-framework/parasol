@@ -1068,7 +1068,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 {
    std::string result;
 
-   for (size_t index = 0; index < Attribute.value_parts.size(); ++index) {
+   for (int index = 0; index < std::ssize(Attribute.value_parts); ++index) {
       const auto &part = Attribute.value_parts[index];
       if (!part.is_expression) {
          result += part.text;
@@ -1077,16 +1077,40 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
       auto *expr = Attribute.get_expression_for_part(index);
       if (!expr) {
+         pf::Log("XPath").detail("AVT failed at part index %d", index);
          record_error("Attribute value template part is missing its expression.", (const XPathNode *)nullptr, true);
          return std::nullopt;
       }
+
+      std::string previous_xml_error;
+      if (xml) previous_xml_error = xml->ErrorMsg;
 
       size_t previous_constructed = constructed_nodes.size();
       auto saved_id = next_constructed_node_id;
       bool previous_flag = expression_unsupported;
       expression_unsupported = false;
       XPathVal value = evaluate_expression(expr, CurrentPrefix);
-      if (expression_unsupported) {
+
+      bool evaluation_failed = expression_unsupported;
+      std::string evaluation_error;
+      if (xml) evaluation_error = xml->ErrorMsg;
+
+      if (evaluation_failed) {
+         std::string signature = build_ast_signature(expr);
+         std::string variable_list;
+         if (context.variables.empty()) variable_list.assign("[]");
+         else {
+            variable_list.reserve(context.variables.size() * 16);
+            variable_list.push_back('[');
+            bool first_binding = true;
+            for (const auto &binding : context.variables) {
+               if (!first_binding) variable_list.append(", ");
+               variable_list.append(binding.first);
+               first_binding = false;
+            }
+            variable_list.push_back(']');
+         }
+
          if (is_trace_enabled(TraceCategory::XPath)) {
             std::string signature = build_ast_signature(expr);
             size_t variable_count = context.variables.size();
@@ -1108,11 +1132,15 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
          }
          record_error("Attribute value template expression could not be evaluated.", expr);
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
+        
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
          return std::nullopt;
       }
+
+      if (xml and (xml->ErrorMsg.compare(previous_xml_error) != 0)) xml->ErrorMsg = previous_xml_error;
       result += value.to_string();
+      expression_unsupported = previous_flag;
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
    }
