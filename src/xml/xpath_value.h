@@ -79,4 +79,10 @@ class XPathVal : public XPathValue
 
 std::string format_xpath_number(double Value);
 std::optional<bool> parse_schema_boolean(std::string_view Value);
+XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *> Nodes,
+   std::vector<const XMLAttrib *> Attributes = {},
+   std::vector<std::string> Strings = {},
+   std::optional<std::string> Override = std::nullopt);
+XPathVal xpath_nodeset_singleton(XMLTag *Node, const XMLAttrib *Attribute,
+   std::string StringValue);
 

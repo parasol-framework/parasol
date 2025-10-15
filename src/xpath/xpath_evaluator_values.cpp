@@ -25,6 +25,7 @@
 #include <optional>
 #include <string>
 #include <cstdint>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace {
@@ -76,6 +77,70 @@ std::string trim_constructor_whitespace(std::string_view Value)
    while ((end > start) and (uint8_t(Value[end - 1]) <= 0x20u)) --end;
 
    return std::string(Value.substr(start, end - start));
+}
+
+size_t combine_group_hash(size_t Seed, size_t Value)
+{
+   // 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to
+   // decorrelate values when mixing hashes.  Incorporating it here improves the
+   // distribution of combined group hashes.
+   Seed ^= Value + 0x9e3779b97f4a7c15ull + (Seed << 6) + (Seed >> 2);
+   return Seed;
+}
+
+size_t hash_xpath_group_value(const XPathVal &Value)
+{
+   size_t seed = size_t(Value.Type);
+
+   switch (Value.Type)
+   {
+      case XPVT::Boolean:
+      case XPVT::Number:
+      {
+         double number = Value.to_number();
+         if (std::isnan(number)) return combine_group_hash(seed, 0x7ff8000000000000ull);
+         size_t hashed = std::hash<double>{}(number);
+         return combine_group_hash(seed, hashed);
+      }
+
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime:
+      {
+         std::string string_value = Value.to_string();
+         size_t hashed = std::hash<std::string>{}(string_value);
+         return combine_group_hash(seed, hashed);
+      }
+
+      case XPVT::NodeSet:
+      {
+         size_t combined = seed;
+         for (XMLTag *node : Value.node_set)
+         {
+            combined = combine_group_hash(combined, std::hash<XMLTag *>{}(node));
+         }
+
+         for (const XMLAttrib *attribute : Value.node_set_attributes)
+         {
+            combined = combine_group_hash(combined, std::hash<const XMLAttrib *>{}(attribute));
+         }
+
+         for (const auto &entry : Value.node_set_string_values)
+         {
+            combined = combine_group_hash(combined, std::hash<std::string>{}(entry));
+         }
+
+         if (Value.node_set_string_override.has_value())
+         {
+            combined = combine_group_hash(combined, std::hash<std::string>{}(*Value.node_set_string_override));
+         }
+
+         return combined;
+      }
+   }
+
+   return seed;
 }
 
 
@@ -1765,6 +1830,671 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
 
 //********************************************************************************************************************
 
+XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t CurrentPrefix)
+{
+   if (!Node) {
+      record_error("FLWOR expression is missing its AST node.", true);
+      return XPathVal();
+   }
+
+   if (Node->child_count() < 2) {
+      record_error("FLWOR expression requires at least one clause and a return expression.", true);
+      return XPathVal();
+   }
+
+   const XPathNode *return_node = Node->get_child(Node->child_count() - 1);
+   if (!return_node) {
+      record_error("FLWOR expression is missing its return clause.", true);
+      return XPathVal();
+   }
+
+   struct FlworTuple
+   {
+      std::unordered_map<std::string, XPathVal> bindings;
+      XMLTag *context_node = nullptr;
+      const XMLAttrib *context_attribute = nullptr;
+      size_t context_position = 1;
+      size_t context_size = 1;
+      std::vector<XPathVal> order_keys;
+      std::vector<bool> order_key_empty;
+      size_t original_index = 0;
+   };
+
+   struct TupleScope
+   {
+      XPathEvaluator & evaluator;
+      XPathContext & context_ref;
+      std::vector<VariableBindingGuard> guards;
+
+      TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const FlworTuple &Tuple)
+         : evaluator(Evaluator), context_ref(ContextRef)
+      {
+         evaluator.push_context(Tuple.context_node, Tuple.context_position, Tuple.context_size, Tuple.context_attribute);
+         guards.reserve(Tuple.bindings.size());
+         for (const auto &entry : Tuple.bindings) guards.emplace_back(context_ref, entry.first, entry.second);
+      }
+
+      ~TupleScope()
+      {
+         evaluator.pop_context();
+      }
+   };
+
+   struct GroupKey
+   {
+      pf::vector<XPathVal> values;
+   };
+
+   struct GroupKeyHasher
+   {
+      size_t operator()(const GroupKey &Key) const noexcept
+      {
+         size_t seed = Key.values.size();
+         for (const auto &value : Key.values) seed = combine_group_hash(seed, hash_xpath_group_value(value));
+         return seed;
+      }
+   };
+
+   struct GroupKeyEqual
+   {
+      bool operator()(const GroupKey &Left, const GroupKey &Right) const noexcept
+      {
+         if (Left.values.size() != Right.values.size()) return false;
+         for (size_t index = 0; index < Left.values.size(); ++index)
+         {
+            if (!compare_xpath_values(Left.values[index], Right.values[index])) return false;
+         }
+         return true;
+      }
+   };
+
+   auto nodeset_length = [](const XPathVal &value) -> size_t
+   {
+      size_t length = value.node_set.size();
+      if (length < value.node_set_attributes.size()) length = value.node_set_attributes.size();
+      if (length < value.node_set_string_values.size()) length = value.node_set_string_values.size();
+      if ((length IS 0) and value.node_set_string_override.has_value()) length = 1;
+      return length;
+   };
+
+   auto nodeset_string_at = [](const XPathVal &value, size_t index) -> std::string
+   {
+      if (index < value.node_set_string_values.size()) return value.node_set_string_values[index];
+
+      bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty() and (index IS 0);
+      if (use_override) return *value.node_set_string_override;
+
+      if (index < value.node_set_attributes.size()) {
+         const XMLAttrib *attribute = value.node_set_attributes[index];
+         if (attribute) return attribute->Value;
+      }
+
+      if (index < value.node_set.size()) {
+         XMLTag *node = value.node_set[index];
+         if (node) return XPathVal::node_string_value(node);
+      }
+
+      return std::string();
+   };
+
+   auto ensure_nodeset_binding = [&](XPathVal &value)
+   {
+      if (value.Type IS XPVT::NodeSet) return;
+
+      bool has_existing = !value.is_empty();
+      std::string preserved_string;
+      if (has_existing) preserved_string = value.to_string();
+
+      value.Type = XPVT::NodeSet;
+      value.NumberValue = 0.0;
+      value.StringValue.clear();
+      value.node_set.clear();
+      value.node_set_attributes.clear();
+      value.node_set_string_values.clear();
+      value.node_set_string_override.reset();
+      value.schema_type_info.reset();
+      value.schema_validated = false;
+
+      if (has_existing) {
+         value.node_set.push_back(nullptr);
+         value.node_set_attributes.push_back(nullptr);
+         value.node_set_string_values.push_back(std::move(preserved_string));
+         value.node_set_string_override = value.node_set_string_values.back();
+      }
+   };
+
+   auto append_binding_value = [&](XPathVal &target_nodeset, const XPathVal &source_value)
+   {
+      if (source_value.Type IS XPVT::NodeSet) {
+         size_t length = nodeset_length(source_value);
+         for (size_t value_index = 0; value_index < length; ++value_index) {
+            XMLTag *node = value_index < source_value.node_set.size() ? source_value.node_set[value_index] : nullptr;
+            target_nodeset.node_set.push_back(node);
+
+            const XMLAttrib *attribute = nullptr;
+            if (value_index < source_value.node_set_attributes.size()) attribute = source_value.node_set_attributes[value_index];
+            target_nodeset.node_set_attributes.push_back(attribute);
+
+            std::string node_string = nodeset_string_at(source_value, value_index);
+            target_nodeset.node_set_string_values.push_back(std::move(node_string));
+         }
+
+         if (!target_nodeset.node_set_string_values.empty()) target_nodeset.node_set_string_override.reset();
+         return;
+      }
+
+      if (source_value.is_empty()) return;
+
+      std::string atomic_string = source_value.to_string();
+      target_nodeset.node_set.push_back(nullptr);
+      target_nodeset.node_set_attributes.push_back(nullptr);
+      target_nodeset.node_set_string_values.push_back(std::move(atomic_string));
+
+      if (!target_nodeset.node_set_string_values.empty()) target_nodeset.node_set_string_override.reset();
+   };
+
+   auto merge_binding_values = [&](XPathVal &target, const XPathVal &source)
+   {
+      ensure_nodeset_binding(target);
+      append_binding_value(target, source);
+   };
+
+   auto merge_binding_maps = [&](FlworTuple &target_tuple, const FlworTuple &source_tuple)
+   {
+      for (const auto &entry : source_tuple.bindings) {
+         const std::string &variable_name = entry.first;
+         const XPathVal &source_value = entry.second;
+
+         auto existing = target_tuple.bindings.find(variable_name);
+         if (existing == target_tuple.bindings.end()) {
+            target_tuple.bindings[variable_name] = source_value;
+            continue;
+         }
+
+         merge_binding_values(existing->second, source_value);
+      }
+
+      if (target_tuple.original_index > source_tuple.original_index) {
+         target_tuple.original_index = source_tuple.original_index;
+      }
+   };
+
+   std::vector<const XPathNode *> binding_nodes;
+   binding_nodes.reserve(Node->child_count());
+
+   const XPathNode *where_clause = nullptr;
+   const XPathNode *group_clause = nullptr;
+   const XPathNode *order_clause = nullptr;
+   const XPathNode *count_clause = nullptr;
+
+   for (size_t index = 0; index + 1 < Node->child_count(); ++index) {
+      const XPathNode *child = Node->get_child(index);
+      if (!child) {
+         record_error("FLWOR expression contains an invalid clause.", true);
+         return XPathVal();
+      }
+
+      if ((child->type IS XPathNodeType::FOR_BINDING) or (child->type IS XPathNodeType::LET_BINDING)) {
+         binding_nodes.push_back(child);
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::WHERE_CLAUSE) {
+         where_clause = child;
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::GROUP_CLAUSE) {
+         group_clause = child;
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::ORDER_CLAUSE) {
+         order_clause = child;
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::COUNT_CLAUSE) {
+         count_clause = child;
+         continue;
+      }
+
+      record_error("FLWOR expression contains an unsupported clause type.", true);
+      return XPathVal();
+   }
+
+   if (binding_nodes.empty()) {
+      record_error("FLWOR expression is missing binding clauses.", true);
+      return XPathVal();
+   }
+
+   std::vector<FlworTuple> tuples;
+   tuples.reserve(8);
+
+   FlworTuple initial_tuple;
+   initial_tuple.context_node = context.context_node;
+   initial_tuple.context_attribute = context.attribute_node;
+   initial_tuple.context_position = context.position;
+   initial_tuple.context_size = context.size;
+   initial_tuple.original_index = 0;
+   tuples.push_back(std::move(initial_tuple));
+
+   for (const XPathNode *binding_node : binding_nodes) {
+      if (!binding_node) continue;
+
+      if (binding_node->type IS XPathNodeType::LET_BINDING) {
+         if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
+            record_error("Let binding requires a variable name and expression.", true);
+            return XPathVal();
+         }
+
+         const XPathNode *binding_expr = binding_node->get_child(0);
+         if (!binding_expr) {
+            record_error("Let binding requires an expression node.", true);
+            return XPathVal();
+         }
+
+         std::vector<FlworTuple> next_tuples;
+         next_tuples.reserve(tuples.size());
+
+         for (const auto &tuple : tuples) {
+            TupleScope scope(*this, context, tuple);
+            XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
+            if (expression_unsupported) {
+               record_error("Let binding expression could not be evaluated.");
+               return XPathVal();
+            }
+
+            FlworTuple updated_tuple = tuple;
+            updated_tuple.bindings[binding_node->value] = std::move(bound_value);
+            next_tuples.push_back(std::move(updated_tuple));
+         }
+
+         tuples = std::move(next_tuples);
+         for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+            tuples[tuple_index].original_index = tuple_index;
+         }
+         continue;
+      }
+
+      if (binding_node->type IS XPathNodeType::FOR_BINDING) {
+         if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
+            record_error("For binding requires a variable name and sequence.", true);
+            return XPathVal();
+         }
+
+         const XPathNode *sequence_expr = binding_node->get_child(0);
+         if (!sequence_expr) {
+            record_error("For binding requires a sequence expression.", true);
+            return XPathVal();
+         }
+
+         std::vector<FlworTuple> next_tuples;
+         next_tuples.reserve(tuples.size());
+
+         for (const auto &tuple : tuples) {
+            TupleScope scope(*this, context, tuple);
+            XPathVal sequence_value = evaluate_expression(sequence_expr, CurrentPrefix);
+            if (expression_unsupported) {
+               record_error("For binding sequence could not be evaluated.");
+               return XPathVal();
+            }
+
+            if (sequence_value.Type != XPVT::NodeSet) {
+               record_error("For binding sequences must evaluate to node-sets.", true);
+               return XPathVal();
+            }
+
+            size_t sequence_size = sequence_value.node_set.size();
+            if (sequence_size IS 0) continue;
+
+            bool use_override = sequence_value.node_set_string_override.has_value() and
+               sequence_value.node_set_string_values.empty();
+
+            for (size_t item_index = 0; item_index < sequence_size; ++item_index) {
+               FlworTuple next_tuple = tuple;
+
+               XMLTag *item_node = sequence_value.node_set[item_index];
+               const XMLAttrib *item_attribute = nullptr;
+               if (item_index < sequence_value.node_set_attributes.size()) {
+                  item_attribute = sequence_value.node_set_attributes[item_index];
+               }
+
+               std::string item_string;
+               if (item_index < sequence_value.node_set_string_values.size()) {
+                  item_string = sequence_value.node_set_string_values[item_index];
+               }
+               else if (use_override) item_string = *sequence_value.node_set_string_override;
+               else if (item_attribute) item_string = item_attribute->Value;
+               else if (item_node) item_string = XPathVal::node_string_value(item_node);
+
+               XPathVal bound_value = xpath_nodeset_singleton(item_node, item_attribute, item_string);
+
+               next_tuple.bindings[binding_node->value] = std::move(bound_value);
+               next_tuple.context_node = item_node;
+               next_tuple.context_attribute = item_attribute;
+               next_tuple.context_position = item_index + 1;
+               next_tuple.context_size = sequence_size;
+
+               next_tuples.push_back(std::move(next_tuple));
+            }
+         }
+
+         tuples = std::move(next_tuples);
+         for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+            tuples[tuple_index].original_index = tuple_index;
+         }
+         continue;
+      }
+
+      record_error("FLWOR expression contains an unsupported binding clause.", true);
+      return XPathVal();
+   }
+
+   if (tuples.empty()) {
+      NODES empty_nodes;
+      return XPathVal(empty_nodes);
+   }
+
+   if (where_clause) {
+      if (where_clause->child_count() IS 0) {
+         record_error("Where clause requires a predicate expression.", true);
+         return XPathVal();
+      }
+
+      const XPathNode *predicate_node = where_clause->get_child(0);
+      if (!predicate_node) {
+         record_error("Where clause requires a predicate expression.", true);
+         return XPathVal();
+      }
+
+      std::vector<FlworTuple> filtered;
+      filtered.reserve(tuples.size());
+
+      for (const auto &tuple : tuples) {
+         TupleScope scope(*this, context, tuple);
+         XPathVal predicate_value = evaluate_expression(predicate_node, CurrentPrefix);
+         if (expression_unsupported) {
+            record_error("Where clause expression could not be evaluated.");
+            return XPathVal();
+         }
+
+         if (predicate_value.to_boolean()) filtered.push_back(tuple);
+      }
+
+      tuples = std::move(filtered);
+      for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+         tuples[tuple_index].original_index = tuple_index;
+      }
+
+      if (tuples.empty()) {
+         NODES empty_nodes;
+         return XPathVal(empty_nodes);
+      }
+   }
+
+   if (group_clause) {
+      if (group_clause->child_count() IS 0) {
+         record_error("Group clause requires at least one key definition.", true);
+         return XPathVal();
+      }
+
+      std::unordered_map<GroupKey, size_t, GroupKeyHasher, GroupKeyEqual> group_lookup;
+      group_lookup.reserve(tuples.size());
+      std::vector<FlworTuple> grouped;
+      grouped.reserve(tuples.size());
+
+      for (const auto &tuple : tuples) {
+         GroupKey key;
+         key.values.reserve(group_clause->child_count());
+
+         {
+            TupleScope scope(*this, context, tuple);
+            for (size_t key_index = 0; key_index < group_clause->child_count(); ++key_index) {
+               const XPathNode *key_node = group_clause->get_child(key_index);
+               if (!key_node) {
+                  record_error("Group clause contains an invalid key.", true);
+                  return XPathVal();
+               }
+
+               const XPathNode *key_expr = key_node->get_child(0);
+               if (!key_expr) {
+                  record_error("Group key requires an expression.", true);
+                  return XPathVal();
+               }
+
+               XPathVal key_value = evaluate_expression(key_expr, CurrentPrefix);
+               if (expression_unsupported) {
+                  record_error("Group key expression could not be evaluated.");
+                  return XPathVal();
+               }
+
+               key.values.push_back(std::move(key_value));
+            }
+         }
+
+         auto lookup = group_lookup.find(key);
+         if (lookup == group_lookup.end()) {
+            size_t group_index = grouped.size();
+
+            FlworTuple grouped_tuple = tuple;
+            grouped_tuple.original_index = tuple.original_index;
+
+            for (size_t key_index = 0; key_index < group_clause->child_count(); ++key_index) {
+               const XPathNode *key_node = group_clause->get_child(key_index);
+               if (!key_node) continue;
+               const auto *info = key_node->get_group_key_info();
+               if ((info) and info->has_variable()) {
+                  grouped_tuple.bindings[info->variable_name] = key.values[key_index];
+               }
+            }
+
+            grouped.push_back(std::move(grouped_tuple));
+            group_lookup.emplace(std::move(key), group_index);
+            continue;
+         }
+
+         FlworTuple &existing_group = grouped[lookup->second];
+         merge_binding_maps(existing_group, tuple);
+
+         for (size_t key_index = 0; key_index < group_clause->child_count(); ++key_index) {
+            const XPathNode *key_node = group_clause->get_child(key_index);
+            if (!key_node) continue;
+            const auto *info = key_node->get_group_key_info();
+            if ((info) and info->has_variable()) {
+               existing_group.bindings[info->variable_name] = key.values[key_index];
+            }
+         }
+      }
+
+      tuples = std::move(grouped);
+      if (tuples.empty()) {
+         NODES empty_nodes;
+         return XPathVal(empty_nodes);
+      }
+   }
+
+   if (order_clause) {
+      if (order_clause->child_count() IS 0) {
+         record_error("Order by clause requires at least one sort specification.", true);
+         return XPathVal();
+      }
+
+      struct OrderSpecMetadata
+      {
+         const XPathNode *node = nullptr;
+         XPathNode::XPathOrderSpecOptions options{};
+         bool has_options = false;
+         XPathOrderComparatorOptions comparator_options{};
+      };
+
+      std::vector<OrderSpecMetadata> order_specs;
+      order_specs.reserve(order_clause->child_count());
+
+      for (size_t spec_index = 0; spec_index < order_clause->child_count(); ++spec_index) {
+         const XPathNode *spec_node = order_clause->get_child(spec_index);
+         if (!spec_node) {
+            record_error("Order by clause contains an invalid specification.", true);
+            return XPathVal();
+         }
+
+         OrderSpecMetadata metadata;
+         metadata.node = spec_node;
+         if (spec_node->has_order_spec_options()) {
+            metadata.options = *spec_node->get_order_spec_options();
+            metadata.has_options = true;
+         }
+
+         if (metadata.has_options and metadata.options.has_collation()) {
+            const std::string &uri = metadata.options.collation_uri;
+            if (!xpath_collation_supported(uri)) {
+               record_error("FLWOR order by clause collation '" + uri + "' is not supported.", true);
+               return XPathVal();
+            }
+            metadata.comparator_options.has_collation = true;
+            metadata.comparator_options.collation_uri = uri;
+         }
+
+         if (metadata.has_options) {
+            metadata.comparator_options.descending = metadata.options.is_descending;
+            metadata.comparator_options.has_empty_mode = metadata.options.has_empty_mode;
+            metadata.comparator_options.empty_is_greatest = metadata.options.empty_is_greatest;
+         }
+
+         order_specs.push_back(metadata);
+      }
+
+      for (auto &tuple : tuples) {
+         tuple.order_keys.clear();
+         tuple.order_key_empty.clear();
+         tuple.order_keys.reserve(order_specs.size());
+         tuple.order_key_empty.reserve(order_specs.size());
+
+         TupleScope scope(*this, context, tuple);
+         for (const auto &spec : order_specs) {
+            const XPathNode *spec_expr = spec.node ? spec.node->get_child(0) : nullptr;
+            if (!spec_expr) {
+               record_error("Order by clause requires an expression.", true);
+               return XPathVal();
+            }
+
+            XPathVal key_value = evaluate_expression(spec_expr, CurrentPrefix);
+            if (expression_unsupported) {
+               record_error("Order by expression could not be evaluated.");
+               return XPathVal();
+            }
+
+            bool is_empty_key = xpath_order_key_is_empty(key_value);
+
+            tuple.order_keys.push_back(std::move(key_value));
+            tuple.order_key_empty.push_back(is_empty_key);
+         }
+      }
+
+      auto comparator = [&](const FlworTuple &lhs, const FlworTuple &rhs) -> bool
+      {
+         for (size_t spec_index = 0; spec_index < order_specs.size(); ++spec_index) {
+            const auto &spec = order_specs[spec_index];
+            const XPathVal *left_ptr = spec_index < lhs.order_keys.size() ? &lhs.order_keys[spec_index] : nullptr;
+            const XPathVal *right_ptr = spec_index < rhs.order_keys.size() ? &rhs.order_keys[spec_index] : nullptr;
+
+            XPathVal left_placeholder;
+            XPathVal right_placeholder;
+
+            const XPathVal &left_value = left_ptr ? *left_ptr : left_placeholder;
+            const XPathVal &right_value = right_ptr ? *right_ptr : right_placeholder;
+
+            bool left_empty = left_ptr ? (spec_index < lhs.order_key_empty.size() ? lhs.order_key_empty[spec_index] :
+               xpath_order_key_is_empty(left_value)) : true;
+            bool right_empty = right_ptr ? (spec_index < rhs.order_key_empty.size() ? rhs.order_key_empty[spec_index] :
+               xpath_order_key_is_empty(right_value)) : true;
+
+            int comparison = xpath_compare_order_keys(left_value, left_empty, right_value, right_empty,
+               spec.comparator_options);
+            if (comparison != 0) return comparison < 0;
+         }
+
+         return lhs.original_index < rhs.original_index;
+      };
+
+      if (order_clause->order_clause_is_stable) std::stable_sort(tuples.begin(), tuples.end(), comparator);
+      else std::sort(tuples.begin(), tuples.end(), comparator);
+   }
+
+   if (count_clause) {
+      if (count_clause->value.empty()) {
+         record_error("Count clause requires a variable name.", true);
+         return XPathVal();
+      }
+
+      for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+         XPathVal counter(double(tuple_index + 1));
+         tuples[tuple_index].bindings[count_clause->value] = std::move(counter);
+      }
+   }
+
+   size_t tuple_count = tuples.size();
+   for (size_t tuple_index = 0; tuple_index < tuple_count; ++tuple_index) {
+      tuples[tuple_index].context_position = tuple_index + 1;
+      tuples[tuple_index].context_size = tuple_count;
+   }
+
+   NODES combined_nodes;
+   std::vector<const XMLAttrib *> combined_attributes;
+   std::vector<std::string> combined_strings;
+   std::optional<std::string> combined_override;
+
+   for (const auto &tuple : tuples) {
+      TupleScope scope(*this, context, tuple);
+      XPathVal iteration_value = evaluate_expression(return_node, CurrentPrefix);
+      if (expression_unsupported) {
+         record_error("FLWOR return expression could not be evaluated.");
+         return XPathVal();
+      }
+
+      if (iteration_value.Type IS XPVT::NodeSet) {
+         size_t length = nodeset_length(iteration_value);
+         if (length IS 0) continue;
+
+         for (size_t value_index = 0; value_index < length; ++value_index) {
+            XMLTag *node = value_index < iteration_value.node_set.size() ? iteration_value.node_set[value_index] : nullptr;
+            combined_nodes.push_back(node);
+
+            const XMLAttrib *attribute = nullptr;
+            if (value_index < iteration_value.node_set_attributes.size()) {
+               attribute = iteration_value.node_set_attributes[value_index];
+            }
+            combined_attributes.push_back(attribute);
+
+            std::string node_string = nodeset_string_at(iteration_value, value_index);
+            combined_strings.push_back(node_string);
+            if (!combined_override.has_value()) combined_override = node_string;
+         }
+
+         if (iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty()) {
+            if (!combined_override.has_value()) combined_override = iteration_value.node_set_string_override;
+         }
+         continue;
+      }
+
+      if (iteration_value.is_empty()) continue;
+
+      record_error("FLWOR return expressions must yield node-sets.", true);
+      return XPathVal();
+   }
+
+   XPathVal result;
+   result.Type = XPVT::NodeSet;
+   result.node_set = std::move(combined_nodes);
+   result.node_set_attributes = std::move(combined_attributes);
+   result.node_set_string_values = std::move(combined_strings);
+   if (combined_override.has_value()) result.node_set_string_override = combined_override;
+   else result.node_set_string_override.reset();
+   return result;
+}
+
+//********************************************************************************************************************
+
 XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
       record_error("Unsupported XPath expression: empty node", true);
@@ -1905,195 +2635,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    // FLWOR evaluation mirrors that approach, capturing structural and runtime issues so test_xpath_flwor.fluid can assert
    // on human-readable error text while we continue to guard performance-sensitive paths.
    if (ExprNode->type IS XPathNodeType::FLWOR_EXPRESSION) {
-      if (ExprNode->child_count() < 2) {
-         record_error("FLWOR expression requires at least one clause and a return expression.", true);
-         return XPathVal();
-      }
-
-      const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
-      if (!return_node) {
-         record_error("FLWOR expression is missing its return clause.", true);
-         return XPathVal();
-      }
-
-      std::vector<const XPathNode *> clauses;
-      clauses.reserve(ExprNode->child_count() - 1);
-
-      for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
-         const XPathNode *clause_node = ExprNode->get_child(index);
-         if ((!clause_node) or
-             !((clause_node->type IS XPathNodeType::FOR_BINDING) or
-               (clause_node->type IS XPathNodeType::LET_BINDING))) {
-            record_error("FLWOR expression contains an invalid clause.", true);
-            return XPathVal();
-         }
-         clauses.push_back(clause_node);
-      }
-
-      if (clauses.empty()) {
-         record_error("FLWOR expression is missing binding clauses.", true);
-         return XPathVal();
-      }
-
-      NODES combined_nodes;
-      std::vector<std::string> combined_strings;
-      std::vector<const XMLAttrib *> combined_attributes;
-      std::optional<std::string> combined_override;
-
-      std::function<bool(size_t)> append_return_value;
-
-      append_return_value = [&](size_t clause_index) -> bool {
-         if (clause_index >= clauses.size()) {
-            auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
-            if (expression_unsupported) {
-               record_error("FLWOR return expression could not be evaluated.");
-               return false;
-            }
-
-            if (iteration_value.Type != XPVT::NodeSet) {
-               record_error("FLWOR return expressions must yield node-sets.", true);
-               return false;
-            }
-
-            for (size_t node_index = 0; node_index < iteration_value.node_set.size(); ++node_index) {
-               XMLTag *node = iteration_value.node_set[node_index];
-               combined_nodes.push_back(node);
-
-               const XMLAttrib *attribute = nullptr;
-               if (node_index < iteration_value.node_set_attributes.size()) {
-                  attribute = iteration_value.node_set_attributes[node_index];
-               }
-               combined_attributes.push_back(attribute);
-
-               std::string node_string;
-               bool use_override = iteration_value.node_set_string_override.has_value() and
-                  (node_index IS 0) and iteration_value.node_set_string_values.empty();
-               if (node_index < iteration_value.node_set_string_values.size()) {
-                  node_string = iteration_value.node_set_string_values[node_index];
-               }
-               else if (use_override) node_string = *iteration_value.node_set_string_override;
-               else if (node) node_string = XPathVal::node_string_value(node);
-
-               combined_strings.push_back(node_string);
-
-               if (!combined_override.has_value()) {
-                  if (iteration_value.node_set_string_override.has_value()) {
-                     combined_override = iteration_value.node_set_string_override;
-                  }
-                  else combined_override = node_string;
-               }
-            }
-
-            return true;
-         }
-
-         const XPathNode *clause_node = clauses[clause_index];
-         if (!clause_node) {
-            record_error("FLWOR expression contains an invalid clause.", true);
-            return false;
-         }
-
-         if (clause_node->type IS XPathNodeType::LET_BINDING) {
-            if ((clause_node->value.empty()) or (clause_node->child_count() IS 0)) {
-               record_error("Let binding requires a variable name and expression.", true);
-               return false;
-            }
-
-            const XPathNode *binding_expr = clause_node->get_child(0);
-            if (!binding_expr) {
-               record_error("Let binding requires an expression node.", true);
-               return false;
-            }
-
-            XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
-            if (expression_unsupported) {
-               record_error("Let binding expression could not be evaluated.");
-               return false;
-            }
-
-            VariableBindingGuard guard(context, clause_node->value, std::move(bound_value));
-            return append_return_value(clause_index + 1);
-         }
-
-         if (clause_node->type IS XPathNodeType::FOR_BINDING) {
-            if ((clause_node->value.empty()) or (clause_node->child_count() IS 0)) {
-               record_error("For binding requires a variable name and sequence.", true);
-               return false;
-            }
-
-            const XPathNode *sequence_expr = clause_node->get_child(0);
-            if (!sequence_expr) {
-               record_error("For binding requires a sequence expression.", true);
-               return false;
-            }
-
-            auto sequence_value = evaluate_expression(sequence_expr, CurrentPrefix);
-            if (expression_unsupported) {
-               record_error("For binding sequence could not be evaluated.");
-               return false;
-            }
-
-            if (sequence_value.Type != XPVT::NodeSet) {
-               record_error("For binding sequences must evaluate to node-sets.", true);
-               return false;
-            }
-
-            size_t sequence_size = sequence_value.node_set.size();
-            if (sequence_size IS 0) return true;
-
-            for (size_t index = 0; index < sequence_size; ++index) {
-               XMLTag *item_node = sequence_value.node_set[index];
-               const XMLAttrib *item_attribute = nullptr;
-               if (index < sequence_value.node_set_attributes.size()) {
-                  item_attribute = sequence_value.node_set_attributes[index];
-               }
-
-               XPathVal bound_value;
-               bound_value.Type = XPVT::NodeSet;
-               bound_value.node_set.push_back(item_node);
-               bound_value.node_set_attributes.push_back(item_attribute);
-
-               std::string item_string;
-               bool use_override = sequence_value.node_set_string_override.has_value() and
-                  (index IS 0) and sequence_value.node_set_string_values.empty();
-               if (index < sequence_value.node_set_string_values.size()) {
-                  item_string = sequence_value.node_set_string_values[index];
-               }
-               else if (use_override) item_string = *sequence_value.node_set_string_override;
-               else if (item_node) item_string = XPathVal::node_string_value(item_node);
-
-               bound_value.node_set_string_values.push_back(item_string);
-               bound_value.node_set_string_override = item_string;
-
-               VariableBindingGuard iteration_guard(context, clause_node->value, std::move(bound_value));
-
-               push_context(item_node, index + 1, sequence_size, item_attribute);
-               bool evaluation_ok = append_return_value(clause_index + 1);
-               pop_context();
-
-               if (!evaluation_ok) return false;
-               if (expression_unsupported) return false;
-            }
-
-            return true;
-         }
-
-         record_error("FLWOR expression contains an unsupported clause type.", true);
-         return false;
-      };
-
-      bool evaluation_ok = append_return_value(0);
-      if (!evaluation_ok) return XPathVal();
-      if (expression_unsupported) return XPathVal();
-
-      XPathVal result;
-      result.Type = XPVT::NodeSet;
-      result.node_set = std::move(combined_nodes);
-      result.node_set_string_values = std::move(combined_strings);
-      result.node_set_attributes = std::move(combined_attributes);
-      if (combined_override.has_value()) result.node_set_string_override = combined_override;
-      else result.node_set_string_override.reset();
-      return result;
+      return evaluate_flwor_pipeline(ExprNode, CurrentPrefix);
    }
 
    if (ExprNode->type IS XPathNodeType::FOR_EXPRESSION) {

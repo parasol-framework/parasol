@@ -79,6 +79,10 @@ class XPathParser {
    bool match(XPathTokenType type);
    bool check_identifier_keyword(std::string_view Keyword) const;
    bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
+   // Helper that treats certain keyword tokens (e.g., COUNT, EMPTY) as identifiers.
+   // Use this for steps, function names, predicates, and variable bindings, where such keywords are valid identifiers.
+   // This differs from a simple IDENTIFIER type check, which would exclude these keyword tokens.
+   bool is_identifier_token(const XPathToken &Token) const;
    bool is_constructor_keyword(const XPathToken &Token) const;
 
    // Lightweight representation of a QName recognised within constructor syntax.

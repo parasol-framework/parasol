@@ -3,6 +3,8 @@
 
 #include <format>
 
+#include "../xpath_evaluator_detail.h"
+
 //********************************************************************************************************************
 // Converts a value to a string representation.
 // Example: string(123) returns "123"
@@ -130,8 +132,7 @@ XPathVal XPathFunctionLibrary::function_compare(const std::vector<XPathVal> &Arg
    std::string right = Args[1].to_string();
    std::string collation = (Args.size() > 2) ? Args[2].to_string() : std::string();
 
-   if (!collation.empty() and (collation != "http://www.w3.org/2005/xpath-functions/collation/codepoint") and
-       (collation != "unicode")) {
+   if (!collation.empty() and !xpath_collation_supported(collation)) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
       return XPathVal();
    }
