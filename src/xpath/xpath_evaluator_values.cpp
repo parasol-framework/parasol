@@ -1113,7 +1113,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
          if (is_trace_enabled(TraceCategory::XPath)) {
             std::string signature = build_ast_signature(expr);
-            size_t variable_count = context.variables.size();
+            int variable_count = std::ssize(context.variables);
             std::string variable_list;
             variable_list.reserve(variable_count * 16);
             variable_list.push_back('[');
@@ -1126,10 +1126,11 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
             variable_list.push_back(']');
 
             pf::Log log("XPath");
-            log.msg(trace_detail_level, "AVT context variable count: %zu", variable_count);
-            log.msg(trace_detail_level, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
+            log.msg(VLF::TRACE, "AVT context variable count: %d", variable_count);
+            log.msg(VLF::TRACE, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
                signature.c_str(), variable_list.c_str(), previous_flag ? "true" : "false");
          }
+
          record_error("Attribute value template expression could not be evaluated.", expr);
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
         
@@ -1138,7 +1139,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
          return std::nullopt;
       }
 
-      if (xml and (xml->ErrorMsg.compare(previous_xml_error) != 0)) xml->ErrorMsg = previous_xml_error;
+      if ((xml) and (xml->ErrorMsg != previous_xml_error)) xml->ErrorMsg = previous_xml_error;
       result += value.to_string();
       expression_unsupported = previous_flag;
       constructed_nodes.resize(previous_constructed);
@@ -1170,7 +1171,7 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
       if (is_trace_enabled(TraceCategory::XPath)) {
          std::string signature = build_ast_signature(expr);
          pf::Log log("XPath");
-         log.msg(trace_detail_level, "Constructor content expression failed: %s", signature.c_str());
+         log.msg(VLF::TRACE, "Constructor content expression failed: %s", signature.c_str());
       }
       record_error("Constructor content expression could not be evaluated.", expr);
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor content expression could not be evaluated.");
@@ -1232,7 +1233,7 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(cons
       if (is_trace_enabled(TraceCategory::XPath)) {
          std::string signature = build_ast_signature(Node);
          pf::Log log("XPath");
-         log.msg(trace_detail_level, "Constructor name expression failed: %s", signature.c_str());
+         log.msg(VLF::TRACE, "Constructor name expression failed: %s", signature.c_str());
       }
       record_error("Constructor name expression could not be evaluated.", Node);
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor name expression could not be evaluated.");
@@ -2015,14 +2016,14 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    {
       if (!tracing_flwor) return;
       pf::Log log("XPath");
-      log.msg(trace_detail_level, Format, Args...);
+      log.msg(VLF::DETAIL, Format, Args...);
    };
 
    auto trace_verbose = [&](const char *Format, auto ...Args)
    {
       if (!tracing_flwor) return;
       pf::Log log("XPath");
-      log.msg(trace_verbose_level, Format, Args...);
+      log.msg(VLF::TRACE, Format, Args...);
    };
 
    auto describe_value_for_trace = [&](const XPathVal &value) -> std::string
@@ -2419,10 +2420,10 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       grouped.reserve(tuples.size());
 
       if (tracing_flwor) {
-         trace_detail("FLWOR group-by: tuple-count=%zu, key-count=%zu", tuples.size(), group_clause->child_count());
+         trace_detail("FLWOR group-by: tuple-count=%d, key-count=%d", int(std::ssize(tuples)), int(group_clause->child_count()));
       }
 
-      for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
+      for (int tuple_index = 0; tuple_index < std::ssize(tuples); ++tuple_index) {
          const FlworTuple &tuple = tuples[tuple_index];
          GroupKey key;
          key.values.reserve(group_clause->child_count());
@@ -2432,7 +2433,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
          {
             TupleScope scope(*this, context, tuple);
-            for (size_t key_index = 0; key_index < group_clause->child_count(); ++key_index) {
+            for (int key_index = 0; key_index < int(group_clause->child_count()); ++key_index) {
                const XPathNode *key_node = group_clause->get_child(key_index);
                if (!key_node) {
                   record_error("Group clause contains an invalid key.", group_clause, true);
@@ -2456,7 +2457,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
                if (tracing_flwor) {
                   const XPathVal &evaluated_value = key.values.back();
                   std::string value_summary = describe_value_for_trace(evaluated_value);
-                  trace_verbose("FLWOR group key[%zu,%zu]: %s", tuple_index, key_index, value_summary.c_str());
+                  trace_verbose("FLWOR group key[%d,%d]: %s", tuple_index, key_index, value_summary.c_str());
                }
             }
          }
@@ -2484,11 +2485,11 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
             if (tracing_flwor) {
                if (tuple_binding_summary.empty()) {
-                  trace_detail("FLWOR group create tuple[%zu] -> group %zu, keys: %s", tuple_index, group_index,
+                  trace_detail("FLWOR group create tuple[%d] -> group %zu, keys: %s", tuple_index, group_index,
                      key_summary.c_str());
                }
                else {
-                  trace_detail("FLWOR group create tuple[%zu] -> group %zu, keys: %s, bindings: %s", tuple_index,
+                  trace_detail("FLWOR group create tuple[%d] -> group %zu, keys: %s, bindings: %s", tuple_index,
                      group_index, key_summary.c_str(), tuple_binding_summary.c_str());
                }
             }
@@ -2577,8 +2578,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       }
 
       if (tracing_flwor) {
-         trace_detail("FLWOR order-by: tuple-count=%zu, spec-count=%zu", tuples.size(), order_specs.size());
-         for (size_t spec_index = 0; spec_index < order_specs.size(); ++spec_index) {
+         trace_detail("FLWOR order-by: tuple-count=%d, spec-count=%d", int(std::ssize(tuples)), int(std::ssize(order_specs)));
+         for (int spec_index = 0; spec_index < std::ssize(order_specs); ++spec_index) {
             const auto &spec = order_specs[spec_index];
             const XPathNode *spec_expr = spec.node ? spec.node->get_child(0) : nullptr;
             std::string expression_signature;
@@ -2593,7 +2594,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
                empty_mode = spec.comparator_options.empty_is_greatest ? "empty-greatest" : "empty-least";
             }
 
-            trace_detail("FLWOR order spec[%zu]: expr=%s, collation=%s, direction=%s, empty=%s", spec_index,
+            trace_detail("FLWOR order spec[%d]: expr=%s, collation=%s, direction=%s, empty=%s", spec_index,
                expression_signature.c_str(), collation.c_str(), direction, empty_mode);
          }
       }
@@ -3570,6 +3571,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       auto right_value = evaluate_expression(right_node, CurrentPrefix);
       if (expression_unsupported) return XPathVal();
 
+      // TODO: Hash operation variable and use switch-case for better performance.
+
       if (operation IS "=") {
          bool equals = compare_xpath_values(left_value, right_value);
          return XPathVal(equals);
@@ -3687,7 +3690,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       if (is_trace_enabled(TraceCategory::XPath)) {
          pf::Log log("XPath");
-         log.msg(trace_detail_level, "Variable lookup failed for '%s'", ExprNode->value.c_str());
+         log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
          if (!context.variables.empty()) {
             std::string binding_list;
             binding_list.reserve(context.variables.size() * 16);
@@ -3697,7 +3700,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                binding_list.append(entry.first);
                first_binding = false;
             }
-            log.msg(trace_detail_level, "Context bindings available: [%s]", binding_list.c_str());
+            log.msg(VLF::TRACE, "Context bindings available: [%s]", binding_list.c_str());
          }
       }
 
@@ -3726,14 +3729,14 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
    {
       if (!tracing_xpath) return;
       pf::Log log("XPath");
-      log.msg(trace_detail_level, Format, Args...);
+      log.msg(VLF::TRACE, Format, Args...);
    };
 
    auto trace_nodes_verbose = [&](const char *Format, auto ...Args)
    {
       if (!tracing_xpath) return;
       pf::Log log("XPath");
-      log.msg(trace_verbose_level, Format, Args...);
+      log.msg(VLF::TRACE, Format, Args...);
    };
 
    struct NodeEntry {
