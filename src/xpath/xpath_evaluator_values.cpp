@@ -1098,12 +1098,12 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
       if (evaluation_failed) {
          std::string signature = build_ast_signature(expr);
          std::string variable_list;
-         if (context.variables.empty()) variable_list.assign("[]");
+         if (context.variables->empty()) variable_list.assign("[]");
          else {
-            variable_list.reserve(context.variables.size() * 16);
+            variable_list.reserve(context.variables->size() * 16);
             variable_list.push_back('[');
             bool first_binding = true;
-            for (const auto &binding : context.variables) {
+            for (const auto &binding : *context.variables) {
                if (!first_binding) variable_list.append(", ");
                variable_list.append(binding.first);
                first_binding = false;
@@ -1113,12 +1113,12 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
          if (is_trace_enabled(TraceCategory::XPath)) {
             std::string signature = build_ast_signature(expr);
-            int variable_count = std::ssize(context.variables);
+            int variable_count = std::ssize(*context.variables);
             std::string variable_list;
             variable_list.reserve(variable_count * 16);
             variable_list.push_back('[');
             bool first_binding = true;
-            for (const auto &binding : context.variables) {
+            for (const auto &binding : *context.variables) {
                if (!first_binding) variable_list.append(", ");
                variable_list.append(binding.first);
                first_binding = false;
@@ -3682,20 +3682,31 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
+   // EXPRESSION nodes are wrappers - unwrap to the child node
+   if (ExprNode->type IS XPathNodeType::EXPRESSION) {
+      if (ExprNode->child_count() > 0) {
+         return evaluate_expression(ExprNode->get_child(0), CurrentPrefix);
+      }
+      expression_unsupported = true;
+      return XPathVal();
+   }
+
    if (ExprNode->type IS XPathNodeType::VARIABLE_REFERENCE) {
-      auto local_variable = context.variables.find(ExprNode->value);
-      if (local_variable != context.variables.end()) {
-         return local_variable->second;
+      if (context.variables) {
+         auto local_variable = context.variables->find(ExprNode->value);
+         if (local_variable != context.variables->end()) {
+            return local_variable->second;
+         }
       }
 
       if (is_trace_enabled(TraceCategory::XPath)) {
          pf::Log log("XPath");
          log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
-         if (!context.variables.empty()) {
+         if (!context.variables->empty()) {
             std::string binding_list;
-            binding_list.reserve(context.variables.size() * 16);
+            binding_list.reserve(context.variables->size() * 16);
             bool first_binding = true;
-            for (const auto &entry : context.variables) {
+            for (const auto &entry : *context.variables) {
                if (!first_binding) binding_list.append(", ");
                binding_list.append(entry.first);
                first_binding = false;
