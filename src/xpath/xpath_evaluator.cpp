@@ -67,8 +67,8 @@ bool env_flag_enabled(const char *Value)
    auto normalised = normalise_env_value(Value);
    if (!normalised.has_value()) return false;
 
-   if ((*normalised IS "0") or (*normalised IS "false") or (*normalised IS "off") or (*normalised IS "no") or (*normalised IS "disable") or (*normalised IS "disabled"))
-   {
+   if ((*normalised IS "0") or (*normalised IS "false") or (*normalised IS "off") or (*normalised IS "no") or 
+      (*normalised IS "disable") or (*normalised IS "disabled")) {
       return false;
    }
 
@@ -129,6 +129,8 @@ TraceLevelConfig parse_trace_levels(const char *Value)
 }
 } // namespace
 
+//********************************************************************************************************************
+
 XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = env_flag_enabled(std::getenv("PARASOL_TRACE_XPATH"));
@@ -139,6 +141,8 @@ XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, aren
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
 }
+
+//********************************************************************************************************************
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
@@ -154,16 +158,78 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
    return std::format("({}|{}:{})", int(Node->type), Node->value, children_sig);
 }
 
+//********************************************************************************************************************
+
 void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
-   if (is_trace_enabled(TraceCategory::XPath))
-   {
-      pf::Log log("XPath");
-      log.msg(trace_detail_level, "record_error: %s", std::string(Message).c_str());
+   pf::Log log("XPath");
+   log.msg("%.*s", (int)Message.size(), Message.data());
+   if (xml) {
+      if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
    }
-   if (!xml) return;
-   if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
+}
+
+void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Node, bool Force)
+{
+   // Preserve existing behaviour (flag, user-facing message)
+   record_error(Message, Force);
+
+   pf::Log log("XPath");
+
+   // Expression signature (compact AST fingerprint)
+
+   if (Node) {
+      auto signature = build_ast_signature(Node);
+      log.detail("Expression: %s", signature.c_str());
+   }
+
+   // Dump evaluator context stack from outermost to innermost.
+   // Frames in context_stack are prior contexts; current context is appended last.
+
+   auto emit_frame = [&](const XPathContext &frame, size_t index) {
+      int node_id = -1;
+      CSTRING node_name = "(null)";
+      CSTRING attr_name = "∅";
+      CSTRING doc_label = "unknown";
+
+      if (frame.context_node) {
+         node_id = frame.context_node->ID;
+         if (!frame.context_node->Attribs.empty()) node_name = frame.context_node->Attribs[0].Name.c_str();
+
+         // Document label: 'this' if owned by this->xml, 'foreign' if another extXML, otherwise 'unknown'
+         if (is_foreign_document_node(frame.context_node)) doc_label = "foreign";
+         else if (xml) doc_label = "this";
+      }
+
+      if (frame.attribute_node) attr_name = frame.attribute_node->Name.c_str();
+
+      log.detail("[%zu] node-id=%d name='%s' pos=%zu/%zu attr=%s doc=%s",
+         index, node_id, node_name, frame.position, frame.size, attr_name, doc_label);
+   };
+
+   // Emit stored frames
+
+   for (size_t i = 0; i < context_stack.size(); ++i) emit_frame(context_stack[i], i);
+
+   // Emit current frame as the last entry
+
+   emit_frame(context, context_stack.size());
+
+   // Optionally include variable bindings present in the current context
+
+   if (!context.variables.empty()) {
+      // Build a comma-separated list of variable names (best-effort, avoid allocations where possible)
+      std::string names;
+      names.reserve(64);
+      bool first = true;
+      for (const auto &entry : context.variables) {
+         if (!first) names += ", ";
+         first = false;
+         names += entry.first;
+      }
+      log.detail("Variables: count=%zu names=[%s]", context.variables.size(), names.c_str());
+   }
 }
 
 //********************************************************************************************************************

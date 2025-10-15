@@ -1031,7 +1031,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
 
             if (duplicate)
             {
-               record_error("Duplicate attribute name in constructor content.", true);
+               record_error("Duplicate attribute name in constructor content.", (const XPathNode *)nullptr, true);
                return false;
             }
 
@@ -1077,7 +1077,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
       auto *expr = Attribute.get_expression_for_part(index);
       if (!expr) {
-         record_error("Attribute value template part is missing its expression.", true);
+         record_error("Attribute value template part is missing its expression.", (const XPathNode *)nullptr, true);
          return std::nullopt;
       }
 
@@ -1106,7 +1106,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
             log.msg(trace_detail_level, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
                signature.c_str(), variable_list.c_str(), previous_flag ? "true" : "false");
          }
-         record_error("Attribute value template expression could not be evaluated.");
+         record_error("Attribute value template expression could not be evaluated.", expr);
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
@@ -1144,7 +1144,7 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
          pf::Log log("XPath");
          log.msg(trace_detail_level, "Constructor content expression failed: %s", signature.c_str());
       }
-      record_error("Constructor content expression could not be evaluated.");
+      record_error("Constructor content expression could not be evaluated.", expr);
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor content expression could not be evaluated.");
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
@@ -1206,7 +1206,7 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(cons
          pf::Log log("XPath");
          log.msg(trace_detail_level, "Constructor name expression failed: %s", signature.c_str());
       }
-      record_error("Constructor name expression could not be evaluated.");
+      record_error("Constructor name expression could not be evaluated.", Node);
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor name expression could not be evaluated.");
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
@@ -1228,12 +1228,12 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    ConstructorNamespaceScope *ParentScope, int ParentID)
 {
    if ((!Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)) {
-      record_error("Invalid direct constructor node encountered.", true);
+      record_error("Invalid direct constructor node encountered.", Node, true);
       return std::nullopt;
    }
 
    if (!Node->has_constructor_info()) {
-      record_error("Direct constructor is missing structural metadata.", true);
+      record_error("Direct constructor is missing structural metadata.", Node, true);
       return std::nullopt;
    }
 
@@ -1288,12 +1288,12 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
       }
       else if (attribute->prefix IS "xmlns") {
          if (attribute->name IS "xml") {
-            record_error("Cannot redeclare the xml prefix in constructor scope.", true);
+            record_error("Cannot redeclare the xml prefix in constructor scope.", Node, true);
             return std::nullopt;
          }
 
          if (value.empty()) {
-            record_error("Namespace prefix declarations require a non-empty URI.", true);
+            record_error("Namespace prefix declarations require a non-empty URI.", Node, true);
             return std::nullopt;
          }
 
@@ -1321,7 +1321,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          auto resolved = resolve_constructor_prefix(element_scope, attribute->prefix);
          if (!resolved.has_value())
          {
-            record_error("Attribute prefix is not bound in constructor scope.", true);
+            record_error("Attribute prefix is not bound in constructor scope.", Node, true);
             return std::nullopt;
          }
       }
@@ -1342,7 +1342,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    else if (!info.prefix.empty()) {
       auto resolved = resolve_constructor_prefix(element_scope, info.prefix);
       if (!resolved.has_value()) {
-         record_error("Element prefix is not declared within constructor scope.", true);
+         record_error("Element prefix is not declared within constructor scope.", Node, true);
          return std::nullopt;
       }
       namespace_id = *resolved;
@@ -1395,7 +1395,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          continue;
       }
 
-      record_error("Unsupported node encountered within direct constructor content.", true);
+      record_error("Unsupported node encountered within direct constructor content.", child, true);
       return std::nullopt;
    }
 
@@ -1410,7 +1410,7 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
 {
    auto element = build_direct_element_node(Node, CurrentPrefix, nullptr, 0);
    if (!element) {
-      if (xml and xml->ErrorMsg.empty()) record_error("Direct element constructor could not be evaluated.", true);
+      if (xml and xml->ErrorMsg.empty()) record_error("Direct element constructor could not be evaluated.", Node, true);
       return XPathVal();
    }
 
@@ -1435,12 +1435,12 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
 XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR)) {
-      record_error("Invalid computed element constructor node encountered.", true);
+      record_error("Invalid computed element constructor node encountered.", Node, true);
       return XPathVal();
    }
 
    if (!Node->has_constructor_info()) {
-      record_error("Computed element constructor is missing metadata.", true);
+      record_error("Computed element constructor is missing metadata.", Node, true);
       return XPathVal();
    }
 
@@ -1452,7 +1452,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
       auto parsed = parse_constructor_qname_string(*name_string);
       if (!parsed.valid) {
-         record_error("Computed element name must resolve to a QName.", true);
+         record_error("Computed element name must resolve to a QName.", Node, true);
          return XPathVal();
       }
 
@@ -1467,7 +1467,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    }
 
    if (name_info.local.empty()) {
-      record_error("Computed element constructor requires a local name.", true);
+      record_error("Computed element constructor requires a local name.", Node, true);
       return XPathVal();
    }
 
@@ -1489,7 +1489,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
       auto resolved = resolve_prefix_in_context(name_info.prefix);
       if (!resolved.has_value())
       {
-         record_error("Element prefix is not bound in scope.", true);
+         record_error("Element prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
       namespace_id = *resolved;
@@ -1561,12 +1561,12 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR)) {
-      record_error("Invalid computed attribute constructor node encountered.", true);
+      record_error("Invalid computed attribute constructor node encountered.", Node, true);
       return XPathVal();
    }
 
    if (!Node->has_constructor_info()) {
-      record_error("Computed attribute constructor is missing metadata.", true);
+      record_error("Computed attribute constructor is missing metadata.", Node, true);
       return XPathVal();
    }
 
@@ -1578,7 +1578,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
       auto parsed = parse_constructor_qname_string(*name_string);
       if (!parsed.valid) {
-         record_error("Computed attribute name must resolve to a QName.", true);
+         record_error("Computed attribute name must resolve to a QName.", Node, true);
          return XPathVal();
       }
 
@@ -1596,7 +1596,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    }
 
    if (name_info.local.empty()) {
-      record_error("Computed attribute constructor requires a local name.", true);
+      record_error("Computed attribute constructor requires a local name.", Node, true);
       return XPathVal();
    }
 
@@ -1617,7 +1617,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    else if (!name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
       if (!resolved.has_value()) {
-         record_error("Attribute prefix is not bound in scope.", true);
+         record_error("Attribute prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
       namespace_id = *resolved;
@@ -1665,7 +1665,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if ((!Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR)) {
-      record_error("Invalid text constructor node encountered.", true);
+      record_error("Invalid text constructor node encountered.", Node, true);
       return XPathVal();
    }
 
@@ -1701,7 +1701,7 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
 XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if ((!Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR)) {
-      record_error("Invalid comment constructor node encountered.", true);
+      record_error("Invalid comment constructor node encountered.", Node, true);
       return XPathVal();
    }
 
@@ -1712,13 +1712,13 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
    auto double_dash = content->find("--");
    if (!(double_dash IS std::string::npos))
    {
-      record_error("Comments cannot contain consecutive hyphen characters.", true);
+      record_error("Comments cannot contain consecutive hyphen characters.", Node, true);
       return XPathVal();
    }
 
    if (!content->empty() and (content->back() IS '-'))
    {
-      record_error("Comments cannot end with a hyphen.", true);
+      record_error("Comments cannot end with a hyphen.", Node, true);
       return XPathVal();
    }
 
@@ -1750,7 +1750,7 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
 XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if ((!Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR)) {
-      record_error("Invalid processing-instruction constructor encountered.", true);
+      record_error("Invalid processing-instruction constructor encountered.", Node, true);
       return XPathVal();
    }
 
@@ -1767,12 +1767,12 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
    target = trim_constructor_whitespace(target);
 
    if (target.empty()) {
-      record_error("Processing-instruction constructor requires a target name.", true);
+      record_error("Processing-instruction constructor requires a target name.", Node, true);
       return XPathVal();
    }
 
    if (!is_valid_ncname(target)) {
-      record_error("Processing-instruction target must be an NCName.", true);
+      record_error("Processing-instruction target must be an NCName.", Node, true);
       return XPathVal();
    }
 
@@ -1783,7 +1783,7 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
    auto terminator = content->find("?>");
    if (!(terminator IS std::string::npos))
    {
-      record_error("Processing-instruction content cannot contain '?>'.", true);
+      record_error("Processing-instruction content cannot contain '?>'.", Node, true);
       return XPathVal();
    }
 
@@ -1818,7 +1818,7 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
 {
    if ((!Node) or (Node->type != XPathNodeType::DOCUMENT_CONSTRUCTOR))
    {
-      record_error("Invalid document constructor node encountered.", true);
+      record_error("Invalid document constructor node encountered.", Node, true);
       return XPathVal();
    }
 
@@ -1877,18 +1877,18 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
 XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (!Node) {
-      record_error("FLWOR expression is missing its AST node.", true);
+      record_error("FLWOR expression is missing its AST node.", Node, true);
       return XPathVal();
    }
 
    if (Node->child_count() < 2) {
-      record_error("FLWOR expression requires at least one clause and a return expression.", true);
+      record_error("FLWOR expression requires at least one clause and a return expression.", Node, true);
       return XPathVal();
    }
 
    const XPathNode *return_node = Node->get_child(Node->child_count() - 1);
    if (!return_node) {
-      record_error("FLWOR expression is missing its return clause.", true);
+      record_error("FLWOR expression is missing its return clause.", Node, true);
       return XPathVal();
    }
 
@@ -2176,7 +2176,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    for (size_t index = 0; index + 1 < Node->child_count(); ++index) {
       const XPathNode *child = Node->get_child(index);
       if (!child) {
-         record_error("FLWOR expression contains an invalid clause.", true);
+         record_error("FLWOR expression contains an invalid clause.", Node, true);
          return XPathVal();
       }
 
@@ -2205,12 +2205,12 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          continue;
       }
 
-      record_error("FLWOR expression contains an unsupported clause type.", true);
+      record_error("FLWOR expression contains an unsupported clause type.", child, true);
       return XPathVal();
    }
 
    if (binding_nodes.empty()) {
-      record_error("FLWOR expression is missing binding clauses.", true);
+      record_error("FLWOR expression is missing binding clauses.", Node, true);
       return XPathVal();
    }
 
@@ -2230,13 +2230,13 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (binding_node->type IS XPathNodeType::LET_BINDING) {
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
-            record_error("Let binding requires a variable name and expression.", true);
+            record_error("Let binding requires a variable name and expression.", binding_node, true);
             return XPathVal();
          }
 
          const XPathNode *binding_expr = binding_node->get_child(0);
          if (!binding_expr) {
-            record_error("Let binding requires an expression node.", true);
+            record_error("Let binding requires an expression node.", binding_node, true);
             return XPathVal();
          }
 
@@ -2247,7 +2247,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             TupleScope scope(*this, context, tuple);
             XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
             if (expression_unsupported) {
-               record_error("Let binding expression could not be evaluated.");
+               record_error("Let binding expression could not be evaluated.", binding_expr);
                return XPathVal();
             }
 
@@ -2265,13 +2265,13 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (binding_node->type IS XPathNodeType::FOR_BINDING) {
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
-            record_error("For binding requires a variable name and sequence.", true);
+            record_error("For binding requires a variable name and sequence.", binding_node, true);
             return XPathVal();
          }
 
          const XPathNode *sequence_expr = binding_node->get_child(0);
          if (!sequence_expr) {
-            record_error("For binding requires a sequence expression.", true);
+            record_error("For binding requires a sequence expression.", binding_node, true);
             return XPathVal();
          }
 
@@ -2282,12 +2282,12 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             TupleScope scope(*this, context, tuple);
             XPathVal sequence_value = evaluate_expression(sequence_expr, CurrentPrefix);
             if (expression_unsupported) {
-               record_error("For binding sequence could not be evaluated.");
+               record_error("For binding sequence could not be evaluated.", sequence_expr);
                return XPathVal();
             }
 
             if (sequence_value.Type != XPVT::NodeSet) {
-               record_error("For binding sequences must evaluate to node-sets.", true);
+               record_error("For binding sequences must evaluate to node-sets.", sequence_expr, true);
                return XPathVal();
             }
 
@@ -2333,7 +2333,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          continue;
       }
 
-      record_error("FLWOR expression contains an unsupported binding clause.", true);
+      record_error("FLWOR expression contains an unsupported binding clause.", binding_node, true);
       return XPathVal();
    }
 
@@ -2344,13 +2344,13 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
    if (where_clause) {
       if (where_clause->child_count() IS 0) {
-         record_error("Where clause requires a predicate expression.", true);
+         record_error("Where clause requires a predicate expression.", where_clause, true);
          return XPathVal();
       }
 
       const XPathNode *predicate_node = where_clause->get_child(0);
       if (!predicate_node) {
-         record_error("Where clause requires a predicate expression.", true);
+         record_error("Where clause requires a predicate expression.", where_clause, true);
          return XPathVal();
       }
 
@@ -2361,7 +2361,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          TupleScope scope(*this, context, tuple);
          XPathVal predicate_value = evaluate_expression(predicate_node, CurrentPrefix);
          if (expression_unsupported) {
-            record_error("Where clause expression could not be evaluated.");
+            record_error("Where clause expression could not be evaluated.", predicate_node);
             return XPathVal();
          }
 
@@ -2381,7 +2381,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
    if (group_clause) {
       if (group_clause->child_count() IS 0) {
-         record_error("Group clause requires at least one key definition.", true);
+         record_error("Group clause requires at least one key definition.", group_clause, true);
          return XPathVal();
       }
 
@@ -2407,19 +2407,19 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             for (size_t key_index = 0; key_index < group_clause->child_count(); ++key_index) {
                const XPathNode *key_node = group_clause->get_child(key_index);
                if (!key_node) {
-                  record_error("Group clause contains an invalid key.", true);
+                  record_error("Group clause contains an invalid key.", group_clause, true);
                   return XPathVal();
                }
 
                const XPathNode *key_expr = key_node->get_child(0);
                if (!key_expr) {
-                  record_error("Group key requires an expression.", true);
+                  record_error("Group key requires an expression.", key_node, true);
                   return XPathVal();
                }
 
                XPathVal key_value = evaluate_expression(key_expr, CurrentPrefix);
                if (expression_unsupported) {
-                  record_error("Group key expression could not be evaluated.");
+                  record_error("Group key expression could not be evaluated.", key_expr);
                   return XPathVal();
                }
 
@@ -2500,7 +2500,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
    if (order_clause) {
       if (order_clause->child_count() IS 0) {
-         record_error("Order by clause requires at least one sort specification.", true);
+         record_error("Order by clause requires at least one sort specification.", order_clause, true);
          return XPathVal();
       }
 
@@ -2518,7 +2518,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       for (size_t spec_index = 0; spec_index < order_clause->child_count(); ++spec_index) {
          const XPathNode *spec_node = order_clause->get_child(spec_index);
          if (!spec_node) {
-            record_error("Order by clause contains an invalid specification.", true);
+            record_error("Order by clause contains an invalid specification.", order_clause, true);
             return XPathVal();
          }
 
@@ -2532,7 +2532,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          if (metadata.has_options and metadata.options.has_collation()) {
             const std::string &uri = metadata.options.collation_uri;
             if (!xpath_collation_supported(uri)) {
-               record_error("FLWOR order by clause collation '" + uri + "' is not supported.", true);
+               record_error("FLWOR order by clause collation '" + uri + "' is not supported.", spec_node, true);
                return XPathVal();
             }
             metadata.comparator_options.has_collation = true;
@@ -2593,13 +2593,13 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             const auto &spec = order_specs[spec_index];
             const XPathNode *spec_expr = spec.node ? spec.node->get_child(0) : nullptr;
             if (!spec_expr) {
-               record_error("Order by clause requires an expression.", true);
+               record_error("Order by clause requires an expression.", spec.node ? spec.node : order_clause, true);
                return XPathVal();
             }
 
             XPathVal key_value = evaluate_expression(spec_expr, CurrentPrefix);
             if (expression_unsupported) {
-               record_error("Order by expression could not be evaluated.");
+               record_error("Order by expression could not be evaluated.", spec_expr);
                return XPathVal();
             }
 
@@ -2667,7 +2667,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
    if (count_clause) {
       if (count_clause->value.empty()) {
-         record_error("Count clause requires a variable name.", true);
+         record_error("Count clause requires a variable name.", count_clause, true);
          return XPathVal();
       }
 
@@ -2718,7 +2718,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             const char *error_msg = xml ? xml->ErrorMsg.c_str() : "<no-xml>";
             trace_detail("FLWOR return tuple[%zu] evaluation failed: %s", tuple_index, error_msg);
          }
-         record_error("FLWOR return expression could not be evaluated.");
+         record_error("FLWOR return expression could not be evaluated.", return_node);
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("FLWOR return expression could not be evaluated.");
          return XPathVal();
       }
@@ -2770,7 +2770,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced non-node-set type %d", tuple_index,
          int(iteration_value.Type));
-      record_error("FLWOR return expressions must yield node-sets.", true);
+      record_error("FLWOR return expressions must yield node-sets.", return_node, true);
       return XPathVal();
    }
 
@@ -2789,7 +2789,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
 XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
    if (!ExprNode) {
-      record_error("Unsupported XPath expression: empty node", true);
+      record_error("Unsupported XPath expression: empty node", (const XPathNode *)nullptr, true);
       return XPathVal();
    }
 
@@ -2876,13 +2876,13 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    // extXML::ErrorMsg so Fluid callers receive precise feedback rather than generic failure codes.
    if (ExprNode->type IS XPathNodeType::LET_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
-         record_error("LET expression requires at least one binding and a return clause.", true);
+         record_error("LET expression requires at least one binding and a return clause.", ExprNode, true);
          return XPathVal();
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
       if (!return_node) {
-         record_error("LET expression is missing its return clause.", true);
+         record_error("LET expression is missing its return clause.", ExprNode, true);
          return XPathVal();
       }
 
@@ -2892,24 +2892,24 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
          const XPathNode *binding_node = ExprNode->get_child(index);
          if ((!binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
-            record_error("LET expression contains an invalid binding clause.", true);
+            record_error("LET expression contains an invalid binding clause.", binding_node ? binding_node : ExprNode, true);
             return XPathVal();
          }
 
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
-            record_error("Let binding requires a variable name and expression.", true);
+            record_error("Let binding requires a variable name and expression.", binding_node, true);
             return XPathVal();
          }
 
          const XPathNode *binding_expr = binding_node->get_child(0);
          if (!binding_expr) {
-            record_error("Let binding requires an expression node.", true);
+            record_error("Let binding requires an expression node.", binding_node, true);
             return XPathVal();
          }
 
          XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
          if (expression_unsupported) {
-            record_error("Let binding expression could not be evaluated.");
+            record_error("Let binding expression could not be evaluated.", binding_expr);
             return XPathVal();
          }
 
@@ -2918,7 +2918,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       auto result_value = evaluate_expression(return_node, CurrentPrefix);
       if (expression_unsupported) {
-         record_error("Let return expression could not be evaluated.");
+         record_error("Let return expression could not be evaluated.", return_node);
          return XPathVal();
       }
       return result_value;

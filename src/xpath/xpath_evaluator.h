@@ -123,6 +123,7 @@ class XPathEvaluator {
    std::string build_ast_signature(const XPathNode *Node) const;
 
    void record_error(std::string_view Message, bool Force = false);
+   void record_error(std::string_view Message, const XPathNode *Node, bool Force = false);
 
    public:
    explicit XPathEvaluator(extXML *XML);
