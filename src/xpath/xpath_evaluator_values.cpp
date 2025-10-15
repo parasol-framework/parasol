@@ -1084,7 +1084,18 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
       size_t previous_constructed = constructed_nodes.size();
       auto saved_id = next_constructed_node_id;
       XPathVal value = evaluate_expression(expr, CurrentPrefix);
-      if (expression_unsupported) return std::nullopt;
+      if (expression_unsupported) {
+         if (is_trace_enabled(TraceCategory::XPath)) {
+            std::string signature = build_ast_signature(expr);
+            pf::Log log("XPath");
+            log.msg(trace_detail_level, "AVT expression failed: %s", signature.c_str());
+         }
+         record_error("Attribute value template expression could not be evaluated.");
+         if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
+         constructed_nodes.resize(previous_constructed);
+         next_constructed_node_id = saved_id;
+         return std::nullopt;
+      }
       result += value.to_string();
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
@@ -1112,6 +1123,13 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
    XPathVal value = evaluate_expression(expr, CurrentPrefix);
    if (expression_unsupported)
    {
+      if (is_trace_enabled(TraceCategory::XPath)) {
+         std::string signature = build_ast_signature(expr);
+         pf::Log log("XPath");
+         log.msg(trace_detail_level, "Constructor content expression failed: %s", signature.c_str());
+      }
+      record_error("Constructor content expression could not be evaluated.");
+      if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor content expression could not be evaluated.");
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
       return std::nullopt;
@@ -1167,6 +1185,13 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(cons
    XPathVal value = evaluate_expression(Node, CurrentPrefix);
    if (expression_unsupported)
    {
+      if (is_trace_enabled(TraceCategory::XPath)) {
+         std::string signature = build_ast_signature(Node);
+         pf::Log log("XPath");
+         log.msg(trace_detail_level, "Constructor name expression failed: %s", signature.c_str());
+      }
+      record_error("Constructor name expression could not be evaluated.");
+      if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor name expression could not be evaluated.");
       constructed_nodes.resize(previous_constructed);
       next_constructed_node_id = saved_id;
       return std::nullopt;
@@ -1368,7 +1393,10 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    auto element = build_direct_element_node(Node, CurrentPrefix, nullptr, 0);
-   if (!element) return XPathVal();
+   if (!element) {
+      if (xml and xml->ErrorMsg.empty()) record_error("Direct element constructor could not be evaluated.", true);
+      return XPathVal();
+   }
 
    auto stored = std::make_unique<XMLTag>(*element);
    XMLTag *root = stored.get();
@@ -2052,6 +2080,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       value.node_set_attributes.clear();
       value.node_set_string_values.clear();
       value.node_set_string_override.reset();
+      value.preserve_node_order = false;
       value.schema_type_info.reset();
       value.schema_validated = false;
 
@@ -2065,6 +2094,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
    auto append_binding_value = [&](XPathVal &target_nodeset, const XPathVal &source_value)
    {
+      target_nodeset.preserve_node_order = false;
       if (source_value.Type IS XPVT::NodeSet) {
          size_t length = nodeset_length(source_value);
          for (size_t value_index = 0; value_index < length; ++value_index) {
@@ -2625,9 +2655,18 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          return XPathVal();
       }
 
+      if (tracing_flwor) {
+         trace_detail("FLWOR count clause applying to %zu sorted tuple(s)", tuples.size());
+      }
+
       for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
          XPathVal counter(double(tuple_index + 1));
          tuples[tuple_index].bindings[count_clause->value] = std::move(counter);
+
+         if (tracing_flwor) {
+            trace_verbose("FLWOR count tuple[%zu] original=%zu -> %zu", tuple_index,
+               tuples[tuple_index].original_index, tuple_index + 1);
+         }
       }
    }
 
@@ -2664,6 +2703,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             trace_detail("FLWOR return tuple[%zu] evaluation failed: %s", tuple_index, error_msg);
          }
          record_error("FLWOR return expression could not be evaluated.");
+         if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("FLWOR return expression could not be evaluated.");
          return XPathVal();
       }
 
@@ -2725,6 +2765,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    result.node_set_string_values = std::move(combined_strings);
    if (combined_override.has_value()) result.node_set_string_override = combined_override;
    else result.node_set_string_override.reset();
+   result.preserve_node_order = (order_clause != nullptr);
    return result;
 }
 
@@ -3006,10 +3047,11 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                item_attribute = sequence_value.node_set_attributes[index];
             }
 
-            XPathVal bound_value;
-            bound_value.Type = XPVT::NodeSet;
-            bound_value.node_set.push_back(item_node);
-            bound_value.node_set_attributes.push_back(item_attribute);
+         XPathVal bound_value;
+         bound_value.Type = XPVT::NodeSet;
+         bound_value.preserve_node_order = false;
+         bound_value.node_set.push_back(item_node);
+         bound_value.node_set_attributes.push_back(item_attribute);
 
             std::string item_string;
             bool use_override = sequence_value.node_set_string_override.has_value() and
@@ -3043,6 +3085,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       XPathVal result;
       result.Type = XPVT::NodeSet;
+      result.preserve_node_order = false;
       result.node_set = std::move(combined_nodes);
       result.node_set_string_values = std::move(combined_strings);
       result.node_set_attributes = std::move(combined_attributes);
@@ -3133,10 +3176,11 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                item_attribute = sequence_value.node_set_attributes[index];
             }
 
-            XPathVal bound_value;
-            bound_value.Type = XPVT::NodeSet;
-            bound_value.node_set.push_back(item_node);
-            bound_value.node_set_attributes.push_back(item_attribute);
+         XPathVal bound_value;
+         bound_value.Type = XPVT::NodeSet;
+         bound_value.preserve_node_order = false;
+         bound_value.node_set.push_back(item_node);
+         bound_value.node_set_attributes.push_back(item_attribute);
 
             std::string item_string;
             bool use_override = sequence_value.node_set_string_override.has_value() and
@@ -3677,27 +3721,59 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       return ERR::Search;
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const NodeEntry &Left, const NodeEntry &Right) {
-      if (Left.node IS Right.node) return Left.original_index < Right.original_index;
-      if (!Left.node) return false;
-      if (!Right.node) return true;
-      return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
-   });
+   if (Value.preserve_node_order) {
+      std::vector<NodeEntry> unique_entries;
+      unique_entries.reserve(entries.size());
 
-   auto unique_end = std::unique(entries.begin(), entries.end(), [](const NodeEntry &Left, const NodeEntry &Right) {
-      return (Left.node IS Right.node) and (Left.attribute IS Right.attribute);
-   });
-   entries.erase(unique_end, entries.end());
-
-   if (tracing_xpath) {
-      std::string sorted_summary;
-      sorted_summary.reserve(entries.size() * 4);
-      for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
-         if (entry_index > 0) sorted_summary.append(", ");
-         sorted_summary.append(std::to_string(entries[entry_index].original_index));
+      for (const auto &entry : entries) {
+         bool duplicate = false;
+         for (const auto &existing : unique_entries) {
+            if ((existing.node IS entry.node) and (existing.attribute IS entry.attribute)) {
+               duplicate = true;
+               break;
+            }
+         }
+         if (!duplicate) unique_entries.push_back(entry);
       }
 
-      trace_nodes_detail("FLWOR emit document-order pass: unique=%zu, order=[%s]", entries.size(), sorted_summary.c_str());
+      if (tracing_xpath) {
+         std::string preserved_summary;
+         preserved_summary.reserve(unique_entries.size() * 4);
+         for (size_t entry_index = 0; entry_index < unique_entries.size(); ++entry_index) {
+            if (entry_index > 0) preserved_summary.append(", ");
+            preserved_summary.append(std::to_string(unique_entries[entry_index].original_index));
+         }
+
+         trace_nodes_detail("FLWOR emit preserved-order pass: unique=%zu, order=[%s]", unique_entries.size(),
+            preserved_summary.c_str());
+      }
+
+      entries.swap(unique_entries);
+   }
+   else {
+      std::stable_sort(entries.begin(), entries.end(), [this](const NodeEntry &Left, const NodeEntry &Right) {
+         if (Left.node IS Right.node) return Left.original_index < Right.original_index;
+         if (!Left.node) return false;
+         if (!Right.node) return true;
+         return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
+      });
+
+      auto unique_end = std::unique(entries.begin(), entries.end(), [](const NodeEntry &Left, const NodeEntry &Right) {
+         return (Left.node IS Right.node) and (Left.attribute IS Right.attribute);
+      });
+      entries.erase(unique_end, entries.end());
+
+      if (tracing_xpath) {
+         std::string sorted_summary;
+         sorted_summary.reserve(entries.size() * 4);
+         for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
+            if (entry_index > 0) sorted_summary.append(", ");
+            sorted_summary.append(std::to_string(entries[entry_index].original_index));
+         }
+
+         trace_nodes_detail("FLWOR emit document-order pass: unique=%zu, order=[%s]", entries.size(),
+            sorted_summary.c_str());
+      }
    }
 
    bool matched = false;

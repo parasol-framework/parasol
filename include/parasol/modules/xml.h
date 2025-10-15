@@ -455,6 +455,7 @@ typedef struct XPathValue {
    double NumberValue;         // Defined if the type is Number or Boolean
    std::string StringValue;    // Defined if the type is String
    pf::vector<XMLTag *> node_set; // Defined if the type is NodeSet
+   bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
@@ -467,6 +468,7 @@ typedef struct XPathValue {
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
       : Type(XPVT::NodeSet),
         node_set(Nodes),
+        preserve_node_order(false),
         node_set_string_override(std::move(NodeSetString)),
         node_set_string_values(std::move(NodeSetStrings)),
         node_set_attributes(std::move(NodeSetAttributes)) {}
