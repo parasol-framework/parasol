@@ -2479,11 +2479,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (iteration_value.is_empty()) continue;
 
-      std::string text_value = iteration_value.to_string();
-      combined_nodes.push_back(nullptr);
-      combined_attributes.push_back(nullptr);
-      combined_strings.push_back(text_value);
-      if (!combined_override.has_value()) combined_override = text_value;
+      record_error("FLWOR return expressions must yield node-sets.", true);
+      return XPathVal();
    }
 
    XPathVal result;
