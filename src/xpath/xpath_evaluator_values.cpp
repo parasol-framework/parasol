@@ -2423,7 +2423,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          trace_detail("FLWOR group-by: tuple-count=%d, key-count=%d", int(std::ssize(tuples)), int(group_clause->child_count()));
       }
 
-      for (int tuple_index = 0; tuple_index < std::ssize(tuples); ++tuple_index) {
+      const auto tuples_size = int(std::ssize(tuples));
+      for (int tuple_index = 0; tuple_index < tuples_size; ++tuple_index) {
          const FlworTuple &tuple = tuples[tuple_index];
          GroupKey key;
          key.values.reserve(group_clause->child_count());
