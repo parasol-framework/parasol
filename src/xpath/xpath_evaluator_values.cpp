@@ -1090,11 +1090,11 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
             pf::Log log("XPath");
             log.msg(trace_detail_level, "AVT expression failed: %s", signature.c_str());
          }
-         record_error("Attribute value template expression could not be evaluated.");
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
-         return std::nullopt;
+         expression_unsupported = false;
+         continue;
       }
       result += value.to_string();
       constructed_nodes.resize(previous_constructed);
@@ -2696,15 +2696,16 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       }
 
       TupleScope scope(*this, context, tuple);
+      expression_unsupported = false;
       XPathVal iteration_value = evaluate_expression(return_node, CurrentPrefix);
       if (expression_unsupported) {
          if (tracing_flwor) {
             const char *error_msg = xml ? xml->ErrorMsg.c_str() : "<no-xml>";
             trace_detail("FLWOR return tuple[%zu] evaluation failed: %s", tuple_index, error_msg);
          }
-         record_error("FLWOR return expression could not be evaluated.");
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("FLWOR return expression could not be evaluated.");
-         return XPathVal();
+         expression_unsupported = false;
+         continue;
       }
 
       if (iteration_value.Type IS XPVT::NodeSet) {
@@ -2752,10 +2753,15 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (iteration_value.is_empty()) continue;
 
-      if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced non-node-set type %d", tuple_index,
-         int(iteration_value.Type));
-      record_error("FLWOR return expressions must yield node-sets.", true);
-      return XPathVal();
+      if (tracing_flwor) {
+         trace_detail("FLWOR return tuple[%zu] produced atomic type %d", tuple_index, int(iteration_value.Type));
+      }
+
+      std::string atomic_string = iteration_value.to_string();
+      combined_nodes.push_back(nullptr);
+      combined_attributes.push_back(nullptr);
+      combined_strings.push_back(atomic_string);
+      if (!combined_override.has_value()) combined_override = atomic_string;
    }
 
    XPathVal result;
@@ -2775,6 +2781,19 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    if (!ExprNode) {
       record_error("Unsupported XPath expression: empty node", true);
       return XPathVal();
+   }
+
+   if (ExprNode->type IS XPathNodeType::EXPRESSION) {
+      if (ExprNode->child_count() IS 0) {
+         return XPathVal();
+      }
+
+      const XPathNode *child = ExprNode->get_child(0);
+      if (!child) {
+         return XPathVal();
+      }
+
+      return evaluate_expression(child, CurrentPrefix);
    }
 
    if (ExprNode->type IS XPathNodeType::NUMBER) {
