@@ -19,6 +19,7 @@
 #include "../xml/schema/schema_types.h"
 #include <cmath>
 #include <limits>
+#include <string_view>
 
 // Retrieves or looks up the schema type descriptor for a given XPath value. Uses cached type info if available,
 // otherwise queries the schema registry for the value's schema type.
@@ -96,4 +97,90 @@ bool numeric_compare(double Left, double Right, RelationalOperator Operation)
    }
 
    return false;
+}
+
+bool xpath_collation_supported(const std::string &Uri)
+{
+   if (Uri.empty()) return true;
+   if (Uri IS "http://www.w3.org/2005/xpath-functions/collation/codepoint") return true;
+   return Uri IS "unicode";
+}
+
+bool xpath_order_key_is_empty(const XPathVal &Value)
+{
+   if (Value.is_empty()) return true;
+   if (Value.Type IS XPVT::Number)
+   {
+      double number = Value.to_number();
+      return std::isnan(number);
+   }
+
+   return false;
+}
+
+namespace
+{
+   int compare_numeric_values(double Left, double Right)
+   {
+      bool left_nan = std::isnan(Left);
+      bool right_nan = std::isnan(Right);
+
+      if (left_nan and right_nan) return 0;
+      if (left_nan) return -1;
+      if (right_nan) return 1;
+
+      if (Left < Right) return -1;
+      if (Left > Right) return 1;
+      return 0;
+   }
+}
+
+int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightValue,
+   const std::string &CollationUri)
+{
+   XPVT left_type = LeftValue.Type;
+   XPVT right_type = RightValue.Type;
+   bool left_numeric = (left_type IS XPVT::Number) or (left_type IS XPVT::Boolean);
+   bool right_numeric = (right_type IS XPVT::Number) or (right_type IS XPVT::Boolean);
+
+   if (left_numeric or right_numeric)
+   {
+      double left_number = LeftValue.to_number();
+      double right_number = RightValue.to_number();
+      return compare_numeric_values(left_number, right_number);
+   }
+
+   std::string left_string = LeftValue.to_string();
+   std::string right_string = RightValue.to_string();
+
+   if ((!CollationUri.empty()) and !(CollationUri IS "http://www.w3.org/2005/xpath-functions/collation/codepoint") and
+      !(CollationUri IS "unicode"))
+   {
+      return 0;
+   }
+
+   if (left_string < right_string) return -1;
+   if (left_string > right_string) return 1;
+   return 0;
+}
+
+int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XPathVal &RightValue,
+   bool RightEmpty, const XPathOrderComparatorOptions &Options)
+{
+   bool empties_greatest = false;
+   if (Options.has_empty_mode) empties_greatest = Options.empty_is_greatest;
+
+   if (LeftEmpty or RightEmpty)
+   {
+      if (LeftEmpty and RightEmpty) return 0;
+      if (LeftEmpty) return empties_greatest ? 1 : -1;
+      return empties_greatest ? -1 : 1;
+   }
+
+   std::string collation;
+   if (Options.has_collation) collation = Options.collation_uri;
+
+   int comparison = xpath_compare_order_atomic(LeftValue, RightValue, collation);
+   if (Options.descending) comparison = -comparison;
+   return comparison;
 }

@@ -75,6 +75,7 @@ class XPathEvaluator {
    XPathVal evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    XPathVal evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_flwor_pipeline(const XPathNode *Node, uint32_t CurrentPrefix);
 
    std::optional<uint32_t> resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
       std::string_view Prefix) const;

@@ -301,3 +301,33 @@ xml::schema::SchemaType XPathVal::get_schema_type() const
    return xml::schema::schema_type_for_xpath(Type);
 }
 
+XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *> Nodes,
+   std::vector<const XMLAttrib *> Attributes,
+   std::vector<std::string> Strings,
+   std::optional<std::string> Override)
+{
+   XPathVal value;
+   value.Type = XPVT::NodeSet;
+   value.node_set = std::move(Nodes);
+   value.node_set_attributes = std::move(Attributes);
+   value.node_set_string_values = std::move(Strings);
+   value.node_set_string_override = std::move(Override);
+   return value;
+}
+
+XPathVal xpath_nodeset_singleton(XMLTag *Node, const XMLAttrib *Attribute,
+   std::string StringValue)
+{
+   pf::vector<XMLTag *> nodes;
+   nodes.push_back(Node);
+
+   std::vector<const XMLAttrib *> attributes;
+   attributes.push_back(Attribute);
+
+   std::vector<std::string> strings;
+   strings.push_back(StringValue);
+
+   std::optional<std::string> override_value(StringValue);
+   return xpath_nodeset_from_components(std::move(nodes), std::move(attributes), std::move(strings), std::move(override_value));
+}
+
