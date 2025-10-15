@@ -1083,12 +1083,28 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
       size_t previous_constructed = constructed_nodes.size();
       auto saved_id = next_constructed_node_id;
+      bool previous_flag = expression_unsupported;
+      expression_unsupported = false;
       XPathVal value = evaluate_expression(expr, CurrentPrefix);
       if (expression_unsupported) {
          if (is_trace_enabled(TraceCategory::XPath)) {
             std::string signature = build_ast_signature(expr);
+            size_t variable_count = context.variables.size();
+            std::string variable_list;
+            variable_list.reserve(variable_count * 16);
+            variable_list.push_back('[');
+            bool first_binding = true;
+            for (const auto &binding : context.variables) {
+               if (!first_binding) variable_list.append(", ");
+               variable_list.append(binding.first);
+               first_binding = false;
+            }
+            variable_list.push_back(']');
+
             pf::Log log("XPath");
-            log.msg(trace_detail_level, "AVT expression failed: %s", signature.c_str());
+            log.msg(trace_detail_level, "AVT context variable count: %zu", variable_count);
+            log.msg(trace_detail_level, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
+               signature.c_str(), variable_list.c_str(), previous_flag ? "true" : "false");
          }
          record_error("Attribute value template expression could not be evaluated.");
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
@@ -3639,6 +3655,22 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       auto local_variable = context.variables.find(ExprNode->value);
       if (local_variable != context.variables.end()) {
          return local_variable->second;
+      }
+
+      if (is_trace_enabled(TraceCategory::XPath)) {
+         pf::Log log("XPath");
+         log.msg(trace_detail_level, "Variable lookup failed for '%s'", ExprNode->value.c_str());
+         if (!context.variables.empty()) {
+            std::string binding_list;
+            binding_list.reserve(context.variables.size() * 16);
+            bool first_binding = true;
+            for (const auto &entry : context.variables) {
+               if (!first_binding) binding_list.append(", ");
+               binding_list.append(entry.first);
+               first_binding = false;
+            }
+            log.msg(trace_detail_level, "Context bindings available: [%s]", binding_list.c_str());
+         }
       }
 
       // Look up variable in the XML object's variable storage
