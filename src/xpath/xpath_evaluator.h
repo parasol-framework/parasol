@@ -38,8 +38,6 @@ class XPathEvaluator {
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
    bool trace_xpath_enabled = false;
-   VLF trace_detail_level = VLF::API;
-   VLF trace_verbose_level = VLF::DETAIL;
 
    // Tracks in-scope namespace declarations while building constructed nodes so nested
    // constructors inherit and override prefixes correctly.

@@ -41,102 +41,9 @@
 
 //********************************************************************************************************************
 
-namespace
-{
-std::optional<std::string> normalise_env_value(const char *Value)
-{
-   if (!Value) return std::nullopt;
-
-   while ((*Value IS ' ') or (*Value IS '\t') or (*Value IS '\r') or (*Value IS '\n')) ++Value;
-   if (*Value IS '\0') return std::nullopt;
-
-   std::string normalised(Value);
-   while (!normalised.empty() and ((normalised.back() IS ' ') or (normalised.back() IS '\t') or (normalised.back() IS '\r') or (normalised.back() IS '\n')))
-   {
-      normalised.pop_back();
-   }
-
-   std::transform(normalised.begin(), normalised.end(), normalised.begin(),
-      [](unsigned char Ch) -> char { return (char)std::tolower((unsigned char)Ch); });
-
-   return normalised;
-}
-
-bool env_flag_enabled(const char *Value)
-{
-   auto normalised = normalise_env_value(Value);
-   if (!normalised.has_value()) return false;
-
-   if ((*normalised IS "0") or (*normalised IS "false") or (*normalised IS "off") or (*normalised IS "no") or 
-      (*normalised IS "disable") or (*normalised IS "disabled")) {
-      return false;
-   }
-
-   return true;
-}
-
-struct TraceLevelConfig
-{
-   VLF detail = VLF::API;
-   VLF verbose = VLF::DETAIL;
-};
-
-TraceLevelConfig parse_trace_levels(const char *Value)
-{
-   TraceLevelConfig config;
-
-   auto normalised = normalise_env_value(Value);
-   if (!normalised.has_value()) return config;
-
-   const std::string &level = *normalised;
-
-   if ((level IS "warning") or (level IS "warn"))
-   {
-      config.detail = VLF::WARNING;
-      config.verbose = VLF::API;
-      return config;
-   }
-
-   if (level IS "info")
-   {
-      config.detail = VLF::INFO;
-      config.verbose = VLF::WARNING;
-      return config;
-   }
-
-   if ((level IS "detail") or (level IS "detailed"))
-   {
-      config.detail = VLF::DETAIL;
-      config.verbose = VLF::TRACE;
-      return config;
-   }
-
-   if ((level IS "trace") or (level IS "verbose"))
-   {
-      config.detail = VLF::TRACE;
-      config.verbose = VLF::TRACE;
-      return config;
-   }
-
-   if ((level IS "warning+api") or (level IS "warn+api"))
-   {
-      config.detail = VLF::WARNING;
-      config.verbose = VLF::API;
-      return config;
-   }
-
-   return config;
-}
-} // namespace
-
-//********************************************************************************************************************
-
 XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
 {
-   trace_xpath_enabled = env_flag_enabled(std::getenv("PARASOL_TRACE_XPATH"));
-   auto trace_levels = parse_trace_levels(std::getenv("PARASOL_TRACE_XPATH_LEVEL"));
-   trace_detail_level = trace_levels.detail;
-   trace_verbose_level = trace_levels.verbose;
+   trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
    context.document = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
@@ -159,6 +66,9 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 }
 
 //********************************************************************************************************************
+// Records an error for the XML object & sets the expression_unsupported flag.
+// Setting Force will override existing XML ErrorMsg.
+// Additionally, if a Node is provided, a detailed stack trace is logged.
 
 void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
@@ -172,16 +82,21 @@ void XPathEvaluator::record_error(std::string_view Message, bool Force)
 
 void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Node, bool Force)
 {
-   // Preserve existing behaviour (flag, user-facing message)
-   record_error(Message, Force);
-
    pf::Log log("XPath");
 
+   expression_unsupported = true;
+   
    // Expression signature (compact AST fingerprint)
 
+   std::string signature = "";
    if (Node) {
-      auto signature = build_ast_signature(Node);
-      log.detail("Expression: %s", signature.c_str());
+      signature = build_ast_signature(Node);
+   }
+
+   log.branch("%.*s %s [Stack detail follows]", (int)Message.size(), Message.data(), signature.c_str());
+
+   if (xml) {
+      if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
    }
 
    // Dump evaluator context stack from outermost to innermost.
@@ -204,8 +119,8 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
 
       if (frame.attribute_node) attr_name = frame.attribute_node->Name.c_str();
 
-      log.detail("[%zu] node-id=%d name='%s' pos=%zu/%zu attr=%s doc=%s",
-         index, node_id, node_name, frame.position, frame.size, attr_name, doc_label);
+      log.detail("[%u] node-id=%d name='%s' pos=%u/%u attr=%s doc=%s",
+         unsigned(index), node_id, node_name, unsigned(frame.position), unsigned(frame.size), attr_name, doc_label);
    };
 
    // Emit stored frames
@@ -228,7 +143,7 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
          first = false;
          names += entry.first;
       }
-      log.detail("Variables: count=%zu names=[%s]", context.variables.size(), names.c_str());
+      log.detail("Variables: count=%u names=[%s]", int(context.variables.size()), names.c_str());
    }
 }
 
