@@ -19,12 +19,11 @@ function testWhereFiltersNodes()
    local err = xml.mtFindTag('for $book in /library/book where number($book/@price) < 40 return $book',
       function(XML, TagID)
          local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
-         assert(errAttr == ERR_Okay,
-            'WHERE clause should preserve attribute access: ' .. mSys.GetErrorMsg(errAttr))
+         assert(errAttr == ERR_Okay, 'WHERE clause should preserve attribute access: ' .. mSys.GetErrorMsg(errAttr))
          table.insert(filtered, idValue)
       end)
 
-   assert(err == ERR_Okay, 'WHERE clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'WHERE clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
    table.sort(filtered)
    assert(#filtered == 2 and filtered[1] == 'bk-1' and filtered[2] == 'bk-3',
       'Filtered identifiers should match price predicate, got ' .. table.concat(filtered, ','))
@@ -54,7 +53,7 @@ function testOrderByAscendingStrings()
    local recv_order = table.concat(ordered, ',')
    print('Received order: ' .. recv_order)
 
-   assert(err == ERR_Okay, 'ORDER BY clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'ORDER BY clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
    assert(#ordered == 4, 'ORDER BY clause should yield all nodes, got ' .. recv_order)
    for index, expected in ipairs({'bk-1', 'bk-2', 'bk-3', 'bk-4'}) do
       assert(ordered[index] == expected,
@@ -86,7 +85,7 @@ function testOrderByDescendingNumbers()
    local recv_order = table.concat(ordered, ',')
    print('Received order: ' .. recv_order)
 
-   assert(err == ERR_Okay, 'ORDER BY clause with descending numeric sort should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'ORDER BY clause with descending numeric sort should evaluate successfully: ' .. tostring(xml.errorMsg))
    for index, expected in ipairs({'bk-3', 'bk-4', 'bk-1', 'bk-2'}) do
       assert(ordered[index] == expected,
          'ORDER BY descending should honour numeric values and tie-breakers, expected ' .. expected .. ' at position ' .. index .. ', got ' .. nz(ordered[index], 'nil'))
@@ -117,7 +116,7 @@ function testGroupByAggregatesSequences()
          groups[genreValue] = tonumber(countValue)
       end)
 
-   assert(err == ERR_Okay, 'GROUP BY clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'GROUP BY clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
    assert(groups['fiction'] == 2, 'Fiction group should contain two members, got ' .. tostring(groups['fiction']))
    assert(groups['reference'] == 2, 'Reference group should contain two members, got ' .. tostring(groups['reference']))
    assert(groups['history'] == 1, 'History group should contain one member, got ' .. tostring(groups['history']))
@@ -145,7 +144,7 @@ function testGroupBySequenceAccess()
          members[genreValue] = memberList
       end)
 
-   assert(err == ERR_Okay, 'GROUP BY sequence FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'GROUP BY sequence FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
    assert(members['fiction'] == 'bk-1,bk-2', 'Fiction group should expose concatenated identifiers, got ' .. tostring(members['fiction']))
    assert(members['history'] == 'bk-3', 'History group should expose single identifier, got ' .. tostring(members['history']))
 end
@@ -172,9 +171,9 @@ function testCountProvidesPosition()
          table.insert(order, posValue .. ':' .. idValue)
       end)
 
-   assert(err == ERR_Okay, 'COUNT clause FLWOR should evaluate successfully: ' .. mSys.GetErrorMsg(err))
+   assert(err == ERR_Okay, 'COUNT clause FLWOR should evaluate successfully: ' .. tostring(xml.errorMsg))
    assert(order[1] == '1:bk-1' and order[2] == '2:bk-3' and order[3] == '3:bk-2',
-      'COUNT clause should align positional counters with sorted order, got ' .. table.concat(order, ','))
+      'COUNT clause should align positional counters with sorted order, got "' .. table.concat(order, ',') .. '"')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -185,7 +184,7 @@ function testInvalidOrdering()
 
    local err = xml.mtFindTag('for $node in /root/value order by $node where $node return $node')
    assert(err == ERR_Syntax, 'ORDER BY followed by WHERE should be rejected as syntax error, got ' .. mSys.GetErrorMsg(err))
-   local message = nz(xml.errorMsg, '')
+   local message = tostring(xml.errorMsg)
    assert(string.find(message, 'where clause must precede order by', 1, true), 'Error message should describe WHERE/ORDER BY ordering requirement, got ' .. message)
 end
 
@@ -199,8 +198,8 @@ function testInvalidGroupByExpression()
 
    local err = xml.mtFindTag('for $item in /root/item group by $key := $undefined return $item')
    assert(err != ERR_Okay, 'Group by referencing undefined bindings should fail evaluation')
-   local message = nz(xml.errorMsg, '')
-   assert(string.find(message, 'group by key expression must reference bound variables', 1, true), 'Error message should describe invalid grouping expression, got ' .. message)
+   local message = tostring(xml.errorMsg)
+   assert(string.find(message, 'Group key expression could not be evaluated.', 1, true), 'Error message should describe invalid grouping expression, got ' .. message)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
