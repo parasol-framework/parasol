@@ -3180,7 +3180,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          bound_value.Type = XPVT::NodeSet;
          bound_value.preserve_node_order = false;
          bound_value.node_set.push_back(item_node);
-            bound_value.node_set_attributes.push_back(item_attribute);
+         bound_value.node_set_attributes.push_back(item_attribute);
 
             std::string item_string;
             bool use_override = sequence_value.node_set_string_override.has_value() and
