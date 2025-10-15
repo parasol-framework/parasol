@@ -68,6 +68,21 @@ bool XPathParser::check_identifier_keyword(std::string_view Keyword) const
    else if (Keyword IS "except") {
       if (token.type IS XPathTokenType::EXCEPT) return true;
    }
+   else if (Keyword IS "where") {
+      if (token.type IS XPathTokenType::WHERE) return true;
+   }
+   else if (Keyword IS "group") {
+      if (token.type IS XPathTokenType::GROUP) return true;
+   }
+   else if (Keyword IS "stable") {
+      if (token.type IS XPathTokenType::STABLE) return true;
+   }
+   else if (Keyword IS "order") {
+      if (token.type IS XPathTokenType::ORDER) return true;
+   }
+   else if (Keyword IS "count") {
+      if (token.type IS XPathTokenType::COUNT) return true;
+   }
 
    return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
 }
