@@ -40,6 +40,8 @@
 #include <unordered_set>
 
 //********************************************************************************************************************
+// Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
+// trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
 XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
 {
@@ -160,10 +162,18 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    return evaluate_ast(&XPath, CurrentPrefix);
 }
 
+//********************************************************************************************************************
+// Enables or disables trace output for a specified trace category. Currently supports TraceCategory::XPath for
+// controlling diagnostic logging during expression evaluation.
+
 void XPathEvaluator::set_trace_enabled(TraceCategory Category, bool Enabled)
 {
    if (Category IS TraceCategory::XPath) trace_xpath_enabled = Enabled;
 }
+
+//********************************************************************************************************************
+// Returns whether trace is enabled for the specified trace category. Used to conditionally log diagnostic
+// information during expression evaluation.
 
 bool XPathEvaluator::is_trace_enabled(TraceCategory Category) const
 {
