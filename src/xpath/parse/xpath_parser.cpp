@@ -386,7 +386,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
 
    if (has_errors()) return nullptr;
 
-   match(XPathTokenType::RBRACKET); // consume closing bracket
+   (void)match(XPathTokenType::RBRACKET); // consume closing bracket
    return predicate;
 }
 
@@ -1073,7 +1073,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr()
       std::unique_ptr<XPathNode> operand;
       if (match(XPathTokenType::LPAREN)) {
          operand = parse_expr();
-         match(XPathTokenType::RPAREN);
+         (void)match(XPathTokenType::RPAREN);
       }
       else operand = parse_unary_expr();
 
@@ -1348,7 +1348,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
 {
    if (match(XPathTokenType::LPAREN)) {
       auto expr = parse_expr();
-      match(XPathTokenType::RPAREN);
+      (void)match(XPathTokenType::RPAREN);
       return expr;
    }
 
@@ -1413,7 +1413,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call()
       if (!match(XPathTokenType::COMMA)) break;
    }
 
-   match(XPathTokenType::RPAREN);
+   (void)match(XPathTokenType::RPAREN);
    return function_node;
 }
 
@@ -1610,7 +1610,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
    }
 
    if (check(XPathTokenType::EMPTY_TAG_CLOSE)) {
-      match(XPathTokenType::EMPTY_TAG_CLOSE);
+      (void)match(XPathTokenType::EMPTY_TAG_CLOSE);
       info.is_empty_element = true;
       info.attributes = std::move(attributes);
       element_node->set_constructor_info(std::move(info));

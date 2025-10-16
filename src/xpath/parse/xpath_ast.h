@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <parasol/modules/xpath.h>
+#include "../xpath.h"
 
 using XPathAttributeValuePart = XPathNode::XPathAttributeValuePart;
 using XPathConstructorAttribute = XPathNode::XPathConstructorAttribute;

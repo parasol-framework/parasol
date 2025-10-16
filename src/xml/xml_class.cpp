@@ -125,7 +125,7 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 
    tlXMLCounter = 0;
 
-   XPathNode *cp;
+   APTR cp;
    if (xp::Compile(Self, Args->XPath, &cp) IS ERR::Okay) {
       auto call = C_FUNCTION(xml_count);
       xp::Query(Self, cp, &call);
@@ -225,7 +225,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
          auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
@@ -286,7 +286,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       error = xp::Query(Self, cp, Args->Callback);
       FreeResource(cp);
@@ -508,7 +508,7 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
       return ERR::Syntax;
    }
    else {
-      XPathNode *cp;
+      APTR cp;
       if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
          XPathValue *xpv;
          if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
@@ -884,7 +884,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
          xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
@@ -1153,7 +1153,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
    if (limit IS -1) limit = 0x7fffffff;
    else if (not limit) limit = 1;
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       while (limit > 0) {
          if (xp::Query(Self, cp, nullptr) != ERR::Okay) break;
@@ -1451,7 +1451,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
       if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
          if (not Self->Attrib.empty()) { // Updating or adding an attribute
@@ -1565,7 +1565,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       if (not tag) return ERR::Okay;
    }
    else {
-      XPathNode *cp;
+      APTR cp;
       if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
          error = xp::Query(Self, cp, nullptr);
          FreeResource(cp);

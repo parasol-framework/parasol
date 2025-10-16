@@ -65,7 +65,7 @@ function for each matching node, enabling streaming processing of large result s
 Compiling and evaluating queries:
 
 <pre>
-XPathNode *query;
+APTR query;
 if (xp::Compile(xml, "/bookstore/book[@price < 10]/title", &query) IS ERR::Okay) {
    XPathValue *result;
    if (xp::Evaluate(xml, query, &result) IS ERR::Okay) {
@@ -79,7 +79,7 @@ if (xp::Compile(xml, "/bookstore/book[@price < 10]/title", &query) IS ERR::Okay)
 Node iteration with callbacks:
 
 <pre>
-XPathNode *query;
+APTR query;
 if (xp::Compile(xml, "//chapter[@status='draft']", &query) IS ERR::Okay) {
    auto callback = C_FUNCTION(process_node);
    xp::Query(xml, query, &callback);
@@ -211,7 +211,7 @@ parsing fails.
 -INPUT-
 obj(XML) XML: The XML document context for the query (can be NULL if not needed).
 cstr Query: A valid XPath or XQuery expression string.
-!&struct(XPathNode) Result: Receives a pointer to an XPathNode object on success.
+!&ptr Result: Receives a pointer to an XPathNode object on success.
 
 -ERRORS-
 Okay
@@ -220,7 +220,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR Compile(objXML *XML, CSTRING Query, XPathNode **Result)
+ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -271,7 +271,7 @@ of data including node sets, strings, numbers, or booleans.
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
-struct(XPathNode) Query: The compiled XPath or XQuery expression.
+ptr Query: The compiled XPath or XQuery expression.
 !&struct(XPathValue) Result: Receives the result of the evaluation.
 
 -ERRORS-
@@ -281,7 +281,7 @@ NullArgs
 
 *********************************************************************************************************************/
 
-ERR Evaluate(objXML *XML, XPathNode *Query, XPathValue **Result)
+ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
 {
    pf::Log log(__FUNCTION__);
 
@@ -330,7 +330,7 @@ Note that valid function execution can return `ERR:Search` if zero matches are f
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
-ptr(struct(XPathNode)) Query: The compiled XPath or XQuery expression.
+ptr Query: The compiled XPath or XQuery expression.
 ptr(func) Callback: Pointer to a callback function that will be called for each matching node.  Can be NULL if searching for the first matching node.
 
 -ERRORS-
@@ -343,7 +343,7 @@ Search: No matching node was found.
 
 *********************************************************************************************************************/
 
-ERR Query(objXML *XML, XPathNode *Query, FUNCTION *Callback)
+ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
 {
    pf::Log log(__FUNCTION__);
 
@@ -363,7 +363,7 @@ ERR Query(objXML *XML, XPathNode *Query, FUNCTION *Callback)
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
    XPathEvaluator eval(xml);
-   return eval.find_tag(*Query, 0); // Returns ERR:Search if no match
+   return eval.find_tag(*(XPathNode *)Query, 0); // Returns ERR:Search if no match
 }
 
 } // namespace xp
@@ -371,7 +371,6 @@ ERR Query(objXML *XML, XPathNode *Query, FUNCTION *Callback)
 //********************************************************************************************************************
 
 static STRUCTS glStructures = {
-   { "XPathNode", sizeof(XPathNode) }
 };
 
 //********************************************************************************************************************
