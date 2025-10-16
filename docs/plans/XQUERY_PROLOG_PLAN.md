@@ -505,33 +505,33 @@ Each phase should land with targeted regression tests using existing Fluid-based
 #### Phase 3: Evaluation Integration
 
 **Evaluator Threading:**
-- [ ] Update `XPathEvaluator` constructor to accept compiled query root
-- [ ] Set `context.prolog = query_root.get_prolog()` in evaluator initialisation
-- [ ] Set `context.module_cache = query_root.get_module_cache()` in evaluator initialisation
-- [ ] Thread compiled query pointer through `evaluate_xpath_expression()` entry point
-- [ ] Thread compiled query pointer through `find_tag()` entry point
+- [x] Update `XPathEvaluator` constructor to accept compiled query root
+- [x] Set `context.prolog = query_root.get_prolog()` in evaluator initialisation
+- [x] Set `context.module_cache = query_root.get_module_cache()` in evaluator initialisation
+- [x] Thread compiled query pointer through `evaluate_xpath_expression()` entry point
+- [x] Thread compiled query pointer through `find_tag()` entry point
 
 **Function Resolution:**
-- [ ] Update `evaluate_function_call()` to check prolog before built-in library
-- [ ] Implement `evaluate_user_defined_function()` method
-- [ ] Implement parameter binding with `VariableBindingGuard`
-- [ ] Implement function body evaluation with proper scoping
-- [ ] Add arity checking and error reporting
-- [ ] Add external function detection and error handling
-- [ ] Support recursive function calls
+- [x] Update `evaluate_function_call()` to check prolog before built-in library
+- [x] Implement `evaluate_user_defined_function()` method
+- [x] Implement parameter binding with `VariableBindingGuard`
+- [x] Implement function body evaluation with proper scoping
+- [x] Add arity checking and error reporting
+- [x] Add external function detection and error handling
+- [x] Support recursive function calls
 
 **Variable Resolution:**
-- [ ] Implement variable lookup helper checking dynamic context first
-- [ ] Extend variable lookup to consult prolog declared variables
-- [ ] Evaluate variable initialiser expressions when needed
-- [ ] Add external variable detection and error handling
-- [ ] Integrate module variable resolution via cache
+- [x] Implement variable lookup helper checking dynamic context first
+- [x] Extend variable lookup to consult prolog declared variables
+- [x] Evaluate variable initialiser expressions when needed
+- [x] Add external variable detection and error handling
+- [ ] Integrate module variable resolution via cache *(pending module loading support)*
 
 **Module Resolution:**
-- [ ] Implement module cache lookup in `evaluate_function_call()`
+- [x] Implement module cache lookup in `evaluate_function_call()` *(records imports and validates cache availability)*
 - [ ] Implement deferred module loading via `fetch_or_load()`
-- [ ] Add module import error handling
-- [ ] Add unsupported feature diagnostics when cache unavailable
+- [x] Add module import error handling
+- [x] Add unsupported feature diagnostics when cache unavailable
 
 **Prolog Settings Enforcement:**
 - [ ] Implement `boundary-space` behavior in element constructors

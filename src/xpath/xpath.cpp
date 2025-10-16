@@ -339,7 +339,7 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
       SetResourceMgr(xpv, &glXPVManager);
       new (xpv) XPathVal(); // Placement new to construct a dummy XPathVal object
 
-      XPathEvaluator eval(xml);
+      XPathEvaluator eval(xml, compiled_path);
       auto err = eval.evaluate_xpath_expression(*compiled_path, (XPathVal *)xpv);
       if (err != ERR::Okay) {
          FreeResource(xpv);
@@ -397,7 +397,7 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    xml->ErrorMsg.clear();
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
-   XPathEvaluator eval(xml);
+   XPathEvaluator eval(xml, (XPathNode *)Query);
    return eval.find_tag(*(XPathNode *)Query, 0); // Returns ERR:Search if no match
 }
 

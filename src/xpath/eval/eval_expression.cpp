@@ -4,6 +4,99 @@
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
+#include <parasol/strings.hpp>
+#include <utility>
+
+bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
+   XPathVal &OutValue, const XPathNode *ReferenceNode)
+{
+   std::string name(QName);
+
+   if (context.variables) {
+      auto local_variable = context.variables->find(name);
+      if (local_variable != context.variables->end()) {
+         OutValue = local_variable->second;
+         return true;
+      }
+   }
+
+   if (xml) {
+      auto xml_variable = xml->Variables.find(name);
+      if (xml_variable != xml->Variables.end()) {
+         OutValue = XPathVal(xml_variable->second);
+         return true;
+      }
+   }
+
+   auto prolog = context.prolog;
+   if (!prolog) return false;
+
+   auto cached_value = prolog_variable_cache.find(name);
+   if (cached_value != prolog_variable_cache.end()) {
+      OutValue = cached_value->second;
+      return true;
+   }
+
+   const XQueryVariable *variable = prolog->find_variable(QName);
+   if (!variable) {
+      auto separator = name.find(':');
+      if (separator != std::string::npos) {
+         std::string prefix = name.substr(0, separator);
+         uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
+         if (namespace_hash != 0U) {
+            for (const auto &import : prolog->module_imports) {
+               if (pf::strhash(import.target_namespace) IS namespace_hash) {
+                  if (!context.module_cache) {
+                     std::string message = "Module variable '" + name + "' requires a module cache.";
+                     record_error(message, ReferenceNode, true);
+                     return false;
+                  }
+
+                  std::string message = "Module variable resolution is not implemented for namespace '";
+                  message.append(import.target_namespace);
+                  message.append("'.");
+                  record_error(message, ReferenceNode, true);
+                  return false;
+               }
+            }
+         }
+      }
+
+      return false;
+   }
+
+   if (variable->is_external) {
+      std::string message = "External variable '" + name + "' is not supported.";
+      record_error(message, ReferenceNode, true);
+      return false;
+   }
+
+   if (!variable->initializer) {
+      std::string message = "Variable '" + name + "' is missing an initialiser.";
+      record_error(message, ReferenceNode, true);
+      return false;
+   }
+
+   if (variables_in_evaluation.find(name) != variables_in_evaluation.end()) {
+      std::string message = "Variable '" + name + "' has a circular dependency.";
+      record_error(message, ReferenceNode, true);
+      return false;
+   }
+
+   variables_in_evaluation.insert(name);
+   XPathVal computed_value = evaluate_expression(variable->initializer.get(), CurrentPrefix);
+   variables_in_evaluation.erase(name);
+
+   if (expression_unsupported) {
+      std::string message = "Failed to evaluate initialiser for variable '" + name + "'.";
+      record_error(message, ReferenceNode);
+      return false;
+   }
+
+   auto inserted = prolog_variable_cache.insert_or_assign(name, std::move(computed_value));
+   OutValue = inserted.first->second;
+   return true;
+}
 
 //********************************************************************************************************************
 
@@ -889,16 +982,14 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    }
 
    if (ExprNode->type IS XPathNodeType::VARIABLE_REFERENCE) {
-      if (context.variables) {
-         auto local_variable = context.variables->find(ExprNode->value);
-         if (local_variable != context.variables->end()) {
-            return local_variable->second;
-         }
+      XPathVal resolved_value;
+      if (resolve_variable_value(ExprNode->value, CurrentPrefix, resolved_value, ExprNode)) {
+         return resolved_value;
       }
 
       if (is_trace_enabled()) {
          log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
-         if (context.variables && !context.variables->empty()) {
+         if (context.variables and context.variables->empty() IS false) {
             std::string binding_list;
             binding_list.reserve(context.variables->size() * 16);
             bool first_binding = true;
@@ -911,16 +1002,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
       }
 
-      // Look up variable in the XML object's variable storage
-      auto it = xml->Variables.find(ExprNode->value);
-      if (it != xml->Variables.end()) {
-         return XPathVal(it->second);
-      }
-      else {
-         // Variable not found - XPath 1.0 spec requires this to be an error
-         expression_unsupported = true;
-         return XPathVal();
-      }
+      expression_unsupported = true;
+      return XPathVal();
    }
 
    expression_unsupported = true;

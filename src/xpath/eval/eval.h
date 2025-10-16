@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class extXML;
@@ -37,6 +38,8 @@ class XPathEvaluator {
 
    // Variable storage owned by the evaluator
    ankerl::unordered_dense::map<std::string, XPathVal> variable_storage;
+   ankerl::unordered_dense::map<std::string, XPathVal> prolog_variable_cache;
+   std::unordered_set<std::string> variables_in_evaluation;
 
    // Tracks in-scope namespace declarations while building constructed nodes so nested
    // constructors inherit and override prefixes correctly.
@@ -81,6 +84,7 @@ class XPathEvaluator {
    XPathVal evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
    ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_flwor_pipeline(const XPathNode *Node, uint32_t CurrentPrefix);
+   void initialise_query_context(const XPathNode *Root);
 
    std::optional<uint32_t> resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
       std::string_view Prefix) const;
@@ -121,9 +125,15 @@ class XPathEvaluator {
 
    void record_error(std::string_view Message, bool Force = false);
    void record_error(std::string_view Message, const XPathNode *Node, bool Force = false);
+   std::optional<XPathVal> resolve_user_defined_function(std::string_view FunctionName,
+      const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
+   XPathVal evaluate_user_defined_function(const XQueryFunction &Function,
+      const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
+   bool resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
+      XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:
-   explicit XPathEvaluator(extXML *XML);
+   explicit XPathEvaluator(extXML *XML, const XPathNode *QueryRoot = nullptr);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
