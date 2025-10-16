@@ -179,6 +179,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>When a callback function is specified, FindTag continues searching through the entire document structure, calling the provided function for each matching element.  This enables comprehensive processing of all matching elements in a single traversal.</p>
 <p>The C++ prototype for Callback is <code>ERR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
 <p>The callback should return <code>ERR::Okay</code> to continue processing, or <code>ERR::Terminate</code> to halt the search immediately. All other error codes are ignored to maintain search robustness.</p>
+<p>Note: If an error occurs, check the <fl>ErrorMsg</fl> field for a custom error message containing further details.</p>
       </description>
       <result>
         <error code="Okay">A matching tag was found (or callback processing completed successfully).</error>

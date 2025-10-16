@@ -79,6 +79,7 @@
       <const name="COMPUTED_ELEMENT_CONSTRUCTOR"/>
       <const name="CONDITIONAL"/>
       <const name="CONSTRUCTOR_CONTENT"/>
+      <const name="COUNT_CLAUSE"/>
       <const name="DIRECT_ATTRIBUTE_CONSTRUCTOR"/>
       <const name="DIRECT_ELEMENT_CONSTRUCTOR"/>
       <const name="DIRECT_TEXT_CONSTRUCTOR"/>
@@ -89,6 +90,8 @@
       <const name="FOR_BINDING"/>
       <const name="FOR_EXPRESSION"/>
       <const name="FUNCTION_CALL"/>
+      <const name="GROUP_CLAUSE"/>
+      <const name="GROUP_KEY"/>
       <const name="LET_BINDING"/>
       <const name="LET_EXPRESSION"/>
       <const name="LITERAL"/>
@@ -97,6 +100,8 @@
       <const name="NODE_TEST"/>
       <const name="NODE_TYPE_TEST"/>
       <const name="NUMBER"/>
+      <const name="ORDER_CLAUSE"/>
+      <const name="ORDER_SPEC"/>
       <const name="PATH"/>
       <const name="PI_CONSTRUCTOR"/>
       <const name="PREDICATE"/>
@@ -110,6 +115,7 @@
       <const name="UNARY_OP"/>
       <const name="UNION"/>
       <const name="VARIABLE_REFERENCE"/>
+      <const name="WHERE_CLAUSE"/>
       <const name="WILDCARD"/>
     </constants>
 

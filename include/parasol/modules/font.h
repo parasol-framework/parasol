@@ -270,9 +270,9 @@ class objFont : public Object {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_FONT static struct FontBase *FontBase;
+#define JUMPTABLE_FONT [[maybe_unused]] static struct FontBase *FontBase = nullptr;
 #else
-#define JUMPTABLE_FONT struct FontBase *FontBase;
+#define JUMPTABLE_FONT struct FontBase *FontBase = nullptr;
 #endif
 
 struct FontBase {

@@ -144,27 +144,22 @@ typedef struct XPathNode {
 
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
-   void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
-   [[nodiscard]] XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
-   [[nodiscard]] size_t child_count() const { return children.size(); }
+   inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
+   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
+   [[nodiscard]] inline size_t child_count() const { return children.size(); }
+   inline void set_constructor_info(XPathConstructorInfo info) { constructor_info = std::move(info); }
+   [[nodiscard]] inline bool has_constructor_info() const { return constructor_info.has_value(); }
+   inline void set_name_expression(std::unique_ptr<XPathNode> expr) { name_expression = std::move(expr); }
+   [[nodiscard]] inline XPathNode * get_name_expression() const { return name_expression.get(); }
+   [[nodiscard]] inline bool has_name_expression() const { return name_expression != nullptr; }
+   inline void set_group_key_info(XPathGroupKeyInfo Info) { group_key_info = std::move(Info); }
+   [[nodiscard]] inline bool has_group_key_info() const { return group_key_info.has_value(); }
+   [[nodiscard]] inline const XPathGroupKeyInfo * get_group_key_info() const { return group_key_info ? &(*group_key_info) : nullptr; }
 
-   void set_constructor_info(XPathConstructorInfo info)
-   {
-      constructor_info = std::move(info);
-   }
-
-   [[nodiscard]] bool has_constructor_info() const
-   {
-      return constructor_info.has_value();
-   }
-
-   void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts)
-   {
+   void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
       attribute_value_has_expressions = false;
-      for (const auto &part : parts)
-      {
-         if (part.is_expression)
-         {
+      for (const auto &part : parts) {
+         if (part.is_expression) {
             attribute_value_has_expressions = true;
             break;
          }
@@ -172,49 +167,17 @@ typedef struct XPathNode {
       attribute_value_parts = std::move(parts);
    }
 
-   void set_name_expression(std::unique_ptr<XPathNode> expr)
-   {
-      name_expression = std::move(expr);
-   }
 
-   [[nodiscard]] XPathNode * get_name_expression() const
-   {
-      return name_expression.get();
-   }
-
-   [[nodiscard]] bool has_name_expression() const
-   {
-      return name_expression != nullptr;
-   }
-
-   void set_order_spec_options(XPathOrderSpecOptions Options)
-   {
+   inline void set_order_spec_options(XPathOrderSpecOptions Options) {
       order_spec_options = std::move(Options);
    }
 
-   [[nodiscard]] bool has_order_spec_options() const
-   {
+   [[nodiscard]] inline bool has_order_spec_options() const {
       return order_spec_options.has_value();
    }
 
-   [[nodiscard]] const XPathOrderSpecOptions * get_order_spec_options() const
-   {
+   [[nodiscard]] inline const XPathOrderSpecOptions * get_order_spec_options() const {
       return order_spec_options ? &(*order_spec_options) : nullptr;
-   }
-
-   void set_group_key_info(XPathGroupKeyInfo Info)
-   {
-      group_key_info = std::move(Info);
-   }
-
-   [[nodiscard]] bool has_group_key_info() const
-   {
-      return group_key_info.has_value();
-   }
-
-   [[nodiscard]] const XPathGroupKeyInfo * get_group_key_info() const
-   {
-      return group_key_info ? &(*group_key_info) : nullptr;
    }
 } XPATHNODE;
 

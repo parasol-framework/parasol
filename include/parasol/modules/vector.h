@@ -3390,9 +3390,9 @@ class objVectorViewport : public objVector {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_VECTOR static struct VectorBase *VectorBase;
+#define JUMPTABLE_VECTOR [[maybe_unused]] static struct VectorBase *VectorBase = nullptr;
 #else
-#define JUMPTABLE_VECTOR struct VectorBase *VectorBase;
+#define JUMPTABLE_VECTOR struct VectorBase *VectorBase = nullptr;
 #endif
 
 struct VectorBase {

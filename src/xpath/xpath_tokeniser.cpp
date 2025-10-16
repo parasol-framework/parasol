@@ -1,11 +1,11 @@
 //********************************************************************************************************************
-// XPath Tokenizer Implementation
+// XPath Tokeniser Implementation
 //
-// The tokenizer converts XPath query strings into a sequence of tokens that can be parsed into an abstract
+// The tokeniser converts XPath query strings into a sequence of tokens that can be parsed into an abstract
 // syntax tree.  This lexical analysis stage handles all XPath token types including operators, literals,
 // keywords, identifiers, and special syntax like axis specifiers and node tests.
 //
-// The tokenizer uses a single-pass character-by-character scan with lookahead to resolve ambiguous tokens
+// The tokeniser uses a single-pass character-by-character scan with lookahead to resolve ambiguous tokens
 // (such as differentiating between the multiply operator and wildcard, or recognising multi-character
 // operators like '::' and '//').  It maintains keyword mappings for language keywords ('and', 'or', 'if', etc.)
 // and properly handles string literals, numeric constants, and qualified names.
@@ -13,7 +13,7 @@
 // This implementation focuses on producing clean token streams that simplify the parser's job, allowing
 // the parser to focus on grammatical structure rather than low-level character processing.
 
-#include "xpath_tokenizer.h"
+#include "xpath_tokeniser.h"
 
 #include <parasol/main.h>
 
@@ -77,37 +77,37 @@ constexpr std::array multi_char_operators{
 
 }
 
-bool XPathTokenizer::is_alpha(char c) const
+bool XPathTokeniser::is_alpha(char c) const
 {
    return std::isalpha((unsigned char)(c));
 }
 
-bool XPathTokenizer::is_digit(char c) const
+bool XPathTokeniser::is_digit(char c) const
 {
    return std::isdigit((unsigned char)(c));
 }
 
-bool XPathTokenizer::is_alnum(char c) const
+bool XPathTokeniser::is_alnum(char c) const
 {
    return std::isalnum((unsigned char)(c));
 }
 
-bool XPathTokenizer::is_whitespace(char c) const
+bool XPathTokeniser::is_whitespace(char c) const
 {
    return std::isspace((unsigned char)(c));
 }
 
-bool XPathTokenizer::is_name_start_char(char c) const
+bool XPathTokeniser::is_name_start_char(char c) const
 {
    return is_alpha(c) or c IS '_';
 }
 
-bool XPathTokenizer::is_name_char(char c) const
+bool XPathTokeniser::is_name_char(char c) const
 {
    return is_alnum(c) or c IS '_' or c IS '-' or c IS '.';
 }
 
-char XPathTokenizer::peek(size_t offset) const
+char XPathTokeniser::peek(size_t offset) const
 {
    size_t pos = position + offset;
    return pos < length ? input[pos] : '\0';
@@ -115,7 +115,7 @@ char XPathTokenizer::peek(size_t offset) const
 
 // Advances the position pointer past all consecutive whitespace characters in the input string.
 
-void XPathTokenizer::skip_whitespace()
+void XPathTokeniser::skip_whitespace()
 {
    while (position < length and is_whitespace(input[position]))
    {
@@ -123,23 +123,23 @@ void XPathTokenizer::skip_whitespace()
    }
 }
 
-bool XPathTokenizer::match(std::string_view Str)
+bool XPathTokeniser::match(std::string_view Str)
 {
    if (position + Str.size() > length) return false;
    return input.compare(position, Str.size(), Str) IS 0;
 }
 
-char XPathTokenizer::current() const
+char XPathTokeniser::current() const
 {
    return position < length ? input[position] : '\0';
 }
 
-void XPathTokenizer::advance()
+void XPathTokeniser::advance()
 {
    if (position < length) position++;
 }
 
-bool XPathTokenizer::has_more() const
+bool XPathTokeniser::has_more() const
 {
    return position < length;
 }
@@ -150,7 +150,7 @@ bool XPathTokenizer::has_more() const
 // between the multiply operator and wildcard based on context. Tracks bracket and parenthesis depth to
 // inform operator disambiguation logic.
 
-std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
+std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
 {
    input = XPath;
    position = 0;
@@ -459,7 +459,7 @@ std::vector<XPathToken> XPathTokenizer::tokenize(std::string_view XPath)
 // Scans and tokenizes an identifier or keyword from the current position. Checks the scanned name against
 // the keyword mappings to determine if it's a reserved word (like 'and', 'or', 'if') or a regular identifier.
 
-XPathToken XPathTokenizer::scan_identifier()
+XPathToken XPathTokeniser::scan_identifier()
 {
    size_t start = position;
 
@@ -522,7 +522,7 @@ XPathToken XPathTokenizer::scan_identifier()
 // Scans numeric literals from the input, handling both integers and decimal numbers. Parses consecutive
 // digits and at most one decimal point to form a valid numeric token.
 
-XPathToken XPathTokenizer::scan_number()
+XPathToken XPathTokeniser::scan_number()
 {
    size_t start = position;
    bool seen_dot = false;
@@ -550,7 +550,7 @@ XPathToken XPathTokenizer::scan_number()
 // backslashes, and wildcards. Uses optimised fast-path for strings without escapes, otherwise builds the
 // unescaped string content with proper escape processing.
 
-XPathToken XPathTokenizer::scan_string(char QuoteChar)
+XPathToken XPathTokeniser::scan_string(char QuoteChar)
 {
    size_t start = position;
    position++;
@@ -601,10 +601,10 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
 }
 
 //********************************************************************************************************************
-// Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the 
+// Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the
 // string into literal and expression parts so the parser can construct attribute value templates.
 
-XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemplates)
+XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemplates)
 {
    size_t start = position;
    position++;
@@ -731,7 +731,7 @@ XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemp
 // Scans operator tokens including multi-character operators (like '//', '::', '!=') and single-character
 // operators. Returns the appropriate token type for recognised operators, or UNKNOWN for unrecognised characters.
 
-XPathToken XPathTokenizer::scan_operator()
+XPathToken XPathTokeniser::scan_operator()
 {
    size_t start = position;
    char ch = input[position];

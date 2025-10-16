@@ -1,18 +1,18 @@
 //********************************************************************************************************************
-// XPath Tokenizer Interface
+// XPath Tokeniser Interface
 //
-// Defines the XPathTokenizer class responsible for lexical analysis of XPath query strings.  The tokenizer
+// Defines the XPathTokeniser class responsible for lexical analysis of XPath query strings.  The tokeniser
 // breaks input strings into a sequence of tokens (operators, identifiers, literals, keywords) that can be
 // consumed by the parser to build an abstract syntax tree.
 //
-// The tokenizer handles:
+// The tokeniser handles:
 //   - Operator recognition (/, //, ::, etc.)
 //   - String and numeric literals
 //   - Identifiers and keywords
 //   - Whitespace handling
 //   - Character classification for XML names
 //
-// This is a single-pass tokenizer with lookahead capabilities for resolving ambiguous syntax.
+// This is a single-pass tokeniser with lookahead capabilities for resolving ambiguous syntax.
 
 #pragma once
 
@@ -22,7 +22,7 @@
 
 #include "xpath_ast.h"
 
-class XPathTokenizer
+class XPathTokeniser
 {
    private:
    std::string_view input;
@@ -47,7 +47,7 @@ class XPathTokenizer
    [[nodiscard]] bool match(std::string_view Str);
 
    public:
-   XPathTokenizer() : position(0), length(0) {}
+   XPathTokeniser() : position(0), length(0) {}
 
    std::vector<XPathToken> tokenize(std::string_view XPath);
    bool has_more() const;

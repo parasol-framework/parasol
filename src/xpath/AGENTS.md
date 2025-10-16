@@ -28,13 +28,15 @@ src/xpath/
 ├── xpath.h                    # Module header
 ├── xpath_def.c                # Generated C definitions
 ├── xpath_parser.cpp/h         # XPath/XQuery expression parser
-├── xpath_tokenizer.cpp/h      # Lexical analysis and tokenisation
-├── xpath_evaluator.cpp/h      # Main evaluation engine
-├── xpath_evaluator_common.cpp # Common evaluation utilities
-├── xpath_evaluator_context.cpp # Context management
-├── xpath_evaluator_navigation.cpp # Node navigation
-├── xpath_evaluator_predicates.cpp # Predicate evaluation
-├── xpath_evaluator_values.cpp # Value operations
+├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
+├── eval.cpp/h                 # Main evaluation engine
+├── eval_common.cpp            # Common evaluation utilities
+├── eval_context.cpp           # Context management
+├── eval_navigation.cpp        # Node navigation
+├── eval_predicates.cpp        # Predicate evaluation
+├── eval_values.cpp            # Value operations
+├── eval_expression.cpp        # Expression evaluation
+├── eval_flwor.cpp             # FLWOR expression support
 ├── xpath_axis.cpp/h           # XPath axis evaluation
 ├── xpath_functions.cpp/h      # Function registry and dispatch
 ├── xpath_arena.h              # Memory management for evaluation
@@ -160,7 +162,7 @@ For processing large result sets or when only node matching is needed, use the Q
 **Callback Pattern:**
 ```cpp
 // C++ callback for each matching node
-ERR callback(objXML *XML, LONG TagID, CSTRING Attrib) {
+ERR callback(objXML *XML, int TagID, CSTRING Attrib) {
    // Process node...
    return ERR::Okay;
 }
@@ -647,7 +649,7 @@ if (auto xml = objXML::create { fl::Path("document.xml") }; xml.ok()) {
 
 ```cpp
 // C++ example - process each matching node
-static ERR process_book(objXML *XML, LONG TagID, CSTRING Attrib) {
+static ERR process_book(objXML *XML, int TagID, CSTRING Attrib) {
    XMLTag *tag;
    if (XML->getTag(TagID, &tag) IS ERR::Okay) {
       log.msg("Processing book: %s", tag->getContent().c_str());

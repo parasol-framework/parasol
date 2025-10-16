@@ -259,6 +259,8 @@ The C++ prototype for Callback is `ERR Function(*XML, XMLTag &Tag, CSTRING Attri
 The callback should return `ERR::Okay` to continue processing, or `ERR::Terminate` to halt the search immediately.
 All other error codes are ignored to maintain search robustness.
 
+Note: If an error occurs, check the #ErrorMsg field for a custom error message containing further details.
+
 -INPUT-
 cstr XPath: A valid XPath expression string conforming to XPath 2.0 syntax with Parasol extensions.  Must not be NULL or empty.
 ptr(func) Callback: Optional pointer to a callback function for processing multiple matches.
@@ -275,6 +277,8 @@ Search: No matching tag could be found for the specified XPath expression.
 static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 {
    pf::Log log;
+
+   Self->ErrorMsg.clear();
 
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);

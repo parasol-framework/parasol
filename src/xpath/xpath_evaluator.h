@@ -20,6 +20,7 @@ class CompiledXPath;
 
 class XPathEvaluator {
    public:
+
    enum class PredicateResult {
       MATCH,
       NO_MATCH,
@@ -32,6 +33,10 @@ class XPathEvaluator {
    XPathArena arena;
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
+   bool trace_xpath_enabled = false;
+
+   // Variable storage owned by the evaluator
+   ankerl::unordered_dense::map<std::string, XPathVal> variable_storage;
 
    // Tracks in-scope namespace declarations while building constructed nodes so nested
    // constructors inherit and override prefixes correctly.
@@ -115,13 +120,10 @@ class XPathEvaluator {
    std::string build_ast_signature(const XPathNode *Node) const;
 
    void record_error(std::string_view Message, bool Force = false);
+   void record_error(std::string_view Message, const XPathNode *Node, bool Force = false);
 
    public:
-   explicit XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena) {
-      context.document = XML;
-      context.expression_unsupported = &expression_unsupported;
-      context.schema_registry = &xml::schema::registry();
-   }
+   explicit XPathEvaluator(extXML *XML);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -135,6 +137,8 @@ class XPathEvaluator {
 
    // Entry point for compiled XPath evaluation
    ERR find_tag(const XPathNode &, uint32_t);
+   
+   inline bool is_trace_enabled() const { return trace_xpath_enabled; }
 
    // Full XPath expression evaluation returning computed values.  Will update the provided XPathValue
    ERR evaluate_xpath_expression(const XPathNode &, XPathVal *, uint32_t CurrentPrefix = 0);
