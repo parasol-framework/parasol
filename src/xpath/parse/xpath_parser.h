@@ -75,11 +75,11 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_embedded_expr(std::string_view Source);
 
    // Utility methods
-   inline bool check(XPathTokenType type) const [[nodiscard]] {
+   [[nodiscard]] inline bool check(XPathTokenType type) const {
       return peek().type IS type;
    }
 
-   inline bool match(XPathTokenType type) [[nodiscard]] {
+   [[nodiscard]] inline bool match(XPathTokenType type) {
       if (check(type)) {
          advance();
          return true;
@@ -104,7 +104,7 @@ class XPathParser {
       }
    }
 
-   bool is_constructor_keyword(const XPathToken &Token) const [[nodiscard]];
+   [[nodiscard]] bool is_constructor_keyword(const XPathToken &Token) const;
 
    // Lightweight representation of a QName recognised within constructor syntax.
 
@@ -116,15 +116,15 @@ class XPathParser {
    std::optional<ConstructorName> parse_constructor_qname();
    bool consume_token(XPathTokenType, std::string_view);
 
-   inline const XPathToken & peek() const [[nodiscard]] {
+   [[nodiscard]] inline const XPathToken & peek() const {
       return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
    }
 
-   inline const XPathToken & previous() const [[nodiscard]] {
+   [[nodiscard]] inline const XPathToken & previous() const {
       return tokens[current_token - 1];
    }
 
-   inline bool is_at_end() const [[nodiscard]] {
+   [[nodiscard]] inline bool is_at_end() const {
       return peek().type IS XPathTokenType::END_OF_INPUT;
    }
 
@@ -132,7 +132,7 @@ class XPathParser {
       if (!is_at_end()) current_token++;
    }
 
-   inline bool is_step_start_token(XPathTokenType type) const [[nodiscard]] {
+   [[nodiscard]] inline bool is_step_start_token(XPathTokenType type) const {
       switch (type) {
          case XPathTokenType::DOT:
          case XPathTokenType::DOUBLE_DOT:
@@ -159,7 +159,7 @@ class XPathParser {
    // Error handling
 
    inline void report_error(std::string_view Message) { errors.emplace_back(Message); }
-   inline bool has_errors() const [[nodiscard]] { return !errors.empty(); }
+   [[nodiscard]] inline bool has_errors() const { return !errors.empty(); }
    inline const std::vector<std::string> & get_errors() const { return errors; }
 
    private:
