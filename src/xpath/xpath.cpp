@@ -114,8 +114,12 @@ Examples:
 #include <format>
 #include <functional>
 #include <sstream>
+#include <memory>
+#include <utility>
+#include <string>
 #include "../link/unicode.h"
 #include "../xml/xml.h"
+#include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
 #include "parse/xpath_parser.h"
 #include "eval/eval.h"
@@ -226,7 +230,6 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
    if ((not Query) or (not Result)) return ERR::NullArgs;
 
-   std::vector<std::string> errors;
    XPathNode *cmp;
    if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
       SetResourceMgr(cmp, &glNodeManager);
@@ -235,25 +238,57 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
       XPathParser parser;
 
       auto tokens = tokeniser.tokenize(Query);
-      auto parsed_ast = parser.parse(tokens);
+      auto parse_result = parser.parse(tokens);
 
-      if (!parsed_ast) {
-         auto xml = (extXML *)XML;
-         auto errors = parser.get_errors();
-         if (errors.empty()) xml->ErrorMsg = "Failed to parse XPath expression";
+      auto xml = XML ? (extXML *)XML : nullptr;
+
+      if (!parse_result.expression) {
+         auto parser_errors = parser.get_errors();
+         std::string message;
+         if (xml) {
+            if (parser_errors.empty()) xml->ErrorMsg = "Failed to parse XPath expression";
+            else {
+               xml->ErrorMsg = "XPath compilation error: ";
+               for (const auto &err : parser_errors) {
+                  if (!xml->ErrorMsg.empty()) xml->ErrorMsg += "; ";
+                  xml->ErrorMsg += err;
+               }
+            }
+            message = xml->ErrorMsg;
+         }
          else {
-            xml->ErrorMsg = "XPath compilation error: ";
-            for (const auto &err : errors) {
-               if (!xml->ErrorMsg.empty()) xml->ErrorMsg += "; ";
-               xml->ErrorMsg += err;
+            if (parser_errors.empty()) message = "Failed to parse XPath expression";
+            else {
+               message = "XPath compilation error: ";
+               for (const auto &err : parser_errors) {
+                  if (!message.empty()) message += "; ";
+                  message += err;
+               }
             }
          }
-         log.warning("XPath compilation error: %s", xml->ErrorMsg.c_str());
+         if (!message.empty()) log.warning("%s", message.c_str());
          FreeResource(cmp);
          return ERR::Syntax;
       }
 
-      new (cmp) XPathNode(std::move(*parsed_ast)); // Move & construct the parsed AST into the allocated memory
+      auto root_node = std::move(parse_result.expression);
+      new (cmp) XPathNode(std::move(*root_node));
+
+      auto prolog = parse_result.prolog;
+      if (!prolog) prolog = std::make_shared<XQueryProlog>();
+      cmp->set_prolog(prolog);
+
+      std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
+      if (!module_cache and xml) {
+         module_cache = std::make_shared<XQueryModuleCache>();
+         module_cache->owner = std::shared_ptr<extXML>(xml, [](extXML *){});
+      }
+
+      if (module_cache) {
+         cmp->set_module_cache(module_cache);
+         prolog->bind_module_cache(module_cache);
+      }
+
       *Result = cmp;
       return ERR::Okay;
    }

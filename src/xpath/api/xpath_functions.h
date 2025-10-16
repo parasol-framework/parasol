@@ -18,10 +18,12 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 
 #include "../../xml/xpath_value.h"
 #include "../../xml/xml.h"
 #include "../xpath.h"
+#include "xquery_prolog.h"
 
 struct TransparentStringHash {
    using is_transparent = void;
@@ -63,14 +65,19 @@ struct XPathContext
    extXML * document = nullptr;
    bool * expression_unsupported = nullptr;
    xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
+   std::shared_ptr<XQueryProlog> prolog;
+   std::shared_ptr<XQueryModuleCache> module_cache;
 
    XPathContext() = default;
    XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
                 extXML *Document = nullptr, bool *UnsupportedFlag = nullptr,
                 xml::schema::SchemaTypeRegistry *Registry = nullptr,
-                ankerl::unordered_dense::map<std::string, XPathVal> *Variables = nullptr)
+                ankerl::unordered_dense::map<std::string, XPathVal> *Variables = nullptr,
+                std::shared_ptr<XQueryProlog> Prolog = nullptr,
+                std::shared_ptr<XQueryModuleCache> ModuleCache = nullptr)
       : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), variables(Variables),
-        document(Document), expression_unsupported(UnsupportedFlag), schema_registry(Registry) {}
+        document(Document), expression_unsupported(UnsupportedFlag), schema_registry(Registry),
+        prolog(std::move(Prolog)), module_cache(std::move(ModuleCache)) {}
 };
 
 class VariableBindingGuard
