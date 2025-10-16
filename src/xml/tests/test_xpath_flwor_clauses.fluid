@@ -127,6 +127,7 @@ function testGroupBySequenceAccess()
    local members = {}
    local err = xml.mtFindTag('for $book in /library/book group by $genre := $book/@genre return <group genre="{$genre}" members="{string-join(for $member in $book return string($member/@id), ",")}"/>',
       function(XML, TagID)
+         print("Received callback");
          local errGenre, genreValue = xml.mtGetAttrib(TagID, 'genre')
          assert(errGenre == ERR_Okay, 'GROUP BY sequence access should expose genre attribute: ' .. mSys.GetErrorMsg(errGenre))
          local errMembers, memberList = xml.mtGetAttrib(TagID, 'members')

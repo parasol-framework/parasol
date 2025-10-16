@@ -288,7 +288,10 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 
    if ((result != ERR::Okay) and (result != ERR::Search)) return result;
 
-   if (xml->Callback.defined()) return ERR::Okay;
+   if (xml->Callback.defined()) {
+      log.msg("Unable to make callback on LOCATION_PATH node.");
+      return ERR::Okay;
+   }
    if (matched) return ERR::Okay;
    return ERR::Search;
 }
@@ -349,7 +352,11 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 }
 
 // Evaluate a single step expression against the current context.
-ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix) {
+
+ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix)
+{
+   pf::Log log(__FUNCTION__);
+
    if (!StepNode) return ERR::Failed;
 
    std::vector<const XPathNode *> steps;
@@ -365,12 +372,16 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
 
    if ((result != ERR::Okay) and (result != ERR::Search)) return result;
 
-   if (xml->Callback.defined()) return ERR::Okay;
+   if (xml->Callback.defined()) {
+      log.msg("Unable to make callback on AST expression.");
+      return ERR::Okay;
+   }
    if (matched) return ERR::Okay;
    return ERR::Search;
 }
 
 // Recursive driver that iterates through each step in a location path.
+
 void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
    const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches)
 {
@@ -425,19 +436,47 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
 
 ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
 {
-   ShouldTerminate = false;
-   if (!Node) return ERR::Okay;
+   pf::Log log(__FUNCTION__);
 
-   auto tags = xml->getInsert(Node, xml->Cursor);
-   if (!tags) return ERR::Okay;
+   ShouldTerminate = false;
+   if (not Node) return ERR::Okay;
+
+   TAGS * tags = nullptr;
+   bool is_constructed = (Node->ID < 0);
+
+   if (is_constructed) {
+      // Node was constructed on-the-fly and has no representation in the xml object.
+      // Temporarily append it to xml->Tags so the callback can access it.
+
+      xml->Tags.push_back(*Node);
+      tags = &xml->Tags;
+      xml->Cursor = xml->Tags.end() - 1;
+      xml->StaleMap = true;
+      xml->getMap(); // Rebuild the map to include the constructed node.  TODO: Inefficient approach, need to improve
+   }
+   else {
+      if (tags = xml->getInsert(Node, xml->Cursor); not tags) {
+         log.warning("Unable to locate tag list for callback on node ID %d.", Node->ID);
+         return ERR::Search;
+      }
+   }
+
+   // Use defer to ensure constructed nodes are removed when we exit
+   auto cleanup = pf::Defer([&, is_constructed]() {
+      if (is_constructed and not xml->Tags.empty()) {
+         // TODO: Should nullify the IDs that we added to the xml->Map (i.e. set their pointer to nullptr, don't remove them because it's a slow operation)
+         xml->Tags.pop_back();
+      }
+   });
+   
+   Matched = true;
 
    xml->CursorTags = tags;
 
    if (Attribute) xml->Attrib = Attribute->Name;
    else xml->Attrib.clear();
 
-   if (!xml->Callback.defined()) {
-      Matched = true;
+   if (not xml->Callback.defined()) {
       ShouldTerminate = true;
       return ERR::Okay;
    }
@@ -454,16 +493,11 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
          { "XML",  xml, FD_OBJECTPTR },
          { "Tag",  Node->ID },
          { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
-      }), callback_error) != ERR::Okay) callback_error = ERR::Terminate;
+      }), callback_error) != ERR::Okay) return ERR::Terminate;
    }
-   else callback_error = ERR::InvalidValue;
+   else return ERR::InvalidValue;
 
-   Matched = true;
-
-   if (callback_error IS ERR::Terminate) return ERR::Terminate;
-   if (callback_error != ERR::Okay) return callback_error;
-
-   return ERR::Okay;
+   return callback_error;
 }
 
 ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
