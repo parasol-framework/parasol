@@ -17,6 +17,7 @@
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
+#include <parasol/strings.hpp>
 
 namespace {
 
@@ -132,6 +133,119 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
 }
 
 } // Anonymous namespace
+
+//********************************************************************************************************************
+
+std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::string_view FunctionName,
+   const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
+{
+   auto prolog = context.prolog;
+   if (!prolog) return std::nullopt;
+
+   const XQueryFunction *function = prolog->find_function(FunctionName, Args.size());
+   if (function) {
+      if (function->is_external) {
+         std::string message = "External function '";
+         message.append(function->qname);
+         message.append("' is not supported.");
+         record_error(message, FuncNode, true);
+         return XPathVal();
+      }
+
+      return evaluate_user_defined_function(*function, Args, CurrentPrefix, FuncNode);
+   }
+
+   std::string canonical_name(FunctionName);
+   bool arity_mismatch = false;
+   for (const auto &entry : prolog->functions) {
+      if (entry.second.qname IS canonical_name) {
+         arity_mismatch = true;
+         break;
+      }
+   }
+
+   if (arity_mismatch) {
+      std::string message = "Function '";
+      message.append(canonical_name);
+      message.append("' does not accept ");
+      message.append(std::to_string(Args.size()));
+      message.append(Args.size() IS 1 ? " argument." : " arguments.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto separator = FunctionName.find(':');
+   if (separator != std::string_view::npos) {
+      std::string prefix(FunctionName.substr(0, separator));
+      uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
+      if (namespace_hash != 0U) {
+         for (const auto &import : prolog->module_imports) {
+            if (pf::strhash(import.target_namespace) IS namespace_hash) {
+               if (!context.module_cache) {
+                  std::string message = "Module function '";
+                  message.append(canonical_name);
+                  message.append("' requires a module cache.");
+                  record_error(message, FuncNode, true);
+                  return XPathVal();
+               }
+
+               std::string message = "Module function resolution is not implemented for namespace '";
+               message.append(import.target_namespace);
+               message.append("'.");
+               record_error(message, FuncNode, true);
+               return XPathVal();
+            }
+         }
+      }
+   }
+
+   return std::nullopt;
+}
+
+XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Function,
+   const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
+{
+   if (Function.is_external) {
+      std::string message = "External function '";
+      message.append(Function.qname);
+      message.append("' is not supported.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   if (!Function.body) {
+      std::string message = "Function '";
+      message.append(Function.qname);
+      message.append("' is missing a body.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   if (Function.parameter_names.size() != Args.size()) {
+      std::string message = "Function '";
+      message.append(Function.qname);
+      message.append("' parameter mismatch.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   std::vector<VariableBindingGuard> parameter_guards;
+   parameter_guards.reserve(Function.parameter_names.size());
+
+   for (size_t index = 0; index < Function.parameter_names.size(); ++index) {
+      parameter_guards.emplace_back(context, Function.parameter_names[index], Args[index]);
+   }
+
+   auto result = evaluate_expression(Function.body.get(), CurrentPrefix);
+   if (expression_unsupported) {
+      std::string message = "Function '";
+      message.append(Function.qname);
+      message.append("' evaluation failed.");
+      record_error(message, FuncNode);
+   }
+
+   return result;
+}
 
 //********************************************************************************************************************
 
@@ -2072,6 +2186,10 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       }
 
       return XPathVal(text_nodes, first_value);
+   }
+
+   if (auto user_result = resolve_user_defined_function(function_name, args, CurrentPrefix, FuncNode)) {
+      return *user_result;
    }
 
    return XPathFunctionLibrary::instance().call_function(function_name, args, context);

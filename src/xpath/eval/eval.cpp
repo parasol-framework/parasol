@@ -28,13 +28,31 @@
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
-XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
+XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XML), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
    context.document = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
    context.variables = &variable_storage;
+   initialise_query_context(QueryRoot);
+}
+
+void XPathEvaluator::initialise_query_context(const XPathNode *Root)
+{
+   context.prolog = nullptr;
+   context.module_cache = nullptr;
+   prolog_variable_cache.clear();
+   variables_in_evaluation.clear();
+
+   if (!Root) return;
+
+   context.prolog = Root->get_prolog();
+   context.module_cache = Root->get_module_cache();
+
+   if (!context.module_cache and context.prolog) {
+      context.module_cache = context.prolog->get_module_cache();
+   }
 }
 
 //********************************************************************************************************************
@@ -143,6 +161,8 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
 
+   initialise_query_context(&XPath);
+
    return evaluate_ast(&XPath, CurrentPrefix);
 }
 
@@ -162,6 +182,8 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
    expression_unsupported = false;
    constructed_nodes.clear();
    next_constructed_node_id = -1;
+
+   initialise_query_context(&XPath);
 
    const XPathNode *node = &XPath;
    if (node->type IS XPathNodeType::EXPRESSION) {
