@@ -14,6 +14,35 @@ static size_t combine_group_hash(size_t Seed, size_t Value)
    return Seed;
 }
 
+static size_t group_nodeset_length(const XPathVal &Value)
+{
+   size_t length = Value.node_set.size();
+   if (length < Value.node_set_attributes.size()) length = Value.node_set_attributes.size();
+   if (length < Value.node_set_string_values.size()) length = Value.node_set_string_values.size();
+   if ((length IS 0) and Value.node_set_string_override.has_value()) length = 1;
+   return length;
+}
+
+static std::string group_nodeset_string(const XPathVal &Value, size_t Index)
+{
+   if (Index < Value.node_set_string_values.size()) return Value.node_set_string_values[Index];
+
+   bool use_override = Value.node_set_string_override.has_value() and Value.node_set_string_values.empty() and (Index IS 0);
+   if (use_override) return *Value.node_set_string_override;
+
+   if (Index < Value.node_set_attributes.size()) {
+      const XMLAttrib *attribute = Value.node_set_attributes[Index];
+      if (attribute) return attribute->Value;
+   }
+
+   if (Index < Value.node_set.size()) {
+      XMLTag *node = Value.node_set[Index];
+      if (node) return XPathVal::node_string_value(node);
+   }
+
+   return std::string();
+}
+
 static size_t hash_xpath_group_value(const XPathVal &Value)
 {
    size_t seed = size_t(Value.Type);
@@ -38,20 +67,11 @@ static size_t hash_xpath_group_value(const XPathVal &Value)
 
       case XPVT::NodeSet: {
          size_t combined = seed;
-         for (XMLTag *node : Value.node_set) {
-            combined = combine_group_hash(combined, std::hash<XMLTag *>{}(node));
-         }
-
-         for (const XMLAttrib *attribute : Value.node_set_attributes) {
-            combined = combine_group_hash(combined, std::hash<const XMLAttrib *>{}(attribute));
-         }
-
-         for (const auto &entry : Value.node_set_string_values) {
-            combined = combine_group_hash(combined, std::hash<std::string>{}(entry));
-         }
-
-         if (Value.node_set_string_override.has_value()) {
-            combined = combine_group_hash(combined, std::hash<std::string>{}(*Value.node_set_string_override));
+         size_t length = group_nodeset_length(Value);
+         for (size_t index = 0; index < length; ++index) {
+            std::string string_value = group_nodeset_string(Value, index);
+            size_t hashed = std::hash<std::string>{}(string_value);
+            combined = combine_group_hash(combined, hashed);
          }
 
          return combined;
