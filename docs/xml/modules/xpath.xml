@@ -12,11 +12,11 @@
   <function>
     <name>Compile</name>
     <comment>Compiles an XPath or XQuery expression into an executable form.</comment>
-    <prototype>ERR xp::Compile(objXML * XML, CSTRING Query, struct XPathNode ** Result)</prototype>
+    <prototype>ERR xp::Compile(objXML * XML, CSTRING Query, APTR * Result)</prototype>
     <input>
       <param type="objXML *" name="XML">The XML document context for the query (can be NULL if not needed).</param>
       <param type="CSTRING" name="Query">A valid XPath or XQuery expression string.</param>
-      <param type="struct XPathNode **" name="Result">Receives a pointer to an XPathNode object on success.</param>
+      <param type="APTR *" name="Result">Receives a pointer to an XPathNode object on success.</param>
     </input>
     <description>
 <p>Call the Compile function to convert a valid XPath or XQuery expression string into a compiled form that can be executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and are treated as read-only for thread-safety.</p>
@@ -31,10 +31,10 @@
   <function>
     <name>Evaluate</name>
     <comment>Evaluates a compiled XPath or XQuery expression against an XML document.</comment>
-    <prototype>ERR xp::Evaluate(objXML * XML, struct XPathNode * Query, struct XPathValue ** Result)</prototype>
+    <prototype>ERR xp::Evaluate(objXML * XML, APTR Query, struct XPathValue ** Result)</prototype>
     <input>
       <param type="objXML *" name="XML">The XML document to evaluate the query against.</param>
-      <param type="struct XPathNode *" name="Query">The compiled XPath or XQuery expression.</param>
+      <param type="APTR" name="Query">The compiled XPath or XQuery expression.</param>
       <param type="struct XPathValue **" name="Result">Receives the result of the evaluation.</param>
     </input>
     <description>
@@ -49,15 +49,15 @@
   <function>
     <name>Query</name>
     <comment>For node-based queries, evaluates a compiled expression and calls a function for each matching node.</comment>
-    <prototype>ERR xp::Query(objXML * XML, struct XPathNode * Query, FUNCTION * Callback)</prototype>
+    <prototype>ERR xp::Query(objXML * XML, APTR Query, FUNCTION * Callback)</prototype>
     <input>
       <param type="objXML *" name="XML">The XML document to evaluate the query against.</param>
-      <param type="struct XPathNode *" name="Query">The compiled XPath or XQuery expression.</param>
+      <param type="APTR" name="Query">The compiled XPath or XQuery expression.</param>
       <param type="FUNCTION *" name="Callback">Pointer to a callback function that will be called for each matching node.  Can be NULL if searching for the first matching node.</param>
     </input>
     <description>
 <p>Use the Query function to scan an XML document for tags or attributes that match a compiled XPath or XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
-<p>If no callback is provided, the search stops after the first match and the XML object's cursor markers will reflect the position of the node.</p>
+<p>If no callback is provided, the search stops after the first match and the <class name="XML">XML</class> object's cursor markers will reflect the position of the node.</p>
 <p>Note that valid function execution can return <code>ERR:Search</code> if zero matches are found.</p>
     </description>
     <result type="ERR">
@@ -121,8 +121,5 @@
 
   </types>
   <structs>
-    <struct name="XPathNode" typeName="XPATHNODE">
-    </struct>
-
   </structs>
 </book>

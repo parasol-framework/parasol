@@ -11,6 +11,7 @@
 
 class extXML;
 
+#include "../xpath.h"
 #include "../api/xpath_axis.h"
 #include "../api/xpath_functions.h"
 
