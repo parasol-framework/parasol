@@ -2,6 +2,9 @@
 
 #include "../api/xquery_prolog.h"
 
+#include <parasol/strings.hpp>
+#include <utility>
+
 //********************************************************************************************************************
 // Parses a list of XPath tokens and returns an XPathParseResult object containing:
 //   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
@@ -17,6 +20,14 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    tokens = TokenList;
    current_token = 0;
    errors.clear();
+
+   parse_prolog(*result.prolog);
+
+   if (has_errors()) {
+      result.expression.reset();
+      return result;
+   }
+
    auto expression = parse_expr();
 
    if (!is_at_end()) {
@@ -52,6 +63,632 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    root->add_child(std::move(expression));
    result.expression = std::move(root);
    return result;
+}
+
+
+bool XPathParser::match_literal_keyword(std::string_view Keyword)
+{
+   if (check_literal_keyword(Keyword))
+   {
+      advance();
+      return true;
+   }
+   return false;
+}
+
+bool XPathParser::check_literal_keyword(std::string_view Keyword) const
+{
+   const auto &token = peek();
+
+   if (token.type IS XPathTokenType::IDENTIFIER) return token.value IS Keyword;
+
+   switch (token.type)
+   {
+      case XPathTokenType::DEFAULT:
+         return Keyword IS "default";
+      case XPathTokenType::CONSTRUCTION:
+         return Keyword IS "construction";
+      case XPathTokenType::ORDERING:
+         return Keyword IS "ordering";
+      case XPathTokenType::ORDER:
+         return Keyword IS "order";
+      case XPathTokenType::COPY_NAMESPACES:
+         return Keyword IS "copy-namespaces";
+      case XPathTokenType::DECIMAL_FORMAT:
+         return Keyword IS "decimal-format";
+      case XPathTokenType::OPTION:
+         return Keyword IS "option";
+      case XPathTokenType::IMPORT:
+         return Keyword IS "import";
+      case XPathTokenType::MODULE:
+         return Keyword IS "module";
+      case XPathTokenType::SCHEMA:
+         return Keyword IS "schema";
+      case XPathTokenType::EMPTY:
+         return Keyword IS "empty";
+      case XPathTokenType::GREATEST:
+         return Keyword IS "greatest";
+      case XPathTokenType::LEAST:
+         return Keyword IS "least";
+      case XPathTokenType::COLLATION:
+         return Keyword IS "collation";
+      default:
+         break;
+   }
+
+   return false;
+}
+
+void XPathParser::consume_declaration_separator()
+{
+   while (match(XPathTokenType::SEMICOLON)) {}
+}
+
+std::optional<std::string> XPathParser::parse_string_literal_value()
+{
+   if (!check(XPathTokenType::STRING))
+   {
+      report_error("Expected string literal");
+      return std::nullopt;
+   }
+
+   std::string value(peek().value);
+   advance();
+   return value;
+}
+
+std::optional<std::string> XPathParser::parse_uri_literal()
+{
+   return parse_string_literal_value();
+}
+
+std::optional<std::string> XPathParser::parse_ncname()
+{
+   if (!is_identifier_token(peek()))
+   {
+      report_error("Expected name");
+      return std::nullopt;
+   }
+
+   std::string name(peek().value);
+   advance();
+   return name;
+}
+
+std::optional<std::string> XPathParser::parse_qname_string()
+{
+   if (!is_identifier_token(peek()))
+   {
+      report_error("Expected QName");
+      return std::nullopt;
+   }
+
+   std::string name(peek().value);
+   advance();
+
+   if (match(XPathTokenType::COLON))
+   {
+      if (!is_identifier_token(peek()))
+      {
+         report_error("Expected local-name after ':'");
+         return std::nullopt;
+      }
+
+      name.append(":");
+      name.append(peek().value);
+      advance();
+   }
+
+   return name;
+}
+
+std::optional<std::string> XPathParser::collect_sequence_type()
+{
+   std::string collected;
+   int paren_depth = 0;
+   XPathTokenType previous_type = XPathTokenType::UNKNOWN;
+
+   while (!is_at_end())
+   {
+      const auto &token = peek();
+
+      if ((token.type IS XPathTokenType::COMMA) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::RPAREN) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::LBRACE) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::ASSIGN) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::SEMICOLON) and (paren_depth IS 0)) break;
+      if (check_literal_keyword("external") and (paren_depth IS 0)) break;
+
+      if (token.type IS XPathTokenType::LPAREN) paren_depth++;
+      else if (token.type IS XPathTokenType::RPAREN)
+      {
+         if (paren_depth IS 0) break;
+         paren_depth--;
+      }
+
+      bool add_space = !collected.empty();
+      if (add_space)
+      {
+         if ((previous_type IS XPathTokenType::COLON) or (token.type IS XPathTokenType::COLON)) add_space = false;
+      }
+
+      if (add_space) collected.push_back(' ');
+      collected.append(std::string(token.value));
+      advance();
+      previous_type = token.type;
+   }
+
+   if (collected.empty()) return std::nullopt;
+   return collected;
+}
+
+bool XPathParser::parse_prolog(XQueryProlog &prolog)
+{
+   bool saw_prolog = false;
+
+   while (!is_at_end())
+   {
+      if (match(XPathTokenType::SEMICOLON))
+      {
+         saw_prolog = true;
+         continue;
+      }
+
+      if (check_identifier_keyword("declare"))
+      {
+         advance();
+         saw_prolog = true;
+         if (!parse_declare_statement(prolog)) return false;
+         consume_declaration_separator();
+         continue;
+      }
+
+      if (match_literal_keyword("import"))
+      {
+         saw_prolog = true;
+         if (!parse_import_statement(prolog)) return false;
+         consume_declaration_separator();
+         continue;
+      }
+
+      break;
+   }
+
+   return saw_prolog;
+}
+
+bool XPathParser::parse_declare_statement(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("namespace")) return parse_namespace_decl(prolog);
+
+   if (check_literal_keyword("default"))
+   {
+      match_literal_keyword("default");
+
+      if (match_literal_keyword("element")) return parse_default_namespace_decl(prolog, false);
+      if (match_literal_keyword("function")) return parse_default_namespace_decl(prolog, true);
+      if (match_literal_keyword("collation")) return parse_default_collation_decl(prolog);
+      if (match_literal_keyword("order")) return parse_empty_order_decl(prolog);
+
+      report_error("Unsupported default declaration");
+      return false;
+   }
+
+   if (match_literal_keyword("variable")) return parse_variable_decl(prolog);
+   if (match_literal_keyword("function")) return parse_function_decl(prolog);
+   if (match_literal_keyword("boundary-space")) return parse_boundary_space_decl(prolog);
+   if (match_literal_keyword("base-uri")) return parse_base_uri_decl(prolog);
+   if (match_literal_keyword("construction")) return parse_construction_decl(prolog);
+   if (match_literal_keyword("ordering")) return parse_ordering_decl(prolog);
+   if (match_literal_keyword("copy-namespaces")) return parse_copy_namespaces_decl(prolog);
+   if (match_literal_keyword("decimal-format")) return parse_decimal_format_decl(prolog);
+   if (match_literal_keyword("option")) return parse_option_decl(prolog);
+
+   report_error("Unsupported declaration in prolog");
+   return false;
+}
+
+bool XPathParser::parse_namespace_decl(XQueryProlog &prolog)
+{
+   auto prefix = parse_ncname();
+   if (!prefix) return false;
+
+   if (!consume_token(XPathTokenType::EQUALS, "Expected '=' in namespace declaration")) return false;
+
+   auto uri = parse_uri_literal();
+   if (!uri) return false;
+
+   prolog.declare_namespace(*prefix, *uri, nullptr);
+   return true;
+}
+
+bool XPathParser::parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunctionNamespace)
+{
+   if (!match_literal_keyword("namespace"))
+   {
+      report_error("Expected 'namespace' in default namespace declaration");
+      return false;
+   }
+
+   auto uri = parse_uri_literal();
+   if (!uri) return false;
+
+   uint32_t hash = pf::strhash(*uri);
+   if (IsFunctionNamespace) prolog.default_function_namespace = hash;
+   else prolog.default_element_namespace = hash;
+
+   return true;
+}
+
+bool XPathParser::parse_default_collation_decl(XQueryProlog &prolog)
+{
+   auto collation = parse_uri_literal();
+   if (!collation) return false;
+
+   prolog.default_collation = *collation;
+   return true;
+}
+
+bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
+{
+   if (!consume_token(XPathTokenType::DOLLAR, "Expected '$' in variable declaration")) return false;
+
+   auto name = parse_qname_string();
+   if (!name) return false;
+
+   if (match_literal_keyword("as"))
+   {
+      auto sequence_type = collect_sequence_type();
+      if (!sequence_type)
+      {
+         report_error("Expected sequence type after 'as'");
+         return false;
+      }
+   }
+
+   XQueryVariable variable;
+   variable.qname = *name;
+
+   if (match_literal_keyword("external"))
+   {
+      variable.is_external = true;
+      prolog.declare_variable(variable.qname, std::move(variable));
+      return true;
+   }
+
+   if (!consume_token(XPathTokenType::ASSIGN, "Expected ':=' in variable declaration")) return false;
+
+   auto initializer = parse_expr_single();
+   if (!initializer) return false;
+
+   variable.initializer = std::move(initializer);
+   prolog.declare_variable(variable.qname, std::move(variable));
+   return true;
+}
+
+bool XPathParser::parse_function_decl(XQueryProlog &prolog)
+{
+   auto qname = parse_qname_string();
+   if (!qname) return false;
+
+   if (!consume_token(XPathTokenType::LPAREN, "Expected '(' after function name")) return false;
+
+   std::vector<std::string> parameter_names;
+   std::vector<std::string> parameter_types;
+
+   if (!check(XPathTokenType::RPAREN))
+   {
+      while (true)
+      {
+         if (!consume_token(XPathTokenType::DOLLAR, "Expected '$' at start of parameter")) return false;
+
+         auto param_name = parse_qname_string();
+         if (!param_name) return false;
+
+         parameter_names.push_back(*param_name);
+
+         std::optional<std::string> type_annotation;
+         if (match_literal_keyword("as"))
+         {
+            type_annotation = collect_sequence_type();
+            if (!type_annotation)
+            {
+               report_error("Expected sequence type after 'as'");
+               return false;
+            }
+         }
+
+         if (type_annotation) parameter_types.push_back(*type_annotation);
+         else parameter_types.emplace_back();
+
+         if (!match(XPathTokenType::COMMA)) break;
+      }
+   }
+
+   if (!consume_token(XPathTokenType::RPAREN, "Expected ')' after parameters")) return false;
+
+   std::optional<std::string> return_type;
+   if (match_literal_keyword("as"))
+   {
+      return_type = collect_sequence_type();
+      if (!return_type)
+      {
+         report_error("Expected sequence type after 'as'");
+         return false;
+      }
+   }
+
+   XQueryFunction function;
+   function.qname = *qname;
+   function.parameter_names = std::move(parameter_names);
+   function.parameter_types = std::move(parameter_types);
+
+   if (return_type and !return_type->empty()) function.return_type = return_type;
+
+   if (match_literal_keyword("external"))
+   {
+      function.is_external = true;
+      prolog.declare_function(std::move(function));
+      return true;
+   }
+
+   auto body = parse_enclosed_expr();
+   if (!body) return false;
+
+   function.body = std::move(body);
+   prolog.declare_function(std::move(function));
+   return true;
+}
+
+bool XPathParser::parse_boundary_space_decl(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("preserve"))
+   {
+      prolog.boundary_space = XQueryProlog::BoundarySpace::Preserve;
+      return true;
+   }
+
+   if (match_literal_keyword("strip"))
+   {
+      prolog.boundary_space = XQueryProlog::BoundarySpace::Strip;
+      return true;
+   }
+
+   report_error("Expected 'preserve' or 'strip' in boundary-space declaration");
+   return false;
+}
+
+bool XPathParser::parse_base_uri_decl(XQueryProlog &prolog)
+{
+   auto uri = parse_uri_literal();
+   if (!uri) return false;
+
+   prolog.static_base_uri = *uri;
+   return true;
+}
+
+bool XPathParser::parse_construction_decl(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("preserve"))
+   {
+      prolog.construction_mode = XQueryProlog::ConstructionMode::Preserve;
+      return true;
+   }
+
+   if (match_literal_keyword("strip"))
+   {
+      prolog.construction_mode = XQueryProlog::ConstructionMode::Strip;
+      return true;
+   }
+
+   report_error("Expected 'preserve' or 'strip' in construction declaration");
+   return false;
+}
+
+bool XPathParser::parse_ordering_decl(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("ordered"))
+   {
+      prolog.ordering_mode = XQueryProlog::OrderingMode::Ordered;
+      return true;
+   }
+
+   if (match_literal_keyword("unordered"))
+   {
+      prolog.ordering_mode = XQueryProlog::OrderingMode::Unordered;
+      return true;
+   }
+
+   report_error("Expected 'ordered' or 'unordered' in ordering declaration");
+   return false;
+}
+
+bool XPathParser::parse_empty_order_decl(XQueryProlog &prolog)
+{
+   if (!match_literal_keyword("empty"))
+   {
+      report_error("Expected 'empty' in default order declaration");
+      return false;
+   }
+
+   if (match_literal_keyword("greatest"))
+   {
+      prolog.empty_order = XQueryProlog::EmptyOrder::Greatest;
+      return true;
+   }
+
+   if (match_literal_keyword("least"))
+   {
+      prolog.empty_order = XQueryProlog::EmptyOrder::Least;
+      return true;
+   }
+
+   report_error("Expected 'greatest' or 'least' after 'empty'");
+   return false;
+}
+
+bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
+{
+   bool preserve = true;
+   bool inherit = true;
+
+   if (match_literal_keyword("preserve")) preserve = true;
+   else if (match_literal_keyword("no-preserve")) preserve = false;
+   else
+   {
+      report_error("Expected 'preserve' or 'no-preserve' in copy-namespaces declaration");
+      return false;
+   }
+
+   if (!consume_token(XPathTokenType::COMMA, "Expected ',' in copy-namespaces declaration")) return false;
+
+   if (match_literal_keyword("inherit")) inherit = true;
+   else if (match_literal_keyword("no-inherit")) inherit = false;
+   else
+   {
+      report_error("Expected 'inherit' or 'no-inherit' in copy-namespaces declaration");
+      return false;
+   }
+
+   prolog.copy_namespaces.preserve = preserve;
+   prolog.copy_namespaces.inherit = inherit;
+   return true;
+}
+
+bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
+{
+   std::string format_name;
+
+   auto is_property_name = [](std::string_view text) -> bool
+   {
+      return (text IS "decimal-separator") or (text IS "grouping-separator") or (text IS "infinity") or
+         (text IS "minus-sign") or (text IS "NaN") or (text IS "percent") or (text IS "per-mille") or
+         (text IS "zero-digit") or (text IS "digit") or (text IS "pattern-separator");
+   };
+
+   if (is_identifier_token(peek()))
+   {
+      std::string candidate(peek().value);
+      bool treat_as_property = is_property_name(candidate);
+      if (!treat_as_property)
+      {
+         if ((current_token + 1 < tokens.size()) and (tokens[current_token + 1].type IS XPathTokenType::COLON))
+         {
+            treat_as_property = false;
+         }
+      }
+
+      if (!treat_as_property)
+      {
+         auto qname = parse_qname_string();
+         if (!qname) return false;
+         format_name = *qname;
+      }
+   }
+
+   DecimalFormat format;
+   format.name = format_name;
+
+   bool saw_property = false;
+   while (true)
+   {
+      if (!is_identifier_token(peek())) break;
+
+      std::string property(peek().value);
+      if (!is_property_name(property)) break;
+      advance();
+
+      if (!consume_token(XPathTokenType::EQUALS, "Expected '=' in decimal-format declaration")) return false;
+
+      auto value = parse_string_literal_value();
+      if (!value) return false;
+
+      if (property IS "decimal-separator") format.decimal_separator = *value;
+      else if (property IS "grouping-separator") format.grouping_separator = *value;
+      else if (property IS "infinity") format.infinity = *value;
+      else if (property IS "minus-sign") format.minus_sign = *value;
+      else if (property IS "NaN") format.nan = *value;
+      else if (property IS "percent") format.percent = *value;
+      else if (property IS "per-mille") format.per_mille = *value;
+      else if (property IS "zero-digit") format.zero_digit = *value;
+      else if (property IS "digit") format.digit = *value;
+      else if (property IS "pattern-separator") format.pattern_separator = *value;
+
+      saw_property = true;
+
+      if (!match(XPathTokenType::COMMA)) break;
+   }
+
+   if (!saw_property)
+   {
+      report_error("Expected decimal-format property declaration");
+      return false;
+   }
+
+   prolog.decimal_formats[format_name] = std::move(format);
+   return true;
+}
+
+bool XPathParser::parse_option_decl(XQueryProlog &prolog)
+{
+   auto name = parse_qname_string();
+   if (!name) return false;
+
+   auto value = parse_string_literal_value();
+   if (!value) return false;
+
+   prolog.options[*name] = *value;
+   return true;
+}
+
+bool XPathParser::parse_import_statement(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("module")) return parse_import_module_decl(prolog);
+   if (match_literal_keyword("schema")) return parse_import_schema_decl();
+
+   report_error("Expected 'module' or 'schema' after import");
+   return false;
+}
+
+bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
+{
+   if (!match_literal_keyword("namespace"))
+   {
+      report_error("Expected 'namespace' in module import");
+      return false;
+   }
+
+   auto prefix = parse_ncname();
+   if (!prefix) return false;
+
+   if (!consume_token(XPathTokenType::EQUALS, "Expected '=' in module import")) return false;
+
+   auto uri = parse_uri_literal();
+   if (!uri) return false;
+
+   XQueryModuleImport module_import;
+   module_import.target_namespace = *uri;
+
+   if (match_literal_keyword("at"))
+   {
+      while (true)
+      {
+         auto location = parse_string_literal_value();
+         if (!location) return false;
+         module_import.location_hints.push_back(*location);
+         if (!match(XPathTokenType::COMMA)) break;
+      }
+   }
+
+   prolog.module_imports.push_back(std::move(module_import));
+   prolog.declare_namespace(*prefix, module_import.target_namespace, nullptr);
+   return true;
+}
+
+bool XPathParser::parse_import_schema_decl()
+{
+   report_error("Schema imports are not supported");
+   return false;
 }
 
 

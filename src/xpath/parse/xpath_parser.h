@@ -84,6 +84,32 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_enclosed_expr();
    std::unique_ptr<XPathNode> parse_embedded_expr(std::string_view Source);
 
+   // Prolog parsing helpers
+   bool parse_prolog(XQueryProlog &prolog);
+   bool parse_declare_statement(XQueryProlog &prolog);
+   bool parse_namespace_decl(XQueryProlog &prolog);
+   bool parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunctionNamespace);
+   bool parse_default_collation_decl(XQueryProlog &prolog);
+   bool parse_variable_decl(XQueryProlog &prolog);
+   bool parse_function_decl(XQueryProlog &prolog);
+   bool parse_boundary_space_decl(XQueryProlog &prolog);
+   bool parse_base_uri_decl(XQueryProlog &prolog);
+   bool parse_construction_decl(XQueryProlog &prolog);
+   bool parse_ordering_decl(XQueryProlog &prolog);
+   bool parse_empty_order_decl(XQueryProlog &prolog);
+   bool parse_copy_namespaces_decl(XQueryProlog &prolog);
+   bool parse_decimal_format_decl(XQueryProlog &prolog);
+   bool parse_option_decl(XQueryProlog &prolog);
+   bool parse_import_statement(XQueryProlog &prolog);
+   bool parse_import_module_decl(XQueryProlog &prolog);
+   bool parse_import_schema_decl();
+   void consume_declaration_separator();
+   std::optional<std::string> parse_qname_string();
+   std::optional<std::string> parse_ncname();
+   std::optional<std::string> parse_string_literal_value();
+   std::optional<std::string> parse_uri_literal();
+   std::optional<std::string> collect_sequence_type();
+
    // Utility methods
    [[nodiscard]] inline bool check(XPathTokenType type) const {
       return peek().type IS type;
@@ -99,6 +125,8 @@ class XPathParser {
 
    bool check_identifier_keyword(std::string_view Keyword) const;
    bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
+   bool match_literal_keyword(std::string_view Keyword);
+   bool check_literal_keyword(std::string_view Keyword) const;
 
    // Helper that treats certain keyword tokens (e.g., COUNT, EMPTY) as identifiers.
    // Use this for steps, function names, predicates, and variable bindings, where such keywords are valid identifiers.
@@ -108,6 +136,15 @@ class XPathParser {
          case XPathTokenType::IDENTIFIER:
          case XPathTokenType::COUNT:
          case XPathTokenType::EMPTY:
+         case XPathTokenType::DEFAULT:
+         case XPathTokenType::CONSTRUCTION:
+         case XPathTokenType::ORDERING:
+         case XPathTokenType::COPY_NAMESPACES:
+         case XPathTokenType::DECIMAL_FORMAT:
+         case XPathTokenType::OPTION:
+         case XPathTokenType::IMPORT:
+         case XPathTokenType::MODULE:
+         case XPathTokenType::SCHEMA:
             return true;
          default:
             return false;
