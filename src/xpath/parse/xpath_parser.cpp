@@ -1,11 +1,19 @@
 #include "xpath_parser.h"
 
-//********************************************************************************************************************
-// Parses a list of XPath tokens into an abstract syntax tree (AST), returning the root node of the parse tree or
-// nullptr if parsing fails.
+#include "../api/xquery_prolog.h"
 
-std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &TokenList)
+//********************************************************************************************************************
+// Parses a list of XPath tokens and returns an XPathParseResult object containing:
+//   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
+//   - prolog: the parsed XQuery prolog
+//   - (optional) module cache and other metadata
+// Errors are signaled by a nullptr expression and can be inspected via the error list.
+
+XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
 {
+   XPathParseResult result;
+   result.prolog = std::make_shared<XQueryProlog>();
+
    tokens = TokenList;
    current_token = 0;
    errors.clear();
@@ -16,25 +24,34 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
       std::string token_text(token.value);
       if (token_text.empty()) token_text = "<unexpected>";
       report_error("Unexpected token '" + token_text + "' in XPath expression");
-      return nullptr;
+      result.expression.reset();
+      return result;
    }
 
-   if (has_errors() or (!expression)) return nullptr;
+   if (has_errors() or (!expression)) {
+      result.expression.reset();
+      return result;
+   }
 
    if (expression->type IS XPathNodeType::LOCATION_PATH) {
-      return expression;
+      result.expression = std::move(expression);
+      return result;
    }
 
    if (expression->type IS XPathNodeType::PATH) {
       if (expression->child_count() IS 1) {
          auto child = std::move(expression->children[0]);
-         if (child and (child->type IS XPathNodeType::LOCATION_PATH)) return child;
+         if (child and (child->type IS XPathNodeType::LOCATION_PATH)) {
+            result.expression = std::move(child);
+            return result;
+         }
       }
    }
 
    auto root = std::make_unique<XPathNode>(XPathNodeType::EXPRESSION);
    root->add_child(std::move(expression));
-   return root;
+   result.expression = std::move(root);
+   return result;
 }
 
 
@@ -1710,7 +1727,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Sou
    auto token_list = embedded_tokeniser.tokenize(Source);
 
    XPathParser embedded_parser;
-   auto expr = embedded_parser.parse(token_list);
+   auto embedded_result = embedded_parser.parse(token_list);
+   auto expr = std::move(embedded_result.expression);
 
    if (!expr or embedded_parser.has_errors()) {
       if (embedded_parser.has_errors()) {

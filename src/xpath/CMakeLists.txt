@@ -27,6 +27,7 @@ add_library (xml_xpath_functions OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xpath_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/api/xpath_axis.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/api/xquery_prolog.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xpath_parser.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xpath_tokeniser.cpp")
 

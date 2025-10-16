@@ -18,6 +18,16 @@
 #include "xpath_ast.h"
 #include "xpath_tokeniser.h"
 
+struct XQueryProlog;
+struct XQueryModuleCache;
+
+struct XPathParseResult
+{
+   std::unique_ptr<XPathNode> expression;
+   std::shared_ptr<XQueryProlog> prolog;
+   std::shared_ptr<XQueryModuleCache> module_cache;
+};
+
 //********************************************************************************************************************
 // XPath Parser
 
@@ -154,7 +164,7 @@ class XPathParser {
    public:
    XPathParser() : current_token(0) {}
 
-   std::unique_ptr<XPathNode> parse(const std::vector<XPathToken> &TokenList);
+   XPathParseResult parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
 
