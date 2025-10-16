@@ -835,10 +835,8 @@ bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
 }
 
 NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
-                                                                 const std::vector<const XPathNode *> &Steps,
-                                                                 size_t StepIndex,
-                                                                 uint32_t CurrentPrefix,
-                                                                 bool &Unsupported)
+   const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix,
+   bool &Unsupported)
 {
    NODES results;
 
