@@ -131,7 +131,7 @@ function testGroupBySequenceAccess()
          assert(errGenre == ERR_Okay, 'GROUP BY sequence access should expose genre attribute: ' .. mSys.GetErrorMsg(errGenre))
          local errMembers, memberList = xml.mtGetAttrib(TagID, 'members')
          assert(errMembers == ERR_Okay, 'GROUP BY sequence access should expose concatenated member identifiers: ' .. mSys.GetErrorMsg(errMembers))
-         print("Received callback: " .. genreValue .. ' ' .. memberList);
+         msg("Received callback: " .. genreValue .. ' ' .. memberList);
          members[genreValue] = memberList
       end)
 
