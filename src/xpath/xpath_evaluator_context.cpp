@@ -128,6 +128,9 @@ class CursorGuard {
 
 } // namespace
 
+//********************************************************************************************************************
+// Save the current context and establish a new context with the provided node, position, size, and optional attribute.
+
 void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
    auto document = context.document ? context.document : xml;

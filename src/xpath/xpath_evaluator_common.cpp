@@ -99,6 +99,9 @@ bool numeric_compare(double Left, double Right, RelationalOperator Operation)
    return false;
 }
 
+//********************************************************************************************************************
+// Determines if the specified collation URI is supported by the XPath evaluator.
+
 bool xpath_collation_supported(const std::string &Uri)
 {
    if (Uri.empty()) return true;
@@ -107,6 +110,9 @@ bool xpath_collation_supported(const std::string &Uri)
    // if (Uri IS "http://www.w3.org/2005/xpath-functions/collation/html-ascii-case-insensitive") return true;
    return false;
 }
+
+//********************************************************************************************************************
+// Determines if an XPath value is empty in the context of FLWOR order-by clauses (empty or NaN number).
 
 bool xpath_order_key_is_empty(const XPathVal &Value)
 {
@@ -122,6 +128,9 @@ bool xpath_order_key_is_empty(const XPathVal &Value)
 
 namespace
 {
+   //********************************************************************************************************************
+   // Compares two numeric values, returning -1, 0, or 1 with special handling for NaN values.
+
    int compare_numeric_values(double Left, double Right)
    {
       bool left_nan = std::isnan(Left);
@@ -136,6 +145,9 @@ namespace
       return 0;
    }
 }
+
+//********************************************************************************************************************
+// Compares two atomic XPath values for ordering, using the specified collation URI for string comparisons.
 
 int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightValue,
    const std::string &CollationUri)
@@ -165,6 +177,9 @@ int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightV
    if (left_string > right_string) return 1;
    return 0;
 }
+
+//********************************************************************************************************************
+// Compares two order keys with options for empty handling, collation, and sort direction (ascending/descending).
 
 int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XPathVal &RightValue,
    bool RightEmpty, const XPathOrderComparatorOptions &Options)

@@ -28,6 +28,9 @@
 //********************************************************************************************************************
 // Predicate Value Extraction
 
+//********************************************************************************************************************
+// Extracts the string value from a node-set at the specified index, with special handling for overrides and attributes.
+
 std::string node_set_string_value(const XPathVal &Value, size_t Index)
 {
    if (Value.node_set_string_override.has_value() and (Index IS 0)) {
@@ -43,6 +46,9 @@ std::string node_set_string_value(const XPathVal &Value, size_t Index)
    return XPathVal::node_string_value(Value.node_set[Index]);
 }
 
+//********************************************************************************************************************
+// Converts the string value at the specified index to a numeric value using XPath conversion rules.
+
 double node_set_number_value(const XPathVal &Value, size_t Index)
 {
    std::string str = node_set_string_value(Value, Index);
@@ -50,6 +56,9 @@ double node_set_number_value(const XPathVal &Value, size_t Index)
 
    return XPathVal::string_to_number(str);
 }
+
+//********************************************************************************************************************
+// Promotes a value for comparison context by converting empty node-sets to empty optional or returning the value as-is.
 
 std::optional<XPathVal> promote_value_comparison_operand(const XPathVal &Value)
 {

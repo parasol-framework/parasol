@@ -19,27 +19,14 @@
 
 #include "xpath_evaluator.h"
 #include "xpath_evaluator_detail.h"
-#include "xpath_functions.h"
-#include "xpath_axis.h"
 #include "../xml/schema/schema_types.h"
 #include "../xml/xml.h"
 
-#include <algorithm>
-#include <cctype>
-#include <cmath>
-#include <cstdlib>
-#include <deque>
 #include <format>
-#include <functional>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 
 //********************************************************************************************************************
+// Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
+// trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
 XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
 {
@@ -160,10 +147,18 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    return evaluate_ast(&XPath, CurrentPrefix);
 }
 
+//********************************************************************************************************************
+// Enables or disables trace output for a specified trace category. Currently supports TraceCategory::XPath for
+// controlling diagnostic logging during expression evaluation.
+
 void XPathEvaluator::set_trace_enabled(TraceCategory Category, bool Enabled)
 {
    if (Category IS TraceCategory::XPath) trace_xpath_enabled = Enabled;
 }
+
+//********************************************************************************************************************
+// Returns whether trace is enabled for the specified trace category. Used to conditionally log diagnostic
+// information during expression evaluation.
 
 bool XPathEvaluator::is_trace_enabled(TraceCategory Category) const
 {

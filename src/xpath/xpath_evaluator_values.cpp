@@ -21,6 +21,8 @@
 namespace {
 
 //********************************************************************************************************************
+// Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
+// underscore '_'). Used for validating constructor names and QName components.
 
 inline bool is_ncname_start(char Ch)
 {
@@ -28,6 +30,10 @@ inline bool is_ncname_start(char Ch)
    if ((Ch >= 'a') and (Ch <= 'z')) return true;
    return Ch IS '_';
 }
+
+//********************************************************************************************************************
+// Determines whether a character qualifies as a subsequent character in an XML NCName (alphanumerics, hyphen '-',
+// or period '.'). Used in conjunction with is_ncname_start to validate complete NCName strings.
 
 inline bool is_ncname_char(char Ch)
 {
