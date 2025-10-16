@@ -75,15 +75,36 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_embedded_expr(std::string_view Source);
 
    // Utility methods
-   bool check(XPathTokenType type) const;
-   bool match(XPathTokenType type);
+   inline bool check(XPathTokenType type) const [[nodiscard]] {
+      return peek().type IS type;
+   }
+
+   inline bool match(XPathTokenType type) [[nodiscard]] {
+      if (check(type)) {
+         advance();
+         return true;
+      }
+      return false;
+   }
+
    bool check_identifier_keyword(std::string_view Keyword) const;
    bool match_identifier_keyword(std::string_view Keyword, XPathTokenType KeywordType, XPathToken &OutToken);
+
    // Helper that treats certain keyword tokens (e.g., COUNT, EMPTY) as identifiers.
    // Use this for steps, function names, predicates, and variable bindings, where such keywords are valid identifiers.
    // This differs from a simple IDENTIFIER type check, which would exclude these keyword tokens.
-   bool is_identifier_token(const XPathToken &Token) const;
-   bool is_constructor_keyword(const XPathToken &Token) const;
+   bool is_identifier_token(const XPathToken &Token) const {
+      switch (Token.type) {
+         case XPathTokenType::IDENTIFIER:
+         case XPathTokenType::COUNT:
+         case XPathTokenType::EMPTY:
+            return true;
+         default:
+            return false;
+      }
+   }
+
+   bool is_constructor_keyword(const XPathToken &Token) const [[nodiscard]];
 
    // Lightweight representation of a QName recognised within constructor syntax.
 
@@ -91,13 +112,40 @@ class XPathParser {
       std::string Prefix;
       std::string LocalName;
    };
+
    std::optional<ConstructorName> parse_constructor_qname();
-   bool consume_token(XPathTokenType type, std::string_view ErrorMessage);
-   const XPathToken & peek() const;
-   const XPathToken & previous() const;
-   bool is_at_end() const;
-   void advance();
-   bool is_step_start_token(XPathTokenType type) const;
+   bool consume_token(XPathTokenType, std::string_view);
+
+   inline const XPathToken & peek() const [[nodiscard]] {
+      return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
+   }
+
+   inline const XPathToken & previous() const [[nodiscard]] {
+      return tokens[current_token - 1];
+   }
+
+   inline bool is_at_end() const [[nodiscard]] {
+      return peek().type IS XPathTokenType::END_OF_INPUT;
+   }
+
+   inline void advance() {
+      if (!is_at_end()) current_token++;
+   }
+
+   inline bool is_step_start_token(XPathTokenType type) const [[nodiscard]] {
+      switch (type) {
+         case XPathTokenType::DOT:
+         case XPathTokenType::DOUBLE_DOT:
+         case XPathTokenType::AT:
+         case XPathTokenType::IDENTIFIER:
+         case XPathTokenType::COUNT:
+         case XPathTokenType::EMPTY:
+         case XPathTokenType::WILDCARD:
+            return true;
+         default:
+            return false;
+      }
+   }
 
    // Node creation helpers
    std::unique_ptr<XPathNode> create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right);
@@ -109,9 +157,10 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
-   void report_error(std::string_view Message);
-   bool has_errors() const;
-   const std::vector<std::string> & get_errors() const;
+
+   inline void report_error(std::string_view Message) { errors.emplace_back(Message); }
+   inline bool has_errors() const [[nodiscard]] { return !errors.empty(); }
+   inline const std::vector<std::string> & get_errors() const { return errors; }
 
    private:
    std::vector<std::string> errors;

@@ -16,13 +16,12 @@
 // environments.  By maintaining explicit context stacks, the evaluator can traverse complex expressions
 // whilst preserving the correct semantics for position() and last() functions.
 
-#include "xpath_evaluator.h"
-#include "xpath_evaluator_detail.h"
-#include "xpath_functions.h"
-#include "xpath_axis.h"
-
-#include "../xml/schema/schema_types.h"
-#include "../xml/xml.h"
+#include "eval.h"
+#include "eval_detail.h"
+#include "../api/xpath_functions.h"
+#include "../api/xpath_axis.h"
+#include "../../xml/schema/schema_types.h"
+#include "../../xml/xml.h"
 
 namespace {
 
@@ -433,11 +432,9 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
       // Node was constructed on-the-fly and has no representation in the xml object.
       // Temporarily append it to xml->Tags so the callback can access it.
 
-      xml->Tags.push_back(*Node);
+      xml->appendTags(*Node);
       tags = &xml->Tags;
       xml->Cursor = xml->Tags.end() - 1;
-      xml->StaleMap = true;
-      xml->getMap(); // Rebuild the map to include the constructed node.  TODO: Inefficient approach, need to improve
    }
    else if (tags = xml->getInsert(Node, xml->Cursor); not tags) {
       log.warning("Unable to locate tag list for callback on node ID %d.", Node->ID);
@@ -447,7 +444,7 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
    // Use defer to ensure constructed nodes are removed when we exit
    auto cleanup = pf::Defer([&, is_constructed]() {
       if (is_constructed and (not xml->Tags.empty())) {
-         // TODO: Should nullify the IDs that we added to the xml->Map (i.e. set their pointer to nullptr, don't remove them because it's a slow operation)
+         xml->nullifyMap(xml->Tags.back());
          xml->Tags.pop_back();
       }
    });
@@ -953,4 +950,3 @@ NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &Context
 
    return results;
 }
-

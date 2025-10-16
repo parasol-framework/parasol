@@ -17,10 +17,10 @@
 // and tokeniser remain ignorant of runtime data structures, and testing of the evaluator can be done
 // independently of XML parsing.
 
-#include "xpath_evaluator.h"
-#include "xpath_evaluator_detail.h"
-#include "../xml/schema/schema_types.h"
-#include "../xml/xml.h"
+#include "eval.h"
+#include "eval_detail.h"
+#include "../../xml/schema/schema_types.h"
+#include "../../xml/xml.h"
 
 #include <format>
 

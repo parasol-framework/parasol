@@ -1,22 +1,8 @@
-//********************************************************************************************************************
 // XPath Evaluator Detail - Shared Utilities
-//
-// Provides internal utility functions shared across XPath evaluator translation units.  These functions handle
-// type resolution, value comparison, and schema-aware operations used throughout the evaluation pipeline.
-//
-// Key functionality:
-//   - Schema type descriptor lookup and caching
-//   - Type comparison strategy resolution (numeric, string, boolean)
-//   - Numeric equality and relational comparison with floating-point tolerance
-//   - Node-set value extraction (string and numeric conversions)
-//   - Value promotion for comparison operations
-//
-// These utilities ensure consistent type coercion and comparison semantics across predicates, expressions,
-// and function calls in accordance with XPath 2.0 specifications.
 
 #pragma once
 
-#include "../xml/xpath_value.h"
+#include "../../xml/xpath_value.h"
 
 #include <memory>
 #include <optional>
@@ -29,17 +15,14 @@ enum class RelationalOperator {
    GREATER_OR_EQUAL
 };
 
-// Schema and type system helpers
 std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(const XPathVal &Value);
 bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right);
 bool should_compare_as_numeric(const XPathVal &Left, const XPathVal &Right);
 
-// Numeric comparison utilities
 bool numeric_equal(double Left, double Right);
 bool numeric_compare(double Left, double Right, RelationalOperator Operation);
 
-struct XPathOrderComparatorOptions
-{
+struct XPathOrderComparatorOptions {
    bool descending = false;
    bool has_empty_mode = false;
    bool empty_is_greatest = false;
@@ -49,8 +32,7 @@ struct XPathOrderComparatorOptions
 
 bool xpath_collation_supported(const std::string &Uri);
 bool xpath_order_key_is_empty(const XPathVal &Value);
-int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightValue,
-   const std::string &CollationUri);
+int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightValue, const std::string &CollationUri);
 int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XPathVal &RightValue,
    bool RightEmpty, const XPathOrderComparatorOptions &Options);
 

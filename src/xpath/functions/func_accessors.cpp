@@ -9,7 +9,7 @@
 #include <parasol/modules/xml.h>
 
 #include "accessor_support.h"
-#include "../xpath_functions.h"
+#include "../api/xpath_functions.h"
 #include "../../xml/xml.h"
 
 XPathVal XPathFunctionLibrary::function_base_uri(const std::vector<XPathVal> &Args, const XPathContext &Context)

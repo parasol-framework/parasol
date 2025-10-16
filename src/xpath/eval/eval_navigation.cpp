@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Evaluator Navigation and Location Path Processing
 //
 // This translation unit implements location path evaluation for XPath, including axis navigation, node test
@@ -17,12 +16,11 @@
 // and handles both relative and absolute location paths.  By separating navigation concerns from
 // expression evaluation, the code remains modular and testable.
 
-#include "xpath_evaluator.h"
-#include "xpath_evaluator_detail.h"
-#include "xpath_axis.h"
-
-#include "../xml/schema/schema_types.h"
-#include "../xml/xml.h"
+#include "eval.h"
+#include "eval_detail.h"
+#include "../api/xpath_axis.h"
+#include "../../xml/schema/schema_types.h"
+#include "../../xml/xml.h"
 
 #include <optional>
 #include <string>
@@ -31,8 +29,7 @@
 
 //********************************************************************************************************************
 // Axis Navigation Helpers
-//********************************************************************************************************************
-
+// 
 // Dispatches axis evaluation based on axis type, handling all XPath axis types (child, descendant, parent, ancestor,
 // sibling, attribute, namespace, and their variants). Manages both element and attribute contexts, and returns a
 // vector of axis matches containing node/attribute pairs. The function handles special cases like absolute paths

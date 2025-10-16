@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Evaluator - Main Evaluation Engine
 
 #pragma once
@@ -12,8 +11,8 @@
 
 class extXML;
 
-#include "xpath_axis.h"
-#include "xpath_functions.h"
+#include "../api/xpath_axis.h"
+#include "../api/xpath_functions.h"
 
 struct XMLAttrib;
 class CompiledXPath;

@@ -3,7 +3,7 @@
 
 #include <format>
 
-#include "../xpath_evaluator_detail.h"
+#include "../eval/eval_detail.h"
 
 //********************************************************************************************************************
 // Converts a value to a string representation.

@@ -116,9 +116,9 @@ Examples:
 #include <sstream>
 #include "../link/unicode.h"
 #include "../xml/xml.h"
-#include "xpath_tokeniser.h"
-#include "xpath_parser.h"
-#include "xpath_evaluator.h"
+#include "parse/xpath_tokeniser.h"
+#include "parse/xpath_parser.h"
+#include "eval/eval.h"
 #include "xpath.h"
 
 JUMPTABLE_CORE

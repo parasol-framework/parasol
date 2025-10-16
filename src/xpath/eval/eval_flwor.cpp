@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath FLWOR Expression Evaluation
 //
 // FLWOR (For, Let, Where, Order by, Return) expressions provide powerful iteration and transformation
@@ -20,11 +19,11 @@
 //   - Count clauses: assign position counters to tuples
 //   - Return expressions: evaluate results for each tuple and combine into final node-set
 
-#include "xpath_evaluator.h"
-#include "xpath_evaluator_detail.h"
-#include "xpath_functions.h"
-#include "../xml/schema/schema_types.h"
-#include "../xml/xml.h"
+#include "eval.h"
+#include "eval_detail.h"
+#include "../api/xpath_functions.h"
+#include "../../xml/schema/schema_types.h"
+#include "../../xml/xml.h"
 
 static size_t hash_xpath_group_value(const XPathVal &Value);
 

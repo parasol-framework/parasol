@@ -37,23 +37,6 @@ std::unique_ptr<XPathNode> XPathParser::parse(const std::vector<XPathToken> &Tok
    return root;
 }
 
-//********************************************************************************************************************
-// Verifies if the current token matches the specified token type without advancing.
-
-bool XPathParser::check(XPathTokenType Type) const {
-   return peek().type IS Type;
-}
-
-//********************************************************************************************************************
-// Checks if the current token matches the specified type, and if so, advances to the next token and returns true.
-
-bool XPathParser::match(XPathTokenType Type) {
-   if (check(Type)) {
-      advance();
-      return true;
-   }
-   return false;
-}
 
 //********************************************************************************************************************
 // Checks if the current token is an identifier matching the specified keyword, or a dedicated token type for certain
@@ -112,96 +95,8 @@ bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenT
    return false;
 }
 
-//********************************************************************************************************************
-// Determines whether a token represents an identifier, count keyword, or empty keyword used in step contexts.
 
-bool XPathParser::is_identifier_token(const XPathToken &Token) const
-{
-   switch (Token.type)
-   {
-      case XPathTokenType::IDENTIFIER:
-      case XPathTokenType::COUNT:
-      case XPathTokenType::EMPTY:
-         return true;
-      default:
-         return false;
-   }
-}
 
-//********************************************************************************************************************
-// Returns the current token without advancing, or END_OF_INPUT sentinel if at end of token stream.
-
-const XPathToken & XPathParser::peek() const
-{
-   return current_token < tokens.size() ? tokens[current_token] : tokens.back(); // END_OF_INPUT
-}
-
-//********************************************************************************************************************
-// Returns the previously consumed token.
-
-const XPathToken & XPathParser::previous() const
-{
-   return tokens[current_token - 1];
-}
-
-//********************************************************************************************************************
-// Checks whether the parser has reached the end of the token stream.
-
-bool XPathParser::is_at_end() const
-{
-   return peek().type IS XPathTokenType::END_OF_INPUT;
-}
-
-//********************************************************************************************************************
-// Advances to the next token if not already at end of stream.
-
-void XPathParser::advance()
-{
-   if (!is_at_end()) current_token++;
-}
-
-//********************************************************************************************************************
-// Determines whether a token type can begin an XPath location path step (., .., @, identifiers, or wildcards).
-
-bool XPathParser::is_step_start_token(XPathTokenType type) const
-{
-   switch (type) {
-      case XPathTokenType::DOT:
-      case XPathTokenType::DOUBLE_DOT:
-      case XPathTokenType::AT:
-      case XPathTokenType::IDENTIFIER:
-      case XPathTokenType::COUNT:
-      case XPathTokenType::EMPTY:
-      case XPathTokenType::WILDCARD:
-         return true;
-      default:
-         return false;
-   }
-}
-
-//********************************************************************************************************************
-// Records an error message to the errors collection for reporting to the caller.
-
-void XPathParser::report_error(std::string_view Message)
-{
-   errors.emplace_back(Message);
-}
-
-//********************************************************************************************************************
-// Returns whether any errors have been recorded during parsing.
-
-bool XPathParser::has_errors() const
-{
-   return !errors.empty();
-}
-
-//********************************************************************************************************************
-// Returns the collection of all error messages recorded during parsing.
-
-const std::vector<std::string> & XPathParser::get_errors() const
-{
-   return errors;
-}
 
 //********************************************************************************************************************
 // Constructs a binary operation AST node from left operand, operator token, and right operand.

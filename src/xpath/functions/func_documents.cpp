@@ -5,7 +5,7 @@
 #include <parasol/modules/core.h>
 #include <parasol/strings.hpp>
 
-#include "../xpath_functions.h"
+#include "../api/xpath_functions.h"
 #include "../../xml/xml.h"
 #include "accessor_support.h"
 

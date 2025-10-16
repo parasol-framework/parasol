@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Evaluator Common Utilities
 //
 // This translation unit provides shared utility functions used throughout the XPath evaluator for value
@@ -15,8 +14,8 @@
 // By centralising these operations, the evaluator ensures that predicates, function calls, and expression
 // evaluation all apply the same semantic rules for value comparison and type conversion.
 
-#include "xpath_evaluator_detail.h"
-#include "../xml/schema/schema_types.h"
+#include "eval_detail.h"
+#include "../../xml/schema/schema_types.h"
 #include <cmath>
 #include <limits>
 #include <string_view>

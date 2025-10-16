@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "xpath_ast.h"
+#include "../parse/xpath_ast.h"
 #include "xpath_arena.h"
 
 #include <algorithm>
@@ -18,7 +18,7 @@
 #include <unordered_set>
 #include <parasol/modules/xml.h>
 #include <parasol/strings.hpp>
-#include "../xml/xml.h"
+#include "../../xml/xml.h"
 
 //********************************************************************************************************************
 // XPath Axis Types

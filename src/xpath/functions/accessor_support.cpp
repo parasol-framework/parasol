@@ -9,7 +9,7 @@
 
 #include "accessor_support.h"
 
-#include "../xpath_functions.h"
+#include "../api/xpath_functions.h"
 #include "../../xml/xml.h"
 #include "../../xml/schema/schema_parser.h"
 #include "../../xml/uri_utils.h"

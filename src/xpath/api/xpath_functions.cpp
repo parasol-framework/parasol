@@ -19,20 +19,15 @@
 #include <parasol/modules/regex.h>
 
 #include "xpath_functions.h"
-#include "../xml/xml.h"
-#include "../xml/schema/type_checker.h"
-#include "../xml/uri_utils.h"
+#include "../../xml/xml.h"
+#include "../../xml/schema/type_checker.h"
+#include "../../xml/uri_utils.h"
 
-#include <algorithm>
-#include <array>
 #include <chrono>
 #include <ctime>
 #include <format>
 
-#include "../link/unicode.h"
-
-//********************************************************************************************************************
-// XPathVal Implementation
+#include "../../link/unicode.h"
 
 namespace {
 
@@ -1632,15 +1627,17 @@ static bool language_matches(const std::string &Candidate, const std::string &Re
 
 } // namespace
 
-#include "function_library.cpp"
-#include "functions/accessor_support.cpp"
-#include "functions/func_accessors.cpp"
-#include "functions/func_nodeset.cpp"
-#include "functions/func_documents.cpp"
-#include "functions/func_qnames.cpp"
-#include "functions/func_strings.cpp"
-#include "functions/func_diagnostics.cpp"
-#include "functions/func_booleans.cpp"
-#include "functions/func_sequences.cpp"
-#include "functions/func_numbers.cpp"
-#include "functions/func_datetimes.cpp"
+//********************************************************************************************************************
+
+#include "../functions/function_library.cpp"
+#include "../functions/accessor_support.cpp"
+#include "../functions/func_accessors.cpp"
+#include "../functions/func_nodeset.cpp"
+#include "../functions/func_documents.cpp"
+#include "../functions/func_qnames.cpp"
+#include "../functions/func_strings.cpp"
+#include "../functions/func_diagnostics.cpp"
+#include "../functions/func_booleans.cpp"
+#include "../functions/func_sequences.cpp"
+#include "../functions/func_numbers.cpp"
+#include "../functions/func_datetimes.cpp"

@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <parasol/strings.hpp>
-#include "../xml/xml.h"
+#include "../../xml/xml.h"
 
 class XPathArena {
    private:
