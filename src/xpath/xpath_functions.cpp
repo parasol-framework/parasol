@@ -26,18 +26,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <charconv>
-#include <cmath>
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
 #include <ctime>
 #include <format>
-#include <limits>
-#include <sstream>
-#include <string_view>
-#include <unordered_set>
-#include <utility>
 
 #include "../link/unicode.h"
 
@@ -45,6 +35,10 @@
 // XPathVal Implementation
 
 namespace {
+
+//********************************************************************************************************************
+// Determines whether a character qualifies as an unreserved URI character according to RFC 3986.  Unreserved
+// characters include alphanumerics and a restricted set of punctuation that do not require percent-encoding in URIs.
 
 static bool is_unreserved_uri_character(unsigned char Code)
 {
@@ -65,6 +59,11 @@ static bool is_unreserved_uri_character(unsigned char Code)
 
    return false;
 }
+
+//********************************************************************************************************************
+// Encodes a string for use in URIs by percent-encoding characters that are not unreserved according to RFC 3986.
+// This implementation preserves alphanumerics and RFC 3986 unreserved punctuation while encoding all other bytes
+// as percent-encoded octets.
 
 static std::string encode_for_uri_impl(const std::string &Value)
 {
@@ -87,6 +86,10 @@ static std::string encode_for_uri_impl(const std::string &Value)
    return result;
 }
 
+//********************************************************************************************************************
+// Performs a global search-and-replace operation, replacing all occurrences of From with To in the Text string.
+// This function modifies the text in-place and handles overlapping replacements by advancing past the inserted text.
+
 static void replace_all(std::string &Text, std::string_view From, std::string_view To)
 {
    if (From.empty()) return;
@@ -100,10 +103,15 @@ static void replace_all(std::string &Text, std::string_view From, std::string_vi
    }
 }
 
+//********************************************************************************************************************
+// Encodes a string for HTML-escaped URI representation by first percent-encoding the string and then escaping
+// the percent-encoded sequences as HTML entities. This produces a URI that is safe for embedding in HTML attributes.
+
 static std::string escape_html_uri_impl(const std::string &Value)
 {
    std::string encoded = encode_for_uri_impl(Value);
 
+   // Convert percent-encoded sequences to HTML entity equivalents for safe HTML embedding
    replace_all(encoded, "%26", "&amp;");
    replace_all(encoded, "%3C", "&lt;");
    replace_all(encoded, "%3E", "&gt;");
@@ -112,6 +120,10 @@ static std::string escape_html_uri_impl(const std::string &Value)
 
    return encoded;
 }
+
+//********************************************************************************************************************
+// Converts a string to upper or lower case by transforming each character. This operates on bytes rather than
+// Unicode codepoints, suitable for ASCII and Latin-1 text processing.
 
 static std::string apply_string_case(const std::string &Value, bool Upper)
 {
@@ -123,8 +135,13 @@ static std::string apply_string_case(const std::string &Value, bool Upper)
    return result;
 }
 
+//********************************************************************************************************************
+// Appends a Unicode codepoint to the output string as UTF-8 encoded bytes. Invalid codepoints (surrogates or
+// values exceeding U+10FFFF) are replaced with the replacement character U+FFFD.
+
 static void append_codepoint_utf8(std::string &Output, uint32_t Codepoint)
 {
+   // Validate codepoint: reject surrogates and values beyond Unicode range
    if ((Codepoint > 0x10FFFFu) or ((Codepoint >= 0xD800u) and (Codepoint <= 0xDFFFu))) {
       Codepoint = 0xFFFDu;
    }
@@ -136,6 +153,10 @@ static void append_codepoint_utf8(std::string &Output, uint32_t Codepoint)
    Output.append(buffer, (size_t)written);
 }
 
+//********************************************************************************************************************
+// Decodes a UTF-8 encoded string into a vector of Unicode codepoints. Invalid UTF-8 sequences are treated as
+// individual bytes and preserved as their numeric values.
+
 static std::vector<uint32_t> decode_codepoints(const std::string &Input)
 {
    std::vector<uint32_t> codepoints;
@@ -146,6 +167,7 @@ static std::vector<uint32_t> decode_codepoints(const std::string &Input)
       int length = 0;
       uint32_t value = UTF8ReadValue(Input.c_str() + offset, &length);
       if (length <= 0) {
+         // Invalid UTF-8 sequence; treat byte as individual codepoint
          value = (unsigned char)Input[offset];
          length = 1;
       }
@@ -157,12 +179,20 @@ static std::vector<uint32_t> decode_codepoints(const std::string &Input)
    return codepoints;
 }
 
+//********************************************************************************************************************
+// Encodes a sequence of Unicode codepoints as a UTF-8 string.
+
 static std::string encode_codepoints(const std::vector<uint32_t> &Codepoints)
 {
    std::string output;
    for (uint32_t code : Codepoints) append_codepoint_utf8(output, code);
    return output;
 }
+
+//********************************************************************************************************************
+// Performs Unicode normalisation according to the specified form (NFC, NFD, NFKC, or NFKD). This is a simplified
+// implementation that handles only the most common European character combinations. Unsupported normalisation forms
+// set the Unsupported flag and return the original string unmodified.
 
 static std::string simple_normalise_unicode(const std::string &Value, std::string_view Form, bool *Unsupported)
 {
@@ -174,6 +204,7 @@ static std::string simple_normalise_unicode(const std::string &Value, std::strin
       return (char)std::toupper(code);
    });
 
+   // Composed forms: combine compatible sequences into precomposed characters
    if ((normalised_form IS "NFC") or (normalised_form IS "NFKC")) {
       auto codepoints = decode_codepoints(Value);
       std::vector<uint32_t> result;
@@ -183,11 +214,13 @@ static std::string simple_normalise_unicode(const std::string &Value, std::strin
          uint32_t code = codepoints[index];
          if ((index + 1u) < codepoints.size()) {
             uint32_t next = codepoints[index + 1u];
+            // Compose e + combining acute accent into precomposed é
             if ((code IS 0x0065u) and (next IS 0x0301u)) {
                result.push_back(0x00E9u);
                index++;
                continue;
             }
+            // Compose E + combining acute accent into precomposed É
             if ((code IS 0x0045u) and (next IS 0x0301u)) {
                result.push_back(0x00C9u);
                index++;
@@ -200,17 +233,20 @@ static std::string simple_normalise_unicode(const std::string &Value, std::strin
       return encode_codepoints(result);
    }
 
+   // Decomposed forms: split precomposed characters into base + combining marks
    if ((normalised_form IS "NFD") or (normalised_form IS "NFKD")) {
       auto codepoints = decode_codepoints(Value);
       std::vector<uint32_t> result;
       result.reserve(codepoints.size() * 2u);
 
       for (uint32_t code : codepoints) {
+         // Decompose precomposed é into e + combining acute accent
          if (code IS 0x00E9u) {
             result.push_back(0x0065u);
             result.push_back(0x0301u);
             continue;
          }
+         // Decompose precomposed É into E + combining acute accent
          if (code IS 0x00C9u) {
             result.push_back(0x0045u);
             result.push_back(0x0301u);
@@ -231,6 +267,10 @@ using xml::uri::strip_query_fragment;
 using xml::uri::normalise_path_segments;
 using xml::uri::resolve_relative_uri;
 
+//********************************************************************************************************************
+// Represents the parsed components of an XML dateTime value, including optional date, time, and timezone
+// information. Default values follow W3C XML Schema conventions.
+
 struct DateTimeComponents
 {
    int year = 0;
@@ -246,6 +286,10 @@ struct DateTimeComponents
    int timezone_offset_minutes = 0;
 };
 
+//********************************************************************************************************************
+// Parses a fixed-width decimal integer from a string view using std::from_chars. Returns true if parsing succeeds;
+// false if the text cannot be completely converted to an integer.
+
 static bool parse_fixed_number(std::string_view Text, int &Output)
 {
    int value = 0;
@@ -254,6 +298,10 @@ static bool parse_fixed_number(std::string_view Text, int &Output)
    Output = value;
    return true;
 }
+
+//********************************************************************************************************************
+// Represents the parsed components of an XML duration value with optional year, month, day, hour, minute, and
+// second components. The negative flag records whether the duration is prefixed with '-'.
 
 struct DurationComponents
 {
@@ -273,6 +321,10 @@ struct DurationComponents
 };
 
 enum class DurationParseStatus { Empty, Error, Value };
+
+//********************************************************************************************************************
+// Normalises duration components by consolidating months into years and distributing time components into their
+// canonical ranges (60 seconds into minutes, 60 minutes into hours, etc.).
 
 static void normalise_duration_components(DurationComponents &Components)
 {
@@ -313,6 +365,10 @@ static void normalise_duration_components(DurationComponents &Components)
    Components.has_second = (Components.seconds.count() != 0.0);
 }
 
+//********************************************************************************************************************
+// Parses a floating-point seconds value. This function requires the entire string to be consumed (no trailing
+// content) and rejects non-finite values (infinity and NaN).
+
 static bool parse_seconds_value(std::string_view Text, double &Output)
 {
    if (Text.empty()) return false;
@@ -326,6 +382,11 @@ static bool parse_seconds_value(std::string_view Text, double &Output)
    Output = value;
    return true;
 }
+
+//********************************************************************************************************************
+// Parses an XML Schema duration (ISO 8601 format) into individual date and time components. Durations follow the
+// pattern: [-]P[n]Y[n]M[n]DT[n]H[n]M[n]S. The parser validates that designators appear in the correct order and
+// enforces that fractions only occur in the seconds component. Returns false for malformed input.
 
 static bool parse_duration_components(std::string_view Text, DurationComponents &Components)
 {
@@ -451,6 +512,11 @@ static bool parse_duration_components(std::string_view Text, DurationComponents 
    return found_component;
 }
 
+//********************************************************************************************************************
+// Validates and prepares duration components from XPath function arguments. Enforces constraints for year-month
+// or day-time only durations and normalises the components. Returns Empty if no arguments, Error if invalid, or
+// Value if successfully parsed.
+
 static DurationParseStatus prepare_duration_components(const std::vector<XPathVal> &Args,
    DurationComponents &Components, bool RequireYearMonthOnly, bool RequireDayTimeOnly)
 {
@@ -475,6 +541,10 @@ static DurationParseStatus prepare_duration_components(const std::vector<XPathVa
 
    return DurationParseStatus::Value;
 }
+
+//********************************************************************************************************************
+// Parses timezone information from a string, supporting UTC designation ('Z'), and ±HH:MM or ±HHMM formats.
+// Returns true if parsing succeeds; false if the timezone specification is malformed.
 
 static bool parse_timezone(std::string_view Text, DateTimeComponents &Components)
 {
@@ -517,6 +587,10 @@ static bool parse_timezone(std::string_view Text, DateTimeComponents &Components
    Components.timezone_is_utc = (total IS 0);
    return true;
 }
+
+//********************************************************************************************************************
+// Parses time values from string in HH:MM:SS format with optional fractional seconds and timezone offset.
+// Returns true if time format is valid; false if malformed or missing required components.
 
 static bool parse_time_value(std::string_view Text, DateTimeComponents &Components)
 {
@@ -570,6 +644,10 @@ static bool parse_time_value(std::string_view Text, DateTimeComponents &Componen
    return true;
 }
 
+//********************************************************************************************************************
+// Parses date values from string in YYYY-MM-DD format with optional timezone offset.
+// Returns true if date format is valid; false if malformed or missing required components.
+
 static bool parse_date_value(std::string_view Text, DateTimeComponents &Components)
 {
    if (Text.length() < 10u) return false;
@@ -594,6 +672,10 @@ static bool parse_date_value(std::string_view Text, DateTimeComponents &Componen
    return parse_timezone(tz_section, Components);
 }
 
+//********************************************************************************************************************
+// Routes datetime parsing to appropriate function based on content: dispatches to parse_date_value if hyphens
+// are found, parse_time_value otherwise, or combined parsing if 'T' separator is present.
+
 static bool parse_date_time_components(std::string_view Text, DateTimeComponents &Components)
 {
    size_t t_pos = Text.find('T');
@@ -606,6 +688,10 @@ static bool parse_date_time_components(std::string_view Text, DateTimeComponents
    if (Text.find('-') != std::string::npos) return parse_date_value(Text, Components);
    return parse_time_value(Text, Components);
 }
+
+//********************************************************************************************************************
+// Formats an integer value with optional zero-padding or space-padding to reach the specified width. Preserves
+// the sign of negative values by prepending '-' after padding is applied.
 
 static std::string format_integer_component(int64_t Value, int Width, bool ZeroPad)
 {
@@ -621,6 +707,10 @@ static std::string format_integer_component(int64_t Value, int Width, bool ZeroP
    if (negative) digits.insert(digits.begin(), '-');
    return digits;
 }
+
+//********************************************************************************************************************
+// Formats timezone offset as a string: returns 'Z' for UTC, or ±HH:MM for other offsets.
+// Returns empty string if no timezone is present in the components.
 
 static std::string format_timezone(const DateTimeComponents &Components)
 {
@@ -639,6 +729,11 @@ static std::string format_timezone(const DateTimeComponents &Components)
 
    return std::format("{}{:02d}:{:02d}", sign, hours, minutes);
 }
+
+//********************************************************************************************************************
+// Formats a single datetime component based on token specification (e.g., 'Y004' for year with 4-digit padding).
+// Supports: Y (year), M (month), D (day), H (hour), m (minute), s (second), Z/z (timezone). Returns the original
+// token if no matching component is found.
 
 static std::string format_component(const DateTimeComponents &Components, const std::string &Token)
 {
@@ -676,6 +771,11 @@ static std::string format_component(const DateTimeComponents &Components, const 
    return Token;
 }
 
+//********************************************************************************************************************
+// Formats datetime components using a picture string with [token] placeholders and 'quoted literal' sections.
+// Processes the picture character-by-character, replacing tokens with formatted components and preserving
+// quoted literal text.
+
 static std::string format_with_picture(const DateTimeComponents &Components, const std::string &Picture)
 {
    std::string output;
@@ -701,6 +801,10 @@ static std::string format_with_picture(const DateTimeComponents &Components, con
    }
    return output;
 }
+
+//********************************************************************************************************************
+// Formats seconds as SS.ffffff format with fractional microseconds. Removes trailing zeros from fractional part
+// and clamps negative values to zero. Handles rounding when fractional overflow occurs.
 
 static std::string format_seconds_field(double Value)
 {
@@ -732,6 +836,9 @@ static std::string format_seconds_field(double Value)
    return seconds;
 }
 
+//********************************************************************************************************************
+// Serialises date component to YYYY-MM-DD string format with optional timezone suffix.
+
 static std::string serialise_date_only(const DateTimeComponents &Components, bool IncludeTimezone)
 {
    auto year = format_integer_component(Components.year, 4, true);
@@ -744,6 +851,9 @@ static std::string serialise_date_only(const DateTimeComponents &Components, boo
 
    return result;
 }
+
+//********************************************************************************************************************
+// Serialises time component to HH:MM:SS.ffffff string format with optional timezone suffix.
 
 static std::string serialise_time_only(const DateTimeComponents &Components, bool IncludeTimezone)
 {
@@ -758,6 +868,9 @@ static std::string serialise_time_only(const DateTimeComponents &Components, boo
    return result;
 }
 
+//********************************************************************************************************************
+// Serialises both date and time components combined with 'T' separator, returning the full ISO 8601 string.
+
 static std::string serialise_date_time_components(const DateTimeComponents &Components)
 {
    std::string result = serialise_date_only(Components, false);
@@ -765,6 +878,11 @@ static std::string serialise_date_time_components(const DateTimeComponents &Comp
    result.append(serialise_time_only(Components, true));
    return result;
 }
+
+//********************************************************************************************************************
+// Merges separate date and time strings into a single DateTimeComponents structure. Validates that timezone
+// information is consistent between both parts if both are specified. Returns false if parsing fails or
+// timezone conflict is detected.
 
 static bool combine_date_and_time(const std::string &DateValue, const std::string &TimeValue,
    DateTimeComponents &Combined)
@@ -809,6 +927,11 @@ static bool combine_date_and_time(const std::string &DateValue, const std::strin
    return true;
 }
 
+//********************************************************************************************************************
+// Parses timezone offset expressed as ISO 8601 duration format (e.g., PT5H30M for +5:30). Validates that
+// only hour and minute components are present, enforces valid range (-14:00 to +14:00), and rejects second
+// components. Returns true if successfully parsed; false if format is invalid or out of range.
+
 static bool parse_timezone_duration(const std::string &Text, int &OffsetMinutes)
 {
    DurationComponents components;
@@ -827,6 +950,10 @@ static bool parse_timezone_duration(const std::string &Text, int &OffsetMinutes)
    OffsetMinutes = (int)total_minutes;
    return true;
 }
+
+//********************************************************************************************************************
+// Formats timezone offset in minutes as ISO 8601 duration string (e.g., PT5H30M for 330 minutes). Handles
+// negative offsets by prepending '-' to the duration. Returns "PT0S" for zero offset.
 
 static std::string format_timezone_duration(int OffsetMinutes)
 {
@@ -856,6 +983,11 @@ static std::string format_timezone_duration(int OffsetMinutes)
 
    return result;
 }
+
+//********************************************************************************************************************
+// Converts DateTimeComponents to UTC time point by validating date/time values, constructing a local time point,
+// and applying timezone offset. Returns false if date/time values are invalid. ImplicitTimezoneMinutes is used
+// if no explicit timezone is present in the components.
 
 static bool components_to_utc_time(const DateTimeComponents &Components, int ImplicitTimezoneMinutes,
    std::chrono::sys_time<std::chrono::microseconds> &UtcTime)
@@ -903,6 +1035,11 @@ static bool components_to_utc_time(const DateTimeComponents &Components, int Imp
    return true;
 }
 
+//********************************************************************************************************************
+// Extracts date and time components from a UTC time point by converting to local time using TargetOffsetMinutes.
+// Selectively includes date/time/timezone components based on flags. Defaults to 1970-01-01 00:00:00 if date or
+// time components are not requested.
+
 static DateTimeComponents components_from_utc_time(const std::chrono::sys_time<std::chrono::microseconds> &UtcTime,
    int TargetOffsetMinutes, bool IncludeTimezone, bool IncludeDate, bool IncludeTime)
 {
@@ -943,6 +1080,10 @@ static DateTimeComponents components_from_utc_time(const std::chrono::sys_time<s
    return result;
 }
 
+//********************************************************************************************************************
+// Formats integer according to picture specification with '#' (optional digit), '0' (required zero-padded digit),
+// and ',' (thousands grouping). Applies the padding and grouping rules from the picture to produce the final output.
+
 static std::string format_integer_picture(int64_t Value, const std::string &Picture)
 {
    bool negative = Value < 0;
@@ -982,7 +1123,9 @@ static std::string format_integer_picture(int64_t Value, const std::string &Pict
    return digits;
 }
 
-// Utilised by trace() and error() to provide a concise description of an XPath value
+//********************************************************************************************************************
+// Produces a concise string representation of an XPathVal for diagnostic output in trace() and error() functions.
+// Node sets show summary statistics and first few entries; other types show their string representation.
 
 static std::string describe_xpath_value(const XPathVal &Value)
 {
@@ -1061,7 +1204,11 @@ static std::string describe_xpath_value(const XPathVal &Value)
    return std::string();
 }
 
-REGEX build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
+//********************************************************************************************************************
+// Constructs a regex option flags set from a string of XPath regex flags. Supported flags: 'i' (case-insensitive),
+// 'm' (multi-line mode), 's' (dot matches all). Unrecognised flags set the UnsupportedFlag if provided.
+
+static REGEX build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 {
    REGEX options = REGEX::NIL;
 
@@ -1077,6 +1224,11 @@ REGEX build_regex_options(const std::string &Flags, bool *UnsupportedFlag)
 
    return options;
 }
+
+//********************************************************************************************************************
+// Extracts numeric values from the node set representation of an XPathVal. The function attempts to convert each
+// node's string value to a number, filtering out NaN results. Multiple storage representations are checked:
+// override string, attributes, explicit string values, and finally node content.
 
 static void append_numbers_from_nodeset(const XPathVal &Value, std::vector<double> &Numbers)
 {
@@ -1111,6 +1263,11 @@ static void append_numbers_from_nodeset(const XPathVal &Value, std::vector<doubl
    }
 }
 
+//********************************************************************************************************************
+// Extracts numeric values from an XPathVal according to its type. Node sets are processed through
+// append_numbers_from_nodeset; strings, dates, and times are converted to numbers; and booleans are directly
+// appended as their numeric representation. NaN values are filtered out.
+
 static void append_numbers_from_value(const XPathVal &Value, std::vector<double> &Numbers)
 {
    switch (Value.Type) {
@@ -1134,12 +1291,20 @@ static void append_numbers_from_value(const XPathVal &Value, std::vector<double>
    }
 }
 
+//********************************************************************************************************************
+// Accumulates nodes, attributes, and string values during sequence construction. Used to build the final result
+// of sequence-producing operations where heterogeneous content (nodes, attributes, strings) must be combined.
+
 struct SequenceBuilder
 {
    NODES nodes;
    std::vector<const XMLAttrib *> attributes;
    std::vector<std::string> strings;
 };
+
+//********************************************************************************************************************
+// Maintains state for the analyze-string function during regex matching. Tracks the builder accumulating results,
+// the input string data, and the last processed offset to identify gaps between matches.
 
 struct AnalyzeStringState
 {
@@ -1148,6 +1313,10 @@ struct AnalyzeStringState
    size_t input_length;
    size_t last_offset;
 };
+
+//********************************************************************************************************************
+// Returns the logical length of a sequence value. For node sets, returns the size of the largest populated
+// collection (nodes, attributes, or strings). For scalar values, returns 1 if non-empty, 0 otherwise.
 
 static size_t sequence_length(const XPathVal &Value)
 {
@@ -1161,6 +1330,10 @@ static size_t sequence_length(const XPathVal &Value)
 
    return Value.is_empty() ? 0 : 1;
 }
+
+//********************************************************************************************************************
+// Retrieves the string representation of a sequence item at the specified index. For node sets, checks string
+// values, override, attributes, and nodes in order. For scalars, returns string representation only if index is 0.
 
 static std::string sequence_item_string(const XPathVal &Value, size_t Index)
 {
@@ -1187,6 +1360,10 @@ static std::string sequence_item_string(const XPathVal &Value, size_t Index)
    return Value.to_string();
 }
 
+//********************************************************************************************************************
+// Appends a single sequence item (at the specified index) to the SequenceBuilder, accumulating nodes, attributes,
+// and string values simultaneously to maintain parallel structures.
+
 static void append_sequence_item(const XPathVal &Value, size_t Index, SequenceBuilder &Builder)
 {
    XMLTag *node = nullptr;
@@ -1200,6 +1377,10 @@ static void append_sequence_item(const XPathVal &Value, size_t Index, SequenceBu
    std::string entry = sequence_item_string(Value, Index);
    Builder.strings.push_back(entry);
 }
+
+//********************************************************************************************************************
+// Adds an entire XPathVal to the sequence builder. For node sets, appends each item; for empty scalars, does
+// nothing; for non-empty scalars, appends as a string value with null node and attribute.
 
 static void append_value_to_sequence(const XPathVal &Value, SequenceBuilder &Builder)
 {
@@ -1216,6 +1397,10 @@ static void append_value_to_sequence(const XPathVal &Value, SequenceBuilder &Bui
    Builder.strings.push_back(Value.to_string());
 }
 
+//********************************************************************************************************************
+// Constructs an XPathVal node set from accumulated SequenceBuilder contents. Optimises single string values by
+// setting the string override flag. Returns the finalised sequence value.
+
 static XPathVal make_sequence_value(SequenceBuilder &&Builder)
 {
    XPathVal result;
@@ -1231,6 +1416,10 @@ static XPathVal make_sequence_value(SequenceBuilder &&Builder)
 
    return result;
 }
+
+//********************************************************************************************************************
+// Extracts a single item from an XPathVal sequence at the specified index. Returns empty if index is out of bounds
+// (for node sets) or out of range (for scalars). Optimises single-item node set with string override flag.
 
 static XPathVal extract_sequence_item(const XPathVal &Value, size_t Index)
 {
@@ -1266,6 +1455,11 @@ static XPathVal extract_sequence_item(const XPathVal &Value, size_t Index)
    return XPathVal();
 }
 
+//********************************************************************************************************************
+// Compares two floating-point numbers for approximate equality according to XPath semantics. NaN is not equal to
+// anything including itself. Infinities are equal only if both have the same sign. Finite values use scaled
+// tolerance (relative for large magnitudes, absolute for small values) to account for floating-point precision.
+
 static bool numeric_equal(double Left, double Right)
 {
    if (std::isnan(Left) or std::isnan(Right)) return false;
@@ -1275,12 +1469,19 @@ static bool numeric_equal(double Left, double Right)
    double abs_right = std::fabs(Right);
    double larger = (abs_left > abs_right) ? abs_left : abs_right;
 
+   // Use absolute tolerance for values near zero
    if (larger <= 1.0) {
       return std::fabs(Left - Right) <= std::numeric_limits<double>::epsilon() * 16;
    }
 
+   // Use relative tolerance for larger magnitudes
    return std::fabs(Left - Right) <= larger * std::numeric_limits<double>::epsilon() * 16;
 }
+
+//********************************************************************************************************************
+// Compares two XPathVal values for equality according to XPath type coercion rules. Boolean values trigger
+// comparison in boolean context; numbers in numeric context; and strings/node-sets in string context. This
+// implements the complex comparison semantics defined by XPath 2.0 specifications.
 
 static bool xpath_values_equal(const XPathVal &Left, const XPathVal &Right)
 {
@@ -1327,6 +1528,10 @@ static bool xpath_values_equal(const XPathVal &Left, const XPathVal &Right)
    return left_string.compare(right_string) IS 0;
 }
 
+//********************************************************************************************************************
+// Records a function argument cardinality error by setting the unsupported flag and appending a diagnostic message
+// to the document's error log. Used for reporting violations of function parameter constraints.
+
 static void flag_cardinality_error(const XPathContext &Context, std::string_view FunctionName,
    std::string_view Message)
 {
@@ -1341,23 +1546,12 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
    }
 }
 
-} // namespace
+//********************************************************************************************************************
+// Walks up the element tree to locate a namespace URI declaration corresponding to the requested prefix. For an
+// empty prefix, finds the default namespace. Returns an empty string if no matching declaration is found in any
+// ancestor element.
 
-
-
-
-
-
-
-
-
-
-
-
-namespace {
-
-// Walk up the tree to locate a namespace declaration corresponding to the requested prefix.
-std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::string_view Prefix)
+static std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::string_view Prefix)
 {
    XMLTag *current = Node;
 
@@ -1384,7 +1578,11 @@ std::string find_in_scope_namespace(XMLTag *Node, extXML *Document, std::string_
    return std::string();
 }
 
-std::string find_language_for_node(XMLTag *Node, extXML *Document)
+//********************************************************************************************************************
+// Searches up the element tree for an xml:lang attribute. Returns the first discovered language tag or an empty
+// string if no language declaration is found in the element or any ancestor.
+
+static std::string find_language_for_node(XMLTag *Node, extXML *Document)
 {
    XMLTag *current = Node;
 
@@ -1402,14 +1600,22 @@ std::string find_language_for_node(XMLTag *Node, extXML *Document)
    return std::string();
 }
 
-std::string lowercase_copy(const std::string &Value)
+//********************************************************************************************************************
+// Returns a lower-case copy of the input string. Operates on bytes; suitable for ASCII and Latin-1 strings.
+
+inline std::string lowercase_copy(const std::string &Value)
 {
    std::string result = Value;
    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
    return result;
 }
 
-bool language_matches(const std::string &Candidate, const std::string &Requested)
+//********************************************************************************************************************
+// Determines whether a candidate language tag matches a requested language according to RFC 4647 basic filtering.
+// The candidate matches if it exactly equals the requested language or begins with it followed by a hyphen.
+// Empty requested strings never match.
+
+static bool language_matches(const std::string &Candidate, const std::string &Requested)
 {
    if (Requested.empty()) return false;
 
@@ -1426,252 +1632,7 @@ bool language_matches(const std::string &Candidate, const std::string &Requested
 
 } // namespace
 
-//********************************************************************************************************************
-// XPathFunctionLibrary Implementation
-
-XPathFunctionLibrary::XPathFunctionLibrary() {
-   register_core_functions();
-}
-
-const XPathFunctionLibrary & XPathFunctionLibrary::instance()
-{
-   static std::once_flag initialise_flag;
-   static std::unique_ptr<XPathFunctionLibrary> shared_library;
-
-   std::call_once(initialise_flag, [&]() {
-      shared_library = std::unique_ptr<XPathFunctionLibrary>(new XPathFunctionLibrary());
-   });
-
-   return *shared_library;
-}
-
-void XPathFunctionLibrary::register_core_functions() {
-   // Node Set Functions
-   register_function("last", function_last);
-   register_function("position", function_position);
-   register_function("count", function_count);
-   register_function("id", function_id);
-   register_function("idref", function_idref);
-   register_function("root", function_root);
-
-   // Document Functions
-   register_function("doc", function_doc);
-   register_function("doc-available", function_doc_available);
-   register_function("collection", function_collection);
-   register_function("uri-collection", function_uri_collection);
-   register_function("unparsed-text", function_unparsed_text);
-   register_function("unparsed-text-available", function_unparsed_text_available);
-   register_function("unparsed-text-lines", function_unparsed_text_lines);
-   register_function("local-name", function_local_name);
-   register_function("namespace-uri", function_namespace_uri);
-   register_function("name", function_name);
-
-   // Accessor Functions
-   register_function("base-uri", function_base_uri);
-   register_function("data", function_data);
-   register_function("document-uri", function_document_uri);
-   register_function("node-name", function_node_name);
-   register_function("nilled", function_nilled);
-   register_function("static-base-uri", function_static_base_uri);
-   register_function("default-collation", function_default_collation);
-
-   // QName Functions
-   register_function("QName", function_QName);
-   register_function("resolve-QName", function_resolve_QName);
-   register_function("prefix-from-QName", function_prefix_from_QName);
-   register_function("local-name-from-QName", function_local_name_from_QName);
-   register_function("namespace-uri-from-QName", function_namespace_uri_from_QName);
-   register_function("namespace-uri-for-prefix", function_namespace_uri_for_prefix);
-   register_function("in-scope-prefixes", function_in_scope_prefixes);
-
-   // String Functions
-   register_function("string", function_string);
-   register_function("concat", function_concat);
-   register_function("codepoints-to-string", function_codepoints_to_string);
-   register_function("string-to-codepoints", function_string_to_codepoints);
-   register_function("compare", function_compare);
-   register_function("codepoint-equal", function_codepoint_equal);
-   register_function("starts-with", function_starts_with);
-   register_function("ends-with", function_ends_with);
-   register_function("contains", function_contains);
-   register_function("substring-before", function_substring_before);
-   register_function("substring-after", function_substring_after);
-   register_function("substring", function_substring);
-   register_function("string-length", function_string_length);
-   register_function("normalize-space", function_normalize_space);
-   register_function("normalize-unicode", function_normalize_unicode);
-   register_function("string-join", function_string_join);
-   register_function("iri-to-uri", function_iri_to_uri);
-   register_function("translate", function_translate);
-   register_function("upper-case", function_upper_case);
-   register_function("lower-case", function_lower_case);
-   register_function("encode-for-uri", function_encode_for_uri);
-   register_function("escape-html-uri", function_escape_html_uri);
-
-   register_function("matches", function_matches);
-   register_function("replace", function_replace);
-   register_function("tokenize", function_tokenize);
-   register_function("analyze-string", function_analyze_string);
-   register_function("resolve-uri", function_resolve_uri);
-   register_function("format-date", function_format_date);
-   register_function("format-time", function_format_time);
-   register_function("format-dateTime", function_format_date_time);
-   register_function("format-integer", function_format_integer);
-
-   // Diagnostics Functions
-   register_function("error", function_error);
-   register_function("trace", function_trace);
-
-   // Boolean Functions
-   register_function("boolean", function_boolean);
-   register_function("not", function_not);
-   register_function("true", function_true);
-   register_function("false", function_false);
-   register_function("lang", function_lang);
-   register_function("exists", function_exists);
-
-   // Sequence Functions
-   register_function("index-of", function_index_of);
-   register_function("empty", function_empty);
-   register_function("distinct-values", function_distinct_values);
-   register_function("insert-before", function_insert_before);
-   register_function("remove", function_remove);
-   register_function("reverse", function_reverse);
-   register_function("subsequence", function_subsequence);
-   register_function("unordered", function_unordered);
-   register_function("deep-equal", function_deep_equal);
-   register_function("zero-or-one", function_zero_or_one);
-   register_function("one-or-more", function_one_or_more);
-   register_function("exactly-one", function_exactly_one);
-
-   // Number Functions
-   register_function("number", function_number);
-   register_function("sum", function_sum);
-   register_function("floor", function_floor);
-   register_function("ceiling", function_ceiling);
-   register_function("round", function_round);
-   register_function("round-half-to-even", function_round_half_to_even);
-   register_function("abs", function_abs);
-   register_function("min", function_min);
-   register_function("max", function_max);
-   register_function("avg", function_avg);
-
-   // Date and Time Functions
-   register_function("current-date", function_current_date);
-   register_function("current-time", function_current_time);
-   register_function("current-dateTime", function_current_date_time);
-   register_function("dateTime", function_date_time);
-   register_function("year-from-dateTime", function_year_from_date_time);
-   register_function("month-from-dateTime", function_month_from_date_time);
-   register_function("day-from-dateTime", function_day_from_date_time);
-   register_function("hours-from-dateTime", function_hours_from_date_time);
-   register_function("minutes-from-dateTime", function_minutes_from_date_time);
-   register_function("seconds-from-dateTime", function_seconds_from_date_time);
-   register_function("timezone-from-dateTime", function_timezone_from_date_time);
-   register_function("year-from-date", function_year_from_date);
-   register_function("month-from-date", function_month_from_date);
-   register_function("day-from-date", function_day_from_date);
-   register_function("timezone-from-date", function_timezone_from_date);
-   register_function("hours-from-time", function_hours_from_time);
-   register_function("minutes-from-time", function_minutes_from_time);
-   register_function("seconds-from-time", function_seconds_from_time);
-   register_function("timezone-from-time", function_timezone_from_time);
-   register_function("adjust-dateTime-to-timezone", function_adjust_date_time_to_timezone);
-   register_function("adjust-date-to-timezone", function_adjust_date_to_timezone);
-   register_function("adjust-time-to-timezone", function_adjust_time_to_timezone);
-   register_function("implicit-timezone", function_implicit_timezone);
-   register_function("years-from-duration", function_years_from_duration);
-   register_function("months-from-duration", function_months_from_duration);
-   register_function("days-from-duration", function_days_from_duration);
-   register_function("hours-from-duration", function_hours_from_duration);
-   register_function("minutes-from-duration", function_minutes_from_duration);
-   register_function("seconds-from-duration", function_seconds_from_duration);
-   register_function("years-from-yearMonthDuration", function_years_from_year_month_duration);
-   register_function("months-from-yearMonthDuration", function_months_from_year_month_duration);
-   register_function("days-from-dayTimeDuration", function_days_from_day_time_duration);
-   register_function("hours-from-dayTimeDuration", function_hours_from_day_time_duration);
-   register_function("minutes-from-dayTimeDuration", function_minutes_from_day_time_duration);
-   register_function("seconds-from-dayTimeDuration", function_seconds_from_day_time_duration);
-}
-
-bool XPathFunctionLibrary::has_function(std::string_view Name) const {
-   return find_function(Name) != nullptr;
-}
-
-XPathVal XPathFunctionLibrary::call_function(std::string_view Name, const std::vector<XPathVal> &Args,
-   const XPathContext &Context) const {
-   if (const auto *function_ptr = find_function(Name)) {
-      return (*function_ptr)(Args, Context);
-   }
-
-   *Context.expression_unsupported = true;
-
-   if (Context.document) {
-      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
-      Context.document->ErrorMsg.append("Unsupported XPath function: ").append(Name);
-   }
-
-   return XPathVal();
-}
-
-void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func) {
-   functions.insert_or_assign(std::string(Name), std::move(Func));
-}
-
-const XPathFunction * XPathFunctionLibrary::find_function(std::string_view Name) const {
-   auto iter = functions.find(Name);
-   if (iter != functions.end()) return &iter->second;
-
-   return nullptr;
-}
-
-//********************************************************************************************************************
-// Size Estimation Helpers for String Operations
-
-size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &Args) {
-   size_t total = 0;
-   for (const auto &arg : Args) {
-      // Conservative estimate based on type
-      switch (arg.Type) {
-         case XPVT::String:
-         case XPVT::Date:
-         case XPVT::Time:
-         case XPVT::DateTime:
-            total += arg.StringValue.length();
-            break;
-         case XPVT::Number:
-            total += 32; // Conservative estimate for number formatting
-            break;
-         case XPVT::Boolean:
-            total += 5; // "false" is longest
-            break;
-         case XPVT::NodeSet:
-            if (arg.node_set_string_override.has_value()) {
-               total += arg.node_set_string_override->length();
-            } else if (not arg.node_set_string_values.empty()) {
-               total += arg.node_set_string_values[0].length();
-            } else {
-               total += 64; // Conservative estimate for node content
-            }
-            break;
-      }
-   }
-   return total;
-}
-
-size_t XPathFunctionLibrary::estimate_normalize_space_size(const std::string &Input) {
-   // Worst case: no whitespace collapsing needed
-   return Input.length();
-}
-
-size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, const std::string &From) {
-   // Best case: no characters removed, worst case: same size as source
-   return Source.length();
-}
-
-//********************************************************************************************************************
-// Core XPath Function Implementations
-
+#include "function_library.cpp"
 #include "functions/accessor_support.cpp"
 #include "functions/func_accessors.cpp"
 #include "functions/func_nodeset.cpp"

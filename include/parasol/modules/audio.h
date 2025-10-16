@@ -495,9 +495,9 @@ class objSound : public Object {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_AUDIO static struct AudioBase *AudioBase;
+#define JUMPTABLE_AUDIO [[maybe_unused]] static struct AudioBase *AudioBase = nullptr;
 #else
-#define JUMPTABLE_AUDIO struct AudioBase *AudioBase;
+#define JUMPTABLE_AUDIO struct AudioBase *AudioBase = nullptr;
 #endif
 
 struct AudioBase {
