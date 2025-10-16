@@ -173,7 +173,7 @@ void XPathEvaluator::pop_cursor_state()
 }
 
 //********************************************************************************************************************
-// Dispatch AST nodes to the appropriate evaluation routine.
+// Dispatch AST nodes to the appropriate evaluation routine based on node type.
 
 ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -221,7 +221,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 // Execute a full location path expression, managing implicit root handling and cursor updates.
 // Returns ERR::Search if no matches were found.
 
-ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) 
+ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix)
 {
    pf::Log log(__FUNCTION__);
 
@@ -278,6 +278,7 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 }
 
 //********************************************************************************************************************
+// Evaluate a union expression by computing each branch and combining results with deduplication.
 
 ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -335,7 +336,7 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 }
 
 //********************************************************************************************************************
-// Evaluate a single step expression against the current context.
+// Evaluate a single location path step against the current evaluation context.
 
 ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix)
 {
@@ -362,7 +363,7 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
 }
 
 //********************************************************************************************************************
-// Recursive driver that iterates through each step in a location path.
+// Expand axis candidates by applying the axis traversal and filtering by the node test.
 
 void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
    const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches)
@@ -388,6 +389,7 @@ void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisT
 }
 
 //********************************************************************************************************************
+// Apply predicate expressions sequentially to filter axis candidates.
 
 ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPathNode *> &PredicateNodes,
    uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer)
@@ -415,6 +417,7 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
 }
 
 //********************************************************************************************************************
+// Invoke the registered callback for a matched node, handling both C and script callbacks.
 
 ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
 {
@@ -448,7 +451,7 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
          xml->Tags.pop_back();
       }
    });
-   
+
    Matched = true;
 
    xml->CursorTags = tags;
@@ -481,6 +484,7 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
 }
 
 //********************************************************************************************************************
+// Process matched axis nodes by invoking callbacks or passing to the next step.
 
 ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
    bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate)
@@ -537,9 +541,10 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
 }
 
 //********************************************************************************************************************
+// Recursively evaluate a sequence of location path steps against the context nodes.
 
-ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, 
-   size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) 
+ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps,
+   size_t StepIndex, uint32_t CurrentPrefix, bool &Matched)
 {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
@@ -609,6 +614,7 @@ ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std:
 }
 
 //********************************************************************************************************************
+// Returns the static registry mapping predicate operation names to their handler methods.
 
 const std::unordered_map<std::string_view, XPathEvaluator::PredicateHandler> &XPathEvaluator::predicate_handler_map() const
 {
@@ -621,6 +627,7 @@ const std::unordered_map<std::string_view, XPathEvaluator::PredicateHandler> &XP
 }
 
 //********************************************************************************************************************
+// Dispatch a named predicate operation to its registered handler function.
 
 XPathEvaluator::PredicateResult XPathEvaluator::dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
    uint32_t CurrentPrefix)
@@ -634,6 +641,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::dispatch_predicate_operation(std
 }
 
 //********************************************************************************************************************
+// Predicate handler for the attribute-exists operation.
 
 XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
@@ -661,6 +669,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicat
 }
 
 //********************************************************************************************************************
+// Predicate handler for the attribute-equals operation with wildcard support.
 
 XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
@@ -714,6 +723,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
 }
 
 //********************************************************************************************************************
+// Predicate handler for the content-equals operation with wildcard support.
 
 XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
@@ -757,6 +767,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
 }
 
 //********************************************************************************************************************
+// Evaluate a predicate expression, applying XPath predicate coercion rules.
 
 XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
    if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
@@ -811,6 +822,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
 }
 
 //********************************************************************************************************************
+// Resolve which XML document owns a given node by checking ID maps and registrations.
 
 extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 {
@@ -829,6 +841,7 @@ extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 }
 
 //********************************************************************************************************************
+// Determines if a node belongs to a different XML document than the evaluator's primary document.
 
 bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
 {
@@ -837,6 +850,7 @@ bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
 }
 
 //********************************************************************************************************************
+// Collect all nodes resulting from evaluating a step sequence without callback invocation.
 
 NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
    const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix,

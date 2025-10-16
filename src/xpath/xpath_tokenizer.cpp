@@ -601,7 +601,7 @@ XPathToken XPathTokenizer::scan_string(char QuoteChar)
 }
 
 //********************************************************************************************************************
-// Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the 
+// Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the
 // string into literal and expression parts so the parser can construct attribute value templates.
 
 XPathToken XPathTokenizer::scan_attribute_value(char QuoteChar, bool ProcessTemplates)

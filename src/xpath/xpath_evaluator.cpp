@@ -73,7 +73,7 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
    pf::Log log("XPath");
 
    expression_unsupported = true;
-   
+
    // Expression signature (compact AST fingerprint)
 
    std::string signature = "";

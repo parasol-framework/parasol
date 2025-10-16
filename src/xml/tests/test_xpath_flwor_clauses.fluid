@@ -75,9 +75,9 @@ function testOrderByDescendingNumbers()
          assert(errId == ERR_Okay, 'ORDER BY with numeric descending should expose node attributes: ' .. mSys.GetErrorMsg(errId))
          table.insert(ordered, idValue)
       end)
-      
+
    local recv_order = table.concat(ordered, ',')
-   
+
    assert(err == ERR_Okay, 'ORDER BY clause with descending numeric sort should evaluate successfully: ' .. tostring(xml.errorMsg))
    assert(recv_order == 'bk-3,bk-4,bk-1,bk-2', 'Expected order of bk-3,bk-4,bk-1,bk-2, got ' .. recv_order)
 end

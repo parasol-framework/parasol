@@ -7,7 +7,7 @@
 
 //********************************************************************************************************************
 
-XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) 
+XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix)
 {
    pf::Log log("XPath");
 

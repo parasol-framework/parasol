@@ -1,3 +1,24 @@
+//********************************************************************************************************************
+// XPath FLWOR Expression Evaluation
+//
+// FLWOR (For, Let, Where, Order by, Return) expressions provide powerful iteration and transformation
+// capabilities in XPath 2.0. This translation unit implements the complete evaluation pipeline for FLWOR
+// clauses, including variable binding, filtering, grouping, sorting, and final result construction.
+//
+// The evaluation strategy uses a tuple-based approach where each tuple represents a binding context
+// containing variable assignments and positional information. Clauses are applied sequentially, with
+// each clause potentially expanding or filtering the tuple stream. The implementation maintains precise
+// control over variable scoping, context node position tracking, and document order semantics to ensure
+// correct XPath semantics for complex expressions.
+//
+// Key responsibilities:
+//   - For bindings: iterate sequences and create tuple expansions
+//   - Let bindings: introduce immutable variable assignments
+//   - Where clauses: filter tuples based on predicate expressions
+//   - Group by clauses: partition tuples into groups with aggregate bindings
+//   - Order by clauses: sort tuples with collation and empty-value handling
+//   - Count clauses: assign position counters to tuples
+//   - Return expressions: evaluate results for each tuple and combine into final node-set
 
 #include "xpath_evaluator.h"
 #include "xpath_evaluator_detail.h"
@@ -5,7 +26,11 @@
 #include "../xml/schema/schema_types.h"
 #include "../xml/xml.h"
 
-static size_t combine_group_hash(size_t Seed, size_t Value)
+static size_t hash_xpath_group_value(const XPathVal &Value);
+
+// Combines two hash values into a single hash using a common mixing technique.
+
+inline size_t combine_group_hash(size_t Seed, size_t Value)
 {
    // 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to
    // decorrelate values when mixing hashes.  Incorporating it here improves the
@@ -13,6 +38,60 @@ static size_t combine_group_hash(size_t Seed, size_t Value)
    Seed ^= Value + 0x9e3779b97f4a7c15ull + (Seed << 6) + (Seed >> 2);
    return Seed;
 }
+
+struct FlworTuple {
+   std::unordered_map<std::string, XPathVal> bindings;
+   XMLTag *context_node = nullptr;
+   const XMLAttrib *context_attribute = nullptr;
+   size_t context_position = 1;
+   size_t context_size = 1;
+   std::vector<XPathVal> order_keys;
+   std::vector<bool> order_key_empty;
+   size_t original_index = 0;
+};
+
+struct TupleScope {
+   XPathEvaluator & evaluator;
+   XPathContext & context_ref;
+   std::vector<VariableBindingGuard> guards;
+
+   TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const FlworTuple &Tuple)
+      : evaluator(Evaluator), context_ref(ContextRef)
+   {
+      evaluator.push_context(Tuple.context_node, Tuple.context_position, Tuple.context_size, Tuple.context_attribute);
+      guards.reserve(Tuple.bindings.size());
+      for (const auto &entry : Tuple.bindings) guards.emplace_back(context_ref, entry.first, entry.second);
+   }
+
+   ~TupleScope() {
+      evaluator.pop_context();
+   }
+};
+
+struct GroupKey {
+   pf::vector<XPathVal> values;
+};
+
+struct GroupKeyHasher {
+   size_t operator()(const GroupKey &Key) const noexcept {
+      size_t seed = Key.values.size();
+      for (const auto &value : Key.values) seed = combine_group_hash(seed, hash_xpath_group_value(value));
+      return seed;
+   }
+};
+
+struct GroupKeyEqual {
+   bool operator()(const GroupKey &Left, const GroupKey &Right) const noexcept {
+      if (Left.values.size() != Right.values.size()) return false;
+      for (size_t index = 0; index < Left.values.size(); ++index) {
+         if (!compare_xpath_values(Left.values[index], Right.values[index])) return false;
+      }
+      return true;
+   }
+};
+
+//*********************************************************************************************************************
+// Computes a stable hash for a group key value, suitable for use in unordered_map/set.
 
 static size_t group_nodeset_length(const XPathVal &Value)
 {
@@ -22,6 +101,9 @@ static size_t group_nodeset_length(const XPathVal &Value)
    if ((length IS 0) and Value.node_set_string_override.has_value()) length = 1;
    return length;
 }
+
+//*********************************************************************************************************************
+// Retrieves the string value for a node in a group key value at the specified index.
 
 static std::string group_nodeset_string(const XPathVal &Value, size_t Index)
 {
@@ -42,6 +124,9 @@ static std::string group_nodeset_string(const XPathVal &Value, size_t Index)
 
    return std::string();
 }
+
+//*********************************************************************************************************************
+// Computes a stable hash for an XPath value, suitable for use in unordered_map/set.
 
 static size_t hash_xpath_group_value(const XPathVal &Value)
 {
@@ -104,57 +189,6 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    }
 
    bool tracing_flwor = is_trace_enabled();
-
-   struct FlworTuple {
-      std::unordered_map<std::string, XPathVal> bindings;
-      XMLTag *context_node = nullptr;
-      const XMLAttrib *context_attribute = nullptr;
-      size_t context_position = 1;
-      size_t context_size = 1;
-      std::vector<XPathVal> order_keys;
-      std::vector<bool> order_key_empty;
-      size_t original_index = 0;
-   };
-
-   struct TupleScope {
-      XPathEvaluator & evaluator;
-      XPathContext & context_ref;
-      std::vector<VariableBindingGuard> guards;
-
-      TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const FlworTuple &Tuple)
-         : evaluator(Evaluator), context_ref(ContextRef)
-      {
-         evaluator.push_context(Tuple.context_node, Tuple.context_position, Tuple.context_size, Tuple.context_attribute);
-         guards.reserve(Tuple.bindings.size());
-         for (const auto &entry : Tuple.bindings) guards.emplace_back(context_ref, entry.first, entry.second);
-      }
-
-      ~TupleScope() {
-         evaluator.pop_context();
-      }
-   };
-
-   struct GroupKey {
-      pf::vector<XPathVal> values;
-   };
-
-   struct GroupKeyHasher {
-      size_t operator()(const GroupKey &Key) const noexcept {
-         size_t seed = Key.values.size();
-         for (const auto &value : Key.values) seed = combine_group_hash(seed, hash_xpath_group_value(value));
-         return seed;
-      }
-   };
-
-   struct GroupKeyEqual {
-      bool operator()(const GroupKey &Left, const GroupKey &Right) const noexcept {
-         if (Left.values.size() != Right.values.size()) return false;
-         for (size_t index = 0; index < Left.values.size(); ++index) {
-            if (!compare_xpath_values(Left.values[index], Right.values[index])) return false;
-         }
-         return true;
-      }
-   };
 
    auto nodeset_length = [](const XPathVal &value) -> size_t
    {
