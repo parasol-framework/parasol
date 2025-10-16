@@ -581,6 +581,9 @@ void AxisEvaluator::evaluate_namespace_axis(XMLTag *Node, NODES &Output) {
    }
 }
 
+//********************************************************************************************************************
+// Self axis returns the context node itself.
+
 void AxisEvaluator::evaluate_self_axis(XMLTag *Node, NODES &Output) {
    Output.clear();
    if (Node) Output.push_back(Node);
