@@ -40,4 +40,4 @@ add_dependencies (xml_xpath_functions build_headers)
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
    $<TARGET_OBJECTS:xml_xpath_functions>
-   $<TARGET_OBJECTS:xml_schema> "xpath_evaluator_flwor.cpp")
+   $<TARGET_OBJECTS:xml_schema>)
