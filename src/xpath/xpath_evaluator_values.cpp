@@ -3070,45 +3070,59 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       std::vector<const XMLAttrib *> combined_attributes;
       std::optional<std::string> combined_override;
 
+      auto append_iteration_value = [&](const XPathVal &iteration_value) -> bool
+      {
+         if (iteration_value.Type IS XPVT::NodeSet)
+         {
+            size_t length = iteration_value.node_set.size();
+            if (length < iteration_value.node_set_attributes.size()) length = iteration_value.node_set_attributes.size();
+            if (length < iteration_value.node_set_string_values.size()) length = iteration_value.node_set_string_values.size();
+            if ((length IS 0) and iteration_value.node_set_string_override.has_value()) length = 1;
+
+            for (size_t node_index = 0; node_index < length; ++node_index)
+            {
+               XMLTag *node = node_index < iteration_value.node_set.size() ? iteration_value.node_set[node_index] : nullptr;
+               combined_nodes.push_back(node);
+
+               const XMLAttrib *attribute = nullptr;
+               if (node_index < iteration_value.node_set_attributes.size()) attribute = iteration_value.node_set_attributes[node_index];
+               combined_attributes.push_back(attribute);
+
+               std::string node_string;
+               bool use_override = iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty() and (node_index IS 0);
+               if (node_index < iteration_value.node_set_string_values.size()) node_string = iteration_value.node_set_string_values[node_index];
+               else if (use_override) node_string = *iteration_value.node_set_string_override;
+               else if (attribute) node_string = attribute->Value;
+               else if (node) node_string = XPathVal::node_string_value(node);
+
+               combined_strings.push_back(node_string);
+               if (!combined_override.has_value()) combined_override = node_string;
+            }
+
+            if (iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty())
+            {
+               if (!combined_override.has_value()) combined_override = iteration_value.node_set_string_override;
+            }
+
+            return true;
+         }
+
+         if (iteration_value.is_empty()) return true;
+
+         std::string atomic_string = iteration_value.to_string();
+         combined_nodes.push_back(nullptr);
+         combined_attributes.push_back(nullptr);
+         combined_strings.push_back(atomic_string);
+         if (!combined_override.has_value()) combined_override = atomic_string;
+         return true;
+      };
+
       std::function<bool(size_t)> evaluate_bindings = [&](size_t binding_index) -> bool {
          if (binding_index >= bindings.size()) {
             auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
             if (expression_unsupported) return false;
 
-            if (iteration_value.Type != XPVT::NodeSet) {
-               expression_unsupported = true;
-               return false;
-            }
-
-            for (size_t node_index = 0; node_index < iteration_value.node_set.size(); ++node_index) {
-               XMLTag *node = iteration_value.node_set[node_index];
-               combined_nodes.push_back(node);
-
-               const XMLAttrib *attribute = nullptr;
-               if (node_index < iteration_value.node_set_attributes.size()) {
-                  attribute = iteration_value.node_set_attributes[node_index];
-               }
-               combined_attributes.push_back(attribute);
-
-               std::string node_string;
-               bool use_override = iteration_value.node_set_string_override.has_value() and
-                  (node_index IS 0) and iteration_value.node_set_string_values.empty();
-               if (node_index < iteration_value.node_set_string_values.size()) {
-                  node_string = iteration_value.node_set_string_values[node_index];
-               }
-               else if (use_override) node_string = *iteration_value.node_set_string_override;
-               else if (node) node_string = XPathVal::node_string_value(node);
-
-               combined_strings.push_back(node_string);
-
-               if (!combined_override.has_value()) {
-                  if (iteration_value.node_set_string_override.has_value()) {
-                     combined_override = iteration_value.node_set_string_override;
-                  }
-                  else combined_override = node_string;
-               }
-            }
-
+            if (!append_iteration_value(iteration_value)) return false;
             return true;
          }
 
