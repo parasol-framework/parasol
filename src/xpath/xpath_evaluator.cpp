@@ -148,25 +148,6 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
 }
 
 //********************************************************************************************************************
-// Enables or disables trace output for a specified trace category. Currently supports TraceCategory::XPath for
-// controlling diagnostic logging during expression evaluation.
-
-void XPathEvaluator::set_trace_enabled(TraceCategory Category, bool Enabled)
-{
-   if (Category IS TraceCategory::XPath) trace_xpath_enabled = Enabled;
-}
-
-//********************************************************************************************************************
-// Returns whether trace is enabled for the specified trace category. Used to conditionally log diagnostic
-// information during expression evaluation.
-
-bool XPathEvaluator::is_trace_enabled(TraceCategory Category) const
-{
-   if (Category IS TraceCategory::XPath) return trace_xpath_enabled;
-   return false;
-}
-
-//********************************************************************************************************************
 // Public method to evaluate complete XPath expressions and return computed values
 
 ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *Result, uint32_t CurrentPrefix)

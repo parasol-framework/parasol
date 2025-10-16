@@ -2,7 +2,7 @@
 // XPath Expression and Value Evaluation
 //
 // This translation unit contains the core expression evaluation engine for XPath. It handles:
-// 
+//
 //   - Location path evaluation (evaluate_path_expression_value, evaluate_path_from_nodes)
 //   - Set operations (union, intersect, except)
 //   - Expression evaluation for all XPath types (evaluate_expression - the main dispatcher)
@@ -43,23 +43,23 @@ inline bool is_ncname_char(char Ch)
    return Ch IS '.';
 }
 
-// Determines if the supplied string adheres to the NCName production so constructor names can be validated without 
+// Determines if the supplied string adheres to the NCName production so constructor names can be validated without
 // deferring to the XML runtime.
 
 inline bool is_valid_ncname(std::string_view Value)
 {
    if (Value.empty()) return false;
-   if (!is_ncname_start(Value.front())) return false;
+   if (not is_ncname_start(Value.front())) return false;
 
    for (size_t index = 1; index < Value.length(); ++index) {
-      if (!is_ncname_char(Value[index])) return false;
+      if (not is_ncname_char(Value[index])) return false;
    }
 
    return true;
 }
 
 //********************************************************************************************************************
-// Removes leading and trailing XML whitespace characters from constructor data so that lexical comparisons can be 
+// Removes leading and trailing XML whitespace characters from constructor data so that lexical comparisons can be
 // performed using the normalised string.
 
 static std::string trim_constructor_whitespace(std::string_view Value)
@@ -74,7 +74,7 @@ static std::string trim_constructor_whitespace(std::string_view Value)
 }
 
 //********************************************************************************************************************
-// Represents a QName or expanded QName parsed from constructor syntax, capturing the prefix, local part, and resolved 
+// Represents a QName or expanded QName parsed from constructor syntax, capturing the prefix, local part, and resolved
 // namespace URI when known.
 
 struct ConstructorQName {
@@ -85,7 +85,7 @@ struct ConstructorQName {
 };
 
 //********************************************************************************************************************
-// Parses a QName or expanded QName literal used by computed constructors.  The function recognises the "Q{uri}local" 
+// Parses a QName or expanded QName literal used by computed constructors.  The function recognises the "Q{uri}local"
 // form as well as prefixed names and produces a structured representation that downstream evaluators can inspect.
 
 ConstructorQName parse_constructor_qname_string(std::string_view Value)
@@ -105,7 +105,7 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
       result.namespace_uri = std::string(working.substr(2, closing - 2));
       std::string_view remainder = working.substr(closing + 1);
       if (remainder.empty()) return result;
-      if (!is_valid_ncname(remainder)) return result;
+      if (not is_valid_ncname(remainder)) return result;
 
       result.local = std::string(remainder);
       result.valid = true;
@@ -114,7 +114,7 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
 
    size_t colon = working.find(':');
    if (colon IS std::string_view::npos) {
-      if (!is_valid_ncname(working)) return result;
+      if (not is_valid_ncname(working)) return result;
       result.local = std::string(working);
       result.valid = true;
       return result;
@@ -123,7 +123,7 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
    std::string_view prefix_view = working.substr(0, colon);
    std::string_view local_view = working.substr(colon + 1);
    if (prefix_view.empty() or local_view.empty()) return result;
-   if (!is_valid_ncname(prefix_view) or !is_valid_ncname(local_view)) return result;
+   if (not is_valid_ncname(prefix_view) or !is_valid_ncname(local_view)) return result;
 
    result.prefix = std::string(prefix_view);
    result.local = std::string(local_view);
@@ -135,9 +135,9 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
 
 //********************************************************************************************************************
 
-XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix) 
+XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix)
 {
-   if (!PathNode) {
+   if (not PathNode) {
       expression_unsupported = true;
       return XPathVal();
    }
@@ -148,7 +148,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
       location = PathNode->get_child(0);
    }
 
-   if ((!location) or (location->type != XPathNodeType::LOCATION_PATH)) {
+   if ((not location) or (location->type != XPathNodeType::LOCATION_PATH)) {
       expression_unsupported = true;
       return XPathVal();
    }
@@ -161,7 +161,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
 
    for (size_t index = 0; index < location->child_count(); ++index) {
       auto *child = location->get_child(index);
-      if (!child) continue;
+      if (not child) continue;
 
       if ((index IS 0) and (child->type IS XPathNodeType::ROOT)) {
          has_root = true;
@@ -201,10 +201,10 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
 
       for (size_t index = 0; index < last_step->child_count(); ++index) {
          auto *child = last_step->get_child(index);
-         if (!child) continue;
+         if (not child) continue;
 
          if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-         else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+         else if ((not node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
             (child->type IS XPathNodeType::WILDCARD) or
             (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
       }
@@ -254,10 +254,10 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
 
       for (size_t index = 0; index < step->child_count(); ++index) {
          auto *child = step->get_child(index);
-         if (!child) continue;
+         if (not child) continue;
 
          if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-         else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+         else if ((not node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
             (child->type IS XPathNodeType::WILDCARD) or
             (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
       }
@@ -267,7 +267,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
       if ((axis IS AxisType::SELF) and !node_results.empty()) {
          bool accepts_attribute = false;
 
-         if (!node_test) accepts_attribute = true;
+         if (not node_test) accepts_attribute = true;
          else if (node_test->type IS XPathNodeType::WILDCARD) accepts_attribute = true;
          else if (node_test->type IS XPathNodeType::NODE_TYPE_TEST) accepts_attribute = node_test->value IS "node";
 
@@ -290,7 +290,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
       }
 
       for (auto *candidate : node_results) {
-         if (!candidate) continue;
+         if (not candidate) continue;
 
          auto matches = dispatch_axis(AxisType::ATTRIBUTE, candidate);
          if (matches.empty()) continue;
@@ -299,14 +299,14 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
          filtered.reserve(matches.size());
 
          for (auto &match : matches) {
-            if (!match.attribute) continue;
-            if (!match_node_test(attribute_test, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
+            if (not match.attribute) continue;
+            if (not match_node_test(attribute_test, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
             filtered.push_back(match);
          }
 
          if (filtered.empty()) continue;
 
-         if (!attribute_predicates.empty()) {
+         if (not attribute_predicates.empty()) {
             std::vector<AxisMatch> predicate_buffer;
             predicate_buffer.reserve(filtered.size());
 
@@ -346,7 +346,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
       if (attribute_nodes.empty()) return XPathVal(attribute_nodes);
 
       std::optional<std::string> first_value;
-      if (!attribute_values.empty()) first_value = attribute_values[0];
+      if (not attribute_values.empty()) first_value = attribute_values[0];
       return XPathVal(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
    }
 
@@ -402,7 +402,7 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
       }
 
       for (auto *candidate : node_results) {
-         if (!candidate) continue;
+         if (not candidate) continue;
 
          auto matches = dispatch_axis(AxisType::ATTRIBUTE, candidate);
          if (matches.empty()) continue;
@@ -411,14 +411,14 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
          filtered.reserve(matches.size());
 
          for (auto &match : matches) {
-            if (!match.attribute) continue;
-            if (!match_node_test(AttributeTest, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
+            if (not match.attribute) continue;
+            if (not match_node_test(AttributeTest, AxisType::ATTRIBUTE, match.node, match.attribute, CurrentPrefix)) continue;
             filtered.push_back(match);
          }
 
          if (filtered.empty()) continue;
 
-         if (!attribute_predicates.empty()) {
+         if (not attribute_predicates.empty()) {
             std::vector<AxisMatch> predicate_buffer;
             predicate_buffer.reserve(filtered.size());
 
@@ -458,7 +458,7 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
       if (attribute_nodes.empty()) return XPathVal(attribute_nodes);
 
       std::optional<std::string> first_value;
-      if (!attribute_values.empty()) first_value = attribute_values[0];
+      if (not attribute_values.empty()) first_value = attribute_values[0];
       return XPathVal(attribute_nodes, first_value, std::move(attribute_values), std::move(attribute_refs));
    }
 
@@ -511,7 +511,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
    std::optional<std::string> combined_override;
 
    for (auto *branch : Branches) {
-      if (!branch) continue;
+      if (not branch) continue;
 
       context = saved_context;
       context_stack = saved_context_stack;
@@ -550,7 +550,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
          if (index < branch_value.node_set_attributes.size()) attribute = branch_value.node_set_attributes[index];
 
          NodeIdentity identity { node, attribute };
-         if (!seen_entries.insert(identity).second) continue;
+         if (not seen_entries.insert(identity).second) continue;
 
          UnionEntry entry;
          entry.node = node;
@@ -559,7 +559,7 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
          if (index < branch_value.node_set_string_values.size()) entry.string_value = branch_value.node_set_string_values[index];
          else entry.string_value = XPathVal::node_string_value(node);
 
-         if (!combined_override.has_value()) {
+         if (not combined_override.has_value()) {
             if (branch_value.node_set_string_override.has_value()) combined_override = branch_value.node_set_string_override;
             else combined_override = entry.string_value;
          }
@@ -657,7 +657,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    };
 
    auto left_value_opt = evaluate_operand(Left);
-   if (!left_value_opt.has_value()) {
+   if (not left_value_opt.has_value()) {
       context         = saved_context;
       context_stack   = saved_context_stack;
       cursor_stack    = saved_cursor_stack;
@@ -668,7 +668,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    }
 
    auto right_value_opt = evaluate_operand(Right);
-   if (!right_value_opt.has_value()) {
+   if (not right_value_opt.has_value()) {
       context         = saved_context;
       context_stack   = saved_context_stack;
       cursor_stack    = saved_cursor_stack;
@@ -707,8 +707,8 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       if (index < left_value.node_set_attributes.size()) attribute = left_value.node_set_attributes[index];
 
       NodeIdentity identity { node, attribute };
-      if (!right_entries.contains(identity)) continue;
-      if (!inserted.insert(identity).second) continue;
+      if (not right_entries.contains(identity)) continue;
+      if (not inserted.insert(identity).second) continue;
 
       SetEntry entry;
       entry.node = node;
@@ -717,7 +717,7 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       if (index < left_value.node_set_string_values.size()) entry.string_value = left_value.node_set_string_values[index];
       else entry.string_value = XPathVal::node_string_value(node);
 
-      if (!combined_override.has_value()) combined_override = entry.string_value;
+      if (not combined_override.has_value()) combined_override = entry.string_value;
 
       entries.push_back(std::move(entry));
    }
@@ -811,7 +811,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    };
 
    auto left_value_opt = evaluate_operand(Left);
-   if (!left_value_opt.has_value()) {
+   if (not left_value_opt.has_value()) {
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
@@ -822,7 +822,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    }
 
    auto right_value_opt = evaluate_operand(Right);
-   if (!right_value_opt.has_value()) {
+   if (not right_value_opt.has_value()) {
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
@@ -862,7 +862,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 
       NodeIdentity identity { node, attribute };
       if (right_entries.contains(identity)) continue;
-      if (!inserted.insert(identity).second) continue;
+      if (not inserted.insert(identity).second) continue;
 
       SetEntry entry;
       entry.node = node;
@@ -871,7 +871,7 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       if (index < left_value.node_set_string_values.size()) entry.string_value = left_value.node_set_string_values[index];
       else entry.string_value = XPathVal::node_string_value(node);
 
-      if (!combined_override.has_value()) combined_override = entry.string_value;
+      if (not combined_override.has_value()) combined_override = entry.string_value;
 
       entries.push_back(std::move(entry));
    }
@@ -908,17 +908,17 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 }
 
 //********************************************************************************************************************
-// Registers the supplied namespace URI with the owning XML document so constructed nodes reference consistent 
+// Registers the supplied namespace URI with the owning XML document so constructed nodes reference consistent
 // namespace identifiers.
 
 uint32_t XPathEvaluator::register_constructor_namespace(const std::string &URI) const
 {
-   if (!xml) return 0;
+   if (not xml) return 0;
    return xml->registerNamespace(URI);
 }
 
 //********************************************************************************************************************
-// Resolves a prefix within the chained constructor namespace scopes, honouring the nearest declaration and falling 
+// Resolves a prefix within the chained constructor namespace scopes, honouring the nearest declaration and falling
 // back to the default namespace when the prefix is empty.
 
 std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
@@ -945,7 +945,7 @@ std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const Constru
 }
 
 //********************************************************************************************************************
-// Recursively clones an XML node subtree so constructor operations can duplicate existing content without mutating 
+// Recursively clones an XML node subtree so constructor operations can duplicate existing content without mutating
 // the original document tree.
 
 XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
@@ -969,7 +969,7 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
 // Appends a sequence value produced by constructor content into the target element, handling node cloning, attribute
 // creation, and text concatenation according to the XPath constructor rules.
 
-bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix, 
+bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix,
    const ConstructorNamespaceScope &Scope)
 {
    if (Value.Type IS XPVT::NodeSet) {
@@ -977,7 +977,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
 
       for (size_t index = 0; index < Value.node_set.size(); ++index) {
          XMLTag *node = Value.node_set[index];
-         if (!node) continue;
+         if (not node) continue;
 
          const XMLAttrib *attribute = nullptr;
          if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
@@ -1022,7 +1022,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
 }
 
 //********************************************************************************************************************
-// Evaluates an attribute value template (AVT) collected during parsing.  The template parts alternate between literal 
+// Evaluates an attribute value template (AVT) collected during parsing.  The template parts alternate between literal
 // text and embedded expressions, and the resolved string is returned for assignment to the constructed attribute.
 
 std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
@@ -1033,13 +1033,13 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
    for (int index = 0; index < std::ssize(Attribute.value_parts); ++index) {
       const auto &part = Attribute.value_parts[index];
-      if (!part.is_expression) {
+      if (not part.is_expression) {
          result += part.text;
          continue;
       }
 
       auto *expr = Attribute.get_expression_for_part(index);
-      if (!expr) {
+      if (not expr) {
          log.detail("AVT failed at part index %d", index);
          record_error("Attribute value template part is missing its expression.", (const XPathNode *)nullptr, true);
          return std::nullopt;
@@ -1054,12 +1054,6 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
       expression_unsupported = false;
       XPathVal value = evaluate_expression(expr, CurrentPrefix);
 
-      log.warning("AVT evaluated expression, type=%d, expression_unsupported=%s",
-         int(value.Type), expression_unsupported ? "true" : "false");
-      if (value.Type IS XPVT::Number) {
-         log.warning("  Number value=%f", value.NumberValue);
-      }
-
       bool evaluation_failed = expression_unsupported;
       std::string evaluation_error;
       if (xml) evaluation_error = xml->ErrorMsg;
@@ -1073,14 +1067,14 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
             variable_list.push_back('[');
             bool first_binding = true;
             for (const auto &binding : *context.variables) {
-               if (!first_binding) variable_list.append(", ");
+               if (not first_binding) variable_list.append(", ");
                variable_list.append(binding.first);
                first_binding = false;
             }
             variable_list.push_back(']');
          }
 
-         if (is_trace_enabled(TraceCategory::XPath)) {
+         if (is_trace_enabled()) {
             std::string signature = build_ast_signature(expr);
             int variable_count = std::ssize(*context.variables);
             std::string variable_list;
@@ -1088,13 +1082,12 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
             variable_list.push_back('[');
             bool first_binding = true;
             for (const auto &binding : *context.variables) {
-               if (!first_binding) variable_list.append(", ");
+               if (not first_binding) variable_list.append(", ");
                variable_list.append(binding.first);
                first_binding = false;
             }
             variable_list.push_back(']');
 
-            pf::Log log("XPath");
             log.msg(VLF::TRACE, "AVT context variable count: %d", variable_count);
             log.msg(VLF::TRACE, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
                signature.c_str(), variable_list.c_str(), previous_flag ? "true" : "false");
@@ -1102,7 +1095,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 
          record_error("Attribute value template expression could not be evaluated.", expr);
          if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Attribute value template expression could not be evaluated.");
-        
+
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
          return std::nullopt;
@@ -1119,27 +1112,26 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 }
 
 //********************************************************************************************************************
-// Reduces the child expressions beneath a constructor content node to a single string value.  Each child expression 
+// Reduces the child expressions beneath a constructor content node to a single string value.  Each child expression
 // is evaluated and the textual representation is concatenated to form the returned content.
 
 std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if (!Node) return std::string();
-   if (!Node->value.empty()) return Node->value;
+   if (not Node) return std::string();
+   if (not Node->value.empty()) return Node->value;
 
    if (Node->child_count() IS 0) return std::string();
 
    const XPathNode *expr = Node->get_child(0);
-   if (!expr) return std::string();
+   if (not expr) return std::string();
 
    size_t previous_constructed = constructed_nodes.size();
    auto saved_id = next_constructed_node_id;
    XPathVal value = evaluate_expression(expr, CurrentPrefix);
    if (expression_unsupported) {
-      if (is_trace_enabled(TraceCategory::XPath)) {
+      if (is_trace_enabled()) {
          std::string signature = build_ast_signature(expr);
-         pf::Log log("XPath");
-         log.msg(VLF::TRACE, "Constructor content expression failed: %s", signature.c_str());
+         pf::Log("XPath").msg(VLF::TRACE, "Constructor content expression failed: %s", signature.c_str());
       }
       record_error("Constructor content expression could not be evaluated.", expr);
       if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg.assign("Constructor content expression could not be evaluated.");
@@ -1161,13 +1153,13 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
                continue;
             }
 
-            if (!value.node_set_string_values.empty() and (index < value.node_set_string_values.size())) {
+            if (not value.node_set_string_values.empty() and (index < value.node_set_string_values.size())) {
                result += value.node_set_string_values[index];
                continue;
             }
 
             XMLTag *node = value.node_set[index];
-            if (!node) continue;
+            if (not node) continue;
             result += XPathVal::node_string_value(node);
          }
       }
@@ -1180,22 +1172,22 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
 }
 
 //********************************************************************************************************************
-// Resolves the lexical name of a constructor by evaluating the optional expression or using the literal metadata 
-// captured by the parser.  The resulting string retains the raw QName form so later stages can validate namespace 
+// Resolves the lexical name of a constructor by evaluating the optional expression or using the literal metadata
+// captured by the parser.  The resulting string retains the raw QName form so later stages can validate namespace
 // bindings.
 
 std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if (!Node) return std::string();
+   pf::Log log("XPath");
+
+   if (not Node) return std::string();
 
    size_t previous_constructed = constructed_nodes.size();
    auto saved_id = next_constructed_node_id;
    XPathVal value = evaluate_expression(Node, CurrentPrefix);
-   if (expression_unsupported)
-   {
-      if (is_trace_enabled(TraceCategory::XPath)) {
+   if (expression_unsupported) {
+      if (is_trace_enabled()) {
          std::string signature = build_ast_signature(Node);
-         pf::Log log("XPath");
          log.msg(VLF::TRACE, "Constructor name expression failed: %s", signature.c_str());
       }
       record_error("Constructor name expression could not be evaluated.", Node);
@@ -1212,8 +1204,8 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_name_string(cons
 }
 
 //********************************************************************************************************************
-// Builds an XMLTag representing a direct element constructor.  The function walks the parsed constructor metadata, 
-// creates namespace scopes, instantiates attributes, and recursively processes nested constructors and enclosed 
+// Builds an XMLTag representing a direct element constructor.  The function walks the parsed constructor metadata,
+// creates namespace scopes, instantiates attributes, and recursively processes nested constructors and enclosed
 // expressions.
 
 std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
@@ -1221,12 +1213,12 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 {
    pf::Log log("XPath");
 
-   if ((!Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)) {
       record_error("Invalid direct constructor node encountered.", Node, true);
       return std::nullopt;
    }
 
-   if (!Node->has_constructor_info()) {
+   if (not Node->has_constructor_info()) {
       record_error("Direct constructor is missing structural metadata.", Node, true);
       return std::nullopt;
    }
@@ -1249,7 +1241,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
    for (const auto &attribute : info.attributes) {
       auto value = evaluate_attribute_value_template(attribute, CurrentPrefix);
-      if (!value) return std::nullopt;
+      if (not value) return std::nullopt;
 
       EvaluatedAttribute evaluated;
       evaluated.definition = &attribute;
@@ -1269,12 +1261,11 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
    element_attributes.emplace_back(element_name, "");
 
-   for (const auto &entry : evaluated_attributes)
-   {
+   for (const auto &entry : evaluated_attributes) {
       const auto *attribute = entry.definition;
       const std::string &value = entry.value;
 
-      if (!attribute->is_namespace_declaration) continue;
+      if (not attribute->is_namespace_declaration) continue;
 
       if (attribute->prefix.empty() and (attribute->name IS "xmlns")) {
          if (value.empty()) element_scope.default_namespace = uint32_t{0};
@@ -1311,9 +1302,9 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
       if (attribute->is_namespace_declaration) continue;
 
-      if (!attribute->prefix.empty()) {
+      if (not attribute->prefix.empty()) {
          auto resolved = resolve_constructor_prefix(element_scope, attribute->prefix);
-         if (!resolved.has_value())
+         if (not resolved.has_value())
          {
             record_error("Attribute prefix is not bound in constructor scope.", Node, true);
             return std::nullopt;
@@ -1328,15 +1319,15 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          attribute_name += attribute->name;
       }
 
-      log.warning("Adding attribute '%s' with value '%s'", attribute_name.c_str(), value.c_str());
+      log.trace("Adding attribute '%s' with value '%s'", attribute_name.c_str(), value.c_str());
       element_attributes.emplace_back(attribute_name, value);
    }
 
    uint32_t namespace_id = 0;
-   if (!info.namespace_uri.empty()) namespace_id = register_constructor_namespace(info.namespace_uri);
-   else if (!info.prefix.empty()) {
+   if (not info.namespace_uri.empty()) namespace_id = register_constructor_namespace(info.namespace_uri);
+   else if (not info.prefix.empty()) {
       auto resolved = resolve_constructor_prefix(element_scope, info.prefix);
-      if (!resolved.has_value()) {
+      if (not resolved.has_value()) {
          record_error("Element prefix is not declared within constructor scope.", Node, true);
          return std::nullopt;
       }
@@ -1355,18 +1346,18 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    for (size_t index = 0; index < Node->child_count(); ++index)
    {
       const XPathNode *child = Node->get_child(index);
-      if (!child) continue;
+      if (not child) continue;
 
       if (child->type IS XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)
       {
          auto nested = build_direct_element_node(child, CurrentPrefix, &element_scope, element.ID);
-         if (!nested) return std::nullopt;
+         if (not nested) return std::nullopt;
          element.Children.push_back(std::move(*nested));
          continue;
       }
 
       if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT) {
-         if (!child->value.empty()) {
+         if (not child->value.empty()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", child->value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
@@ -1378,13 +1369,13 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          if (child->child_count() IS 0) continue;
 
          const XPathNode *expr = child->get_child(0);
-         if (!expr) continue;
+         if (not expr) continue;
 
          size_t previous_constructed = constructed_nodes.size();
          auto saved_id = next_constructed_node_id;
          XPathVal value = evaluate_expression(expr, CurrentPrefix);
          if (expression_unsupported) return std::nullopt;
-         if (!append_constructor_sequence(element, value, CurrentPrefix, element_scope)) return std::nullopt;
+         if (not append_constructor_sequence(element, value, CurrentPrefix, element_scope)) return std::nullopt;
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
          continue;
@@ -1398,13 +1389,13 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 }
 
 //********************************************************************************************************************
-// Entry point used by the evaluator to execute direct element constructors in the expression tree.  The resulting 
+// Entry point used by the evaluator to execute direct element constructors in the expression tree.  The resulting
 // element is appended to the constructed node list and wrapped in an XPathVal for downstream consumers.
 
 XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    auto element = build_direct_element_node(Node, CurrentPrefix, nullptr, 0);
-   if (!element) {
+   if (not element) {
       if (xml and xml->ErrorMsg.empty()) record_error("Direct element constructor could not be evaluated.", Node, true);
       return XPathVal();
    }
@@ -1424,17 +1415,17 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
 }
 
 //********************************************************************************************************************
-// Handles computed element constructors where the element name or namespace is driven by runtime expressions.  The 
+// Handles computed element constructors where the element name or namespace is driven by runtime expressions.  The
 // method prepares the namespace scope and evaluates the content sequence before emitting the constructed element.
 
 XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR)) {
       record_error("Invalid computed element constructor node encountered.", Node, true);
       return XPathVal();
    }
 
-   if (!Node->has_constructor_info()) {
+   if (not Node->has_constructor_info()) {
       record_error("Computed element constructor is missing metadata.", Node, true);
       return XPathVal();
    }
@@ -1443,10 +1434,10 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
    if (Node->has_name_expression()) {
       auto name_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
-      if (!name_string) return XPathVal();
+      if (not name_string) return XPathVal();
 
       auto parsed = parse_constructor_qname_string(*name_string);
-      if (!parsed.valid) {
+      if (not parsed.valid) {
          record_error("Computed element name must resolve to a QName.", Node, true);
          return XPathVal();
       }
@@ -1468,9 +1459,9 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
    auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t> {
       if (Prefix.empty()) return uint32_t{0};
-      if (!xml) return std::nullopt;
+      if (not xml) return std::nullopt;
       if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
-      if (!context.context_node) return std::nullopt;
+      if (not context.context_node) return std::nullopt;
 
       uint32_t resolved_hash = 0;
       if (xml->resolvePrefix(Prefix, context.context_node->ID, resolved_hash) IS ERR::Okay) return resolved_hash;
@@ -1478,12 +1469,10 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    };
 
    uint32_t namespace_id = 0;
-   if (!name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
-   else if (!name_info.prefix.empty())
-   {
+   if (not name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
+   else if (not name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
-      if (!resolved.has_value())
-      {
+      if (not resolved.has_value()) {
          record_error("Element prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
@@ -1492,8 +1481,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
    std::string element_name;
    if (name_info.prefix.empty()) element_name = name_info.local;
-   else
-   {
+   else {
       element_name = name_info.prefix;
       element_name += ':';
       element_name += name_info.local;
@@ -1513,7 +1501,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
       if (content_node) {
-         if (!content_node->value.empty()) {
+         if (not content_node->value.empty()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", content_node->value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
@@ -1527,7 +1515,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
                if (expression_unsupported) return XPathVal();
-               if (!append_constructor_sequence(element, value, CurrentPrefix, scope)) return XPathVal();
+               if (not append_constructor_sequence(element, value, CurrentPrefix, scope)) return XPathVal();
                constructed_nodes.resize(previous_constructed);
                next_constructed_node_id = saved_id;
             }
@@ -1550,17 +1538,17 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 }
 
 //********************************************************************************************************************
-// Implements computed attribute constructors, resolving the attribute name at runtime and constructing a single 
+// Implements computed attribute constructors, resolving the attribute name at runtime and constructing a single
 // attribute node according to the XPath specification.
 
 XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR)) {
       record_error("Invalid computed attribute constructor node encountered.", Node, true);
       return XPathVal();
    }
 
-   if (!Node->has_constructor_info()) {
+   if (not Node->has_constructor_info()) {
       record_error("Computed attribute constructor is missing metadata.", Node, true);
       return XPathVal();
    }
@@ -1569,15 +1557,15 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
    if (Node->has_name_expression()) {
       auto name_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
-      if (!name_string) return XPathVal();
+      if (not name_string) return XPathVal();
 
       auto parsed = parse_constructor_qname_string(*name_string);
-      if (!parsed.valid) {
+      if (not parsed.valid) {
          record_error("Computed attribute name must resolve to a QName.", Node, true);
          return XPathVal();
       }
 
-      if (!parsed.prefix.empty()) name_info.prefix = parsed.prefix;
+      if (not parsed.prefix.empty()) name_info.prefix = parsed.prefix;
       name_info.local = parsed.local;
       name_info.namespace_uri = parsed.namespace_uri;
       name_info.valid = true;
@@ -1595,12 +1583,11 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
       return XPathVal();
    }
 
-   auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t>
-   {
+   auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t> {
       if (Prefix.empty()) return uint32_t{0};
-      if (!xml) return std::nullopt;
+      if (not xml) return std::nullopt;
       if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
-      if (!context.context_node) return std::nullopt;
+      if (not context.context_node) return std::nullopt;
 
       uint32_t resolved_hash = 0;
       if (xml->resolvePrefix(Prefix, context.context_node->ID, resolved_hash) IS ERR::Okay) return resolved_hash;
@@ -1608,10 +1595,10 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    };
 
    uint32_t namespace_id = 0;
-   if (!name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
-   else if (!name_info.prefix.empty()) {
+   if (not name_info.namespace_uri.empty()) namespace_id = register_constructor_namespace(name_info.namespace_uri);
+   else if (not name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
-      if (!resolved.has_value()) {
+      if (not resolved.has_value()) {
          record_error("Attribute prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
@@ -1628,7 +1615,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
    auto value_string = evaluate_constructor_content_string(content_node, CurrentPrefix);
-   if (!value_string) return XPathVal();
+   if (not value_string) return XPathVal();
 
    pf::vector<XMLAttrib> attribute_attribs;
    attribute_attribs.emplace_back("$attribute", "");
@@ -1654,19 +1641,19 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 }
 
 //********************************************************************************************************************
-// Evaluates text constructors by flattening the enclosed expression into a string and returning it as a text node 
+// Evaluates text constructors by flattening the enclosed expression into a string and returning it as a text node
 // for inclusion in the result sequence.
 
 XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR)) {
       record_error("Invalid text constructor node encountered.", Node, true);
       return XPathVal();
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
    auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
-   if (!content) return XPathVal();
+   if (not content) return XPathVal();
 
    pf::vector<XMLAttrib> text_attribs;
    text_attribs.emplace_back("", *content);
@@ -1695,24 +1682,22 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
 
 XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR)) {
       record_error("Invalid comment constructor node encountered.", Node, true);
       return XPathVal();
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
    auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
-   if (!content) return XPathVal();
+   if (not content) return XPathVal();
 
    auto double_dash = content->find("--");
-   if (!(double_dash IS std::string::npos))
-   {
+   if (not (double_dash IS std::string::npos)) {
       record_error("Comments cannot contain consecutive hyphen characters.", Node, true);
       return XPathVal();
    }
 
-   if (!content->empty() and (content->back() IS '-'))
-   {
+   if (not content->empty() and (content->back() IS '-')) {
       record_error("Comments cannot end with a hyphen.", Node, true);
       return XPathVal();
    }
@@ -1739,22 +1724,21 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
 }
 
 //********************************************************************************************************************
-// Executes processing-instruction constructors, resolving the target name and content while enforcing NCName rules 
+// Executes processing-instruction constructors, resolving the target name and content while enforcing NCName rules
 // defined by XPath.
 
 XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR)) {
       record_error("Invalid processing-instruction constructor encountered.", Node, true);
       return XPathVal();
    }
 
    std::string target;
 
-   if (Node->has_name_expression())
-   {
+   if (Node->has_name_expression()) {
       auto target_string = evaluate_constructor_name_string(Node->get_name_expression(), CurrentPrefix);
-      if (!target_string) return XPathVal();
+      if (not target_string) return XPathVal();
       target = *target_string;
    }
    else if (Node->has_constructor_info()) target = Node->constructor_info->name;
@@ -1766,18 +1750,17 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
       return XPathVal();
    }
 
-   if (!is_valid_ncname(target)) {
+   if (not is_valid_ncname(target)) {
       record_error("Processing-instruction target must be an NCName.", Node, true);
       return XPathVal();
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
    auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
-   if (!content) return XPathVal();
+   if (not content) return XPathVal();
 
    auto terminator = content->find("?>");
-   if (!(terminator IS std::string::npos))
-   {
+   if (not (terminator IS std::string::npos)) {
       record_error("Processing-instruction content cannot contain '?>'.", Node, true);
       return XPathVal();
    }
@@ -1811,8 +1794,7 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
 
 XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::DOCUMENT_CONSTRUCTOR))
-   {
+   if ((not Node) or (Node->type != XPathNodeType::DOCUMENT_CONSTRUCTOR)) {
       record_error("Invalid document constructor node encountered.", Node, true);
       return XPathVal();
    }
@@ -1831,7 +1813,7 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
    if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
       if (content_node) {
-         if (!content_node->value.empty()) {
+         if (not content_node->value.empty()) {
             pf::vector<XMLAttrib> text_attribs;
             text_attribs.emplace_back("", content_node->value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
@@ -1845,7 +1827,7 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
                if (expression_unsupported) return XPathVal();
-               if (!append_constructor_sequence(document_node, value, CurrentPrefix, scope)) return XPathVal();
+               if (not append_constructor_sequence(document_node, value, CurrentPrefix, scope)) return XPathVal();
                constructed_nodes.resize(previous_constructed);
                next_constructed_node_id = saved_id;
             }
@@ -1871,19 +1853,15 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
 
 ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
 {
-   bool tracing_xpath = is_trace_enabled(TraceCategory::XPath);
-   auto trace_nodes_detail = [&](const char *Format, auto ...Args)
-   {
-      if (!tracing_xpath) return;
-      pf::Log log("XPath");
-      log.msg(VLF::TRACE, Format, Args...);
+   bool tracing_xpath = is_trace_enabled();
+   auto trace_nodes_detail = [&](const char *Format, auto ...Args) {
+      if (not tracing_xpath) return;
+      pf::Log("XPath").msg(VLF::TRACE, Format, Args...);
    };
 
-   auto trace_nodes_verbose = [&](const char *Format, auto ...Args)
-   {
-      if (!tracing_xpath) return;
-      pf::Log log("XPath");
-      log.msg(VLF::TRACE, Format, Args...);
+   auto trace_nodes_verbose = [&](const char *Format, auto ...Args) {
+      if (not tracing_xpath) return;
+      pf::Log("XPath").msg(VLF::TRACE, Format, Args...);
    };
 
    struct NodeEntry {
@@ -1897,7 +1875,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
 
    for (size_t index = 0; index < Value.node_set.size(); ++index) {
       XMLTag *candidate = Value.node_set[index];
-      if (!candidate) continue;
+      if (not candidate) continue;
 
       const XMLAttrib *attribute = nullptr;
       if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
@@ -1943,7 +1921,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
                break;
             }
          }
-         if (!duplicate) unique_entries.push_back(entry);
+         if (not duplicate) unique_entries.push_back(entry);
       }
 
       if (tracing_xpath) {
@@ -1963,8 +1941,8 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
    else {
       std::stable_sort(entries.begin(), entries.end(), [this](const NodeEntry &Left, const NodeEntry &Right) {
          if (Left.node IS Right.node) return Left.original_index < Right.original_index;
-         if (!Left.node) return false;
-         if (!Right.node) return true;
+         if (not Left.node) return false;
+         if (not Right.node) return true;
          return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
       });
 
@@ -1993,7 +1971,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       XMLTag *candidate = entry.node;
       push_context(candidate, index + 1, entries.size(), entry.attribute);
 
-      if (!candidate) {
+      if (not candidate) {
          pop_context();
          continue;
       }
@@ -2023,7 +2001,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
 
 ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if (!Node) return ERR::Failed;
+   if (not Node) return ERR::Failed;
 
    const XPathNode *expression = Node;
 
@@ -2063,7 +2041,7 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
 //********************************************************************************************************************
 
 XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
-   if (!FuncNode or FuncNode->type != XPathNodeType::FUNCTION_CALL) {
+   if (not FuncNode or FuncNode->type != XPathNodeType::FUNCTION_CALL) {
       return XPathVal();
    }
 
@@ -2084,10 +2062,10 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
 
       if (context.context_node) {
          for (auto &child : context.context_node->Children) {
-            if (!child.isContent()) continue;
+            if (not child.isContent()) continue;
             text_nodes.push_back(&child);
 
-            if ((!first_value.has_value()) and (!child.Attribs.empty())) {
+            if ((not first_value.has_value()) and (not child.Attribs.empty())) {
                first_value = child.Attribs[0].Value;
             }
          }

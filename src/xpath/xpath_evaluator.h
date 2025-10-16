@@ -20,10 +20,6 @@ class CompiledXPath;
 
 class XPathEvaluator {
    public:
-   enum class TraceCategory
-   {
-      XPath
-   };
 
    enum class PredicateResult {
       MATCH,
@@ -141,9 +137,8 @@ class XPathEvaluator {
 
    // Entry point for compiled XPath evaluation
    ERR find_tag(const XPathNode &, uint32_t);
-
-   void set_trace_enabled(TraceCategory Category, bool Enabled);
-   bool is_trace_enabled(TraceCategory Category) const;
+   
+   inline bool is_trace_enabled() const { return trace_xpath_enabled; }
 
    // Full XPath expression evaluation returning computed values.  Will update the provided XPathValue
    ERR evaluate_xpath_expression(const XPathNode &, XPathVal *, uint32_t CurrentPrefix = 0);

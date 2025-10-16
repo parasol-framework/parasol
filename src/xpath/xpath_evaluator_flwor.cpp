@@ -103,7 +103,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return XPathVal();
    }
 
-   bool tracing_flwor = is_trace_enabled(TraceCategory::XPath);
+   bool tracing_flwor = is_trace_enabled();
 
    struct FlworTuple {
       std::unordered_map<std::string, XPathVal> bindings;
@@ -165,8 +165,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return length;
    };
 
-   auto nodeset_string_at = [](const XPathVal &value, size_t index) -> std::string
-   {
+   auto nodeset_string_at = [](const XPathVal &value, size_t index) -> std::string {
       if (index < value.node_set_string_values.size()) return value.node_set_string_values[index];
 
       bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty() and (index IS 0);
@@ -185,18 +184,15 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return std::string();
    };
 
-   auto trace_detail = [&](const char *Format, auto ...Args)
-   {
-      if (!tracing_flwor) return;
-      pf::Log log("XPath");
-      log.msg(VLF::DETAIL, Format, Args...);
+   // Note these log messages will only be compiled in debug builds.  You can include them temporarily in a release build
+   // by switching to pf::Log.msg(VLF::TRACE, ...) in the lines below.
+
+   auto trace_detail = [&](const char *Format, auto ...Args) {
+      if (tracing_flwor) pf::Log("XPath").trace(Format, Args...);
    };
 
-   auto trace_verbose = [&](const char *Format, auto ...Args)
-   {
-      if (!tracing_flwor) return;
-      pf::Log log("XPath");
-      log.msg(VLF::TRACE, Format, Args...);
+   auto trace_verbose = [&](const char *Format, auto ...Args) {
+      if (tracing_flwor) pf::Log("XPath").trace(Format, Args...);
    };
 
    auto describe_value_for_trace = [&](const XPathVal &value) -> std::string {
@@ -682,24 +678,6 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       tuples = std::move(grouped);
 
-      pf::Log log("XPath");
-      log.warning("After GROUP BY: %zu groups formed", tuples.size());
-      for (size_t group_index = 0; group_index < tuples.size(); ++group_index) {
-         const auto &tuple = tuples[group_index];
-         log.warning("  Group %zu has %zu bindings:", group_index, tuple.bindings.size());
-         for (const auto &entry : tuple.bindings) {
-            const std::string &var_name = entry.first;
-            const XPathVal &var_value = entry.second;
-            log.warning("    Variable '%s': type=%d", var_name.c_str(), int(var_value.Type));
-            if (var_value.Type IS XPVT::NodeSet) {
-               log.warning("      NodeSet size=%zu, attributes=%zu, strings=%zu",
-                  var_value.node_set.size(),
-                  var_value.node_set_attributes.size(),
-                  var_value.node_set_string_values.size());
-            }
-         }
-      }
-
       if (tuples.empty()) {
          NODES empty_nodes;
          return XPathVal(empty_nodes);
@@ -920,20 +898,6 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       TupleScope scope(*this, context, tuple);
       XPathVal iteration_value = evaluate_expression(return_node, CurrentPrefix);
-
-      log.warning("FLWOR return tuple[%zu] evaluated, type=%d, unsupported=%s",
-         tuple_index, int(iteration_value.Type), expression_unsupported ? "true" : "false");
-      if (iteration_value.Type IS XPVT::NodeSet) {
-         log.warning("  NodeSet size=%zu", iteration_value.node_set.size());
-         for (size_t i = 0; i < iteration_value.node_set.size(); ++i) {
-            XMLTag *node = iteration_value.node_set[i];
-            log.warning("    node[%zu] = %p, ID=%d", i, node, node ? node->ID : -999);
-            if (node and !node->Attribs.empty()) {
-               log.warning("      Attribs size=%zu, name='%s'",
-                  node->Attribs.size(), node->Attribs[0].Name.c_str());
-            }
-         }
-      }
 
       if (expression_unsupported) {
          if (tracing_flwor) {

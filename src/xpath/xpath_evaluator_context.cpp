@@ -24,20 +24,6 @@
 #include "../xml/schema/schema_types.h"
 #include "../xml/xml.h"
 
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <deque>
-#include <functional>
-#include <iterator>
-#include <limits>
-#include <memory>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <unordered_set>
-
 namespace {
 
 class ContextGuard {
@@ -47,20 +33,16 @@ class ContextGuard {
 
    public:
    ContextGuard(XPathEvaluator &Evaluator, XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
-      : evaluator(&Evaluator), active(true)
-   {
+      : evaluator(&Evaluator), active(true) {
       evaluator->push_context(Node, Position, Size, Attribute);
    }
 
-   ContextGuard(ContextGuard &&Other) noexcept
-      : evaluator(Other.evaluator), active(Other.active)
-   {
+   ContextGuard(ContextGuard &&Other) noexcept : evaluator(Other.evaluator), active(Other.active) {
       Other.evaluator = nullptr;
       Other.active = false;
    }
 
-   ContextGuard & operator=(ContextGuard &&Other) noexcept
-   {
+   ContextGuard & operator=(ContextGuard &&Other) noexcept {
       if (this IS &Other) return *this;
 
       if (active and evaluator) evaluator->pop_context();
@@ -77,8 +59,7 @@ class ContextGuard {
    ContextGuard(const ContextGuard &) = delete;
    ContextGuard & operator=(const ContextGuard &) = delete;
 
-   ~ContextGuard()
-   {
+   ~ContextGuard() {
       if (active and evaluator) evaluator->pop_context();
    }
 };
@@ -89,21 +70,16 @@ class CursorGuard {
    bool active;
 
    public:
-   explicit CursorGuard(XPathEvaluator &Evaluator)
-      : evaluator(&Evaluator), active(true)
-   {
+   explicit CursorGuard(XPathEvaluator &Evaluator) : evaluator(&Evaluator), active(true) {
       evaluator->push_cursor_state();
    }
 
-   CursorGuard(CursorGuard &&Other) noexcept
-      : evaluator(Other.evaluator), active(Other.active)
-   {
+   CursorGuard(CursorGuard &&Other) noexcept : evaluator(Other.evaluator), active(Other.active) {
       Other.evaluator = nullptr;
       Other.active = false;
    }
 
-   CursorGuard & operator=(CursorGuard &&Other) noexcept
-   {
+   CursorGuard & operator=(CursorGuard &&Other) noexcept {
       if (this IS &Other) return *this;
 
       if (active and evaluator) evaluator->pop_cursor_state();
@@ -120,8 +96,7 @@ class CursorGuard {
    CursorGuard(const CursorGuard &) = delete;
    CursorGuard & operator=(const CursorGuard &) = delete;
 
-   ~CursorGuard()
-   {
+   ~CursorGuard() {
       if (active and evaluator) evaluator->pop_cursor_state();
    }
 };
@@ -142,7 +117,9 @@ void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, co
    context.document = document;
 }
 
+//********************************************************************************************************************
 // Restore the previous context when unwinding recursive evaluation.
+
 void XPathEvaluator::pop_context()
 {
    if (context_stack.empty()) {
@@ -158,7 +135,9 @@ void XPathEvaluator::pop_context()
    context_stack.pop_back();
 }
 
+//********************************************************************************************************************
 // Snapshot cursor state so legacy cursor-based APIs can be restored after XPath evaluation.
+
 void XPathEvaluator::push_cursor_state()
 {
    CursorState state{};
@@ -172,7 +151,9 @@ void XPathEvaluator::push_cursor_state()
    cursor_stack.push_back(state);
 }
 
+//********************************************************************************************************************
 // Reinstate any saved cursor state.
+
 void XPathEvaluator::pop_cursor_state()
 {
    if (cursor_stack.empty()) return;
@@ -191,11 +172,9 @@ void XPathEvaluator::pop_cursor_state()
    else xml->Cursor = begin + state.index;
 }
 
-
 //********************************************************************************************************************
-// AST Evaluation Methods
-
 // Dispatch AST nodes to the appropriate evaluation routine.
+
 ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (!Node) return ERR::Failed;
@@ -238,13 +217,15 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
    }
 }
 
+//********************************************************************************************************************
 // Execute a full location path expression, managing implicit root handling and cursor updates.
 // Returns ERR::Search if no matches were found.
 
-ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) {
-   if ((!PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return ERR::Failed;
-
+ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix) 
+{
    pf::Log log(__FUNCTION__);
+
+   if ((!PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return log.warning(ERR::Failed);
 
    std::vector<const XPathNode *> steps;
    std::vector<std::unique_ptr<XPathNode>> synthetic_steps;
@@ -289,15 +270,14 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
    bool matched = false;
    auto result = evaluate_step_sequence(initial_context, steps, 0, CurrentPrefix, matched);
 
-   if ((result != ERR::Okay) and (result != ERR::Search)) return result;
-
-   if (xml->Callback.defined()) {
-      log.msg("Unable to make callback on LOCATION_PATH node.");
-      return ERR::Okay;
+   if ((result IS ERR::Okay) or (result IS ERR::Search)) {
+      if (xml->Callback.defined()) return ERR::Okay; // Search (not found) is not relevant with a callback
+      return matched ? ERR::Okay : ERR::Search; // At least one match == Okay, otherwise Search
    }
-   if (matched) return ERR::Okay;
-   return ERR::Search;
+   else return result;
 }
+
+//********************************************************************************************************************
 
 ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -311,7 +291,7 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
    auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
-   ERR last_error = ERR::Search;
+   auto last_error = ERR::Search;
 
    std::unordered_set<std::string> evaluated_branches;
    evaluated_branches.reserve(Node->child_count());
@@ -354,13 +334,14 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
    return last_error;
 }
 
+//********************************************************************************************************************
 // Evaluate a single step expression against the current context.
 
 ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix)
 {
    pf::Log log(__FUNCTION__);
 
-   if (!StepNode) return ERR::Failed;
+   if (!StepNode) return log.warning(ERR::NullArgs);
 
    std::vector<const XPathNode *> steps;
    steps.push_back(StepNode);
@@ -373,16 +354,14 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
    bool matched = false;
    auto result = evaluate_step_sequence(context_nodes, steps, 0, CurrentPrefix, matched);
 
-   if ((result != ERR::Okay) and (result != ERR::Search)) return result;
-
-   if (xml->Callback.defined()) {
-      log.msg("Unable to make callback on AST expression.");
-      return ERR::Okay;
+   if ((result IS ERR::Okay) or (result IS ERR::Search)) {
+      if (xml->Callback.defined()) return ERR::Okay; // Search (not found) is not relevant with a callback
+      return matched ? ERR::Okay : ERR::Search; // At least one match == Okay, otherwise Search
    }
-   if (matched) return ERR::Okay;
-   return ERR::Search;
+   else return result;
 }
 
+//********************************************************************************************************************
 // Recursive driver that iterates through each step in a location path.
 
 void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
@@ -408,6 +387,8 @@ void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisT
    }
 }
 
+//********************************************************************************************************************
+
 ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPathNode *> &PredicateNodes,
    uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer)
 {
@@ -422,11 +403,7 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
          ContextGuard context_guard(*this, match.node, index + 1, Candidates.size(), match.attribute);
 
          auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
-
-         if (predicate_result IS PredicateResult::UNSUPPORTED) {
-            return ERR::Failed;
-         }
-
+         if (predicate_result IS PredicateResult::UNSUPPORTED) return ERR::Failed;
          if (predicate_result IS PredicateResult::MATCH) ScratchBuffer.push_back(match);
       }
 
@@ -436,6 +413,8 @@ ERR XPathEvaluator::apply_predicates_to_candidates(const std::vector<const XPath
 
    return ERR::Okay;
 }
+
+//********************************************************************************************************************
 
 ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate)
 {
@@ -457,16 +436,14 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
       xml->StaleMap = true;
       xml->getMap(); // Rebuild the map to include the constructed node.  TODO: Inefficient approach, need to improve
    }
-   else {
-      if (tags = xml->getInsert(Node, xml->Cursor); not tags) {
-         log.warning("Unable to locate tag list for callback on node ID %d.", Node->ID);
-         return ERR::Search;
-      }
+   else if (tags = xml->getInsert(Node, xml->Cursor); not tags) {
+      log.warning("Unable to locate tag list for callback on node ID %d.", Node->ID);
+      return ERR::Search;
    }
 
    // Use defer to ensure constructed nodes are removed when we exit
    auto cleanup = pf::Defer([&, is_constructed]() {
-      if (is_constructed and not xml->Tags.empty()) {
+      if (is_constructed and (not xml->Tags.empty())) {
          // TODO: Should nullify the IDs that we added to the xml->Map (i.e. set their pointer to nullptr, don't remove them because it's a slow operation)
          xml->Tags.pop_back();
       }
@@ -502,6 +479,8 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
 
    return callback_error;
 }
+
+//********************************************************************************************************************
 
 ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
    bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate)
@@ -557,7 +536,11 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
    return ERR::Okay;
 }
 
-ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) {
+//********************************************************************************************************************
+
+ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, 
+   size_t StepIndex, uint32_t CurrentPrefix, bool &Matched) 
+{
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
 
    std::vector<AxisMatch> current_context;
@@ -625,6 +608,8 @@ ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std:
    return Matched ? ERR::Okay : ERR::Search;
 }
 
+//********************************************************************************************************************
+
 const std::unordered_map<std::string_view, XPathEvaluator::PredicateHandler> &XPathEvaluator::predicate_handler_map() const
 {
    static const std::unordered_map<std::string_view, PredicateHandler> handlers = {
@@ -634,6 +619,8 @@ const std::unordered_map<std::string_view, XPathEvaluator::PredicateHandler> &XP
    };
    return handlers;
 }
+
+//********************************************************************************************************************
 
 XPathEvaluator::PredicateResult XPathEvaluator::dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
    uint32_t CurrentPrefix)
@@ -645,6 +632,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::dispatch_predicate_operation(std
    auto handler = it->second;
    return (this->*handler)(Expression, CurrentPrefix);
 }
+
+//********************************************************************************************************************
 
 XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
@@ -670,6 +659,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicat
 
    return PredicateResult::NO_MATCH;
 }
+
+//********************************************************************************************************************
 
 XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
@@ -722,6 +713,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
    return PredicateResult::NO_MATCH;
 }
 
+//********************************************************************************************************************
+
 XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
    auto *candidate = context.context_node;
@@ -762,6 +755,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
 
    return PredicateResult::NO_MATCH;
 }
+
+//********************************************************************************************************************
 
 XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
    if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
@@ -815,6 +810,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
    return PredicateResult::UNSUPPORTED;
 }
 
+//********************************************************************************************************************
+
 extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 {
    if ((!Node) or (!xml)) return nullptr;
@@ -831,11 +828,15 @@ extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
    return nullptr;
 }
 
+//********************************************************************************************************************
+
 bool XPathEvaluator::is_foreign_document_node(XMLTag *Node) const
 {
    auto *document = resolve_document_for_node(Node);
    return (document) and (document != xml);
 }
+
+//********************************************************************************************************************
 
 NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &ContextNodes,
    const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix,

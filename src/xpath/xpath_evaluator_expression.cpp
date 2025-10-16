@@ -7,7 +7,10 @@
 
 //********************************************************************************************************************
 
-XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) {
+XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix) 
+{
+   pf::Log log("XPath");
+
    if (!ExprNode) {
       record_error("Unsupported XPath expression: empty node", (const XPathNode *)nullptr, true);
       return XPathVal();
@@ -214,17 +217,14 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       std::vector<const XMLAttrib *> combined_attributes;
       std::optional<std::string> combined_override;
 
-      auto append_iteration_value = [&](const XPathVal &iteration_value) -> bool
-      {
-         if (iteration_value.Type IS XPVT::NodeSet)
-         {
+      auto append_iteration_value = [&](const XPathVal &iteration_value) -> bool {
+         if (iteration_value.Type IS XPVT::NodeSet) {
             size_t length = iteration_value.node_set.size();
             if (length < iteration_value.node_set_attributes.size()) length = iteration_value.node_set_attributes.size();
             if (length < iteration_value.node_set_string_values.size()) length = iteration_value.node_set_string_values.size();
             if ((length IS 0) and iteration_value.node_set_string_override.has_value()) length = 1;
 
-            for (size_t node_index = 0; node_index < length; ++node_index)
-            {
+            for (size_t node_index = 0; node_index < length; ++node_index) {
                XMLTag *node = node_index < iteration_value.node_set.size() ? iteration_value.node_set[node_index] : nullptr;
                combined_nodes.push_back(node);
 
@@ -243,8 +243,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                if (!combined_override.has_value()) combined_override = node_string;
             }
 
-            if (iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty())
-            {
+            if (iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty()) {
                if (!combined_override.has_value()) combined_override = iteration_value.node_set_string_override;
             }
 
@@ -453,9 +452,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             if (expression_unsupported) return false;
 
             if (branch_result) {
-               if (is_some) {
-                  return true;
-               }
+               if (is_some) return true;
             }
             else {
                if (is_every) return false;
@@ -707,13 +704,10 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          std::vector<SequenceEntry> entries;
          entries.reserve(left_value.node_set.size() + right_value.node_set.size());
 
-         auto append_value = [&](const XPathVal &value)
-         {
-            if (value.Type IS XPVT::NodeSet)
-            {
+         auto append_value = [&](const XPathVal &value) {
+            if (value.Type IS XPVT::NodeSet) {
                bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty();
-               for (size_t index = 0; index < value.node_set.size(); ++index)
-               {
+               for (size_t index = 0; index < value.node_set.size(); ++index) {
                   XMLTag *node = value.node_set[index];
                   if (!node) continue;
 
@@ -748,8 +742,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          append_value(left_value);
          append_value(right_value);
 
-         if (entries.empty())
-         {
+         if (entries.empty()) {
             NODES empty_nodes;
             return XPathVal(empty_nodes);
          }
@@ -761,8 +754,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          std::vector<std::string> combined_strings;
          combined_strings.reserve(entries.size());
 
-         for (auto &entry : entries)
-         {
+         for (auto &entry : entries) {
             combined_nodes.push_back(entry.node);
             combined_attributes.push_back(entry.attribute);
             combined_strings.push_back(std::move(entry.string_value));
@@ -904,8 +896,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
       }
 
-      if (is_trace_enabled(TraceCategory::XPath)) {
-         pf::Log log("XPath");
+      if (is_trace_enabled()) {
          log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
          if (context.variables && !context.variables->empty()) {
             std::string binding_list;
