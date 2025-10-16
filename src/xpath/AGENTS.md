@@ -28,7 +28,7 @@ src/xpath/
 ├── xpath.h                    # Module header
 ├── xpath_def.c                # Generated C definitions
 ├── xpath_parser.cpp/h         # XPath/XQuery expression parser
-├── xpath_tokenizer.cpp/h      # Lexical analysis and tokenisation
+├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
 ├── eval.cpp/h                 # Main evaluation engine
 ├── eval_common.cpp            # Common evaluation utilities
 ├── eval_context.cpp           # Context management

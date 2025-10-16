@@ -681,14 +681,17 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             report_error("Multiple where clauses are not permitted in FLWOR expression");
             return nullptr;
          }
+
          if (saw_group) {
             report_error("where clause must precede group by clause");
             return nullptr;
          }
+
          if (saw_order) {
             report_error("where clause must precede order by clause");
             return nullptr;
          }
+
          if (saw_count_clause) {
             report_error("where clause must precede count clause");
             return nullptr;
@@ -707,10 +710,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             report_error("Multiple group by clauses are not permitted in FLWOR expression");
             return nullptr;
          }
+
          if (saw_order) {
             report_error("group by clause must precede order by clause");
             return nullptr;
          }
+
          if (saw_count_clause) {
             report_error("group by clause must precede count clause");
             return nullptr;
@@ -729,6 +734,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             report_error("Multiple order by clauses are not permitted in FLWOR expression");
             return nullptr;
          }
+
          if (saw_count_clause) {
             report_error("order by clause must precede count clause");
             return nullptr;
@@ -747,6 +753,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             report_error("Multiple order by clauses are not permitted in FLWOR expression");
             return nullptr;
          }
+
          if (saw_count_clause) {
             report_error("order by clause must precede count clause");
             return nullptr;
@@ -996,8 +1003,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
       else if (match_identifier_keyword("least", XPathTokenType::LEAST, keyword_token)) {
          options.empty_is_greatest = false;
       }
-      else
-      {
+      else {
          report_error("Expected 'greatest' or 'least' after 'empty' in order by clause");
          return nullptr;
       }
@@ -1805,8 +1811,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_enclosed_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Source)
 {
-   XPathTokenizer embedded_tokenizer;
-   auto token_list = embedded_tokenizer.tokenize(Source);
+   XPathTokeniser embedded_tokeniser;
+   auto token_list = embedded_tokeniser.tokenize(Source);
 
    XPathParser embedded_parser;
    auto expr = embedded_parser.parse(token_list);

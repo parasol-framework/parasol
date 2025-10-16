@@ -145,16 +145,16 @@ typedef struct XPathNode {
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
    inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
-   [[nodiscard]] XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
-   [[nodiscard]] size_t child_count() const { return children.size(); }
+   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
+   [[nodiscard]] inline size_t child_count() const { return children.size(); }
    inline void set_constructor_info(XPathConstructorInfo info) { constructor_info = std::move(info); }
-   [[nodiscard]] bool has_constructor_info() const { return constructor_info.has_value(); }
+   [[nodiscard]] inline bool has_constructor_info() const { return constructor_info.has_value(); }
    inline void set_name_expression(std::unique_ptr<XPathNode> expr) { name_expression = std::move(expr); }
-   [[nodiscard]] XPathNode * get_name_expression() const { return name_expression.get(); }
-   [[nodiscard]] bool has_name_expression() const { return name_expression != nullptr; }
+   [[nodiscard]] inline XPathNode * get_name_expression() const { return name_expression.get(); }
+   [[nodiscard]] inline bool has_name_expression() const { return name_expression != nullptr; }
    inline void set_group_key_info(XPathGroupKeyInfo Info) { group_key_info = std::move(Info); }
-   [[nodiscard]] bool has_group_key_info() const { return group_key_info.has_value(); }
-   [[nodiscard]] const XPathGroupKeyInfo * get_group_key_info() const { return group_key_info ? &(*group_key_info) : nullptr; }
+   [[nodiscard]] inline bool has_group_key_info() const { return group_key_info.has_value(); }
+   [[nodiscard]] inline const XPathGroupKeyInfo * get_group_key_info() const { return group_key_info ? &(*group_key_info) : nullptr; }
 
    void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
       attribute_value_has_expressions = false;

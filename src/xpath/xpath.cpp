@@ -81,7 +81,7 @@ Node iteration with callbacks:
 <pre>
 XPathNode *query;
 if (xp::Compile(xml, "//chapter[@status='draft']", &query) IS ERR::Okay) {
-   FUNCTION callback = C_FUNCTION(process_node);
+   auto callback = C_FUNCTION(process_node);
    xp::Query(xml, query, &callback);
    FreeResource(query);
 }
@@ -116,7 +116,7 @@ Examples:
 #include <sstream>
 #include "../link/unicode.h"
 #include "../xml/xml.h"
-#include "xpath_tokenizer.h"
+#include "xpath_tokeniser.h"
 #include "xpath_parser.h"
 #include "xpath_evaluator.h"
 #include "xpath.h"
@@ -231,10 +231,10 @@ ERR Compile(objXML *XML, CSTRING Query, XPathNode **Result)
    if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
       SetResourceMgr(cmp, &glNodeManager);
 
-      XPathTokenizer tokenizer;
+      XPathTokeniser tokeniser;
       XPathParser parser;
 
-      auto tokens = tokenizer.tokenize(Query);
+      auto tokens = tokeniser.tokenize(Query);
       auto parsed_ast = parser.parse(tokens);
 
       if (!parsed_ast) {
@@ -323,7 +323,7 @@ Query: For node-based queries, evaluates a compiled expression and calls a funct
 Use the Query function to scan an XML document for tags or attributes that match a compiled XPath or XQuery expression.
 For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.
 
-If no callback is provided, the search stops after the first match and the XML object's cursor markers will reflect
+If no callback is provided, the search stops after the first match and the @XML object's cursor markers will reflect
 the position of the node.
 
 Note that valid function execution can return `ERR:Search` if zero matches are found.

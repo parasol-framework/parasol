@@ -2,7 +2,7 @@
 // XPath Evaluation Engine
 //
 // The evaluator coordinates the complete XPath execution pipeline for Parasol's XML subsystem.  It
-// receives token sequences from the tokenizer, constructs an AST via the parser, and then walks that
+// receives token sequences from the tokeniser, constructs an AST via the parser, and then walks that
 // AST to resolve node-sets, scalar values, and boolean predicates against the in-memory document
 // model.  Beyond expression evaluation, the class maintains the implicit evaluation context defined by
 // the XPath specification (context node, size, position, and active attribute), marshals axis
@@ -14,7 +14,7 @@
 // large portion of the logic is defensive—preserving cursor state for integration with the legacy
 // cursor-based API, falling back gracefully when unsupported expressions are encountered, and
 // honouring namespace prefix resolution rules.  By keeping the evaluator self-contained, the parser
-// and tokenizer remain ignorant of runtime data structures, and testing of the evaluator can be done
+// and tokeniser remain ignorant of runtime data structures, and testing of the evaluator can be done
 // independently of XML parsing.
 
 #include "xpath_evaluator.h"
@@ -61,8 +61,9 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
-   pf::Log log("XPath");
-   log.msg("%.*s", (int)Message.size(), Message.data());
+
+   pf::Log("XPath").msg("%.*s", (int)Message.size(), Message.data());
+
    if (xml) {
       if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
    }
@@ -76,10 +77,8 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
 
    // Expression signature (compact AST fingerprint)
 
-   std::string signature = "";
-   if (Node) {
-      signature = build_ast_signature(Node);
-   }
+   std::string signature;
+   if (Node) signature = build_ast_signature(Node);
 
    log.branch("%.*s %s [Stack detail follows]", (int)Message.size(), Message.data(), signature.c_str());
 

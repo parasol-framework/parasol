@@ -1,4 +1,4 @@
-// XPath Tokenizer and Parser
+// XPath Tokeniser and Parser
 //
 // This file contains:
 // - XPath tokenization (converting string to tokens)
@@ -16,7 +16,7 @@
 #include <parasol/modules/xpath.h>
 
 #include "xpath_ast.h"
-#include "xpath_tokenizer.h"
+#include "xpath_tokeniser.h"
 
 //********************************************************************************************************************
 // XPath Parser

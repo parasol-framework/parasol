@@ -9,7 +9,7 @@
 // that are not represented explicitly in the DOM (such as attributes or namespaces), and provide
 // deterministic handling for synthetic nodes used by the evaluator.
 //
-// This file implements the traversal logic in a stand-alone helper so that the tokenizer, parser, and
+// This file implements the traversal logic in a stand-alone helper so that the tokeniser, parser, and
 // evaluator can remain focused on syntactic and semantic concerns.  The AxisEvaluator is responsible
 // for translating an AxisType into a set of XMLTag pointers, normalising the resulting node sets, and
 // providing utility operations that encode XPath's ordering semantics.  Splitting these operations out

@@ -62,7 +62,7 @@ struct ParseState {
          next();
       }
    }
-   
+
    inline void skipTo(std::string_view Seq, int &line) {
       while ((not done()) and (not cursor.starts_with(Seq))) {
          if (current() == '\n') line++;
@@ -85,13 +85,13 @@ struct ParseState {
    ParseState(const ParseState& parent) : cursor(parent.cursor), Balance(parent.Balance),
                                           PrefixMap(parent.PrefixMap), DefaultNamespace(parent.DefaultNamespace),
                                           CurrentBase(parent.CurrentBase) { }
-   
+
    inline bool operator!=(ParseState const &rhs) const {return !(*this == rhs);}
 
    inline bool operator==(ParseState const &rhs) const {
       return (cursor.data() == rhs.cursor.data());
    }
-   
+
    inline size_t operator-(ParseState const &rhs) const {
       return (cursor.data() - rhs.cursor.data());
    }
@@ -148,7 +148,7 @@ class extXML : public objXML {
    TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
    CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    FUNCTION Callback;
-   
+
    std::shared_ptr<xml::schema::SchemaContext> SchemaContext;
    ankerl::unordered_dense::map<std::string, std::string> Variables; // XPath variable references
    ankerl::unordered_dense::map<std::string, std::string> Entities; // For general entities
@@ -231,7 +231,7 @@ class extXML : public objXML {
    }
 
    ERR resolveEntity(const std::string &Name, std::string &Value, bool Parameter = false);
-   
+
    // Namespace utility methods
 
    inline uint32_t registerNamespace(const std::string &URI) {
@@ -278,6 +278,26 @@ class extXML : public objXML {
          tag.ParentID = ParentID;
          if (!tag.Children.empty()) updateIDs(tag.Children, tag.ID);
       }
+   }
+
+   // Nullify references in the map to make it safe, without incurring performance penalties
+   // that arise from the removal of tags.
+
+   inline void nullifyMap(XMLTag &Tag) {
+      Map[Tag.ID] = nullptr;
+      if (!Tag.Children.empty()) {
+         for (auto &child : Tag.Children) nullifyMap(child);
+      }
+   }
+
+   // Appends a tag and its children to the XML structure, updating IDs as necessary.
+
+   inline void appendTags(XMLTag &Tag) {
+      Tags.push_back(Tag);
+      auto &added_tag = *(Tags.end() - 1);
+      Map[added_tag.ID] = &added_tag;
+      added_tag.ParentID = 0;
+      if (!added_tag.Children.empty()) updateIDs(added_tag.Children, added_tag.ID);
    }
 
    inline const std::string * findBaseURI(int TagID) const
