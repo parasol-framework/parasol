@@ -22,6 +22,8 @@ add_library (xml_xpath_functions OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath_evaluator_context.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath_evaluator_predicates.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath_evaluator_values.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath_evaluator_expression.cpp" 
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath_evaluator_flwor.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath_evaluator.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath_functions.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath_axis.cpp"
@@ -38,4 +40,4 @@ add_dependencies (xml_xpath_functions build_headers)
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
    $<TARGET_OBJECTS:xml_xpath_functions>
-   $<TARGET_OBJECTS:xml_schema>)
+   $<TARGET_OBJECTS:xml_schema> "xpath_evaluator_flwor.cpp")

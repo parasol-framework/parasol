@@ -26,18 +26,8 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <charconv>
-#include <cmath>
-#include <cctype>
-#include <cstdio>
-#include <cstdlib>
 #include <ctime>
 #include <format>
-#include <limits>
-#include <sstream>
-#include <string_view>
-#include <unordered_set>
-#include <utility>
 
 #include "../link/unicode.h"
 
