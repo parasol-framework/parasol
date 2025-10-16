@@ -550,7 +550,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr_single()
 //********************************************************************************************************************
 // Parses comma-separated expressions building a sequence from multiple expressions.
 
-std::unique_ptr<XPathNode> XPathParser::parse_expr() 
+std::unique_ptr<XPathNode> XPathParser::parse_expr()
 {
    auto expression = parse_expr_single();
    if (!expression) return nullptr;
@@ -1052,7 +1052,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_count_clause()
 // Parses logical OR expressions, building left-associative binary operation trees from 'or' operators.
 
 std::unique_ptr<XPathNode> XPathParser::parse_or_expr()
-{ 
+{
    auto left = parse_and_expr();
 
    while (check(XPathTokenType::OR)) {
@@ -1598,7 +1598,7 @@ bool XPathParser::consume_token(XPathTokenType type, std::string_view ErrorMessa
 }
 
 //********************************************************************************************************************
-// Parses the QName that follows constructor tokens, handling prefixed names and returning both the prefix and local 
+// Parses the QName that follows constructor tokens, handling prefixed names and returning both the prefix and local
 // part for later namespace resolution.
 
 std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname()
@@ -1827,7 +1827,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Sou
 }
 
 //********************************************************************************************************************
-// Dispatches to the appropriate computed constructor parser based on the leading keyword so each form can apply its 
+// Dispatches to the appropriate computed constructor parser based on the leading keyword so each form can apply its
 // specialised grammar.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_constructor()
@@ -1847,7 +1847,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_constructor()
 }
 
 //********************************************************************************************************************
-// Parses computed element constructors, optionally accepting enclosed expressions for the element name and always 
+// Parses computed element constructors, optionally accepting enclosed expressions for the element name and always
 // parsing the content expression sequence.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
@@ -1881,7 +1881,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
 }
 
 //********************************************************************************************************************
-// Parses computed attribute constructors which may provide the attribute name either as a literal QName or as an 
+// Parses computed attribute constructors which may provide the attribute name either as a literal QName or as an
 // enclosed expression, followed by the attribute value expression.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
@@ -1915,7 +1915,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
 }
 
 //********************************************************************************************************************
-// Parses computed text constructors by wrapping the enclosed expression inside a CONSTRUCTOR_CONTENT node so the 
+// Parses computed text constructors by wrapping the enclosed expression inside a CONSTRUCTOR_CONTENT node so the
 // evaluator can produce the resulting text node.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_text_constructor()
@@ -1946,7 +1946,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_comment_constructor()
 }
 
 //********************************************************************************************************************
-// Parses computed processing-instruction constructors, supporting literal or computed targets along with the 
+// Parses computed processing-instruction constructors, supporting literal or computed targets along with the
 // required content expression.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
@@ -1990,7 +1990,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
 }
 
 //********************************************************************************************************************
-// Parses computed document constructors that evaluate their enclosed expression to populate a synthetic document 
+// Parses computed document constructors that evaluate their enclosed expression to populate a synthetic document
 // node.
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_document_constructor()

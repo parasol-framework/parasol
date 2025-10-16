@@ -1,3 +1,24 @@
+//********************************************************************************************************************
+// XPath FLWOR Expression Evaluation
+//
+// FLWOR (For, Let, Where, Order by, Return) expressions provide powerful iteration and transformation
+// capabilities in XPath 2.0. This translation unit implements the complete evaluation pipeline for FLWOR
+// clauses, including variable binding, filtering, grouping, sorting, and final result construction.
+//
+// The evaluation strategy uses a tuple-based approach where each tuple represents a binding context
+// containing variable assignments and positional information. Clauses are applied sequentially, with
+// each clause potentially expanding or filtering the tuple stream. The implementation maintains precise
+// control over variable scoping, context node position tracking, and document order semantics to ensure
+// correct XPath semantics for complex expressions.
+//
+// Key responsibilities:
+//   - For bindings: iterate sequences and create tuple expansions
+//   - Let bindings: introduce immutable variable assignments
+//   - Where clauses: filter tuples based on predicate expressions
+//   - Group by clauses: partition tuples into groups with aggregate bindings
+//   - Order by clauses: sort tuples with collation and empty-value handling
+//   - Count clauses: assign position counters to tuples
+//   - Return expressions: evaluate results for each tuple and combine into final node-set
 
 #include "xpath_evaluator.h"
 #include "xpath_evaluator_detail.h"
@@ -5,7 +26,11 @@
 #include "../xml/schema/schema_types.h"
 #include "../xml/xml.h"
 
-static size_t combine_group_hash(size_t Seed, size_t Value)
+static size_t hash_xpath_group_value(const XPathVal &Value);
+
+// Combines two hash values into a single hash using a common mixing technique.
+
+inline size_t combine_group_hash(size_t Seed, size_t Value)
 {
    // 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to
    // decorrelate values when mixing hashes.  Incorporating it here improves the
@@ -13,6 +38,95 @@ static size_t combine_group_hash(size_t Seed, size_t Value)
    Seed ^= Value + 0x9e3779b97f4a7c15ull + (Seed << 6) + (Seed >> 2);
    return Seed;
 }
+
+struct FlworTuple {
+   std::unordered_map<std::string, XPathVal> bindings;
+   XMLTag *context_node = nullptr;
+   const XMLAttrib *context_attribute = nullptr;
+   size_t context_position = 1;
+   size_t context_size = 1;
+   std::vector<XPathVal> order_keys;
+   std::vector<bool> order_key_empty;
+   size_t original_index = 0;
+};
+
+struct TupleScope {
+   XPathEvaluator & evaluator;
+   XPathContext & context_ref;
+   std::vector<VariableBindingGuard> guards;
+
+   TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const FlworTuple &Tuple)
+      : evaluator(Evaluator), context_ref(ContextRef)
+   {
+      evaluator.push_context(Tuple.context_node, Tuple.context_position, Tuple.context_size, Tuple.context_attribute);
+      guards.reserve(Tuple.bindings.size());
+      for (const auto &entry : Tuple.bindings) guards.emplace_back(context_ref, entry.first, entry.second);
+   }
+
+   ~TupleScope() {
+      evaluator.pop_context();
+   }
+};
+
+struct GroupKey {
+   pf::vector<XPathVal> values;
+};
+
+struct GroupKeyHasher {
+   size_t operator()(const GroupKey &Key) const noexcept {
+      size_t seed = Key.values.size();
+      for (const auto &value : Key.values) seed = combine_group_hash(seed, hash_xpath_group_value(value));
+      return seed;
+   }
+};
+
+struct GroupKeyEqual {
+   bool operator()(const GroupKey &Left, const GroupKey &Right) const noexcept {
+      if (Left.values.size() != Right.values.size()) return false;
+      for (size_t index = 0; index < Left.values.size(); ++index) {
+         if (!compare_xpath_values(Left.values[index], Right.values[index])) return false;
+      }
+      return true;
+   }
+};
+
+//*********************************************************************************************************************
+// Computes a stable hash for a group key value, suitable for use in unordered_map/set.
+
+static size_t group_nodeset_length(const XPathVal &Value)
+{
+   size_t length = Value.node_set.size();
+   if (length < Value.node_set_attributes.size()) length = Value.node_set_attributes.size();
+   if (length < Value.node_set_string_values.size()) length = Value.node_set_string_values.size();
+   if ((length IS 0) and Value.node_set_string_override.has_value()) length = 1;
+   return length;
+}
+
+//*********************************************************************************************************************
+// Retrieves the string value for a node in a group key value at the specified index.
+
+static std::string group_nodeset_string(const XPathVal &Value, size_t Index)
+{
+   if (Index < Value.node_set_string_values.size()) return Value.node_set_string_values[Index];
+
+   bool use_override = Value.node_set_string_override.has_value() and Value.node_set_string_values.empty() and (Index IS 0);
+   if (use_override) return *Value.node_set_string_override;
+
+   if (Index < Value.node_set_attributes.size()) {
+      const XMLAttrib *attribute = Value.node_set_attributes[Index];
+      if (attribute) return attribute->Value;
+   }
+
+   if (Index < Value.node_set.size()) {
+      XMLTag *node = Value.node_set[Index];
+      if (node) return XPathVal::node_string_value(node);
+   }
+
+   return std::string();
+}
+
+//*********************************************************************************************************************
+// Computes a stable hash for an XPath value, suitable for use in unordered_map/set.
 
 static size_t hash_xpath_group_value(const XPathVal &Value)
 {
@@ -38,20 +152,11 @@ static size_t hash_xpath_group_value(const XPathVal &Value)
 
       case XPVT::NodeSet: {
          size_t combined = seed;
-         for (XMLTag *node : Value.node_set) {
-            combined = combine_group_hash(combined, std::hash<XMLTag *>{}(node));
-         }
-
-         for (const XMLAttrib *attribute : Value.node_set_attributes) {
-            combined = combine_group_hash(combined, std::hash<const XMLAttrib *>{}(attribute));
-         }
-
-         for (const auto &entry : Value.node_set_string_values) {
-            combined = combine_group_hash(combined, std::hash<std::string>{}(entry));
-         }
-
-         if (Value.node_set_string_override.has_value()) {
-            combined = combine_group_hash(combined, std::hash<std::string>{}(*Value.node_set_string_override));
+         size_t length = group_nodeset_length(Value);
+         for (size_t index = 0; index < length; ++index) {
+            std::string string_value = group_nodeset_string(Value, index);
+            size_t hashed = std::hash<std::string>{}(string_value);
+            combined = combine_group_hash(combined, hashed);
          }
 
          return combined;
@@ -83,58 +188,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return XPathVal();
    }
 
-   bool tracing_flwor = is_trace_enabled(TraceCategory::XPath);
-
-   struct FlworTuple {
-      std::unordered_map<std::string, XPathVal> bindings;
-      XMLTag *context_node = nullptr;
-      const XMLAttrib *context_attribute = nullptr;
-      size_t context_position = 1;
-      size_t context_size = 1;
-      std::vector<XPathVal> order_keys;
-      std::vector<bool> order_key_empty;
-      size_t original_index = 0;
-   };
-
-   struct TupleScope {
-      XPathEvaluator & evaluator;
-      XPathContext & context_ref;
-      std::vector<VariableBindingGuard> guards;
-
-      TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const FlworTuple &Tuple)
-         : evaluator(Evaluator), context_ref(ContextRef)
-      {
-         evaluator.push_context(Tuple.context_node, Tuple.context_position, Tuple.context_size, Tuple.context_attribute);
-         guards.reserve(Tuple.bindings.size());
-         for (const auto &entry : Tuple.bindings) guards.emplace_back(context_ref, entry.first, entry.second);
-      }
-
-      ~TupleScope() {
-         evaluator.pop_context();
-      }
-   };
-
-   struct GroupKey {
-      pf::vector<XPathVal> values;
-   };
-
-   struct GroupKeyHasher {
-      size_t operator()(const GroupKey &Key) const noexcept {
-         size_t seed = Key.values.size();
-         for (const auto &value : Key.values) seed = combine_group_hash(seed, hash_xpath_group_value(value));
-         return seed;
-      }
-   };
-
-   struct GroupKeyEqual {
-      bool operator()(const GroupKey &Left, const GroupKey &Right) const noexcept {
-         if (Left.values.size() != Right.values.size()) return false;
-         for (size_t index = 0; index < Left.values.size(); ++index) {
-            if (!compare_xpath_values(Left.values[index], Right.values[index])) return false;
-         }
-         return true;
-      }
-   };
+   bool tracing_flwor = is_trace_enabled();
 
    auto nodeset_length = [](const XPathVal &value) -> size_t
    {
@@ -145,8 +199,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return length;
    };
 
-   auto nodeset_string_at = [](const XPathVal &value, size_t index) -> std::string
-   {
+   auto nodeset_string_at = [](const XPathVal &value, size_t index) -> std::string {
       if (index < value.node_set_string_values.size()) return value.node_set_string_values[index];
 
       bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty() and (index IS 0);
@@ -165,18 +218,15 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return std::string();
    };
 
-   auto trace_detail = [&](const char *Format, auto ...Args)
-   {
-      if (!tracing_flwor) return;
-      pf::Log log("XPath");
-      log.msg(VLF::DETAIL, Format, Args...);
+   // Note these log messages will only be compiled in debug builds.  You can include them temporarily in a release build
+   // by switching to pf::Log.msg(VLF::TRACE, ...) in the lines below.
+
+   auto trace_detail = [&](const char *Format, auto ...Args) {
+      if (tracing_flwor) pf::Log("XPath").trace(Format, Args...);
    };
 
-   auto trace_verbose = [&](const char *Format, auto ...Args)
-   {
-      if (!tracing_flwor) return;
-      pf::Log log("XPath");
-      log.msg(VLF::TRACE, Format, Args...);
+   auto trace_verbose = [&](const char *Format, auto ...Args) {
+      if (tracing_flwor) pf::Log("XPath").trace(Format, Args...);
    };
 
    auto describe_value_for_trace = [&](const XPathVal &value) -> std::string {
@@ -662,24 +712,6 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       tuples = std::move(grouped);
 
-      pf::Log log("XPath");
-      log.warning("After GROUP BY: %zu groups formed", tuples.size());
-      for (size_t group_index = 0; group_index < tuples.size(); ++group_index) {
-         const auto &tuple = tuples[group_index];
-         log.warning("  Group %zu has %zu bindings:", group_index, tuple.bindings.size());
-         for (const auto &entry : tuple.bindings) {
-            const std::string &var_name = entry.first;
-            const XPathVal &var_value = entry.second;
-            log.warning("    Variable '%s': type=%d", var_name.c_str(), int(var_value.Type));
-            if (var_value.Type IS XPVT::NodeSet) {
-               log.warning("      NodeSet size=%zu, attributes=%zu, strings=%zu",
-                  var_value.node_set.size(),
-                  var_value.node_set_attributes.size(),
-                  var_value.node_set_string_values.size());
-            }
-         }
-      }
-
       if (tuples.empty()) {
          NODES empty_nodes;
          return XPathVal(empty_nodes);
@@ -900,20 +932,6 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       TupleScope scope(*this, context, tuple);
       XPathVal iteration_value = evaluate_expression(return_node, CurrentPrefix);
-
-      log.warning("FLWOR return tuple[%zu] evaluated, type=%d, unsupported=%s",
-         tuple_index, int(iteration_value.Type), expression_unsupported ? "true" : "false");
-      if (iteration_value.Type IS XPVT::NodeSet) {
-         log.warning("  NodeSet size=%zu", iteration_value.node_set.size());
-         for (size_t i = 0; i < iteration_value.node_set.size(); ++i) {
-            XMLTag *node = iteration_value.node_set[i];
-            log.warning("    node[%zu] = %p, ID=%d", i, node, node ? node->ID : -999);
-            if (node and !node->Attribs.empty()) {
-               log.warning("      Attribs size=%zu, name='%s'",
-                  node->Attribs.size(), node->Attribs[0].Name.c_str());
-            }
-         }
-      }
 
       if (expression_unsupported) {
          if (tracing_flwor) {

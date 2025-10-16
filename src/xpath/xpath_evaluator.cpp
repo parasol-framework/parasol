@@ -73,7 +73,7 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
    pf::Log log("XPath");
 
    expression_unsupported = true;
-   
+
    // Expression signature (compact AST fingerprint)
 
    std::string signature = "";
@@ -145,25 +145,6 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    arena.reset();
 
    return evaluate_ast(&XPath, CurrentPrefix);
-}
-
-//********************************************************************************************************************
-// Enables or disables trace output for a specified trace category. Currently supports TraceCategory::XPath for
-// controlling diagnostic logging during expression evaluation.
-
-void XPathEvaluator::set_trace_enabled(TraceCategory Category, bool Enabled)
-{
-   if (Category IS TraceCategory::XPath) trace_xpath_enabled = Enabled;
-}
-
-//********************************************************************************************************************
-// Returns whether trace is enabled for the specified trace category. Used to conditionally log diagnostic
-// information during expression evaluation.
-
-bool XPathEvaluator::is_trace_enabled(TraceCategory Category) const
-{
-   if (Category IS TraceCategory::XPath) return trace_xpath_enabled;
-   return false;
 }
 
 //********************************************************************************************************************
