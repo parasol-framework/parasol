@@ -56,9 +56,18 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "ascending", XPathTokenType::ASCENDING },
    KeywordMapping{ "descending", XPathTokenType::DESCENDING },
    KeywordMapping{ "empty", XPathTokenType::EMPTY },
+   KeywordMapping{ "default", XPathTokenType::DEFAULT },
    KeywordMapping{ "greatest", XPathTokenType::GREATEST },
    KeywordMapping{ "least", XPathTokenType::LEAST },
    KeywordMapping{ "collation", XPathTokenType::COLLATION },
+   KeywordMapping{ "construction", XPathTokenType::CONSTRUCTION },
+   KeywordMapping{ "ordering", XPathTokenType::ORDERING },
+   KeywordMapping{ "copy-namespaces", XPathTokenType::COPY_NAMESPACES },
+   KeywordMapping{ "decimal-format", XPathTokenType::DECIMAL_FORMAT },
+   KeywordMapping{ "option", XPathTokenType::OPTION },
+   KeywordMapping{ "import", XPathTokenType::IMPORT },
+   KeywordMapping{ "module", XPathTokenType::MODULE },
+   KeywordMapping{ "schema", XPathTokenType::SCHEMA },
    KeywordMapping{ "count", XPathTokenType::COUNT },
    KeywordMapping{ "some", XPathTokenType::SOME },
    KeywordMapping{ "every", XPathTokenType::EVERY },
@@ -756,6 +765,7 @@ XPathToken XPathTokeniser::scan_operator()
       case ')': position++; return XPathToken(XPathTokenType::RPAREN, single_char, start, 1);
       case '@': position++; return XPathToken(XPathTokenType::AT, single_char, start, 1);
       case ',': position++; return XPathToken(XPathTokenType::COMMA, single_char, start, 1);
+      case ';': position++; return XPathToken(XPathTokenType::SEMICOLON, single_char, start, 1);
       case '|': position++; return XPathToken(XPathTokenType::PIPE, single_char, start, 1);
       case '=': position++; return XPathToken(XPathTokenType::EQUALS, single_char, start, 1);
       case '<': position++; return XPathToken(XPathTokenType::LESS_THAN, single_char, start, 1);

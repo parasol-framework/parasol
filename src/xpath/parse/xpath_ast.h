@@ -44,6 +44,7 @@ enum class XPathTokenType {
    RPAREN,            // )
    AT,                // @
    COMMA,             // ,
+   SEMICOLON,         // ;
    PIPE,              // |
    UNION,             // union keyword
    INTERSECT,         // intersect keyword
@@ -84,9 +85,18 @@ enum class XPathTokenType {
    ASCENDING,         // ascending
    DESCENDING,        // descending
    EMPTY,             // empty
+   DEFAULT,           // default
    GREATEST,          // greatest
    LEAST,             // least
    COLLATION,         // collation
+   CONSTRUCTION,      // construction
+   ORDERING,          // ordering keyword used in prolog
+   COPY_NAMESPACES,   // copy-namespaces keyword
+   DECIMAL_FORMAT,    // decimal-format keyword
+   OPTION,            // option keyword
+   IMPORT,            // import keyword
+   MODULE,            // module keyword
+   SCHEMA,            // schema keyword
    COUNT,             // count
    SOME,              // some
    EVERY,             // every

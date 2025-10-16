@@ -1,6 +1,8 @@
-#include "xpath_parser.h"
 
+#include "xpath_parser.h"
 #include "../api/xquery_prolog.h"
+#include <parasol/strings.hpp>
+#include <utility>
 
 //********************************************************************************************************************
 // Parses a list of XPath tokens and returns an XPathParseResult object containing:
@@ -17,9 +19,17 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    tokens = TokenList;
    current_token = 0;
    errors.clear();
+
+   parse_prolog(*result.prolog);
+
+   if (has_errors()) {
+      result.expression.reset();
+      return result;
+   }
+
    auto expression = parse_expr();
 
-   if (!is_at_end()) {
+   if (not is_at_end()) {
       XPathToken token = peek();
       std::string token_text(token.value);
       if (token_text.empty()) token_text = "<unexpected>";
@@ -28,7 +38,7 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
       return result;
    }
 
-   if (has_errors() or (!expression)) {
+   if (has_errors() or (not expression)) {
       result.expression.reset();
       return result;
    }
@@ -54,6 +64,571 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    return result;
 }
 
+bool XPathParser::match_literal_keyword(std::string_view Keyword)
+{
+   if (check_literal_keyword(Keyword)) {
+      advance();
+      return true;
+   }
+   return false;
+}
+
+bool XPathParser::check_literal_keyword(std::string_view Keyword) const
+{
+   const auto &token = peek();
+
+   if (token.type IS XPathTokenType::IDENTIFIER) return token.value IS Keyword;
+
+   switch (token.type) {
+      case XPathTokenType::DEFAULT:         return Keyword IS "default";
+      case XPathTokenType::CONSTRUCTION:    return Keyword IS "construction";
+      case XPathTokenType::ORDERING:        return Keyword IS "ordering";
+      case XPathTokenType::ORDER:           return Keyword IS "order";
+      case XPathTokenType::COPY_NAMESPACES: return Keyword IS "copy-namespaces";
+      case XPathTokenType::DECIMAL_FORMAT:  return Keyword IS "decimal-format";
+      case XPathTokenType::OPTION:          return Keyword IS "option";
+      case XPathTokenType::IMPORT:          return Keyword IS "import";
+      case XPathTokenType::MODULE:          return Keyword IS "module";
+      case XPathTokenType::SCHEMA:          return Keyword IS "schema";
+      case XPathTokenType::EMPTY:           return Keyword IS "empty";
+      case XPathTokenType::GREATEST:        return Keyword IS "greatest";
+      case XPathTokenType::LEAST:           return Keyword IS "least";
+      case XPathTokenType::COLLATION:       return Keyword IS "collation";
+      default:
+         break;
+   }
+
+   return false;
+}
+
+void XPathParser::consume_declaration_separator()
+{
+   while (match(XPathTokenType::SEMICOLON)) {}
+}
+
+std::optional<std::string> XPathParser::parse_string_literal_value()
+{
+   if (not check(XPathTokenType::STRING)) {
+      report_error("Expected string literal");
+      return std::nullopt;
+   }
+
+   std::string value(peek().value);
+   advance();
+   return value;
+}
+
+std::optional<std::string> XPathParser::parse_uri_literal()
+{
+   return parse_string_literal_value();
+}
+
+std::optional<std::string> XPathParser::parse_ncname()
+{
+   if (not is_identifier_token(peek())) {
+      report_error("Expected name");
+      return std::nullopt;
+   }
+
+   std::string name(peek().value);
+   advance();
+   return name;
+}
+
+std::optional<std::string> XPathParser::parse_qname_string()
+{
+   if (not is_identifier_token(peek())) {
+      report_error("Expected QName");
+      return std::nullopt;
+   }
+
+   std::string name(peek().value);
+   advance();
+
+   if (match(XPathTokenType::COLON)) {
+      if (not is_identifier_token(peek())) {
+         report_error("Expected local-name after ':'");
+         return std::nullopt;
+      }
+
+      name.append(":");
+      name.append(peek().value);
+      advance();
+   }
+
+   return name;
+}
+
+std::optional<std::string> XPathParser::collect_sequence_type()
+{
+   std::string collected;
+   int paren_depth = 0;
+   XPathTokenType previous_type = XPathTokenType::UNKNOWN;
+
+   while (not is_at_end()) {
+      const auto &token = peek();
+
+      if ((token.type IS XPathTokenType::COMMA) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::RPAREN) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::LBRACE) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::ASSIGN) and (paren_depth IS 0)) break;
+      if ((token.type IS XPathTokenType::SEMICOLON) and (paren_depth IS 0)) break;
+      if (check_literal_keyword("external") and (paren_depth IS 0)) break;
+
+      if (token.type IS XPathTokenType::LPAREN) paren_depth++;
+      else if (token.type IS XPathTokenType::RPAREN) {
+         if (paren_depth IS 0) break;
+         paren_depth--;
+      }
+
+      bool add_space = !collected.empty();
+      if (add_space) {
+         if ((previous_type IS XPathTokenType::COLON) or (token.type IS XPathTokenType::COLON)) add_space = false;
+      }
+
+      if (add_space) collected.push_back(' ');
+      collected.append(std::string(token.value));
+      advance();
+      previous_type = token.type;
+   }
+
+   if (collected.empty()) return std::nullopt;
+   return collected;
+}
+
+bool XPathParser::parse_prolog(XQueryProlog &prolog)
+{
+   bool saw_prolog = false;
+
+   while (not is_at_end()) {
+      if (match(XPathTokenType::SEMICOLON)) {
+         saw_prolog = true;
+         continue;
+      }
+
+      if (check_identifier_keyword("declare")) {
+         advance();
+         saw_prolog = true;
+         if (not parse_declare_statement(prolog)) return false;
+         consume_declaration_separator();
+         continue;
+      }
+
+      if (match_literal_keyword("import")) {
+         saw_prolog = true;
+         if (not parse_import_statement(prolog)) return false;
+         consume_declaration_separator();
+         continue;
+      }
+
+      break;
+   }
+
+   return saw_prolog;
+}
+
+bool XPathParser::parse_declare_statement(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("namespace")) return parse_namespace_decl(prolog);
+
+   if (check_literal_keyword("default")) {
+      match_literal_keyword("default");
+
+      if (match_literal_keyword("element")) return parse_default_namespace_decl(prolog, false);
+      if (match_literal_keyword("function")) return parse_default_namespace_decl(prolog, true);
+      if (match_literal_keyword("collation")) return parse_default_collation_decl(prolog);
+      if (match_literal_keyword("order")) return parse_empty_order_decl(prolog);
+
+      report_error("Unsupported default declaration");
+      return false;
+   }
+
+   if (match_literal_keyword("variable")) return parse_variable_decl(prolog);
+   if (match_literal_keyword("function")) return parse_function_decl(prolog);
+   if (match_literal_keyword("boundary-space")) return parse_boundary_space_decl(prolog);
+   if (match_literal_keyword("base-uri")) return parse_base_uri_decl(prolog);
+   if (match_literal_keyword("construction")) return parse_construction_decl(prolog);
+   if (match_literal_keyword("ordering")) return parse_ordering_decl(prolog);
+   if (match_literal_keyword("copy-namespaces")) return parse_copy_namespaces_decl(prolog);
+   if (match_literal_keyword("decimal-format")) return parse_decimal_format_decl(prolog);
+   if (match_literal_keyword("option")) return parse_option_decl(prolog);
+
+   report_error("Unsupported declaration in prolog");
+   return false;
+}
+
+bool XPathParser::parse_namespace_decl(XQueryProlog &prolog)
+{
+   auto prefix = parse_ncname();
+   if (not prefix) return false;
+
+   if (not consume_token(XPathTokenType::EQUALS, "Expected '=' in namespace declaration")) return false;
+
+   auto uri = parse_uri_literal();
+   if (not uri) return false;
+
+   prolog.declare_namespace(*prefix, *uri, nullptr);
+   return true;
+}
+
+bool XPathParser::parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunctionNamespace)
+{
+   if (not match_literal_keyword("namespace")) {
+      report_error("Expected 'namespace' in default namespace declaration");
+      return false;
+   }
+
+   auto uri = parse_uri_literal();
+   if (not uri) return false;
+
+   uint32_t hash = pf::strhash(*uri);
+   if (IsFunctionNamespace) prolog.default_function_namespace = hash;
+   else prolog.default_element_namespace = hash;
+
+   return true;
+}
+
+bool XPathParser::parse_default_collation_decl(XQueryProlog &prolog)
+{
+   auto collation = parse_uri_literal();
+   if (not collation) return false;
+
+   prolog.default_collation = *collation;
+   return true;
+}
+
+bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
+{
+   if (not consume_token(XPathTokenType::DOLLAR, "Expected '$' in variable declaration")) return false;
+
+   auto name = parse_qname_string();
+   if (not name) return false;
+
+   if (match_literal_keyword("as")) {
+      auto sequence_type = collect_sequence_type();
+      if (not sequence_type) {
+         report_error("Expected sequence type after 'as'");
+         return false;
+      }
+   }
+
+   XQueryVariable variable;
+   variable.qname = *name;
+
+   if (match_literal_keyword("external")) {
+      variable.is_external = true;
+      prolog.declare_variable(variable.qname, std::move(variable));
+      return true;
+   }
+
+   if (not consume_token(XPathTokenType::ASSIGN, "Expected ':=' in variable declaration")) return false;
+
+   auto initializer = parse_expr_single();
+   if (not initializer) return false;
+
+   variable.initializer = std::move(initializer);
+   prolog.declare_variable(variable.qname, std::move(variable));
+   return true;
+}
+
+bool XPathParser::parse_function_decl(XQueryProlog &prolog)
+{
+   auto qname = parse_qname_string();
+   if (not qname) return false;
+
+   if (not consume_token(XPathTokenType::LPAREN, "Expected '(' after function name")) return false;
+
+   std::vector<std::string> parameter_names;
+   std::vector<std::string> parameter_types;
+
+   if (not check(XPathTokenType::RPAREN)) {
+      while (true) {
+         if (not consume_token(XPathTokenType::DOLLAR, "Expected '$' at start of parameter")) return false;
+
+         auto param_name = parse_qname_string();
+         if (not param_name) return false;
+
+         parameter_names.push_back(*param_name);
+
+         std::optional<std::string> type_annotation;
+         if (match_literal_keyword("as")) {
+            type_annotation = collect_sequence_type();
+            if (not type_annotation) {
+               report_error("Expected sequence type after 'as'");
+               return false;
+            }
+         }
+
+         if (type_annotation) parameter_types.push_back(*type_annotation);
+         else parameter_types.emplace_back();
+
+         if (not match(XPathTokenType::COMMA)) break;
+      }
+   }
+
+   if (not consume_token(XPathTokenType::RPAREN, "Expected ')' after parameters")) return false;
+
+   std::optional<std::string> return_type;
+   if (match_literal_keyword("as")) {
+      return_type = collect_sequence_type();
+      if (not return_type) {
+         report_error("Expected sequence type after 'as'");
+         return false;
+      }
+   }
+
+   XQueryFunction function;
+   function.qname = *qname;
+   function.parameter_names = std::move(parameter_names);
+   function.parameter_types = std::move(parameter_types);
+
+   if (return_type and !return_type->empty()) function.return_type = return_type;
+
+   if (match_literal_keyword("external")) {
+      function.is_external = true;
+      prolog.declare_function(std::move(function));
+      return true;
+   }
+
+   auto body = parse_enclosed_expr();
+   if (not body) return false;
+
+   function.body = std::move(body);
+   prolog.declare_function(std::move(function));
+   return true;
+}
+
+bool XPathParser::parse_boundary_space_decl(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("preserve")) {
+      prolog.boundary_space = XQueryProlog::BoundarySpace::Preserve;
+      return true;
+   }
+
+   if (match_literal_keyword("strip")) {
+      prolog.boundary_space = XQueryProlog::BoundarySpace::Strip;
+      return true;
+   }
+
+   report_error("Expected 'preserve' or 'strip' in boundary-space declaration");
+   return false;
+}
+
+bool XPathParser::parse_base_uri_decl(XQueryProlog &prolog)
+{
+   auto uri = parse_uri_literal();
+   if (not uri) return false;
+
+   prolog.static_base_uri = *uri;
+   return true;
+}
+
+bool XPathParser::parse_construction_decl(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("preserve")) {
+      prolog.construction_mode = XQueryProlog::ConstructionMode::Preserve;
+      return true;
+   }
+
+   if (match_literal_keyword("strip")) {
+      prolog.construction_mode = XQueryProlog::ConstructionMode::Strip;
+      return true;
+   }
+
+   report_error("Expected 'preserve' or 'strip' in construction declaration");
+   return false;
+}
+
+bool XPathParser::parse_ordering_decl(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("ordered")) {
+      prolog.ordering_mode = XQueryProlog::OrderingMode::Ordered;
+      return true;
+   }
+
+   if (match_literal_keyword("unordered")) {
+      prolog.ordering_mode = XQueryProlog::OrderingMode::Unordered;
+      return true;
+   }
+
+   report_error("Expected 'ordered' or 'unordered' in ordering declaration");
+   return false;
+}
+
+bool XPathParser::parse_empty_order_decl(XQueryProlog &prolog)
+{
+   if (not match_literal_keyword("empty")) {
+      report_error("Expected 'empty' in default order declaration");
+      return false;
+   }
+
+   if (match_literal_keyword("greatest")) {
+      prolog.empty_order = XQueryProlog::EmptyOrder::Greatest;
+      return true;
+   }
+
+   if (match_literal_keyword("least")) {
+      prolog.empty_order = XQueryProlog::EmptyOrder::Least;
+      return true;
+   }
+
+   report_error("Expected 'greatest' or 'least' after 'empty'");
+   return false;
+}
+
+bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
+{
+   bool preserve = true;
+   bool inherit = true;
+
+   if (match_literal_keyword("preserve")) preserve = true;
+   else if (match_literal_keyword("no-preserve")) preserve = false;
+   else {
+      report_error("Expected 'preserve' or 'no-preserve' in copy-namespaces declaration");
+      return false;
+   }
+
+   if (not consume_token(XPathTokenType::COMMA, "Expected ',' in copy-namespaces declaration")) return false;
+
+   if (match_literal_keyword("inherit")) inherit = true;
+   else if (match_literal_keyword("no-inherit")) inherit = false;
+   else
+   {
+      report_error("Expected 'inherit' or 'no-inherit' in copy-namespaces declaration");
+      return false;
+   }
+
+   prolog.copy_namespaces.preserve = preserve;
+   prolog.copy_namespaces.inherit = inherit;
+   return true;
+}
+
+bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
+{
+   std::string format_name;
+
+   auto is_property_name = [](std::string_view text) -> bool {
+      return (text IS "decimal-separator") or (text IS "grouping-separator") or (text IS "infinity") or
+         (text IS "minus-sign") or (text IS "NaN") or (text IS "percent") or (text IS "per-mille") or
+         (text IS "zero-digit") or (text IS "digit") or (text IS "pattern-separator");
+   };
+
+   if (is_identifier_token(peek())) {
+      std::string candidate(peek().value);
+      bool treat_as_property = is_property_name(candidate);
+      if (not treat_as_property) {
+         if ((current_token + 1 < tokens.size()) and (tokens[current_token + 1].type IS XPathTokenType::COLON)) {
+            treat_as_property = false;
+         }
+      }
+
+      if (not treat_as_property) {
+         auto qname = parse_qname_string();
+         if (not qname) return false;
+         format_name = *qname;
+      }
+   }
+
+   DecimalFormat format;
+   format.name = format_name;
+
+   bool saw_property = false;
+   while (true) {
+      if (not is_identifier_token(peek())) break;
+
+      std::string property(peek().value);
+      if (not is_property_name(property)) break;
+      advance();
+
+      if (not consume_token(XPathTokenType::EQUALS, "Expected '=' in decimal-format declaration")) return false;
+
+      auto value = parse_string_literal_value();
+      if (not value) return false;
+
+      // TODO: Could use hashed strings to make this faster
+      if (property IS "decimal-separator") format.decimal_separator = *value;
+      else if (property IS "grouping-separator") format.grouping_separator = *value;
+      else if (property IS "infinity") format.infinity = *value;
+      else if (property IS "minus-sign") format.minus_sign = *value;
+      else if (property IS "NaN") format.nan = *value;
+      else if (property IS "percent") format.percent = *value;
+      else if (property IS "per-mille") format.per_mille = *value;
+      else if (property IS "zero-digit") format.zero_digit = *value;
+      else if (property IS "digit") format.digit = *value;
+      else if (property IS "pattern-separator") format.pattern_separator = *value;
+
+      saw_property = true;
+
+      if (not match(XPathTokenType::COMMA)) break;
+   }
+
+   if (not saw_property) {
+      report_error("Expected decimal-format property declaration");
+      return false;
+   }
+
+   prolog.decimal_formats[format_name] = std::move(format);
+   return true;
+}
+
+bool XPathParser::parse_option_decl(XQueryProlog &prolog)
+{
+   auto name = parse_qname_string();
+   if (not name) return false;
+
+   auto value = parse_string_literal_value();
+   if (not value) return false;
+
+   prolog.options[*name] = *value;
+   return true;
+}
+
+bool XPathParser::parse_import_statement(XQueryProlog &prolog)
+{
+   if (match_literal_keyword("module")) return parse_import_module_decl(prolog);
+   if (match_literal_keyword("schema")) return parse_import_schema_decl();
+
+   report_error("Expected 'module' or 'schema' after import");
+   return false;
+}
+
+bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
+{
+   if (not match_literal_keyword("namespace")) {
+      report_error("Expected 'namespace' in module import");
+      return false;
+   }
+
+   auto prefix = parse_ncname();
+   if (not prefix) return false;
+
+   if (not consume_token(XPathTokenType::EQUALS, "Expected '=' in module import")) return false;
+
+   auto uri = parse_uri_literal();
+   if (not uri) return false;
+
+   XQueryModuleImport module_import;
+   module_import.target_namespace = *uri;
+
+   if (match_literal_keyword("at")) {
+      while (true) {
+         auto location = parse_string_literal_value();
+         if (not location) return false;
+         module_import.location_hints.push_back(*location);
+         if (not match(XPathTokenType::COMMA)) break;
+      }
+   }
+   
+   prolog.declare_namespace(*prefix, module_import.target_namespace, nullptr);
+   prolog.module_imports.push_back(std::move(module_import));
+   return true;
+}
+
+bool XPathParser::parse_import_schema_decl()
+{
+   report_error("Schema imports are not supported");
+   return false;
+}
 
 //********************************************************************************************************************
 // Checks if the current token is an identifier matching the specified keyword, or a dedicated token type for certain
@@ -63,6 +638,7 @@ bool XPathParser::check_identifier_keyword(std::string_view Keyword) const
 {
    const XPathToken &token = peek();
 
+   // TODO: Hashed strings are faster
    if (Keyword IS "union") {
       if (token.type IS XPathTokenType::UNION) return true;
    }
@@ -112,9 +688,6 @@ bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenT
    return false;
 }
 
-
-
-
 //********************************************************************************************************************
 // Constructs a binary operation AST node from left operand, operator token, and right operand.
 
@@ -155,7 +728,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path()
    }
 
    // Parse steps
-   while (!is_at_end()) {
+
+   while (not is_at_end()) {
       if (check(XPathTokenType::RBRACKET) or
           check(XPathTokenType::RPAREN) or
           check(XPathTokenType::COMMA) or
@@ -166,7 +740,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path()
          break;
       }
 
-      if (!is_step_start_token(peek().type)) break;
+      if (not is_step_start_token(peek().type)) break;
 
       auto step = parse_step();
       if (step) path->add_child(std::move(step));
@@ -267,7 +841,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
       if (is_node_type) {
          advance(); // consume identifier
 
-         if (!match(XPathTokenType::LPAREN)) {
+         if (not match(XPathTokenType::LPAREN)) {
             report_error("Expected '(' after node type test");
             return nullptr;
          }
@@ -275,7 +849,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
          if (name IS "processing-instruction") {
             std::string target;
 
-            if (!check(XPathTokenType::RPAREN)) {
+            if (not check(XPathTokenType::RPAREN)) {
                if (check(XPathTokenType::STRING) or is_identifier_token(peek())) {
                   target = peek().value;
                   advance();
@@ -283,7 +857,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
                else report_error("Expected literal target in processing-instruction()");
             }
 
-            if (!match(XPathTokenType::RPAREN)) {
+            if (not match(XPathTokenType::RPAREN)) {
                report_error("Expected ')' after processing-instruction() test");
             }
 
@@ -291,7 +865,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
             else return std::make_unique<XPathNode>(XPathNodeType::PROCESSING_INSTRUCTION_TEST, target);
          }
 
-         if (!match(XPathTokenType::RPAREN)) {
+         if (not match(XPathTokenType::RPAREN)) {
             report_error("Expected ')' after node type test");
             return nullptr;
          }
@@ -321,7 +895,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
 
 std::unique_ptr<XPathNode> XPathParser::parse_predicate()
 {
-   if (!match(XPathTokenType::LBRACKET)) return nullptr;
+   if (not match(XPathTokenType::LBRACKET)) return nullptr;
 
    auto predicate = std::make_unique<XPathNode>(XPathNodeType::PREDICATE);
 
@@ -387,16 +961,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
          }
       }
 
-      if (!handled_attribute) {
+      if (not handled_attribute) {
          current_token = attribute_token_index;
-         auto expression = parse_expr();
-         if (expression) predicate->add_child(std::move(expression));
+         if (auto expression = parse_expr(); expression) predicate->add_child(std::move(expression));
       }
    }
-   else {
-      // Complex expression
-      auto expression = parse_expr();
-      if (expression) {
+   else { // Complex expression
+      if (auto expression = parse_expr(); expression) {
          predicate->add_child(std::move(expression));
       }
    }
@@ -430,9 +1001,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
       return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
    }
 
-   if (check(XPathTokenType::DOLLAR)) {
-      return parse_variable_reference();
-   }
+   if (check(XPathTokenType::DOLLAR)) return parse_variable_reference();
 
    return nullptr;
 }
@@ -444,9 +1013,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
 
 std::unique_ptr<XPathNode> XPathParser::parse_expr_single()
 {
-   if (check(XPathTokenType::IF)) {
-      return parse_if_expr();
-   }
+   if (check(XPathTokenType::IF)) return parse_if_expr();
 
    if (check(XPathTokenType::FOR) or check(XPathTokenType::LET) or check_identifier_keyword("let")) {
       return parse_flwor_expr();
@@ -465,12 +1032,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr_single()
 std::unique_ptr<XPathNode> XPathParser::parse_expr()
 {
    auto expression = parse_expr_single();
-   if (!expression) return nullptr;
+   if (not expression) return nullptr;
 
    while (match(XPathTokenType::COMMA)) {
       XPathToken comma = previous();
       auto right = parse_expr_single();
-      if (!right) return nullptr;
+      if (not right) return nullptr;
       expression = create_binary_op(std::move(expression), comma, std::move(right));
    }
 
@@ -493,7 +1060,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
          bool expect_binding = true;
          while (expect_binding) {
-            if (!match(XPathTokenType::DOLLAR)) {
+            if (not match(XPathTokenType::DOLLAR)) {
                report_error("Expected '$' after 'for'");
                return nullptr;
             }
@@ -508,13 +1075,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
-            if (!match(XPathTokenType::IN)) {
+            if (not match(XPathTokenType::IN)) {
                report_error("Expected 'in' in for expression");
                return nullptr;
             }
 
             auto sequence_expr = parse_expr_single();
-            if (!sequence_expr) return nullptr;
+            if (not sequence_expr) return nullptr;
 
             auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
             binding_node->add_child(std::move(sequence_expr));
@@ -528,7 +1095,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
       if (check(XPathTokenType::LET) or check_identifier_keyword("let")) {
          XPathToken let_token(XPathTokenType::UNKNOWN, std::string_view());
-         if (!match_identifier_keyword("let", XPathTokenType::LET, let_token)) {
+         if (not match_identifier_keyword("let", XPathTokenType::LET, let_token)) {
             report_error("Expected 'let' expression");
             return nullptr;
          }
@@ -537,7 +1104,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
          bool parsing_bindings = true;
          while (parsing_bindings) {
-            if (!match(XPathTokenType::DOLLAR)) {
+            if (not match(XPathTokenType::DOLLAR)) {
                report_error("Expected '$' after 'let'");
                return nullptr;
             }
@@ -552,13 +1119,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
-            if (!match(XPathTokenType::ASSIGN)) {
+            if (not match(XPathTokenType::ASSIGN)) {
                report_error("Expected ':=' in let binding");
                return nullptr;
             }
 
             auto binding_expr = parse_expr_single();
-            if (!binding_expr) {
+            if (not binding_expr) {
                report_error("Expected expression after ':=' in let binding");
                return nullptr;
             }
@@ -610,7 +1177,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
          }
 
          auto where_clause = parse_where_clause();
-         if (!where_clause) return nullptr;
+         if (not where_clause) return nullptr;
          clause_nodes.push_back(std::move(where_clause));
          saw_where = true;
          has_non_binding_clause = true;
@@ -634,7 +1201,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
          }
 
          auto group_clause = parse_group_clause();
-         if (!group_clause) return nullptr;
+         if (not group_clause) return nullptr;
          clause_nodes.push_back(std::move(group_clause));
          saw_group = true;
          has_non_binding_clause = true;
@@ -653,7 +1220,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
          }
 
          auto order_clause = parse_order_clause(true);
-         if (!order_clause) return nullptr;
+         if (not order_clause) return nullptr;
          clause_nodes.push_back(std::move(order_clause));
          saw_order = true;
          has_non_binding_clause = true;
@@ -672,7 +1239,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
          }
 
          auto order_clause = parse_order_clause(false);
-         if (!order_clause) return nullptr;
+         if (not order_clause) return nullptr;
          clause_nodes.push_back(std::move(order_clause));
          saw_order = true;
          has_non_binding_clause = true;
@@ -686,7 +1253,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
          }
 
          auto count_clause = parse_count_clause();
-         if (!count_clause) return nullptr;
+         if (not count_clause) return nullptr;
          clause_nodes.push_back(std::move(count_clause));
          saw_count_clause = true;
          has_non_binding_clause = true;
@@ -697,21 +1264,21 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
    }
 
    XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("return", XPathTokenType::RETURN, return_token)) {
+   if (not match_identifier_keyword("return", XPathTokenType::RETURN, return_token)) {
       report_error("Expected 'return' in FLWOR expression");
       return nullptr;
    }
 
    auto return_expr = parse_expr_single();
-   if (!return_expr) {
+   if (not return_expr) {
       report_error("Expected expression after 'return'");
       return nullptr;
    }
 
-   if (!has_non_binding_clause and saw_for and !saw_let) {
+   if (not has_non_binding_clause and saw_for and !saw_let) {
       auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION);
       for (auto &binding : binding_nodes) {
-         if ((!binding) or !(binding->type IS XPathNodeType::FOR_BINDING)) {
+         if ((not binding) or !(binding->type IS XPathNodeType::FOR_BINDING)) {
             report_error("Invalid for binding in FLWOR expression");
             return nullptr;
          }
@@ -721,10 +1288,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
       return for_node;
    }
 
-   if (!has_non_binding_clause and saw_let and !saw_for) {
+   if (not has_non_binding_clause and saw_let and !saw_for) {
       auto let_node = std::make_unique<XPathNode>(XPathNodeType::LET_EXPRESSION);
       for (auto &binding : binding_nodes) {
-         if ((!binding) or !(binding->type IS XPathNodeType::LET_BINDING)) {
+         if ((not binding) or !(binding->type IS XPathNodeType::LET_BINDING)) {
             report_error("Invalid let binding in FLWOR expression");
             return nullptr;
          }
@@ -736,14 +1303,15 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
    auto flwor_node = std::make_unique<XPathNode>(XPathNodeType::FLWOR_EXPRESSION);
    for (auto &binding : binding_nodes) {
-      if (!binding) {
+      if (not binding) {
          report_error("Invalid clause in FLWOR expression");
          return nullptr;
       }
       flwor_node->add_child(std::move(binding));
    }
+
    for (auto &clause : clause_nodes) {
-      if (!clause) {
+      if (not clause) {
          report_error("Invalid clause in FLWOR expression");
          return nullptr;
       }
@@ -759,13 +1327,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 std::unique_ptr<XPathNode> XPathParser::parse_where_clause()
 {
    XPathToken where_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("where", XPathTokenType::WHERE, where_token)) {
+   if (not match_identifier_keyword("where", XPathTokenType::WHERE, where_token)) {
       report_error("Expected 'where' clause");
       return nullptr;
    }
 
    auto predicate = parse_expr_single();
-   if (!predicate) {
+   if (not predicate) {
       report_error("Expected expression after 'where'");
       return nullptr;
    }
@@ -781,13 +1349,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_where_clause()
 std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
 {
    XPathToken group_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("group", XPathTokenType::GROUP, group_token)) {
+   if (not match_identifier_keyword("group", XPathTokenType::GROUP, group_token)) {
       report_error("Expected 'group' clause");
       return nullptr;
    }
 
    XPathToken by_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("by", XPathTokenType::BY, by_token)) {
+   if (not match_identifier_keyword("by", XPathTokenType::BY, by_token)) {
       report_error("Expected 'by' after 'group'");
       return nullptr;
    }
@@ -796,7 +1364,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
 
    bool expect_key = true;
    while (expect_key) {
-      if (!match(XPathTokenType::DOLLAR)) {
+      if (not match(XPathTokenType::DOLLAR)) {
          report_error("Expected '$' to begin group by key binding");
          return nullptr;
       }
@@ -811,13 +1379,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
          return nullptr;
       }
 
-      if (!match(XPathTokenType::ASSIGN)) {
+      if (not match(XPathTokenType::ASSIGN)) {
          report_error("Expected ':=' after group by variable name");
          return nullptr;
       }
 
       auto key_expr = parse_expr_single();
-      if (!key_expr) {
+      if (not key_expr) {
          report_error("Expected expression after ':=' in group by clause");
          return nullptr;
       }
@@ -844,7 +1412,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_clause(bool StartsWithStable
 
    if (StartsWithStable) {
       XPathToken stable_token(XPathTokenType::UNKNOWN, std::string_view());
-      if (!match_identifier_keyword("stable", XPathTokenType::STABLE, stable_token)) {
+      if (not match_identifier_keyword("stable", XPathTokenType::STABLE, stable_token)) {
          report_error("Expected 'stable' keyword to start stable order by clause");
          return nullptr;
       }
@@ -852,13 +1420,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_clause(bool StartsWithStable
    }
 
    XPathToken order_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("order", XPathTokenType::ORDER, order_token)) {
+   if (not match_identifier_keyword("order", XPathTokenType::ORDER, order_token)) {
       report_error("Expected 'order' in order by clause");
       return nullptr;
    }
 
    XPathToken by_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("by", XPathTokenType::BY, by_token)) {
+   if (not match_identifier_keyword("by", XPathTokenType::BY, by_token)) {
       report_error("Expected 'by' after 'order'");
       return nullptr;
    }
@@ -867,12 +1435,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_clause(bool StartsWithStable
    clause->order_clause_is_stable = clause_is_stable;
 
    auto first_spec = parse_order_spec();
-   if (!first_spec) return nullptr;
+   if (not first_spec) return nullptr;
    clause->add_child(std::move(first_spec));
 
    while (match(XPathTokenType::COMMA)) {
       auto next_spec = parse_order_spec();
-      if (!next_spec) return nullptr;
+      if (not next_spec) return nullptr;
       clause->add_child(std::move(next_spec));
    }
 
@@ -885,7 +1453,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_clause(bool StartsWithStable
 std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
 {
    auto order_expr = parse_expr_single();
-   if (!order_expr) {
+   if (not order_expr) {
       report_error("Expected expression in order by clause");
       return nullptr;
    }
@@ -923,7 +1491,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
 
    if (match_identifier_keyword("collation", XPathTokenType::COLLATION, keyword_token)) {
       has_options = true;
-      if (!check(XPathTokenType::STRING)) {
+      if (not check(XPathTokenType::STRING)) {
          report_error("Expected string literal after 'collation' in order by clause");
          return nullptr;
       }
@@ -943,12 +1511,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
 std::unique_ptr<XPathNode> XPathParser::parse_count_clause()
 {
    XPathToken count_token(XPathTokenType::UNKNOWN, std::string_view());
-   if (!match_identifier_keyword("count", XPathTokenType::COUNT, count_token)) {
+   if (not match_identifier_keyword("count", XPathTokenType::COUNT, count_token)) {
       report_error("Expected 'count' clause");
       return nullptr;
    }
 
-   if (!match(XPathTokenType::DOLLAR)) {
+   if (not match(XPathTokenType::DOLLAR)) {
       report_error("Expected '$' after 'count'");
       return nullptr;
    }
@@ -1105,16 +1673,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_intersect_expr() {
    auto left = parse_path_expr();
-   if (!left) return nullptr;
+   if (not left) return nullptr;
 
    while (true) {
       XPathToken op(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
-      if (!match_identifier_keyword("intersect", XPathTokenType::INTERSECT, op)) {
-         if (!match_identifier_keyword("except", XPathTokenType::EXCEPT, op)) break;
+      if (not match_identifier_keyword("intersect", XPathTokenType::INTERSECT, op)) {
+         if (not match_identifier_keyword("except", XPathTokenType::EXCEPT, op)) break;
       }
 
       auto right = parse_path_expr();
-      if (!right) {
+      if (not right) {
          report_error("Expected expression after set operator");
          return nullptr;
       }
@@ -1131,21 +1699,21 @@ std::unique_ptr<XPathNode> XPathParser::parse_intersect_expr() {
 std::unique_ptr<XPathNode> XPathParser::parse_union_expr()
 {
    auto left = parse_intersect_expr();
-   if (!left) return nullptr;
+   if (not left) return nullptr;
 
-   if (!check(XPathTokenType::PIPE) and !check_identifier_keyword("union")) return left;
+   if (not check(XPathTokenType::PIPE) and !check_identifier_keyword("union")) return left;
 
    auto union_node = std::make_unique<XPathNode>(XPathNodeType::UNION);
    union_node->add_child(std::move(left));
 
    while (true) {
-      if (!match(XPathTokenType::PIPE)) {
+      if (not match(XPathTokenType::PIPE)) {
          XPathToken union_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
-         if (!match_identifier_keyword("union", XPathTokenType::UNION, union_token)) break;
+         if (not match_identifier_keyword("union", XPathTokenType::UNION, union_token)) break;
       }
 
       auto branch = parse_intersect_expr();
-      if (!branch) {
+      if (not branch) {
          report_error("Expected expression after union operator");
          return nullptr;
       }
@@ -1188,7 +1756,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
 
    if (looks_like_path) {
       auto location = parse_location_path();
-      if (!location) return nullptr;
+      if (not location) return nullptr;
 
       auto path_node = std::make_unique<XPathNode>(XPathNodeType::PATH);
       path_node->add_child(std::move(location));
@@ -1205,16 +1773,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
 std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
 {
    auto primary = parse_primary_expr();
-   if (!primary) return nullptr;
+   if (not primary) return nullptr;
 
    std::unique_ptr<XPathNode> current = std::move(primary);
 
    bool has_predicate = false;
    while (check(XPathTokenType::LBRACKET)) {
       auto predicate = parse_predicate();
-      if (!predicate) return nullptr;
+      if (not predicate) return nullptr;
 
-      if (!has_predicate) {
+      if (not has_predicate) {
          auto filter = std::make_unique<XPathNode>(XPathNodeType::FILTER);
          filter->add_child(std::move(current));
          current = std::move(filter);
@@ -1233,7 +1801,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
       if (slash_type IS XPathTokenType::UNKNOWN) break;
 
       auto relative = parse_location_path();
-      if (!relative) return nullptr;
+      if (not relative) return nullptr;
 
       auto path_node = std::make_unique<XPathNode>(XPathNodeType::PATH);
       path_node->add_child(std::move(current));
@@ -1262,28 +1830,28 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_if_expr()
 {
-   if (!match(XPathTokenType::IF)) return nullptr;
+   if (not match(XPathTokenType::IF)) return nullptr;
 
-   if (!match(XPathTokenType::LPAREN)) {
+   if (not match(XPathTokenType::LPAREN)) {
       report_error("Expected '(' after 'if'");
       return nullptr;
    }
 
    auto condition = parse_expr();
 
-   if (!match(XPathTokenType::RPAREN)) {
+   if (not match(XPathTokenType::RPAREN)) {
       report_error("Expected ')' after condition in if expression");
       return nullptr;
    }
 
-   if (!match(XPathTokenType::THEN)) {
+   if (not match(XPathTokenType::THEN)) {
       report_error("Expected 'then' in if expression");
       return nullptr;
    }
 
    auto then_branch = parse_expr_single();
 
-   if (!match(XPathTokenType::ELSE)) {
+   if (not match(XPathTokenType::ELSE)) {
       report_error("Expected 'else' in if expression");
       return nullptr;
    }
@@ -1305,8 +1873,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
    bool is_some = match(XPathTokenType::SOME);
    bool is_every = false;
 
-   if (!is_some) {
-      if (!match(XPathTokenType::EVERY)) return nullptr;
+   if (not is_some) {
+      if (not match(XPathTokenType::EVERY)) return nullptr;
       is_every = true;
    }
 
@@ -1314,7 +1882,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
 
    bool expect_binding = true;
    while (expect_binding) {
-      if (!match(XPathTokenType::DOLLAR)) {
+      if (not match(XPathTokenType::DOLLAR)) {
          report_error("Expected '$' after quantified expression keyword");
          return nullptr;
       }
@@ -1329,13 +1897,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
          return nullptr;
       }
 
-      if (!match(XPathTokenType::IN)) {
+      if (not match(XPathTokenType::IN)) {
          report_error("Expected 'in' in quantified expression");
          return nullptr;
       }
 
       auto sequence_expr = parse_expr_single();
-      if (!sequence_expr) return nullptr;
+      if (not sequence_expr) return nullptr;
 
       auto binding_node = std::make_unique<XPathNode>(XPathNodeType::QUANTIFIED_BINDING, variable_name);
       binding_node->add_child(std::move(sequence_expr));
@@ -1345,13 +1913,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
       else expect_binding = false;
    }
 
-   if (!match(XPathTokenType::SATISFIES)) {
+   if (not match(XPathTokenType::SATISFIES)) {
       report_error("Expected 'satisfies' in quantified expression");
       return nullptr;
    }
 
    auto condition_expr = parse_expr_single();
-   if (!condition_expr) return nullptr;
+   if (not condition_expr) return nullptr;
 
    quant_node->add_child(std::move(condition_expr));
    return quant_node;
@@ -1376,7 +1944,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
    if (is_constructor_keyword(peek())) {
       size_t next_index = current_token + 1;
       bool is_function_call = (next_index < tokens.size()) and (tokens[next_index].type IS XPathTokenType::LPAREN);
-      if (!is_function_call) return parse_computed_constructor();
+      if (not is_function_call) return parse_computed_constructor();
    }
 
    if (check(XPathTokenType::STRING)) {
@@ -1413,21 +1981,21 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_function_call()
 {
-   if (!is_identifier_token(peek())) return nullptr;
+   if (not is_identifier_token(peek())) return nullptr;
 
    std::string function_name(peek().value);
    advance();
 
-   if (!match(XPathTokenType::LPAREN)) return nullptr;
+   if (not match(XPathTokenType::LPAREN)) return nullptr;
 
    auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, function_name);
 
-   while (!check(XPathTokenType::RPAREN) and !is_at_end()) {
+   while (not check(XPathTokenType::RPAREN) and !is_at_end()) {
       auto arg = parse_expr_single();
-      if (!arg) break;
+      if (not arg) break;
       function_node->add_child(std::move(arg));
 
-      if (!match(XPathTokenType::COMMA)) break;
+      if (not match(XPathTokenType::COMMA)) break;
    }
 
    (void)match(XPathTokenType::RPAREN);
@@ -1523,7 +2091,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
 {
    ConstructorName name;
 
-   if (!is_identifier_token(peek())) {
+   if (not is_identifier_token(peek())) {
       report_error("Expected name in constructor");
       return std::nullopt;
    }
@@ -1533,7 +2101,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
 
    if (match(XPathTokenType::COLON)) {
       name.Prefix = name.LocalName;
-      if (!is_identifier_token(peek())) {
+      if (not is_identifier_token(peek())) {
          report_error("Expected local name after ':' in constructor");
          return std::nullopt;
       }
@@ -1551,7 +2119,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
 
 std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 {
-   if (!consume_token(XPathTokenType::TAG_OPEN, "Expected '<' to start direct constructor")) {
+   if (not consume_token(XPathTokenType::TAG_OPEN, "Expected '<' to start direct constructor")) {
       return nullptr;
    }
 
@@ -1561,32 +2129,32 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
    info.is_empty_element = false;
 
    auto element_name = parse_constructor_qname();
-   if (!element_name) return nullptr;
+   if (not element_name) return nullptr;
 
    info.prefix = element_name->Prefix;
    info.name = element_name->LocalName;
 
    std::vector<XPathConstructorAttribute> attributes;
 
-   while (!check(XPathTokenType::TAG_CLOSE) and !check(XPathTokenType::EMPTY_TAG_CLOSE)) {
+   while (not check(XPathTokenType::TAG_CLOSE) and !check(XPathTokenType::EMPTY_TAG_CLOSE)) {
       if (is_at_end()) {
          report_error("Unexpected end of input in direct constructor start tag");
          return nullptr;
       }
 
       auto attribute_name = parse_constructor_qname();
-      if (!attribute_name) return nullptr;
+      if (not attribute_name) return nullptr;
 
       XPathConstructorAttribute attribute;
       attribute.prefix = attribute_name->Prefix;
       attribute.name = attribute_name->LocalName;
       attribute.is_namespace_declaration = (attribute.prefix.empty() and attribute.name IS "xmlns") or (attribute.prefix IS "xmlns");
 
-      if (!consume_token(XPathTokenType::EQUALS, "Expected '=' after attribute name")) {
+      if (not consume_token(XPathTokenType::EQUALS, "Expected '=' after attribute name")) {
          return nullptr;
       }
 
-      if (!check(XPathTokenType::STRING)) {
+      if (not check(XPathTokenType::STRING)) {
          report_error("Expected quoted attribute value in direct constructor");
          return nullptr;
       }
@@ -1595,7 +2163,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       advance();
 
       std::vector<XPathAttributeValuePart> parts;
-      if (!attribute_token.attribute_value_parts.empty()) {
+      if (not attribute_token.attribute_value_parts.empty()) {
          parts.reserve(attribute_token.attribute_value_parts.size());
          size_t part_index = 0;
          for (const auto &token_part : attribute_token.attribute_value_parts) {
@@ -1604,7 +2172,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
             part.text = token_part.text;
             if (part.is_expression) {
                auto expr = parse_embedded_expr(part.text);
-               if (!expr) return nullptr;
+               if (not expr) return nullptr;
                attribute.set_expression_for_part(part_index, std::move(expr));
             }
             parts.push_back(std::move(part));
@@ -1634,7 +2202,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       return element_node;
    }
 
-   if (!consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close start tag")) {
+   if (not consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close start tag")) {
       return nullptr;
    }
 
@@ -1649,7 +2217,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       text_buffer.clear();
    };
 
-   while (!check(XPathTokenType::CLOSE_TAG_OPEN)) {
+   while (not check(XPathTokenType::CLOSE_TAG_OPEN)) {
       if (is_at_end()) {
          report_error("Unexpected end of input in direct constructor content");
          return nullptr;
@@ -1658,7 +2226,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       if (check(XPathTokenType::TAG_OPEN)) {
          flush_text();
          auto child = parse_direct_constructor();
-         if (!child) return nullptr;
+         if (not child) return nullptr;
          element_node->add_child(std::move(child));
          continue;
       }
@@ -1666,7 +2234,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       if (check(XPathTokenType::LBRACE)) {
          flush_text();
          auto expr = parse_enclosed_expr();
-         if (!expr) return nullptr;
+         if (not expr) return nullptr;
          auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
          content_node->add_child(std::move(expr));
          element_node->add_child(std::move(content_node));
@@ -1685,14 +2253,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
    flush_text();
 
-   if (!consume_token(XPathTokenType::CLOSE_TAG_OPEN, "Expected closing tag")) {
+   if (not consume_token(XPathTokenType::CLOSE_TAG_OPEN, "Expected closing tag")) {
       return nullptr;
    }
 
    auto closing_name = parse_constructor_qname();
-   if (!closing_name) return nullptr;
+   if (not closing_name) return nullptr;
 
-   if (!consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close end tag")) {
+   if (not consume_token(XPathTokenType::TAG_CLOSE, "Expected '>' to close end tag")) {
       return nullptr;
    }
 
@@ -1707,14 +2275,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_enclosed_expr()
 {
-   if (!consume_token(XPathTokenType::LBRACE, "Expected '{' to begin expression")) {
+   if (not consume_token(XPathTokenType::LBRACE, "Expected '{' to begin expression")) {
       return nullptr;
    }
 
    auto expr = parse_expr();
-   if (!expr) return nullptr;
+   if (not expr) return nullptr;
 
-   if (!consume_token(XPathTokenType::RBRACE, "Expected '}' to close expression")) {
+   if (not consume_token(XPathTokenType::RBRACE, "Expected '}' to close expression")) {
       return nullptr;
    }
 
@@ -1730,14 +2298,14 @@ std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Sou
    auto embedded_result = embedded_parser.parse(token_list);
    auto expr = std::move(embedded_result.expression);
 
-   if (!expr or embedded_parser.has_errors()) {
+   if (not expr or embedded_parser.has_errors()) {
       if (embedded_parser.has_errors()) {
          for (const auto &message : embedded_parser.get_errors()) {
             report_error(message);
          }
       }
 
-      if (!expr) report_error("Failed to parse embedded expression");
+      if (not expr) report_error("Failed to parse embedded expression");
 
       return nullptr;
    }
@@ -1778,18 +2346,18 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
 
    if (check(XPathTokenType::LBRACE)) {
       auto name_expr = parse_enclosed_expr();
-      if (!name_expr) return nullptr;
+      if (not name_expr) return nullptr;
       node->set_name_expression(std::move(name_expr));
    }
    else {
       auto name = parse_constructor_qname();
-      if (!name) return nullptr;
+      if (not name) return nullptr;
       info.prefix = name->Prefix;
       info.name = name->LocalName;
    }
 
    auto content_expr = parse_enclosed_expr();
-   if (!content_expr) return nullptr;
+   if (not content_expr) return nullptr;
 
    auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
@@ -1812,18 +2380,18 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
 
    if (check(XPathTokenType::LBRACE)) {
       auto name_expr = parse_enclosed_expr();
-      if (!name_expr) return nullptr;
+      if (not name_expr) return nullptr;
       node->set_name_expression(std::move(name_expr));
    }
    else {
       auto name = parse_constructor_qname();
-      if (!name) return nullptr;
+      if (not name) return nullptr;
       info.prefix = name->Prefix;
       info.name = name->LocalName;
    }
 
    auto value_expr = parse_enclosed_expr();
-   if (!value_expr) return nullptr;
+   if (not value_expr) return nullptr;
 
    auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(value_expr));
@@ -1841,7 +2409,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_text_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::TEXT_CONSTRUCTOR);
    auto content_expr = parse_enclosed_expr();
-   if (!content_expr) return nullptr;
+   if (not content_expr) return nullptr;
 
    auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
@@ -1856,7 +2424,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_comment_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::COMMENT_CONSTRUCTOR);
    auto content_expr = parse_enclosed_expr();
-   if (!content_expr) return nullptr;
+   if (not content_expr) return nullptr;
 
    auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
@@ -1877,7 +2445,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
 
    if (check(XPathTokenType::LBRACE)) {
       auto target_expr = parse_enclosed_expr();
-      if (!target_expr) return nullptr;
+      if (not target_expr) return nullptr;
       node->set_name_expression(std::move(target_expr));
    }
    else if (check(XPathTokenType::STRING)) {
@@ -1898,7 +2466,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
    }
 
    auto content_expr = parse_enclosed_expr();
-   if (!content_expr) return nullptr;
+   if (not content_expr) return nullptr;
 
    auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
@@ -1916,7 +2484,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_document_constructor()
 {
    auto node = std::make_unique<XPathNode>(XPathNodeType::DOCUMENT_CONSTRUCTOR);
    auto content_expr = parse_enclosed_expr();
-   if (!content_expr) return nullptr;
+   if (not content_expr) return nullptr;
 
    auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));

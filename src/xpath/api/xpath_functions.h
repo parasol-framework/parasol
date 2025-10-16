@@ -48,15 +48,12 @@ struct TransparentStringEqual {
 //********************************************************************************************************************
 // XPath Evaluation Context
 
-
-namespace xml::schema
-{
+namespace xml::schema {
    class SchemaTypeRegistry;
    SchemaTypeRegistry & registry();
 }
 
-struct XPathContext
-{
+struct XPathContext {
    XMLTag * context_node = nullptr;
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
@@ -99,8 +96,7 @@ class VariableBindingGuard
       (*context.variables)[variable_name] = std::move(Value);
    }
 
-   ~VariableBindingGuard()
-   {
+   ~VariableBindingGuard() {
       if (had_previous_value) (*context.variables)[variable_name] = *previous_value;
       else context.variables->erase(variable_name);
    }

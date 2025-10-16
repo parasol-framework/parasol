@@ -1,16 +1,12 @@
+
 #include "xquery_prolog.h"
-
 #include <parasol/strings.hpp>
-
 #include <utility>
-
 #include "../xpath.h"
 #include "../../xml/xml.h"
 
-namespace
-{
-   [[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity)
-   {
+namespace {
+   [[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity) {
       std::string signature;
       signature.reserve(QName.size() + 16U);
       signature.append(QName);
@@ -38,11 +34,9 @@ std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(std::string_view uri,
    auto found = modules.find(uri_key);
    if (found != modules.end()) return found->second;
 
-   if (owner)
-   {
+   if (owner) {
       auto document_cache = owner->DocumentCache.find(uri_key);
-      if (document_cache != owner->DocumentCache.end())
-      {
+      if (document_cache != owner->DocumentCache.end()) {
          modules[document_cache->first] = document_cache->second;
          return document_cache->second;
       }
@@ -71,14 +65,12 @@ uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *doc
    auto mapping = declared_namespaces.find(std::string(prefix));
    if (mapping != declared_namespaces.end()) return mapping->second;
 
-   if (prefix.empty())
-   {
+   if (prefix.empty()) {
       if (default_element_namespace.has_value()) return *default_element_namespace;
       return 0U;
    }
 
-   if (document)
-   {
+   if (document) {
       auto doc_entry = document->Prefixes.find(std::string(prefix));
       if (doc_entry != document->Prefixes.end()) return doc_entry->second;
    }
@@ -91,8 +83,7 @@ void XQueryProlog::declare_namespace(std::string_view prefix, std::string_view u
    auto hash = pf::strhash(uri);
    declared_namespaces[std::string(prefix)] = hash;
 
-   if (document)
-   {
+   if (document) {
       document->NSRegistry[hash] = std::string(uri);
       document->Prefixes[std::string(prefix)] = hash;
    }
