@@ -96,6 +96,11 @@ class XPathEvaluator {
       uint32_t CurrentPrefix);
    std::optional<std::string> evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix);
    std::optional<std::string> evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix);
+   std::optional<std::string> prepare_constructor_text(std::string_view Text, bool IsLiteral) const;
+   bool prolog_has_boundary_space_preserve() const;
+   bool prolog_construction_preserve() const;
+   bool prolog_ordering_is_ordered() const;
+   bool prolog_empty_is_greatest() const;
    std::optional<XMLTag> build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
       ConstructorNamespaceScope *ParentScope, int ParentID);
    XPathVal evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);

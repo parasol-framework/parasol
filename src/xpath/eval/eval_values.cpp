@@ -74,6 +74,45 @@ static std::string trim_constructor_whitespace(std::string_view Value)
    return std::string(Value.substr(start, end - start));
 }
 
+static bool is_xml_whitespace_only(std::string_view Value)
+{
+   for (char ch : Value)
+   {
+      if (uint8_t(ch) > 0x20u) return false;
+   }
+   return true;
+}
+
+std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_view Text, bool IsLiteral) const
+{
+   if (Text.empty())
+   {
+      if (IsLiteral) return std::string();
+      if (prolog_construction_preserve()) return std::string();
+      return std::nullopt;
+   }
+
+   bool whitespace_only = is_xml_whitespace_only(Text);
+
+   if (IsLiteral)
+   {
+      if (whitespace_only and (not prolog_has_boundary_space_preserve())) return std::nullopt;
+      return std::string(Text);
+   }
+
+   if (whitespace_only)
+   {
+      if (prolog_construction_preserve()) return std::string(Text);
+      return std::nullopt;
+   }
+
+   if (prolog_construction_preserve()) return std::string(Text);
+
+   std::string trimmed = trim_constructor_whitespace(Text);
+   if (trimmed.empty()) return std::nullopt;
+   return trimmed;
+}
+
 //********************************************************************************************************************
 // Represents a QName or expanded QName parsed from constructor syntax, capturing the prefix, local part, and resolved
 // namespace URI when known.
@@ -717,10 +756,15 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
       }
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const UnionEntry &Left, const UnionEntry &Right) {
-      if (Left.node IS Right.node) return false;
-      return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
-   });
+   bool enforce_document_order = prolog_ordering_is_ordered();
+
+   if (enforce_document_order)
+   {
+      std::stable_sort(entries.begin(), entries.end(), [this](const UnionEntry &Left, const UnionEntry &Right) {
+         if (Left.node IS Right.node) return false;
+         return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
+      });
+   }
 
    NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
@@ -745,7 +789,9 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
 
    if (combined_nodes.empty()) return XPathVal(NODES());
 
-   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   XPathVal result(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   if (not enforce_document_order) result.preserve_node_order = true;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -871,10 +917,15 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       entries.push_back(std::move(entry));
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
-      if (LeftEntry.node IS RightEntry.node) return false;
-      return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
-   });
+   bool enforce_document_order = prolog_ordering_is_ordered();
+
+   if (enforce_document_order)
+   {
+      std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
+         if (LeftEntry.node IS RightEntry.node) return false;
+         return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
+      });
+   }
 
    NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
@@ -899,7 +950,9 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
 
    if (combined_nodes.empty()) return XPathVal(NODES());
 
-   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   XPathVal result(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   if (not enforce_document_order) result.preserve_node_order = true;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -1025,10 +1078,15 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       entries.push_back(std::move(entry));
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
-      if (LeftEntry.node IS RightEntry.node) return false;
-      return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
-   });
+   bool enforce_document_order = prolog_ordering_is_ordered();
+
+   if (enforce_document_order)
+   {
+      std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
+         if (LeftEntry.node IS RightEntry.node) return false;
+         return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
+      });
+   }
 
    NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
@@ -1053,7 +1111,9 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 
    if (combined_nodes.empty()) return XPathVal(NODES());
 
-   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   XPathVal result(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   if (not enforce_document_order) result.preserve_node_order = true;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -1159,6 +1219,9 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
    }
 
    std::string text = Value.to_string();
+   auto prepared = prepare_constructor_text(text, false);
+   if (not prepared.has_value()) return true;
+   text = std::move(*prepared);
    if (text.empty()) return true;
 
    pf::vector<XMLAttrib> text_attribs;
@@ -1507,8 +1570,11 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
       if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT) {
          if (not child->value.empty()) {
+            auto text_value = prepare_constructor_text(child->value, true);
+            if (not text_value.has_value()) continue;
+
             pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", child->value);
+            text_attribs.emplace_back("", *text_value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = element.ID;
             element.Children.push_back(std::move(text_node));
@@ -1651,11 +1717,14 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
       const XPathNode *content_node = Node->get_child(0);
       if (content_node) {
          if (not content_node->value.empty()) {
-            pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", content_node->value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
-            text_node.ParentID = element.ID;
-            element.Children.push_back(std::move(text_node));
+            auto text_value = prepare_constructor_text(content_node->value, true);
+            if (text_value.has_value()) {
+               pf::vector<XMLAttrib> text_attribs;
+               text_attribs.emplace_back("", *text_value);
+               XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+               text_node.ParentID = element.ID;
+               element.Children.push_back(std::move(text_node));
+            }
          }
          else if (content_node->child_count() > 0) {
             const XPathNode *expr = content_node->get_child(0);
@@ -1963,11 +2032,14 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
       const XPathNode *content_node = Node->get_child(0);
       if (content_node) {
          if (not content_node->value.empty()) {
-            pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", content_node->value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
-            text_node.ParentID = document_node.ID;
-            document_node.Children.push_back(std::move(text_node));
+            auto text_value = prepare_constructor_text(content_node->value, true);
+            if (text_value.has_value()) {
+               pf::vector<XMLAttrib> text_attribs;
+               text_attribs.emplace_back("", *text_value);
+               XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+               text_node.ParentID = document_node.ID;
+               document_node.Children.push_back(std::move(text_node));
+            }
          }
          else if (content_node->child_count() > 0) {
             const XPathNode *expr = content_node->get_child(0);
@@ -2058,7 +2130,9 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       return ERR::Search;
    }
 
-   if (Value.preserve_node_order) {
+   bool preserve_order = Value.preserve_node_order or (not prolog_ordering_is_ordered());
+
+   if (preserve_order) {
       std::vector<NodeEntry> unique_entries;
       unique_entries.reserve(entries.size());
 

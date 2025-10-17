@@ -853,7 +853,9 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             combined_strings.push_back(std::move(entry.string_value));
          }
 
-         return XPathVal(combined_nodes, std::nullopt, std::move(combined_strings), std::move(combined_attributes));
+         XPathVal result(combined_nodes, std::nullopt, std::move(combined_strings), std::move(combined_attributes));
+         if (not prolog_ordering_is_ordered()) result.preserve_node_order = true;
+         return result;
       }
 
       auto left_value = evaluate_expression(left_node, CurrentPrefix);

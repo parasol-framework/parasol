@@ -17,6 +17,12 @@ namespace {
    }
 }
 
+XQueryProlog::XQueryProlog()
+{
+   default_collation = "http://www.w3.org/2005/xpath-functions/collation/codepoint";
+   decimal_formats[std::string()] = DecimalFormat();
+}
+
 std::string XQueryFunction::signature() const
 {
    return build_function_signature(qname, parameter_names.size());

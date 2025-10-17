@@ -42,6 +42,15 @@ function testBoundarySpacePreservation()
    assert(value == '  padded  ', 'Boundary-space preserve should retain surrounding whitespace, got ' .. tostring(value))
 end
 
+function testBoundarySpaceStripRemoval()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('string(<a>   </a>)')
+   assert(value == '', 'Boundary-space strip should remove whitespace-only text, got ' .. tostring(value))
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Recursive functions declared in the prolog should resolve correctly
 
@@ -219,6 +228,25 @@ function testDefaultCollationDeclaration()
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Default collation should not error, got ' .. tostring(xml.errorMsg))
 end
 
+function testDefaultCollationFunctionUsesProlog()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = xml.getKey('declare default collation "urn:custom"; default-collation()')
+   assert(result == 'urn:custom', 'default-collation() should honour prolog declaration, got ' .. tostring(result))
+end
+
+function testDecimalFormatDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = xml.getKey('declare decimal-format local:df decimal-separator = "x"; "ok"')
+   assert(result == 'ok', 'Decimal-format declaration should succeed, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Decimal-format declaration should not error, got ' .. tostring(xml.errorMsg))
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Construction mode declaration should parse correctly
 
@@ -230,6 +258,24 @@ function testConstructionModeDeclaration()
    local value = xml.getKey('declare construction strip; string(<test>value</test>)')
    assert(value == 'value', 'Construction mode declaration should parse, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Construction mode should not error, got ' .. tostring(xml.errorMsg))
+end
+
+function testConstructionStripTrimsComputedContent()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('declare construction strip; string(<test>{ "  padded  " }</test>)')
+   assert(value == 'padded', 'Construction strip should trim computed content, got ' .. tostring(value))
+end
+
+function testConstructionPreserveRetainsWhitespace()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('declare construction preserve; string(<test>{ "  padded  " }</test>)')
+   assert(value == '  padded  ', 'Construction preserve should keep surrounding whitespace, got ' .. tostring(value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -341,6 +387,99 @@ function testOrderingDeclaration()
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Ordering declaration should not error, got ' .. tostring(xml.errorMsg))
 end
 
+function testOrderingModeUnorderedSequence()
+   local xml = obj.new('xml', {
+      statement = '<root><a>Alpha</a><b>Beta</b></root>'
+   })
+
+   local expr = table.concat({
+      'declare ordering unordered;',
+      'let $seq := (/root/b, /root/a)',
+      'return concat(string($seq[1]), ":", string($seq[2]))'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'Beta:Alpha', 'Ordering unordered should preserve evaluation sequence, got ' .. tostring(value))
+end
+
+function testOrderingModeUnorderedUnion()
+   local xml = obj.new('xml', {
+      statement = '<root><a>Alpha</a><b>Beta</b></root>'
+   })
+
+   local expr = table.concat({
+      'declare ordering unordered;',
+      'let $u := ((/root/b) union (/root/a))',
+      'return concat(string($u[1]), ":", string($u[2]))'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'Beta:Alpha', 'Ordering unordered should preserve union branch order, got ' .. tostring(value))
+end
+
+function testOrderingModeUnorderedIntersect()
+   local xml = obj.new('xml', {
+      statement = '<root><a>Alpha</a><b>Beta</b></root>'
+   })
+
+   local expr = table.concat({
+      'declare ordering unordered;',
+      'let $inter := ((/root/b, /root/a) intersect (/root/a | /root/b))',
+      'return concat(string($inter[1]), ":", string($inter[2]))'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'Beta:Alpha', 'Ordering unordered should retain left operand order for intersect, got ' .. tostring(value))
+end
+
+function testOrderingModeUnorderedExcept()
+   local xml = obj.new('xml', {
+      statement = '<root><a>Alpha</a><b>Beta</b><c>Gamma</c></root>'
+   })
+
+   local expr = table.concat({
+      'declare ordering unordered;',
+      'let $exc := ((/root/c, /root/a, /root/b) except (/root/a))',
+      'return concat(string($exc[1]), ":", string($exc[2]))'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'Gamma:Beta', 'Ordering unordered should respect operand order for except, got ' .. tostring(value))
+end
+
+function testDefaultEmptyOrderGreatest()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'let $seq := (for $x in ("b", "", "a")',
+      'order by if ($x = "") then () else $x',
+      'return if ($x = "") then "empty" else $x)',
+      'return concat($seq[1], ":", $seq[2], ":", $seq[3])'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'a:b:empty', 'Default empty order should treat empties as greatest, got ' .. tostring(value))
+end
+
+function testEmptyOrderLeastPlacement()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare default order empty least;',
+      'let $seq := (for $x in ("b", "", "a")',
+      'order by if ($x = "") then () else $x',
+      'return if ($x = "") then "empty" else $x)',
+      'return concat($seq[1], ":", $seq[2], ":", $seq[3])'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'empty:a:b', 'Empty least should place empties first, got ' .. tostring(value))
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Copy-namespaces declaration should parse
 
@@ -372,13 +511,18 @@ end
 return {
    tests = {
       'testUserDefinedFunction', 'testNamespaceAndVariableDeclarations', 'testBoundarySpacePreservation',
+      'testBoundarySpaceStripRemoval',
       'testRecursiveFunction', 'testFunctionOverloadingByArity', 'testNamespaceFallbackFromDocument',
       'testVariableShadowing', 'testExternalVariableErrorHandling', 'testExternalFunctionErrorHandling',
       'testModuleImportDeclaration', 'testFunctionTypeAnnotations', 'testMultipleNamespacesInProlog',
-      'testVariableInitializerExpressions', 'testDefaultCollationDeclaration', 'testConstructionModeDeclaration',
+      'testVariableInitializerExpressions', 'testDefaultCollationDeclaration', 'testDefaultCollationFunctionUsesProlog',
+      'testDecimalFormatDeclaration', 'testConstructionModeDeclaration',
+      'testConstructionStripTrimsComputedContent', 'testConstructionPreserveRetainsWhitespace',
       'testZeroParameterFunction', 'testMultiParameterFunction', 'testPrologVariableAvailability',
       'testFunctionNameCollisionResolution', 'testNamespacePrecedence', 'testMultipleFunctionArities',
-      'testBaseUriDeclaration', 'testOrderingDeclaration', 'testCopyNamespacesDeclaration',
+      'testBaseUriDeclaration', 'testOrderingDeclaration', 'testOrderingModeUnorderedSequence',
+      'testOrderingModeUnorderedUnion', 'testOrderingModeUnorderedIntersect', 'testOrderingModeUnorderedExcept',
+      'testDefaultEmptyOrderGreatest', 'testEmptyOrderLeastPlacement', 'testCopyNamespacesDeclaration',
       'testQueryWithoutProlog'
    },
    init = function(ScriptFolder)

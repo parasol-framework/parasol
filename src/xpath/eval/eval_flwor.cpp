@@ -762,6 +762,11 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             metadata.comparator_options.empty_is_greatest = metadata.options.empty_is_greatest;
          }
 
+         if (not metadata.comparator_options.has_empty_mode) {
+            metadata.comparator_options.has_empty_mode = true;
+            metadata.comparator_options.empty_is_greatest = prolog_empty_is_greatest();
+         }
+
          order_specs.push_back(metadata);
       }
 
@@ -999,6 +1004,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    result.node_set_string_values = std::move(combined_strings);
    if (combined_override.has_value()) result.node_set_string_override = combined_override;
    else result.node_set_string_override.reset();
-   result.preserve_node_order = (order_clause != nullptr);
+   bool preserve_order = (order_clause != nullptr);
+   if (not prolog_ordering_is_ordered()) preserve_order = true;
+   result.preserve_node_order = preserve_order;
    return result;
 }
