@@ -61,7 +61,25 @@ src/xpath/
 │   ├── function_library.cpp       # Function library initialization
 │   └── accessor_support.cpp/h     # Accessor function utilities
 └── tests/                     # Test infrastructure
-    └── test_xpath_unit.cpp        # C++ unit test runner executable
+    ├── test_xpath_unit.cpp        # C++ unit test runner executable
+    ├── test_accessor.fluid        # Accessor function tests
+    ├── test_advanced.fluid        # Advanced XPath queries
+    ├── test_advanced_paths.fluid  # Advanced path expression tests
+    ├── test_axes.fluid            # XPath axes tests
+    ├── test_constructors.fluid    # Node constructor tests
+    ├── test_core.fluid            # Core XPath functionality tests
+    ├── test_datetime.fluid        # DateTime function tests
+    ├── test_documents.fluid       # Document function tests
+    ├── test_duration.fluid        # Duration type tests
+    ├── test_flwor.fluid           # FLWOR expression tests
+    ├── test_flwor_clauses.fluid   # Individual FLWOR clause tests
+    ├── test_func_ext.fluid        # Extended function library tests
+    ├── test_predicates.fluid      # Predicate evaluation tests
+    ├── test_prolog.fluid          # XQuery prolog tests
+    ├── test_qname.fluid           # QName operation tests
+    ├── test_reserved_words.fluid  # Reserved word handling tests
+    ├── test_sequences.fluid       # Sequence operation tests
+    └── test_string_uri.fluid      # String and URI function tests
 ```
 
 ### Dependencies
@@ -594,39 +612,40 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 
 ## Testing Framework
 
-### XPath Tests via XML Module
+### XPath Integration Tests
 
-All XPath tests are located in the XML module's test directory and exercise XPath functionality through the XML class interface:
+XPath tests are located in the XPath module's test directory and exercise XPath functionality through the XML class interface:
 
-**XPath Integration Tests (`src/xml/tests/`):**
-- `test_xpath_core.fluid` - Core XPath expressions and operators
-- `test_xpath_predicates.fluid` - Predicate evaluation
-- `test_xpath_axes.fluid` - All 13 XPath axes
-- `test_xpath_advanced.fluid` - Complex XPath queries
-- `test_xpath_advanced_paths.fluid` - Advanced path expressions
-- `test_xpath_flwor.fluid` - FLWOR expressions
-- `test_xpath_flwor_clauses.fluid` - Individual FLWOR clauses
-- `test_xpath_func_ext.fluid` - Extended function library
-- `test_xpath_sequences.fluid` - Sequence operations
-- `test_xpath_string_uri.fluid` - String and URI functions
-- `test_xpath_duration.fluid` - Duration type operations
-- `test_xpath_datetime.fluid` - DateTime functions
-- `test_xpath_qname.fluid` - QName operations
-- `test_xpath_accessor.fluid` - Accessor functions
-- `test_xpath_constructors.fluid` - Node constructors
-- `test_xpath_documents.fluid` - Document functions
-- `test_setvariable.fluid` - Variable binding
+**XPath Integration Tests (`src/xpath/tests/`):**
+- `test_core.fluid` - Core XPath expressions and operators
+- `test_predicates.fluid` - Predicate evaluation
+- `test_axes.fluid` - All 13 XPath axes
+- `test_advanced.fluid` - Complex XPath queries
+- `test_advanced_paths.fluid` - Advanced path expressions
+- `test_flwor.fluid` - FLWOR expressions
+- `test_flwor_clauses.fluid` - Individual FLWOR clauses
+- `test_func_ext.fluid` - Extended function library
+- `test_sequences.fluid` - Sequence operations
+- `test_string_uri.fluid` - String and URI functions
+- `test_duration.fluid` - Duration type operations
+- `test_datetime.fluid` - DateTime functions
+- `test_qname.fluid` - QName operations
+- `test_accessor.fluid` - Accessor functions
+- `test_constructors.fluid` - Node constructors
+- `test_documents.fluid` - Document functions
+- `test_prolog.fluid` - XQuery prolog functionality
+- `test_reserved_words.fluid` - Reserved word handling
 
 ### Running XPath Tests
 
 **Individual Test:**
 ```bash
-cd src/xml/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xml/tests/test_xpath_core.fluid --gfx-driver=headless --log-warning
+cd src/xpath/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xpath/tests/test_core.fluid --gfx-driver=headless --log-warning
 ```
 
 **All XPath Tests via CMake:**
 ```bash
-ctest --build-config [BuildType] --test-dir build/agents -R xml_xpath
+ctest --build-config [BuildType] --test-dir build/agents -R xpath
 ```
 
 ### C++ Unit Testing for Internal Components
