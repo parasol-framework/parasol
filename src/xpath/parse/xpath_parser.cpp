@@ -78,6 +78,28 @@ bool XPathParser::match_literal_keyword(std::string_view Keyword)
    return false;
 }
 
+bool XPathParser::is_function_call_ahead(size_t Index) const
+{
+   if (Index >= tokens.size()) return false;
+
+   const auto &first = tokens[Index];
+   if (not is_identifier_token(first)) return false;
+
+   size_t lookahead = Index + 1;
+
+   if ((lookahead < tokens.size()) and (tokens[lookahead].type IS XPathTokenType::COLON))
+   {
+      lookahead++;
+      if (lookahead >= tokens.size()) return false;
+
+      if (not is_identifier_token(tokens[lookahead])) return false;
+      lookahead++;
+   }
+
+   if (lookahead >= tokens.size()) return false;
+   return tokens[lookahead].type IS XPathTokenType::LPAREN;
+}
+
 namespace {
 std::string_view keyword_from_token_type(XPathTokenType Type)
 {
@@ -1096,15 +1118,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
-            std::string variable_name;
-            if (is_identifier_token(peek())) {
-               variable_name = peek().value;
-               advance();
-            }
-            else {
-               report_error("Expected variable name after '$' in for expression");
-               return nullptr;
-            }
+            auto variable_name_opt = parse_qname_string();
+            if (not variable_name_opt) return nullptr;
+            std::string variable_name = *variable_name_opt;
 
             if (not match(XPathTokenType::IN)) {
                report_error("Expected 'in' in for expression");
@@ -1140,15 +1156,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
-            std::string variable_name;
-            if (is_identifier_token(peek())) {
-               variable_name = peek().value;
-               advance();
-            }
-            else {
-               report_error("Expected variable name after '$' in let binding");
-               return nullptr;
-            }
+            auto variable_name_opt = parse_qname_string();
+            if (not variable_name_opt) return nullptr;
+            std::string variable_name = *variable_name_opt;
 
             if (not match(XPathTokenType::ASSIGN)) {
                report_error("Expected ':=' in let binding");
@@ -1400,15 +1410,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
          return nullptr;
       }
 
-      std::string variable_name;
-      if (is_identifier_token(peek())) {
-         variable_name = peek().value;
-         advance();
-      }
-      else {
-         report_error("Expected variable name in group by key binding");
-         return nullptr;
-      }
+      auto variable_name_opt = parse_qname_string();
+      if (not variable_name_opt) return nullptr;
+      std::string variable_name = *variable_name_opt;
 
       if (not match(XPathTokenType::ASSIGN)) {
          report_error("Expected ':=' after group by variable name");
@@ -1552,17 +1556,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_count_clause()
       return nullptr;
    }
 
-   std::string variable_name;
-   if (is_identifier_token(peek())) {
-      variable_name = peek().value;
-      advance();
-   }
-   else {
-      report_error("Expected variable name in count clause");
-      return nullptr;
-   }
+   auto variable_name_opt = parse_qname_string();
+   if (not variable_name_opt) return nullptr;
 
-   return std::make_unique<XPathNode>(XPathNodeType::COUNT_CLAUSE, std::move(variable_name));
+   return std::make_unique<XPathNode>(XPathNodeType::COUNT_CLAUSE, *variable_name_opt);
 }
 
 //********************************************************************************************************************
@@ -1765,11 +1762,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
    else if (is_step_start_token(peek().type)) {
       looks_like_path = true;
 
-      if (is_identifier_token(peek())) {
-         if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
-            looks_like_path = false;
-         }
-         else if (is_constructor_keyword(peek())) {
+      if (is_function_call_ahead(current_token)) looks_like_path = false;
+      else if (is_identifier_token(peek())) {
+         if (is_constructor_keyword(peek())) {
             size_t lookahead = current_token + 1;
             while ((lookahead < tokens.size()) and is_identifier_token(tokens[lookahead])) {
                lookahead++;
@@ -1918,15 +1913,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
          return nullptr;
       }
 
-      std::string variable_name;
-      if (is_identifier_token(peek())) {
-         variable_name = peek().value;
-         advance();
-      }
-      else {
-         report_error("Expected variable name in quantified expression");
-         return nullptr;
-      }
+      auto variable_name_opt = parse_qname_string();
+      if (not variable_name_opt) return nullptr;
+      std::string variable_name = *variable_name_opt;
 
       if (not match(XPathTokenType::IN)) {
          report_error("Expected 'in' in quantified expression");
@@ -1994,11 +1983,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
       return parse_variable_reference();
    }
 
-   if (is_identifier_token(peek())) {
-      if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::LPAREN) {
-         return parse_function_call();
-      }
+   if (is_function_call_ahead(current_token)) {
+      return parse_function_call();
+   }
 
+   if (is_identifier_token(peek())) {
+      size_t saved_index = current_token;
+      auto qname = parse_qname_string();
+      if (qname) return std::make_unique<XPathNode>(XPathNodeType::LITERAL, *qname);
+
+      current_token = saved_index;
       std::string value(peek().value);
       advance();
       return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
@@ -2012,14 +2006,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_function_call()
 {
-   if (not is_identifier_token(peek())) return nullptr;
-
-   std::string function_name(peek().value);
-   advance();
+   auto function_name = parse_qname_string();
+   if (not function_name) return nullptr;
 
    if (not match(XPathTokenType::LPAREN)) return nullptr;
 
-   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, function_name);
+   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, *function_name);
 
    while (not check(XPathTokenType::RPAREN) and !is_at_end()) {
       auto arg = parse_expr_single();
@@ -2080,11 +2072,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
 {
    if (check(XPathTokenType::DOLLAR)) {
       advance();
-      if (is_identifier_token(peek())) {
-         std::string name(peek().value);
-         advance();
-         return std::make_unique<XPathNode>(XPathNodeType::VARIABLE_REFERENCE, name);
-      }
+      auto name = parse_qname_string();
+      if (name) return std::make_unique<XPathNode>(XPathNodeType::VARIABLE_REFERENCE, *name);
    }
    return nullptr;
 }
