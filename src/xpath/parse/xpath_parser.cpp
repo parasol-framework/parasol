@@ -78,30 +78,79 @@ bool XPathParser::match_literal_keyword(std::string_view Keyword)
    return false;
 }
 
+namespace {
+std::string_view keyword_from_token_type(XPathTokenType Type)
+{
+   switch (Type)
+   {
+      case XPathTokenType::AND:               return "and";
+      case XPathTokenType::OR:                return "or";
+      case XPathTokenType::NOT:               return "not";
+      case XPathTokenType::DIVIDE:            return "div";
+      case XPathTokenType::MODULO:            return "mod";
+      case XPathTokenType::EQ:                return "eq";
+      case XPathTokenType::NE:                return "ne";
+      case XPathTokenType::LT:                return "lt";
+      case XPathTokenType::LE:                return "le";
+      case XPathTokenType::GT:                return "gt";
+      case XPathTokenType::GE:                return "ge";
+      case XPathTokenType::IF:                return "if";
+      case XPathTokenType::THEN:              return "then";
+      case XPathTokenType::ELSE:              return "else";
+      case XPathTokenType::FOR:               return "for";
+      case XPathTokenType::LET:               return "let";
+      case XPathTokenType::IN:                return "in";
+      case XPathTokenType::RETURN:            return "return";
+      case XPathTokenType::WHERE:             return "where";
+      case XPathTokenType::GROUP:             return "group";
+      case XPathTokenType::BY:                return "by";
+      case XPathTokenType::ORDER:             return "order";
+      case XPathTokenType::STABLE:            return "stable";
+      case XPathTokenType::ASCENDING:         return "ascending";
+      case XPathTokenType::DESCENDING:        return "descending";
+      case XPathTokenType::EMPTY:             return "empty";
+      case XPathTokenType::DEFAULT:           return "default";
+      case XPathTokenType::DECLARE:           return "declare";
+      case XPathTokenType::FUNCTION:          return "function";
+      case XPathTokenType::VARIABLE:          return "variable";
+      case XPathTokenType::NAMESPACE:         return "namespace";
+      case XPathTokenType::EXTERNAL:          return "external";
+      case XPathTokenType::BOUNDARY_SPACE:    return "boundary-space";
+      case XPathTokenType::BASE_URI:          return "base-uri";
+      case XPathTokenType::GREATEST:          return "greatest";
+      case XPathTokenType::LEAST:             return "least";
+      case XPathTokenType::COLLATION:         return "collation";
+      case XPathTokenType::CONSTRUCTION:      return "construction";
+      case XPathTokenType::ORDERING:          return "ordering";
+      case XPathTokenType::COPY_NAMESPACES:   return "copy-namespaces";
+      case XPathTokenType::DECIMAL_FORMAT:    return "decimal-format";
+      case XPathTokenType::OPTION:            return "option";
+      case XPathTokenType::IMPORT:            return "import";
+      case XPathTokenType::MODULE:            return "module";
+      case XPathTokenType::SCHEMA:            return "schema";
+      case XPathTokenType::COUNT:             return "count";
+      case XPathTokenType::SOME:              return "some";
+      case XPathTokenType::EVERY:             return "every";
+      case XPathTokenType::SATISFIES:         return "satisfies";
+      case XPathTokenType::UNION:             return "union";
+      case XPathTokenType::INTERSECT:         return "intersect";
+      case XPathTokenType::EXCEPT:            return "except";
+      default:
+         break;
+   }
+
+   return std::string_view();
+}
+}
+
 bool XPathParser::check_literal_keyword(std::string_view Keyword) const
 {
    const auto &token = peek();
 
    if (token.type IS XPathTokenType::IDENTIFIER) return token.value IS Keyword;
 
-   switch (token.type) {
-      case XPathTokenType::DEFAULT:         return Keyword IS "default";
-      case XPathTokenType::CONSTRUCTION:    return Keyword IS "construction";
-      case XPathTokenType::ORDERING:        return Keyword IS "ordering";
-      case XPathTokenType::ORDER:           return Keyword IS "order";
-      case XPathTokenType::COPY_NAMESPACES: return Keyword IS "copy-namespaces";
-      case XPathTokenType::DECIMAL_FORMAT:  return Keyword IS "decimal-format";
-      case XPathTokenType::OPTION:          return Keyword IS "option";
-      case XPathTokenType::IMPORT:          return Keyword IS "import";
-      case XPathTokenType::MODULE:          return Keyword IS "module";
-      case XPathTokenType::SCHEMA:          return Keyword IS "schema";
-      case XPathTokenType::EMPTY:           return Keyword IS "empty";
-      case XPathTokenType::GREATEST:        return Keyword IS "greatest";
-      case XPathTokenType::LEAST:           return Keyword IS "least";
-      case XPathTokenType::COLLATION:       return Keyword IS "collation";
-      default:
-         break;
-   }
+   std::string_view token_keyword = keyword_from_token_type(token.type);
+   if (not token_keyword.empty()) return Keyword IS token_keyword;
 
    return false;
 }
@@ -636,38 +685,15 @@ bool XPathParser::parse_import_schema_decl()
 }
 
 //********************************************************************************************************************
-// Checks if the current token is an identifier matching the specified keyword, or a dedicated token type for certain
-// keywords like 'union', 'intersect', and 'except'.
+// Checks if the current token represents the specified keyword, accepting either dedicated keyword token types
+// produced by the tokeniser or identifiers containing the keyword text.
 
 bool XPathParser::check_identifier_keyword(std::string_view Keyword) const
 {
    const XPathToken &token = peek();
 
-   // TODO: Hashed strings are faster
-   if (Keyword IS "union") {
-      if (token.type IS XPathTokenType::UNION) return true;
-   }
-   else if (Keyword IS "intersect") {
-      if (token.type IS XPathTokenType::INTERSECT) return true;
-   }
-   else if (Keyword IS "except") {
-      if (token.type IS XPathTokenType::EXCEPT) return true;
-   }
-   else if (Keyword IS "where") {
-      if (token.type IS XPathTokenType::WHERE) return true;
-   }
-   else if (Keyword IS "group") {
-      if (token.type IS XPathTokenType::GROUP) return true;
-   }
-   else if (Keyword IS "stable") {
-      if (token.type IS XPathTokenType::STABLE) return true;
-   }
-   else if (Keyword IS "order") {
-      if (token.type IS XPathTokenType::ORDER) return true;
-   }
-   else if (Keyword IS "count") {
-      if (token.type IS XPathTokenType::COUNT) return true;
-   }
+   std::string_view token_keyword = keyword_from_token_type(token.type);
+   if (not token_keyword.empty()) return token_keyword IS Keyword;
 
    return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
 }
