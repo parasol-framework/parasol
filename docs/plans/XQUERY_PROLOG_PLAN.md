@@ -499,6 +499,7 @@ Each phase should land with targeted regression tests using existing Fluid-based
 
 **Name Resolution During Parsing:**
 - [x] Apply namespace bindings immediately when parsed
+- [x] Accept prefixed QNames in function calls and variable bindings throughout the expression grammar
 - [ ] Normalise function QNames using `default function namespace`
 - [ ] Normalise module import namespaces for cache lookup consistency
 - [ ] Record base URI in prolog when inherited from document

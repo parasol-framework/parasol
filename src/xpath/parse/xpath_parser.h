@@ -115,6 +115,8 @@ class XPathParser {
       return peek().type IS type;
    }
 
+   [[nodiscard]] bool is_function_call_ahead(size_t Index) const;
+
    [[nodiscard]] inline bool match(XPathTokenType type) {
       if (check(type)) {
          advance();
