@@ -401,8 +401,10 @@ Each recursive call creates new parameter bindings that are automatically cleane
 
 1. **Phase 1 – Infrastructure**
    * Introduce `XQueryProlog` and `XQueryModuleCache`, extend `XPathNode`, teach `xp::Compile()` to attach the descriptors, and modify `XPathContext` to store the shared pointers. No prolog declarations are yet parsed; the structures simply travel alongside the AST and the module cache hooks into `extXML::DocumentCache` when available.【F:src/xml/xml.h†L166-L168】
+   * _Status_: Implemented. All structures, helper methods, AST wiring, and compilation hooks are present; only follow-up validation (e.g., build confirmation) remains.
 2. **Phase 2 – Parsing & Storage**
    * Add tokeniser and parser support for namespace, variable, function, and module declarations. Populate `XQueryProlog`, thread cache bindings when an `extXML` is supplied, and write unit tests that confirm parsed metadata is preserved across compilation.
+   * _Status_: Parser support for declarations, options, and imports is implemented. Dedicated token types for some keywords and namespace normalisation are still pending, along with document-derived base URI propagation.
 3. **Phase 3 – Evaluation**
    * Extend the evaluator to resolve variables and functions from the prolog. Start with inline functions, non-external variables, and module lookups via the cache; defer decimal formats and options to subsequent iterations.
 
@@ -413,91 +415,90 @@ Each phase should land with targeted regression tests using existing Fluid-based
 #### Phase 1: Core Infrastructure
 
 **Data Structures:**
-- [ ] Create `src/xpath/api/xquery_prolog.h` with structure definitions:
-  - [ ] Define `XQueryFunction` struct with signature generation
-  - [ ] Define `XQueryVariable` struct with initializer support
-  - [ ] Define `XQueryModuleImport` struct
-  - [ ] Define `XQueryModuleCache` struct with fetch/load capability
-  - [ ] Define `DecimalFormat` struct
-  - [ ] Define `XQueryProlog` struct with all declaration maps and settings
+- [x] Create `src/xpath/api/xquery_prolog.h` with structure definitions:
+  - [x] Define `XQueryFunction` struct with signature generation
+  - [x] Define `XQueryVariable` struct with initializer support
+  - [x] Define `XQueryModuleImport` struct
+  - [x] Define `XQueryModuleCache` struct with fetch/load capability
+  - [x] Define `DecimalFormat` struct
+  - [x] Define `XQueryProlog` struct with all declaration maps and settings
 
 **Helper Methods (xquery_prolog.cpp):**
-- [ ] Implement `XQueryProlog::find_function(qname, arity)`
-- [ ] Implement `XQueryProlog::find_variable(qname)`
-- [ ] Implement `XQueryProlog::resolve_prefix(prefix, document)` with fallback logic
-- [ ] Implement `XQueryProlog::declare_namespace(prefix, uri, document)`
-- [ ] Implement `XQueryProlog::declare_variable(qname, variable)`
-- [ ] Implement `XQueryProlog::declare_function(function)`
-- [ ] Implement `XQueryProlog::bind_module_cache(cache)`
-- [ ] Implement `XQueryFunction::signature()` method
-- [ ] Implement `XQueryModuleCache::fetch_or_load(uri, prolog, reporter)`
+- [x] Implement `XQueryProlog::find_function(qname, arity)`
+- [x] Implement `XQueryProlog::find_variable(qname)`
+- [x] Implement `XQueryProlog::resolve_prefix(prefix, document)` with fallback logic
+- [x] Implement `XQueryProlog::declare_namespace(prefix, uri, document)`
+- [x] Implement `XQueryProlog::declare_variable(qname, variable)`
+- [x] Implement `XQueryProlog::declare_function(function)`
+- [x] Implement `XQueryProlog::bind_module_cache(cache)`
+- [x] Implement `XQueryFunction::signature()` method
+- [x] Implement `XQueryModuleCache::fetch_or_load(uri, prolog, reporter)`
 
 **AST Integration:**
-- [ ] Extend `src/xpath/xpath.h` to add `std::shared_ptr<XQueryProlog> prolog` field
-- [ ] Extend `src/xpath/xpath.h` to add `std::shared_ptr<XQueryModuleCache> module_cache` field
-- [ ] Add `set_prolog()` / `get_prolog()` inline helpers to `src/xpath/xpath.h`
-- [ ] Add `set_module_cache()` / `get_module_cache()` inline helpers to `src/xpath/xpath.h`
+- [x] Extend `src/xpath/xpath.h` to add `std::shared_ptr<XQueryProlog> prolog` field
+- [x] Extend `src/xpath/xpath.h` to add `std::shared_ptr<XQueryModuleCache> module_cache` field
+- [x] Add `set_prolog()` / `get_prolog()` inline helpers to `src/xpath/xpath.h`
+- [x] Add `set_module_cache()` / `get_module_cache()` inline helpers to `src/xpath/xpath.h`
 - [ ] Verify build succeeds with updated `XPathNode` definition
 
 **Context Threading:**
-- [ ] Add `std::shared_ptr<XQueryProlog> prolog` to `XPathContext` structure
-- [ ] Add `std::shared_ptr<XQueryModuleCache> module_cache` to `XPathContext` structure
-- [ ] Update `XPathContext` constructor to accept optional prolog and cache parameters
+- [x] Add `std::shared_ptr<XQueryProlog> prolog` to `XPathContext` structure
+- [x] Add `std::shared_ptr<XQueryModuleCache> module_cache` to `XPathContext` structure
+- [x] Update `XPathContext` constructor to accept optional prolog and cache parameters
 
 **Compilation Pipeline:**
-- [ ] Update `xp::Compile()` to work with `ParseResult` instead of raw AST
-- [ ] Implement prolog attachment: `compiled_node->set_prolog(result.prolog)`
-- [ ] Implement module cache creation from `extXML::DocumentCache` when document provided
-- [ ] Implement module cache attachment: `compiled_node->set_module_cache(cache)`
-- [ ] Update error reporting to surface prolog parsing failures with declaration context
+- [x] Update `xp::Compile()` to work with `ParseResult` instead of raw AST
+- [x] Implement prolog attachment: `compiled_node->set_prolog(result.prolog)`
+- [x] Implement module cache creation from `extXML::DocumentCache` when document provided
+- [x] Implement module cache attachment: `compiled_node->set_module_cache(cache)`
+- [x] Update error reporting to surface prolog parsing failures with declaration context
 
 #### Phase 2: Parsing Support
 
 **Tokeniser Extensions:**
-- [ ] Add `DECLARE` token type to `XPathTokenType`
-- [ ] Add `NAMESPACE` token type
-- [ ] Add `FUNCTION` token type
-- [ ] Add `VARIABLE` token type
-- [ ] Add `EXTERNAL` token type
-- [ ] Add `BOUNDARY_SPACE` token type
-- [ ] Add `BASE_URI` token type
-- [ ] Add `CONSTRUCTION` token type
-- [ ] Add `ORDERING` token type
-- [ ] Add `DEFAULT` token type
-- [ ] Add `COLLATION` token type
-- [ ] Add `COPY_NAMESPACES` token type
-- [ ] Add `DECIMAL_FORMAT` token type
-- [ ] Add `OPTION` token type
-- [ ] Add `IMPORT` token type
-- [ ] Add `MODULE` token type
-- [ ] Add `SCHEMA` token type
-- [ ] Update `XPathTokeniser` keyword recognition logic
+- [ ] Add `DECLARE` token type to `XPathTokenType` *(parser currently recognises `declare` via identifier keyword checks)*
+- [ ] Add `NAMESPACE` token type *(handled via identifier keyword checks)*
+- [ ] Add `FUNCTION` token type *(handled via identifier keyword checks)*
+- [ ] Add `VARIABLE` token type *(handled via identifier keyword checks)*
+- [ ] Add `EXTERNAL` token type *(handled via identifier keyword checks)*
+- [ ] Add `BOUNDARY_SPACE` token type *(handled via identifier keyword checks)*
+- [ ] Add `BASE_URI` token type *(handled via identifier keyword checks)*
+- [x] Add `CONSTRUCTION` token type
+- [x] Add `ORDERING` token type
+- [x] Add `DEFAULT` token type
+- [x] Add `COLLATION` token type
+- [x] Add `COPY_NAMESPACES` token type
+- [x] Add `DECIMAL_FORMAT` token type
+- [x] Add `OPTION` token type
+- [x] Add `IMPORT` token type
+- [x] Add `MODULE` token type
+- [x] Add `SCHEMA` token type
+- [x] Update `XPathTokeniser` keyword recognition logic
 
 **Parser Structure:**
-- [ ] Define `ParseResult` structure with expression, prolog, and cache fields
-- [ ] Change `XPathParser::parse()` return type to `ParseResult`
-- [ ] Update all parse call sites to handle `ParseResult`
-- [ ] Implement `parse_prolog()` main entry point
-- [ ] Implement prolog detection logic (check for `declare` keyword)
+- [x] Define `ParseResult` structure with expression, prolog, and cache fields
+- [x] Change `XPathParser::parse()` return type to `ParseResult`
+- [x] Update all parse call sites to handle `ParseResult`
+- [x] Implement `parse_prolog()` main entry point
+- [x] Implement prolog detection logic (check for `declare` keyword)
 
-**Parser Declaration Handlers:**
-- [ ] Implement `parse_namespace_decl()` - `declare namespace prefix = "uri"`
-- [ ] Implement `parse_default_namespace_decl()` - `declare default element/function namespace`
-- [ ] Implement `parse_variable_decl()` - `declare variable $name := expr` or `external`
-- [ ] Implement `parse_function_decl()` - `declare function name($params) { body }`
-- [ ] Implement `parse_boundary_space_decl()` - `declare boundary-space preserve|strip`
-- [ ] Implement `parse_base_uri_decl()` - `declare base-uri "uri"`
-- [ ] Implement `parse_construction_decl()` - `declare construction preserve|strip`
-- [ ] Implement `parse_ordering_decl()` - `declare ordering ordered|unordered`
-- [ ] Implement `parse_empty_order_decl()` - `declare default order empty greatest|least`
-- [ ] Implement `parse_copy_namespaces_decl()` - `declare copy-namespaces preserve|no-preserve, inherit|no-inherit`
-- [ ] Implement `parse_decimal_format_decl()` - `declare decimal-format ...`
-- [ ] Implement `parse_option_decl()` - `declare option name "value"`
-- [ ] Implement `parse_import_module_decl()` - `import module namespace prefix = "uri" at "location"`
-- [ ] Implement `parse_import_schema_decl()` - `import schema ...` (stub for future)
+- [x] Implement `parse_namespace_decl()` - `declare namespace prefix = "uri"`
+- [x] Implement `parse_default_namespace_decl()` - `declare default element/function namespace`
+- [x] Implement `parse_variable_decl()` - `declare variable $name := expr` or `external`
+- [x] Implement `parse_function_decl()` - `declare function name($params) { body }`
+- [x] Implement `parse_boundary_space_decl()` - `declare boundary-space preserve|strip`
+- [x] Implement `parse_base_uri_decl()` - `declare base-uri "uri"`
+- [x] Implement `parse_construction_decl()` - `declare construction preserve|strip`
+- [x] Implement `parse_ordering_decl()` - `declare ordering ordered|unordered`
+- [x] Implement `parse_empty_order_decl()` - `declare default order empty greatest|least`
+- [x] Implement `parse_copy_namespaces_decl()` - `declare copy-namespaces preserve|no-preserve, inherit|no-inherit`
+- [x] Implement `parse_decimal_format_decl()` - `declare decimal-format ...`
+- [x] Implement `parse_option_decl()` - `declare option name "value"`
+- [x] Implement `parse_import_module_decl()` - `import module namespace prefix = "uri" at "location"`
+- [x] Implement `parse_import_schema_decl()` - `import schema ...` (stub for future)
 
 **Name Resolution During Parsing:**
-- [ ] Apply namespace bindings immediately when parsed
+- [x] Apply namespace bindings immediately when parsed
 - [ ] Normalise function QNames using `default function namespace`
 - [ ] Normalise module import namespaces for cache lookup consistency
 - [ ] Record base URI in prolog when inherited from document
