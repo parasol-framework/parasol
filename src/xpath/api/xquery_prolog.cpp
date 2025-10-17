@@ -101,7 +101,9 @@ void XQueryProlog::declare_namespace(std::string_view prefix, std::string_view u
 
 void XQueryProlog::declare_variable(std::string_view qname, XQueryVariable variable)
 {
-   variables[std::string(qname)] = std::move(variable);
+   std::string key(qname);
+   auto inserted = variables.insert_or_assign(key, std::move(variable));
+   inserted.first->second.qname = key;
 }
 
 void XQueryProlog::declare_function(XQueryFunction function)

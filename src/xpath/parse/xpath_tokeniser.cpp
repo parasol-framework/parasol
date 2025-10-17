@@ -172,6 +172,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
    position = 0;
    length = input.size();
    previous_token_type = XPathTokenType::UNKNOWN;
+   prior_token_type = XPathTokenType::UNKNOWN;
    std::vector<XPathToken> tokens;
    tokens.reserve(XPath.size() + 1);
    int bracket_depth = 0;
@@ -438,6 +439,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          }
 
          tokens.emplace_back(type, input.substr(start, 1), start, 1);
+         prior_token_type = previous_token_type;
          previous_token_type = tokens.back().type;
       }
       else {
@@ -465,6 +467,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          else if (token.type IS XPathTokenType::LPAREN) paren_depth++;
          else if (token.type IS XPathTokenType::RPAREN and paren_depth > 0) paren_depth--;
 
+         prior_token_type = previous_token_type;
          previous_token_type = token.type;
          tokens.push_back(std::move(token));
       }
@@ -536,10 +539,17 @@ XPathToken XPathTokeniser::scan_identifier()
                                (previous_token_type IS XPathTokenType::MODULE);
             break;
          case XPathTokenType::EXTERNAL:
+         {
+            bool identifier_precedes = (previous_token_type IS XPathTokenType::IDENTIFIER) and
+                                       ((prior_token_type IS XPathTokenType::DOLLAR) or
+                                        (prior_token_type IS XPathTokenType::COLON));
+
             treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
                                (previous_token_type IS XPathTokenType::VARIABLE) or
-                               (previous_token_type IS XPathTokenType::RPAREN);
+                               (previous_token_type IS XPathTokenType::RPAREN) or
+                               identifier_precedes;
             break;
+         }
          case XPathTokenType::BOUNDARY_SPACE:
          case XPathTokenType::BASE_URI:
             treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE);

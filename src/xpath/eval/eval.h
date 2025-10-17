@@ -30,6 +30,7 @@ class XPathEvaluator {
 
    private:
    extXML * xml;
+   const XPathNode * query_root = nullptr;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
