@@ -536,12 +536,12 @@ Each phase should land with targeted regression tests using existing Fluid-based
 - [x] Add unsupported feature diagnostics when cache unavailable
 
 **Prolog Settings Enforcement:**
-- [ ] Implement `boundary-space` behavior in element constructors
-- [ ] Implement `construction` mode in element constructors
-- [ ] Implement `ordering` mode in sequence operations
-- [ ] Implement `empty order` in sorting operations
-- [ ] Store `default collation` for future use
-- [ ] Store decimal formats for future `format-number()` support
+- [x] Implement `boundary-space` behavior in element constructors
+- [x] Implement `construction` mode in element constructors
+- [x] Implement `ordering` mode in sequence operations
+- [x] Implement `empty order` in sorting operations
+- [x] Store `default collation` for future use
+- [x] Store decimal formats for future `format-number()` support
 
 #### Phase 4: Testing and Validation
 

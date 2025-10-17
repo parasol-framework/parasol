@@ -63,6 +63,8 @@ struct XQueryModuleCache
 
 struct XQueryProlog
 {
+   XQueryProlog();
+
    ankerl::unordered_dense::map<std::string, uint32_t> declared_namespaces;
    ankerl::unordered_dense::map<std::string, std::string> declared_namespace_uris;
    std::optional<uint32_t> default_element_namespace;

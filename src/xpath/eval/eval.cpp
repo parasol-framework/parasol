@@ -55,6 +55,34 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    }
 }
 
+bool XPathEvaluator::prolog_has_boundary_space_preserve() const
+{
+   auto prolog = context.prolog;
+   if (!prolog) return false;
+   return prolog->boundary_space IS XQueryProlog::BoundarySpace::Preserve;
+}
+
+bool XPathEvaluator::prolog_construction_preserve() const
+{
+   auto prolog = context.prolog;
+   if (!prolog) return false;
+   return prolog->construction_mode IS XQueryProlog::ConstructionMode::Preserve;
+}
+
+bool XPathEvaluator::prolog_ordering_is_ordered() const
+{
+   auto prolog = context.prolog;
+   if (!prolog) return true;
+   return prolog->ordering_mode IS XQueryProlog::OrderingMode::Ordered;
+}
+
+bool XPathEvaluator::prolog_empty_is_greatest() const
+{
+   auto prolog = context.prolog;
+   if (!prolog) return true;
+   return prolog->empty_order IS XQueryProlog::EmptyOrder::Greatest;
+}
+
 //********************************************************************************************************************
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
