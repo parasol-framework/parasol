@@ -544,15 +544,7 @@ Each phase should land with targeted regression tests using existing Fluid-based
 
 #### Phase 4: Testing and Validation
 
-**Unit Tests (src/xpath/tests/ or C++):**
-- [ ] Test prolog structure creation and destruction
-- [ ] Test namespace declaration and resolution
-- [ ] Test variable declaration and initialisation
-- [ ] Test function declaration and signature generation
-- [ ] Test helper methods (find_function, find_variable, resolve_prefix)
-- [ ] Test convenience methods (declare_namespace, declare_variable, declare_function)
-
-**Flute Integration Tests (test_xquery_prolog.fluid):**
+**Flute Integration Tests (srx/xml/tests/test_xquery_prolog.fluid):**
 - [ ] Test basic user-defined function (Example 1: square function)
 - [ ] Test namespace and variable declarations (Example 2)
 - [ ] Test boundary-space preservation (Example 3)
@@ -566,7 +558,6 @@ Each phase should land with targeted regression tests using existing Fluid-based
 
 **Regression Tests:**
 - [ ] Verify existing XPath expressions continue to work
-- [ ] Verify queries without prolog incur no overhead
 - [ ] Verify compiled queries work across multiple documents
 - [ ] Verify module cache is document-scoped when provided
 - [ ] Verify queries compiled without document work correctly
