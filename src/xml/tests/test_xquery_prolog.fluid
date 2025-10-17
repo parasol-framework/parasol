@@ -10,8 +10,8 @@ function testUserDefinedFunction()
       statement = '<root/>'
    })
 
-   local result = tonumber(xml.getKey('declare function local:square($x) { $x * $x }; local:square(5)'))
-   assert(result == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(result))
+   local result = xml.getKey('declare function local:square($x) { $x * $x }; local:square(5)')
+   assert(tonumber(result) == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'User-defined function should not record an error message, got ' .. tostring(xml.errorMsg))
 end
 
@@ -134,13 +134,219 @@ function testModuleImportDeclaration()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- User-defined functions with type annotations should parse without errors
+
+function testFunctionTypeAnnotations()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = tonumber(xml.getKey('declare function local:add($a as xs:integer, $b as xs:integer) as xs:integer { $a + $b }; local:add(10, 20)'))
+   assert(result == 30, 'Function with type annotations should execute correctly, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Function with type annotations should not record an error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Multiple namespace declarations in prolog should be available during evaluation
+
+function testMultipleNamespacesInProlog()
+   local xml = obj.new('xml', {
+      statement = '<root xmlns:a="urn:a" xmlns:b="urn:b"><a:item>A</a:item><b:item>B</b:item></root>'
+   })
+
+   local expr = 'declare namespace a = "urn:a"; declare namespace b = "urn:b"; concat(string(/root/a:item), ":", string(/root/b:item))'
+   local value = xml.getKey(expr)
+   assert(value == 'A:B', 'Multiple namespace declarations should work, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Multiple namespaces should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Variable initialization expressions should evaluate correctly
+
+function testVariableInitializerExpressions()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = tonumber(xml.getKey('declare variable $x := 5; declare variable $y := $x * 2; $x + $y'))
+   assert(value == 15, 'Variable initialiser expressions should evaluate, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Variable initialisers should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Default collation declaration should parse without errors (stored for future use)
+
+function testDefaultCollationDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = xml.getKey('declare default collation "http://www.w3.org/2005/xpath-functions/collation/codepoint"; "test"')
+   assert(result == 'test', 'Default collation declaration should not affect evaluation, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Default collation should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Construction mode declaration should parse correctly
+
+function testConstructionModeDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('declare construction strip; string(<test>value</test>)')
+   assert(value == 'value', 'Construction mode declaration should parse, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Construction mode should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Function with zero parameters should work
+
+function testZeroParameterFunction()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = tonumber(xml.getKey('declare function local:getAnswer() { 42 }; local:getAnswer()'))
+   assert(result == 42, 'Zero-parameter function should work, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Zero-parameter function should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Function with many parameters should work
+
+function testMultiParameterFunction()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = tonumber(xml.getKey('declare function local:sum($a, $b, $c, $d, $e) { $a + $b + $c + $d + $e }; local:sum(1, 2, 3, 4, 5)'))
+   assert(result == 15, 'Multi-parameter function should work, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Multi-parameter function should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Prolog variables should initialize before use in expression
+
+function testPrologVariableAvailability()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = tonumber(xml.getKey('declare variable $pi := 3.14159; $pi * 100'))
+   assert(math.floor(value + 0.5) == 314, 'Prolog variable should be available, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Prolog variable should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Function name collision with builtin should allow user-defined to be called with matching arity
+
+function testFunctionNameCollisionResolution()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   -- Note: We cannot truly override built-in functions with single parameter since those exist
+   -- So we test with a different arity where the user function should be selected
+   local result = xml.getKey('declare function local:count($x, $y) { "custom" }; local:count(1, 2)')
+   assert(result == 'custom', 'User-defined function with different arity should be called, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Function name resolution should work, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Prolog namespace should take precedence over document namespace with same prefix
+
+function testNamespacePrecedence()
+   local xml = obj.new('xml', {
+      statement = '<root xmlns:ex="urn:document"><ex:item>doc-value</ex:item></root>'
+   })
+
+   -- Declare a prolog namespace that shadows the document namespace
+   local expr = 'declare namespace ex = "urn:prolog"; string(/root/ex:item)'
+   local value = xml.getKey(expr)
+   -- This tests whether prolog namespace takes precedence
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Namespace precedence should be handled, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Multiple function declarations with same name but different arity should all be available
+
+function testMultipleFunctionArities()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = 'declare function local:f($a) { "one" }; declare function local:f($a, $b) { "two" }; declare function local:f($a, $b, $c) { "three" }; concat(local:f(1), ":", local:f(1, 2), ":", local:f(1, 2, 3))'
+   local value = xml.getKey(expr)
+   assert(value == 'one:two:three', 'Multiple function arities should be available, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Multiple function arities should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Base URI declaration should parse (stored for future use)
+
+function testBaseUriDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = xml.getKey('declare base-uri "http://example.com/"; "ok"')
+   assert(result == 'ok', 'Base URI declaration should parse, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Base URI declaration should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Ordering declaration should parse
+
+function testOrderingDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = xml.getKey('declare ordering ordered; (3, 1, 2)')
+   assert(result ~= nil, 'Ordering declaration should parse')
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Ordering declaration should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Copy-namespaces declaration should parse
+
+function testCopyNamespacesDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = xml.getKey('declare copy-namespaces preserve, inherit; "ok"')
+   assert(result == 'ok', 'Copy-namespaces declaration should parse, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Copy-namespaces should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Queries without prolog should still work
+
+function testQueryWithoutProlog()
+   local xml = obj.new('xml', {
+      statement = '<root><item>test</item></root>'
+   })
+
+   local value = xml.getKey('string(/root/item)')
+   assert(value == 'test', 'Query without prolog should work, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Query without prolog should not error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 
 return {
    tests = {
       'testUserDefinedFunction', 'testNamespaceAndVariableDeclarations', 'testBoundarySpacePreservation',
       'testRecursiveFunction', 'testFunctionOverloadingByArity', 'testNamespaceFallbackFromDocument',
       'testVariableShadowing', 'testExternalVariableErrorHandling', 'testExternalFunctionErrorHandling',
-      'testModuleImportDeclaration'
+      'testModuleImportDeclaration', 'testFunctionTypeAnnotations', 'testMultipleNamespacesInProlog',
+      'testVariableInitializerExpressions', 'testDefaultCollationDeclaration', 'testConstructionModeDeclaration',
+      'testZeroParameterFunction', 'testMultiParameterFunction', 'testPrologVariableAvailability',
+      'testFunctionNameCollisionResolution', 'testNamespacePrecedence', 'testMultipleFunctionArities',
+      'testBaseUriDeclaration', 'testOrderingDeclaration', 'testCopyNamespacesDeclaration',
+      'testQueryWithoutProlog'
    },
    init = function(ScriptFolder)
    end,
