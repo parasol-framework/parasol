@@ -544,17 +544,17 @@ Each phase should land with targeted regression tests using existing Fluid-based
 
 #### Phase 4: Testing and Validation
 
-**Flute Integration Tests (srx/xml/tests/test_xquery_prolog.fluid):**
-- [ ] Test basic user-defined function (Example 1: square function)
-- [ ] Test namespace and variable declarations (Example 2)
-- [ ] Test boundary-space preservation (Example 3)
-- [ ] Test recursive functions (Example 4: factorial)
-- [ ] Test function overloading by arity
-- [ ] Test namespace fallback from document to prolog
-- [ ] Test variable shadowing (prolog vs dynamic context)
-- [ ] Test external variable error handling
-- [ ] Test external function error handling
-- [ ] Test module import declarations (structural test, not loading)
+**Flute Integration Tests (src/xml/tests/test_xquery_prolog.fluid):**
+- [x] Test basic user-defined function (Example 1: square function)
+- [x] Test namespace and variable declarations (Example 2)
+- [x] Test boundary-space preservation (Example 3)
+- [x] Test recursive functions (Example 4: factorial)
+- [x] Test function overloading by arity
+- [x] Test namespace fallback from document to prolog
+- [x] Test variable shadowing (prolog vs dynamic context)
+- [x] Test external variable error handling
+- [x] Test external function error handling
+- [x] Test module import declarations (structural test, not loading)
 
 **Regression Tests:**
 - [ ] Verify existing XPath expressions continue to work
