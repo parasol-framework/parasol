@@ -81,7 +81,7 @@ struct XPathBase {
    ERR (*_Compile)(objXML *XML, CSTRING Query, APTR *Result);
    ERR (*_Evaluate)(objXML *XML, APTR Query, struct XPathValue **Result);
    ERR (*_Query)(objXML *XML, APTR Query, FUNCTION *Callback);
-   void (*_UnitTest)(APTR Meta);
+   ERR (*_UnitTest)(APTR Meta);
 #endif // PARASOL_STATIC
 };
 
@@ -92,14 +92,14 @@ namespace xp {
 inline ERR Compile(objXML *XML, CSTRING Query, APTR *Result) { return XPathBase->_Compile(XML,Query,Result); }
 inline ERR Evaluate(objXML *XML, APTR Query, struct XPathValue **Result) { return XPathBase->_Evaluate(XML,Query,Result); }
 inline ERR Query(objXML *XML, APTR Query, FUNCTION *Callback) { return XPathBase->_Query(XML,Query,Callback); }
-inline void UnitTest(APTR Meta) { return XPathBase->_UnitTest(Meta); }
+inline ERR UnitTest(APTR Meta) { return XPathBase->_UnitTest(Meta); }
 } // namespace
 #else
 namespace xp {
 extern ERR Compile(objXML *XML, CSTRING Query, APTR *Result);
 extern ERR Evaluate(objXML *XML, APTR Query, struct XPathValue **Result);
 extern ERR Query(objXML *XML, APTR Query, FUNCTION *Callback);
-extern void UnitTest(APTR Meta);
+extern ERR UnitTest(APTR Meta);
 } // namespace
 #endif // PARASOL_STATIC
 #endif

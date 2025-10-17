@@ -6,7 +6,7 @@
 -----------------------------------------------------------------------------------------------------------------------
 
 function testUnitTests()
-   xp.UnitTest()
+   assert(xp.UnitTest() == ERR_Okay, "One or more XPath unit tests failed")
 end
 
 return {

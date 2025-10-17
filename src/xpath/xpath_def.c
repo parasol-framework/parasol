@@ -4,7 +4,7 @@ namespace xp {
 extern ERR Compile(objXML * XML, CSTRING Query, APTR * Result);
 extern ERR Evaluate(objXML * XML, APTR Query, struct XPathValue ** Result);
 extern ERR Query(objXML * XML, APTR Query, FUNCTION * Callback);
-extern void UnitTest(APTR Meta);
+extern ERR UnitTest(APTR Meta);
 
 } // namespace
 #ifndef FDEF
@@ -14,7 +14,7 @@ extern void UnitTest(APTR Meta);
 FDEF argsCompile[] = { { "Error", FD_INT|FD_ERROR }, { "XML", FD_OBJECTPTR }, { "Query", FD_STR }, { "Result", FD_PTR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsEvaluate[] = { { "Error", FD_INT|FD_ERROR }, { "XML", FD_OBJECTPTR }, { "Query", FD_PTR }, { "XPathValue:Result", FD_PTR|FD_STRUCT|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF argsQuery[] = { { "Error", FD_INT|FD_ERROR }, { "XML", FD_OBJECTPTR }, { "Query", FD_PTR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
-FDEF argsUnitTest[] = { { "Void", FD_VOID }, { "Meta", FD_PTR }, { 0, 0 } };
+FDEF argsUnitTest[] = { { "Error", FD_INT|FD_ERROR }, { "Meta", FD_PTR }, { 0, 0 } };
 
 const struct Function glFunctions[] = {
    { (APTR)xp::Compile, "Compile", argsCompile },

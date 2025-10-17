@@ -353,13 +353,17 @@ Private function for internal unit testing of the XPath module.
 -INPUT-
 ptr Meta: Optional pointer meaningful to the test functions.
 
+-ERRORS-
+Okay: All tests passed.
+Failed: One or more tests failed.
+
 -END-
 
 *********************************************************************************************************************/
 
 namespace xp {
 
-void UnitTest(APTR Meta)
+ERR UnitTest(APTR Meta)
 {
    std::cout << "\n========================================" << std::endl;
    std::cout << "XPath Module Unit Tests" << std::endl;
@@ -374,6 +378,8 @@ void UnitTest(APTR Meta)
 
    // Print summary
    print_test_summary();
+
+   return (fail_count IS 0) ? ERR::Okay : ERR::Failed;
 }
 
 }
