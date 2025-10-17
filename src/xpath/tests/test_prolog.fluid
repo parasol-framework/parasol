@@ -134,6 +134,39 @@ function testModuleImportDeclaration()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+-- Default function namespace should canonicalise prolog function names
+
+function testDefaultFunctionNamespaceNormalisation()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare namespace math = "urn:math";',
+      'declare default function namespace "urn:math";',
+      'declare function square($x) { $x * $x };',
+      'concat(square(3), ":", math:square(4))'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == '9:16', 'Default function namespace should apply to prefixed and unprefixed calls, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Default function namespace should not record an error, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Module import namespaces should be normalised for cache lookups
+
+function testModuleImportNamespaceNormalisation()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   xml.getKey('import module namespace math = "urn:math\\library"; math:square(2)')
+   local message = tostring(xml.errorMsg)
+   assert(message == "Module function resolution is not implemented for namespace 'urn:math/library'.", 'Module import namespaces should be normalised, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- User-defined functions with type annotations should parse without errors
 
 function testFunctionTypeAnnotations()

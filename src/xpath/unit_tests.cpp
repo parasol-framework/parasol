@@ -7,10 +7,13 @@
 #include "xpath.h"
 #include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
+#include "../xml/xml.h"
 
 #include <iostream>
 #include <sstream>
 #include <string>
+
+namespace xp { ERR Compile(objXML *XML, CSTRING Query, APTR *Result); }
 
 //********************************************************************************************************************
 // Test helper functions
@@ -313,6 +316,30 @@ static void test_prolog_in_xpath() {
       auto found = prolog.find_function("local:external_func", 0);
       test_assert(found and found->is_external, "External function flag",
          "External functions should be marked correctly");
+   }
+
+   // Test 4: Base URI inheritance during compilation
+   {
+      extXML xml;
+      xml.Path = const_cast<char *>("file:///sample\\doc.xml");
+
+      XPathNode *compiled = nullptr;
+      ERR error = ::xp::Compile(&xml, "1", (APTR *)&compiled);
+      bool success = (error IS ERR::Okay) and (compiled not_eq nullptr);
+      bool inherited = false;
+
+      if (success)
+      {
+         auto prolog_ptr = compiled->get_prolog();
+         if (prolog_ptr)
+         {
+            inherited = prolog_ptr->static_base_uri IS std::string("file:///sample/doc.xml");
+         }
+         FreeResource(compiled);
+      }
+
+      test_assert(success and inherited, "Prolog base URI inheritance",
+         "Compiled prolog should inherit and normalise document base URI");
    }
 }
 

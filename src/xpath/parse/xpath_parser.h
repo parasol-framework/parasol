@@ -202,4 +202,5 @@ class XPathParser {
 
    private:
    std::vector<std::string> errors;
+   XQueryProlog *active_prolog = nullptr;
 };

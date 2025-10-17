@@ -3,6 +3,7 @@
 #include "../api/xquery_prolog.h"
 #include <parasol/strings.hpp>
 #include <utility>
+#include "../../xml/uri_utils.h"
 
 //********************************************************************************************************************
 // Parses a list of XPath tokens and returns an XPathParseResult object containing:
@@ -15,6 +16,7 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
 {
    XPathParseResult result;
    result.prolog = std::make_shared<XQueryProlog>();
+   active_prolog = result.prolog.get();
 
    tokens = TokenList;
    for (auto &token : tokens)
@@ -49,6 +51,7 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    }
 
    auto expression = parse_expr();
+   active_prolog = nullptr;
 
    if (not is_at_end()) {
       XPathToken token = peek();
@@ -383,9 +386,18 @@ bool XPathParser::parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunc
    auto uri = parse_uri_literal();
    if (not uri) return false;
 
-   uint32_t hash = pf::strhash(*uri);
-   if (IsFunctionNamespace) prolog.default_function_namespace = hash;
-   else prolog.default_element_namespace = hash;
+   std::string cleaned = xml::uri::normalise_uri_separators(*uri);
+   uint32_t hash = pf::strhash(cleaned);
+   if (IsFunctionNamespace)
+   {
+      prolog.default_function_namespace = hash;
+      prolog.default_function_namespace_uri = cleaned;
+   }
+   else
+   {
+      prolog.default_element_namespace = hash;
+      prolog.default_element_namespace_uri = cleaned;
+   }
 
    return true;
 }
@@ -480,7 +492,11 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
    }
 
    XQueryFunction function;
-   function.qname = *qname;
+   if (active_prolog)
+   {
+      function.qname = active_prolog->normalise_function_qname(*qname, nullptr);
+   }
+   else function.qname = *qname;
    function.parameter_names = std::move(parameter_names);
    function.parameter_types = std::move(parameter_types);
 
@@ -710,7 +726,7 @@ bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
    if (not uri) return false;
 
    XQueryModuleImport module_import;
-   module_import.target_namespace = *uri;
+   module_import.target_namespace = xml::uri::normalise_uri_separators(*uri);
 
    if (match_literal_keyword("at")) {
       while (true) {
@@ -2052,7 +2068,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call()
 
    if (not match(XPathTokenType::LPAREN)) return nullptr;
 
-   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, *function_name);
+   std::string canonical_name(*function_name);
+   if (active_prolog)
+   {
+      canonical_name = active_prolog->normalise_function_qname(canonical_name, nullptr);
+   }
+
+   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, std::move(canonical_name));
 
    while (not check(XPathTokenType::RPAREN) and !is_at_end()) {
       auto arg = parse_expr_single();

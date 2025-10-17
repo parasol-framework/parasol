@@ -64,8 +64,11 @@ struct XQueryModuleCache
 struct XQueryProlog
 {
    ankerl::unordered_dense::map<std::string, uint32_t> declared_namespaces;
+   ankerl::unordered_dense::map<std::string, std::string> declared_namespace_uris;
    std::optional<uint32_t> default_element_namespace;
    std::optional<uint32_t> default_function_namespace;
+   std::optional<std::string> default_element_namespace_uri;
+   std::optional<std::string> default_function_namespace_uri;
 
    ankerl::unordered_dense::map<std::string, XQueryVariable> variables;
    ankerl::unordered_dense::map<std::string, XQueryFunction> functions;
@@ -95,6 +98,7 @@ struct XQueryProlog
    [[nodiscard]] const XQueryFunction * find_function(std::string_view qname, size_t arity) const;
    [[nodiscard]] const XQueryVariable * find_variable(std::string_view qname) const;
    [[nodiscard]] uint32_t resolve_prefix(std::string_view prefix, const extXML *document) const;
+   [[nodiscard]] std::string normalise_function_qname(std::string_view qname, const extXML *document) const;
 
    void bind_module_cache(std::shared_ptr<XQueryModuleCache> cache);
    [[nodiscard]] std::shared_ptr<XQueryModuleCache> get_module_cache() const;
