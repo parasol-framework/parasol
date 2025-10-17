@@ -130,33 +130,17 @@ class XPathParser {
    bool match_literal_keyword(std::string_view Keyword);
    bool check_literal_keyword(std::string_view Keyword) const;
 
-   // Helper that treats certain keyword tokens (e.g., COUNT, EMPTY) as identifiers.
-   // Use this for steps, function names, predicates, and variable bindings, where such keywords are valid identifiers.
-   // This differs from a simple IDENTIFIER type check, which would exclude these keyword tokens.
+   // Returns true if the given keyword token type can function as an identifier
+   // in name contexts (element names, attribute names, function names, etc.).
+   // All XPath/XQuery keywords are valid XML names and should be permitted.
+   [[nodiscard]] bool is_keyword_acceptable_as_identifier(XPathTokenType Type) const;
+
+   // Helper that treats keyword tokens as identifiers in name contexts.
+   // Use this for steps, function names, predicates, and variable bindings, where keywords are valid identifiers.
+   // All XPath/XQuery keywords can function as element/attribute names since they are valid XML NCNames.
    bool is_identifier_token(const XPathToken &Token) const {
-      switch (Token.type) {
-         case XPathTokenType::IDENTIFIER:
-         case XPathTokenType::COUNT:
-         case XPathTokenType::EMPTY:
-         case XPathTokenType::DEFAULT:
-         case XPathTokenType::FUNCTION:
-         case XPathTokenType::VARIABLE:
-         case XPathTokenType::NAMESPACE:
-         case XPathTokenType::EXTERNAL:
-         case XPathTokenType::BOUNDARY_SPACE:
-         case XPathTokenType::BASE_URI:
-         case XPathTokenType::CONSTRUCTION:
-         case XPathTokenType::ORDERING:
-         case XPathTokenType::COPY_NAMESPACES:
-         case XPathTokenType::DECIMAL_FORMAT:
-         case XPathTokenType::OPTION:
-         case XPathTokenType::IMPORT:
-         case XPathTokenType::MODULE:
-         case XPathTokenType::SCHEMA:
-            return true;
-         default:
-            return false;
-      }
+      if (Token.type IS XPathTokenType::IDENTIFIER) return true;
+      return is_keyword_acceptable_as_identifier(Token.type);
    }
 
    [[nodiscard]] bool is_constructor_keyword(const XPathToken &Token) const;
@@ -188,33 +172,17 @@ class XPathParser {
    }
 
    [[nodiscard]] inline bool is_step_start_token(XPathTokenType type) const {
-      switch (type) {
-         case XPathTokenType::DOT:
-         case XPathTokenType::DOUBLE_DOT:
-         case XPathTokenType::AT:
-         case XPathTokenType::IDENTIFIER:
-         case XPathTokenType::COUNT:
-         case XPathTokenType::EMPTY:
-         case XPathTokenType::DEFAULT:
-         case XPathTokenType::FUNCTION:
-         case XPathTokenType::VARIABLE:
-         case XPathTokenType::NAMESPACE:
-         case XPathTokenType::EXTERNAL:
-         case XPathTokenType::BOUNDARY_SPACE:
-         case XPathTokenType::BASE_URI:
-         case XPathTokenType::CONSTRUCTION:
-         case XPathTokenType::ORDERING:
-         case XPathTokenType::COPY_NAMESPACES:
-         case XPathTokenType::DECIMAL_FORMAT:
-         case XPathTokenType::OPTION:
-         case XPathTokenType::IMPORT:
-         case XPathTokenType::MODULE:
-         case XPathTokenType::SCHEMA:
-         case XPathTokenType::WILDCARD:
-            return true;
-         default:
-            return false;
+      // Structural tokens that start steps
+      if (type IS XPathTokenType::DOT or
+          type IS XPathTokenType::DOUBLE_DOT or
+          type IS XPathTokenType::AT or
+          type IS XPathTokenType::WILDCARD or
+          type IS XPathTokenType::IDENTIFIER) {
+         return true;
       }
+
+      // All keyword tokens can start steps (as element names)
+      return is_keyword_acceptable_as_identifier(type);
    }
 
    // Node creation helpers

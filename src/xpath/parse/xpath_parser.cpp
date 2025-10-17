@@ -181,6 +181,16 @@ std::string_view keyword_from_token_type(XPathTokenType Type)
 }
 }
 
+//********************************************************************************************************************
+// Returns true if the given token type represents a keyword that can also function as an identifier in name
+// contexts (element names, attribute names, function names, etc.). This provides a centralized source of truth
+// that automatically includes all keywords defined in keyword_from_token_type().
+
+bool XPathParser::is_keyword_acceptable_as_identifier(XPathTokenType Type) const
+{
+   return not keyword_from_token_type(Type).empty();
+}
+
 bool XPathParser::check_literal_keyword(std::string_view Keyword) const
 {
    const auto &token = peek();
@@ -1181,10 +1191,25 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                return nullptr;
             }
 
+            // Save current position to detect if we consumed a structural keyword as an element name
+            size_t expr_start_pos = current_token;
+
             auto binding_expr = parse_expr_single();
             if (not binding_expr) {
                report_error("Expected expression after ':=' in let binding");
                return nullptr;
+            }
+
+            // Check if the expression only consumed a single token that's a FLWOR structural keyword.
+            // This indicates the parser mistakenly treated a keyword like 'return' as an element name.
+            if ((current_token IS expr_start_pos + 1) and (expr_start_pos < tokens.size())) {
+               const auto &consumed_token = tokens[expr_start_pos];
+               std::string_view keyword = keyword_from_token_type(consumed_token.type);
+               if (keyword IS "return" or keyword IS "where" or keyword IS "group" or
+                   keyword IS "order" or keyword IS "count" or keyword IS "stable") {
+                  report_error("Expected expression after ':=' in let binding");
+                  return nullptr;
+               }
             }
 
             auto binding_node = std::make_unique<XPathNode>(XPathNodeType::LET_BINDING, variable_name);
