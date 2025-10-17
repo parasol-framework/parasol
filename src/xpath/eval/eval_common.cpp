@@ -76,9 +76,8 @@ bool numeric_equal(double Left, double Right)
 
    if (larger <= 1.0) {
       return std::fabs(Left - Right) <= std::numeric_limits<double>::epsilon() * 16;
-   } else {
-      return std::fabs(Left - Right) <= larger * std::numeric_limits<double>::epsilon() * 16;
    }
+   else return std::fabs(Left - Right) <= larger * std::numeric_limits<double>::epsilon() * 16;
 }
 
 // Performs relational comparisons (less than, greater than, etc.) between two numeric values. Returns false
@@ -116,8 +115,7 @@ bool xpath_collation_supported(const std::string &Uri)
 bool xpath_order_key_is_empty(const XPathVal &Value)
 {
    if (Value.is_empty()) return true;
-   if (Value.Type IS XPVT::Number)
-   {
+   if (Value.Type IS XPVT::Number) {
       double number = Value.to_number();
       return std::isnan(number);
    }
@@ -125,24 +123,21 @@ bool xpath_order_key_is_empty(const XPathVal &Value)
    return false;
 }
 
-namespace
+//********************************************************************************************************************
+// Compares two numeric values, returning -1, 0, or 1 with special handling for NaN values.
+
+static int compare_numeric_values(double Left, double Right)
 {
-   //********************************************************************************************************************
-   // Compares two numeric values, returning -1, 0, or 1 with special handling for NaN values.
+   bool left_nan = std::isnan(Left);
+   bool right_nan = std::isnan(Right);
 
-   int compare_numeric_values(double Left, double Right)
-   {
-      bool left_nan = std::isnan(Left);
-      bool right_nan = std::isnan(Right);
+   if (left_nan and right_nan) return 0;
+   if (left_nan) return -1;
+   if (right_nan) return 1;
 
-      if (left_nan and right_nan) return 0;
-      if (left_nan) return -1;
-      if (right_nan) return 1;
-
-      if (Left < Right) return -1;
-      if (Left > Right) return 1;
-      return 0;
-   }
+   if (Left < Right) return -1;
+   if (Left > Right) return 1;
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -156,8 +151,7 @@ int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightV
    bool left_numeric = (left_type IS XPVT::Number) or (left_type IS XPVT::Boolean);
    bool right_numeric = (right_type IS XPVT::Number) or (right_type IS XPVT::Boolean);
 
-   if (left_numeric or right_numeric)
-   {
+   if (left_numeric or right_numeric) {
       double left_number = LeftValue.to_number();
       double right_number = RightValue.to_number();
       return compare_numeric_values(left_number, right_number);
@@ -167,8 +161,7 @@ int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightV
    std::string right_string = RightValue.to_string();
 
    if ((!CollationUri.empty()) and !(CollationUri IS "http://www.w3.org/2005/xpath-functions/collation/codepoint") and
-      !(CollationUri IS "unicode"))
-   {
+      !(CollationUri IS "unicode")) {
       return 0;
    }
 
@@ -186,8 +179,7 @@ int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XP
    bool empties_greatest = false;
    if (Options.has_empty_mode) empties_greatest = Options.empty_is_greatest;
 
-   if (LeftEmpty or RightEmpty)
-   {
+   if (LeftEmpty or RightEmpty) {
       if (LeftEmpty and RightEmpty) return 0;
       if (LeftEmpty) return empties_greatest ? 1 : -1;
       return empties_greatest ? -1 : 1;

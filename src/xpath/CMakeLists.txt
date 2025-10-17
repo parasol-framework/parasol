@@ -6,8 +6,8 @@ set (INC_MOD_XPATH TRUE PARENT_SCOPE)
 idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   FILES 
-     "xpath.cpp" 
+   FILES
+     "xpath.cpp"
      "unit_tests.cpp"
    ARGS  "output-defs=xpath_def.c" "output-proto=xpath_def.c"
    APPEND_IDL "${MOD}_def.c")
@@ -48,20 +48,6 @@ target_sources (${MOD} PRIVATE
 
 # Tests
 
-add_executable (test_xpath_unit "tests/test_xpath_unit.cpp")
-target_link_libraries (test_xpath_unit PRIVATE ${INIT_LINK})
-set_target_properties (test_xpath_unit PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
-
-if (PARASOL_STATIC)
-   # Unit tests can run from build directory in static mode.  Otherwise needs to be installed.
-   add_test (NAME test_xpath_unit COMMAND test_xpath_unit)
-   set_tests_properties (test_xpath_unit PROPERTIES LABELS xpath)
-endif ()
-
-if (INSTALL_TESTS)
-   install (TARGETS test_xpath_unit DESTINATION "tests/")
-endif ()
-
 flute_test (${MOD}_xpath_reserved_words "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_reserved_words.fluid")
 flute_test (${MOD}_xpath_func_ext "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_func_ext.fluid")
 flute_test (${MOD}_xpath_sequences "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequences.fluid")
@@ -81,3 +67,4 @@ flute_test (${MOD}_xpath_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanc
 flute_test (${MOD}_xpath_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_paths.fluid")
 flute_test (${MOD}_xpath_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.fluid")
 flute_test (${MOD}_xpath_flwor_clauses "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor_clauses.fluid")
+flute_test (${MOD}_xpath_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.fluid")

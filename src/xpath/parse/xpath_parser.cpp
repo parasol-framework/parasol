@@ -736,7 +736,7 @@ bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
          if (not match(XPathTokenType::COMMA)) break;
       }
    }
-   
+
    prolog.declare_namespace(*prefix, module_import.target_namespace, nullptr);
    prolog.module_imports.push_back(std::move(module_import));
    return true;

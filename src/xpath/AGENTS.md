@@ -27,7 +27,6 @@ src/xpath/
 ├── xpath.cpp                  # Module initialisation and core functions
 ├── xpath.h                    # Module header
 ├── xpath_def.c                # Generated C definitions
-├── unit_tests.cpp             # Compiled-in unit tests for internal components
 ├── api/                       # Public API implementations
 │   ├── xpath_arena.h              # Memory management for evaluation
 │   ├── xpath_axis.cpp/h           # XPath axis evaluation
@@ -61,7 +60,6 @@ src/xpath/
 │   ├── function_library.cpp       # Function library initialization
 │   └── accessor_support.cpp/h     # Accessor function utilities
 └── tests/                     # Test infrastructure
-    ├── test_xpath_unit.cpp        # C++ unit test runner executable
     ├── test_accessor.fluid        # Accessor function tests
     ├── test_advanced.fluid        # Advanced XPath queries
     ├── test_advanced_paths.fluid  # Advanced path expression tests
@@ -80,6 +78,7 @@ src/xpath/
     ├── test_reserved_words.fluid  # Reserved word handling tests
     ├── test_sequences.fluid       # Sequence operation tests
     └── test_string_uri.fluid      # String and URI function tests
+    └── test_unit_tests.fluid      # Runs the module's internal unit tests
 ```
 
 ### Dependencies
@@ -656,60 +655,15 @@ The XPath module includes a compiled-in unit testing framework for testing inter
 
 The module exposes a `xp::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
 - **Implementation**: `src/xpath/unit_tests.cpp` - Contains all unit test suites
-- **Test Runner**: `src/xpath/tests/test_xpath_unit.cpp` - C++ executable that calls the unit test function
+- **Test Runner**: `src/xpath/tests/test_unit_tests.fluid` - Calls the unit test function
 
 **Creating Unit Tests:**
 
 To add new C++ unit tests for internal XPath components:
 
-1. **Add test functions to `unit_tests.cpp`:**
-   ```cpp
-   static void test_my_feature() {
-      std::cout << "\n--- Testing My Feature ---\n" << std::endl;
-
-      // Test case 1
-      {
-         // Setup test
-         XQueryProlog prolog;
-         // ... test code ...
-
-         test_assert(condition, "Test name", "Failure message");
-      }
-
-      // Additional test cases...
-   }
-   ```
-
-2. **Register the test suite in `UnitTest()`:**
-   ```cpp
-   namespace xp {
-   void UnitTest(APTR Meta) {
-      reset_test_counters();
-
-      // Run test suites
-      test_prolog_api();
-      test_my_feature();  // Add your new test
-
-      print_test_summary();
-   }
-   }
-   ```
-
-3. **Build and run the tests:**
-   ```bash
-   # Build the xpath module (includes unit tests)
-   cmake --build build/agents --config Release --target xpath --parallel
-
-   # Install
-   cmake --install build/agents
-
-   # Build the test executable
-   cmake --build build/agents --config Release --target test_xpath_unit --parallel
-
-   # Copy to install folder and run
-   cp build/agents/src/xpath/Release/test_xpath_unit.exe install/agents/
-   cd install/agents && ./test_xpath_unit.exe
-   ```
+1. Add test functions to `unit_tests.cpp`
+2. Register the test suite in `UnitTest()`
+3. Build and run the tests
 
 **Example Unit Test Structure:**
 

@@ -43,7 +43,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       if (separator != std::string::npos) {
          std::string prefix = name.substr(0, separator);
          uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
-         if (namespace_hash != 0U) {
+         if (namespace_hash != 0) {
             for (const auto &import : prolog->module_imports) {
                if (pf::strhash(import.target_namespace) IS namespace_hash) {
                   if (!context.module_cache) {

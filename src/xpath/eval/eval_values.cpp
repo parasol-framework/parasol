@@ -145,11 +145,9 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    std::string namespace_uri;
    bool has_expanded_name = false;
 
-   if ((FunctionName.size() > 2U) and (FunctionName[0] IS 'Q') and (FunctionName[1] IS '{'))
-   {
+   if ((FunctionName.size() > 2U) and (FunctionName[0] IS 'Q') and (FunctionName[1] IS '{')) {
       size_t closing = FunctionName.find('}');
-      if (closing != std::string::npos)
-      {
+      if (closing != std::string::npos) {
          namespace_uri = std::string(FunctionName.substr(2U, closing - 2U));
          has_expanded_name = true;
       }
@@ -187,17 +185,12 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
       return XPathVal();
    }
 
-   if (has_expanded_name)
-   {
-      uint32_t namespace_hash = namespace_uri.empty() ? 0U : pf::strhash(namespace_uri);
-      if (namespace_hash != 0U)
-      {
-         for (const auto &import : prolog->module_imports)
-         {
-            if (pf::strhash(import.target_namespace) IS namespace_hash)
-            {
-               if (!context.module_cache)
-               {
+   if (has_expanded_name) {
+      uint32_t namespace_hash = namespace_uri.empty() ? 0 : pf::strhash(namespace_uri);
+      if (namespace_hash != 0) {
+         for (const auto &import : prolog->module_imports) {
+            if (pf::strhash(import.target_namespace) IS namespace_hash) {
+               if (!context.module_cache) {
                   std::string message = "Module function '";
                   message.append(canonical_name);
                   message.append("' requires a module cache.");
@@ -214,21 +207,15 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
          }
       }
    }
-   else
-   {
+   else {
       auto separator = FunctionName.find(':');
-      if (separator != std::string_view::npos)
-      {
+      if (separator != std::string_view::npos) {
          std::string prefix(FunctionName.substr(0, separator));
          uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
-         if (namespace_hash != 0U)
-         {
-            for (const auto &import : prolog->module_imports)
-            {
-               if (pf::strhash(import.target_namespace) IS namespace_hash)
-               {
-                  if (!context.module_cache)
-                  {
+         if (namespace_hash != 0) {
+            for (const auto &import : prolog->module_imports) {
+               if (pf::strhash(import.target_namespace) IS namespace_hash) {
+                  if (!context.module_cache) {
                      std::string message = "Module function '";
                      message.append(canonical_name);
                      message.append("' requires a module cache.");
@@ -2223,13 +2210,11 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
    std::string builtin_local;
    bool builtin_has_expanded = false;
 
-   if ((function_name.size() > 2U) and (function_name[0] IS 'Q') and (function_name[1] IS '{'))
-   {
+   if ((function_name.size() > 2U) and (function_name[0] IS 'Q') and (function_name[1] IS '{')) {
       size_t closing = function_name.find('}');
-      if (closing != std::string::npos)
-      {
-         builtin_namespace = function_name.substr(2U, closing - 2U);
-         builtin_local = function_name.substr(closing + 1U);
+      if (closing != std::string::npos) {
+         builtin_namespace = function_name.substr(2, closing - 2);
+         builtin_local = function_name.substr(closing + 1);
          builtin_has_expanded = true;
       }
    }

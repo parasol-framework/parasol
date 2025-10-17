@@ -29,7 +29,7 @@
 
 //********************************************************************************************************************
 // Axis Navigation Helpers
-// 
+//
 // Dispatches axis evaluation based on axis type, handling all XPath axis types (child, descendant, parent, ancestor,
 // sibling, attribute, namespace, and their variants). Manages both element and attribute contexts, and returns a
 // vector of axis matches containing node/attribute pairs. The function handles special cases like absolute paths

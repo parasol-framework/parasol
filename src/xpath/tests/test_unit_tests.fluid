@@ -1,0 +1,16 @@
+-- Call integrated unit tests in the XPath module
+
+   include 'xml'
+   xp = mod.load('xpath')
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function testUnitTests()
+   xp.UnitTest()
+end
+
+return {
+   tests = {
+      'testUnitTests',
+   }
+}

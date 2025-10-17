@@ -28,12 +28,11 @@
 static size_t hash_xpath_group_value(const XPathVal &Value);
 
 // Combines two hash values into a single hash using a common mixing technique.
+// 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to decorrelate values when mixing hashes.
+// Incorporating it here improves the distribution of combined group hashes.
 
 inline size_t combine_group_hash(size_t Seed, size_t Value)
 {
-   // 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to
-   // decorrelate values when mixing hashes.  Incorporating it here improves the
-   // distribution of combined group hashes.
    Seed ^= Value + 0x9e3779b97f4a7c15ull + (Seed << 6) + (Seed >> 2);
    return Seed;
 }
