@@ -2256,6 +2256,8 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       return *user_result;
    }
 
+   auto &library = XPathFunctionLibrary::instance();
+
    if (builtin_has_expanded)
    {
       static const std::string builtin_namespace_uri("http://www.w3.org/2005/xpath-functions");
@@ -2263,7 +2265,18 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       {
          builtin_lookup_name = builtin_local;
       }
+      else
+      {
+         if (library.has_function(function_name))
+         {
+            builtin_lookup_name = function_name;
+         }
+         else if ((not builtin_local.empty()) and library.has_function(builtin_local))
+         {
+            builtin_lookup_name = builtin_local;
+         }
+      }
    }
 
-   return XPathFunctionLibrary::instance().call_function(builtin_lookup_name, args, context);
+   return library.call_function(builtin_lookup_name, args, context);
 }
