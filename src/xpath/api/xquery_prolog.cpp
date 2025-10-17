@@ -4,6 +4,7 @@
 #include <utility>
 #include "../xpath.h"
 #include "../../xml/xml.h"
+#include "../../xml/uri_utils.h"
 
 namespace {
    [[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity) {
@@ -80,12 +81,15 @@ uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *doc
 
 void XQueryProlog::declare_namespace(std::string_view prefix, std::string_view uri, extXML *document)
 {
-   auto hash = pf::strhash(uri);
-   declared_namespaces[std::string(prefix)] = hash;
+   std::string cleaned = xml::uri::normalise_uri_separators(std::string(uri));
+   auto hash = pf::strhash(cleaned);
+   std::string prefix_key(prefix);
+   declared_namespaces[prefix_key] = hash;
+   declared_namespace_uris[prefix_key] = cleaned;
 
    if (document) {
-      document->NSRegistry[hash] = std::string(uri);
-      document->Prefixes[std::string(prefix)] = hash;
+      document->NSRegistry[hash] = cleaned;
+      document->Prefixes[prefix_key] = hash;
    }
 }
 
@@ -108,4 +112,59 @@ void XQueryProlog::bind_module_cache(std::shared_ptr<XQueryModuleCache> cache)
 std::shared_ptr<XQueryModuleCache> XQueryProlog::get_module_cache() const
 {
    return module_cache.lock();
+}
+
+std::string XQueryProlog::normalise_function_qname(std::string_view qname, const extXML *document) const
+{
+   auto build_expanded = [](const std::string &NamespaceURI, std::string_view Local) {
+      std::string expanded("Q{");
+      expanded.append(NamespaceURI);
+      expanded.push_back('}');
+      expanded.append(Local);
+      return expanded;
+   };
+
+   size_t colon = qname.find(':');
+   if (colon != std::string_view::npos)
+   {
+      std::string prefix(qname.substr(0U, colon));
+      std::string_view local_view = qname.substr(colon + 1U);
+
+      auto uri_entry = declared_namespace_uris.find(prefix);
+      if (uri_entry not_eq declared_namespace_uris.end())
+      {
+         return build_expanded(uri_entry->second, local_view);
+      }
+
+      if (document)
+      {
+         auto prefix_it = document->Prefixes.find(prefix);
+         if (prefix_it not_eq document->Prefixes.end())
+         {
+            auto ns_it = document->NSRegistry.find(prefix_it->second);
+            if (ns_it not_eq document->NSRegistry.end())
+            {
+               return build_expanded(ns_it->second, local_view);
+            }
+         }
+      }
+
+      return std::string(qname);
+   }
+
+   if (default_function_namespace_uri.has_value())
+   {
+      return build_expanded(*default_function_namespace_uri, qname);
+   }
+
+   if (default_function_namespace.has_value())
+   {
+      std::string expanded("Q{");
+      expanded.append(std::to_string(*default_function_namespace));
+      expanded.push_back('}');
+      expanded.append(qname);
+      return expanded;
+   }
+
+   return std::string(qname);
 }
