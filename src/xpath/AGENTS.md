@@ -27,32 +27,41 @@ src/xpath/
 ├── xpath.cpp                  # Module initialisation and core functions
 ├── xpath.h                    # Module header
 ├── xpath_def.c                # Generated C definitions
-├── xpath_parser.cpp/h         # XPath/XQuery expression parser
-├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
-├── eval.cpp/h                 # Main evaluation engine
-├── eval_common.cpp            # Common evaluation utilities
-├── eval_context.cpp           # Context management
-├── eval_navigation.cpp        # Node navigation
-├── eval_predicates.cpp        # Predicate evaluation
-├── eval_values.cpp            # Value operations
-├── eval_expression.cpp        # Expression evaluation
-├── eval_flwor.cpp             # FLWOR expression support
-├── xpath_axis.cpp/h           # XPath axis evaluation
-├── xpath_functions.cpp/h      # Function registry and dispatch
-├── xpath_arena.h              # Memory management for evaluation
-├── xpath_ast.h                # Abstract Syntax Tree definitions
-└── functions/                 # Function implementations by category
-    ├── func_accessors.cpp         # Accessor functions (base-uri, data, etc.)
-    ├── func_booleans.cpp          # Boolean functions (not, true, false, etc.)
-    ├── func_datetimes.cpp         # Date/time functions (current-date, etc.)
-    ├── func_diagnostics.cpp       # Diagnostic functions (error, trace)
-    ├── func_documents.cpp         # Document functions (doc, collection, etc.)
-    ├── func_nodeset.cpp           # Node-set functions (name, local-name, etc.)
-    ├── func_numbers.cpp           # Numeric functions (sum, round, etc.)
-    ├── func_qnames.cpp            # QName functions
-    ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
-    ├── func_strings.cpp           # String functions (concat, substring, etc.)
-    └── accessor_support.cpp/h     # Accessor function utilities
+├── unit_tests.cpp             # Compiled-in unit tests for internal components
+├── api/                       # Public API implementations
+│   ├── xpath_arena.h              # Memory management for evaluation
+│   ├── xpath_axis.cpp/h           # XPath axis evaluation
+│   ├── xpath_functions.cpp/h      # Function registry and dispatch
+│   └── xquery_prolog.cpp/h        # XQuery prolog management
+├── parse/                     # Expression parsing and tokenisation
+│   ├── xpath_parser.cpp/h         # XPath/XQuery expression parser
+│   ├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
+│   └── xpath_ast.h                # Abstract Syntax Tree definitions
+├── eval/                      # Expression evaluation engine
+│   ├── eval.cpp/h                 # Main evaluation engine
+│   ├── eval_common.cpp            # Common evaluation utilities
+│   ├── eval_context.cpp           # Context management
+│   ├── eval_detail.h              # Internal evaluation details
+│   ├── eval_expression.cpp        # Expression evaluation
+│   ├── eval_flwor.cpp             # FLWOR expression support
+│   ├── eval_navigation.cpp        # Node navigation
+│   ├── eval_predicates.cpp        # Predicate evaluation
+│   └── eval_values.cpp            # Value operations
+├── functions/                 # Function implementations by category
+│   ├── func_accessors.cpp         # Accessor functions (base-uri, data, etc.)
+│   ├── func_booleans.cpp          # Boolean functions (not, true, false, etc.)
+│   ├── func_datetimes.cpp         # Date/time functions (current-date, etc.)
+│   ├── func_diagnostics.cpp       # Diagnostic functions (error, trace)
+│   ├── func_documents.cpp         # Document functions (doc, collection, etc.)
+│   ├── func_nodeset.cpp           # Node-set functions (name, local-name, etc.)
+│   ├── func_numbers.cpp           # Numeric functions (sum, round, etc.)
+│   ├── func_qnames.cpp            # QName functions
+│   ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
+│   ├── func_strings.cpp           # String functions (concat, substring, etc.)
+│   ├── function_library.cpp       # Function library initialization
+│   └── accessor_support.cpp/h     # Accessor function utilities
+└── tests/                     # Test infrastructure
+    └── test_xpath_unit.cpp        # C++ unit test runner executable
 ```
 
 ### Dependencies
