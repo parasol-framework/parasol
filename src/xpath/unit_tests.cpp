@@ -6,9 +6,11 @@
 #include <parasol/modules/xpath.h>
 #include "xpath.h"
 #include "api/xquery_prolog.h"
+#include "parse/xpath_tokeniser.h"
 
 #include <iostream>
 #include <sstream>
+#include <string>
 
 //********************************************************************************************************************
 // Test helper functions
@@ -141,6 +143,136 @@ static void test_prolog_api() {
 //********************************************************************************************************************
 // Prolog Integration Tests
 
+static const char *token_type_name(XPathTokenType Type)
+{
+   switch (Type)
+   {
+      case XPathTokenType::IDENTIFIER: return "IDENTIFIER";
+      case XPathTokenType::MODULE: return "MODULE";
+      case XPathTokenType::IMPORT: return "IMPORT";
+      case XPathTokenType::OPTION: return "OPTION";
+      case XPathTokenType::ORDER: return "ORDER";
+      case XPathTokenType::COLLATION: return "COLLATION";
+      case XPathTokenType::ORDERING: return "ORDERING";
+      case XPathTokenType::COPY_NAMESPACES: return "COPY_NAMESPACES";
+      case XPathTokenType::DECIMAL_FORMAT: return "DECIMAL_FORMAT";
+      case XPathTokenType::SCHEMA: return "SCHEMA";
+      case XPathTokenType::DEFAULT: return "DEFAULT";
+      case XPathTokenType::COLON: return "COLON";
+      case XPathTokenType::ASSIGN: return "ASSIGN";
+      default: return "(unclassified)";
+   }
+}
+
+static void test_tokeniser_prolog_keywords()
+{
+   std::cout << "\n--- Investigating Prolog Tokeniser Coverage ---\n" << std::endl;
+
+   // Progress marker (2024-10-17): capturing current behaviour before adding DECLARE/FUNCTION/VARIABLE tokens.
+
+   XPathTokeniser tokeniser;
+
+   auto function_tokens = tokeniser.tokenize("declare function local:square($x) { $x * $x }");
+   test_assert(function_tokens.size() >= 6, "Function declaration token count",
+      "Tokeniser should emit tokens for sample prolog function");
+
+   if (!function_tokens.empty())
+   {
+      bool declare_keyword = function_tokens[0].type IS XPathTokenType::IDENTIFIER;
+      std::string declare_message = "Tokeniser currently reports 'declare' as " +
+         std::string(token_type_name(function_tokens[0].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(declare_keyword, "Prolog keyword gap: declare",
+         declare_message.c_str());
+   }
+
+   if (function_tokens.size() > 1)
+   {
+      bool function_keyword = function_tokens[1].type IS XPathTokenType::IDENTIFIER;
+      std::string function_message = "Tokeniser currently reports 'function' as " +
+         std::string(token_type_name(function_tokens[1].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(function_keyword, "Prolog keyword gap: function",
+         function_message.c_str());
+   }
+
+   if (function_tokens.size() > 3)
+   {
+      bool colon_classified = function_tokens[3].type IS XPathTokenType::COLON;
+      test_assert(colon_classified, "QName prefix separator",
+         "Colon between prefix and local name should be tokenised as COLON");
+   }
+
+   auto variable_tokens = tokeniser.tokenize("declare variable $value := 1");
+   test_assert(variable_tokens.size() >= 5, "Variable declaration token count",
+      "Tokeniser should emit tokens for sample variable declaration");
+
+   if (!variable_tokens.empty())
+   {
+      bool declare_keyword = variable_tokens[0].type IS XPathTokenType::IDENTIFIER;
+      std::string declare_message = "Tokeniser currently reports 'declare' as " +
+         std::string(token_type_name(variable_tokens[0].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(declare_keyword, "Prolog keyword gap reuse: declare",
+         declare_message.c_str());
+   }
+
+   if (variable_tokens.size() > 1)
+   {
+      bool variable_keyword = variable_tokens[1].type IS XPathTokenType::IDENTIFIER;
+      std::string variable_message = "Tokeniser currently reports 'variable' as " +
+         std::string(token_type_name(variable_tokens[1].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(variable_keyword, "Prolog keyword gap: variable",
+         variable_message.c_str());
+   }
+
+   if (variable_tokens.size() > 4)
+   {
+      bool assign_token = variable_tokens[4].type IS XPathTokenType::ASSIGN;
+      test_assert(assign_token, "Variable assignment operator",
+         "':=' should be tokenised as ASSIGN for prolog variables");
+   }
+
+   auto namespace_tokens = tokeniser.tokenize("declare namespace ex = \"http://example.org\"");
+   test_assert(namespace_tokens.size() >= 4, "Namespace declaration token count",
+      "Tokeniser should emit tokens for namespace declaration");
+
+   if (!namespace_tokens.empty())
+   {
+      bool declare_keyword = namespace_tokens[0].type IS XPathTokenType::IDENTIFIER;
+      std::string declare_message = "Tokeniser currently reports 'declare' as " +
+         std::string(token_type_name(namespace_tokens[0].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(declare_keyword, "Prolog keyword gap reuse: declare (namespace)",
+         declare_message.c_str());
+   }
+
+   if (namespace_tokens.size() > 1)
+   {
+      bool namespace_keyword = namespace_tokens[1].type IS XPathTokenType::IDENTIFIER;
+      std::string namespace_message = "Tokeniser currently reports 'namespace' as " +
+         std::string(token_type_name(namespace_tokens[1].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(namespace_keyword, "Prolog keyword gap: namespace",
+         namespace_message.c_str());
+   }
+
+   auto external_tokens = tokeniser.tokenize("declare variable $flag external");
+   test_assert(external_tokens.size() >= 5, "External variable token count",
+      "Tokeniser should emit tokens for external variable declaration");
+
+   if (external_tokens.size() > 4)
+   {
+      bool external_keyword = external_tokens[4].type IS XPathTokenType::IDENTIFIER;
+      std::string external_message = "Tokeniser currently reports 'external' as " +
+         std::string(token_type_name(external_tokens[4].type)) +
+         " (expected IDENTIFIER until keyword support lands)";
+      test_assert(external_keyword, "Prolog keyword gap: external",
+         external_message.c_str());
+   }
+}
+
 static void test_prolog_in_xpath() {
    std::cout << "\n--- Testing Prolog Integration ---\n" << std::endl;
 
@@ -216,6 +348,7 @@ void UnitTest(APTR Meta)
    reset_test_counters();
 
    // Run test suites
+   test_tokeniser_prolog_keywords();
    test_prolog_api();
    test_prolog_in_xpath();
 
