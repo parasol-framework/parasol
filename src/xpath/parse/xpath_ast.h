@@ -86,6 +86,13 @@ enum class XPathTokenType {
    DESCENDING,        // descending
    EMPTY,             // empty
    DEFAULT,           // default
+   DECLARE,           // declare keyword
+   FUNCTION,          // function keyword
+   VARIABLE,          // variable keyword
+   NAMESPACE,         // namespace keyword
+   EXTERNAL,          // external keyword
+   BOUNDARY_SPACE,    // boundary-space keyword
+   BASE_URI,          // base-uri keyword
    GREATEST,          // greatest
    LEAST,             // least
    COLLATION,         // collation
