@@ -73,7 +73,7 @@ flute_test (${MOD}_xpath_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_docum
 flute_test (${MOD}_schema_validation "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_schema_validation.fluid")
 flute_test (${MOD}_xpath_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_accessor.fluid")
 flute_test (${MOD}_xpath_constructors "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_constructors.fluid")
-flute_test (${MOD}_xquery_prolog "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_xquery_prolog.fluid")
+flute_test (${MOD}_xquery_prolog "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_prolog.fluid")
 flute_test (${MOD}_xpath_core "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_core.fluid")
 flute_test (${MOD}_xpath_predicates "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_predicates.fluid")
 flute_test (${MOD}_xpath_axes "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_axes.fluid")

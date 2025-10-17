@@ -292,3 +292,4 @@ Lower snake-case is the preferred string format for new file names.
 
 - Always give an honest, balanced opinion in your responses
 - Encourage testing and validation of changes
+- If you are asked to do work that relates to a plan file, update the plan at the end of the session to indicate what was achieved.
