@@ -1,0 +1,149 @@
+-- XQuery prolog integration tests
+
+   include 'xml'
+
+-----------------------------------------------------------------------------------------------------------------------
+-- User-defined functions declared in the prolog should execute during evaluation
+
+function testUserDefinedFunction()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = tonumber(xml.getKey('declare function local:square($x) { $x * $x }; local:square(5)'))
+   assert(result == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'User-defined function should not record an error message, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Namespace declarations and prolog variables should participate in evaluation
+
+function testNamespaceAndVariableDeclarations()
+   local xml = obj.new('xml', {
+      statement = '<root xmlns:ex="http://example.com/ns"><ex:item>Alpha</ex:item></root>'
+   })
+
+   local expr = 'declare namespace ex = "http://example.com/ns"; declare variable $ex:answer := 42; if ($ex:answer = 42 and string(/root/ex:item) = "Alpha") then "pass" else "fail"'
+   local value = xml.getKey(expr)
+
+   assert(value == 'pass', 'Prolog namespace and variable declarations should evaluate correctly, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Namespace and variable declarations should not record an error message, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Boundary-space preservation should retain lexical whitespace in direct element constructors
+
+function testBoundarySpacePreservation()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('declare boundary-space preserve; string(<a>  padded  </a>)')
+   assert(value == '  padded  ', 'Boundary-space preserve should retain surrounding whitespace, got ' .. tostring(value))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Recursive functions declared in the prolog should resolve correctly
+
+function testRecursiveFunction()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local result = tonumber(xml.getKey('declare function local:factorial($n) { if ($n le 1) then 1 else $n * local:factorial($n - 1) }; local:factorial(5)'))
+   assert(result == 120, 'Recursive prolog function should compute factorial, got ' .. tostring(result))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Recursive function evaluation should not record an error message, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Functions with the same QName but different arity should dispatch based on argument count
+
+function testFunctionOverloadingByArity()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('declare function local:adder($a, $b) { $a + $b }; declare function local:adder($a, $b, $c) { $a + $b + $c }; concat(local:adder(2, 3), ":", local:adder(1, 2, 3))')
+   assert(value == '5:6', 'Function overloading by arity should select the correct body, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Function overloading should not record an error message, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Namespace prefixes declared on the document should remain accessible when compiling queries
+
+function testNamespaceFallbackFromDocument()
+   local xml = obj.new('xml', {
+      statement = '<root xmlns:ns="urn:fallback"><ns:item>Alpha</ns:item></root>'
+   })
+
+   local value = xml.getKey('/root/ns:item')
+   assert(value == 'Alpha', 'Document namespace prefixes should be available during evaluation, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Namespace fallback should not record an error message, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Dynamic bindings should shadow prolog variables of the same QName
+
+function testVariableShadowing()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('declare variable $local:value := "prolog"; let $local:value := "runtime" return $local:value')
+   assert(value == 'runtime', 'Dynamic let binding should shadow prolog variable, got ' .. tostring(value))
+   assert(xml.errorMsg == nil or xml.errorMsg == '', 'Variable shadowing should not record an error message, got ' .. tostring(xml.errorMsg))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- External variable declarations should surface explicit diagnostics
+
+function testExternalVariableErrorHandling()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   xml.getKey('declare variable $local:missing external; $local:missing')
+   local message = tostring(xml.errorMsg)
+   assert(message == "External variable 'local:missing' is not supported.", 'External variable access should report a descriptive error, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- External function declarations should report missing implementation errors
+
+function testExternalFunctionErrorHandling()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   xml.getKey('declare function local:provided($x) external; local:provided(1)')
+   local message = tostring(xml.errorMsg)
+   assert(message == "External function 'local:provided' is not supported.", 'External function invocation should report a descriptive error, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+-- Module imports without loader support should emit a structural diagnostic
+
+function testModuleImportDeclaration()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   xml.getKey('import module namespace math = "urn:math"; math:square(2)')
+   local message = tostring(xml.errorMsg)
+   assert(message == "Module function resolution is not implemented for namespace 'urn:math'.", 'Module import should record structural diagnostic, got ' .. message)
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+return {
+   tests = {
+      'testUserDefinedFunction', 'testNamespaceAndVariableDeclarations', 'testBoundarySpacePreservation',
+      'testRecursiveFunction', 'testFunctionOverloadingByArity', 'testNamespaceFallbackFromDocument',
+      'testVariableShadowing', 'testExternalVariableErrorHandling', 'testExternalFunctionErrorHandling',
+      'testModuleImportDeclaration'
+   },
+   init = function(ScriptFolder)
+   end,
+   cleanup = function()
+   end
+}
