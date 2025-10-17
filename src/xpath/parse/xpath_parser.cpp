@@ -20,7 +20,12 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    current_token = 0;
    errors.clear();
 
-   parse_prolog(*result.prolog);
+   bool prolog_result = parse_prolog(*result.prolog);
+   if (prolog_result and has_errors()) {
+      // Prolog parsing detected but encountered errors
+      result.expression.reset();
+      return result;
+   }
 
    if (has_errors()) {
       result.expression.reset();

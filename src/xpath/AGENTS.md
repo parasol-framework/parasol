@@ -620,6 +620,106 @@ cd src/xml/tests && ../../../install/agents/parasol.exe ../../../tools/flute.flu
 ctest --build-config [BuildType] --test-dir build/agents -R xml_xpath
 ```
 
+### C++ Unit Testing for Internal Components
+
+The XPath module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Fluid interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
+
+**Unit Test Infrastructure:**
+
+The module exposes a `xp::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
+- **Implementation**: `src/xpath/unit_tests.cpp` - Contains all unit test suites
+- **Test Runner**: `src/xpath/tests/test_xpath_unit.cpp` - C++ executable that calls the unit test function
+
+**Creating Unit Tests:**
+
+To add new C++ unit tests for internal XPath components:
+
+1. **Add test functions to `unit_tests.cpp`:**
+   ```cpp
+   static void test_my_feature() {
+      std::cout << "\n--- Testing My Feature ---\n" << std::endl;
+
+      // Test case 1
+      {
+         // Setup test
+         XQueryProlog prolog;
+         // ... test code ...
+
+         test_assert(condition, "Test name", "Failure message");
+      }
+
+      // Additional test cases...
+   }
+   ```
+
+2. **Register the test suite in `UnitTest()`:**
+   ```cpp
+   namespace xp {
+   void UnitTest(APTR Meta) {
+      reset_test_counters();
+
+      // Run test suites
+      test_prolog_api();
+      test_my_feature();  // Add your new test
+
+      print_test_summary();
+   }
+   }
+   ```
+
+3. **Build and run the tests:**
+   ```bash
+   # Build the xpath module (includes unit tests)
+   cmake --build build/agents --config Release --target xpath --parallel
+
+   # Install
+   cmake --install build/agents
+
+   # Build the test executable
+   cmake --build build/agents --config Release --target test_xpath_unit --parallel
+
+   # Copy to install folder and run
+   cp build/agents/src/xpath/Release/test_xpath_unit.exe install/agents/
+   cd install/agents && ./test_xpath_unit.exe
+   ```
+
+**Example Unit Test Structure:**
+
+The current implementation includes tests for XQuery prolog functionality:
+
+```cpp
+// Test XQueryProlog API
+static void test_prolog_api() {
+   // Test function declaration
+   XQueryProlog prolog;
+   XQueryFunction func;
+   func.qname = "local:test";
+   func.parameter_names.push_back("x");
+   prolog.declare_function(std::move(func));
+
+   auto found = prolog.find_function("local:test", 1);
+   test_assert(found not_eq nullptr, "Function declaration",
+      "Declared function should be findable");
+}
+```
+
+**Best Practices for C++ Unit Tests:**
+
+- Test internal data structures and APIs not exposed to Fluid
+- Use unit tests for debugging complex integration issues
+- Keep tests focused on specific functionality
+- Use descriptive test names for easy identification
+- Include both positive and negative test cases
+- Verify edge cases and boundary conditions
+- Test error handling and invalid inputs
+
+**When to Use C++ Unit Tests vs Fluid Tests:**
+
+- **C++ Unit Tests**: Internal APIs, data structures, parser internals, performance-critical code, debugging integration issues
+- **Fluid Tests**: End-to-end functionality, user-facing features, XPath expression evaluation, integration with XML module
+
+This dual testing approach ensures comprehensive coverage at both the internal implementation level and the user-facing API level.
+
 ## Common Usage Patterns
 
 ### Basic Query with Compilation

@@ -54,7 +54,7 @@ enum('XPathNodeType', { type='int', start=0 },
    'NUMBER',
    'STRING',
    'PATH',
-
+   
    -- Constructor expressions
    'DIRECT_ELEMENT_CONSTRUCTOR',
    'DIRECT_ATTRIBUTE_CONSTRUCTOR',
@@ -71,5 +71,6 @@ enum('XPathNodeType', { type='int', start=0 },
   functionNames("xp",
      "Compile",
      "Evaluate",
-     "Query")
+     "Query",
+     "UnitTest")
 end)

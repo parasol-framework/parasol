@@ -6,7 +6,9 @@ set (INC_MOD_XPATH TRUE PARENT_SCOPE)
 idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   FILES "xpath.cpp"
+   FILES 
+     "xpath.cpp" 
+     "unit_tests.cpp"
    ARGS  "output-defs=xpath_def.c" "output-proto=xpath_def.c"
    APPEND_IDL "${MOD}_def.c")
 
@@ -40,5 +42,22 @@ add_dependencies (xml_xpath_functions build_headers)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests.cpp"
    $<TARGET_OBJECTS:xml_xpath_functions>
    $<TARGET_OBJECTS:xml_schema>)
+
+# Tests
+
+add_executable (test_xpath_unit "tests/test_xpath_unit.cpp")
+target_link_libraries (test_xpath_unit PRIVATE ${INIT_LINK})
+set_target_properties (test_xpath_unit PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+
+if (PARASOL_STATIC)
+   # Unit tests can run from build directory in static mode.  Otherwise needs to be installed.
+   add_test (NAME test_xpath_unit COMMAND test_xpath_unit)
+   set_tests_properties (test_xpath_unit PROPERTIES LABELS xpath)
+endif ()
+
+if (INSTALL_TESTS)
+   install (TARGETS test_xpath_unit DESTINATION "tests/")
+endif ()
