@@ -545,7 +545,7 @@ Each phase should land with targeted regression tests using existing Fluid-based
 
 #### Phase 4: Testing and Validation
 
-**Flute Integration Tests (src/xml/tests/test_xquery_prolog.fluid):**
+**Flute Integration Tests (src/xpath/tests/test_prolog.fluid):**
 - [x] Test basic user-defined function (Example 1: square function)
 - [x] Test namespace and variable declarations (Example 2)
 - [x] Test boundary-space preservation (Example 3)
