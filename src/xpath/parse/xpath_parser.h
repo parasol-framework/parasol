@@ -139,6 +139,12 @@ class XPathParser {
          case XPathTokenType::COUNT:
          case XPathTokenType::EMPTY:
          case XPathTokenType::DEFAULT:
+         case XPathTokenType::FUNCTION:
+         case XPathTokenType::VARIABLE:
+         case XPathTokenType::NAMESPACE:
+         case XPathTokenType::EXTERNAL:
+         case XPathTokenType::BOUNDARY_SPACE:
+         case XPathTokenType::BASE_URI:
          case XPathTokenType::CONSTRUCTION:
          case XPathTokenType::ORDERING:
          case XPathTokenType::COPY_NAMESPACES:
@@ -189,6 +195,21 @@ class XPathParser {
          case XPathTokenType::IDENTIFIER:
          case XPathTokenType::COUNT:
          case XPathTokenType::EMPTY:
+         case XPathTokenType::DEFAULT:
+         case XPathTokenType::FUNCTION:
+         case XPathTokenType::VARIABLE:
+         case XPathTokenType::NAMESPACE:
+         case XPathTokenType::EXTERNAL:
+         case XPathTokenType::BOUNDARY_SPACE:
+         case XPathTokenType::BASE_URI:
+         case XPathTokenType::CONSTRUCTION:
+         case XPathTokenType::ORDERING:
+         case XPathTokenType::COPY_NAMESPACES:
+         case XPathTokenType::DECIMAL_FORMAT:
+         case XPathTokenType::OPTION:
+         case XPathTokenType::IMPORT:
+         case XPathTokenType::MODULE:
+         case XPathTokenType::SCHEMA:
          case XPathTokenType::WILDCARD:
             return true;
          default:
