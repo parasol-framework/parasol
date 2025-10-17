@@ -83,36 +83,6 @@ static bool is_xml_whitespace_only(std::string_view Value)
    return true;
 }
 
-std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_view Text, bool IsLiteral) const
-{
-   if (Text.empty())
-   {
-      if (IsLiteral) return std::string();
-      if (prolog_construction_preserve()) return std::string();
-      return std::nullopt;
-   }
-
-   bool whitespace_only = is_xml_whitespace_only(Text);
-
-   if (IsLiteral)
-   {
-      if (whitespace_only and (not prolog_has_boundary_space_preserve())) return std::nullopt;
-      return std::string(Text);
-   }
-
-   if (whitespace_only)
-   {
-      if (prolog_construction_preserve()) return std::string(Text);
-      return std::nullopt;
-   }
-
-   if (prolog_construction_preserve()) return std::string(Text);
-
-   std::string trimmed = trim_constructor_whitespace(Text);
-   if (trimmed.empty()) return std::nullopt;
-   return trimmed;
-}
-
 //********************************************************************************************************************
 // Represents a QName or expanded QName parsed from constructor syntax, capturing the prefix, local part, and resolved
 // namespace URI when known.
@@ -172,6 +142,38 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
 }
 
 } // Anonymous namespace
+
+//********************************************************************************************************************
+
+std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_view Text, bool IsLiteral) const
+{
+   if (Text.empty())
+   {
+      if (IsLiteral) return std::string();
+      if (prolog_has_boundary_space_preserve()) return std::string();
+      return std::nullopt;
+   }
+
+   bool whitespace_only = is_xml_whitespace_only(Text);
+
+   if (IsLiteral)
+   {
+      if (whitespace_only and (not prolog_has_boundary_space_preserve())) return std::nullopt;
+      return std::string(Text);
+   }
+
+   if (whitespace_only)
+   {
+      if (prolog_has_boundary_space_preserve()) return std::string(Text);
+      return std::nullopt;
+   }
+
+   if (prolog_has_boundary_space_preserve()) return std::string(Text);
+
+   std::string trimmed = trim_constructor_whitespace(Text);
+   if (trimmed.empty()) return std::nullopt;
+   return trimmed;
+}
 
 //********************************************************************************************************************
 

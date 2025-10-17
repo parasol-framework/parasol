@@ -42,6 +42,20 @@ function testBoundarySpacePreservation()
    assert(value == '  padded  ', 'Boundary-space preserve should retain surrounding whitespace, got ' .. tostring(value))
 end
 
+function testBoundarySpacePreserveComputedText()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare boundary-space preserve;',
+      'string(<a>{"  padded  "}</a>)'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == '  padded  ', 'Boundary-space preserve should retain whitespace from enclosed expressions, got ' .. tostring(value))
+end
+
 function testBoundarySpaceStripRemoval()
    local xml = obj.new('xml', {
       statement = '<root/>'
@@ -49,6 +63,15 @@ function testBoundarySpaceStripRemoval()
 
    local value = xml.getKey('string(<a>   </a>)')
    assert(value == '', 'Boundary-space strip should remove whitespace-only text, got ' .. tostring(value))
+end
+
+function testBoundarySpaceStripComputedText()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local value = xml.getKey('string(<a>{"  padded  "}</a>)')
+   assert(value == 'padded', 'Boundary-space strip should trim whitespace from enclosed expressions, got ' .. tostring(value))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
