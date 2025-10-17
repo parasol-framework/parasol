@@ -171,6 +171,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
    input = XPath;
    position = 0;
    length = input.size();
+   previous_token_type = XPathTokenType::UNKNOWN;
    std::vector<XPathToken> tokens;
    tokens.reserve(XPath.size() + 1);
    int bracket_depth = 0;
@@ -437,6 +438,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          }
 
          tokens.emplace_back(type, input.substr(start, 1), start, 1);
+         previous_token_type = tokens.back().type;
       }
       else {
          XPathToken token = scan_operator();
@@ -463,11 +465,13 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          else if (token.type IS XPathTokenType::LPAREN) paren_depth++;
          else if (token.type IS XPathTokenType::RPAREN and paren_depth > 0) paren_depth--;
 
+         previous_token_type = token.type;
          tokens.push_back(std::move(token));
       }
    }
 
    tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(""), position, 0);
+   previous_token_type = XPathTokenType::END_OF_INPUT;
    return tokens;
 }
 
@@ -514,21 +518,55 @@ XPathToken XPathTokeniser::scan_identifier()
 
    if (match != keyword_mappings.end())
    {
+      bool treat_as_keyword = true;
+
       switch (match->type)
       {
-         case XPathTokenType::ORDER:
-            if (is_followed_by_word("by")) type = match->type;
+         case XPathTokenType::FUNCTION:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
+                               (previous_token_type IS XPathTokenType::DEFAULT);
             break;
-         case XPathTokenType::GROUP:
-            if (is_followed_by_word("by")) type = match->type;
+         case XPathTokenType::VARIABLE:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE);
             break;
-         case XPathTokenType::STABLE:
-            if (is_followed_by_word("order")) type = match->type;
+         case XPathTokenType::NAMESPACE:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
+                               (previous_token_type IS XPathTokenType::DEFAULT) or
+                               (previous_token_type IS XPathTokenType::FUNCTION) or
+                               (previous_token_type IS XPathTokenType::MODULE);
+            break;
+         case XPathTokenType::EXTERNAL:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
+                               (previous_token_type IS XPathTokenType::VARIABLE) or
+                               (previous_token_type IS XPathTokenType::RPAREN);
+            break;
+         case XPathTokenType::BOUNDARY_SPACE:
+         case XPathTokenType::BASE_URI:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE);
             break;
          default:
-            type = match->type;
             break;
       }
+
+      if (treat_as_keyword)
+      {
+         switch (match->type)
+         {
+            case XPathTokenType::ORDER:
+               if (is_followed_by_word("by")) type = match->type;
+               break;
+            case XPathTokenType::GROUP:
+               if (is_followed_by_word("by")) type = match->type;
+               break;
+            case XPathTokenType::STABLE:
+               if (is_followed_by_word("order")) type = match->type;
+               break;
+            default:
+               type = match->type;
+               break;
+         }
+      }
+
    }
 
    return XPathToken(type, identifier, start, position - start);

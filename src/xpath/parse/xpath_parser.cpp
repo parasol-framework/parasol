@@ -17,6 +17,22 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    result.prolog = std::make_shared<XQueryProlog>();
 
    tokens = TokenList;
+   for (auto &token : tokens)
+   {
+      switch (token.type)
+      {
+         case XPathTokenType::FUNCTION:
+         case XPathTokenType::VARIABLE:
+         case XPathTokenType::NAMESPACE:
+         case XPathTokenType::EXTERNAL:
+         case XPathTokenType::BOUNDARY_SPACE:
+         case XPathTokenType::BASE_URI:
+            token.type = XPathTokenType::IDENTIFIER;
+            break;
+         default:
+            break;
+      }
+   }
    current_token = 0;
    errors.clear();
 
