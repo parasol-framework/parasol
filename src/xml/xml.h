@@ -308,8 +308,6 @@ class extXML : public objXML {
    }
 };
 
-// C++20 Concepts for type safety
-
 template<typename F>
 concept XMLCallback = requires(F f, extXML* xml, XMLTag& tag, const char* attrib) {
    { f(xml, tag, attrib) } -> std::same_as<ERR>;

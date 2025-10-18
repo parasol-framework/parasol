@@ -145,7 +145,7 @@ function testMultiStepNodePredicates()
    local err, chapterId = xml.mtFindTag('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/chapter[@num="2"][contains(., "Plot")]')
    assert(err == ERR_Okay, 'Multi-step predicates should locate the Plot Twist chapter: ' .. mSys.GetErrorMsg(err))
 
-   local chapterText = xml.getKey('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/chapter[@num="2"][contains(., "Plot")]')
+   local err, chapterText = xml.mtEvaluate('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/chapter[@num="2"][contains(., "Plot")]')
    assert(chapterText == 'Plot Twist', 'Plot Twist chapter should be returned, got ' .. nz(chapterText, 'NIL'))
 end
 
@@ -167,7 +167,7 @@ function testMultiStepAttributePredicates()
       ]]
    })
 
-   local attrValue = xml.getKey('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/@code[starts-with(., "fic-")][contains(., "001")]')
+   local err, attrValue = xml.mtEvaluate('/catalog/section[@name="fiction"][@status="active"]/book[@author="Smith"][@edition="first"]/@code[starts-with(., "fic-")][contains(., "001")]')
    assert(attrValue == 'fic-001', 'Attribute predicates should retain matches across helpers, got ' .. nz(attrValue, 'NIL'))
 end
 
@@ -201,7 +201,7 @@ function testPredicateOperationHandlers()
 
    local errContent, titleId = xml.mtFindTag('/root/item/title[="Plot*"]')
    assert(errContent == ERR_Okay, 'content-equals should permit wildcard text matches: ' .. mSys.GetErrorMsg(errContent))
-   local titleText = xml.getKey('/root/item/title[="Plot*"]')
+   local err, titleText = xml.mtEvaluate('/root/item/title[="Plot*"]')
    assert(titleText == 'Plot Twist', 'content-equals wildcard should resolve Plot Twist title, got ' .. nz(titleText, 'NIL'))
 end
 
@@ -239,7 +239,7 @@ function testXPathStringFunctions()
    local err, itemId = xml.mtFindTag('/root/item[string-length(.) = 5]')
    assert(err == ERR_Okay, 'string-length(.) predicate should select five-character strings, err=' .. mSys.GetErrorMsg(err))
 
-   local value = xml.getKey('/root/item[string-length(.) = 5]')
+   local err, value = xml.mtEvaluate('/root/item[string-length(.) = 5]')
    assert(value == 'alpha', 'string-length(.) predicate should locate the "alpha" element, got ' .. nz(value, 'NIL'))
 
    local xmlWhitespace = obj.new("xml", {
@@ -249,7 +249,7 @@ function testXPathStringFunctions()
    err, itemId = xmlWhitespace.mtFindTag('/root/item[normalize-space(.) = "alpha"]')
    assert(err == ERR_Okay, 'normalize-space(.) predicate should trim surrounding whitespace, err=' .. mSys.GetErrorMsg(err))
 
-   value = xmlWhitespace.getKey('/root/item[normalize-space(.) = "alpha"]')
+   local err, value = xmlWhitespace.mtEvaluate('/root/item[normalize-space(.) = "alpha"]')
    assert(value == '  alpha  ', 'normalize-space(.) predicate should select the whitespace entry, got ' .. nz(value, 'NIL'))
 end
 
@@ -451,7 +451,7 @@ function testXPathNameFunctions()
    local err, itemId = xml.mtFindTag('/root/ns:item[name() = "ns:item"]')
    assert(err == ERR_Okay, 'name() should return the qualified element name: ' .. mSys.GetErrorMsg(err))
 
-   local attrValue = xml.getKey('/root/ns:item/@ns:code[local-name() = "code" and name() = "ns:code"]')
+   local err, attrValue = xml.mtEvaluate('/root/ns:item/@ns:code[local-name() = "code" and name() = "ns:code"]')
    assert(attrValue == 'X1', 'local-name() and name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
 
    local err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and name() = "ns:item"]')
@@ -460,10 +460,10 @@ function testXPathNameFunctions()
    local err, itemId = xml.mtFindTag('/root/ns:item[local-name() = "item" and namespace-uri() = "http://example.com/ns"]')
    assert(err == ERR_Okay, 'local-name() and namespace-uri() should resolve element namespaces: ' .. mSys.GetErrorMsg(err))
 
-   local attrValue = xml.getKey('/root/ns:item/@ns:code[namespace-uri() = "http://example.com/ns" and local-name() = "code"]')
+   local err, attrValue = xml.mtEvaluate('/root/ns:item/@ns:code[namespace-uri() = "http://example.com/ns" and local-name() = "code"]')
    assert(attrValue == 'X1', 'namespace-uri() and local-name() should operate on attribute nodes, got ' .. nz(attrValue, 'NIL'))
 
-   attrValue = xml.getKey('/root/ns:item/@data-id[name() = "data-id"]')
+   local err, attrValue = xml.mtEvaluate('/root/ns:item/@data-id[name() = "data-id"]')
    assert(attrValue == 'A1', 'name() should expose unqualified attribute names, got ' .. nz(attrValue, 'NIL'))
 end
 
@@ -580,11 +580,11 @@ function testFunctionLibrary()
 
    -- Test that basic XPath functionality continues to work with infrastructure
 
-   local bookContent = xml.getKey('/library/books/book[@id="2"]/text()')
+   local err, bookContent = xml.mtEvaluate('/library/books/book[@id="2"]/text()')
    assert(bookContent, "Book should have content")
 
    -- Test content extraction (important for function library string operations)
-   local authorContent = xml.getKey('/library/authors/author[@name="Donald Knuth"]/text()')
+   local err, authorContent = xml.mtEvaluate('/library/authors/author[@name="Donald Knuth"]/text()')
    assert(authorContent, "Author should have content")
 
    -- Test navigation to container elements (important for node-set functions)
@@ -820,16 +820,16 @@ function testXPathFullEvaluation()
       statement = '<root><item>A</item><item>B</item><item>C</item><section><item>D</item></section></root>'
    })
 
-   local count = xml.getKey('count(/root/item)')
+   local err, count = xml.mtEvaluate('count(/root/item)')
    assert(count == "3", "Expected count of 3 items, got " .. nz(count, "NIL"))
 
-   local total_count = xml.getKey('count(/root/*)')
+   local err, total_count = xml.mtEvaluate('count(/root/*)')
    assert(total_count == "4", "Expected count of 4 elements, got " .. nz(total_count, "NIL"))
 
-   local if_result = xml.getKey('if (/root/item[1]) then /root/item[1] else /root/item[2]')
+   local err, if_result = xml.mtEvaluate('if (/root/item[1]) then /root/item[1] else /root/item[2]')
    assert(if_result == "A", "Expected if result 'A', got " .. nz(if_result, "NIL"))
 
-   local length = xml.getKey('string-length(/root/item[1])')
+   local err, length = xml.mtEvaluate('string-length(/root/item[1])')
    assert(length == "1", "Expected string length of 1, got " .. nz(length, "NIL"))
 end
 

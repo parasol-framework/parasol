@@ -27,32 +27,63 @@ src/xpath/
 ├── xpath.cpp                  # Module initialisation and core functions
 ├── xpath.h                    # Module header
 ├── xpath_def.c                # Generated C definitions
-├── xpath_parser.cpp/h         # XPath/XQuery expression parser
-├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
-├── eval.cpp/h                 # Main evaluation engine
-├── eval_common.cpp            # Common evaluation utilities
-├── eval_context.cpp           # Context management
-├── eval_navigation.cpp        # Node navigation
-├── eval_predicates.cpp        # Predicate evaluation
-├── eval_values.cpp            # Value operations
-├── eval_expression.cpp        # Expression evaluation
-├── eval_flwor.cpp             # FLWOR expression support
-├── xpath_axis.cpp/h           # XPath axis evaluation
-├── xpath_functions.cpp/h      # Function registry and dispatch
-├── xpath_arena.h              # Memory management for evaluation
-├── xpath_ast.h                # Abstract Syntax Tree definitions
-└── functions/                 # Function implementations by category
-    ├── func_accessors.cpp         # Accessor functions (base-uri, data, etc.)
-    ├── func_booleans.cpp          # Boolean functions (not, true, false, etc.)
-    ├── func_datetimes.cpp         # Date/time functions (current-date, etc.)
-    ├── func_diagnostics.cpp       # Diagnostic functions (error, trace)
-    ├── func_documents.cpp         # Document functions (doc, collection, etc.)
-    ├── func_nodeset.cpp           # Node-set functions (name, local-name, etc.)
-    ├── func_numbers.cpp           # Numeric functions (sum, round, etc.)
-    ├── func_qnames.cpp            # QName functions
-    ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
-    ├── func_strings.cpp           # String functions (concat, substring, etc.)
-    └── accessor_support.cpp/h     # Accessor function utilities
+├── unit_tests.cpp             # C++ unit tests for internal components
+├── CMakeLists.txt             # Build configuration
+├── AGENTS.md                  # AI agent guide for this module
+├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
+├── QT3_1_0/                   # W3C XQuery Test Suite (optional)
+├── api/                       # Public API implementations
+│   ├── xpath_arena.h              # Memory management for evaluation
+│   ├── xpath_axis.cpp/h           # XPath axis evaluation
+│   ├── xpath_functions.cpp/h      # Function registry and dispatch
+│   └── xquery_prolog.cpp/h        # XQuery prolog management
+├── parse/                     # Expression parsing and tokenisation
+│   ├── xpath_parser.cpp/h         # XPath/XQuery expression parser
+│   ├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
+│   └── xpath_ast.h                # Abstract Syntax Tree definitions
+├── eval/                      # Expression evaluation engine
+│   ├── eval.cpp/h                 # Main evaluation engine
+│   ├── eval_common.cpp            # Common evaluation utilities
+│   ├── eval_context.cpp           # Context management
+│   ├── eval_detail.h              # Internal evaluation details
+│   ├── eval_expression.cpp        # Expression evaluation
+│   ├── eval_flwor.cpp             # FLWOR expression support
+│   ├── eval_navigation.cpp        # Node navigation
+│   ├── eval_predicates.cpp        # Predicate evaluation
+│   └── eval_values.cpp            # Value operations
+├── functions/                 # Function implementations by category
+│   ├── func_accessors.cpp         # Accessor functions (base-uri, data, etc.)
+│   ├── func_booleans.cpp          # Boolean functions (not, true, false, etc.)
+│   ├── func_datetimes.cpp         # Date/time functions (current-date, etc.)
+│   ├── func_diagnostics.cpp       # Diagnostic functions (error, trace)
+│   ├── func_documents.cpp         # Document functions (doc, collection, etc.)
+│   ├── func_nodeset.cpp           # Node-set functions (name, local-name, etc.)
+│   ├── func_numbers.cpp           # Numeric functions (sum, round, etc.)
+│   ├── func_qnames.cpp            # QName functions
+│   ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
+│   ├── func_strings.cpp           # String functions (concat, substring, etc.)
+│   ├── function_library.cpp       # Function library initialization
+│   └── accessor_support.cpp/h     # Accessor function utilities
+└── tests/                     # Test infrastructure
+    ├── test_accessor.fluid        # Accessor function tests
+    ├── test_advanced.fluid        # Advanced XPath queries
+    ├── test_advanced_paths.fluid  # Advanced path expression tests
+    ├── test_axes.fluid            # XPath axes tests
+    ├── test_constructors.fluid    # Node constructor tests
+    ├── test_core.fluid            # Core XPath functionality tests
+    ├── test_datetime.fluid        # DateTime function tests
+    ├── test_documents.fluid       # Document function tests
+    ├── test_duration.fluid        # Duration type tests
+    ├── test_flwor.fluid           # FLWOR expression tests
+    ├── test_flwor_clauses.fluid   # Individual FLWOR clause tests
+    ├── test_func_ext.fluid        # Extended function library tests
+    ├── test_predicates.fluid      # Predicate evaluation tests
+    ├── test_prolog.fluid          # XQuery prolog tests
+    ├── test_qname.fluid           # QName operation tests
+    ├── test_reserved_words.fluid  # Reserved word handling tests
+    ├── test_sequences.fluid       # Sequence operation tests
+    ├── test_string_uri.fluid      # String and URI function tests
+    └── test_unit_tests.fluid      # Runs the module's internal unit tests
 ```
 
 ### Dependencies
@@ -585,40 +616,98 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 
 ## Testing Framework
 
-### XPath Tests via XML Module
+### XPath Integration Tests
 
-All XPath tests are located in the XML module's test directory and exercise XPath functionality through the XML class interface:
+XPath tests are located in the XPath module's test directory and exercise XPath functionality through the XML class interface:
 
-**XPath Integration Tests (`src/xml/tests/`):**
-- `test_xpath_core.fluid` - Core XPath expressions and operators
-- `test_xpath_predicates.fluid` - Predicate evaluation
-- `test_xpath_axes.fluid` - All 13 XPath axes
-- `test_xpath_advanced.fluid` - Complex XPath queries
-- `test_xpath_advanced_paths.fluid` - Advanced path expressions
-- `test_xpath_flwor.fluid` - FLWOR expressions
-- `test_xpath_flwor_clauses.fluid` - Individual FLWOR clauses
-- `test_xpath_func_ext.fluid` - Extended function library
-- `test_xpath_sequences.fluid` - Sequence operations
-- `test_xpath_string_uri.fluid` - String and URI functions
-- `test_xpath_duration.fluid` - Duration type operations
-- `test_xpath_datetime.fluid` - DateTime functions
-- `test_xpath_qname.fluid` - QName operations
-- `test_xpath_accessor.fluid` - Accessor functions
-- `test_xpath_constructors.fluid` - Node constructors
-- `test_xpath_documents.fluid` - Document functions
-- `test_setvariable.fluid` - Variable binding
+**XPath Integration Tests (`src/xpath/tests/`):**
+- `test_core.fluid` - Core XPath expressions and operators
+- `test_predicates.fluid` - Predicate evaluation
+- `test_axes.fluid` - All 13 XPath axes
+- `test_advanced.fluid` - Complex XPath queries
+- `test_advanced_paths.fluid` - Advanced path expressions
+- `test_flwor.fluid` - FLWOR expressions
+- `test_flwor_clauses.fluid` - Individual FLWOR clauses
+- `test_func_ext.fluid` - Extended function library
+- `test_sequences.fluid` - Sequence operations
+- `test_string_uri.fluid` - String and URI functions
+- `test_duration.fluid` - Duration type operations
+- `test_datetime.fluid` - DateTime functions
+- `test_qname.fluid` - QName operations
+- `test_accessor.fluid` - Accessor functions
+- `test_constructors.fluid` - Node constructors
+- `test_documents.fluid` - Document functions
+- `test_prolog.fluid` - XQuery prolog functionality
+- `test_reserved_words.fluid` - Reserved word handling
 
 ### Running XPath Tests
 
 **Individual Test:**
 ```bash
-cd src/xml/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xml/tests/test_xpath_core.fluid --gfx-driver=headless --log-warning
+cd src/xpath/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xpath/tests/test_core.fluid --gfx-driver=headless --log-warning
 ```
 
 **All XPath Tests via CMake:**
 ```bash
-ctest --build-config [BuildType] --test-dir build/agents -R xml_xpath
+ctest --build-config [BuildType] --test-dir build/agents -R xpath
 ```
+
+### C++ Unit Testing for Internal Components
+
+The XPath module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Fluid interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
+
+Unit tests will only be compiled in the module if ENABLE_UNIT_TESTS is enabled in the module's CMakeLists.txt file.
+
+**Unit Test Infrastructure:**
+
+The module exposes a `xp::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
+- **Implementation**: `src/xpath/unit_tests.cpp` - Contains all unit test suites
+- **Test Runner**: `src/xpath/tests/test_unit_tests.fluid` - Calls the unit test function
+
+**Creating Unit Tests:**
+
+To add new C++ unit tests for internal XPath components:
+
+1. Add test functions to `unit_tests.cpp`
+2. Register the test suite in `UnitTest()`
+3. Build and run the tests
+
+**Example Unit Test Structure:**
+
+The current implementation includes tests for XQuery prolog functionality:
+
+```cpp
+// Test XQueryProlog API
+static void test_prolog_api() {
+   // Test function declaration
+   XQueryProlog prolog;
+   XQueryFunction func;
+   func.qname = "local:test";
+   func.parameter_names.push_back("x");
+   prolog.declare_function(std::move(func));
+
+   auto found = prolog.find_function("local:test", 1);
+   test_assert(found not_eq nullptr, "Function declaration",
+      "Declared function should be findable");
+}
+```
+
+**Best Practices for C++ Unit Tests:**
+
+- Test internal data structures and APIs not exposed to Fluid
+- Use unit tests for debugging complex integration issues
+- Keep tests focused on specific functionality
+- Use descriptive test names for easy identification
+- Include both positive and negative test cases
+- Verify edge cases and boundary conditions
+- Test error handling and invalid inputs
+
+**When to Use C++ Unit Tests vs Fluid Tests:**
+
+- **C++ Unit Tests**: Internal APIs, data structures, parser internals, performance-critical code, debugging integration issues
+- **Fluid Tests**: End-to-end functionality, user-facing features, XPath expression evaluation, integration with XML module
+
+This dual testing approach ensures comprehensive coverage at both the internal implementation level and the user-facing API level.
 
 ## Common Usage Patterns
 

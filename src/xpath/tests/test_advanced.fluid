@@ -13,7 +13,7 @@ function testDeeplyNestedPathTraversal()
    local err, tagId = xml.mtFindTag('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
    assert(err == ERR_Okay, 'last() combined with position() should locate the first paragraph of the last chapter: ' .. mSys.GetErrorMsg(err))
 
-   local content = xml.getKey('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
+   local err, content = xml.mtEvaluate('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
    assert(content == 'Conclusion', 'Paragraph content should be "Conclusion", got ' .. nz(content, 'NIL'))
 end
 
@@ -71,7 +71,7 @@ function testDescendantAxisAttributeAccess()
       statement = '<root category="library"><branch name="east"><shelf code="A"><book id="1">Intro</book></shelf></branch><branch name="west"><shelf code="B"><book id="2">Advanced</book></shelf></branch></root>'
    })
 
-   local category = xml.getKey('//branch[@name="west"]/../@category')
+   local err, category = xml.mtEvaluate('//branch[@name="west"]/../@category')
    assert(category == 'library', 'Using .. from a descendant selection should expose the ancestor attribute value, got ' .. nz(category, 'NIL'))
 
    local err, tagId = xml.mtFindTag('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
@@ -86,10 +86,10 @@ function testConditionalIfExpression()
       statement = '<root><item id="a">Alpha</item><item id="b">Beta</item></root>'
    })
 
-   local chosen = xml.getKey('if (/root/item[@id="a"]) then /root/item[@id="a"] else /root/item[@id="b"]')
+   local err, chosen = xml.mtEvaluate('if (/root/item[@id="a"]) then /root/item[@id="a"] else /root/item[@id="b"]')
    assert(chosen == 'Alpha', 'If expression should return Alpha branch when predicate succeeds, got ' .. nz(chosen, 'NIL'))
 
-   local fallback = xml.getKey('if (/root/item[@id="missing"]) then /root/item[@id="a"] else /root/item[@id="b"]')
+   local err, fallback = xml.mtEvaluate('if (/root/item[@id="missing"]) then /root/item[@id="a"] else /root/item[@id="b"]')
    assert(fallback == 'Beta', 'If expression should evaluate else branch when condition fails, got ' .. nz(fallback, 'NIL'))
 end
 
@@ -123,13 +123,13 @@ function testQuantifiedExpressions()
       statement = '<root><group name="alpha"><item id="a" class="one"/><item id="b" class="two"/></group><group name="beta"><item id="c" class="beta"/></group></root>'
    })
 
-   local someResult = xml.getKey('if (some $g in /root/group satisfies $g/@name = "beta") then "yes" else "no"')
+   local err, someResult = xml.mtEvaluate('if (some $g in /root/group satisfies $g/@name = "beta") then "yes" else "no"')
    assert(someResult == 'yes', 'Quantified some expression should detect the beta group, got ' .. nz(someResult, 'NIL'))
 
-   local everyResult = xml.getKey('if (every $item in /root/group[@name="alpha"]/item satisfies @class = "one") then "all" else "mixed"')
+   local err, everyResult = xml.mtEvaluate('if (every $item in /root/group[@name="alpha"]/item satisfies @class = "one") then "all" else "mixed"')
    assert(everyResult == 'mixed', 'Quantified every expression should detect mixed class values, got ' .. nz(everyResult, 'NIL'))
 
-   local nestedResult = xml.getKey('if (some $g in /root/group, $item in $g/item satisfies $item/@id = "c") then "found" else "missing"')
+   local err, nestedResult = xml.mtEvaluate('if (some $g in /root/group, $item in $g/item satisfies $item/@id = "c") then "found" else "missing"')
    assert(nestedResult == 'found', 'Nested quantified expression should locate item c, got ' .. nz(nestedResult, 'NIL'))
 end
 
@@ -270,7 +270,7 @@ function testSetOperatorKeywordNameTests()
                   '</root>'
    })
 
-   local unionId = xml.getKey('/root/union/@id')
+   local err, unionId = xml.mtEvaluate('/root/union/@id')
    assert(unionId == 'u', 'Selecting /root/union should expose id attribute, got ' .. nz(unionId, 'NIL'))
 
    local errUnionAxis, unionAxisTag = xml.mtFindTag('/root/child::union')

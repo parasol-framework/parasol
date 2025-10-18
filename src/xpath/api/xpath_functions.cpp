@@ -33,7 +33,7 @@ namespace {
 
 //********************************************************************************************************************
 // Determines whether a character qualifies as an unreserved URI character according to RFC 3986.  Unreserved
-// characters include alphanumerics and a restricted set of punctuation that do not require percent-encoding in URIs.
+// characters include alpha-numerics and a restricted set of punctuation that do not require percent-encoding in URIs.
 
 static bool is_unreserved_uri_character(unsigned char Code)
 {
@@ -1533,11 +1533,15 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
    if (Context.expression_unsupported) *Context.expression_unsupported = true;
 
    if (Context.document) {
+      // Determine the appropriate XQuery error code based on the function name
+      std::string error_code;
+      if (FunctionName IS "zero-or-one") error_code = "FORG0003";
+      else if (FunctionName IS "one-or-more") error_code = "FORG0004";
+      else if (FunctionName IS "exactly-one") error_code = "FORG0005";
+      else error_code = "FORG0006"; // General invalid argument type
+
       if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
-      Context.document->ErrorMsg.append("XPath function ");
-      Context.document->ErrorMsg.append(FunctionName);
-      Context.document->ErrorMsg.append(": ");
-      Context.document->ErrorMsg.append(Message);
+      Context.document->ErrorMsg.append(std::format("{}: XPath function {}: {}", error_code, FunctionName, Message));
    }
 }
 

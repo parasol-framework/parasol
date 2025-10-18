@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
+module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
   cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
 
   const("XMS", { type="int", comment="For SetAttrib()" }, {
@@ -45,7 +45,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
     "NOTATION: Tag represents a notation of the format `<!XML>`.",
     "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
-    
+
   enum('XPVT', { type='int', start=0, comment='Type descriptors for XPathValue' },
      'NodeSet',
      'Boolean',
@@ -141,6 +141,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=9,  name="InsertXPath" },
     { id=10, name="FindTag" },
     { id=11, name="Filter" },
+    { id=12, name="Evaluate" },
     { id=13, name="Count" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },
@@ -197,7 +198,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
   ]])
-  
+
   struct("XPathValue", { type="XPathValue" }, [[
   int(XPVT) Type         # Identifies the type of value stored
   double    NumberValue  # Defined if the type is Number or Boolean
@@ -208,6 +209,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
@@ -219,7 +221,8 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
         node_set(Nodes),
         node_set_string_override(std::move(NodeSetString)),
         node_set_string_values(std::move(NodeSetStrings)),
-        node_set_attributes(std::move(NodeSetAttributes)) {}
+        node_set_attributes(std::move(NodeSetAttributes)),
+        preserve_node_order(false) {}
 
   ]])
 

@@ -17,8 +17,7 @@
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
-
-namespace {
+#include <parasol/strings.hpp>
 
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
@@ -73,6 +72,14 @@ static std::string trim_constructor_whitespace(std::string_view Value)
    return std::string(Value.substr(start, end - start));
 }
 
+static bool is_xml_whitespace_only(std::string_view Value)
+{
+   for (char ch : Value) {
+      if (uint8_t(ch) > 0x20u) return false;
+   }
+   return true;
+}
+
 //********************************************************************************************************************
 // Represents a QName or expanded QName parsed from constructor syntax, capturing the prefix, local part, and resolved
 // namespace URI when known.
@@ -88,7 +95,7 @@ struct ConstructorQName {
 // Parses a QName or expanded QName literal used by computed constructors.  The function recognises the "Q{uri}local"
 // form as well as prefixed names and produces a structured representation that downstream evaluators can inspect.
 
-ConstructorQName parse_constructor_qname_string(std::string_view Value)
+static ConstructorQName parse_constructor_qname_string(std::string_view Value)
 {
    ConstructorQName result;
    if (Value.empty()) return result;
@@ -131,7 +138,187 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
    return result;
 }
 
-} // Anonymous namespace
+//********************************************************************************************************************
+
+std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_view Text, bool IsLiteral) const
+{
+   if (Text.empty())
+   {
+      if (IsLiteral) return std::string();
+      if (prolog_has_boundary_space_preserve()) return std::string();
+      return std::nullopt;
+   }
+
+   bool whitespace_only = is_xml_whitespace_only(Text);
+
+   if (IsLiteral) {
+      if (whitespace_only and (not prolog_has_boundary_space_preserve())) return std::nullopt;
+      return std::string(Text);
+   }
+
+   if (prolog_construction_preserve()) return std::string(Text);
+
+   if (whitespace_only) {
+      if (prolog_has_boundary_space_preserve()) return std::string(Text);
+      return std::nullopt;
+   }
+
+   if (prolog_has_boundary_space_preserve()) return std::string(Text);
+
+   std::string trimmed = trim_constructor_whitespace(Text);
+   if (trimmed.empty()) return std::nullopt;
+   return trimmed;
+}
+
+//********************************************************************************************************************
+
+// Attempts to resolve a function call against the prolog before consulting the built-in library.
+std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::string_view FunctionName,
+   const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
+{
+   auto prolog = context.prolog;
+   if (!prolog) return std::nullopt;
+
+   std::string namespace_uri;
+   bool has_expanded_name = false;
+
+   if ((FunctionName.size() > 2U) and (FunctionName[0] IS 'Q') and (FunctionName[1] IS '{')) {
+      size_t closing = FunctionName.find('}');
+      if (closing != std::string::npos) {
+         namespace_uri = std::string(FunctionName.substr(2U, closing - 2U));
+         has_expanded_name = true;
+      }
+   }
+
+   const XQueryFunction *function = prolog->find_function(FunctionName, Args.size());
+   if (function) {
+      if (function->is_external) {
+         std::string message = "External function '";
+         message.append(function->qname);
+         message.append("' is not supported.");
+         record_error(message, FuncNode, true);
+         return XPathVal();
+      }
+
+      return evaluate_user_defined_function(*function, Args, CurrentPrefix, FuncNode);
+   }
+
+   std::string canonical_name(FunctionName);
+   bool arity_mismatch = false;
+   for (const auto &entry : prolog->functions) {
+      if (entry.second.qname IS canonical_name) {
+         arity_mismatch = true;
+         break;
+      }
+   }
+
+   if (arity_mismatch) {
+      std::string message = "Function '";
+      message.append(canonical_name);
+      message.append("' does not accept ");
+      message.append(std::to_string(Args.size()));
+      message.append(Args.size() IS 1 ? " argument." : " arguments.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   if (has_expanded_name) {
+      uint32_t namespace_hash = namespace_uri.empty() ? 0 : pf::strhash(namespace_uri);
+      if (namespace_hash != 0) {
+         for (const auto &import : prolog->module_imports) {
+            if (pf::strhash(import.target_namespace) IS namespace_hash) {
+               if (!context.module_cache) {
+                  std::string message = "Module function '";
+                  message.append(canonical_name);
+                  message.append("' requires a module cache.");
+                  record_error(message, FuncNode, true);
+                  return XPathVal();
+               }
+
+               std::string message = "Module function resolution is not implemented for namespace '";
+               message.append(import.target_namespace);
+               message.append("'.");
+               record_error(message, FuncNode, true);
+               return XPathVal();
+            }
+         }
+      }
+   }
+   else {
+      auto separator = FunctionName.find(':');
+      if (separator != std::string_view::npos) {
+         std::string prefix(FunctionName.substr(0, separator));
+         uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
+         if (namespace_hash != 0) {
+            for (const auto &import : prolog->module_imports) {
+               if (pf::strhash(import.target_namespace) IS namespace_hash) {
+                  if (!context.module_cache) {
+                     std::string message = "Module function '";
+                     message.append(canonical_name);
+                     message.append("' requires a module cache.");
+                     record_error(message, FuncNode, true);
+                     return XPathVal();
+                  }
+
+                  std::string message = "Module function resolution is not implemented for namespace '";
+                  message.append(import.target_namespace);
+                  message.append("'.");
+                  record_error(message, FuncNode, true);
+                  return XPathVal();
+               }
+            }
+         }
+      }
+   }
+
+   return std::nullopt;
+}
+
+// Evaluates a prolog-defined function by binding arguments and executing the stored body expression.
+XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Function,
+   const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
+{
+   if (Function.is_external) {
+      std::string message = "External function '";
+      message.append(Function.qname);
+      message.append("' is not supported.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   if (!Function.body) {
+      std::string message = "Function '";
+      message.append(Function.qname);
+      message.append("' is missing a body.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   if (Function.parameter_names.size() != Args.size()) {
+      std::string message = "Function '";
+      message.append(Function.qname);
+      message.append("' parameter mismatch.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   std::vector<VariableBindingGuard> parameter_guards;
+   parameter_guards.reserve(Function.parameter_names.size());
+
+   for (size_t index = 0; index < Function.parameter_names.size(); ++index) {
+      parameter_guards.emplace_back(context, Function.parameter_names[index], Args[index]);
+   }
+
+   auto result = evaluate_expression(Function.body.get(), CurrentPrefix);
+   if (expression_unsupported) {
+      std::string message = "Function '";
+      message.append(Function.qname);
+      message.append("' evaluation failed.");
+      record_error(message, FuncNode);
+   }
+
+   return result;
+}
 
 //********************************************************************************************************************
 
@@ -568,10 +755,15 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
       }
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const UnionEntry &Left, const UnionEntry &Right) {
-      if (Left.node IS Right.node) return false;
-      return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
-   });
+   bool enforce_document_order = prolog_ordering_is_ordered();
+
+   if (enforce_document_order)
+   {
+      std::stable_sort(entries.begin(), entries.end(), [this](const UnionEntry &Left, const UnionEntry &Right) {
+         if (Left.node IS Right.node) return false;
+         return axis_evaluator.is_before_in_document_order(Left.node, Right.node);
+      });
+   }
 
    NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
@@ -596,7 +788,9 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
 
    if (combined_nodes.empty()) return XPathVal(NODES());
 
-   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   XPathVal result(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   if (not enforce_document_order) result.preserve_node_order = true;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -722,10 +916,15 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       entries.push_back(std::move(entry));
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
-      if (LeftEntry.node IS RightEntry.node) return false;
-      return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
-   });
+   bool enforce_document_order = prolog_ordering_is_ordered();
+
+   if (enforce_document_order)
+   {
+      std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
+         if (LeftEntry.node IS RightEntry.node) return false;
+         return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
+      });
+   }
 
    NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
@@ -750,7 +949,9 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
 
    if (combined_nodes.empty()) return XPathVal(NODES());
 
-   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   XPathVal result(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   if (not enforce_document_order) result.preserve_node_order = true;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -876,10 +1077,15 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       entries.push_back(std::move(entry));
    }
 
-   std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
-      if (LeftEntry.node IS RightEntry.node) return false;
-      return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
-   });
+   bool enforce_document_order = prolog_ordering_is_ordered();
+
+   if (enforce_document_order)
+   {
+      std::stable_sort(entries.begin(), entries.end(), [this](const SetEntry &LeftEntry, const SetEntry &RightEntry) {
+         if (LeftEntry.node IS RightEntry.node) return false;
+         return axis_evaluator.is_before_in_document_order(LeftEntry.node, RightEntry.node);
+      });
+   }
 
    NODES combined_nodes;
    std::vector<const XMLAttrib *> combined_attributes;
@@ -904,7 +1110,9 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 
    if (combined_nodes.empty()) return XPathVal(NODES());
 
-   return XPathVal(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   XPathVal result(combined_nodes, combined_override, std::move(combined_strings), std::move(combined_attributes));
+   if (not enforce_document_order) result.preserve_node_order = true;
+   return result;
 }
 
 //********************************************************************************************************************
@@ -970,7 +1178,7 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
 // creation, and text concatenation according to the XPath constructor rules.
 
 bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix,
-   const ConstructorNamespaceScope &Scope)
+   const ConstructorNamespaceScope &Scope, bool PreserveConstruction)
 {
    if (Value.Type IS XPVT::NodeSet) {
       Parent.Children.reserve(Parent.Children.size() + Value.node_set.size());
@@ -994,7 +1202,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
             }
 
             if (duplicate) {
-               record_error("Duplicate attribute name in constructor content.", (const XPathNode *)nullptr, true);
+               record_error("XQDY0025: Duplicate attribute name in constructor content.", nullptr, true);
                return false;
             }
 
@@ -1010,6 +1218,12 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
    }
 
    std::string text = Value.to_string();
+
+   std::optional<std::string> prepared;
+   if (PreserveConstruction) prepared = std::string(text);
+   else prepared = prepare_constructor_text(text, false);
+   if (not prepared.has_value()) return true;
+   text = std::move(*prepared);
    if (text.empty()) return true;
 
    pf::vector<XMLAttrib> text_attribs;
@@ -1041,7 +1255,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
       auto *expr = Attribute.get_expression_for_part(index);
       if (not expr) {
          log.detail("AVT failed at part index %d", index);
-         record_error("Attribute value template part is missing its expression.", (const XPathNode *)nullptr, true);
+         record_error("XPST0003: Attribute value template part is missing its expression.", nullptr, true);
          return std::nullopt;
       }
 
@@ -1115,10 +1329,19 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 // Reduces the child expressions beneath a constructor content node to a single string value.  Each child expression
 // is evaluated and the textual representation is concatenated to form the returned content.
 
-std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix)
+std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix,
+   bool ApplyWhitespaceRules, bool PreserveConstruction)
 {
    if (not Node) return std::string();
-   if (not Node->value.empty()) return Node->value;
+   if (not Node->value.empty())
+   {
+      if (not ApplyWhitespaceRules) return Node->value;
+      if (PreserveConstruction) return Node->value;
+
+      auto prepared_literal = prepare_constructor_text(Node->value, not ApplyWhitespaceRules);
+      if (prepared_literal.has_value()) return *prepared_literal;
+      return std::string();
+   }
 
    if (Node->child_count() IS 0) return std::string();
 
@@ -1168,7 +1391,13 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
 
    constructed_nodes.resize(previous_constructed);
    next_constructed_node_id = saved_id;
-   return result;
+
+   if (not ApplyWhitespaceRules) return result;
+   if (PreserveConstruction) return result;
+
+   auto prepared = prepare_constructor_text(result, false);
+   if (prepared.has_value()) return *prepared;
+   return std::string();
 }
 
 //********************************************************************************************************************
@@ -1306,7 +1535,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          auto resolved = resolve_constructor_prefix(element_scope, attribute->prefix);
          if (not resolved.has_value())
          {
-            record_error("Attribute prefix is not bound in constructor scope.", Node, true);
+            record_error("XQDY0064: Attribute prefix is not bound in constructor scope.", Node, true);
             return std::nullopt;
          }
       }
@@ -1328,7 +1557,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    else if (not info.prefix.empty()) {
       auto resolved = resolve_constructor_prefix(element_scope, info.prefix);
       if (not resolved.has_value()) {
-         record_error("Element prefix is not declared within constructor scope.", Node, true);
+         record_error("XQDY0064: Element prefix is not declared within constructor scope.", Node, true);
          return std::nullopt;
       }
       namespace_id = *resolved;
@@ -1342,6 +1571,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    element.Attribs = element_attributes;
 
    element.Children.reserve(Node->child_count());
+   bool preserve_construction = prolog_construction_preserve();
 
    for (size_t index = 0; index < Node->child_count(); ++index)
    {
@@ -1358,8 +1588,11 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 
       if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT) {
          if (not child->value.empty()) {
+            auto text_value = prepare_constructor_text(child->value, true);
+            if (not text_value.has_value()) continue;
+
             pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", child->value);
+            text_attribs.emplace_back("", *text_value);
             XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
             text_node.ParentID = element.ID;
             element.Children.push_back(std::move(text_node));
@@ -1375,7 +1608,8 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          auto saved_id = next_constructed_node_id;
          XPathVal value = evaluate_expression(expr, CurrentPrefix);
          if (expression_unsupported) return std::nullopt;
-         if (not append_constructor_sequence(element, value, CurrentPrefix, element_scope)) return std::nullopt;
+         if (not append_constructor_sequence(element, value, CurrentPrefix, element_scope, preserve_construction))
+            return std::nullopt;
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
          continue;
@@ -1473,7 +1707,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    else if (not name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
       if (not resolved.has_value()) {
-         record_error("Element prefix is not bound in scope.", Node, true);
+         record_error("XQDY0064: Element prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
       namespace_id = *resolved;
@@ -1497,16 +1731,20 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
    ConstructorNamespaceScope scope;
    scope.parent = nullptr;
+   bool preserve_construction = prolog_construction_preserve();
 
    if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
       if (content_node) {
          if (not content_node->value.empty()) {
-            pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", content_node->value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
-            text_node.ParentID = element.ID;
-            element.Children.push_back(std::move(text_node));
+            auto text_value = prepare_constructor_text(content_node->value, true);
+            if (text_value.has_value()) {
+               pf::vector<XMLAttrib> text_attribs;
+               text_attribs.emplace_back("", *text_value);
+               XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+               text_node.ParentID = element.ID;
+               element.Children.push_back(std::move(text_node));
+            }
          }
          else if (content_node->child_count() > 0) {
             const XPathNode *expr = content_node->get_child(0);
@@ -1515,7 +1753,8 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
                if (expression_unsupported) return XPathVal();
-               if (not append_constructor_sequence(element, value, CurrentPrefix, scope)) return XPathVal();
+               if (not append_constructor_sequence(element, value, CurrentPrefix, scope, preserve_construction))
+                  return XPathVal();
                constructed_nodes.resize(previous_constructed);
                next_constructed_node_id = saved_id;
             }
@@ -1599,7 +1838,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    else if (not name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
       if (not resolved.has_value()) {
-         record_error("Attribute prefix is not bound in scope.", Node, true);
+         record_error("XQDY0064: Attribute prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
       namespace_id = *resolved;
@@ -1614,7 +1853,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto value_string = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   auto value_string = evaluate_constructor_content_string(content_node, CurrentPrefix, false, false);
    if (not value_string) return XPathVal();
 
    pf::vector<XMLAttrib> attribute_attribs;
@@ -1652,7 +1891,8 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   bool preserve_construction = prolog_construction_preserve();
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix, true, preserve_construction);
    if (not content) return XPathVal();
 
    pf::vector<XMLAttrib> text_attribs;
@@ -1688,17 +1928,17 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix, false, false);
    if (not content) return XPathVal();
 
    auto double_dash = content->find("--");
    if (not (double_dash IS std::string::npos)) {
-      record_error("Comments cannot contain consecutive hyphen characters.", Node, true);
+      record_error("XQDY0072: Comments cannot contain consecutive hyphen characters.", Node, true);
       return XPathVal();
    }
 
    if (not content->empty() and (content->back() IS '-')) {
-      record_error("Comments cannot end with a hyphen.", Node, true);
+      record_error("XQDY0072: Comments cannot end with a hyphen.", Node, true);
       return XPathVal();
    }
 
@@ -1756,12 +1996,12 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix, false, false);
    if (not content) return XPathVal();
 
    auto terminator = content->find("?>");
    if (not (terminator IS std::string::npos)) {
-      record_error("Processing-instruction content cannot contain '?>'.", Node, true);
+      record_error("XQDY0026: Processing-instruction content cannot contain '?>'.", Node, true);
       return XPathVal();
    }
 
@@ -1809,16 +2049,20 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
 
    ConstructorNamespaceScope scope;
    scope.parent = nullptr;
+   bool preserve_construction = prolog_construction_preserve();
 
    if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
       if (content_node) {
          if (not content_node->value.empty()) {
-            pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", content_node->value);
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
-            text_node.ParentID = document_node.ID;
-            document_node.Children.push_back(std::move(text_node));
+            auto text_value = prepare_constructor_text(content_node->value, true);
+            if (text_value.has_value()) {
+               pf::vector<XMLAttrib> text_attribs;
+               text_attribs.emplace_back("", *text_value);
+               XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
+               text_node.ParentID = document_node.ID;
+               document_node.Children.push_back(std::move(text_node));
+            }
          }
          else if (content_node->child_count() > 0) {
             const XPathNode *expr = content_node->get_child(0);
@@ -1827,7 +2071,8 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
                if (expression_unsupported) return XPathVal();
-               if (not append_constructor_sequence(document_node, value, CurrentPrefix, scope)) return XPathVal();
+               if (not append_constructor_sequence(document_node, value, CurrentPrefix, scope, preserve_construction))
+                  return XPathVal();
                constructed_nodes.resize(previous_constructed);
                next_constructed_node_id = saved_id;
             }
@@ -1909,7 +2154,9 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       return ERR::Search;
    }
 
-   if (Value.preserve_node_order) {
+   bool preserve_order = Value.preserve_node_order or (not prolog_ordering_is_ordered());
+
+   if (preserve_order) {
       std::vector<NodeEntry> unique_entries;
       unique_entries.reserve(entries.size());
 
@@ -2056,6 +2303,20 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       if (expression_unsupported) return XPathVal();
    }
 
+   std::string builtin_lookup_name = function_name;
+   std::string builtin_namespace;
+   std::string builtin_local;
+   bool builtin_has_expanded = false;
+
+   if ((function_name.size() > 2U) and (function_name[0] IS 'Q') and (function_name[1] IS '{')) {
+      size_t closing = function_name.find('}');
+      if (closing != std::string::npos) {
+         builtin_namespace = function_name.substr(2, closing - 2);
+         builtin_local = function_name.substr(closing + 1);
+         builtin_has_expanded = true;
+      }
+   }
+
    if (function_name IS "text") {
       NODES text_nodes;
       std::optional<std::string> first_value;
@@ -2074,5 +2335,31 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       return XPathVal(text_nodes, first_value);
    }
 
-   return XPathFunctionLibrary::instance().call_function(function_name, args, context);
+   if (auto user_result = resolve_user_defined_function(function_name, args, CurrentPrefix, FuncNode)) {
+      return *user_result;
+   }
+
+   auto &library = XPathFunctionLibrary::instance();
+
+   if (builtin_has_expanded)
+   {
+      static const std::string builtin_namespace_uri("http://www.w3.org/2005/xpath-functions");
+      if (builtin_namespace IS builtin_namespace_uri)
+      {
+         builtin_lookup_name = builtin_local;
+      }
+      else
+      {
+         if (library.has_function(function_name))
+         {
+            builtin_lookup_name = function_name;
+         }
+         else if ((not builtin_local.empty()) and library.has_function(builtin_local))
+         {
+            builtin_lookup_name = builtin_local;
+         }
+      }
+   }
+
+   return library.call_function(builtin_lookup_name, args, context);
 }

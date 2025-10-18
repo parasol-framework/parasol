@@ -9,10 +9,10 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON`
-- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/agents-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DPARASOL_VLOG=TRUE`
-- Fast Build: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=OFF -DBUILD_DEFS=ON`
-- Static build: Add `-DPARASOL_STATIC=ON` to any configuration
+- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
+- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/agents-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
+- Fast Build: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
+- Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
 - Build: `cmake --build build/agents --config [BuildType] --parallel`
@@ -292,3 +292,4 @@ Lower snake-case is the preferred string format for new file names.
 
 - Always give an honest, balanced opinion in your responses
 - Encourage testing and validation of changes
+- If you are asked to do work that relates to a plan file, update the plan at the end of the session to indicate what was achieved.

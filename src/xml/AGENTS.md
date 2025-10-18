@@ -23,23 +23,32 @@ The XML module provides robust functionality for creating, parsing, and maintain
 ```
 src/xml/
 ├── xml.fdl              # Interface definition (classes, enums, structs)
-├── xml.cpp              # Main XML class implementation
+├── xml.cpp              # Main XML module implementation
 ├── xml.h                # Internal header definitions
-├── xml_def.c            # Generated C definitions
+├── xml_def.c            # Generated C module definitions
+├── xml_class.cpp        # XML class implementation
+├── xml_class_def.c      # Generated C class definitions
 ├── xml_functions.cpp    # XML manipulation functions
 ├── unescape.cpp         # HTML/XML entity handling
+├── unescape.h           # Entity handling header
+├── uri_utils.h          # URI utility functions
 ├── xpath_value.cpp      # XPath value type implementation (shared with XPath module)
 ├── xpath_value.h        # XPath value type definitions
 ├── schema/              # XML Schema validation system
 │   ├── schema_parser.cpp/h       # XSD schema parsing
 │   ├── schema_types.cpp/h        # Schema type system and validation
 │   └── type_checker.cpp/h        # Type validation logic
-└── tests/               # Comprehensive test suite
+└── tests/               # XML-specific test suite
     ├── test_basic.fluid                # Basic XML operations
     ├── test_advanced_features.fluid    # Complex parsing scenarios
     ├── test_schema_validation.fluid    # XML Schema validation tests
-    ├── test_xpath_*.fluid              # XPath integration tests
-    └── ...
+    ├── test_xml_parsing.fluid          # Parser robustness tests
+    ├── test_xml_manipulation.fluid     # Content modification tests
+    ├── test_data_sources.fluid         # Multiple input source handling
+    ├── test_namespaces.fluid           # Namespace processing
+    ├── test_setvariable.fluid          # Variable binding
+    ├── test_error_handling.fluid       # Error condition handling
+    └── benchmark.fluid                 # Performance measurement
 ```
 
 ### Dependencies
@@ -230,38 +239,27 @@ void ForEachAttrib(objXML::TAGS &Tags, std::function<void(XMLAttrib &)> &Functio
 
 Comprehensive test suite using Flute test runner covering all module features:
 
-**Core XML Tests:**
+**Core XML Tests (src/xml/tests/):**
 - `test_basic.fluid` - Core XML operations and tag access
 - `test_advanced_features.fluid` - Complex parsing scenarios
 - `test_xml_parsing.fluid` - Parser robustness tests
 - `test_xml_manipulation.fluid` - Content modification
 - `test_data_sources.fluid` - Multiple input source handling
 - `test_namespaces.fluid` - Namespace processing
+- `test_setvariable.fluid` - Variable binding for XPath queries
 - `test_error_handling.fluid` - Error condition handling
-
-**XPath Integration Tests:**
-- `test_xpath_core.fluid` - XPath integration with XML class
-- `test_xpath_predicates.fluid` - Predicate evaluation via FindTag
-- `test_xpath_axes.fluid` - XPath axes through XML methods
-- `test_xpath_advanced.fluid` - Complex XPath queries
-- `test_xpath_advanced_paths.fluid` - Advanced path expressions
-- `test_xpath_flwor.fluid` - FLWOR expressions via XML
-- `test_xpath_func_ext.fluid` - Extended function library integration
-- `test_xpath_sequences.fluid` - Sequence operations
-- `test_xpath_string_uri.fluid` - String and URI functions
-- `test_xpath_duration.fluid` - Duration type operations
-- `test_xpath_datetime.fluid` - DateTime functions
-- `test_xpath_qname.fluid` - QName operations
-- `test_xpath_accessor.fluid` - Accessor function integration
-- `test_xpath_constructors.fluid` - Node constructor expressions
-- `test_xpath_documents.fluid` - Document function integration
-- `test_setvariable.fluid` - Variable binding
-
-**Schema Validation Tests:**
 - `test_schema_validation.fluid` - XML Schema validation and type checking
-
-**Performance Tests:**
 - `benchmark.fluid` - Performance measurement and optimization
+
+**XPath Integration Tests (src/xpath/tests/):**
+XPath tests have been moved to the separate XPath module. See `src/xpath/AGENTS.md` for details on XPath-specific tests including:
+- `test_core.fluid` - XPath integration with XML class
+- `test_predicates.fluid` - Predicate evaluation
+- `test_axes.fluid` - XPath axes navigation
+- `test_advanced.fluid` - Complex XPath queries
+- `test_flwor.fluid` / `test_flwor_clauses.fluid` - FLWOR expressions
+- `test_func_ext.fluid` - Extended function library
+- And many more XPath-specific test files
 
 ### Running Tests
 

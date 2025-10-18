@@ -28,13 +28,90 @@
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
-XPathEvaluator::XPathEvaluator(extXML *XML) : xml(XML), axis_evaluator(XML, arena)
+XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XML), query_root(QueryRoot), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
    context.document = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
    context.variables = &variable_storage;
+   initialise_query_context(QueryRoot);
+}
+
+// Prepares the evaluation context for a new query, wiring prolog metadata and module caches when present.
+void XPathEvaluator::initialise_query_context(const XPathNode *Root)
+{
+   context.prolog = nullptr;
+   context.module_cache = nullptr;
+   prolog_variable_cache.clear();
+   variables_in_evaluation.clear();
+
+   if (Root) query_root = Root;
+
+   const XPathNode *source = Root ? Root : query_root;
+
+   std::shared_ptr<XQueryProlog> prolog;
+   std::shared_ptr<XQueryModuleCache> module_cache;
+
+   if (source) {
+      prolog = source->get_prolog();
+      module_cache = source->get_module_cache();
+   }
+
+   if (!prolog and query_root) prolog = query_root->get_prolog();
+   if (!module_cache and query_root) module_cache = query_root->get_module_cache();
+
+   context.prolog = std::move(prolog);
+   context.module_cache = std::move(module_cache);
+
+   if (!context.module_cache and context.prolog) {
+      context.module_cache = context.prolog->get_module_cache();
+   }
+
+   auto prolog_ptr = context.prolog;
+   if (!prolog_ptr and query_root) prolog_ptr = query_root->get_prolog();
+
+   construction_preserve_mode = false;
+   if (prolog_ptr) {
+      construction_preserve_mode =
+         (prolog_ptr->construction_mode IS XQueryProlog::ConstructionMode::Preserve);
+   }
+}
+
+// Returns true when the active prolog requests boundary-space preservation.
+bool XPathEvaluator::prolog_has_boundary_space_preserve() const
+{
+   auto prolog = context.prolog;
+   if (!prolog and query_root) prolog = query_root->get_prolog();
+   if (!prolog) return false;
+   return prolog->boundary_space IS XQueryProlog::BoundarySpace::Preserve;
+}
+
+// Determines whether construction mode should preserve boundary whitespace during node creation.
+bool XPathEvaluator::prolog_construction_preserve() const
+{
+   if (construction_preserve_mode) return true;
+
+   auto prolog = context.prolog;
+   if (!prolog and query_root) prolog = query_root->get_prolog();
+   if (!prolog) return false;
+   return prolog->construction_mode IS XQueryProlog::ConstructionMode::Preserve;
+}
+
+// Reports whether the prolog enforces ordered results for sequence operations.
+bool XPathEvaluator::prolog_ordering_is_ordered() const
+{
+   auto prolog = context.prolog;
+   if (!prolog) return true;
+   return prolog->ordering_mode IS XQueryProlog::OrderingMode::Ordered;
+}
+
+// Indicates whether empty sequences should compare as greatest according to the prolog settings.
+bool XPathEvaluator::prolog_empty_is_greatest() const
+{
+   auto prolog = context.prolog;
+   if (!prolog) return true;
+   return prolog->empty_order IS XQueryProlog::EmptyOrder::Greatest;
 }
 
 //********************************************************************************************************************
@@ -143,6 +220,8 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
    axis_evaluator.reset_namespace_nodes();
    arena.reset();
 
+   initialise_query_context(&XPath);
+
    return evaluate_ast(&XPath, CurrentPrefix);
 }
 
@@ -162,6 +241,8 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
    expression_unsupported = false;
    constructed_nodes.clear();
    next_constructed_node_id = -1;
+
+   initialise_query_context(&XPath);
 
    const XPathNode *node = &XPath;
    if (node->type IS XPathNodeType::EXPRESSION) {

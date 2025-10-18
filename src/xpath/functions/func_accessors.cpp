@@ -195,7 +195,11 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
 XPathVal XPathFunctionLibrary::function_default_collation(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    (void)Args;
-   (void)Context;
+   if (Context.prolog)
+   {
+      const std::string &collation = Context.prolog->default_collation;
+      if (!collation.empty()) return XPathVal(collation);
+   }
 
    return XPathVal(std::string("http://www.w3.org/2005/xpath-functions/collation/codepoint"));
 }

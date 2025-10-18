@@ -9,7 +9,7 @@ function testTagsArray()
    local expected = 2
    assert(#tags == expected, "Expected a tag count of " .. expected)
 
-   expected = 6
+   expected = 7
    assert(#tags[2].children == expected, "Expected a child count of " .. expected .. " not " .. #tags[2].children)
 end
 
@@ -103,7 +103,14 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
    return {
-      tests = { 'testTagsArray', 'testIndexing', 'testGetAttrib', 'testSerialise', 'testLineCount', 'testSort' },
+      tests = {
+         'testTagsArray',
+         'testIndexing',
+         'testGetAttrib',
+         'testSerialise',
+         'testLineCount',
+         'testSort'
+      },
       init = function(ScriptFolder)
          glXML = obj.new("xml", { path = ScriptFolder .. "test.xml" })
       end,

@@ -5,8 +5,28 @@
   <info>
     <name>XML</name>
     <type>module</type>
+    <comment>Provides an interface for the management of structured data.</comment>
     <version>1</version>
     <copyright>Paul Manias © 2001-2025</copyright>
+    <description>
+<p>The XML module provides comprehensive support for XML 1.0 document parsing, manipulation, and querying.  It integrates with the XPath module to deliver a standards-compliant XML processing environment with extensive querying capabilities.</p>
+<header>XML Processing</header>
+<p>The module implements full XML 1.0 parsing and serialisation, including support for namespaces, attributes, CDATA sections, processing instructions, and DOCTYPE declarations.  Documents can be loaded from files, strings, or streams, and modified programmatically through a tree-based API.  The parser validates well-formedness and provides detailed error reporting for malformed documents.</p>
+<header>XPath 2.0 Support</header>
+<p>All aspects of XPath 2.0 are supported except for the following:</p>
+<list type="bullet">
+<li>Namespace axis: The <code>namespace::*</code> and <code>namespace::prefix</code> axis expressions are not supported.</li>
+<li>Schema imports: Schema import declarations are not recognised.</li>
+<li>External variables: External variable declarations (<code>declare variable $name external</code>) are not supported.</li>
+<li>Custom collations: Only the W3C codepoint collation (<code>http://www.w3.org/2005/xpath-functions/collation/codepoint</code>) is supported.  Custom collation URIs are rejected.</li>
+</list>
+<header>XQuery 1.0 Support</header>
+<p>The module implements core XQuery 1.0 functionality, including FLWOR expressions (<code>for</code>, <code>let</code>, <code>where</code>, <code>order by</code>, <code>return</code>, <code>group by</code>, <code>count</code> clauses), node constructors (element, attribute, document, text, comment, processing instruction), and a comprehensive function library covering strings, numbers, sequences, dates, durations, QNames, and document access.  XQuery support excludes the following:</p>
+<list type="bullet">
+<li>Schema-aware processing: Type validation against XML Schema is not supported.</li>
+<li>Type operations: The <code>typeswitch</code>, <code>treat as</code>, <code>cast as</code>, <code>castable as</code>, and <code>instance of</code> expressions are not supported.</li>
+<li>Module imports: XQuery module import declarations are not supported.</li>
+</list></description>
     <classes>
       <class>XML</class>
     </classes>

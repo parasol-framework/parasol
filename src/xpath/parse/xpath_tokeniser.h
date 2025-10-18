@@ -28,6 +28,8 @@ class XPathTokeniser
    std::string_view input;
    size_t position;
    size_t length;
+   XPathTokenType previous_token_type;
+   XPathTokenType prior_token_type;
 
    [[nodiscard]] bool is_alpha(char c) const;
    [[nodiscard]] bool is_digit(char c) const;
@@ -47,7 +49,7 @@ class XPathTokeniser
    [[nodiscard]] bool match(std::string_view Str);
 
    public:
-   XPathTokeniser() : position(0), length(0) {}
+   XPathTokeniser() : position(0), length(0), previous_token_type(XPathTokenType::UNKNOWN), prior_token_type(XPathTokenType::UNKNOWN) {}
 
    std::vector<XPathToken> tokenize(std::string_view XPath);
    bool has_more() const;

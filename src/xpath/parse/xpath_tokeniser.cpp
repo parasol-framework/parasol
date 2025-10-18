@@ -56,9 +56,25 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "ascending", XPathTokenType::ASCENDING },
    KeywordMapping{ "descending", XPathTokenType::DESCENDING },
    KeywordMapping{ "empty", XPathTokenType::EMPTY },
+   KeywordMapping{ "default", XPathTokenType::DEFAULT },
+   KeywordMapping{ "declare", XPathTokenType::DECLARE },
+   KeywordMapping{ "function", XPathTokenType::FUNCTION },
+   KeywordMapping{ "variable", XPathTokenType::VARIABLE },
+   KeywordMapping{ "namespace", XPathTokenType::NAMESPACE },
+   KeywordMapping{ "external", XPathTokenType::EXTERNAL },
+   KeywordMapping{ "boundary-space", XPathTokenType::BOUNDARY_SPACE },
+   KeywordMapping{ "base-uri", XPathTokenType::BASE_URI },
    KeywordMapping{ "greatest", XPathTokenType::GREATEST },
    KeywordMapping{ "least", XPathTokenType::LEAST },
    KeywordMapping{ "collation", XPathTokenType::COLLATION },
+   KeywordMapping{ "construction", XPathTokenType::CONSTRUCTION },
+   KeywordMapping{ "ordering", XPathTokenType::ORDERING },
+   KeywordMapping{ "copy-namespaces", XPathTokenType::COPY_NAMESPACES },
+   KeywordMapping{ "decimal-format", XPathTokenType::DECIMAL_FORMAT },
+   KeywordMapping{ "option", XPathTokenType::OPTION },
+   KeywordMapping{ "import", XPathTokenType::IMPORT },
+   KeywordMapping{ "module", XPathTokenType::MODULE },
+   KeywordMapping{ "schema", XPathTokenType::SCHEMA },
    KeywordMapping{ "count", XPathTokenType::COUNT },
    KeywordMapping{ "some", XPathTokenType::SOME },
    KeywordMapping{ "every", XPathTokenType::EVERY },
@@ -155,6 +171,8 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
    input = XPath;
    position = 0;
    length = input.size();
+   previous_token_type = XPathTokenType::UNKNOWN;
+   prior_token_type = XPathTokenType::UNKNOWN;
    std::vector<XPathToken> tokens;
    tokens.reserve(XPath.size() + 1);
    int bracket_depth = 0;
@@ -421,6 +439,8 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          }
 
          tokens.emplace_back(type, input.substr(start, 1), start, 1);
+         prior_token_type = previous_token_type;
+         previous_token_type = tokens.back().type;
       }
       else {
          XPathToken token = scan_operator();
@@ -447,11 +467,14 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          else if (token.type IS XPathTokenType::LPAREN) paren_depth++;
          else if (token.type IS XPathTokenType::RPAREN and paren_depth > 0) paren_depth--;
 
+         prior_token_type = previous_token_type;
+         previous_token_type = token.type;
          tokens.push_back(std::move(token));
       }
    }
 
    tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(""), position, 0);
+   previous_token_type = XPathTokenType::END_OF_INPUT;
    return tokens;
 }
 
@@ -498,21 +521,62 @@ XPathToken XPathTokeniser::scan_identifier()
 
    if (match != keyword_mappings.end())
    {
+      bool treat_as_keyword = true;
+
       switch (match->type)
       {
-         case XPathTokenType::ORDER:
-            if (is_followed_by_word("by")) type = match->type;
+         case XPathTokenType::FUNCTION:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
+                               (previous_token_type IS XPathTokenType::DEFAULT);
             break;
-         case XPathTokenType::GROUP:
-            if (is_followed_by_word("by")) type = match->type;
+         case XPathTokenType::VARIABLE:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE);
             break;
-         case XPathTokenType::STABLE:
-            if (is_followed_by_word("order")) type = match->type;
+         case XPathTokenType::NAMESPACE:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
+                               (previous_token_type IS XPathTokenType::DEFAULT) or
+                               (previous_token_type IS XPathTokenType::FUNCTION) or
+                               (previous_token_type IS XPathTokenType::MODULE);
+            break;
+         case XPathTokenType::EXTERNAL:
+         {
+            bool identifier_precedes = (previous_token_type IS XPathTokenType::IDENTIFIER) and
+                                       ((prior_token_type IS XPathTokenType::DOLLAR) or
+                                        (prior_token_type IS XPathTokenType::COLON));
+
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE) or
+                               (previous_token_type IS XPathTokenType::VARIABLE) or
+                               (previous_token_type IS XPathTokenType::RPAREN) or
+                               identifier_precedes;
+            break;
+         }
+         case XPathTokenType::BOUNDARY_SPACE:
+         case XPathTokenType::BASE_URI:
+            treat_as_keyword = (previous_token_type IS XPathTokenType::DECLARE);
             break;
          default:
-            type = match->type;
             break;
       }
+
+      if (treat_as_keyword)
+      {
+         switch (match->type)
+         {
+            case XPathTokenType::ORDER:
+               if (is_followed_by_word("by")) type = match->type;
+               break;
+            case XPathTokenType::GROUP:
+               if (is_followed_by_word("by")) type = match->type;
+               break;
+            case XPathTokenType::STABLE:
+               if (is_followed_by_word("order")) type = match->type;
+               break;
+            default:
+               type = match->type;
+               break;
+         }
+      }
+
    }
 
    return XPathToken(type, identifier, start, position - start);
@@ -756,6 +820,7 @@ XPathToken XPathTokeniser::scan_operator()
       case ')': position++; return XPathToken(XPathTokenType::RPAREN, single_char, start, 1);
       case '@': position++; return XPathToken(XPathTokenType::AT, single_char, start, 1);
       case ',': position++; return XPathToken(XPathTokenType::COMMA, single_char, start, 1);
+      case ';': position++; return XPathToken(XPathTokenType::SEMICOLON, single_char, start, 1);
       case '|': position++; return XPathToken(XPathTokenType::PIPE, single_char, start, 1);
       case '=': position++; return XPathToken(XPathTokenType::EQUALS, single_char, start, 1);
       case '<': position++; return XPathToken(XPathTokenType::LESS_THAN, single_char, start, 1);

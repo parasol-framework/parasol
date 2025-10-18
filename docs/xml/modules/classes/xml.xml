@@ -147,6 +147,22 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
     </method>
 
     <method>
+      <name>Evaluate</name>
+      <comment>Run an XPath 2.0 or XQuery expression against the XML data.</comment>
+      <prototype>ERR xml::Evaluate(OBJECTPTR Object, CSTRING Statement, CSTRING * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="Statement">An XPath or XQuery string to evaluate.</param>
+        <param type="CSTRING *" name="Result">An allocated string from the evaluation is returned here.</param>
+      </input>
+      <description>
+<p>The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+      </result>
+    </method>
+
+    <method>
       <name>Filter</name>
       <comment>Filters the XML data structure to retain only a specific tag and its descendants.</comment>
       <prototype>ERR xml::Filter(OBJECTPTR Object, CSTRING XPath)</prototype>

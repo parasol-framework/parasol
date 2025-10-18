@@ -28,12 +28,11 @@
 static size_t hash_xpath_group_value(const XPathVal &Value);
 
 // Combines two hash values into a single hash using a common mixing technique.
+// 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to decorrelate values when mixing hashes.
+// Incorporating it here improves the distribution of combined group hashes.
 
 inline size_t combine_group_hash(size_t Seed, size_t Value)
 {
-   // 0x9e3779b97f4a7c15ull is the 64-bit golden ratio constant commonly used to
-   // decorrelate values when mixing hashes.  Incorporating it here improves the
-   // distribution of combined group hashes.
    Seed ^= Value + 0x9e3779b97f4a7c15ull + (Seed << 6) + (Seed >> 2);
    return Seed;
 }
@@ -763,6 +762,11 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             metadata.comparator_options.empty_is_greatest = metadata.options.empty_is_greatest;
          }
 
+         if (not metadata.comparator_options.has_empty_mode) {
+            metadata.comparator_options.has_empty_mode = true;
+            metadata.comparator_options.empty_is_greatest = prolog_empty_is_greatest();
+         }
+
          order_specs.push_back(metadata);
       }
 
@@ -987,10 +991,15 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (iteration_value.is_empty()) continue;
 
-      if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced non-node-set type %d", tuple_index,
-         int(iteration_value.Type));
-      record_error("FLWOR return expressions must yield node-sets.", return_node, true);
-      return XPathVal();
+      // Wrap atomic values (strings, numbers, booleans) in a node-set
+      if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced atomic type %d, wrapping in node-set",
+         tuple_index, int(iteration_value.Type));
+
+      std::string atomic_string = iteration_value.to_string();
+      combined_nodes.push_back(nullptr);
+      combined_attributes.push_back(nullptr);
+      combined_strings.push_back(std::move(atomic_string));
+      if (!combined_override.has_value()) combined_override = combined_strings.back();
    }
 
    XPathVal result;
@@ -1000,6 +1009,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    result.node_set_string_values = std::move(combined_strings);
    if (combined_override.has_value()) result.node_set_string_override = combined_override;
    else result.node_set_string_override.reset();
-   result.preserve_node_order = (order_clause != nullptr);
+   bool preserve_order = (order_clause != nullptr);
+   if (not prolog_ordering_is_ordered()) preserve_order = true;
+   result.preserve_node_order = preserve_order;
    return result;
 }

@@ -188,6 +188,7 @@ struct GetAttrib { int Index; CSTRING Attrib; CSTRING Value; static const AC id 
 struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; int Result; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct FindTag { CSTRING XPath; FUNCTION * Callback; int Result; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Filter { CSTRING XPath; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Evaluate { CSTRING Statement; CSTRING Result; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Count { CSTRING XPath; int Result; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -326,6 +327,12 @@ class objXML : public Object {
       struct xml::Filter args = { XPath };
       return(Action(AC(-11), this, &args));
    }
+   inline ERR evaluate(CSTRING Statement, CSTRING * Result) noexcept {
+      struct xml::Evaluate args = { Statement, (CSTRING)0 };
+      ERR error = Action(AC(-12), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
+   }
    inline ERR count(CSTRING XPath, int * Result) noexcept {
       struct xml::Count args = { XPath, (int)0 };
       ERR error = Action(AC(-13), this, &args);
@@ -455,10 +462,10 @@ typedef struct XPathValue {
    double NumberValue;         // Defined if the type is Number or Boolean
    std::string StringValue;    // Defined if the type is String
    pf::vector<XMLTag *> node_set; // Defined if the type is NodeSet
-   bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
@@ -468,10 +475,10 @@ typedef struct XPathValue {
       std::vector<const XMLAttrib *> NodeSetAttributes = {})
       : Type(XPVT::NodeSet),
         node_set(Nodes),
-        preserve_node_order(false),
         node_set_string_override(std::move(NodeSetString)),
         node_set_string_values(std::move(NodeSetStrings)),
-        node_set_attributes(std::move(NodeSetAttributes)) {}
+        node_set_attributes(std::move(NodeSetAttributes)),
+        preserve_node_order(false) {}
 } XPATHVALUE;
 
 //********************************************************************************************************************

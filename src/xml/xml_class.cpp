@@ -10,8 +10,8 @@ XML: Provides an interface for the management of structured data.
 
 The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
 It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
-accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 queries, content manipulation
-and document validation.
+accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0
+queries, content manipulation and document validation.
 
 The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
 this way, the class not only provides XML support but also serves as Parasol's general-purpose structured
@@ -125,7 +125,7 @@ static ERR XML_Count(extXML *Self, struct xml::Count *Args)
 
    tlXMLCounter = 0;
 
-   XPathNode *cp;
+   APTR cp;
    if (xp::Compile(Self, Args->XPath, &cp) IS ERR::Okay) {
       auto call = C_FUNCTION(xml_count);
       xp::Query(Self, cp, &call);
@@ -196,6 +196,54 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
    return ERR::Okay;
 }
 
+
+/*********************************************************************************************************************
+
+-METHOD-
+Evaluate: Run an XPath 2.0 or XQuery expression against the XML data.
+
+The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML
+object.  This is a lazy execution method that compiles and evaluates the provided expression in a single
+step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the
+Compile and Evaluate functions in the XPath module.
+
+-INPUT-
+cstr Statement: An XPath or XQuery string to evaluate.
+!&cstr Result: An allocated string from the evaluation is returned here.
+
+-ERRORS-
+Okay: Operation successful.
+
+-END-
+
+A pointer to a std::string as a result would be better, but not supported by FDL yet (does work for functions).
+
+&cpp(str) Result: An allocated string from the evaluation is returned here.
+
+*********************************************************************************************************************/
+
+static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Statement)) return log.warning(ERR::NullArgs);
+
+   load_xpath();
+
+   APTR cp;
+   if (auto error = xp::Compile(Self, Args->Statement, &cp); error IS ERR::Okay) {
+      XPathValue *xpv;
+      if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
+         auto str = ((XPathVal *)xpv)->to_string();
+         if (!(Args->Result = pf::strclone(str.c_str()))) error = ERR::AllocMemory;
+         FreeResource(xpv);
+      }
+      FreeResource(cp);
+      return error;
+   }
+   else return error;
+}
+
 /*********************************************************************************************************************
 
 -METHOD-
@@ -225,7 +273,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
          auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
@@ -286,7 +334,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       error = xp::Query(Self, cp, Args->Callback);
       FreeResource(cp);
@@ -392,140 +440,6 @@ static ERR XML_GetAttrib(extXML *Self, struct xml::GetAttrib *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-GetEntity: Retrieves the value of a parsed entity declaration.
-
-This method returns the expanded value associated with a general entity parsed from the document's DOCTYPE declaration.
-Entity names are case-sensitive and must match exactly as declared.
-
--INPUT-
-cstr Name: The name of the entity to retrieve.  This must correspond to a parsed entity declaration.
-&cstr Value: Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.
-
--ERRORS-
-Okay: The entity was found and its value returned.
-NullArgs: Either the Name or Value parameter was NULL.
-Search: No matching entity could be found for the specified name.
-
--END-
-
-*********************************************************************************************************************/
-
-static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
-{
-   pf::Log log;
-
-   if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
-
-   auto key = std::string(Args->Name);
-   auto it = Self->Entities.find(key);
-   if (it IS Self->Entities.end()) return log.warning(ERR::Search);
-
-   Args->Value = it->second.c_str();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--METHOD-
-GetNotation: Retrieves information about a parsed notation declaration.
-
-Returns the system or public identifier captured for a notation declaration inside the
-document type definition.  If both public and system identifiers were provided they are
-returned as a single string separated by a single space.
-
--INPUT-
-cstr Name: The notation name to look up.
-&cstr Value: Receives the notation descriptor on success.
-
--ERRORS-
-Okay: The notation was found and its descriptor returned.
-NullArgs: Either the Name or Value parameter was NULL.
-Search: No matching notation could be found for the specified name.
-
--END-
-
-*********************************************************************************************************************/
-
-static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
-{
-   pf::Log log;
-
-   if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
-
-   auto key = std::string(Args->Name);
-   auto it = Self->Notations.find(key);
-   if (it IS Self->Notations.end()) return log.warning(ERR::Search);
-
-   Args->Value = it->second.c_str();
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
--ACTION-
-GetKey: Retrieves data using XPath 2.0 queries.
-
-The XML class uses key-values for the execution of XPath 2.0 queries.  Documentation of the XPath standard is out
-of the scope for this document, however the following examples illustrate common uses for this query language
-and a number of special instructions that we support:
-
-<types type="Path">
-<type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</>
-<type name="/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</>
-<type name="count(/menu)">Return a count of all menu tags at the root level.</>
-<type name="/menu/window/@title">Return the value of the title attribute from the window tag.</>
-<type name="exists(/menu/@title)">Return `1` if a menu with a title attribute can be matched, otherwise `0`.</>
-<type name="exists(/menu/text())">Return `1` if menu contains content.</>
-<type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
-</types>
-
--END-
-
-*********************************************************************************************************************/
-
-static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
-{
-   pf::Log log;
-
-   if (not Args) return log.warning(ERR::NullArgs);
-   if ((not Args->Key) or (not Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
-   if (not Self->initialised()) return log.warning(ERR::NotInitialised);
-
-   load_xpath();
-
-   Args->Value[0] = 0;
-
-   if (pf::startswith("count:", Args->Key)) {
-      log.error("Deprecated.  Use 'xpath:' with the count() function instead.");
-      return ERR::Syntax;
-   }
-   else if (pf::startswith("exists:", Args->Key) or pf::startswith("contentexists:", Args->Key)) {
-      log.error("Deprecated.  Use 'xpath:' with the exists() function instead.");
-      return ERR::Syntax;
-   }
-   else if (pf::startswith("extract:", Args->Key) or pf::startswith("extract-under:", Args->Key)) {
-      log.error("Deprecated.  Use FindTag() and Serialise()");
-      return ERR::Syntax;
-   }
-   else {
-      XPathNode *cp;
-      if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
-         XPathValue *xpv;
-         if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
-            auto str = ((XPathVal *)xpv)->to_string();
-            pf::strcopy(str, Args->Value, Args->Size);
-            FreeResource(xpv);
-         }
-         FreeResource(cp);
-         return error;
-      }
-      else return error;
-   }
-}
-
-/*********************************************************************************************************************
-
--METHOD-
 GetContent: Extracts the immediate text content of an XML element, excluding nested tags.
 
 The GetContent method provides efficient extraction of text content from XML elements using a shallow parsing approach.
@@ -599,6 +513,80 @@ static ERR XML_GetContent(extXML *Self, struct xml::GetContent *Args)
 /*********************************************************************************************************************
 
 -METHOD-
+GetEntity: Retrieves the value of a parsed entity declaration.
+
+This method returns the expanded value associated with a general entity parsed from the document's DOCTYPE declaration.
+Entity names are case-sensitive and must match exactly as declared.
+
+-INPUT-
+cstr Name: The name of the entity to retrieve.  This must correspond to a parsed entity declaration.
+&cstr Value: Receives the resolved entity value on success.  The returned pointer remains valid while the XML object exists.
+
+-ERRORS-
+Okay: The entity was found and its value returned.
+NullArgs: Either the Name or Value parameter was NULL.
+Search: No matching entity could be found for the specified name.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
+
+   auto key = std::string(Args->Name);
+   auto it = Self->Entities.find(key);
+   if (it IS Self->Entities.end()) return log.warning(ERR::Search);
+
+   Args->Value = it->second.c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-ACTION-
+GetKey: Deprecated.  Use the Evaluate() method instead.
+
+Deprecated.  Use the Evaluate() method instead.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+   if ((not Args->Key) or (not Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
+   if (not Self->initialised()) return log.warning(ERR::NotInitialised);
+
+   load_xpath();
+
+   Args->Value[0] = 0;
+
+   log.error("GetKey() usage is deprecated in the XML class.  Use Evaluate() instead.");
+
+   APTR cp;
+   if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
+      XPathValue *xpv;
+      if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
+         auto str = ((XPathVal *)xpv)->to_string();
+         pf::strcopy(str, Args->Value, Args->Size);
+         FreeResource(xpv);
+      }
+      FreeResource(cp);
+      return error;
+   }
+   else return error;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
 GetNamespaceURI: Retrieve the namespace URI for a given namespace UID.
 
 This method retrieves the original namespace URI string for a given namespace UID.
@@ -626,6 +614,42 @@ static ERR XML_GetNamespaceURI(extXML *Self, struct xml::GetNamespaceURI *Args)
    if (not uri) return log.warning(ERR::Search);
 
    Args->Result = uri->c_str();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+GetNotation: Retrieves information about a parsed notation declaration.
+
+Returns the system or public identifier captured for a notation declaration inside the
+document type definition.  If both public and system identifiers were provided they are
+returned as a single string separated by a single space.
+
+-INPUT-
+cstr Name: The notation name to look up.
+&cstr Value: Receives the notation descriptor on success.
+
+-ERRORS-
+Okay: The notation was found and its descriptor returned.
+NullArgs: Either the Name or Value parameter was NULL.
+Search: No matching notation could be found for the specified name.
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XML_GetNotation(extXML *Self, struct xml::GetNotation *Args)
+{
+   pf::Log log;
+
+   if ((not Args) or (not Args->Name)) return log.warning(ERR::NullArgs);
+
+   auto key = std::string(Args->Name);
+   auto it = Self->Notations.find(key);
+   if (it IS Self->Notations.end()) return log.warning(ERR::Search);
+
+   Args->Value = it->second.c_str();
    return ERR::Okay;
 }
 
@@ -884,7 +908,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
          xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
@@ -1153,7 +1177,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
    if (limit IS -1) limit = 0x7fffffff;
    else if (not limit) limit = 1;
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
       while (limit > 0) {
          if (xp::Query(Self, cp, nullptr) != ERR::Okay) break;
@@ -1451,7 +1475,7 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
 
    load_xpath();
 
-   XPathNode *cp;
+   APTR cp;
    if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
       if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
          if (not Self->Attrib.empty()) { // Updating or adding an attribute
@@ -1565,7 +1589,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       if (not tag) return ERR::Okay;
    }
    else {
-      XPathNode *cp;
+      APTR cp;
       if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
          error = xp::Query(Self, cp, nullptr);
          FreeResource(cp);

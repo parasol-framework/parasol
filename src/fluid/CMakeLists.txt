@@ -72,9 +72,25 @@ set_module_defaults (${MOD} "Fl")
 
 add_dependencies (${MOD} libffi-3.3 luajit)
 
-target_sources (${MOD} PRIVATE "${MOD}.cpp" "fluid_module.cpp" "fluid_thread.cpp" "fluid_struct.cpp" "fluid_processing.cpp"
-   "fluid_number.cpp" "fluid_input.cpp" "fluid_functions.cpp" "fluid_objects.cpp" "fluid_array.cpp" "fluid_regex.cpp" "fluid_io.cpp"
+set (FLUID_SOURCES
+   "${MOD}.cpp"
+   "fluid_module.cpp"
+   "fluid_thread.cpp"
+   "fluid_struct.cpp"
+   "fluid_processing.cpp"
+   "fluid_number.cpp"
+   "fluid_functions.cpp"
+   "fluid_objects.cpp"
+   "fluid_array.cpp"
+   "fluid_regex.cpp"
+   "fluid_io.cpp"
    "fluid_class.cpp")
+
+if (NOT DISABLE_DISPLAY)
+   list (APPEND FLUID_SOURCES "fluid_input.cpp")
+endif ()
+
+target_sources (${MOD} PRIVATE ${FLUID_SOURCES})
 
 target_include_directories (${MOD} PRIVATE
    "${CMAKE_BINARY_DIR}/libffi-3.3/include"
@@ -86,6 +102,10 @@ target_link_libraries (${MOD} PRIVATE
    ${MATH_LINK}) # The link order matters, math must come last
 
 add_compile_definitions ("LUAJIT_ENABLE_LUA52COMPAT")
+
+if (DISABLE_DISPLAY)
+   target_compile_definitions (${MOD} PRIVATE DISABLE_DISPLAY)
+endif ()
 
 flute_test(fluid_catch "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_catch.fluid")
 flute_test(fluid_io "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_io.fluid")

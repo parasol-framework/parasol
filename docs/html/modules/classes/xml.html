@@ -182,6 +182,13 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The count operation completed successfully.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Either the XPath parameter or Result parameter was NULL.</td></tr>
 </tbody></table></div></div></td></tr>
+<tr data-bs-toggle="collapse" data-bs-target="#tmx-Evaluate" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Evaluate</th><td id="tm-Evaluate">Run an XPath 2.0 or XQuery expression against the XML data.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Evaluate" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::Evaluate(OBJECTPTR Object, CSTRING Statement, CSTRING * Result)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Statement</td><td>An XPath or XQuery string to evaluate.</td></tr>
+<tr><td>Result</td><td>An allocated string from the evaluation is returned here.</td></tr>
+</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
+<p>The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
+      
+<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
+</tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Filter" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Filter</th><td id="tm-Filter">Filters the XML data structure to retain only a specific tag and its descendants.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Filter" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::Filter(OBJECTPTR Object, CSTRING XPath)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>XPath</td><td>A valid XPath expression string that identifies the target tag to retain.  The expression must resolve to exactly one element for successful filtering.</td></tr>
 </tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
 <p>The Filter method provides a mechanism for reducing large XML documents to a specific subtree, permanently removing all content that exists outside the targeted element and its children.  This operation is particularly valuable for performance optimisation when working with large documents where only a specific section is relevant.</p>
@@ -200,6 +207,7 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <p>When a callback function is specified, FindTag continues searching through the entire document structure, calling the provided function for each matching element.  This enables comprehensive processing of all matching elements in a single traversal.</p>
 <p>The C++ prototype for Callback is <code>ERR Function(*XML, XMLTag &amp;Tag, CSTRING Attrib)</code>.</p>
 <p>The callback should return <code>ERR::Okay</code> to continue processing, or <code>ERR::Terminate</code> to halt the search immediately. All other error codes are ignored to maintain search robustness.</p>
+<p>Note: If an error occurs, check the <a data-bs-toggle="tooltip" title="A textual description of the last parse error." href="#tf-ErrorMsg">ErrorMsg</a> field for a custom error message containing further details.</p>
       
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>A matching tag was found (or callback processing completed successfully).</td></tr>
 <tr><th class="col-md-1">Search</th><td>No matching tag could be found for the specified XPath expression.</td></tr>
@@ -517,9 +525,9 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <tr><th>Attribs</th><td><span class="text-nowrap">pf::vector&lt;XMLAttrib&gt;</span></td><td>Array of attributes for this tag</td></tr>
 <tr><th>Children</th><td><span class="text-nowrap">pf::vector&lt;XMLTag&gt;</span></td><td>Array of child tags</td></tr>
 </tbody></table><div class="footer copyright text-right">XML class documentation © Paul Manias © 2001-2025</div></div>
-<div class="docs-content" style="display:none;" id="struct-XPathValue"><h1>XPathValue Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>type</th><td><span class="text-nowrap">XPVT</span></td><td>Identifies the type of value stored</td></tr>
-<tr><th>number_value</th><td><span class="text-nowrap">DOUBLE</span></td><td></td></tr>
-<tr><th>string_value</th><td><span class="text-nowrap">std::string</span></td><td></td></tr>
+<div class="docs-content" style="display:none;" id="struct-XPathValue"><h1>XPathValue Structure</h1><p class="lead"></p><table class="table"><thead><tr><th class="col-md-1">Field</th><th class="col-md-1">Type</th><th>Description</th></tr></thead><tbody><tr><th>Type</th><td><span class="text-nowrap">XPVT</span></td><td>Identifies the type of value stored</td></tr>
+<tr><th>NumberValue</th><td><span class="text-nowrap">DOUBLE</span></td><td>Defined if the type is Number or Boolean</td></tr>
+<tr><th>StringValue</th><td><span class="text-nowrap">std::string</span></td><td>Defined if the type is String</td></tr>
 </tbody></table><div class="footer copyright text-right">XML class documentation © Paul Manias © 2001-2025</div></div>
 </div></div></div><script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script><script type="text/javascript" src="../../js/base.js"></script><script type="text/javascript">
 const ready = fn => document.readyState !== 'loading' ? fn() : document.addEventListener('DOMContentLoaded', fn);
