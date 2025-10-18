@@ -117,7 +117,7 @@ function testEntityParsing()
    local notationErr, notationValue = xml.mtGetNotation('icon')
    assert(notationErr == ERR_Okay and notationValue == 'viewer', 'Notation lookup should return the system identifier')
 
-   local resolved = xml.getKey('string(/root)')
+   local err, resolved = xml.mtEvaluate('string(/root)')
    assert(resolved == 'value and more', 'Entity references should be expanded in content')
 end
 
@@ -219,14 +219,14 @@ function testContentExtraction()
    assert(string.find(buffer, "after"), "Should include direct text")
    assert(string.find(buffer, "end"), "Should include direct text")
 
-   -- Test deep content extraction via getKey
-   local deepContent = xml.getKey('string(/root)')
+   -- Test deep content extraction via mtEvaluate
+   local err, deepContent = xml.mtEvaluate('string(/root)')
    assert(string.find(deepContent, "emphasized"), "Deep extraction should include nested content")
    assert(string.find(deepContent, "strong"), "Deep extraction should include nested content")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test Count method vs count: getKey
+-- Test Count method vs count
 
 function testCountMethods()
    local xml = obj.new("xml", {
@@ -238,12 +238,12 @@ function testCountMethods()
    assert(err == ERR_Okay, "Count method should succeed")
    assert(methodCount == 5, "Should count all items: got " .. methodCount)
 
-   -- Test count: getKey
-   local keyCount = tonumber(xml.getKey('count(//item)'))
+   -- Test count: mtEvaluate
+   local err, keyCount = tonumber(xml.mtEvaluate('count(//item)'))
    assert(keyCount == 5, "Should count all items: got " .. keyCount)
 
    -- Test specific path count
-   local sectionCount = tonumber(xml.getKey('count(/root/section[1]/item)'))
+   local err, sectionCount = tonumber(xml.mtEvaluate('count(/root/section[1]/item)'))
    assert(sectionCount == 2, "Should count items in first section only, got " .. sectionCount)
 end
 
@@ -298,29 +298,29 @@ function testExists()
       statement = '<root><empty attrib="value" blank=""/><withContent>Some text</withContent><whitespaceOnly>   \n\t  </whitespaceOnly></root>'
    })
 
-   local emptyExists = xml.getKey('exists(/root/empty/text())')
+   local err, emptyExists = xml.mtEvaluate('exists(/root/empty/text())')
    assert(emptyExists == "false", "exists() on text() should report no content, got: " .. emptyExists)
 
-   local emptyExists = xml.getKey('exists(/root/empty)')
+   local err, emptyExists = xml.mtEvaluate('exists(/root/empty)')
    assert(emptyExists == "true", "Targeted empty element exists, got: " .. emptyExists)
 
-   local elementExists = xml.getKey('exists(/root/withContent)')
+   local err, elementExists = xml.mtEvaluate('exists(/root/withContent)')
    assert(elementExists == "true", "Element with content should report element exists, got: " .. elementExists)
 
-   local attribExists = xml.getKey('exists(/root/empty/@attrib)')
+   local err, attribExists = xml.mtEvaluate('exists(/root/empty/@attrib)')
    assert(attribExists == "true", "Targeted attrib element exists, got: " .. attribExists)
 
-   local attribExists = xml.getKey('exists(/root/empty/@blank)')
+   local err, attribExists = xml.mtEvaluate('exists(/root/empty/@blank)')
    assert(attribExists == "true", "Targeted blank element exists, got: " .. attribExists)
 
-   local attribExists = xml.getKey('exists(/root/empty/@doesnotexist)')
+   local err, attribExists = xml.mtEvaluate('exists(/root/empty/@doesnotexist)')
    assert(attribExists == "false", "Unexpected result for non-existant attribute, got: " .. attribExists)
 
-   local attribExists = xml.getKey('exists(string(/root/empty/@blank))')
+   local err, attribExists = xml.mtEvaluate('exists(string(/root/empty/@blank))')
    assert(attribExists == "true", "Expected true because @blank exists, despite being empty.  Got: " .. attribExists)
 
    -- Test element with only whitespace
-   local whitespaceExists = xml.getKey('boolean(normalize-space(/root/whitespaceOnly))')
+   local err, whitespaceExists = xml.mtEvaluate('boolean(normalize-space(/root/whitespaceOnly))')
    assert(whitespaceExists == "false", "Normalised whitespace should report no content, got: " .. whitespaceExists)
 end
 

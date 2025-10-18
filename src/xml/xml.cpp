@@ -8,6 +8,40 @@ that is distributed with this package.  Please refer to it for further informati
 -MODULE-
 XML: Provides an interface for the management of structured data.
 
+The XML module provides comprehensive support for XML 1.0 document parsing, manipulation, and querying.  It integrates
+with the XPath module to deliver a standards-compliant XML processing environment with extensive querying capabilities.
+
+<header>XML Processing</header>
+
+The module implements full XML 1.0 parsing and serialisation, including support for namespaces, attributes, CDATA
+sections, processing instructions, and DOCTYPE declarations.  Documents can be loaded from files, strings, or streams,
+and modified programmatically through a tree-based API.  The parser validates well-formedness and provides detailed
+error reporting for malformed documents.
+
+<header>XPath 2.0 Support</header>
+
+All aspects of XPath 2.0 are supported except for the following:
+
+<list type="bullet">
+<li>Namespace axis: The `namespace::*` and `namespace::prefix` axis expressions are not supported.</li>
+<li>Schema imports: Schema import declarations are not recognised.</li>
+<li>External variables: External variable declarations (`declare variable $name external`) are not supported.</li>
+<li>Custom collations: Only the W3C codepoint collation (`http://www.w3.org/2005/xpath-functions/collation/codepoint`) is supported.  Custom collation URIs are rejected.</li>
+</list>
+
+<header>XQuery 1.0 Support</header>
+
+The module implements core XQuery 1.0 functionality, including FLWOR expressions (`for`, `let`, `where`, `order by`,
+`return`, `group by`, `count` clauses), node constructors (element, attribute, document, text, comment, processing
+instruction), and a comprehensive function library covering strings, numbers, sequences, dates, durations, QNames, and
+document access.  XQuery support excludes the following:
+
+<list type="bullet">
+<li>Schema-aware processing: Type validation against XML Schema is not supported.</li>
+<li>Type operations: The `typeswitch`, `treat as`, `cast as`, `castable as`, and `instance of` expressions are not supported.</li>
+<li>Module imports: XQuery module import declarations are not supported.</li>
+</list>
+
 -END-
 
 *********************************************************************************************************************/

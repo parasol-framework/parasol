@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
+module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", version=1.0, timestamp=20240611 }, function()
   cpp_include("<functional>", "<sstream>", "<parasol/strings.hpp>")
 
   const("XMS", { type="int", comment="For SetAttrib()" }, {
@@ -45,7 +45,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     "INSTRUCTION: Tag represents an instruction of the format `<?xml?>`.",
     "NOTATION: Tag represents a notation of the format `<!XML>`.",
     "COMMENT: Tag represents a comment of the format `<!-- Comment -->`.")
-    
+
   enum('XPVT', { type='int', start=0, comment='Type descriptors for XPathValue' },
      'NodeSet',
      'Boolean',
@@ -198,7 +198,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
       return setAttrib(Tag, Flags, attrib, buffer.c_str());
    }
   ]])
-  
+
   struct("XPathValue", { type="XPathValue" }, [[
   int(XPVT) Type         # Identifies the type of value stored
   double    NumberValue  # Defined if the type is Number or Boolean

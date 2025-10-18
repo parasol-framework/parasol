@@ -178,6 +178,12 @@ static ResourceManager glXPVManager = {
 
 //********************************************************************************************************************
 
+#ifdef ENABLE_UNIT_TESTS
+#include "unit_tests.cpp"
+#endif
+
+//********************************************************************************************************************
+
 static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
    CoreBase = pCore;
@@ -414,6 +420,33 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
 
    XPathEvaluator eval(xml, (XPathNode *)Query);
    return eval.find_tag(*(XPathNode *)Query, 0); // Returns ERR:Search if no match
+}
+
+/*********************************************************************************************************************
+
+-FUNCTION-
+UnitTest: Private function for internal unit testing of the XPath module.
+
+Private function for internal unit testing of the XPath module.
+
+-INPUT-
+ptr Meta: Optional pointer meaningful to the test functions.
+
+-ERRORS-
+Okay: All tests passed.
+Failed: One or more tests failed.
+
+-END-
+
+*********************************************************************************************************************/
+
+ERR UnitTest(APTR Meta)
+{
+#ifdef ENABLE_UNIT_TESTS
+   return run_unit_tests(Meta);
+#else
+   return ERR::Okay;
+#endif
 }
 
 } // namespace xp

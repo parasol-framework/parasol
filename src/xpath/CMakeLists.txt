@@ -8,13 +8,14 @@ idl_gen ("${MOD}.fdl"
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
    FILES
      "xpath.cpp"
-     "unit_tests.cpp"
    ARGS  "output-defs=xpath_def.c" "output-proto=xpath_def.c"
    APPEND_IDL "${MOD}_def.c")
 
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 set_module_defaults (${MOD} "Xp")
+# Enable unit tests for deep testing of non-release builds only.
+#set (ENABLE_UNIT_TESTS ON)
 
 # XPath Support Library
 
@@ -42,9 +43,12 @@ add_dependencies (xpath build_headers xml)
 
 target_sources (${MOD} PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
-   "${CMAKE_CURRENT_SOURCE_DIR}/unit_tests.cpp"
    $<TARGET_OBJECTS:xml_xpath_functions>
    $<TARGET_OBJECTS:xml_schema>)
+
+if (ENABLE_UNIT_TESTS)
+   target_compile_definitions(${MOD} PRIVATE "ENABLE_UNIT_TESTS")
+endif ()
 
 # Tests
 
@@ -67,4 +71,7 @@ flute_test (${MOD}_xpath_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanc
 flute_test (${MOD}_xpath_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_paths.fluid")
 flute_test (${MOD}_xpath_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.fluid")
 flute_test (${MOD}_xpath_flwor_clauses "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor_clauses.fluid")
-flute_test (${MOD}_xpath_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.fluid")
+
+if (ENABLE_UNIT_TESTS)
+   flute_test (${MOD}_xpath_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.fluid")
+endif ()

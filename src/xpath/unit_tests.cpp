@@ -1,9 +1,7 @@
 // XPath Module Unit Tests
 // This file contains compiled-in unit tests for the XPath module, primarily for debugging prolog integration.
+// Unit tests need to be enabled in the CMakeLists.txt file and then launched from test_unit_tests.fluid
 
-#include <parasol/main.h>
-#include <parasol/modules/xml.h>
-#include <parasol/modules/xpath.h>
 #include "xpath.h"
 #include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
@@ -13,20 +11,12 @@
 #include <sstream>
 #include <string>
 
-namespace xp { ERR Compile(objXML *XML, CSTRING Query, APTR *Result); }
-
 //********************************************************************************************************************
 // Test helper functions
 
 static int test_count = 0;
 static int pass_count = 0;
 static int fail_count = 0;
-
-static void reset_test_counters() {
-   test_count = 0;
-   pass_count = 0;
-   fail_count = 0;
-}
 
 static void test_assert(bool Condition, const char *TestName, const char *Message) {
    test_count++;
@@ -38,14 +28,6 @@ static void test_assert(bool Condition, const char *TestName, const char *Messag
       fail_count++;
       std::cout << "FAIL: " << TestName << " - " << Message << std::endl;
    }
-}
-
-static void print_test_summary() {
-   std::cout << "\n=== Test Summary ===" << std::endl;
-   std::cout << "Total:  " << test_count << std::endl;
-   std::cout << "Passed: " << pass_count << std::endl;
-   std::cout << "Failed: " << fail_count << std::endl;
-   std::cout << "===================" << std::endl;
 }
 
 //********************************************************************************************************************
@@ -343,43 +325,23 @@ static void test_prolog_in_xpath() {
    }
 }
 
-/*********************************************************************************************************************
+//********************************************************************************************************************
 
--FUNCTION-
-UnitTest: Private function for internal unit testing of the XPath module.
-
-Private function for internal unit testing of the XPath module.
-
--INPUT-
-ptr Meta: Optional pointer meaningful to the test functions.
-
--ERRORS-
-Okay: All tests passed.
-Failed: One or more tests failed.
-
--END-
-
-*********************************************************************************************************************/
-
-namespace xp {
-
-ERR UnitTest(APTR Meta)
+static ERR run_unit_tests(APTR Meta)
 {
-   std::cout << "\n========================================" << std::endl;
-   std::cout << "XPath Module Unit Tests" << std::endl;
-   std::cout << "========================================" << std::endl;
+   test_count = 0;
+   pass_count = 0;
+   fail_count = 0;
 
-   reset_test_counters();
-
-   // Run test suites
    test_tokeniser_prolog_keywords();
    test_prolog_api();
    test_prolog_in_xpath();
-
-   // Print summary
-   print_test_summary();
+   
+   std::cout << "\n=== Test Summary ===" << std::endl;
+   std::cout << "Total:  " << test_count << std::endl;
+   std::cout << "Passed: " << pass_count << std::endl;
+   std::cout << "Failed: " << fail_count << std::endl;
+   std::cout << "===================" << std::endl;
 
    return (fail_count IS 0) ? ERR::Okay : ERR::Failed;
-}
-
 }

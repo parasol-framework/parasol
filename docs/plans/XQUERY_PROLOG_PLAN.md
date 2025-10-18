@@ -558,10 +558,8 @@ Each phase should land with targeted regression tests using existing Fluid-based
 - [x] Test module import declarations (structural test, not loading)
 
 **Regression Tests:**
-- [ ] Verify existing XPath expressions continue to work
 - [ ] Verify compiled queries work across multiple documents
 - [ ] Verify module cache is document-scoped when provided
-- [ ] Verify queries compiled without document work correctly
 
 **Error Handling Tests:**
 - [ ] Test duplicate namespace declarations

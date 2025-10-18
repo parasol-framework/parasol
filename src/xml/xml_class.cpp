@@ -10,8 +10,8 @@ XML: Provides an interface for the management of structured data.
 
 The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
 It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
-accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 queries, content manipulation
-and document validation.
+accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0 
+queries, content manipulation and document validation.
 
 The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
 this way, the class not only provides XML support but also serves as Parasol's general-purpose structured
@@ -548,21 +548,9 @@ static ERR XML_GetEntity(extXML *Self, struct xml::GetEntity *Args)
 /*********************************************************************************************************************
 
 -ACTION-
-GetKey: Retrieves data using XPath 2.0 queries.
+GetKey: Deprecated.  Use the Evaluate() method instead.
 
-The XML class uses key-values for the execution of XPath 2.0 queries.  Documentation of the XPath standard is out
-of the scope for this document, however the following examples illustrate common uses for this query language
-and a number of special instructions that we support:
-
-<types type="Path">
-<type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</>
-<type name="/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</>
-<type name="count(/menu)">Return a count of all menu tags at the root level.</>
-<type name="/menu/window/@title">Return the value of the title attribute from the window tag.</>
-<type name="exists(/menu/@title)">Return `1` if a menu with a title attribute can be matched, otherwise `0`.</>
-<type name="exists(/menu/text())">Return `1` if menu contains content.</>
-<type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</>
-</types>
+Deprecated.  Use the Evaluate() method instead.
 
 -END-
 
@@ -580,32 +568,20 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
 
    Args->Value[0] = 0;
 
-   if (pf::startswith("count:", Args->Key)) {
-      log.error("Deprecated.  Use 'xpath:' with the count() function instead.");
-      return ERR::Syntax;
-   }
-   else if (pf::startswith("exists:", Args->Key) or pf::startswith("contentexists:", Args->Key)) {
-      log.error("Deprecated.  Use 'xpath:' with the exists() function instead.");
-      return ERR::Syntax;
-   }
-   else if (pf::startswith("extract:", Args->Key) or pf::startswith("extract-under:", Args->Key)) {
-      log.error("Deprecated.  Use FindTag() and Serialise()");
-      return ERR::Syntax;
-   }
-   else {
-      APTR cp;
-      if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
-         XPathValue *xpv;
-         if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
-            auto str = ((XPathVal *)xpv)->to_string();
-            pf::strcopy(str, Args->Value, Args->Size);
-            FreeResource(xpv);
-         }
-         FreeResource(cp);
-         return error;
+   log.error("GetKey() usage is deprecated in the XML class.  Use Evaluate() instead.");
+
+   APTR cp;
+   if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
+      XPathValue *xpv;
+      if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
+         auto str = ((XPathVal *)xpv)->to_string();
+         pf::strcopy(str, Args->Value, Args->Size);
+         FreeResource(xpv);
       }
-      else return error;
+      FreeResource(cp);
+      return error;
    }
+   else return error;
 }
 
 /*********************************************************************************************************************

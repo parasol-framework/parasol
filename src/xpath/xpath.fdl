@@ -1,6 +1,6 @@
 --$FLUID:Include
 
-module({ name="XPath", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
+module({ name="XPath", src="xpath.cpp", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/xml.h>")
   cpp_include("<functional>", "<optional>", "<sstream>", "<parasol/strings.hpp>")
 
@@ -54,7 +54,7 @@ enum('XPathNodeType', { type='int', start=0 },
    'NUMBER',
    'STRING',
    'PATH',
-   
+
    -- Constructor expressions
    'DIRECT_ELEMENT_CONSTRUCTOR',
    'DIRECT_ATTRIBUTE_CONSTRUCTOR',
@@ -66,7 +66,8 @@ enum('XPathNodeType', { type='int', start=0 },
    'PI_CONSTRUCTOR',
    'DOCUMENT_CONSTRUCTOR',
    'CONSTRUCTOR_CONTENT',
-   'ATTRIBUTE_VALUE_TEMPLATE')
+   'ATTRIBUTE_VALUE_TEMPLATE',
+   'EMPTY_SEQUENCE')
 
   functionNames("xp",
      "Compile",
