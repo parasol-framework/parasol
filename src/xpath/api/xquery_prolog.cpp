@@ -176,6 +176,8 @@ bool XQueryProlog::validate_library_exports() const
    if (not is_library_module) return true;
    if (not module_namespace_uri) return false;
 
+   uint32_t module_hash = pf::strhash(*module_namespace_uri);
+
    auto matches_namespace = [&](std::string_view qname) -> bool {
       if (qname.empty()) return false;
 
@@ -188,9 +190,10 @@ bool XQueryProlog::validate_library_exports() const
 
       size_t colon = qname.find(':');
       if (colon IS std::string::npos) return false;
-      if (not module_namespace_prefix) return false;
       std::string_view prefix = qname.substr(0U, colon);
-      return prefix IS std::string_view(*module_namespace_prefix);
+      uint32_t prefix_hash = resolve_prefix(prefix, nullptr);
+      if (prefix_hash IS 0U) return false;
+      return prefix_hash IS module_hash;
    };
 
    for (const auto &entry : functions) {
