@@ -16,6 +16,11 @@ This document outlines the implementation plan for dynamic module loading to ena
 - ✅ Module import declarations parsed and recorded by `XPathParser::parse_import_statement`
 - ✅ Basic validation that module cache exists when imports resolve
 
+### Newly Implemented
+
+- ✅ Phase C runtime integration: evaluator resolves module functions and variables via the shared cache
+- ✅ Module variable recursion guard now canonicalises QName lookups so aliased imports detect circular dependencies
+
 ### Repository Reality Check
 
 Before expanding the plan, confirm the starting point in the tree:
@@ -423,6 +428,15 @@ import module namespace math = "http://example.com/math" at "math_utils.xq";
 declare function comp:area($r) {
    $math:pi * math:square($r)
 };
+```
+
+**self_reference.xq** (regression for circular detection):
+
+```xquery
+module namespace cycle = "http://example.com/cycle";
+
+declare variable $cycle:value :=
+   if ($cycle:value) then 1 else 0;
 ```
 
 **circular_a.xq** and **circular_b.xq** (for cycle detection):

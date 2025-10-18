@@ -12,6 +12,44 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    XPathVal &OutValue, const XPathNode *ReferenceNode)
 {
    std::string name(QName);
+   std::string normalised_name(name);
+
+   auto canonicalise_qname = [&](std::string_view Candidate, const XQueryProlog &SourceProlog) {
+      if ((Candidate.size() > 2U) and (Candidate[0] IS 'Q') and (Candidate[1] IS '{')) {
+         return std::string(Candidate);
+      }
+
+      size_t colon_position = Candidate.find(':');
+      if (colon_position != std::string_view::npos) {
+         std::string prefix(Candidate.substr(0U, colon_position));
+         std::string_view local_name_view = Candidate.substr(colon_position + 1U);
+
+         auto uri_entry = SourceProlog.declared_namespace_uris.find(prefix);
+         if (uri_entry not_eq SourceProlog.declared_namespace_uris.end()) {
+            std::string expanded("Q{");
+            expanded.append(uri_entry->second);
+            expanded.push_back('}');
+            expanded.append(local_name_view);
+            return expanded;
+         }
+
+         if (context.document) {
+            auto prefix_it = context.document->Prefixes.find(prefix);
+            if (prefix_it not_eq context.document->Prefixes.end()) {
+               auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+               if (ns_it not_eq context.document->NSRegistry.end()) {
+                  std::string expanded("Q{");
+                  expanded.append(ns_it->second);
+                  expanded.push_back('}');
+                  expanded.append(local_name_view);
+                  return expanded;
+               }
+            }
+         }
+      }
+
+      return std::string(Candidate);
+   };
 
    if (context.variables) {
       auto local_variable = context.variables->find(name);
@@ -32,38 +70,178 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    auto prolog = context.prolog;
    if (!prolog) return false;
 
-   auto cached_value = prolog_variable_cache.find(name);
-   if (cached_value != prolog_variable_cache.end()) {
-      OutValue = cached_value->second;
-      return true;
-   }
-
    const XQueryVariable *variable = prolog->find_variable(QName);
-   if (!variable) {
-      auto separator = name.find(':');
-      if (separator != std::string::npos) {
-         std::string prefix = name.substr(0, separator);
-         uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
-         if (namespace_hash != 0) {
-            for (const auto &import : prolog->module_imports) {
-               if (pf::strhash(import.target_namespace) IS namespace_hash) {
-                  if (!context.module_cache) {
-                     std::string message = "Module variable '" + name + "' requires a module cache.";
-                     record_error(message, ReferenceNode, true);
-                     return false;
-                  }
+   std::shared_ptr<XQueryProlog> owner_prolog = prolog;
+   auto active_module_cache = context.module_cache;
+   std::string module_uri;
+   std::string imported_local_name;
+   std::string canonical_lookup;
 
-                  std::string message = "Module variable resolution is not implemented for namespace '";
-                  message.append(import.target_namespace);
-                  message.append("'.");
-                  record_error(message, ReferenceNode, true);
-                  return false;
+   if (!variable) {
+      uint32_t namespace_hash = 0U;
+
+      if ((name.size() > 2U) and (name[0] IS 'Q') and (name[1] IS '{')) {
+         size_t closing = name.find('}');
+         if (closing != std::string::npos) {
+            module_uri = name.substr(2U, closing - 2U);
+            imported_local_name = name.substr(closing + 1U);
+            if (!module_uri.empty()) namespace_hash = pf::strhash(module_uri);
+         }
+      }
+
+      if (namespace_hash IS 0U) {
+         auto separator = name.find(':');
+         if (separator != std::string::npos) {
+            std::string prefix = name.substr(0, separator);
+            imported_local_name = name.substr(separator + 1U);
+            namespace_hash = prolog->resolve_prefix(prefix, context.document);
+            if (namespace_hash != 0U) {
+               auto uri_entry = prolog->declared_namespace_uris.find(prefix);
+               if (uri_entry not_eq prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
+               else if (context.document) {
+                  auto prefix_it = context.document->Prefixes.find(prefix);
+                  if (prefix_it not_eq context.document->Prefixes.end()) {
+                     auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+                     if (ns_it not_eq context.document->NSRegistry.end()) module_uri = ns_it->second;
+                  }
                }
             }
          }
       }
 
-      return false;
+      const XQueryModuleImport *matched_import = nullptr;
+      if (namespace_hash != 0U) {
+         for (const auto &import : prolog->module_imports) {
+            if (pf::strhash(import.target_namespace) IS namespace_hash) {
+               matched_import = &import;
+               if (module_uri.empty()) module_uri = import.target_namespace;
+               break;
+            }
+         }
+      }
+
+      if (matched_import) {
+         if (module_uri.empty()) {
+            std::string message = "Module variable '" + name + "' has an unresolved namespace.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         auto module_cache = context.module_cache;
+         if (!module_cache) {
+            std::string message = "Module variable '" + name + "' requires a module cache.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         auto module_document = module_cache->fetch_or_load(module_uri, *prolog, *this);
+         (void)module_document;
+
+         auto module_info = module_cache->find_module(module_uri);
+         if (!module_info) {
+            std::string message = "Module '" + module_uri + "' could not be loaded for variable '" + name + "'.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         auto module_prolog = module_info->prolog;
+         if (!module_prolog) {
+            std::string message = "Module '" + module_uri + "' does not expose a prolog.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         const XQueryVariable *module_variable = module_prolog->find_variable(name);
+
+         if (!module_uri.empty() and !imported_local_name.empty()) {
+            canonical_lookup.reserve(module_uri.size() + imported_local_name.size() + 3U);
+            canonical_lookup.append("Q{");
+            canonical_lookup.append(module_uri);
+            canonical_lookup.push_back('}');
+            canonical_lookup.append(imported_local_name);
+         }
+
+         if (!module_variable and !canonical_lookup.empty()) {
+            module_variable = module_prolog->find_variable(canonical_lookup);
+         }
+
+         if (!module_variable) {
+            for (const auto &entry : module_prolog->variables) {
+               const auto &candidate = entry.second;
+               if (candidate.qname IS name) {
+                  module_variable = &candidate;
+                  break;
+               }
+
+               if (!canonical_lookup.empty() and (candidate.qname IS canonical_lookup)) {
+                  module_variable = &candidate;
+                  break;
+               }
+
+               size_t colon_pos = candidate.qname.find(':');
+               if ((colon_pos != std::string::npos) and !imported_local_name.empty()) {
+                  std::string candidate_prefix = candidate.qname.substr(0U, colon_pos);
+                  std::string candidate_local = candidate.qname.substr(colon_pos + 1U);
+                  if (candidate_local IS imported_local_name) {
+                     uint32_t candidate_hash = module_prolog->resolve_prefix(candidate_prefix, nullptr);
+                     if (candidate_hash IS namespace_hash) {
+                        module_variable = &candidate;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+
+         if (!module_variable) {
+            std::string message = "Module variable '" + name + "' is not declared by namespace '" + module_uri + "'.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         variable = module_variable;
+         owner_prolog = module_prolog;
+         active_module_cache = module_cache;
+      }
+
+      if (!variable) return false;
+   }
+
+   if (owner_prolog) {
+      if (!canonical_lookup.empty()) normalised_name = canonical_lookup;
+      else {
+         normalised_name = canonicalise_qname(name, *owner_prolog);
+         if (normalised_name IS name) {
+            normalised_name = canonicalise_qname(variable->qname, *owner_prolog);
+         }
+      }
+   }
+
+   auto cached_value = prolog_variable_cache.find(normalised_name);
+   if (cached_value != prolog_variable_cache.end()) {
+      OutValue = cached_value->second;
+      return true;
+   }
+
+   if (normalised_name not_eq name) {
+      auto alias_value = prolog_variable_cache.find(name);
+      if (alias_value != prolog_variable_cache.end()) {
+         prolog_variable_cache.insert_or_assign(normalised_name, alias_value->second);
+         OutValue = alias_value->second;
+         return true;
+      }
+   }
+
+   if (variable->qname not_eq normalised_name) {
+      auto declared_value = prolog_variable_cache.find(variable->qname);
+      if (declared_value != prolog_variable_cache.end()) {
+         prolog_variable_cache.insert_or_assign(normalised_name, declared_value->second);
+         if (normalised_name not_eq name) {
+            prolog_variable_cache.insert_or_assign(name, declared_value->second);
+         }
+         OutValue = declared_value->second;
+         return true;
+      }
    }
 
    if (variable->is_external) {
@@ -78,15 +256,30 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return false;
    }
 
-   if (variables_in_evaluation.find(name) != variables_in_evaluation.end()) {
+   if (variables_in_evaluation.find(normalised_name) != variables_in_evaluation.end()) {
       std::string message = "Variable '" + name + "' has a circular dependency.";
       record_error(message, ReferenceNode, true);
       return false;
    }
 
-   variables_in_evaluation.insert(name);
+   auto previous_prolog = context.prolog;
+   auto previous_cache = context.module_cache;
+
+   bool switched_context = false;
+   if (owner_prolog and (owner_prolog.get() != previous_prolog.get())) {
+      context.prolog = owner_prolog;
+      if (active_module_cache) context.module_cache = active_module_cache;
+      switched_context = true;
+   }
+
+   variables_in_evaluation.insert(normalised_name);
    XPathVal computed_value = evaluate_expression(variable->initializer.get(), CurrentPrefix);
-   variables_in_evaluation.erase(name);
+   variables_in_evaluation.erase(normalised_name);
+
+   if (switched_context) {
+      context.prolog = previous_prolog;
+      context.module_cache = previous_cache;
+   }
 
    if (expression_unsupported) {
       std::string message = "Failed to evaluate initialiser for variable '" + name + "'.";
@@ -94,8 +287,17 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return false;
    }
 
-   auto inserted = prolog_variable_cache.insert_or_assign(name, std::move(computed_value));
+   auto inserted = prolog_variable_cache.insert_or_assign(normalised_name, computed_value);
    OutValue = inserted.first->second;
+
+   if (normalised_name not_eq name) {
+      prolog_variable_cache.insert_or_assign(name, inserted.first->second);
+   }
+
+   if (variable->qname not_eq normalised_name and variable->qname not_eq name) {
+      prolog_variable_cache.insert_or_assign(variable->qname, inserted.first->second);
+   }
+
    return true;
 }
 

@@ -11,8 +11,15 @@
 
 struct XPathNode;
 class extXML;
-class XPathErrorReporter;
 struct XQueryProlog;
+
+class XPathErrorReporter
+{
+   public:
+   virtual ~XPathErrorReporter() = default;
+   virtual void record_error(std::string_view Message, bool Force = false) = 0;
+   virtual void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) = 0;
+};
 
 struct DecimalFormat
 {
