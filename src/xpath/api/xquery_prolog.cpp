@@ -93,33 +93,39 @@ uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *doc
 }
 
 // Records a namespace binding inside the prolog and optionally mirrors it into the backing document.
-void XQueryProlog::declare_namespace(std::string_view prefix, std::string_view uri, extXML *document)
+bool XQueryProlog::declare_namespace(std::string_view prefix, std::string_view uri, extXML *document)
 {
    std::string cleaned = xml::uri::normalise_uri_separators(std::string(uri));
    auto hash = pf::strhash(cleaned);
    std::string prefix_key(prefix);
-   declared_namespaces[prefix_key] = hash;
+   auto inserted = declared_namespaces.emplace(prefix_key, hash);
+   if (not inserted.second) return false;
    declared_namespace_uris[prefix_key] = cleaned;
 
    if (document) {
       document->NSRegistry[hash] = cleaned;
       document->Prefixes[prefix_key] = hash;
    }
+   return true;
 }
 
 // Stores a variable declaration, ensuring the original QName is preserved as the map key.
-void XQueryProlog::declare_variable(std::string_view qname, XQueryVariable variable)
+bool XQueryProlog::declare_variable(std::string_view qname, XQueryVariable variable)
 {
    std::string key(qname);
-   auto inserted = variables.insert_or_assign(key, std::move(variable));
+   auto inserted = variables.emplace(key, std::move(variable));
+   if (not inserted.second) return false;
    inserted.first->second.qname = key;
+   return true;
 }
 
 // Inserts or replaces a function declaration using the computed signature as the lookup handle.
-void XQueryProlog::declare_function(XQueryFunction function)
+bool XQueryProlog::declare_function(XQueryFunction function)
 {
    auto signature = function.signature();
-   functions[std::move(signature)] = std::move(function);
+   auto inserted = functions.emplace(std::move(signature), std::move(function));
+   if (not inserted.second) return false;
+   return true;
 }
 
 // Associates a module cache with the prolog so evaluators can reuse loaded modules.

@@ -103,7 +103,7 @@ class XPathParser {
    bool parse_import_statement(XQueryProlog &prolog);
    bool parse_import_module_decl(XQueryProlog &prolog);
    bool parse_import_schema_decl();
-   void consume_declaration_separator();
+   bool consume_declaration_separator();
    std::optional<std::string> parse_qname_string();
    std::optional<std::string> parse_ncname();
    std::optional<std::string> parse_string_literal_value();

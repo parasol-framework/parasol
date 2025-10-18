@@ -1,6 +1,7 @@
 
 #include "xpath_parser.h"
 #include "../api/xquery_prolog.h"
+#include <algorithm>
 #include <parasol/strings.hpp>
 #include <utility>
 #include "../../xml/uri_utils.h"
@@ -206,9 +207,11 @@ bool XPathParser::check_literal_keyword(std::string_view Keyword) const
    return false;
 }
 
-void XPathParser::consume_declaration_separator()
+bool XPathParser::consume_declaration_separator()
 {
-   while (match(XPathTokenType::SEMICOLON)) {}
+   bool consumed = false;
+   while (match(XPathTokenType::SEMICOLON)) consumed = true;
+   return consumed;
 }
 
 std::optional<std::string> XPathParser::parse_string_literal_value()
@@ -316,14 +319,30 @@ bool XPathParser::parse_prolog(XQueryProlog &prolog)
          advance();
          saw_prolog = true;
          if (not parse_declare_statement(prolog)) return false;
-         consume_declaration_separator();
+         bool consumed_separator = consume_declaration_separator();
+         if (not consumed_separator)
+         {
+            if (check_identifier_keyword("declare") or check_literal_keyword("import"))
+            {
+               report_error("Expected ';' between prolog declarations");
+               return false;
+            }
+         }
          continue;
       }
 
       if (match_literal_keyword("import")) {
          saw_prolog = true;
          if (not parse_import_statement(prolog)) return false;
-         consume_declaration_separator();
+         bool consumed_separator = consume_declaration_separator();
+         if (not consumed_separator)
+         {
+            if (check_identifier_keyword("declare") or check_literal_keyword("import"))
+            {
+               report_error("Expected ';' between prolog declarations");
+               return false;
+            }
+         }
          continue;
       }
 
@@ -375,7 +394,17 @@ bool XPathParser::parse_namespace_decl(XQueryProlog &prolog)
    auto uri = parse_uri_literal();
    if (not uri) return false;
 
-   prolog.declare_namespace(*prefix, *uri, nullptr);
+   auto prefix_entry = prolog.namespace_prefixes_seen.insert(*prefix);
+   if (not prefix_entry.second) {
+      report_error("Duplicate namespace prefix declaration");
+      return false;
+   }
+
+   if (not prolog.declare_namespace(*prefix, *uri, nullptr)) {
+      report_error("Duplicate namespace prefix declaration");
+      return false;
+   }
+
    return true;
 }
 
@@ -412,7 +441,13 @@ bool XPathParser::parse_default_collation_decl(XQueryProlog &prolog)
    auto collation = parse_uri_literal();
    if (not collation) return false;
 
+   if (prolog.default_collation_declared) {
+      report_error("Duplicate default collation declaration");
+      return false;
+   }
+
    prolog.default_collation = *collation;
+   prolog.default_collation_declared = true;
    return true;
 }
 
@@ -435,10 +470,19 @@ bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
    XQueryVariable variable;
    variable.qname = *name;
 
+   auto variable_entry = prolog.variable_qnames_seen.insert(variable.qname);
+   if (not variable_entry.second) {
+      report_error("Duplicate variable declaration");
+      return false;
+   }
+
    if (match_literal_keyword("external")) {
       variable.is_external = true;
       auto variable_name = variable.qname;
-      prolog.declare_variable(variable_name, std::move(variable));
+      if (not prolog.declare_variable(variable_name, std::move(variable))) {
+         report_error("Duplicate variable declaration");
+         return false;
+      }
       return true;
    }
 
@@ -449,7 +493,10 @@ bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
 
    variable.initializer = std::move(initializer);
    auto variable_name = variable.qname;
-   prolog.declare_variable(variable_name, std::move(variable));
+   if (not prolog.declare_variable(variable_name, std::move(variable))) {
+      report_error("Duplicate variable declaration");
+      return false;
+   }
    return true;
 }
 
@@ -471,6 +518,11 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
          auto param_name = parse_qname_string();
          if (not param_name) return false;
 
+         if (std::find(parameter_names.begin(), parameter_names.end(), *param_name) not_eq parameter_names.end()) {
+            report_error("Duplicate parameter name in function declaration");
+            return false;
+         }
+
          parameter_names.push_back(*param_name);
 
          std::optional<std::string> type_annotation;
@@ -490,6 +542,17 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
    }
 
    if (not consume_token(XPathTokenType::RPAREN, "Expected ')' after parameters")) return false;
+
+   std::string function_text = *qname;
+   std::string function_signature = function_text;
+   function_signature.push_back('/');
+   function_signature.append(std::to_string(parameter_names.size()));
+
+   auto function_entry = prolog.function_signatures_seen.insert(function_signature);
+   if (not function_entry.second) {
+      report_error("Duplicate function declaration");
+      return false;
+   }
 
    std::optional<std::string> return_type;
    if (match_literal_keyword("as")) {
@@ -513,28 +576,37 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
 
    if (match_literal_keyword("external")) {
       function.is_external = true;
-      prolog.declare_function(std::move(function));
-      return true;
+      if (prolog.declare_function(std::move(function))) return true;
+      report_error("Duplicate function declaration");
+      return false;
    }
 
    auto body = parse_enclosed_expr();
    if (not body) return false;
 
    function.body = std::move(body);
-   prolog.declare_function(std::move(function));
-   return true;
+   if (prolog.declare_function(std::move(function))) return true;
+   report_error("Duplicate function declaration");
+   return false;
 }
 
 // Applies the "declare boundary-space" policy to the active prolog.
 bool XPathParser::parse_boundary_space_decl(XQueryProlog &prolog)
 {
+   if (prolog.boundary_space_declared) {
+      report_error("Duplicate boundary-space declaration");
+      return false;
+   }
+
    if (match_literal_keyword("preserve")) {
       prolog.boundary_space = XQueryProlog::BoundarySpace::Preserve;
+      prolog.boundary_space_declared = true;
       return true;
    }
 
    if (match_literal_keyword("strip")) {
       prolog.boundary_space = XQueryProlog::BoundarySpace::Strip;
+      prolog.boundary_space_declared = true;
       return true;
    }
 
@@ -548,20 +620,33 @@ bool XPathParser::parse_base_uri_decl(XQueryProlog &prolog)
    auto uri = parse_uri_literal();
    if (not uri) return false;
 
+   if (prolog.static_base_uri_declared) {
+      report_error("Duplicate base-uri declaration");
+      return false;
+   }
+
    prolog.static_base_uri = *uri;
+   prolog.static_base_uri_declared = true;
    return true;
 }
 
 // Records the "declare construction" policy that governs node construction during evaluation.
 bool XPathParser::parse_construction_decl(XQueryProlog &prolog)
 {
+   if (prolog.construction_declared) {
+      report_error("Duplicate construction mode declaration");
+      return false;
+   }
+
    if (match_literal_keyword("preserve")) {
       prolog.construction_mode = XQueryProlog::ConstructionMode::Preserve;
+      prolog.construction_declared = true;
       return true;
    }
 
    if (match_literal_keyword("strip")) {
       prolog.construction_mode = XQueryProlog::ConstructionMode::Strip;
+      prolog.construction_declared = true;
       return true;
    }
 
@@ -572,13 +657,20 @@ bool XPathParser::parse_construction_decl(XQueryProlog &prolog)
 // Stores the "declare ordering" mode controlling sequence ordering expectations.
 bool XPathParser::parse_ordering_decl(XQueryProlog &prolog)
 {
+   if (prolog.ordering_declared) {
+      report_error("Duplicate ordering mode declaration");
+      return false;
+   }
+
    if (match_literal_keyword("ordered")) {
       prolog.ordering_mode = XQueryProlog::OrderingMode::Ordered;
+      prolog.ordering_declared = true;
       return true;
    }
 
    if (match_literal_keyword("unordered")) {
       prolog.ordering_mode = XQueryProlog::OrderingMode::Unordered;
+      prolog.ordering_declared = true;
       return true;
    }
 
@@ -594,13 +686,20 @@ bool XPathParser::parse_empty_order_decl(XQueryProlog &prolog)
       return false;
    }
 
+   if (prolog.empty_order_declared) {
+      report_error("Duplicate default empty order declaration");
+      return false;
+   }
+
    if (match_literal_keyword("greatest")) {
       prolog.empty_order = XQueryProlog::EmptyOrder::Greatest;
+      prolog.empty_order_declared = true;
       return true;
    }
 
    if (match_literal_keyword("least")) {
       prolog.empty_order = XQueryProlog::EmptyOrder::Least;
+      prolog.empty_order_declared = true;
       return true;
    }
 
@@ -611,6 +710,11 @@ bool XPathParser::parse_empty_order_decl(XQueryProlog &prolog)
 // Parses "declare copy-namespaces" preserving the preserve/no-preserve and inherit/no-inherit flags.
 bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
 {
+   if (prolog.copy_namespaces_declared) {
+      report_error("Duplicate copy-namespaces declaration");
+      return false;
+   }
+
    bool preserve = true;
    bool inherit = true;
 
@@ -633,6 +737,7 @@ bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
 
    prolog.copy_namespaces.preserve = preserve;
    prolog.copy_namespaces.inherit = inherit;
+   prolog.copy_namespaces_declared = true;
    return true;
 }
 
@@ -656,15 +761,28 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
          }
       }
 
-      if (not treat_as_property) {
-         auto qname = parse_qname_string();
-         if (not qname) return false;
-         format_name = *qname;
-      }
+   if (not treat_as_property) {
+      auto qname = parse_qname_string();
+      if (not qname) return false;
+      format_name = *qname;
+   }
    }
 
    DecimalFormat format;
    format.name = format_name;
+
+   if (format_name.empty()) {
+      if (prolog.default_decimal_format_declared) {
+         report_error("Duplicate decimal-format declaration");
+         return false;
+      }
+   }
+   else {
+      if (prolog.decimal_formats.contains(format_name)) {
+         report_error("Duplicate decimal-format declaration");
+         return false;
+      }
+   }
 
    bool saw_property = false;
    while (true) {
@@ -702,6 +820,7 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
    }
 
    prolog.decimal_formats[format_name] = std::move(format);
+   if (format_name.empty()) prolog.default_decimal_format_declared = true;
    return true;
 }
 
@@ -756,7 +875,16 @@ bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
       }
    }
 
-   prolog.declare_namespace(*prefix, module_import.target_namespace, nullptr);
+   auto prefix_entry = prolog.namespace_prefixes_seen.insert(*prefix);
+   if (not prefix_entry.second) {
+      report_error("Duplicate namespace prefix declaration");
+      return false;
+   }
+
+   if (not prolog.declare_namespace(*prefix, module_import.target_namespace, nullptr)) {
+      report_error("Duplicate namespace prefix declaration");
+      return false;
+   }
    prolog.module_imports.push_back(std::move(module_import));
    return true;
 }
