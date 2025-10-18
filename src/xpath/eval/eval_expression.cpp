@@ -12,6 +12,44 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    XPathVal &OutValue, const XPathNode *ReferenceNode)
 {
    std::string name(QName);
+   std::string normalised_name(name);
+
+   auto canonicalise_qname = [&](std::string_view Candidate, const XQueryProlog &SourceProlog) {
+      if ((Candidate.size() > 2U) and (Candidate[0] IS 'Q') and (Candidate[1] IS '{')) {
+         return std::string(Candidate);
+      }
+
+      size_t colon_position = Candidate.find(':');
+      if (colon_position != std::string_view::npos) {
+         std::string prefix(Candidate.substr(0U, colon_position));
+         std::string_view local_name_view = Candidate.substr(colon_position + 1U);
+
+         auto uri_entry = SourceProlog.declared_namespace_uris.find(prefix);
+         if (uri_entry not_eq SourceProlog.declared_namespace_uris.end()) {
+            std::string expanded("Q{");
+            expanded.append(uri_entry->second);
+            expanded.push_back('}');
+            expanded.append(local_name_view);
+            return expanded;
+         }
+
+         if (context.document) {
+            auto prefix_it = context.document->Prefixes.find(prefix);
+            if (prefix_it not_eq context.document->Prefixes.end()) {
+               auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+               if (ns_it not_eq context.document->NSRegistry.end()) {
+                  std::string expanded("Q{");
+                  expanded.append(ns_it->second);
+                  expanded.push_back('}');
+                  expanded.append(local_name_view);
+                  return expanded;
+               }
+            }
+         }
+      }
+
+      return std::string(Candidate);
+   };
 
    if (context.variables) {
       auto local_variable = context.variables->find(name);
@@ -32,26 +70,21 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    auto prolog = context.prolog;
    if (!prolog) return false;
 
-   auto cached_value = prolog_variable_cache.find(name);
-   if (cached_value != prolog_variable_cache.end()) {
-      OutValue = cached_value->second;
-      return true;
-   }
-
    const XQueryVariable *variable = prolog->find_variable(QName);
    std::shared_ptr<XQueryProlog> owner_prolog = prolog;
    auto active_module_cache = context.module_cache;
+   std::string module_uri;
+   std::string imported_local_name;
+   std::string canonical_lookup;
 
    if (!variable) {
       uint32_t namespace_hash = 0U;
-      std::string module_uri;
-      std::string local_name;
 
       if ((name.size() > 2U) and (name[0] IS 'Q') and (name[1] IS '{')) {
          size_t closing = name.find('}');
          if (closing != std::string::npos) {
             module_uri = name.substr(2U, closing - 2U);
-            local_name = name.substr(closing + 1U);
+            imported_local_name = name.substr(closing + 1U);
             if (!module_uri.empty()) namespace_hash = pf::strhash(module_uri);
          }
       }
@@ -60,7 +93,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          auto separator = name.find(':');
          if (separator != std::string::npos) {
             std::string prefix = name.substr(0, separator);
-            local_name = name.substr(separator + 1U);
+            imported_local_name = name.substr(separator + 1U);
             namespace_hash = prolog->resolve_prefix(prefix, context.document);
             if (namespace_hash != 0U) {
                auto uri_entry = prolog->declared_namespace_uris.find(prefix);
@@ -120,13 +153,12 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
 
          const XQueryVariable *module_variable = module_prolog->find_variable(name);
 
-         std::string canonical_lookup;
-         if (!module_uri.empty() and !local_name.empty()) {
-            canonical_lookup.reserve(module_uri.size() + local_name.size() + 3U);
+         if (!module_uri.empty() and !imported_local_name.empty()) {
+            canonical_lookup.reserve(module_uri.size() + imported_local_name.size() + 3U);
             canonical_lookup.append("Q{");
             canonical_lookup.append(module_uri);
             canonical_lookup.push_back('}');
-            canonical_lookup.append(local_name);
+            canonical_lookup.append(imported_local_name);
          }
 
          if (!module_variable and !canonical_lookup.empty()) {
@@ -147,10 +179,10 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
                }
 
                size_t colon_pos = candidate.qname.find(':');
-               if ((colon_pos != std::string::npos) and !local_name.empty()) {
+               if ((colon_pos != std::string::npos) and !imported_local_name.empty()) {
                   std::string candidate_prefix = candidate.qname.substr(0U, colon_pos);
                   std::string candidate_local = candidate.qname.substr(colon_pos + 1U);
-                  if (candidate_local IS local_name) {
+                  if (candidate_local IS imported_local_name) {
                      uint32_t candidate_hash = module_prolog->resolve_prefix(candidate_prefix, nullptr);
                      if (candidate_hash IS namespace_hash) {
                         module_variable = &candidate;
@@ -175,6 +207,43 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       if (!variable) return false;
    }
 
+   if (owner_prolog) {
+      if (!canonical_lookup.empty()) normalised_name = canonical_lookup;
+      else {
+         normalised_name = canonicalise_qname(name, *owner_prolog);
+         if (normalised_name IS name) {
+            normalised_name = canonicalise_qname(variable->qname, *owner_prolog);
+         }
+      }
+   }
+
+   auto cached_value = prolog_variable_cache.find(normalised_name);
+   if (cached_value != prolog_variable_cache.end()) {
+      OutValue = cached_value->second;
+      return true;
+   }
+
+   if (normalised_name not_eq name) {
+      auto alias_value = prolog_variable_cache.find(name);
+      if (alias_value != prolog_variable_cache.end()) {
+         prolog_variable_cache.insert_or_assign(normalised_name, alias_value->second);
+         OutValue = alias_value->second;
+         return true;
+      }
+   }
+
+   if (variable->qname not_eq normalised_name) {
+      auto declared_value = prolog_variable_cache.find(variable->qname);
+      if (declared_value != prolog_variable_cache.end()) {
+         prolog_variable_cache.insert_or_assign(normalised_name, declared_value->second);
+         if (normalised_name not_eq name) {
+            prolog_variable_cache.insert_or_assign(name, declared_value->second);
+         }
+         OutValue = declared_value->second;
+         return true;
+      }
+   }
+
    if (variable->is_external) {
       std::string message = "External variable '" + name + "' is not supported.";
       record_error(message, ReferenceNode, true);
@@ -187,7 +256,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return false;
    }
 
-   if (variables_in_evaluation.find(name) != variables_in_evaluation.end()) {
+   if (variables_in_evaluation.find(normalised_name) != variables_in_evaluation.end()) {
       std::string message = "Variable '" + name + "' has a circular dependency.";
       record_error(message, ReferenceNode, true);
       return false;
@@ -203,9 +272,9 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       switched_context = true;
    }
 
-   variables_in_evaluation.insert(name);
+   variables_in_evaluation.insert(normalised_name);
    XPathVal computed_value = evaluate_expression(variable->initializer.get(), CurrentPrefix);
-   variables_in_evaluation.erase(name);
+   variables_in_evaluation.erase(normalised_name);
 
    if (switched_context) {
       context.prolog = previous_prolog;
@@ -218,8 +287,17 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return false;
    }
 
-   auto inserted = prolog_variable_cache.insert_or_assign(name, std::move(computed_value));
+   auto inserted = prolog_variable_cache.insert_or_assign(normalised_name, computed_value);
    OutValue = inserted.first->second;
+
+   if (normalised_name not_eq name) {
+      prolog_variable_cache.insert_or_assign(name, inserted.first->second);
+   }
+
+   if (variable->qname not_eq normalised_name and variable->qname not_eq name) {
+      prolog_variable_cache.insert_or_assign(variable->qname, inserted.first->second);
+   }
+
    return true;
 }
 
