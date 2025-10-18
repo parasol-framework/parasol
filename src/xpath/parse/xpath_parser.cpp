@@ -301,6 +301,7 @@ std::optional<std::string> XPathParser::collect_sequence_type()
    return collected;
 }
 
+// Parses the leading XQuery prolog, returning true when any declarations were consumed.
 bool XPathParser::parse_prolog(XQueryProlog &prolog)
 {
    bool saw_prolog = false;
@@ -334,6 +335,7 @@ bool XPathParser::parse_prolog(XQueryProlog &prolog)
 
 bool XPathParser::parse_declare_statement(XQueryProlog &prolog)
 {
+   // Dispatches to the relevant declaration parser based on the keyword following "declare".
    if (match_literal_keyword("namespace")) return parse_namespace_decl(prolog);
 
    if (check_literal_keyword("default")) {
@@ -362,6 +364,7 @@ bool XPathParser::parse_declare_statement(XQueryProlog &prolog)
    return false;
 }
 
+// Parses a "declare namespace" statement and stores the prefix binding inside the active prolog.
 bool XPathParser::parse_namespace_decl(XQueryProlog &prolog)
 {
    auto prefix = parse_ncname();
@@ -376,6 +379,7 @@ bool XPathParser::parse_namespace_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Handles "declare default element|function namespace" declarations.
 bool XPathParser::parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunctionNamespace)
 {
    if (not match_literal_keyword("namespace")) {
@@ -402,6 +406,7 @@ bool XPathParser::parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunc
    return true;
 }
 
+// Consumes a "declare default collation" declaration and records the URI.
 bool XPathParser::parse_default_collation_decl(XQueryProlog &prolog)
 {
    auto collation = parse_uri_literal();
@@ -411,6 +416,7 @@ bool XPathParser::parse_default_collation_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Parses a prolog variable declaration, supporting both inline initialisers and external markers.
 bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
 {
    if (not consume_token(XPathTokenType::DOLLAR, "Expected '$' in variable declaration")) return false;
@@ -447,6 +453,7 @@ bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Parses a prolog function declaration, capturing parameters, optional types, and the function body.
 bool XPathParser::parse_function_decl(XQueryProlog &prolog)
 {
    auto qname = parse_qname_string();
@@ -518,6 +525,7 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Applies the "declare boundary-space" policy to the active prolog.
 bool XPathParser::parse_boundary_space_decl(XQueryProlog &prolog)
 {
    if (match_literal_keyword("preserve")) {
@@ -534,6 +542,7 @@ bool XPathParser::parse_boundary_space_decl(XQueryProlog &prolog)
    return false;
 }
 
+// Parses a "declare base-uri" statement and stores the literal URI.
 bool XPathParser::parse_base_uri_decl(XQueryProlog &prolog)
 {
    auto uri = parse_uri_literal();
@@ -543,6 +552,7 @@ bool XPathParser::parse_base_uri_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Records the "declare construction" policy that governs node construction during evaluation.
 bool XPathParser::parse_construction_decl(XQueryProlog &prolog)
 {
    if (match_literal_keyword("preserve")) {
@@ -559,6 +569,7 @@ bool XPathParser::parse_construction_decl(XQueryProlog &prolog)
    return false;
 }
 
+// Stores the "declare ordering" mode controlling sequence ordering expectations.
 bool XPathParser::parse_ordering_decl(XQueryProlog &prolog)
 {
    if (match_literal_keyword("ordered")) {
@@ -575,6 +586,7 @@ bool XPathParser::parse_ordering_decl(XQueryProlog &prolog)
    return false;
 }
 
+// Handles the "declare default order empty" declaration.
 bool XPathParser::parse_empty_order_decl(XQueryProlog &prolog)
 {
    if (not match_literal_keyword("empty")) {
@@ -596,6 +608,7 @@ bool XPathParser::parse_empty_order_decl(XQueryProlog &prolog)
    return false;
 }
 
+// Parses "declare copy-namespaces" preserving the preserve/no-preserve and inherit/no-inherit flags.
 bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
 {
    bool preserve = true;
@@ -623,6 +636,7 @@ bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Parses a "declare decimal-format" block, recording the named or default format settings.
 bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
 {
    std::string format_name;
@@ -691,6 +705,7 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Records a "declare option" entry consisting of a QName and literal value.
 bool XPathParser::parse_option_decl(XQueryProlog &prolog)
 {
    auto name = parse_qname_string();
@@ -703,6 +718,7 @@ bool XPathParser::parse_option_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Parses an "import module" or "import schema" statement, deferring schema handling to a stub.
 bool XPathParser::parse_import_statement(XQueryProlog &prolog)
 {
    if (match_literal_keyword("module")) return parse_import_module_decl(prolog);
@@ -712,6 +728,7 @@ bool XPathParser::parse_import_statement(XQueryProlog &prolog)
    return false;
 }
 
+// Parses an "import module" declaration and records the namespace plus location hints.
 bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
 {
    if (not match_literal_keyword("namespace")) {
@@ -744,6 +761,7 @@ bool XPathParser::parse_import_module_decl(XQueryProlog &prolog)
    return true;
 }
 
+// Emits an error for unsupported "import schema" declarations.
 bool XPathParser::parse_import_schema_decl()
 {
    report_error("Schema imports are not supported");
