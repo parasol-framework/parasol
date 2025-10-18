@@ -28,7 +28,7 @@
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
-XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XML), axis_evaluator(XML, arena)
+XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XML), query_root(QueryRoot), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
    context.document = XML;
@@ -45,10 +45,23 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    prolog_variable_cache.clear();
    variables_in_evaluation.clear();
 
-   if (!Root) return;
+   if (Root) query_root = Root;
 
-   context.prolog = Root->get_prolog();
-   context.module_cache = Root->get_module_cache();
+   const XPathNode *source = Root ? Root : query_root;
+
+   std::shared_ptr<XQueryProlog> prolog;
+   std::shared_ptr<XQueryModuleCache> module_cache;
+
+   if (source) {
+      prolog = source->get_prolog();
+      module_cache = source->get_module_cache();
+   }
+
+   if (!prolog and query_root) prolog = query_root->get_prolog();
+   if (!module_cache and query_root) module_cache = query_root->get_module_cache();
+
+   context.prolog = std::move(prolog);
+   context.module_cache = std::move(module_cache);
 
    if (!context.module_cache and context.prolog) {
       context.module_cache = context.prolog->get_module_cache();

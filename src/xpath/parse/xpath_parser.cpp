@@ -431,7 +431,8 @@ bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
 
    if (match_literal_keyword("external")) {
       variable.is_external = true;
-      prolog.declare_variable(variable.qname, std::move(variable));
+      auto variable_name = variable.qname;
+      prolog.declare_variable(variable_name, std::move(variable));
       return true;
    }
 
@@ -441,7 +442,8 @@ bool XPathParser::parse_variable_decl(XQueryProlog &prolog)
    if (not initializer) return false;
 
    variable.initializer = std::move(initializer);
-   prolog.declare_variable(variable.qname, std::move(variable));
+   auto variable_name = variable.qname;
+   prolog.declare_variable(variable_name, std::move(variable));
    return true;
 }
 
