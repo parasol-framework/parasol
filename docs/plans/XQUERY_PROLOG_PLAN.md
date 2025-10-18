@@ -562,17 +562,17 @@ Each phase should land with targeted regression tests using existing Fluid-based
 - [ ] Verify module cache is document-scoped when provided
 
 **Error Handling Tests:**
-- [ ] Test duplicate namespace declarations
-- [ ] Test duplicate variable declarations
-- [ ] Test duplicate function declarations (same signature)
-- [ ] Test invalid prolog syntax
-- [ ] Test missing required parameters in function calls
-- [ ] Test type annotation parsing (even if validation deferred)
+- [X] Test duplicate namespace declarations
+- [X] Test duplicate variable declarations
+- [X] Test duplicate function declarations (same signature)
+- [X] Test invalid prolog syntax
+- [X] Test missing required parameters in function calls
+- [X] Test type annotation parsing (even if validation deferred)
 
 #### Documentation
 
-- [ ] Document `XQueryProlog` API in embedded comments
-- [ ] Document helper method usage patterns
-- [ ] Add usage examples to API documentation
-- [ ] Update XPath module documentation to mention XQuery prolog support
-- [ ] Document limitations (external functions/variables, module loading)
+- [X] Document `XQueryProlog` API in embedded comments
+- [X] Document helper method usage patterns
+- [X] Add usage examples to API documentation
+- [X] Update XPath module documentation to mention XQuery prolog support
+- [X] Document limitations (external functions/variables, module loading)

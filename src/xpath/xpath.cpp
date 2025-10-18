@@ -321,9 +321,9 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 -FUNCTION-
 Evaluate: Evaluates a compiled XPath or XQuery expression against an XML document.
 
-Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.
-The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types
-of data including node sets, strings, numbers, or booleans.
+Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.  The result of the 
+evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including 
+node sets, strings, numbers, or booleans.
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
