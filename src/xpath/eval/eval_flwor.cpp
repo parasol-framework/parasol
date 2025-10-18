@@ -991,10 +991,15 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (iteration_value.is_empty()) continue;
 
-      if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced non-node-set type %d", tuple_index,
-         int(iteration_value.Type));
-      record_error("FLWOR return expressions must yield node-sets.", return_node, true);
-      return XPathVal();
+      // Wrap atomic values (strings, numbers, booleans) in a node-set
+      if (tracing_flwor) trace_detail("FLWOR return tuple[%zu] produced atomic type %d, wrapping in node-set",
+         tuple_index, int(iteration_value.Type));
+
+      std::string atomic_string = iteration_value.to_string();
+      combined_nodes.push_back(nullptr);
+      combined_attributes.push_back(nullptr);
+      combined_strings.push_back(std::move(atomic_string));
+      if (!combined_override.has_value()) combined_override = combined_strings.back();
    }
 
    XPathVal result;

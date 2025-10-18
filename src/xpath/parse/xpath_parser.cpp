@@ -2011,6 +2011,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
 std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
 {
    if (match(XPathTokenType::LPAREN)) {
+      // Check for empty sequence ()
+      if (check(XPathTokenType::RPAREN)) {
+         advance(); // consume RPAREN
+         return std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+      }
+
       auto expr = parse_expr();
       (void)match(XPathTokenType::RPAREN);
       return expr;

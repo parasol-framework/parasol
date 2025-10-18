@@ -109,6 +109,11 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
+   if (ExprNode->type IS XPathNodeType::EMPTY_SEQUENCE) {
+      // Return an empty node-set to represent the empty sequence
+      return XPathVal(pf::vector<XMLTag *>{});
+   }
+
    if (ExprNode->type IS XPathNodeType::NUMBER) {
       char *end_ptr = nullptr;
       double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
