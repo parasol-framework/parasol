@@ -239,12 +239,12 @@ function testCountMethods()
    assert(methodCount == 5, "Should count all items: got " .. methodCount)
 
    -- Test count: mtEvaluate
-   local err, keyCount = tonumber(xml.mtEvaluate('count(//item)'))
-   assert(keyCount == 5, "Should count all items: got " .. keyCount)
+   local err, keyCount = xml.mtEvaluate('count(//item)')
+   assert(tonumber(keyCount) == 5, "Should count all items: got " .. keyCount)
 
    -- Test specific path count
-   local err, sectionCount = tonumber(xml.mtEvaluate('count(/root/section[1]/item)'))
-   assert(sectionCount == 2, "Should count items in first section only, got " .. sectionCount)
+   local err, sectionCount = xml.mtEvaluate('count(/root/section[1]/item)')
+   assert(tonumber(sectionCount) == 2, "Should count items in first section only, got " .. sectionCount)
 end
 
 -----------------------------------------------------------------------------------------------------------------------

@@ -87,7 +87,7 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
       <param type="struct XPathValue **" name="Result">Receives the result of the evaluation.</param>
     </input>
     <description>
-<p>Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document. The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
+<p>Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.  The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
