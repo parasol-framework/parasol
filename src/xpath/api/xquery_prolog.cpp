@@ -46,19 +46,44 @@ std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(std::string_view uri,
 
    if (uri.empty()) return nullptr;
 
-   std::string uri_key(uri);
+   std::string uri_key = xml::uri::normalise_uri_separators(std::string(uri));
 
-   auto found = modules.find(uri_key);
-   if (found != modules.end()) return found->second;
+   auto existing = modules.find(uri_key);
+   if (existing not_eq modules.end()) return existing->second.document;
 
    if (owner) {
-      auto document_cache = owner->DocumentCache.find(uri_key);
-      if (document_cache != owner->DocumentCache.end()) {
-         modules[document_cache->first] = document_cache->second;
-         return document_cache->second;
+      auto capture_entry = [&](const std::string &key) -> std::shared_ptr<extXML> {
+         auto cache_entry = owner->DocumentCache.find(key);
+         if (cache_entry not_eq owner->DocumentCache.end()) {
+            ModuleInfo info;
+            info.document = cache_entry->second;
+            modules.insert_or_assign(key, std::move(info));
+            return cache_entry->second;
+         }
+         return nullptr;
+      };
+
+      if (auto cached = capture_entry(uri_key)) return cached;
+
+      std::string original(uri);
+      if (original not_eq uri_key) {
+         if (auto cached = capture_entry(original)) return cached;
       }
    }
 
+   return nullptr;
+}
+
+const XQueryModuleCache::ModuleInfo * XQueryModuleCache::find_module(std::string_view uri) const
+{
+   std::string original(uri);
+   std::string uri_key = xml::uri::normalise_uri_separators(original);
+   auto existing = modules.find(uri_key);
+   if (existing not_eq modules.end()) return &existing->second;
+   if (uri_key not_eq original) {
+      auto fallback = modules.find(original);
+      if (fallback not_eq modules.end()) return &fallback->second;
+   }
    return nullptr;
 }
 
@@ -143,6 +168,42 @@ bool XQueryProlog::declare_function(XQueryFunction function)
    auto signature = function.signature();
    auto inserted = functions.emplace(std::move(signature), std::move(function));
    if (not inserted.second) return false;
+   return true;
+}
+
+bool XQueryProlog::validate_library_exports() const
+{
+   if (not is_library_module) return true;
+   if (not module_namespace_uri) return false;
+
+   uint32_t module_hash = pf::strhash(*module_namespace_uri);
+
+   auto matches_namespace = [&](std::string_view qname) -> bool {
+      if (qname.empty()) return false;
+
+      if ((qname.size() > 2U) and (qname[0] IS 'Q') and (qname[1] IS '{')) {
+         size_t closing = qname.find('}');
+         if (closing IS std::string::npos) return false;
+         std::string_view uri_view = qname.substr(2U, closing - 2U);
+         return uri_view IS std::string_view(*module_namespace_uri);
+      }
+
+      size_t colon = qname.find(':');
+      if (colon IS std::string::npos) return false;
+      std::string_view prefix = qname.substr(0U, colon);
+      uint32_t prefix_hash = resolve_prefix(prefix, nullptr);
+      if (prefix_hash IS 0U) return false;
+      return prefix_hash IS module_hash;
+   };
+
+   for (const auto &entry : functions) {
+      if (not matches_namespace(entry.second.qname)) return false;
+   }
+
+   for (const auto &entry : variables) {
+      if (not matches_namespace(entry.second.qname)) return false;
+   }
+
    return true;
 }
 

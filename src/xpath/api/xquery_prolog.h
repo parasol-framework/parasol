@@ -12,6 +12,7 @@
 struct XPathNode;
 class extXML;
 class XPathErrorReporter;
+struct XQueryProlog;
 
 struct DecimalFormat
 {
@@ -55,11 +56,21 @@ struct XQueryModuleImport
 
 struct XQueryModuleCache
 {
+   struct ModuleInfo
+   {
+      std::shared_ptr<extXML> document;
+      std::shared_ptr<XPathNode> compiled_query;
+      std::shared_ptr<XQueryProlog> prolog;
+   };
+
    std::shared_ptr<extXML> owner;
-   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<extXML>> modules;
+   mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules;
+   mutable std::unordered_set<std::string> loading_in_progress;
 
    [[nodiscard]] std::shared_ptr<extXML> fetch_or_load(std::string_view uri,
       const struct XQueryProlog &prolog, XPathErrorReporter &reporter) const;
+
+   [[nodiscard]] const ModuleInfo * find_module(std::string_view uri) const;
 };
 
 struct XQueryProlog
@@ -76,6 +87,10 @@ struct XQueryProlog
    ankerl::unordered_dense::map<std::string, XQueryVariable> variables;
    ankerl::unordered_dense::map<std::string, XQueryFunction> functions;
    std::vector<XQueryModuleImport> module_imports;
+
+   bool is_library_module = false;
+   std::optional<std::string> module_namespace_uri;
+   std::optional<std::string> module_namespace_prefix;
 
    std::string static_base_uri;
    std::string default_collation;
@@ -109,6 +124,8 @@ struct XQueryProlog
    bool declare_namespace(std::string_view prefix, std::string_view uri, extXML *document);
    bool declare_variable(std::string_view qname, XQueryVariable variable);
    bool declare_function(XQueryFunction function);
+
+   [[nodiscard]] bool validate_library_exports() const;
 
    [[nodiscard]] const XQueryFunction * find_function(std::string_view qname, size_t arity) const;
    [[nodiscard]] const XQueryVariable * find_variable(std::string_view qname) const;

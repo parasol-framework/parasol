@@ -6,6 +6,8 @@
 #include <utility>
 #include "../../xml/uri_utils.h"
 
+static std::string_view keyword_from_token_type(XPathTokenType Type);
+
 //********************************************************************************************************************
 // Parses a list of XPath tokens and returns an XPathParseResult object containing:
 //   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
@@ -37,6 +39,26 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    current_token = 0;
    errors.clear();
 
+   if (check_literal_keyword("module")) {
+      size_t lookahead = current_token + 1U;
+      bool is_module_decl = false;
+
+      if (lookahead < tokens.size()) {
+         const auto &next = tokens[lookahead];
+         std::string_view keyword = keyword_from_token_type(next.type);
+         if (keyword IS "namespace") is_module_decl = true;
+         else if ((next.type IS XPathTokenType::IDENTIFIER) and (next.value IS "namespace")) is_module_decl = true;
+      }
+
+      if (is_module_decl) {
+         advance();
+         if (not parse_module_decl(*result.prolog)) {
+            result.expression.reset();
+            return result;
+         }
+      }
+   }
+
    bool prolog_result = parse_prolog(*result.prolog);
    if (prolog_result and has_errors()) {
       // Prolog parsing detected but encountered errors
@@ -45,6 +67,29 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
    }
 
    if (has_errors()) {
+      result.expression.reset();
+      return result;
+   }
+
+   if (result.prolog->is_library_module) {
+      if (not result.prolog->validate_library_exports()) {
+         report_error("XQST0048: Library module exports must use the declared namespace");
+      }
+
+      while (match(XPathTokenType::SEMICOLON)) {}
+
+      if (not is_at_end()) {
+         XPathToken token = peek();
+         std::string token_text(token.value);
+         if (token_text.empty()) token_text = "<unexpected>";
+         report_error("XQST0039: Library module must not contain a query body (unexpected token '" + token_text + "')");
+      }
+
+      if (has_errors()) {
+         result.expression.reset();
+         return result;
+      }
+
       result.expression.reset();
       return result;
    }
@@ -350,6 +395,49 @@ bool XPathParser::parse_prolog(XQueryProlog &prolog)
    }
 
    return saw_prolog;
+}
+
+//********************************************************************************************************************
+
+bool XPathParser::parse_module_decl(XQueryProlog &prolog)
+{
+   if (prolog.is_library_module) {
+      report_error("XQST0031: Multiple module declarations are not permitted");
+      return false;
+   }
+
+   if (not match_literal_keyword("namespace")) {
+      report_error("XPST0003: Expected 'namespace' after 'module'");
+      return false;
+   }
+
+   auto prefix = parse_ncname();
+   if (not prefix) return false;
+
+   if (not consume_token(XPathTokenType::EQUALS, "Expected '=' in module declaration")) return false;
+
+   auto uri = parse_uri_literal();
+   if (not uri) return false;
+
+   std::string normalised_uri = xml::uri::normalise_uri_separators(*uri);
+
+   if (not prolog.declare_namespace(*prefix, normalised_uri, nullptr)) {
+      report_error("XQST0033: Duplicate namespace prefix declaration");
+      return false;
+   }
+
+   prolog.is_library_module = true;
+   prolog.module_namespace_prefix = *prefix;
+   prolog.module_namespace_uri = std::move(normalised_uri);
+
+   if (not match(XPathTokenType::SEMICOLON)) {
+      report_error("XQST0038: Expected ';' after module declaration");
+      return false;
+   }
+
+   while (match(XPathTokenType::SEMICOLON)) {}
+
+   return true;
 }
 
 //********************************************************************************************************************
