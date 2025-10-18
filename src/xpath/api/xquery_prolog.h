@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 #include <utility>
+#include <unordered_set>
 
 struct XPathNode;
 class extXML;
@@ -79,10 +80,18 @@ struct XQueryProlog
    std::string static_base_uri;
    std::string default_collation;
 
+   bool static_base_uri_declared = false;
+   bool default_collation_declared = false;
+
    enum class BoundarySpace { Preserve, Strip } boundary_space = BoundarySpace::Strip;
    enum class ConstructionMode { Preserve, Strip } construction_mode = ConstructionMode::Strip;
    enum class OrderingMode { Ordered, Unordered } ordering_mode = OrderingMode::Ordered;
    enum class EmptyOrder { Greatest, Least } empty_order = EmptyOrder::Greatest;
+
+   bool boundary_space_declared = false;
+   bool construction_declared = false;
+   bool ordering_declared = false;
+   bool empty_order_declared = false;
 
    struct CopyNamespaces
    {
@@ -90,12 +99,16 @@ struct XQueryProlog
       bool inherit = true;
    } copy_namespaces;
 
+   bool copy_namespaces_declared = false;
+
    ankerl::unordered_dense::map<std::string, DecimalFormat> decimal_formats;
    ankerl::unordered_dense::map<std::string, std::string> options;
 
-   void declare_namespace(std::string_view prefix, std::string_view uri, extXML *document);
-   void declare_variable(std::string_view qname, XQueryVariable variable);
-   void declare_function(XQueryFunction function);
+   bool default_decimal_format_declared = false;
+
+   bool declare_namespace(std::string_view prefix, std::string_view uri, extXML *document);
+   bool declare_variable(std::string_view qname, XQueryVariable variable);
+   bool declare_function(XQueryFunction function);
 
    [[nodiscard]] const XQueryFunction * find_function(std::string_view qname, size_t arity) const;
    [[nodiscard]] const XQueryVariable * find_variable(std::string_view qname) const;
