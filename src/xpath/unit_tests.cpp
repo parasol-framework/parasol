@@ -336,7 +336,7 @@ static ERR run_unit_tests(APTR Meta)
    test_tokeniser_prolog_keywords();
    test_prolog_api();
    test_prolog_in_xpath();
-   
+
    std::cout << "\n=== Test Summary ===" << std::endl;
    std::cout << "Total:  " << test_count << std::endl;
    std::cout << "Passed: " << pass_count << std::endl;

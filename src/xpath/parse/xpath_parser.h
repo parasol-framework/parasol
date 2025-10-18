@@ -133,11 +133,13 @@ class XPathParser {
    // Returns true if the given keyword token type can function as an identifier
    // in name contexts (element names, attribute names, function names, etc.).
    // All XPath/XQuery keywords are valid XML names and should be permitted.
+
    [[nodiscard]] bool is_keyword_acceptable_as_identifier(XPathTokenType Type) const;
 
    // Helper that treats keyword tokens as identifiers in name contexts.
    // Use this for steps, function names, predicates, and variable bindings, where keywords are valid identifiers.
    // All XPath/XQuery keywords can function as element/attribute names since they are valid XML NCNames.
+
    bool is_identifier_token(const XPathToken &Token) const {
       if (Token.type IS XPathTokenType::IDENTIFIER) return true;
       return is_keyword_acceptable_as_identifier(Token.type);

@@ -10,7 +10,7 @@ XML: Provides an interface for the management of structured data.
 
 The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures.
 It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to
-accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0 
+accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0
 queries, content manipulation and document validation.
 
 The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In
@@ -202,9 +202,9 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 -METHOD-
 Evaluate: Run an XPath 2.0 or XQuery expression against the XML data.
 
-The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML 
+The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML
 object.  This is a lazy execution method that compiles and evaluates the provided expression in a single
-step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the 
+step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the
 Compile and Evaluate functions in the XPath module.
 
 -INPUT-
