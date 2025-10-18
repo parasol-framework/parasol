@@ -255,9 +255,11 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
          if (xml) {
             if (parser_errors.empty()) xml->ErrorMsg = "Failed to parse XPath expression";
             else {
-               xml->ErrorMsg = "XPath compilation error: ";
+               xml->ErrorMsg.clear();
+               bool append_split = false;
                for (const auto &err : parser_errors) {
-                  if (!xml->ErrorMsg.empty()) xml->ErrorMsg += "; ";
+                  if (append_split) xml->ErrorMsg += "; ";
+                  else append_split = true;
                   xml->ErrorMsg += err;
                }
             }
@@ -321,8 +323,8 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 -FUNCTION-
 Evaluate: Evaluates a compiled XPath or XQuery expression against an XML document.
 
-Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.  The result of the 
-evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including 
+Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.  The result of the
+evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including
 node sets, strings, numbers, or booleans.
 
 -INPUT-

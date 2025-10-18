@@ -19,8 +19,6 @@
 #include "../../xml/xml.h"
 #include <parasol/strings.hpp>
 
-namespace {
-
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
 // underscore '_'). Used for validating constructor names and QName components.
@@ -76,8 +74,7 @@ static std::string trim_constructor_whitespace(std::string_view Value)
 
 static bool is_xml_whitespace_only(std::string_view Value)
 {
-   for (char ch : Value)
-   {
+   for (char ch : Value) {
       if (uint8_t(ch) > 0x20u) return false;
    }
    return true;
@@ -98,7 +95,7 @@ struct ConstructorQName {
 // Parses a QName or expanded QName literal used by computed constructors.  The function recognises the "Q{uri}local"
 // form as well as prefixed names and produces a structured representation that downstream evaluators can inspect.
 
-ConstructorQName parse_constructor_qname_string(std::string_view Value)
+static ConstructorQName parse_constructor_qname_string(std::string_view Value)
 {
    ConstructorQName result;
    if (Value.empty()) return result;
@@ -141,8 +138,6 @@ ConstructorQName parse_constructor_qname_string(std::string_view Value)
    return result;
 }
 
-} // Anonymous namespace
-
 //********************************************************************************************************************
 
 std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_view Text, bool IsLiteral) const
@@ -156,16 +151,14 @@ std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_
 
    bool whitespace_only = is_xml_whitespace_only(Text);
 
-   if (IsLiteral)
-   {
+   if (IsLiteral) {
       if (whitespace_only and (not prolog_has_boundary_space_preserve())) return std::nullopt;
       return std::string(Text);
    }
 
    if (prolog_construction_preserve()) return std::string(Text);
 
-   if (whitespace_only)
-   {
+   if (whitespace_only) {
       if (prolog_has_boundary_space_preserve()) return std::string(Text);
       return std::nullopt;
    }
@@ -1209,7 +1202,7 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
             }
 
             if (duplicate) {
-               record_error("Duplicate attribute name in constructor content.", (const XPathNode *)nullptr, true);
+               record_error("XQDY0025: Duplicate attribute name in constructor content.", nullptr, true);
                return false;
             }
 
@@ -1262,7 +1255,7 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
       auto *expr = Attribute.get_expression_for_part(index);
       if (not expr) {
          log.detail("AVT failed at part index %d", index);
-         record_error("Attribute value template part is missing its expression.", (const XPathNode *)nullptr, true);
+         record_error("XPST0003: Attribute value template part is missing its expression.", nullptr, true);
          return std::nullopt;
       }
 
@@ -1542,7 +1535,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          auto resolved = resolve_constructor_prefix(element_scope, attribute->prefix);
          if (not resolved.has_value())
          {
-            record_error("Attribute prefix is not bound in constructor scope.", Node, true);
+            record_error("XQDY0064: Attribute prefix is not bound in constructor scope.", Node, true);
             return std::nullopt;
          }
       }
@@ -1564,7 +1557,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    else if (not info.prefix.empty()) {
       auto resolved = resolve_constructor_prefix(element_scope, info.prefix);
       if (not resolved.has_value()) {
-         record_error("Element prefix is not declared within constructor scope.", Node, true);
+         record_error("XQDY0064: Element prefix is not declared within constructor scope.", Node, true);
          return std::nullopt;
       }
       namespace_id = *resolved;
@@ -1714,7 +1707,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
    else if (not name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
       if (not resolved.has_value()) {
-         record_error("Element prefix is not bound in scope.", Node, true);
+         record_error("XQDY0064: Element prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
       namespace_id = *resolved;
@@ -1845,7 +1838,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    else if (not name_info.prefix.empty()) {
       auto resolved = resolve_prefix_in_context(name_info.prefix);
       if (not resolved.has_value()) {
-         record_error("Attribute prefix is not bound in scope.", Node, true);
+         record_error("XQDY0064: Attribute prefix is not bound in scope.", Node, true);
          return XPathVal();
       }
       namespace_id = *resolved;
@@ -1940,12 +1933,12 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
 
    auto double_dash = content->find("--");
    if (not (double_dash IS std::string::npos)) {
-      record_error("Comments cannot contain consecutive hyphen characters.", Node, true);
+      record_error("XQDY0072: Comments cannot contain consecutive hyphen characters.", Node, true);
       return XPathVal();
    }
 
    if (not content->empty() and (content->back() IS '-')) {
-      record_error("Comments cannot end with a hyphen.", Node, true);
+      record_error("XQDY0072: Comments cannot end with a hyphen.", Node, true);
       return XPathVal();
    }
 
@@ -2008,7 +2001,7 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
 
    auto terminator = content->find("?>");
    if (not (terminator IS std::string::npos)) {
-      record_error("Processing-instruction content cannot contain '?>'.", Node, true);
+      record_error("XQDY0026: Processing-instruction content cannot contain '?>'.", Node, true);
       return XPathVal();
    }
 

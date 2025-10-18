@@ -27,6 +27,11 @@ src/xpath/
 ├── xpath.cpp                  # Module initialisation and core functions
 ├── xpath.h                    # Module header
 ├── xpath_def.c                # Generated C definitions
+├── unit_tests.cpp             # C++ unit tests for internal components
+├── CMakeLists.txt             # Build configuration
+├── AGENTS.md                  # AI agent guide for this module
+├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
+├── QT3_1_0/                   # W3C XQuery Test Suite (optional)
 ├── api/                       # Public API implementations
 │   ├── xpath_arena.h              # Memory management for evaluation
 │   ├── xpath_axis.cpp/h           # XPath axis evaluation
@@ -77,7 +82,7 @@ src/xpath/
     ├── test_qname.fluid           # QName operation tests
     ├── test_reserved_words.fluid  # Reserved word handling tests
     ├── test_sequences.fluid       # Sequence operation tests
-    └── test_string_uri.fluid      # String and URI function tests
+    ├── test_string_uri.fluid      # String and URI function tests
     └── test_unit_tests.fluid      # Runs the module's internal unit tests
 ```
 
