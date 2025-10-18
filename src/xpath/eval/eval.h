@@ -19,7 +19,7 @@ class extXML;
 struct XMLAttrib;
 class CompiledXPath;
 
-class XPathEvaluator {
+class XPathEvaluator : public XPathErrorReporter {
    public:
 
    enum class PredicateResult {
@@ -131,8 +131,8 @@ class XPathEvaluator {
 
    std::string build_ast_signature(const XPathNode *Node) const;
 
-   void record_error(std::string_view Message, bool Force = false);
-   void record_error(std::string_view Message, const XPathNode *Node, bool Force = false);
+   void record_error(std::string_view Message, bool Force = false) override;
+   void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) override;
    std::optional<XPathVal> resolve_user_defined_function(std::string_view FunctionName,
       const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
    XPathVal evaluate_user_defined_function(const XQueryFunction &Function,

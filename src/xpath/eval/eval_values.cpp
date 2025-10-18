@@ -222,56 +222,117 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
       return XPathVal();
    }
 
-   if (has_expanded_name) {
-      uint32_t namespace_hash = namespace_uri.empty() ? 0 : pf::strhash(namespace_uri);
-      if (namespace_hash != 0) {
-         for (const auto &import : prolog->module_imports) {
-            if (pf::strhash(import.target_namespace) IS namespace_hash) {
-               if (!context.module_cache) {
-                  std::string message = "Module function '";
-                  message.append(canonical_name);
-                  message.append("' requires a module cache.");
-                  record_error(message, FuncNode, true);
-                  return XPathVal();
-               }
+   uint32_t namespace_hash = 0U;
+   std::string module_uri;
 
-               std::string message = "Module function resolution is not implemented for namespace '";
-               message.append(import.target_namespace);
-               message.append("'.");
-               record_error(message, FuncNode, true);
-               return XPathVal();
-            }
-         }
+   if (has_expanded_name) {
+      if (!namespace_uri.empty()) {
+         namespace_hash = pf::strhash(namespace_uri);
+         module_uri = namespace_uri;
       }
    }
    else {
       auto separator = FunctionName.find(':');
       if (separator != std::string_view::npos) {
          std::string prefix(FunctionName.substr(0, separator));
-         uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
-         if (namespace_hash != 0) {
-            for (const auto &import : prolog->module_imports) {
-               if (pf::strhash(import.target_namespace) IS namespace_hash) {
-                  if (!context.module_cache) {
-                     std::string message = "Module function '";
-                     message.append(canonical_name);
-                     message.append("' requires a module cache.");
-                     record_error(message, FuncNode, true);
-                     return XPathVal();
-                  }
-
-                  std::string message = "Module function resolution is not implemented for namespace '";
-                  message.append(import.target_namespace);
-                  message.append("'.");
-                  record_error(message, FuncNode, true);
-                  return XPathVal();
+         namespace_hash = prolog->resolve_prefix(prefix, context.document);
+         if (namespace_hash != 0U) {
+            auto uri_entry = prolog->declared_namespace_uris.find(prefix);
+            if (uri_entry not_eq prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
+            else if (context.document) {
+               auto prefix_it = context.document->Prefixes.find(prefix);
+               if (prefix_it not_eq context.document->Prefixes.end()) {
+                  auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+                  if (ns_it not_eq context.document->NSRegistry.end()) module_uri = ns_it->second;
                }
             }
          }
       }
    }
 
-   return std::nullopt;
+   const XQueryModuleImport *matched_import = nullptr;
+   if (namespace_hash != 0U) {
+      for (const auto &import : prolog->module_imports) {
+         if (pf::strhash(import.target_namespace) IS namespace_hash) {
+            matched_import = &import;
+            if (module_uri.empty()) module_uri = import.target_namespace;
+            break;
+         }
+      }
+   }
+
+   if (!matched_import) return std::nullopt;
+
+   if (module_uri.empty()) {
+      std::string message = "Module function '";
+      message.append(canonical_name);
+      message.append("' has an unresolved namespace.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_cache = context.module_cache;
+   if (!module_cache) {
+      std::string message = "Module function '";
+      message.append(canonical_name);
+      message.append("' requires a module cache.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_document = module_cache->fetch_or_load(module_uri, *prolog, *this);
+   (void)module_document;
+
+   auto module_info = module_cache->find_module(module_uri);
+   if (!module_info) {
+      std::string message = "Module '";
+      message.append(module_uri);
+      message.append("' could not be loaded for function '");
+      message.append(canonical_name);
+      message.append("'.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_prolog = module_info->prolog;
+   if (!module_prolog) {
+      std::string message = "Module '";
+      message.append(module_uri);
+      message.append("' does not expose a prolog.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_function = module_prolog->find_function(FunctionName, Args.size());
+   if (!module_function) {
+      auto alternative_name = module_prolog->normalise_function_qname(FunctionName, module_info->document.get());
+      if (alternative_name not_eq FunctionName) {
+         module_function = module_prolog->find_function(alternative_name, Args.size());
+      }
+   }
+
+   if (!module_function) {
+      std::string message = "Module function '";
+      message.append(canonical_name);
+      message.append("' is not exported by namespace '");
+      message.append(module_uri);
+      message.append("'.");
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto previous_prolog = context.prolog;
+   auto previous_cache = context.module_cache;
+
+   context.prolog = module_prolog;
+   context.module_cache = module_cache;
+
+   XPathVal resolved_value = evaluate_user_defined_function(*module_function, Args, CurrentPrefix, FuncNode);
+
+   context.prolog = previous_prolog;
+   context.module_cache = previous_cache;
+
+   return resolved_value;
 }
 
 // Evaluates a prolog-defined function by binding arguments and executing the stored body expression.

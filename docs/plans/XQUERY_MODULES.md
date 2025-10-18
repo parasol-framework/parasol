@@ -16,6 +16,10 @@ This document outlines the implementation plan for dynamic module loading to ena
 - ✅ Module import declarations parsed and recorded by `XPathParser::parse_import_statement`
 - ✅ Basic validation that module cache exists when imports resolve
 
+### Newly Implemented
+
+- ✅ Phase C runtime integration: evaluator resolves module functions and variables via the shared cache
+
 ### Repository Reality Check
 
 Before expanding the plan, confirm the starting point in the tree:
