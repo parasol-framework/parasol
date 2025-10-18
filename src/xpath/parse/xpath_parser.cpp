@@ -543,10 +543,7 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
 
    if (not consume_token(XPathTokenType::RPAREN, "Expected ')' after parameters")) return false;
 
-   std::string function_text = *qname;
-   std::string function_signature = function_text;
-   function_signature.push_back('/');
-   function_signature.append(std::to_string(parameter_names.size()));
+   std::string function_signature = *qname + "/" + std::to_string(parameter_names.size());
 
    auto function_entry = prolog.function_signatures_seen.insert(function_signature);
    if (not function_entry.second) {
