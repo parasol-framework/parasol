@@ -86,6 +86,7 @@ class XPathParser {
 
    // Prolog parsing helpers
    bool parse_prolog(XQueryProlog &prolog);
+   bool parse_module_decl(XQueryProlog &prolog);
    bool parse_declare_statement(XQueryProlog &prolog);
    bool parse_namespace_decl(XQueryProlog &prolog);
    bool parse_default_namespace_decl(XQueryProlog &prolog, bool IsFunctionNamespace);
