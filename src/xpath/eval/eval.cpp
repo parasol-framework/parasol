@@ -66,18 +66,31 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    if (!context.module_cache and context.prolog) {
       context.module_cache = context.prolog->get_module_cache();
    }
+
+   auto prolog_ptr = context.prolog;
+   if (!prolog_ptr and query_root) prolog_ptr = query_root->get_prolog();
+
+   construction_preserve_mode = false;
+   if (prolog_ptr) {
+      construction_preserve_mode =
+         (prolog_ptr->construction_mode IS XQueryProlog::ConstructionMode::Preserve);
+   }
 }
 
 bool XPathEvaluator::prolog_has_boundary_space_preserve() const
 {
    auto prolog = context.prolog;
+   if (!prolog and query_root) prolog = query_root->get_prolog();
    if (!prolog) return false;
    return prolog->boundary_space IS XQueryProlog::BoundarySpace::Preserve;
 }
 
 bool XPathEvaluator::prolog_construction_preserve() const
 {
+   if (construction_preserve_mode) return true;
+
    auto prolog = context.prolog;
+   if (!prolog and query_root) prolog = query_root->get_prolog();
    if (!prolog) return false;
    return prolog->construction_mode IS XQueryProlog::ConstructionMode::Preserve;
 }

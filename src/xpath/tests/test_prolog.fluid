@@ -74,6 +74,62 @@ function testBoundarySpaceStripComputedText()
    assert(value == 'padded', 'Boundary-space strip should trim whitespace from enclosed expressions, got ' .. tostring(value))
 end
 
+function testConstructionStripComputedWhitespace()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare construction strip;',
+      'string(<a>{"   "}</a>)'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == '', 'Construction strip should remove whitespace-only computed text nodes, got ' .. tostring(value))
+end
+
+function testConstructionPreserveComputedWhitespace()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare construction preserve;',
+      'string(<a>{"   "}</a>)'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == '   ', 'Construction preserve should retain whitespace-only computed text nodes, got ' .. tostring(value))
+end
+
+function testConstructionStripTextConstructorWhitespace()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare construction strip;',
+      'string(element wrapper { text { "  padded  " } })'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == 'padded', 'Construction strip should trim text constructor content, got ' .. tostring(value))
+end
+
+function testConstructionPreserveTextConstructorWhitespace()
+   local xml = obj.new('xml', {
+      statement = '<root/>'
+   })
+
+   local expr = table.concat({
+      'declare construction preserve;',
+      'string(element wrapper { text { "  padded  " } })'
+   }, ' ')
+
+   local value = xml.getKey(expr)
+   assert(value == '  padded  ', 'Construction preserve should retain text constructor whitespace, got ' .. tostring(value))
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Recursive functions declared in the prolog should resolve correctly
 
@@ -534,7 +590,9 @@ end
 return {
    tests = {
       'testUserDefinedFunction', 'testNamespaceAndVariableDeclarations', 'testBoundarySpacePreservation',
-      'testBoundarySpaceStripRemoval',
+      'testBoundarySpacePreserveComputedText', 'testBoundarySpaceStripRemoval',
+      'testConstructionStripComputedWhitespace', 'testConstructionPreserveComputedWhitespace',
+      'testConstructionStripTextConstructorWhitespace', 'testConstructionPreserveTextConstructorWhitespace',
       'testRecursiveFunction', 'testFunctionOverloadingByArity', 'testNamespaceFallbackFromDocument',
       'testVariableShadowing', 'testExternalVariableErrorHandling', 'testExternalFunctionErrorHandling',
       'testModuleImportDeclaration', 'testFunctionTypeAnnotations', 'testMultipleNamespacesInProlog',

@@ -162,6 +162,8 @@ std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_
       return std::string(Text);
    }
 
+   if (prolog_construction_preserve()) return std::string(Text);
+
    if (whitespace_only)
    {
       if (prolog_has_boundary_space_preserve()) return std::string(Text);
@@ -1181,7 +1183,7 @@ XMLTag XPathEvaluator::clone_node_subtree(const XMLTag &Source, int ParentID)
 // creation, and text concatenation according to the XPath constructor rules.
 
 bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal &Value, uint32_t CurrentPrefix,
-   const ConstructorNamespaceScope &Scope)
+   const ConstructorNamespaceScope &Scope, bool PreserveConstruction)
 {
    if (Value.Type IS XPVT::NodeSet) {
       Parent.Children.reserve(Parent.Children.size() + Value.node_set.size());
@@ -1221,7 +1223,10 @@ bool XPathEvaluator::append_constructor_sequence(XMLTag &Parent, const XPathVal 
    }
 
    std::string text = Value.to_string();
-   auto prepared = prepare_constructor_text(text, false);
+
+   std::optional<std::string> prepared;
+   if (PreserveConstruction) prepared = std::string(text);
+   else prepared = prepare_constructor_text(text, false);
    if (not prepared.has_value()) return true;
    text = std::move(*prepared);
    if (text.empty()) return true;
@@ -1329,10 +1334,19 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
 // Reduces the child expressions beneath a constructor content node to a single string value.  Each child expression
 // is evaluated and the textual representation is concatenated to form the returned content.
 
-std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix)
+std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix,
+   bool ApplyWhitespaceRules, bool PreserveConstruction)
 {
    if (not Node) return std::string();
-   if (not Node->value.empty()) return Node->value;
+   if (not Node->value.empty())
+   {
+      if (not ApplyWhitespaceRules) return Node->value;
+      if (PreserveConstruction) return Node->value;
+
+      auto prepared_literal = prepare_constructor_text(Node->value, not ApplyWhitespaceRules);
+      if (prepared_literal.has_value()) return *prepared_literal;
+      return std::string();
+   }
 
    if (Node->child_count() IS 0) return std::string();
 
@@ -1382,7 +1396,13 @@ std::optional<std::string> XPathEvaluator::evaluate_constructor_content_string(c
 
    constructed_nodes.resize(previous_constructed);
    next_constructed_node_id = saved_id;
-   return result;
+
+   if (not ApplyWhitespaceRules) return result;
+   if (PreserveConstruction) return result;
+
+   auto prepared = prepare_constructor_text(result, false);
+   if (prepared.has_value()) return *prepared;
+   return std::string();
 }
 
 //********************************************************************************************************************
@@ -1556,6 +1576,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
    element.Attribs = element_attributes;
 
    element.Children.reserve(Node->child_count());
+   bool preserve_construction = prolog_construction_preserve();
 
    for (size_t index = 0; index < Node->child_count(); ++index)
    {
@@ -1592,7 +1613,8 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          auto saved_id = next_constructed_node_id;
          XPathVal value = evaluate_expression(expr, CurrentPrefix);
          if (expression_unsupported) return std::nullopt;
-         if (not append_constructor_sequence(element, value, CurrentPrefix, element_scope)) return std::nullopt;
+         if (not append_constructor_sequence(element, value, CurrentPrefix, element_scope, preserve_construction))
+            return std::nullopt;
          constructed_nodes.resize(previous_constructed);
          next_constructed_node_id = saved_id;
          continue;
@@ -1714,6 +1736,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
    ConstructorNamespaceScope scope;
    scope.parent = nullptr;
+   bool preserve_construction = prolog_construction_preserve();
 
    if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
@@ -1735,7 +1758,8 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
                if (expression_unsupported) return XPathVal();
-               if (not append_constructor_sequence(element, value, CurrentPrefix, scope)) return XPathVal();
+               if (not append_constructor_sequence(element, value, CurrentPrefix, scope, preserve_construction))
+                  return XPathVal();
                constructed_nodes.resize(previous_constructed);
                next_constructed_node_id = saved_id;
             }
@@ -1834,7 +1858,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto value_string = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   auto value_string = evaluate_constructor_content_string(content_node, CurrentPrefix, false, false);
    if (not value_string) return XPathVal();
 
    pf::vector<XMLAttrib> attribute_attribs;
@@ -1872,7 +1896,8 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   bool preserve_construction = prolog_construction_preserve();
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix, true, preserve_construction);
    if (not content) return XPathVal();
 
    pf::vector<XMLAttrib> text_attribs;
@@ -1908,7 +1933,7 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix, false, false);
    if (not content) return XPathVal();
 
    auto double_dash = content->find("--");
@@ -1976,7 +2001,7 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
    }
 
    const XPathNode *content_node = Node->child_count() > 0 ? Node->get_child(0) : nullptr;
-   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix);
+   auto content = evaluate_constructor_content_string(content_node, CurrentPrefix, false, false);
    if (not content) return XPathVal();
 
    auto terminator = content->find("?>");
@@ -2029,6 +2054,7 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
 
    ConstructorNamespaceScope scope;
    scope.parent = nullptr;
+   bool preserve_construction = prolog_construction_preserve();
 
    if (Node->child_count() > 0) {
       const XPathNode *content_node = Node->get_child(0);
@@ -2050,7 +2076,8 @@ XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, ui
                auto saved_id = next_constructed_node_id;
                XPathVal value = evaluate_expression(expr, CurrentPrefix);
                if (expression_unsupported) return XPathVal();
-               if (not append_constructor_sequence(document_node, value, CurrentPrefix, scope)) return XPathVal();
+               if (not append_constructor_sequence(document_node, value, CurrentPrefix, scope, preserve_construction))
+                  return XPathVal();
                constructed_nodes.resize(previous_constructed);
                next_constructed_node_id = saved_id;
             }
