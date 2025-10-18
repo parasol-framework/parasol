@@ -68,16 +68,13 @@ struct XQueryProlog
 
    ankerl::unordered_dense::map<std::string, uint32_t> declared_namespaces;
    ankerl::unordered_dense::map<std::string, std::string> declared_namespace_uris;
-   std::unordered_set<std::string> namespace_prefixes_seen;
    std::optional<uint32_t> default_element_namespace;
    std::optional<uint32_t> default_function_namespace;
    std::optional<std::string> default_element_namespace_uri;
    std::optional<std::string> default_function_namespace_uri;
 
    ankerl::unordered_dense::map<std::string, XQueryVariable> variables;
-   std::unordered_set<std::string> variable_qnames_seen;
    ankerl::unordered_dense::map<std::string, XQueryFunction> functions;
-   std::unordered_set<std::string> function_signatures_seen;
    std::vector<XQueryModuleImport> module_imports;
 
    std::string static_base_uri;
