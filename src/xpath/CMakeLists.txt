@@ -36,7 +36,7 @@ add_library (xml_xpath_functions OBJECT
 target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
 add_compile_definitions("PRV_XPATH_MODULE" "PRV_XML")
-add_dependencies (xml_xpath_functions build_headers)
+add_dependencies (xpath build_headers xml)
 
 # Module Code
 

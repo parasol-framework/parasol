@@ -155,7 +155,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <param type="CSTRING *" name="Result">An allocated string from the evaluation is returned here.</param>
       </input>
       <description>
-<p>The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the XML document contained within the object.  This is lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
+<p>The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

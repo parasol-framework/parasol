@@ -32,7 +32,7 @@ add_library (xml_schema OBJECT
 
 target_include_directories (xml_schema PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_schema PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_dependencies (xml_schema build_headers)
+add_dependencies (xml build_headers)
 
 # Module Code
 
