@@ -188,6 +188,7 @@ struct GetAttrib { int Index; CSTRING Attrib; CSTRING Value; static const AC id 
 struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; int Result; static const AC id = AC(-9); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct FindTag { CSTRING XPath; FUNCTION * Callback; int Result; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Filter { CSTRING XPath; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Evaluate { CSTRING Statement; CSTRING Result; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Count { CSTRING XPath; int Result; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
@@ -325,6 +326,12 @@ class objXML : public Object {
    inline ERR filter(CSTRING XPath) noexcept {
       struct xml::Filter args = { XPath };
       return(Action(AC(-11), this, &args));
+   }
+   inline ERR evaluate(CSTRING Statement, CSTRING * Result) noexcept {
+      struct xml::Evaluate args = { Statement, (CSTRING)0 };
+      ERR error = Action(AC(-12), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
    }
    inline ERR count(CSTRING XPath, int * Result) noexcept {
       struct xml::Count args = { XPath, (int)0 };

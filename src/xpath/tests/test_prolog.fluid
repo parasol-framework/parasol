@@ -10,7 +10,7 @@ function testUserDefinedFunction()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare function local:square($x) { $x * $x }; local:square(5)')
+   local err, result = xml.mtEvaluate('declare function local:square($x) { $x * $x }; local:square(5)')
    assert(tonumber(result) == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'User-defined function should not record an error message, got ' .. tostring(xml.errorMsg))
 end
@@ -24,7 +24,7 @@ function testNamespaceAndVariableDeclarations()
    })
 
    local expr = 'declare namespace ex = "http://example.com/ns"; declare variable $ex:answer := 42; if ($ex:answer = 42 and string(/root/ex:item) = "Alpha") then "pass" else "fail"'
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
 
    assert(value == 'pass', 'Prolog namespace and variable declarations should evaluate correctly, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Namespace and variable declarations should not record an error message, got ' .. tostring(xml.errorMsg))
@@ -38,7 +38,7 @@ function testBoundarySpacePreservation()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('declare boundary-space preserve; string(<a>  padded  </a>)')
+   local err, value = xml.mtEvaluate('declare boundary-space preserve; string(<a>  padded  </a>)')
    assert(value == '  padded  ', 'Boundary-space preserve should retain surrounding whitespace, got ' .. tostring(value))
 end
 
@@ -52,7 +52,7 @@ function testBoundarySpacePreserveComputedText()
       'string(<a>{"  padded  "}</a>)'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == '  padded  ', 'Boundary-space preserve should retain whitespace from enclosed expressions, got ' .. tostring(value))
 end
 
@@ -61,7 +61,7 @@ function testBoundarySpaceStripRemoval()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('string(<a>   </a>)')
+   local err, value = xml.mtEvaluate('string(<a>   </a>)')
    assert(value == '', 'Boundary-space strip should remove whitespace-only text, got ' .. tostring(value))
 end
 
@@ -70,7 +70,7 @@ function testBoundarySpaceStripComputedText()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('string(<a>{"  padded  "}</a>)')
+   local err, value = xml.mtEvaluate('string(<a>{"  padded  "}</a>)')
    assert(value == 'padded', 'Boundary-space strip should trim whitespace from enclosed expressions, got ' .. tostring(value))
 end
 
@@ -84,7 +84,7 @@ function testConstructionStripComputedWhitespace()
       'string(<a>{"   "}</a>)'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == '', 'Construction strip should remove whitespace-only computed text nodes, got ' .. tostring(value))
 end
 
@@ -98,7 +98,7 @@ function testConstructionPreserveComputedWhitespace()
       'string(<a>{"   "}</a>)'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == '   ', 'Construction preserve should retain whitespace-only computed text nodes, got ' .. tostring(value))
 end
 
@@ -112,7 +112,7 @@ function testConstructionStripTextConstructorWhitespace()
       'string(element wrapper { text { "  padded  " } })'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'padded', 'Construction strip should trim text constructor content, got ' .. tostring(value))
 end
 
@@ -126,7 +126,7 @@ function testConstructionPreserveTextConstructorWhitespace()
       'string(element wrapper { text { "  padded  " } })'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == '  padded  ', 'Construction preserve should retain text constructor whitespace, got ' .. tostring(value))
 end
 
@@ -138,7 +138,8 @@ function testRecursiveFunction()
       statement = '<root/>'
    })
 
-   local result = tonumber(xml.getKey('declare function local:factorial($n) { if ($n le 1) then 1 else $n * local:factorial($n - 1) }; local:factorial(5)'))
+   local err, temp_result = xml.mtEvaluate('declare function local:factorial($n) { if ($n le 1) then 1 else $n * local:factorial($n - 1) }; local:factorial(5)')
+   local result = tonumber(temp_result)
    assert(result == 120, 'Recursive prolog function should compute factorial, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Recursive function evaluation should not record an error message, got ' .. tostring(xml.errorMsg))
 end
@@ -151,7 +152,7 @@ function testFunctionOverloadingByArity()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('declare function local:adder($a, $b) { $a + $b }; declare function local:adder($a, $b, $c) { $a + $b + $c }; concat(local:adder(2, 3), ":", local:adder(1, 2, 3))')
+   local err, value = xml.mtEvaluate('declare function local:adder($a, $b) { $a + $b }; declare function local:adder($a, $b, $c) { $a + $b + $c }; concat(local:adder(2, 3), ":", local:adder(1, 2, 3))')
    assert(value == '5:6', 'Function overloading by arity should select the correct body, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Function overloading should not record an error message, got ' .. tostring(xml.errorMsg))
 end
@@ -164,7 +165,7 @@ function testNamespaceFallbackFromDocument()
       statement = '<root xmlns:ns="urn:fallback"><ns:item>Alpha</ns:item></root>'
    })
 
-   local value = xml.getKey('/root/ns:item')
+   local err, value = xml.mtEvaluate('/root/ns:item')
    assert(value == 'Alpha', 'Document namespace prefixes should be available during evaluation, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Namespace fallback should not record an error message, got ' .. tostring(xml.errorMsg))
 end
@@ -177,7 +178,7 @@ function testVariableShadowing()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('declare variable $local:value := "prolog"; let $local:value := "runtime" return $local:value')
+   local err, value = xml.mtEvaluate('declare variable $local:value := "prolog"; let $local:value := "runtime" return $local:value')
    assert(value == 'runtime', 'Dynamic let binding should shadow prolog variable, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Variable shadowing should not record an error message, got ' .. tostring(xml.errorMsg))
 end
@@ -190,7 +191,7 @@ function testExternalVariableErrorHandling()
       statement = '<root/>'
    })
 
-   xml.getKey('declare variable $local:missing external; $local:missing')
+   local err = xml.mtEvaluate('declare variable $local:missing external; $local:missing')
    local message = tostring(xml.errorMsg)
    assert(message == "External variable 'local:missing' is not supported.", 'External variable access should report a descriptive error, got ' .. message)
 end
@@ -203,7 +204,7 @@ function testExternalFunctionErrorHandling()
       statement = '<root/>'
    })
 
-   xml.getKey('declare function local:provided($x) external; local:provided(1)')
+   local err = xml.mtEvaluate('declare function local:provided($x) external; local:provided(1)')
    local message = tostring(xml.errorMsg)
    assert(message == "External function 'local:provided' is not supported.", 'External function invocation should report a descriptive error, got ' .. message)
 end
@@ -216,7 +217,7 @@ function testModuleImportDeclaration()
       statement = '<root/>'
    })
 
-   xml.getKey('import module namespace math = "urn:math"; math:square(2)')
+   local err = xml.mtEvaluate('import module namespace math = "urn:math"; math:square(2)')
    local message = tostring(xml.errorMsg)
    assert(message == "Module function resolution is not implemented for namespace 'urn:math'.", 'Module import should record structural diagnostic, got ' .. message)
 end
@@ -236,7 +237,7 @@ function testDefaultFunctionNamespaceNormalisation()
       'concat(square(3), ":", math:square(4))'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == '9:16', 'Default function namespace should apply to prefixed and unprefixed calls, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Default function namespace should not record an error, got ' .. tostring(xml.errorMsg))
 end
@@ -249,7 +250,7 @@ function testModuleImportNamespaceNormalisation()
       statement = '<root/>'
    })
 
-   xml.getKey('import module namespace math = "urn:math\\library"; math:square(2)')
+   local err = xml.mtEvaluate('import module namespace math = "urn:math\\library"; math:square(2)')
    local message = tostring(xml.errorMsg)
    assert(message == "Module function resolution is not implemented for namespace 'urn:math/library'.", 'Module import namespaces should be normalised, got ' .. message)
 end
@@ -262,7 +263,8 @@ function testFunctionTypeAnnotations()
       statement = '<root/>'
    })
 
-   local result = tonumber(xml.getKey('declare function local:add($a as xs:integer, $b as xs:integer) as xs:integer { $a + $b }; local:add(10, 20)'))
+   local err, temp_result = xml.mtEvaluate('declare function local:add($a as xs:integer, $b as xs:integer) as xs:integer { $a + $b }; local:add(10, 20)')
+   local result = tonumber(temp_result)
    assert(result == 30, 'Function with type annotations should execute correctly, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Function with type annotations should not record an error, got ' .. tostring(xml.errorMsg))
 end
@@ -276,7 +278,7 @@ function testMultipleNamespacesInProlog()
    })
 
    local expr = 'declare namespace a = "urn:a"; declare namespace b = "urn:b"; concat(string(/root/a:item), ":", string(/root/b:item))'
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'A:B', 'Multiple namespace declarations should work, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Multiple namespaces should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -289,7 +291,8 @@ function testVariableInitializerExpressions()
       statement = '<root/>'
    })
 
-   local value = tonumber(xml.getKey('declare variable $x := 5; declare variable $y := $x * 2; $x + $y'))
+   local err, temp_value = xml.mtEvaluate('declare variable $x := 5; declare variable $y := $x * 2; $x + $y')
+   local value = tonumber(temp_value)
    assert(value == 15, 'Variable initialiser expressions should evaluate, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Variable initialisers should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -302,7 +305,7 @@ function testDefaultCollationDeclaration()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare default collation "http://www.w3.org/2005/xpath-functions/collation/codepoint"; "test"')
+   local err, result = xml.mtEvaluate('declare default collation "http://www.w3.org/2005/xpath-functions/collation/codepoint"; "test"')
    assert(result == 'test', 'Default collation declaration should not affect evaluation, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Default collation should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -312,7 +315,7 @@ function testDefaultCollationFunctionUsesProlog()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare default collation "urn:custom"; default-collation()')
+   local err, result = xml.mtEvaluate('declare default collation "urn:custom"; default-collation()')
    assert(result == 'urn:custom', 'default-collation() should honour prolog declaration, got ' .. tostring(result))
 end
 
@@ -321,7 +324,7 @@ function testDecimalFormatDeclaration()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare decimal-format local:df decimal-separator = "x"; "ok"')
+   local err, result = xml.mtEvaluate('declare decimal-format local:df decimal-separator = "x"; "ok"')
    assert(result == 'ok', 'Decimal-format declaration should succeed, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Decimal-format declaration should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -334,7 +337,7 @@ function testConstructionModeDeclaration()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('declare construction strip; string(<test>value</test>)')
+   local err, value = xml.mtEvaluate('declare construction strip; string(<test>value</test>)')
    assert(value == 'value', 'Construction mode declaration should parse, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Construction mode should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -344,7 +347,7 @@ function testConstructionStripTrimsComputedContent()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('declare construction strip; string(<test>{ "  padded  " }</test>)')
+   local err, value = xml.mtEvaluate('declare construction strip; string(<test>{ "  padded  " }</test>)')
    assert(value == 'padded', 'Construction strip should trim computed content, got ' .. tostring(value))
 end
 
@@ -353,7 +356,7 @@ function testConstructionPreserveRetainsWhitespace()
       statement = '<root/>'
    })
 
-   local value = xml.getKey('declare construction preserve; string(<test>{ "  padded  " }</test>)')
+   local err, value = xml.mtEvaluate('declare construction preserve; string(<test>{ "  padded  " }</test>)')
    assert(value == '  padded  ', 'Construction preserve should keep surrounding whitespace, got ' .. tostring(value))
 end
 
@@ -365,8 +368,8 @@ function testZeroParameterFunction()
       statement = '<root/>'
    })
 
-   local result = tonumber(xml.getKey('declare function local:getAnswer() { 42 }; local:getAnswer()'))
-   assert(result == 42, 'Zero-parameter function should work, got ' .. tostring(result))
+   local err, result = xml.mtEvaluate('declare function local:getAnswer() { 42 }; local:getAnswer()')
+   assert(tonumber(result) == 42, 'Zero-parameter function should work, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Zero-parameter function should not error, got ' .. tostring(xml.errorMsg))
 end
 
@@ -378,8 +381,8 @@ function testMultiParameterFunction()
       statement = '<root/>'
    })
 
-   local result = tonumber(xml.getKey('declare function local:sum($a, $b, $c, $d, $e) { $a + $b + $c + $d + $e }; local:sum(1, 2, 3, 4, 5)'))
-   assert(result == 15, 'Multi-parameter function should work, got ' .. tostring(result))
+   local err, result = xml.mtEvaluate('declare function local:sum($a, $b, $c, $d, $e) { $a + $b + $c + $d + $e }; local:sum(1, 2, 3, 4, 5)')
+   assert(tonumber(result) == 15, 'Multi-parameter function should work, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Multi-parameter function should not error, got ' .. tostring(xml.errorMsg))
 end
 
@@ -391,7 +394,8 @@ function testPrologVariableAvailability()
       statement = '<root/>'
    })
 
-   local value = tonumber(xml.getKey('declare variable $pi := 3.14159; $pi * 100'))
+   local err, temp_value = xml.mtEvaluate('declare variable $pi := 3.14159; $pi * 100')
+   local value = tonumber(temp_value)
    assert(math.floor(value + 0.5) == 314, 'Prolog variable should be available, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Prolog variable should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -406,7 +410,7 @@ function testFunctionNameCollisionResolution()
 
    -- Note: We cannot truly override built-in functions with single parameter since those exist
    -- So we test with a different arity where the user function should be selected
-   local result = xml.getKey('declare function local:count($x, $y) { "custom" }; local:count(1, 2)')
+   local err, result = xml.mtEvaluate('declare function local:count($x, $y) { "custom" }; local:count(1, 2)')
    assert(result == 'custom', 'User-defined function with different arity should be called, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Function name resolution should work, got ' .. tostring(xml.errorMsg))
 end
@@ -421,7 +425,7 @@ function testNamespacePrecedence()
 
    -- Declare a prolog namespace that shadows the document namespace
    local expr = 'declare namespace ex = "urn:prolog"; string(/root/ex:item)'
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    -- This tests whether prolog namespace takes precedence
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Namespace precedence should be handled, got ' .. tostring(xml.errorMsg))
 end
@@ -435,7 +439,7 @@ function testMultipleFunctionArities()
    })
 
    local expr = 'declare function local:f($a) { "one" }; declare function local:f($a, $b) { "two" }; declare function local:f($a, $b, $c) { "three" }; concat(local:f(1), ":", local:f(1, 2), ":", local:f(1, 2, 3))'
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'one:two:three', 'Multiple function arities should be available, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Multiple function arities should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -448,7 +452,7 @@ function testBaseUriDeclaration()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare base-uri "http://example.com/"; "ok"')
+   local err, result = xml.mtEvaluate('declare base-uri "http://example.com/"; "ok"')
    assert(result == 'ok', 'Base URI declaration should parse, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Base URI declaration should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -461,7 +465,7 @@ function testOrderingDeclaration()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare ordering ordered; (3, 1, 2)')
+   local err, result = xml.mtEvaluate('declare ordering ordered; (3, 1, 2)')
    assert(result ~= nil, 'Ordering declaration should parse')
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Ordering declaration should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -477,7 +481,7 @@ function testOrderingModeUnorderedSequence()
       'return concat(string($seq[1]), ":", string($seq[2]))'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'Beta:Alpha', 'Ordering unordered should preserve evaluation sequence, got ' .. tostring(value))
 end
 
@@ -492,7 +496,7 @@ function testOrderingModeUnorderedUnion()
       'return concat(string($u[1]), ":", string($u[2]))'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'Beta:Alpha', 'Ordering unordered should preserve union branch order, got ' .. tostring(value))
 end
 
@@ -507,7 +511,7 @@ function testOrderingModeUnorderedIntersect()
       'return concat(string($inter[1]), ":", string($inter[2]))'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'Beta:Alpha', 'Ordering unordered should retain left operand order for intersect, got ' .. tostring(value))
 end
 
@@ -522,7 +526,7 @@ function testOrderingModeUnorderedExcept()
       'return concat(string($exc[1]), ":", string($exc[2]))'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'Gamma:Beta', 'Ordering unordered should respect operand order for except, got ' .. tostring(value))
 end
 
@@ -538,7 +542,7 @@ function testDefaultEmptyOrderGreatest()
       'return concat($seq[1], ":", $seq[2], ":", $seq[3])'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'a:b:empty', 'Default empty order should treat empties as greatest, got ' .. tostring(value))
 end
 
@@ -555,7 +559,7 @@ function testEmptyOrderLeastPlacement()
       'return concat($seq[1], ":", $seq[2], ":", $seq[3])'
    }, ' ')
 
-   local value = xml.getKey(expr)
+   local err, value = xml.mtEvaluate(expr)
    assert(value == 'empty:a:b', 'Empty least should place empties first, got ' .. tostring(value))
 end
 
@@ -567,7 +571,7 @@ function testCopyNamespacesDeclaration()
       statement = '<root/>'
    })
 
-   local result = xml.getKey('declare copy-namespaces preserve, inherit; "ok"')
+   local err, result = xml.mtEvaluate('declare copy-namespaces preserve, inherit; "ok"')
    assert(result == 'ok', 'Copy-namespaces declaration should parse, got ' .. tostring(result))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Copy-namespaces should not error, got ' .. tostring(xml.errorMsg))
 end
@@ -580,7 +584,7 @@ function testQueryWithoutProlog()
       statement = '<root><item>test</item></root>'
    })
 
-   local value = xml.getKey('string(/root/item)')
+   local err, value = xml.mtEvaluate('string(/root/item)')
    assert(value == 'test', 'Query without prolog should work, got ' .. tostring(value))
    assert(xml.errorMsg == nil or xml.errorMsg == '', 'Query without prolog should not error, got ' .. tostring(xml.errorMsg))
 end

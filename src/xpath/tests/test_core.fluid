@@ -200,11 +200,13 @@ function testCountOperations()
    })
 
    -- Count all items
-   local totalItems = tonumber(xml.getKey('count(//item)'))
+   local err, temp_totalItems = xml.mtEvaluate('count(//item)')
+   local totalItems = tonumber(temp_totalItems)
    assert(totalItems == 4, "Expected 4 total items, got " .. totalItems)
 
    -- Count items in first section
-   local firstSectionItems = tonumber(xml.getKey('count(/root/section[1]/item)'))
+   local err, temp_firstSectionItems = xml.mtEvaluate('count(/root/section[1]/item)')
+   local firstSectionItems = tonumber(temp_firstSectionItems)
    assert(firstSectionItems == 3, "Expected 3 items in first section, got " .. firstSectionItems)
 end
 
@@ -240,12 +242,12 @@ function testContentExtraction()
    })
 
    -- Test immediate content extraction (excludes nested tags)
-   local immediateContent = xml.getKey('/root/section')
+   local err, immediateContent = xml.mtEvaluate('/root/section')
    assert(string.find(immediateContent, "Direct content"), "Immediate content not extracted")
    assert(string.find(immediateContent, "more content"), "Trailing content not extracted")
 
    -- Test deep content extraction
-   local deepContent = xml.getKey('string(/root/section)')
+   local err, deepContent = xml.mtEvaluate('string(/root/section)')
    assert(string.find(deepContent, "emphasized"), "Deep content not extracted, got: " .. deepContent)
 end
 

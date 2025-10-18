@@ -60,10 +60,10 @@ function testAttributeAxisHandling()
       statement = '<root><item id="one" category="fiction" data-extra="x"/></root>'
    })
 
-   local attrValue = xml.getKey('/root/item/@category')
+   local err, attrValue = xml.mtEvaluate('/root/item/@category')
    assert(attrValue == 'fiction', '@category should retrieve the category attribute value, got ' .. nz(attrValue, 'NIL'))
 
-   attrValue = xml.getKey('/root/item/attribute::category')
+   local err, attrValue = xml.mtEvaluate('/root/item/attribute::category')
    assert(attrValue == 'fiction', 'attribute::category should expose the same value as @category, got ' .. nz(attrValue, 'NIL'))
 
    local attributeNames = {}
@@ -84,7 +84,7 @@ function testAttributeAxisHandling()
    local errAttr = xml.mtFindTag('/root/item/@*[starts-with(name(), "data")]')
    assert(errAttr == ERR_Okay, '@* should support function predicates on attribute names: ' .. mSys.GetErrorMsg(errAttr))
 
-   attrValue = xml.getKey('/root/item/@*[starts-with(name(), "data")]')
+   local err, attrValue = xml.mtEvaluate('/root/item/@*[starts-with(name(), "data")]')
    assert(attrValue == 'x', 'starts-with(name()) should retrieve the data-extra attribute value, got ' .. nz(attrValue, 'NIL'))
 end
 

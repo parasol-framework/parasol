@@ -34,6 +34,7 @@ FDEF maGetAttrib[] = { { "Index", FD_INT }, { "Attrib", FD_STR }, { "Value", FD_
 FDEF maInsertXPath[] = { { "XPath", FD_STR }, { "Where", FD_INT }, { "XML", FD_STR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maFindTag[] = { { "XPath", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maFilter[] = { { "XPath", FD_STR }, { 0, 0 } };
+FDEF maEvaluate[] = { { "Statement", FD_STR }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 FDEF maCount[] = { { "XPath", FD_STR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maInsertContent[] = { { "Index", FD_INT }, { "Where", FD_INT }, { "Content", FD_STR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Limit", FD_INT }, { 0, 0 } };
@@ -59,6 +60,7 @@ static const struct MethodEntry clXMLMethods[] = {
    { AC(-9), (APTR)XML_InsertXPath, "InsertXPath", maInsertXPath, sizeof(struct xml::InsertXPath) },
    { AC(-10), (APTR)XML_FindTag, "FindTag", maFindTag, sizeof(struct xml::FindTag) },
    { AC(-11), (APTR)XML_Filter, "Filter", maFilter, sizeof(struct xml::Filter) },
+   { AC(-12), (APTR)XML_Evaluate, "Evaluate", maEvaluate, sizeof(struct xml::Evaluate) },
    { AC(-13), (APTR)XML_Count, "Count", maCount, sizeof(struct xml::Count) },
    { AC(-14), (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xml::InsertContent) },
    { AC(-15), (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xml::RemoveXPath) },

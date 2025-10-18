@@ -141,6 +141,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
     { id=9,  name="InsertXPath" },
     { id=10, name="FindTag" },
     { id=11, name="Filter" },
+    { id=12, name="Evaluate" },
     { id=13, name="Count" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },

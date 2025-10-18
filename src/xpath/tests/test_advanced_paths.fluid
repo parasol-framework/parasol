@@ -13,7 +13,7 @@ function testDeeplyNestedPathTraversal()
    local err, tagId = xml.mtFindTag('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
    assert(err == ERR_Okay, 'last() combined with position() should locate the first paragraph of the last chapter: ' .. mSys.GetErrorMsg(err))
 
-   local content = xml.getKey('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
+   local err, content = xml.mtEvaluate('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
    assert(content == 'Conclusion', 'Paragraph content should be "Conclusion", got ' .. nz(content, 'NIL'))
 end
 
@@ -71,7 +71,7 @@ function testDescendantAxisAttributeAccess()
       statement = '<root category="library"><branch name="east"><shelf code="A"><book id="1">Intro</book></shelf></branch><branch name="west"><shelf code="B"><book id="2">Advanced</book></shelf></branch></root>'
    })
 
-   local category = xml.getKey('//branch[@name="west"]/../@category')
+   local err, category = xml.mtEvaluate('//branch[@name="west"]/../@category')
    assert(category == 'library', 'Using .. from a descendant selection should expose the ancestor attribute value, got ' .. nz(category, 'NIL'))
 
    local err, tagId = xml.mtFindTag('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
