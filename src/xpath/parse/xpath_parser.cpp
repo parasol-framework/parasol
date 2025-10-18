@@ -1,6 +1,5 @@
 
 #include "xpath_parser.h"
-#include "../xquery_errors.h"
 #include "../api/xquery_prolog.h"
 #include <algorithm>
 #include <parasol/strings.hpp>
@@ -110,8 +109,7 @@ bool XPathParser::is_function_call_ahead(size_t Index) const
 
    size_t lookahead = Index + 1;
 
-   if ((lookahead < tokens.size()) and (tokens[lookahead].type IS XPathTokenType::COLON))
-   {
+   if ((lookahead < tokens.size()) and (tokens[lookahead].type IS XPathTokenType::COLON)) {
       lookahead++;
       if (lookahead >= tokens.size()) return false;
 
@@ -125,7 +123,8 @@ bool XPathParser::is_function_call_ahead(size_t Index) const
 
 //********************************************************************************************************************
 
-static std::string_view keyword_from_token_type(XPathTokenType Type) {
+static std::string_view keyword_from_token_type(XPathTokenType Type) 
+{
    switch (Type) {
       case XPathTokenType::AND:               return "and";
       case XPathTokenType::OR:                return "or";
@@ -555,8 +554,7 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
    }
 
    XQueryFunction function;
-   if (active_prolog)
-   {
+   if (active_prolog) {
       function.qname = active_prolog->normalise_function_qname(*qname, nullptr);
    }
    else function.qname = *qname;
@@ -732,8 +730,7 @@ bool XPathParser::parse_copy_namespaces_decl(XQueryProlog &prolog)
 
    if (match_literal_keyword("inherit")) inherit = true;
    else if (match_literal_keyword("no-inherit")) inherit = false;
-   else
-   {
+   else {
       report_error("XPST0003: Expected 'inherit' or 'no-inherit' in copy-namespaces declaration");
       return false;
    }
@@ -1371,6 +1368,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
             // Check if the expression only consumed a single token that's a FLWOR structural keyword.
             // This indicates the parser mistakenly treated a keyword like 'return' as an element name.
+            
             if ((current_token IS expr_start_pos + 1) and (expr_start_pos < tokens.size())) {
                const auto &consumed_token = tokens[expr_start_pos];
                std::string_view keyword = keyword_from_token_type(consumed_token.type);
@@ -2228,8 +2226,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call()
    if (not match(XPathTokenType::LPAREN)) return nullptr;
 
    std::string canonical_name(*function_name);
-   if (active_prolog)
-   {
+   if (active_prolog) {
       canonical_name = active_prolog->normalise_function_qname(canonical_name, nullptr);
    }
 
@@ -2515,6 +2512,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
    return element_node;
 }
 
+//********************************************************************************************************************
+
 std::unique_ptr<XPathNode> XPathParser::parse_enclosed_expr()
 {
    if (not consume_token(XPathTokenType::LBRACE, "Expected '{' to begin expression")) {
@@ -2530,6 +2529,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_enclosed_expr()
 
    return expr;
 }
+
+//********************************************************************************************************************
 
 std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Source)
 {

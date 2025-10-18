@@ -656,6 +656,8 @@ ctest --build-config [BuildType] --test-dir build/agents -R xpath
 
 The XPath module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Fluid interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
 
+Unit tests will only be compiled in the module if ENABLE_UNIT_TESTS is enabled in the module's CMakeLists.txt file.
+
 **Unit Test Infrastructure:**
 
 The module exposes a `xp::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
