@@ -208,6 +208,7 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
    std::optional<std::string> node_set_string_override; // If set, this string is returned for all nodes in the node set
    std::vector<std::string> node_set_string_values; // If set, these strings are returned for all nodes in the node set
    std::vector<const XMLAttrib *> node_set_attributes; // If set, these attributes are returned for all nodes in the node set
+   bool preserve_node_order = false; // When true, node_set is already in the desired evaluation order
 
    XPathValue(XPVT pType) : Type(pType), NumberValue(0) { }
 
@@ -219,7 +220,8 @@ module({ name="XML", copyright="Paul Manias © 2001-2025", version=1.0, timestam
         node_set(Nodes),
         node_set_string_override(std::move(NodeSetString)),
         node_set_string_values(std::move(NodeSetStrings)),
-        node_set_attributes(std::move(NodeSetAttributes)) {}
+        node_set_attributes(std::move(NodeSetAttributes)),
+        preserve_node_order(false) {}
 
   ]])
 
