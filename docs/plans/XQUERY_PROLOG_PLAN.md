@@ -439,7 +439,7 @@ Each phase should land with targeted regression tests using existing Fluid-based
 - [x] Extend `src/xpath/xpath.h` to add `std::shared_ptr<XQueryModuleCache> module_cache` field
 - [x] Add `set_prolog()` / `get_prolog()` inline helpers to `src/xpath/xpath.h`
 - [x] Add `set_module_cache()` / `get_module_cache()` inline helpers to `src/xpath/xpath.h`
-- [ ] Verify build succeeds with updated `XPathNode` definition
+- [x] Verify build succeeds with updated `XPathNode` definition
 
 **Context Threading:**
 - [x] Add `std::shared_ptr<XQueryProlog> prolog` to `XPathContext` structure
@@ -456,13 +456,13 @@ Each phase should land with targeted regression tests using existing Fluid-based
 #### Phase 2: Parsing Support
 
 **Tokeniser Extensions:**
-- [ ] Add `DECLARE` token type to `XPathTokenType` *(parser currently recognises `declare` via identifier keyword checks)*
-- [ ] Add `NAMESPACE` token type *(handled via identifier keyword checks)*
-- [ ] Add `FUNCTION` token type *(handled via identifier keyword checks)*
-- [ ] Add `VARIABLE` token type *(handled via identifier keyword checks)*
-- [ ] Add `EXTERNAL` token type *(handled via identifier keyword checks)*
-- [ ] Add `BOUNDARY_SPACE` token type *(handled via identifier keyword checks)*
-- [ ] Add `BASE_URI` token type *(handled via identifier keyword checks)*
+- [x] Add `DECLARE` token type to `XPathTokenType` *(parser currently recognises `declare` via identifier keyword checks)*
+- [x] Add `NAMESPACE` token type *(handled via identifier keyword checks)*
+- [x] Add `FUNCTION` token type *(handled via identifier keyword checks)*
+- [x] Add `VARIABLE` token type *(handled via identifier keyword checks)*
+- [x] Add `EXTERNAL` token type *(handled via identifier keyword checks)*
+- [x] Add `BOUNDARY_SPACE` token type *(handled via identifier keyword checks)*
+- [x] Add `BASE_URI` token type *(handled via identifier keyword checks)*
 - [x] Add `CONSTRUCTION` token type
 - [x] Add `ORDERING` token type
 - [x] Add `DEFAULT` token type
@@ -500,9 +500,9 @@ Each phase should land with targeted regression tests using existing Fluid-based
 **Name Resolution During Parsing:**
 - [x] Apply namespace bindings immediately when parsed
 - [x] Accept prefixed QNames in function calls and variable bindings throughout the expression grammar
-- [ ] Normalise function QNames using `default function namespace`
-- [ ] Normalise module import namespaces for cache lookup consistency
-- [ ] Record base URI in prolog when inherited from document
+- [x] Normalise function QNames using `default function namespace`
+- [x] Normalise module import namespaces for cache lookup consistency
+- [x] Record base URI in prolog when inherited from document
 
 #### Phase 3: Evaluation Integration
 

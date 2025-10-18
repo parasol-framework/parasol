@@ -7,6 +7,7 @@
 #include <parasol/strings.hpp>
 #include <utility>
 
+// Resolves a variable reference by consulting the dynamic context, document bindings, and finally the prolog.
 bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
    XPathVal &OutValue, const XPathNode *ReferenceNode)
 {

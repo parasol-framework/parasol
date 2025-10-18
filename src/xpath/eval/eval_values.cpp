@@ -179,6 +179,7 @@ std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_
 
 //********************************************************************************************************************
 
+// Attempts to resolve a function call against the prolog before consulting the built-in library.
 std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::string_view FunctionName,
    const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
 {
@@ -280,6 +281,7 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    return std::nullopt;
 }
 
+// Evaluates a prolog-defined function by binding arguments and executing the stored body expression.
 XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Function,
    const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
 {

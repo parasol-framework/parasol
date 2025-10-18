@@ -7,6 +7,7 @@
 #include "../../xml/uri_utils.h"
 
 namespace {
+   // Builds a canonical identifier combining the QName and arity so functions can be stored in a flat map.
    [[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity) {
       std::string signature;
       signature.reserve(QName.size() + 16U);
@@ -17,17 +18,20 @@ namespace {
    }
 }
 
+// Initialises the prolog defaults so that standard collations and decimal format entries are always present.
 XQueryProlog::XQueryProlog()
 {
    default_collation = "http://www.w3.org/2005/xpath-functions/collation/codepoint";
    decimal_formats[std::string()] = DecimalFormat();
 }
 
+// Returns the canonical signature text used to register the function in the prolog lookup table.
 std::string XQueryFunction::signature() const
 {
    return build_function_signature(qname, parameter_names.size());
 }
 
+// Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
 std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(std::string_view uri,
    const XQueryProlog &prolog, XPathErrorReporter &reporter) const
 {
@@ -52,6 +56,7 @@ std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(std::string_view uri,
    return nullptr;
 }
 
+// Performs a lookup for a user-defined function using the generated signature key.
 const XQueryFunction * XQueryProlog::find_function(std::string_view qname, size_t arity) const
 {
    auto signature = build_function_signature(qname, arity);
@@ -60,6 +65,7 @@ const XQueryFunction * XQueryProlog::find_function(std::string_view qname, size_
    return nullptr;
 }
 
+// Retrieves a declared variable definition by its canonical QName string.
 const XQueryVariable * XQueryProlog::find_variable(std::string_view qname) const
 {
    auto entry = variables.find(std::string(qname));
@@ -67,6 +73,7 @@ const XQueryVariable * XQueryProlog::find_variable(std::string_view qname) const
    return nullptr;
 }
 
+// Resolves a namespace prefix against the prolog declarations, falling back to the document bindings when required.
 uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *document) const
 {
    auto mapping = declared_namespaces.find(std::string(prefix));
@@ -85,6 +92,7 @@ uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *doc
    return 0U;
 }
 
+// Records a namespace binding inside the prolog and optionally mirrors it into the backing document.
 void XQueryProlog::declare_namespace(std::string_view prefix, std::string_view uri, extXML *document)
 {
    std::string cleaned = xml::uri::normalise_uri_separators(std::string(uri));
@@ -99,6 +107,7 @@ void XQueryProlog::declare_namespace(std::string_view prefix, std::string_view u
    }
 }
 
+// Stores a variable declaration, ensuring the original QName is preserved as the map key.
 void XQueryProlog::declare_variable(std::string_view qname, XQueryVariable variable)
 {
    std::string key(qname);
@@ -106,22 +115,26 @@ void XQueryProlog::declare_variable(std::string_view qname, XQueryVariable varia
    inserted.first->second.qname = key;
 }
 
+// Inserts or replaces a function declaration using the computed signature as the lookup handle.
 void XQueryProlog::declare_function(XQueryFunction function)
 {
    auto signature = function.signature();
    functions[std::move(signature)] = std::move(function);
 }
 
+// Associates a module cache with the prolog so evaluators can reuse loaded modules.
 void XQueryProlog::bind_module_cache(std::shared_ptr<XQueryModuleCache> cache)
 {
    module_cache = cache;
 }
 
+// Returns the active module cache if one has been attached to the prolog.
 std::shared_ptr<XQueryModuleCache> XQueryProlog::get_module_cache() const
 {
    return module_cache.lock();
 }
 
+// Normalises a function QName using the prolog and document namespace tables to produce the canonical expanded form.
 std::string XQueryProlog::normalise_function_qname(std::string_view qname, const extXML *document) const
 {
    auto build_expanded = [](const std::string &NamespaceURI, std::string_view Local) {
