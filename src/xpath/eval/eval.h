@@ -36,6 +36,7 @@ class XPathEvaluator {
    AxisEvaluator axis_evaluator;
    bool expression_unsupported = false;
    bool trace_xpath_enabled = false;
+   bool construction_preserve_mode = false;
 
    // Variable storage owned by the evaluator
    ankerl::unordered_dense::map<std::string, XPathVal> variable_storage;
@@ -92,10 +93,11 @@ class XPathEvaluator {
    uint32_t register_constructor_namespace(const std::string &URI) const;
    XMLTag clone_node_subtree(const XMLTag &Source, int ParentID);
    bool append_constructor_sequence(XMLTag &Parent, const XPathVal &Value,
-      uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope);
+      uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope, bool PreserveConstruction);
    std::optional<std::string> evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
       uint32_t CurrentPrefix);
-   std::optional<std::string> evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix);
+   std::optional<std::string> evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix,
+      bool ApplyWhitespaceRules, bool PreserveConstruction);
    std::optional<std::string> evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix);
    std::optional<std::string> prepare_constructor_text(std::string_view Text, bool IsLiteral) const;
    bool prolog_has_boundary_space_preserve() const;
