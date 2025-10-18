@@ -10,11 +10,21 @@ This document outlines the implementation plan for dynamic module loading to ena
 
 - ✅ `XQueryModuleCache` structure with stub `fetch_or_load()`
 - ✅ `XQueryModuleImport` parsing and storage
-- ✅ Module cache attached to AST and context
+- ✅ Module cache attached to AST and context (`XQueryProlog::bind_module_cache` / `get_module_cache`)
 - ✅ Integration with `extXML::DocumentCache`
-- ✅ Error handling when cache unavailable
-- ✅ Module import declarations parsed and recorded
-- ✅ Basic validation that module cache exists
+- ✅ Error handling when cache unavailable (placeholder diagnostics in evaluators)
+- ✅ Module import declarations parsed and recorded by `XPathParser::parse_import_statement`
+- ✅ Basic validation that module cache exists when imports resolve
+
+### Repository Reality Check
+
+Before expanding the plan, confirm the starting point in the tree:
+
+- `src/xpath/api/xquery_prolog.h/.cpp` currently store modules as `ankerl::unordered_dense::map<std::string, std::shared_ptr<extXML>>` and stub out `fetch_or_load()`.
+- `src/xpath/parse/xpath_parser.cpp` has no notion of `module namespace` declarations yet and always treats the parsed file as a main module.
+- Runtime lookups (`XPathEvaluator::resolve_user_defined_function` and `XPathEvaluator::resolve_variable_value`) detect imported namespaces but deliberately emit "not implemented" errors.
+
+The steps below extend these specific seams instead of introducing new entry points.
 
 ### What Needs Implementation
 
@@ -44,49 +54,32 @@ math:square(5)
 
 **Parser Changes Required:**
 
-Add to `xquery_prolog.h`:
+Extend `struct XQueryProlog` with module metadata:
 
 ```cpp
 struct XQueryProlog {
    // ... existing fields ...
 
-   // Module declaration metadata
    bool is_library_module = false;
    std::optional<std::string> module_namespace_uri;
    std::optional<std::string> module_namespace_prefix;
 
-   // Validation helper for library module exports
    bool validate_library_exports() const;
 };
 ```
 
-Add to `xpath_parser.cpp`:
+Update `src/xpath/parse/xpath_parser.cpp`:
 
 ```cpp
-// Parse: module namespace prefix = "uri";
-void parse_module_decl() {
-   // Expect 'module' keyword
-   // Expect 'namespace' keyword
-   // Parse prefix identifier
-   // Expect '=' token
-   // Parse URI string literal
-   // Expect ';' token
-
-   // Set prolog->is_library_module = true
-   // Set prolog->module_namespace_uri
-   // Set prolog->module_namespace_prefix
-
-   // Register namespace binding immediately
+bool XPathParser::parse(XPathParseResult &result) {
+   // When the very first tokens read "module namespace" invoke parse_module_decl().
+   // Library modules stop after the prolog; main modules continue into the query body.
 }
 
-// Modify parse_prolog() to detect module declaration
-ParseResult parse(...) {
-   // Check first tokens for "module namespace"
-   // If found: parse_module_decl(), then prolog declarations
-   // If not found: parse prolog declarations, then main expression
-
-   // Library modules must NOT have main expression
-   // Main modules must have main expression
+bool XPathParser::parse_module_decl(XQueryProlog &prolog) {
+   // Expect: module namespace prefix = "uri";
+   // Register the namespace immediately via prolog.declare_namespace().
+   // Mark prolog.is_library_module and capture prefix/URI for later validation.
 }
 ```
 
@@ -132,31 +125,24 @@ Call this validation after parsing completes and before returning `ParseResult`.
 
 #### 3. Enhanced Module Cache Structure
 
-Update `XQueryModuleCache` to store compiled modules properly:
+Update `XQueryModuleCache` (in `src/xpath/api/xquery_prolog.h/.cpp`) to retain additional metadata alongside the cached `extXML`:
 
 ```cpp
 struct ModuleInfo {
    std::shared_ptr<extXML> document;     // Parsed XML document object
-   XPathNode *compiled_query;            // Managed resource with compiled prolog
+   XPathNode *compiled_query = nullptr;  // Managed resource with compiled prolog
    std::shared_ptr<XQueryProlog> prolog; // Direct access to module's prolog
-   std::string target_namespace;         // For validation
 };
 
 struct XQueryModuleCache {
    std::shared_ptr<extXML> owner;
+   mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules; // keyed by namespace URI
+   mutable std::unordered_set<std::string> loading_in_progress;           // circular dependency detection
 
-   // Cache of loaded modules by namespace URI
-   mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules;
+   [[nodiscard]] std::shared_ptr<extXML> fetch_or_load(std::string_view uri,
+      const XQueryProlog &prolog, XPathErrorReporter &reporter) const;
 
-   // Circular dependency detection
-   mutable std::unordered_set<std::string> loading_in_progress;
-
-   [[nodiscard]] std::shared_ptr<extXML> fetch_or_load(
-      std::string_view uri,
-      const XQueryProlog &prolog,
-      XPathErrorReporter &reporter) const;
-
-   [[nodiscard]] const XQueryProlog* get_module_prolog(std::string_view uri) const;
+   [[nodiscard]] const ModuleInfo * find_module(std::string_view uri) const;
 };
 ```
 
@@ -205,6 +191,9 @@ bool file_exists_or_accessible(std::string_view uri) {
    // Use filesystem check or HTTP HEAD request
    // For Phase 1, support only local file:// and plain paths
 }
+
+// Helper mirroring xml::uri style for stripping "file:" prefixes
+std::string strip_file_scheme(std::string_view uri);
 ```
 
 #### 5. Complete `fetch_or_load()` Implementation
@@ -334,7 +323,6 @@ std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(
    info.document = module_doc;
    info.compiled_query = compiled;
    info.prolog = module_prolog;
-   info.target_namespace = uri_key;
 
    modules[uri_key] = std::move(info);
 
@@ -352,158 +340,42 @@ std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(
 
 #### 6. Module Prolog Access Helper
 
-Add helper to retrieve module's prolog:
-
-```cpp
-const XQueryProlog* XQueryModuleCache::get_module_prolog(std::string_view uri) const
-{
-   auto found = modules.find(std::string(uri));
-   if (found != modules.end()) {
-      return found->second.prolog.get();
-   }
-   return nullptr;
-}
-```
+`find_module()` (above) exposes both the module prolog and compiled query so runtime lookups can reuse them without duplicating ownership rules.
 
 ### Phase C: Runtime Integration
 
 #### 7. Module Function Resolution
 
-Extend function evaluation in `eval_values.cpp`:
+Extend `XPathEvaluator::resolve_user_defined_function()` in `src/xpath/eval/eval_values.cpp`:
 
 ```cpp
-XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *func_node, uint32_t current_prefix)
+std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::string_view function_name,
+   const std::vector<XPathVal> &args, uint32_t current_prefix, const XPathNode *func_node)
 {
-   const auto &func_name = func_node->function_call.name;
-   const auto &arguments = func_node->function_call.arguments;
+   // Existing main-prolog lookup and arity diagnostics remain unchanged.
 
-   // Step 1: Try user-defined functions in main query prolog
-   if (context.prolog) {
-      auto udf = context.prolog->find_function(func_name, arguments.size());
-      if (udf) {
-         return evaluate_user_defined_function(*udf, arguments, current_prefix);
-      }
+   if (!context.prolog or !context.module_cache) {
+      // fall back to existing behaviour when we have no cache available
+      return std::nullopt;
    }
 
-   // Step 2: NEW - Try imported module functions
-   if (context.prolog and context.module_cache) {
-      // Extract namespace from function name
-      auto namespace_hash = extract_namespace_hash(func_name);
-
-      if (namespace_hash != 0) {
-         // Find matching module import
-         for (const auto &import : context.prolog->module_imports) {
-            if (pf::strhash(import.target_namespace) == namespace_hash) {
-               // Trigger module load if needed
-               auto module_doc = context.module_cache->fetch_or_load(
-                  import.target_namespace, *context.prolog, *this);
-
-               if (module_doc) {
-                  // Get module's prolog
-                  auto module_prolog = context.module_cache->get_module_prolog(
-                     import.target_namespace);
-
-                  if (module_prolog) {
-                     // Search for function in module
-                     auto module_func = module_prolog->find_function(
-                        func_name, arguments.size());
-
-                     if (module_func) {
-                        // Evaluate with module context
-                        return evaluate_user_defined_function(
-                           *module_func, arguments, current_prefix);
-                     }
-                  }
-               }
-
-               break; // Only check first matching import
-            }
-         }
-      }
-   }
-
-   // Step 3: Fall back to built-in function library
-   auto &library = XPathFunctionLibrary::instance();
-   if (library.has_function(func_name)) {
-      std::vector<XPathVal> arg_values;
-      arg_values.reserve(arguments.size());
-      for (const auto* arg_node : arguments) {
-         arg_values.push_back(evaluate_expression(arg_node, current_prefix));
-      }
-      return library.call_function(func_name, arg_values, context);
-   }
-
-   // Function not found
-   record_error("Unknown function: " + std::string(func_name), func_node);
-   return XPathVal::empty_sequence();
-}
-
-// Helper to extract namespace hash from QName
-uint32_t extract_namespace_hash(std::string_view qname) {
-   // For Q{uri}local format
-   if (qname.starts_with("Q{")) {
-      size_t end = qname.find('}');
-      if (end != std::string_view::npos) {
-         auto uri = qname.substr(2, end - 2);
-         return pf::strhash(uri);
-      }
-   }
-   return 0;
+   // Determine the namespace URI (expanded Q{uri}local form or prefix via resolve_prefix()).
+   // Locate the matching XQueryModuleImport entry.
+   // Call module_cache->fetch_or_load() to make sure the module has been parsed and compiled.
+   // Retrieve the ModuleInfo via module_cache->find_module() and search its prolog for the function.
+   // Evaluate with evaluate_user_defined_function() using the module's declarations.
 }
 ```
 
 #### 8. Module Variable Resolution
 
-Similar pattern in `eval_expression.cpp` for variable references:
+Mirror the logic inside `XPathEvaluator::resolve_variable_value()` (`src/xpath/eval/eval_expression.cpp`) so that once the main
+prolog lookup fails it:
 
-```cpp
-bool XPathEvaluator::resolve_variable_reference(
-   std::string_view name,
-   const XPathNode *reference_node,
-   XPathVal &result)
-{
-   // Step 1: Try dynamic context
-   // Step 2: Try main query prolog
-   // ... existing code ...
-
-   // Step 3: NEW - Try imported module variables
-   if (context.prolog and context.module_cache) {
-      auto namespace_hash = extract_namespace_hash(name);
-
-      if (namespace_hash != 0) {
-         for (const auto &import : context.prolog->module_imports) {
-            if (pf::strhash(import.target_namespace) == namespace_hash) {
-               auto module_prolog = context.module_cache->get_module_prolog(
-                  import.target_namespace);
-
-               if (module_prolog) {
-                  auto module_var = module_prolog->find_variable(name);
-                  if (module_var) {
-                     if (module_var->is_external) {
-                        // External variables not supported
-                        record_error("External module variable: " + std::string(name),
-                           reference_node, true);
-                        return false;
-                     }
-
-                     // Evaluate initializer
-                     if (module_var->initializer) {
-                        result = evaluate_expression(
-                           module_var->initializer.get(), current_prefix);
-                        return true;
-                     }
-                  }
-               }
-
-               break;
-            }
-         }
-      }
-   }
-
-   return false;
-}
-```
+1. Derives the namespace URI from either a `Q{}` literal or in-scope prefix via `prolog->resolve_prefix()`.
+2. Calls `module_cache->fetch_or_load()` to ensure the module is available and short-circuits on circular dependency errors.
+3. Retrieves the `ModuleInfo` via `find_module()` and resolves the variable declaration, enforcing the same `is_external`
+   and initializer rules as local prolog variables while caching evaluated results.
 
 ### Phase D: Testing
 
