@@ -5,6 +5,8 @@
 #include <parasol/modules/xpath.h>
 #include <utility>
 #include <format>
+#include <optional>
+#include <algorithm>
 #include "../xpath.h"
 #include "../../xml/xml.h"
 #include "../../xml/uri_utils.h"
@@ -52,32 +54,67 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    }
    
    pf::ScopedObjectLock<extXML> xml(owner);
+   if (not xml.granted()) {
+      reporter.record_error("XQST0059: Cannot lock XML object for module loading: " + std::string(URI));
+      return nullptr;
+   }
+
    pf::SwitchContext ctx(*xml);
 
-   auto uri_key = xml::uri::normalise_uri_separators(std::string(URI));
+   auto normalise_cache_key = [](const std::string &value) -> std::string {
+      return xml::uri::normalise_uri_separators(value);
+   };
+
+   auto strip_file_scheme = [](const std::string &value) -> std::string {
+      if (!value.rfind("file:", 0)) {
+         std::string stripped = value.substr(5);
+         if (!stripped.rfind("//", 0)) stripped = stripped.substr(2);
+         return stripped;
+      }
+      return value;
+   };
+
+   auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
+      std::string normalised = normalise_cache_key(hint);
+      if (normalised.empty()) return std::string();
+
+      if (xml::uri::is_absolute_uri(normalised)) {
+         if (!normalised.rfind("file:", 0)) {
+            return normalise_cache_key(strip_file_scheme(normalised));
+         }
+         return std::string();
+      }
+
+      if (!prolog.static_base_uri.empty()) {
+         std::string resolved = xml::uri::resolve_relative_uri(normalised, prolog.static_base_uri);
+         if (!resolved.rfind("file:", 0)) {
+            return normalise_cache_key(strip_file_scheme(resolved));
+         }
+         if (!xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
+      }
+
+      if (xml->Path and xml->Path[0]) {
+         std::string base_path = normalise_cache_key(std::string(xml->Path));
+         size_t slash = base_path.rfind('/');
+         std::string directory;
+         if (slash != std::string::npos) directory = base_path.substr(0u, slash + 1u);
+         else directory.clear();
+
+         std::string combined = directory;
+         combined.append(normalised);
+         return normalise_cache_key(combined);
+      }
+
+      return normalised;
+   };
+
+   auto uri_key = normalise_cache_key(std::string(URI));
+   std::string original_uri(URI);
 
    // Check if already loaded
 
    auto existing = modules.find(uri_key);
    if (existing != modules.end()) return existing->second.compiled_query;
-
-   // Check document cache for pre-loaded modules
-
-   if (xml.granted()) {
-      auto find_module = [&](const std::string &key) -> XPathNode * {
-         auto cache_entry = xml->ModuleCache.find(key);
-         if (cache_entry != xml->ModuleCache.end()) return cache_entry->second;
-         else return nullptr;
-      };
-
-      if (auto cached = find_module(uri_key)) return cached;
-
-      std::string original(URI);
-      if (original != uri_key) {
-         if (auto cached = find_module(original)) return cached;
-      }
-   }
-   else return nullptr;
 
    // Detect circular dependencies
 
@@ -90,7 +127,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
 
    const XQueryModuleImport *import_decl = nullptr;
    for (const auto &imp : prolog.module_imports) {
-      if (imp.target_namespace == uri_key) {
+      std::string normalised_namespace = normalise_cache_key(imp.target_namespace);
+      if ((normalised_namespace IS uri_key) or (imp.target_namespace IS original_uri)) {
          import_decl = &imp;
          break;
       }
@@ -101,9 +139,39 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       return nullptr;
    }
    
-   // TODO: Advanced path resolution
+   std::vector<std::string> location_candidates;
+   if (import_decl) {
+      for (const auto &hint : import_decl->location_hints) {
+         std::string candidate = resolve_hint_to_path(hint);
+         if (candidate.empty()) continue;
 
+         bool duplicate = false;
+         for (const auto &existing_path : location_candidates) {
+            if (existing_path IS candidate) {
+               duplicate = true;
+               break;
+            }
+         }
 
+         if (!duplicate) location_candidates.push_back(candidate);
+      }
+   }
+
+   // Check document cache for pre-loaded modules
+
+   auto find_module = [&](const std::string &key) -> XPathNode * {
+      auto cache_entry = xml->ModuleCache.find(key);
+      if (cache_entry != xml->ModuleCache.end()) return cache_entry->second;
+      else return nullptr;
+   };
+
+   if (auto cached = find_module(uri_key)) return cached;
+   if (original_uri != uri_key) {
+      if (auto cached = find_module(original_uri)) return cached;
+   }
+   for (const auto &candidate : location_candidates) {
+      if (auto cached = find_module(candidate)) return cached;
+   }
 
    // Mark as loading to detect recursion
 
@@ -115,9 +183,27 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
 
    // Load file content
 
-   std::string *content;
-   if (not read_text_resource(*xml, std::string(URI), "utf-8", content)) {
-      reporter.record_error(std::format("XQST0059: Cannot load module file: {}", URI));
+   if (location_candidates.empty()) location_candidates.push_back(uri_key);
+
+   std::string *content = nullptr;
+   std::string loaded_location;
+   const std::optional<std::string> encoding("utf-8");
+
+   for (const auto &candidate : location_candidates) {
+      if (read_text_resource(xml.operator->(), candidate, encoding, content)) {
+         loaded_location = candidate;
+         break;
+      }
+   }
+
+   if (!content) {
+      std::string attempted;
+      for (size_t index = 0; index < location_candidates.size(); ++index) {
+         if (index > 0) attempted.append(", ");
+         attempted.append(location_candidates[index]);
+      }
+
+      reporter.record_error(std::format("XQST0059: Cannot load module for namespace {} (attempted: {})", uri_key, attempted));
       return nullptr;
    }
 
@@ -157,6 +243,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
 
    modules[uri_key] = { .compiled_query = compiled, .prolog = module_prolog };
    xml->ModuleCache[uri_key] = compiled;
+   if (original_uri != uri_key) xml->ModuleCache[original_uri] = compiled;
+   if (!loaded_location.empty()) xml->ModuleCache[loaded_location] = compiled;
 
    return compiled;
 }

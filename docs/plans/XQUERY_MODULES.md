@@ -143,8 +143,7 @@ The `XQueryModuleCache` structure (in `src/xpath/api/xquery_prolog.h/.cpp`) reta
 
 ```cpp
 struct ModuleInfo {
-   extXML *document;                         // Document context for namespace/URI resolution
-   std::shared_ptr<XPathNode> compiled_query; // The parsed XQuery AST (module prolog + declarations)
+   XPathNode *compiled_query;                // Parsed XQuery AST owned by the XML document cache
    std::shared_ptr<XQueryProlog> prolog;     // Direct access to module's prolog declarations
 };
 
@@ -161,8 +160,7 @@ struct XQueryModuleCache {
 ```
 
 **Key Architecture Notes:**
-- `document` (extXML*) provides the context object for namespace resolution and base URI
-- `compiled_query` (shared_ptr<XPathNode>) is the **actual parsed module** - the XQuery AST
+- `compiled_query` is a raw `XPathNode*` cached by the owning `extXML` instance for reuse
 - `prolog` (shared_ptr<XQueryProlog>) gives direct access to function/variable declarations
 - Modules are **XQuery source files**, not XML documents
 

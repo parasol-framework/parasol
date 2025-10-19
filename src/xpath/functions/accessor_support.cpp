@@ -201,7 +201,7 @@ extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
          extXML *cached_xml = it.second;
          auto &cached_map = cached_xml->getMap();
          auto cit = cached_map.find(Node->ID);
-         if (cit->second IS Node) return cached_xml;
+         if ((cit != cached_map.end()) and (cit->second IS Node)) return cached_xml;
       }
    }
    return nullptr;
@@ -285,13 +285,17 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
 
    extXML *document = locate_node_document(Context, Node);
    if (!document) return std::nullopt;
-   if (document->Path) return xml::uri::normalise_uri_separators(document->Path);
+   if (document->Path and document->Path[0]) {
+      return xml::uri::normalise_uri_separators(std::string(document->Path));
+   }
 
    // Perform a reverse lookup in the XML cache to find the document URI.
 
-   for (auto &entry : Context.document->XMLCache) {
-      if (entry.second IS document) {
-         return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normalisation needed here?
+   if (Context.document) {
+      for (auto &entry : Context.document->XMLCache) {
+         if (entry.second IS document) {
+            return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normalisation needed here?
+         }
       }
    }
 
