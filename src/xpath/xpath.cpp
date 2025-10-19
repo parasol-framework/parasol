@@ -286,12 +286,9 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
       auto prolog = parse_result.prolog;
       if (!prolog) prolog = std::make_shared<XQueryProlog>();
 
-      if (xml and prolog)
-      {
-         if (prolog->static_base_uri.empty())
-         {
-            if (xml->Path)
-            {
+      if (xml and prolog) {
+         if (prolog->static_base_uri.empty()) {
+            if (xml->Path) {
                std::string inherited_base(xml->Path);
                inherited_base = xml::uri::normalise_uri_separators(std::move(inherited_base));
                prolog->static_base_uri = std::move(inherited_base);
@@ -304,7 +301,7 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
       std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
       if (!module_cache and xml) {
          module_cache = std::make_shared<XQueryModuleCache>();
-         module_cache->owner = std::shared_ptr<extXML>(xml, [](extXML *){});
+         module_cache->owner = xml->UID;
       }
 
       if (module_cache) {

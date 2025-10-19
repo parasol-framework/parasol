@@ -91,17 +91,15 @@ static bool resolve_resource_location(const XPathContext &Context, const std::st
 //*********************************************************************************************************************
 // Register document nodes with their owner document for cross-document XPath processing.
 
-static void register_document_node(extXML *Owner, const std::shared_ptr<extXML> &Document, XMLTag &Tag)
+static void register_document_node(extXML *Owner, extXML *Document, const XMLTag &Tag)
 {
-   if ((!Owner) or (!Document)) return;
-
    Owner->DocumentNodeOwners[&Tag] = Document;
    for (auto &child : Tag.Children) register_document_node(Owner, Document, child);
 }
 
 //*********************************************************************************************************************
 
-static void register_document_nodes(extXML *Owner, const std::shared_ptr<extXML> &Document)
+static void register_document_nodes(extXML *Owner, extXML * &Document)
 {
    if ((!Owner) or (!Document)) return;
    for (auto &tag : Document->Tags) register_document_node(Owner, Document, tag);
@@ -110,34 +108,28 @@ static void register_document_nodes(extXML *Owner, const std::shared_ptr<extXML>
 //*********************************************************************************************************************
 // Load (or retrieve from cache) an XML document.
 
-static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &URI)
+static extXML * load_document(extXML *Owner, const std::string &URI)
 {
    if (!Owner) return nullptr;
 
    auto existing = Owner->DocumentCache.find(URI);
    if (existing != Owner->DocumentCache.end()) return existing->second;
 
-   std::shared_ptr<extXML> document;
+   extXML *document;
 
    if (is_string_uri(URI)) {
-      if (auto raw = pf::Create<extXML>::global({
-            fl::Statement(URI.substr(7)), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE)
-         })) {
-         document = pf::make_shared_object(raw);
-      }
+      pf::SwitchContext ctx(Owner);
+      document = pf::Create<extXML>::global({ fl::Statement(URI.substr(7)), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
    }
    else {
-      if (auto raw = pf::Create<extXML>::global({
-            fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE)
-         })) {
-         document = pf::make_shared_object(raw);
-      }
+      pf::SwitchContext ctx(Owner);
+      document = pf::Create<extXML>::global({ fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
    }
 
    if (!document) return nullptr;
    if (document->Tags.empty()) return nullptr;
 
-   (void)document->getMap();
+   (void)document->getMap(); // Build ID map now
    register_document_nodes(Owner, document);
    Owner->DocumentCache[URI] = document;
    return document;
@@ -303,9 +295,7 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 
    if (!node) return XPathVal(pf::vector<XMLTag *>());
 
-   xpath::accessor::NodeOrigin origin = xpath::accessor::locate_node_document(Context, node);
-   std::shared_ptr<extXML> holder = origin.holder;
-   extXML *document = origin.document;
+   extXML *document = xpath::accessor::locate_node_document(Context, node);
    if (!document) return XPathVal(pf::vector<XMLTag *>());
 
    XMLTag *root = locate_root_node(document, node);
@@ -589,7 +579,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
    collect_idref_matches(Context.document, requested_ids, seen, results);
 
    for (const auto &entry : Context.document->DocumentCache) {
-      collect_idref_matches(entry.second.get(), requested_ids, seen, results);
+      collect_idref_matches(entry.second, requested_ids, seen, results);
    }
 
    return XPathVal(results);

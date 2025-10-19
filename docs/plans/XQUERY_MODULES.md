@@ -384,410 +384,51 @@ prolog lookup fails it:
 
 ### Phase D: Testing
 
-#### 9. Test Module Files
+DONE: See `src/xpath/tests/test_module_loading.fluid`
 
-Create test directory: `src/xpath/tests/modules/`
+### Phase E: Error Handling and Validation ✅ COMPLETE
 
-**math_utils.xq** (basic library module):
+#### 12. XQuery Error Codes Implementation
 
-```xquery
-module namespace math = "http://example.com/math";
+**Files Created:**
+- `src/xpath/api/xpath_errors.h` - W3C error code constants and message formatters
 
-declare function math:square($x as xs:integer) as xs:integer {
-   $x * $x
-};
-
-declare function math:cube($x) {
-   $x * $x * $x
-};
-
-declare variable $math:pi := 3.14159;
-```
-
-**string_utils.xq** (another library module):
-
-```xquery
-module namespace str = "http://example.com/strings";
-
-declare function str:reverse($s as xs:string) as xs:string {
-   fn:reverse($s)
-};
-
-declare function str:uppercase($s as xs:string) as xs:string {
-   fn:upper-case($s)
-};
-```
-
-**composite.xq** (module importing other modules):
-
-```xquery
-module namespace comp = "http://example.com/composite";
-
-import module namespace math = "http://example.com/math" at "math_utils.xq";
-
-declare function comp:area($r) {
-   $math:pi * math:square($r)
-};
-```
-
-**self_reference.xq** (regression for circular detection):
-
-```xquery
-module namespace cycle = "http://example.com/cycle";
-
-declare variable $cycle:value :=
-   if ($cycle:value) then 1 else 0;
-```
-
-**circular_a.xq** and **circular_b.xq** (for cycle detection):
-
-```xquery
-module namespace a = "http://example.com/circular-a";
-import module namespace b = "http://example.com/circular-b" at "circular_b.xq";
-
-declare function a:call-b() { b:call-a() };
-```
-
-```xquery
-module namespace b = "http://example.com/circular-b";
-import module namespace a = "http://example.com/circular-a" at "circular_a.xq";
-
-declare function b:call-a() { a:call-b() };
-```
-
-#### 10. Flute Test Suite
-
-Create `src/xpath/tests/test_module_loading.fluid`:
-
-```lua
-local flute = require('common.flute')
-
--------------------------------------------------------
--- Test 1: Basic Module Import
--------------------------------------------------------
-
-flute.describe('Basic module import and function call', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-   assert(xml, 'Failed to create XML object')
-
-   local query = [[
-      import module namespace math = "http://example.com/math"
-         at "modules/math_utils.xq";
-
-      math:square(5)
-   ]]
-
-   local compiled
-   local err = xp.Compile(xml, query, function(Result) compiled = Result end)
-   assert(err == ERR_Okay, 'Compilation failed: ' .. (xml.errorMsg or 'unknown'))
-
-   local result
-   err = xp.Evaluate(xml, compiled, function(Result) result = Result end)
-   assert(err == ERR_Okay, 'Evaluation failed')
-
-   flute.assert.equal(25, result.number, 'Should compute 5^2 = 25')
-end)
-
--------------------------------------------------------
--- Test 2: Multiple Functions from Same Module
--------------------------------------------------------
-
-flute.describe('Call multiple functions from imported module', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local query = [[
-      import module namespace math = "http://example.com/math"
-         at "modules/math_utils.xq";
-
-      (math:square(3), math:cube(2))
-   ]]
-
-   local compiled
-   xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   local result
-   xp.Evaluate(xml, compiled, function(Result) result = Result end)
-
-   flute.assert.equal(2, #result.tags, 'Should return sequence of 2 items')
-   flute.assert.equal(9, result.tags[1].number, 'First: 3^2 = 9')
-   flute.assert.equal(8, result.tags[2].number, 'Second: 2^3 = 8')
-end)
-
--------------------------------------------------------
--- Test 3: Module Variables
--------------------------------------------------------
-
-flute.describe('Access module variables', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local query = [[
-      import module namespace math = "http://example.com/math"
-         at "modules/math_utils.xq";
-
-      $math:pi
-   ]]
-
-   local compiled
-   xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   local result
-   xp.Evaluate(xml, compiled, function(Result) result = Result end)
-
-   flute.assert.approximately(3.14159, result.number, 0.00001)
-end)
-
--------------------------------------------------------
--- Test 4: Multiple Module Imports
--------------------------------------------------------
-
-flute.describe('Import and use multiple modules', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local query = [[
-      import module namespace math = "http://example.com/math"
-         at "modules/math_utils.xq";
-      import module namespace str = "http://example.com/strings"
-         at "modules/string_utils.xq";
-
-      (math:square(4), str:uppercase("hello"))
-   ]]
-
-   local compiled
-   xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   local result
-   xp.Evaluate(xml, compiled, function(Result) result = Result end)
-
-   flute.assert.equal(16, result.tags[1].number)
-   flute.assert.equal("HELLO", result.tags[2].string)
-end)
-
--------------------------------------------------------
--- Test 5: Transitive Module Imports
--------------------------------------------------------
-
-flute.describe('Module importing other modules', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local query = [[
-      import module namespace comp = "http://example.com/composite"
-         at "modules/composite.xq";
-
-      comp:area(10)
-   ]]
-
-   local compiled
-   xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   local result
-   xp.Evaluate(xml, compiled, function(Result) result = Result end)
-
-   -- area(10) = pi * 10^2 = 314.159
-   flute.assert.approximately(314.159, result.number, 0.001)
-end)
-
--------------------------------------------------------
--- Test 6: Module Caching
--------------------------------------------------------
-
-flute.describe('Module loaded once and cached', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   -- Import same module twice in different queries
-   local query1 = [[
-      import module namespace math = "http://example.com/math"
-         at "modules/math_utils.xq";
-      math:square(2)
-   ]]
-
-   local query2 = [[
-      import module namespace math = "http://example.com/math"
-         at "modules/math_utils.xq";
-      math:cube(2)
-   ]]
-
-   local compiled1
-   xp.Compile(xml, query1, function(Result) compiled1 = Result end)
-
-   local compiled2
-   xp.Compile(xml, query2, function(Result) compiled2 = Result end)
-
-   -- Both should work (verifies caching doesn't break functionality)
-   local result1
-   xp.Evaluate(xml, compiled1, function(Result) result1 = Result end)
-   flute.assert.equal(4, result1.number)
-
-   local result2
-   xp.Evaluate(xml, compiled2, function(Result) result2 = Result end)
-   flute.assert.equal(8, result2.number)
-end)
-
--------------------------------------------------------
--- Test 7: Circular Dependency Detection
--------------------------------------------------------
-
-flute.describe('Detect circular module dependencies', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local query = [[
-      import module namespace a = "http://example.com/circular-a"
-         at "modules/circular_a.xq";
-
-      a:call-b()
-   ]]
-
-   local compiled
-   local err = xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   -- Should fail with circular dependency error
-   flute.assert.not_equal(ERR_Okay, err, 'Should detect circular dependency')
-   flute.assert.match('circular', string.lower(xml.errorMsg or ''))
-end)
-
--------------------------------------------------------
--- Test 8: Missing Module Error
--------------------------------------------------------
-
-flute.describe('Error when module file not found', function()
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local query = [[
-      import module namespace missing = "http://example.com/missing"
-         at "modules/nonexistent.xq";
-
-      missing:func()
-   ]]
-
-   local compiled
-   local err = xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   -- Compilation should succeed (imports are lazy)
-   flute.assert.equal(ERR_Okay, err)
-
-   -- Evaluation should fail when trying to load module
-   local result
-   err = xp.Evaluate(xml, compiled, function(Result) result = Result end)
-   flute.assert.not_equal(ERR_Okay, err, 'Should fail when loading missing module')
-end)
-
--------------------------------------------------------
--- Test 9: Namespace Validation
--------------------------------------------------------
-
-flute.describe('Validate module namespace matches import', function()
-   -- Create a module with wrong namespace
-   local bad_module = [[
-      module namespace wrong = "http://example.com/wrong";
-      declare function wrong:test() { 42 };
-   ]]
-
-   -- Try to import it with different namespace
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   -- Write bad module to temp file
-   local file = obj.new('file', {
-      path = 'modules/bad_namespace.xq',
-      flags = 'NEW|WRITE'
-   })
-   file.acWrite(bad_module)
-   file = nil
-
-   local query = [[
-      import module namespace expected = "http://example.com/expected"
-         at "modules/bad_namespace.xq";
-
-      expected:test()
-   ]]
-
-   local compiled
-   xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   local result
-   local err = xp.Evaluate(xml, compiled, function(Result) result = Result end)
-
-   flute.assert.not_equal(ERR_Okay, err, 'Should detect namespace mismatch')
-end)
-
--------------------------------------------------------
--- Test 10: Library Module Validation
--------------------------------------------------------
-
-flute.describe('Reject non-library modules on import', function()
-   -- Create a main module (not library)
-   local main_query = [[
-      declare function local:test() { 42 };
-      local:test()
-   ]]
-
-   local xml = obj.new('xml', { statement = '<root/>' })
-
-   local file = obj.new('file', {
-      path = 'modules/main_module.xq',
-      flags = 'NEW|WRITE'
-   })
-   file.acWrite(main_query)
-   file = nil
-
-   local query = [[
-      import module namespace main = "http://example.com/main"
-         at "modules/main_module.xq";
-
-      main:test()
-   ]]
-
-   local compiled
-   xp.Compile(xml, query, function(Result) compiled = Result end)
-
-   local result
-   local err = xp.Evaluate(xml, compiled, function(Result) result = Result end)
-
-   flute.assert.not_equal(ERR_Okay, err, 'Should reject non-library module')
-   flute.assert.match('library', string.lower(xml.errorMsg or ''))
-end)
-```
-
-#### 11. CMake Test Registration
-
-Add to `src/xpath/tests/CMakeLists.txt`:
-
-```cmake
-flute_test(
-   NAME xpath_module_loading
-   FILE ${CMAKE_CURRENT_SOURCE_DIR}/test_module_loading.fluid
-   LABELS xpath xquery modules
-   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-```
-
-### Phase E: Error Handling and Validation
-
-#### 12. XQuery Error Codes
-
-Implement W3C error codes related to modules:
+**Error Codes Implemented:**
 
 - **XQST0047**: Duplicate module imports for same target namespace
 - **XQST0048**: Function/variable in library module not in target namespace
 - **XQST0059**: Module cannot be located (no valid location hints)
-- **XQDY0xxxx**: Circular module dependency (dynamic error)
+- **XQDY0054**: Circular module dependency (dynamic error)
 
-Add error checking in parser and runtime:
+**Implementation Details:**
 
-```cpp
-// In parse_prolog() - check for duplicate imports
-std::unordered_set<std::string> imported_namespaces;
-for (const auto &import : prolog->module_imports) {
-   if (!imported_namespaces.insert(import.target_namespace).second) {
-      // XQST0047: Duplicate import
-      record_error("Duplicate module import: " + import.target_namespace);
-   }
-}
+1. **Error Code Header (`xpath_errors.h`)**
+   - Defined error code constants as `constexpr std::string_view`
+   - Created message formatter functions for each error type:
+     - `duplicate_module_import(namespace_uri)` - XQST0047
+     - `export_not_in_namespace(component_type, qname, expected_namespace)` - XQST0048
+     - `module_not_found(namespace_uri)` - XQST0059
+     - `module_location_not_found(location)` - XQST0059
+     - `circular_module_dependency(namespace_uri)` - XQDY0054
+     - `not_library_module(namespace_uri)` - XQST0059
+     - `namespace_mismatch(expected, actual)` - XQST0059
 
-// In validate_library_exports() - XQST0048 implementation
-// Already covered in Phase A
+2. **Enhanced Export Validation (`xquery_prolog.h/.cpp`)**
+   - Added `ExportValidationResult` structure with detailed error information
+   - Implemented `validate_library_exports_detailed()` method
+   - Returns specific error messages using XQST0048 error formatter
+   - Identifies problematic function or variable QName
 
-// In fetch_or_load() - XQST0059 when location not found
-// Already covered in Phase B
-```
+3. **Duplicate Import Detection (`xquery_prolog.h/.cpp`)**
+   - Added `declare_module_import()` helper function
+   - Checks for duplicate namespace imports (XQST0047)
+   - Normalises URIs before comparison
+   - Returns formatted error message
+
+4. **Future Integration Documentation (`xquery_prolog.cpp`)**
+   - Added comprehensive comments in `fetch_or_load()`
+   - Documents which error codes to use at each validation step
+   - Guides future implementation of full module loading
 
 ### Phase F: Documentation
 

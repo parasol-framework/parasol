@@ -642,9 +642,7 @@ bool XPathParser::parse_function_decl(XQueryProlog &prolog)
    }
 
    XQueryFunction function;
-   if (active_prolog) {
-      function.qname = active_prolog->normalise_function_qname(*qname, nullptr);
-   }
+   if (active_prolog) function.qname = active_prolog->normalise_function_qname(*qname);
    else function.qname = *qname;
    function.parameter_names = std::move(parameter_names);
    function.parameter_types = std::move(parameter_types);
@@ -2315,7 +2313,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call()
 
    std::string canonical_name(*function_name);
    if (active_prolog) {
-      canonical_name = active_prolog->normalise_function_qname(canonical_name, nullptr);
+      canonical_name = active_prolog->normalise_function_qname(canonical_name);
    }
 
    auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, std::move(canonical_name));

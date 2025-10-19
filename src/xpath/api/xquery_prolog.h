@@ -1,5 +1,6 @@
 #pragma once
 
+#include <parasol/main.h>
 #include <ankerl/unordered_dense.h>
 #include <memory>
 #include <optional>
@@ -21,8 +22,7 @@ class XPathErrorReporter
    virtual void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) = 0;
 };
 
-struct DecimalFormat
-{
+struct DecimalFormat {
    std::string name;
    std::string decimal_separator = ".";
    std::string grouping_separator = ",";
@@ -36,8 +36,7 @@ struct DecimalFormat
    std::string pattern_separator = ";";
 };
 
-struct XQueryFunction
-{
+struct XQueryFunction {
    std::string qname;
    std::vector<std::string> parameter_names;
    std::vector<std::string> parameter_types;
@@ -48,40 +47,33 @@ struct XQueryFunction
    [[nodiscard]] std::string signature() const;
 };
 
-struct XQueryVariable
-{
+struct XQueryVariable {
    std::string qname;
    std::unique_ptr<XPathNode> initializer;
    bool is_external = false;
 };
 
-struct XQueryModuleImport
-{
+struct XQueryModuleImport {
    std::string target_namespace;
    std::vector<std::string> location_hints;
 };
 
-struct XQueryModuleCache
-{
-   struct ModuleInfo
-   {
-      std::shared_ptr<extXML> document;
+struct XQueryModuleCache {
+   struct ModuleInfo {
+      extXML *document;
       std::shared_ptr<XPathNode> compiled_query;
       std::shared_ptr<XQueryProlog> prolog;
    };
 
-   std::shared_ptr<extXML> owner;
+   OBJECTID owner; // Referenced as a UID from xp::Compile() because it's a weak reference.
    mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
 
-   [[nodiscard]] std::shared_ptr<extXML> fetch_or_load(std::string_view uri,
-      const struct XQueryProlog &prolog, XPathErrorReporter &reporter) const;
-
+   [[nodiscard]] extXML * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
    [[nodiscard]] const ModuleInfo * find_module(std::string_view uri) const;
 };
 
-struct XQueryProlog
-{
+struct XQueryProlog {
    XQueryProlog();
 
    ankerl::unordered_dense::map<std::string, uint32_t> declared_namespaces;
@@ -115,8 +107,7 @@ struct XQueryProlog
    bool ordering_declared = false;
    bool empty_order_declared = false;
 
-   struct CopyNamespaces
-   {
+   struct CopyNamespaces {
       bool preserve = true;
       bool inherit = true;
    } copy_namespaces;
@@ -131,13 +122,22 @@ struct XQueryProlog
    bool declare_namespace(std::string_view prefix, std::string_view uri, extXML *document);
    bool declare_variable(std::string_view qname, XQueryVariable variable);
    bool declare_function(XQueryFunction function);
+   bool declare_module_import(XQueryModuleImport import_decl, std::string *error_message = nullptr);
+
+   struct ExportValidationResult {
+      bool valid = true;
+      std::string error_message;
+      std::string problematic_qname;
+      bool is_function = false;  // true if problematic item is a function, false if variable
+   };
 
    [[nodiscard]] bool validate_library_exports() const;
+   [[nodiscard]] ExportValidationResult validate_library_exports_detailed() const;
 
    [[nodiscard]] const XQueryFunction * find_function(std::string_view qname, size_t arity) const;
    [[nodiscard]] const XQueryVariable * find_variable(std::string_view qname) const;
    [[nodiscard]] uint32_t resolve_prefix(std::string_view prefix, const extXML *document) const;
-   [[nodiscard]] std::string normalise_function_qname(std::string_view qname, const extXML *document) const;
+   [[nodiscard]] std::string normalise_function_qname(std::string_view qname, const extXML *document = nullptr) const;
 
    void bind_module_cache(std::shared_ptr<XQueryModuleCache> cache);
    [[nodiscard]] std::shared_ptr<XQueryModuleCache> get_module_cache() const;
