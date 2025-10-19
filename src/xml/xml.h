@@ -134,6 +134,9 @@ template<typename Range, typename Pred>
 
 //********************************************************************************************************************
 
+using URI_STR = std::string;
+using PREFIX = std::string;
+
 class extXML : public objXML {
    public:
    ankerl::unordered_dense::map<int, XMLTag *> Map; // Lookup for any indexed tag.
@@ -161,23 +164,30 @@ class extXML : public objXML {
    // Link prefixes to namespace URIs
    // WARNING: If the XML document overwrites namespace URIs on the same prefix name (legal!)
    // then this lookup table returns the most recently assigned URI.
-   ankerl::unordered_dense::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
+   ankerl::unordered_dense::map<PREFIX, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
-   // XQuery cache for loaded XML documents and unparsed text.  These resources are owned exclusively by the XML
-   // object.  Potentially, multiple XPath objects can reference a single document.  For that reason, ownership
-   // is maintained for the lifetime of the XML object so that we can simplify resource management.
+   // XQuery cache for imported modules.  These resources are owned exclusively by the XML object.  Potentially, 
+   // multiple XPathNode objects from xp::Compile() can reference a single module file that only needs to be stored once.  For that 
+   // reason, ownership is maintained for the lifetime of the XML object so that we can simplify resource management.
+   // Managed by fetch_or_load_module()
 
-   ankerl::unordered_dense::map<std::string, extXML *> DocumentCache;
-   ankerl::unordered_dense::map<std::string, std::string> UnparsedTextCache;
+   ankerl::unordered_dense::map<URI_STR, class XPathNode *> ModuleCache; // Compiled from ModuleCache
+   
+   // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
+   ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
 
-   // Note: Referenced documents are to be treated as read-only or the XMLTag pointers will become invalid.
-   ankerl::unordered_dense::map<const XMLTag *, extXML *> DocumentNodeOwners;
+   // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
+   // Managed by read_text_resource()
+   ankerl::unordered_dense::map<URI_STR, std::string> UnparsedTextCache;
 
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    ~extXML() {
-      // Clean up cached documents
-      for (auto &entry : DocumentCache) {
+      for (auto &entry : ModuleCache) {
+         if (entry.second) FreeResource(entry.second);
+      }
+
+      for (auto &entry : XMLCache) {
          if (entry.second) FreeResource(entry.second);
       }
    }
@@ -376,6 +386,86 @@ constexpr bool is_name_start(char ch) noexcept
 constexpr char to_lower(char ch) noexcept
 {
    return to_lower_table[uint8_t(ch)];
+}
+
+static bool is_string_uri(std::string_view Value)
+{
+   return not Value.rfind("string:", 0);
+}
+
+//********************************************************************************************************************
+// Returns a lower-case copy of the input string. Operates on bytes; suitable for ASCII and Latin-1 strings.
+
+inline std::string lowercase_copy(const std::string &Value)
+{
+   std::string result = Value;
+   std::transform(result.begin(), result.end(), result.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
+   return result;
+}
+
+//*********************************************************************************************************************
+// Normalise newlines in a text resource to just LF (\n).
+
+static std::string normalise_newlines(const std::string &Input)
+{
+   std::string output;
+   output.reserve(Input.length());
+
+   size_t index = 0;
+   while (index < Input.length()) {
+      if (char ch = Input[index]; ch IS '\r') {
+         output.push_back('\n');
+         if ((index + 1 < Input.length()) and (Input[index + 1] IS '\n')) index++;
+      }
+      else output.push_back(ch);
+      index++;
+   }
+
+   return output;
+}
+
+//*********************************************************************************************************************
+// Load (or retrieve from cache) a text resource.  Returns true if successful.
+// TODO: Support encodings other than UTF-8.
+// TODO: Support relative URIs based on the context document location.
+// TODO: Support loading files from http:// and other URI schemes (or implement in the File class).
+
+[[maybe_unused]] static bool read_text_resource(extXML *Owner, const std::string &URI, const std::optional<std::string> &Encoding,
+   std::string * &Result)
+{
+   pf::Log log(__FUNCTION__);
+
+   log.branch("Loading text resource: %s", URI.c_str());
+
+   if (!Owner) return false;
+
+   if (Encoding.has_value()) {
+      std::string lowered = lowercase_copy(*Encoding);
+      if ((lowered != "utf-8") and (lowered != "utf8")) return false;
+   }
+
+   auto existing = Owner->UnparsedTextCache.find(URI);
+   if (existing != Owner->UnparsedTextCache.end()) {
+      Result = &existing->second;
+      return true;
+   }
+
+   if (is_string_uri(URI)) {
+      // TODO: Support loading from URI locations.
+      Result = nullptr;
+      return false;
+   }
+
+   objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
+   if (file.ok()) {
+      std::string buffer;
+      buffer.resize(file->get<size_t>(FID_Size));
+      file->read(buffer.data(), buffer.size());
+      Owner->UnparsedTextCache[URI] = std::move(normalise_newlines(buffer));
+      Result = &Owner->UnparsedTextCache[URI];
+      return true;
+   }
+   else return false;
 }
 
 using NODES = pf::vector<XMLTag *>;

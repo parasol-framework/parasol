@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document outlines the implementation plan for dynamic module loading to enable `import module` declarations in XQuery. This builds on the existing XQuery prolog infrastructure (Phase 1-3 complete) by adding actual file loading, library module parsing, and runtime resolution.
+This document outlines the implementation plan for dynamic module loading to enable `import module` declarations in XQuery. This builds on the existing XQuery prolog infrastructure (Phase 1-3 complete) by adding actual **XQuery source file loading**, **library module parsing**, and runtime resolution.
+
+**Important:** XQuery modules are **text files containing XQuery expressions** (`.xq` or `.xquery` files), not XML documents. They are parsed using `XPathParser::parse()` to produce an AST (`XPathNode` tree), with the `extXML` object serving only as the document context wrapper for namespace resolution and base URI management.
 
 ## Current Implementation Status
 
@@ -23,13 +25,20 @@ This document outlines the implementation plan for dynamic module loading to ena
 
 ### Repository Reality Check
 
-Before expanding the plan, confirm the starting point in the tree:
+The actual implementation (as of latest commit) uses the correct architecture:
 
-- `src/xpath/api/xquery_prolog.h/.cpp` currently store modules as `ankerl::unordered_dense::map<std::string, std::shared_ptr<extXML>>` and stub out `fetch_or_load()`.
-- `src/xpath/parse/xpath_parser.cpp` has no notion of `module namespace` declarations yet and always treats the parsed file as a main module.
-- Runtime lookups (`XPathEvaluator::resolve_user_defined_function` and `XPathEvaluator::resolve_variable_value`) detect imported namespaces but deliberately emit "not implemented" errors.
+- `src/xpath/api/xquery_prolog.h` defines `ModuleInfo` with:
+  - `extXML *document` - Document context (NOT the module content itself)
+  - `std::shared_ptr<XPathNode> compiled_query` - The actual parsed XQuery AST
+  - `std::shared_ptr<XQueryProlog> prolog` - Module declarations
+- `src/xpath/parse/xpath_parser.cpp` supports library module parsing (`module namespace` declarations)
+- Runtime lookups (`XPathEvaluator::resolve_user_defined_function` and `XPathEvaluator::resolve_variable_value`) can resolve functions/variables from imported modules
 
-The steps below extend these specific seams instead of introducing new entry points.
+**Architecture Clarification:**
+- XQuery modules are **text files** (`.xq`, `.xquery`) containing XQuery expressions
+- They are **parsed with `XPathParser::parse()`**, not an XML parser
+- The `extXML` object is just a **context wrapper** for namespace/URI resolution
+- The actual module content is the **`XPathNode` AST** stored in `compiled_query`
 
 ### What Needs Implementation
 
@@ -130,26 +139,32 @@ Call this validation after parsing completes and before returning `ParseResult`.
 
 #### 3. Enhanced Module Cache Structure
 
-Update `XQueryModuleCache` (in `src/xpath/api/xquery_prolog.h/.cpp`) to retain additional metadata alongside the cached `extXML`:
+The `XQueryModuleCache` structure (in `src/xpath/api/xquery_prolog.h/.cpp`) retains metadata for each loaded module:
 
 ```cpp
 struct ModuleInfo {
-   std::shared_ptr<extXML> document;     // Parsed XML document object
-   XPathNode *compiled_query = nullptr;  // Managed resource with compiled prolog
-   std::shared_ptr<XQueryProlog> prolog; // Direct access to module's prolog
+   extXML *document;                         // Document context for namespace/URI resolution
+   std::shared_ptr<XPathNode> compiled_query; // The parsed XQuery AST (module prolog + declarations)
+   std::shared_ptr<XQueryProlog> prolog;     // Direct access to module's prolog declarations
 };
 
 struct XQueryModuleCache {
-   std::shared_ptr<extXML> owner;
+   OBJECTID owner;                             // Referenced as UID (weak reference)
    mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules; // keyed by namespace URI
    mutable std::unordered_set<std::string> loading_in_progress;           // circular dependency detection
 
-   [[nodiscard]] std::shared_ptr<extXML> fetch_or_load(std::string_view uri,
+   [[nodiscard]] extXML * fetch_or_load(std::string_view uri,
       const XQueryProlog &prolog, XPathErrorReporter &reporter) const;
 
    [[nodiscard]] const ModuleInfo * find_module(std::string_view uri) const;
 };
 ```
+
+**Key Architecture Notes:**
+- `document` (extXML*) provides the context object for namespace resolution and base URI
+- `compiled_query` (shared_ptr<XPathNode>) is the **actual parsed module** - the XQuery AST
+- `prolog` (shared_ptr<XQueryProlog>) gives direct access to function/variable declarations
+- Modules are **XQuery source files**, not XML documents
 
 #### 4. URI Resolution Helper
 
@@ -203,145 +218,103 @@ std::string strip_file_scheme(std::string_view uri);
 
 #### 5. Complete `fetch_or_load()` Implementation
 
-Replace the stub implementation in `xquery_prolog.cpp`:
+Replace the stub implementation in `xquery_prolog.cpp` with the complete module loading workflow:
 
 ```cpp
-std::shared_ptr<extXML> XQueryModuleCache::fetch_or_load(
-   std::string_view uri,
-   const XQueryProlog &prolog,
-   XPathErrorReporter &reporter) const
+extXML * XQueryModuleCache::fetch_or_load(std::string_view uri,
+   const XQueryProlog &prolog, XPathErrorReporter &reporter) const
 {
-   if (uri.empty()) return nullptr;
-
-   std::string uri_key(uri);
-
-   // Step 1: Check if already loaded in module cache
-   auto found = modules.find(uri_key);
-   if (found != modules.end()) {
-      return found->second.document;
+   // 1. Check if already loaded
+   if (auto it = modules.find(std::string(uri)); it != modules.end()) {
+      return it->second.document;
    }
 
-   // Step 2: Check document cache (for pre-loaded modules)
-   if (owner) {
-      auto doc_cache = owner->DocumentCache.find(uri_key);
-      if (doc_cache != owner->DocumentCache.end()) {
-         // TODO: Extract prolog and store in modules map
-         return doc_cache->second;
-      }
-   }
-
-   // Step 3: Detect circular dependencies
-   if (loading_in_progress.contains(uri_key)) {
-      reporter.record_error("Circular module dependency detected: " + uri_key);
+   // 2. Circular dependency detection
+   if (loading_in_progress.contains(std::string(uri))) {
+      reporter.record_error(xpath_errors::circular_module_dependency(uri));
       return nullptr;
    }
 
-   // Step 4: Find matching import declaration
-   const XQueryModuleImport *import_decl = nullptr;
-   for (const auto &imp : prolog.module_imports) {
-      if (imp.target_namespace == uri_key) {
-         import_decl = &imp;
-         break;
-      }
-   }
-
-   if (!import_decl) {
-      reporter.record_error("No import declaration found for: " + uri_key);
-      return nullptr;
-   }
-
-   // Step 5: Resolve location from hints
-   auto location = resolve_module_location(
-      uri_key,
-      import_decl->location_hints,
-      prolog.static_base_uri);
-
+   // 3. Resolve module location from import hints
+   auto location = resolve_module_location(uri, prolog, reporter);
    if (!location) {
-      reporter.record_error("Cannot resolve module location for: " + uri_key);
+      reporter.record_error(xpath_errors::module_not_found(uri));
       return nullptr;
    }
 
-   // Step 6: Mark as loading to detect cycles
-   loading_in_progress.insert(uri_key);
+   // 4. Load XQuery source file as text
+   loading_in_progress.insert(std::string(uri));
+   OBJECTPTR file;
+   if (CreateObject(CLASSID::FILE, &file) IS ERR::Okay) {
+      SetFields(file,
+         FID_Path|TSTR, location->c_str(),
+         FID_Flags|TLONG, FL::READ,
+         TAGEND);
 
-   // Step 7: Load file content
-   std::string file_path = strip_file_prefix(*location);
-   APTR file_cache = nullptr;
-   std::string content;
+      if (acActivate(file) IS ERR::Okay) {
+         STRING content;
+         if (acQuery(file) IS ERR::Okay and GetString(file, FID_String, &content) IS ERR::Okay) {
+            // 5. Parse XQuery source into AST
+            XPathParser parser;
+            XPathParseResult parse_result;
 
-   if (LoadFile(file_path.c_str(), LDF::NIL, &file_cache) == ERR::Okay) {
-      content.assign((char*)file_cache->Data, file_cache->Size);
-      UnloadFile(file_cache);
-   }
-   else {
-      loading_in_progress.erase(uri_key);
-      reporter.record_error("Cannot load module file: " + file_path);
-      return nullptr;
-   }
+            // Create document context for the module
+            OBJECTPTR module_xml;
+            if (CreateObject(CLASSID::XML, &module_xml) IS ERR::Okay) {
+               SetFields(module_xml,
+                  FID_Path|TSTR, location->c_str(),
+                  FID_Statement|TSTR, content,
+                  TAGEND);
 
-   // Step 8: Create XML document and compile module
-   auto module_doc = std::make_shared<extXML>();
-   module_doc->Statement = content;
+               if (parser.parse(content, parse_result)) {
+                  // 6. Validate library module
+                  if (!parse_result.prolog.is_library_module) {
+                     reporter.record_error(xpath_errors::not_library_module(uri));
+                     loading_in_progress.erase(std::string(uri));
+                     return nullptr;
+                  }
 
-   // Initialize the document (triggers parsing)
-   if (InitObject(module_doc.get()) != ERR::Okay) {
-      loading_in_progress.erase(uri_key);
-      reporter.record_error("Cannot parse module: " + file_path);
-      return nullptr;
-   }
+                  if (parse_result.prolog.module_namespace_uri != uri) {
+                     reporter.record_error(xpath_errors::namespace_mismatch(
+                        uri, *parse_result.prolog.module_namespace_uri));
+                     loading_in_progress.erase(std::string(uri));
+                     return nullptr;
+                  }
 
-   // Step 9: Compile the module query
-   XPathNode *compiled = nullptr;
-   if (xp::Compile(module_doc.get(), content.c_str(), (APTR*)&compiled) != ERR::Okay) {
-      loading_in_progress.erase(uri_key);
-      reporter.record_error("Cannot compile module: " + file_path);
-      return nullptr;
-   }
+                  // 7. Cache module info
+                  ModuleInfo info;
+                  info.document = (extXML*)module_xml;
+                  info.compiled_query = std::move(parse_result.ast);
+                  info.prolog = std::make_shared<XQueryProlog>(std::move(parse_result.prolog));
 
-   // Step 10: Validate it's a library module
-   auto module_prolog = compiled->get_prolog();
-   if (!module_prolog or !module_prolog->is_library_module) {
-      loading_in_progress.erase(uri_key);
-      FreeResource(compiled);
-      reporter.record_error("Module is not a library module: " + uri_key);
-      return nullptr;
-   }
-
-   // Step 11: Validate namespace matches
-   if (module_prolog->module_namespace_uri != uri_key) {
-      loading_in_progress.erase(uri_key);
-      FreeResource(compiled);
-      reporter.record_error("Module namespace mismatch: expected " + uri_key);
-      return nullptr;
-   }
-
-   // Step 12: Validate exports
-   if (!module_prolog->validate_library_exports()) {
-      loading_in_progress.erase(uri_key);
-      FreeResource(compiled);
-      reporter.record_error("Module exports not in target namespace: " + uri_key);
-      return nullptr;
+                  modules[std::string(uri)] = std::move(info);
+                  loading_in_progress.erase(std::string(uri));
+                  return (extXML*)module_xml;
+               }
+               else {
+                  reporter.record_error("Failed to parse module: " + std::string(uri));
+               }
+            }
+         }
+      }
+      FreeResource(file);
    }
 
-   // Step 13: Cache the module
-   ModuleInfo info;
-   info.document = module_doc;
-   info.compiled_query = compiled;
-   info.prolog = module_prolog;
-
-   modules[uri_key] = std::move(info);
-
-   // Also cache in document cache if owner exists
-   if (owner) {
-      owner->DocumentCache[uri_key] = module_doc;
-   }
-
-   // Step 14: Done loading
-   loading_in_progress.erase(uri_key);
-
-   return module_doc;
+   loading_in_progress.erase(std::string(uri));
+   return nullptr;
 }
 ```
+
+**Key Steps:**
+1. **Check cache** - Return immediately if already loaded
+2. **Detect cycles** - Check `loading_in_progress` set for circular dependencies
+3. **Resolve location** - Find actual file path from import hints
+4. **Load text file** - Read XQuery source as string (NOT as XML)
+5. **Parse XQuery** - Use `XPathParser::parse()` to create AST
+6. **Validate module** - Ensure it's a library module with matching namespace
+7. **Cache result** - Store document context, AST, and prolog
+
+**Critical:** The module file contains **XQuery source code**, not XML. It's parsed with the XPath parser, not an XML parser.
 
 #### 6. Module Prolog Access Helper
 
@@ -478,6 +451,12 @@ Add comprehensive documentation to new functions:
 **
 ** This function iterates through the location hints provided in an import declaration and attempts to resolve
 ** each one against the static base URI. The first successfully resolved and accessible location is returned.
+**
+** IMPORTANT: XQuery modules are text files containing XQuery source code (typically .xq or .xquery files),
+** NOT XML documents. The resolved location points to an XQuery source file that will be:
+** 1. Loaded as text
+** 2. Parsed with XPathParser::parse() to create an AST
+** 3. Validated as a library module with matching namespace
 **
 ** Resolution follows XQuery semantics:
 ** - Absolute URIs are used as-is

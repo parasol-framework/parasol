@@ -1600,16 +1600,6 @@ static std::string find_language_for_node(XMLTag *Node, extXML *Document)
 }
 
 //********************************************************************************************************************
-// Returns a lower-case copy of the input string. Operates on bytes; suitable for ASCII and Latin-1 strings.
-
-inline std::string lowercase_copy(const std::string &Value)
-{
-   std::string result = Value;
-   std::transform(result.begin(), result.end(), result.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
-   return result;
-}
-
-//********************************************************************************************************************
 // Determines whether a candidate language tag matches a requested language according to RFC 4647 basic filtering.
 // The candidate matches if it exactly equals the requested language or begins with it followed by a hyphen.
 // Empty requested strings never match.

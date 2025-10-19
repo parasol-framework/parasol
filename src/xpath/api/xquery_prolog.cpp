@@ -2,7 +2,9 @@
 #include "xquery_prolog.h"
 #include "xpath_errors.h"
 #include <parasol/strings.hpp>
+#include <parasol/modules/xpath.h>
 #include <utility>
+#include <format>
 #include "../xpath.h"
 #include "../../xml/xml.h"
 #include "../../xml/uri_utils.h"
@@ -38,75 +40,138 @@ std::string XQueryFunction::signature() const
 
 //********************************************************************************************************************
 // Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
-//
-// When module loading is fully implemented (Phases A-C), this function should:
-// 1. Check if module is already loaded (current functionality)
-// 2. Check for circular dependencies using loading_in_progress set
-//    - Use xquery::errors::circular_module_dependency() for XQDY0054
-// 3. Resolve module location from import hints
-//    - Use xquery::errors::module_not_found() for XQST0059 if no valid location
-//    - Use xquery::errors::module_location_not_found() if specific location fails
-// 4. Load and compile the module file
-// 5. Validate it's a library module
-//    - Use xquery::errors::not_library_module() for XQST0059
-// 6. Validate namespace matches
-//    - Use xquery::errors::namespace_mismatch() for XQST0059
-// 7. Validate exports using validate_library_exports_detailed()
-//    - Use result.error_message for XQST0048
-// 8. Cache the successfully loaded module
 
-extXML * XQueryModuleCache::fetch_or_load(std::string_view uri, const XQueryProlog &prolog, XPathErrorReporter &reporter) const
+XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog, 
+   XPathErrorReporter &reporter) const
 {
-   if (uri.empty()) return nullptr;
+   if (URI.empty()) return nullptr;
 
-   std::string uri_key = xml::uri::normalise_uri_separators(std::string(uri));
+   if (not owner) {
+      reporter.record_error("XQST0059: Cannot load module without a pre-existing XML object: " + std::string(URI));
+      return nullptr;
+   }
+   
+   pf::ScopedObjectLock<extXML> xml(owner);
+   pf::SwitchContext ctx(*xml);
 
-   // Step 1: Check if already loaded
+   auto uri_key = xml::uri::normalise_uri_separators(std::string(URI));
+
+   // Check if already loaded
+
    auto existing = modules.find(uri_key);
-   if (existing not_eq modules.end()) return existing->second.document;
+   if (existing != modules.end()) return existing->second.compiled_query;
 
    // Check document cache for pre-loaded modules
-   if (owner) {
-      pf::ScopedObjectLock<extXML> xml(owner);
-      if (xml.granted()) {
-         auto capture_entry = [&](const std::string &key) -> extXML * {
-            auto cache_entry = xml->DocumentCache.find(key);
-            if (cache_entry not_eq xml->DocumentCache.end()) {
-               ModuleInfo info;
-               info.document = cache_entry->second;
-               modules.insert_or_assign(key, std::move(info));
-               return cache_entry->second;
-            }
-            return nullptr;
-         };
 
-         if (auto cached = capture_entry(uri_key)) return cached;
+   if (xml.granted()) {
+      auto find_module = [&](const std::string &key) -> XPathNode * {
+         auto cache_entry = xml->ModuleCache.find(key);
+         if (cache_entry != xml->ModuleCache.end()) return cache_entry->second;
+         else return nullptr;
+      };
 
-         std::string original(uri);
-         if (original not_eq uri_key) {
-            if (auto cached = capture_entry(original)) return cached;
-         }
+      if (auto cached = find_module(uri_key)) return cached;
+
+      std::string original(URI);
+      if (original != uri_key) {
+         if (auto cached = find_module(original)) return cached;
+      }
+   }
+   else return nullptr;
+
+   // Detect circular dependencies
+
+   if (loading_in_progress.contains(uri_key)) {
+      reporter.record_error("XQDY0054: Circular module dependency detected: " + uri_key);
+      return nullptr;
+   }
+
+   // Find matching import declaration
+
+   const XQueryModuleImport *import_decl = nullptr;
+   for (const auto &imp : prolog.module_imports) {
+      if (imp.target_namespace == uri_key) {
+         import_decl = &imp;
+         break;
       }
    }
 
-   // TODO: Implement full module loading when Phases A-C are complete:
-   // - Circular dependency detection (XQDY0054)
-   // - Location resolution and file loading (XQST0059)
-   // - Library module validation (XQST0059, XQST0048)
-   // See error code helpers in xpath_errors.h
+   if (not import_decl) {
+      reporter.record_error("XQST0059: No import declaration found for: " + uri_key);
+      return nullptr;
+   }
+   
+   // TODO: Advanced path resolution
 
-   return nullptr;
+
+
+   // Mark as loading to detect recursion
+
+   loading_in_progress.insert(uri_key);
+
+   auto cleanup = pf::Defer([&]() {
+      loading_in_progress.erase(uri_key);
+   });
+
+   // Load file content
+
+   std::string *content;
+   if (not read_text_resource(*xml, std::string(URI), "utf-8", content)) {
+      reporter.record_error(std::format("XQST0059: Cannot load module file: {}", URI));
+      return nullptr;
+   }
+
+   // Compile the module query
+   XPathNode *compiled = nullptr;
+   if (xp::Compile((objXML *)*xml, content->c_str(), (APTR*)&compiled) != ERR::Okay) {
+      reporter.record_error(std::format("Cannot compile module: {}", URI));
+      return nullptr;
+   }
+
+   // Verify that it's a library module
+
+   auto module_prolog = compiled->get_prolog();
+   if ((not module_prolog) or (not module_prolog->is_library_module)) {
+      FreeResource(compiled);
+      reporter.record_error(std::format("Module is not a library module: {}", uri_key));
+      return nullptr;
+   }
+
+   // Validate namespace matches
+
+   if (module_prolog->module_namespace_uri != uri_key) {
+      FreeResource(compiled);
+      reporter.record_error(std::format("Module namespace mismatch: expected {}", uri_key));
+      return nullptr;
+   }
+
+   // Validate exports
+
+   if (!module_prolog->validate_library_exports()) {
+      FreeResource(compiled);
+      reporter.record_error(std::format("Module exports not in target namespace: {}", uri_key));
+      return nullptr;
+   }
+
+   // Cache the module
+
+   modules[uri_key] = { .compiled_query = compiled, .prolog = module_prolog };
+   xml->ModuleCache[uri_key] = compiled;
+
+   return compiled;
 }
+
+//********************************************************************************************************************
 
 const XQueryModuleCache::ModuleInfo * XQueryModuleCache::find_module(std::string_view uri) const
 {
    std::string original(uri);
    std::string uri_key = xml::uri::normalise_uri_separators(original);
    auto existing = modules.find(uri_key);
-   if (existing not_eq modules.end()) return &existing->second;
-   if (uri_key not_eq original) {
+   if (existing != modules.end()) return &existing->second;
+   if (uri_key != original) {
       auto fallback = modules.find(original);
-      if (fallback not_eq modules.end()) return &fallback->second;
+      if (fallback != modules.end()) return &fallback->second;
    }
    return nullptr;
 }
@@ -217,10 +282,14 @@ bool XQueryProlog::declare_module_import(XQueryModuleImport import_decl, std::st
    return true;
 }
 
+//********************************************************************************************************************
+
 bool XQueryProlog::validate_library_exports() const
 {
    return validate_library_exports_detailed().valid;
 }
+
+//********************************************************************************************************************
 
 XQueryProlog::ExportValidationResult XQueryProlog::validate_library_exports_detailed() const
 {
@@ -306,7 +375,7 @@ std::shared_ptr<XQueryModuleCache> XQueryProlog::get_module_cache() const
 //********************************************************************************************************************
 // Normalises a function QName using the prolog and document namespace tables to produce the canonical expanded form.
 
-std::string XQueryProlog::normalise_function_qname(std::string_view qname, const extXML *document) const
+std::string XQueryProlog::normalise_function_qname(std::string_view qname, const XPathNode *Node) const
 {
    auto build_expanded = [](const std::string &NamespaceURI, std::string_view Local) {
       std::string expanded("Q{");
@@ -318,20 +387,19 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
 
    size_t colon = qname.find(':');
    if (colon != std::string_view::npos) {
-      std::string prefix(qname.substr(0U, colon));
+      std::string prefix(qname.substr(0, colon));
       std::string_view local_view = qname.substr(colon + 1U);
 
       auto uri_entry = declared_namespace_uris.find(prefix);
-      if (uri_entry not_eq declared_namespace_uris.end()) {
+      if (uri_entry != declared_namespace_uris.end()) {
          return build_expanded(uri_entry->second, local_view);
       }
 
-      if (document) {
-         auto prefix_it = document->Prefixes.find(prefix);
-         if (prefix_it not_eq document->Prefixes.end()) {
-            auto ns_it = document->NSRegistry.find(prefix_it->second);
-            if (ns_it not_eq document->NSRegistry.end()) {
-               return build_expanded(ns_it->second, local_view);
+      if (Node) {
+         if (auto other_prolog = Node->get_prolog()) {
+            auto uri_entry2 = other_prolog->declared_namespace_uris.find(prefix);
+            if (uri_entry2 != other_prolog->declared_namespace_uris.end()) {
+               return build_expanded(uri_entry2->second, local_view);
             }
          }
       }

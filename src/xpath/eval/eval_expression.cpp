@@ -8,6 +8,7 @@
 #include <utility>
 
 // Resolves a variable reference by consulting the dynamic context, document bindings, and finally the prolog.
+
 bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
    XPathVal &OutValue, const XPathNode *ReferenceNode)
 {
@@ -134,8 +135,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
             return false;
          }
 
-         auto module_document = module_cache->fetch_or_load(module_uri, *prolog, *this);
-         (void)module_document;
+         (void)module_cache->fetch_or_load(module_uri, *prolog, *this);
 
          auto module_info = module_cache->find_module(module_uri);
          if (!module_info) {

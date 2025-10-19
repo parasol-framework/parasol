@@ -14,14 +14,12 @@ struct XQueryModuleCache;
 extern "C" ERR load_regex(void);
 
 struct XPathNode {
-   struct XPathAttributeValuePart
-   {
+   struct XPathAttributeValuePart {
       bool is_expression = false;
       std::string text;
    };
 
-   struct XPathConstructorAttribute
-   {
+   struct XPathConstructorAttribute {
       std::string prefix;
       std::string name;
       std::string namespace_uri;
@@ -29,47 +27,38 @@ struct XPathNode {
       std::vector<XPathAttributeValuePart> value_parts;
       std::vector<std::unique_ptr<XPathNode>> expression_parts;
 
-      void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr)
-      {
+      void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr) {
          if (expression_parts.size() <= index) expression_parts.resize(index + 1);
          expression_parts[index] = std::move(expr);
       }
 
-      [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const
-      {
+      [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const {
          return index < expression_parts.size() ? expression_parts[index].get() : nullptr;
       }
    };
 
-   struct XPathConstructorInfo
-   {
-      std::string prefix;
-      std::string name;
-      std::string namespace_uri;
+   struct XPathConstructorInfo {
+      std::string prefix, name, namespace_uri;
       bool is_empty_element = false;
       bool is_direct = false;
       std::vector<XPathConstructorAttribute> attributes;
    };
 
-   struct XPathOrderSpecOptions
-   {
+   struct XPathOrderSpecOptions {
       bool is_descending = false;
       bool has_empty_mode = false;
       bool empty_is_greatest = false;
       std::string collation_uri;
 
-      [[nodiscard]] bool has_collation() const
-      {
+      [[nodiscard]] bool has_collation() const {
          return !collation_uri.empty();
       }
    };
 
-   struct XPathGroupKeyInfo
-   {
+   struct XPathGroupKeyInfo {
       std::string variable_name;
 
-      [[nodiscard]] bool has_variable() const
-      {
+      [[nodiscard]] bool has_variable() const {
          return !variable_name.empty();
       }
    };
