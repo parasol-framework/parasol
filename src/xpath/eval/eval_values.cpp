@@ -233,12 +233,12 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
          namespace_hash = prolog->resolve_prefix(prefix, context.document);
          if (namespace_hash != 0) {
             auto uri_entry = prolog->declared_namespace_uris.find(prefix);
-            if (uri_entry not_eq prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
+            if (uri_entry != prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
             else if (context.document) {
                auto prefix_it = context.document->Prefixes.find(prefix);
-               if (prefix_it not_eq context.document->Prefixes.end()) {
+               if (prefix_it != context.document->Prefixes.end()) {
                   auto ns_it = context.document->NSRegistry.find(prefix_it->second);
-                  if (ns_it not_eq context.document->NSRegistry.end()) module_uri = ns_it->second;
+                  if (ns_it != context.document->NSRegistry.end()) module_uri = ns_it->second;
                }
             }
          }
@@ -290,8 +290,8 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
 
    auto module_function = module_prolog->find_function(FunctionName, Args.size());
    if (!module_function) {
-      auto alternative_name = module_prolog->normalise_function_qname(FunctionName, module_info->document);
-      if (alternative_name not_eq FunctionName) {
+      auto alternative_name = module_prolog->normalise_function_qname(FunctionName, module_info->compiled_query);
+      if (alternative_name != FunctionName) {
          module_function = module_prolog->find_function(alternative_name, Args.size());
       }
    }

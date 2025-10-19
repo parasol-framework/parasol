@@ -72,7 +72,7 @@ namespace xpath::accessor {
 }
 
 //********************************************************************************************************************
-// Returns the XML document that owns an attribute.  If a NodeHint is provided, it is checked first to see if it owns the attribute.
+// Returns the XMLTag that owns an attribute.  If a NodeHint is provided, it is checked first to see if it owns the attribute.
 
 [[nodiscard]] static XMLTag * resolve_attribute_scope(const XPathContext &Context, XMLTag *NodeHint, const XMLAttrib *Attribute, extXML *&Document)
 {
@@ -101,7 +101,7 @@ namespace xpath::accessor {
    if (Context.document) {
       if (auto owner = locate_in_document(Context.document)) return owner;
 
-      for (auto &entry : Context.document->DocumentCache) {
+      for (auto &entry : Context.document->XMLCache) {
          if (auto owner = locate_in_document(entry.second)) return owner;
       }
    }
@@ -183,7 +183,7 @@ namespace xpath::accessor {
 
    return pf::iequals(uri, "http://www.w3.org/2001/XMLSchema-instance");
 }
-   
+
 //********************************************************************************************************************
 
 extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
@@ -197,15 +197,19 @@ extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
          return Context.document;
       }
 
-      auto entry = Context.document->DocumentNodeOwners.find(Node);
-      if (entry != Context.document->DocumentNodeOwners.end()) {
-         if (entry->second) return entry->second;
+      for (auto &it : Context.document->XMLCache) {
+         extXML *cached_xml = it.second;
+         auto &cached_map = cached_xml->getMap();
+         auto cit = cached_map.find(Node->ID);
+         if ((cit != cached_map.end()) and (cit->second IS Node)) return cached_xml;
       }
    }
-   else return nullptr;
+   return nullptr;
 }
-   
+
 //********************************************************************************************************************
+// Builds the base URI chain for a node or attribute-only node-set.  Note that setting AttributeNode will result in
+// Node being recomputed.
 
 std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node, const XMLAttrib *AttributeNode)
 {
@@ -234,7 +238,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
       else document = Context.document;
    }
 
-   if ((Node->ParentID IS 0) and (!AttributeNode)) {
+   if ((Node->ParentID IS 0) and (!AttributeNode)) { // Root-level node with no attribute
       auto base = document_path(document ? document : Context.document);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
    }
@@ -247,7 +251,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
 
    std::vector<std::string> chain;
    for (XMLTag *current = Node; current; ) {
-      bool skip_current_xml_base = (current->ParentID IS 0) and (current IS Node) and (!AttributeNode);
+      bool skip_current_xml_base = (not current->ParentID) and (current IS Node) and (not AttributeNode);
 
       for (size_t index = 1; index < current->Attribs.size(); ++index) {
          const XMLAttrib &attrib = current->Attribs[index];
@@ -271,28 +275,33 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
    if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
    return std::nullopt;
 }
-   
+
 //********************************************************************************************************************
+// Resolves the document URI for a node.
 
 std::optional<std::string> resolve_document_uri(const XPathContext &Context, XMLTag *Node)
 {
    if (!Node) return std::nullopt;
 
-   extXML *origin = locate_node_document(Context, Node);
-   extXML *document = origin;
+   extXML *document = locate_node_document(Context, Node);
    if (!document) return std::nullopt;
+   if (document->Path and document->Path[0]) {
+      return xml::uri::normalise_uri_separators(std::string(document->Path));
+   }
 
-   if (auto path = document_path(document)) return xml::uri::normalise_uri_separators(*path);
+   // Perform a reverse lookup in the XML cache to find the document URI.
 
-   if (!Context.document) return std::nullopt;
-
-   for (const auto &entry : Context.document->DocumentCache) {
-      if (entry.second IS document) return entry.first;
+   if (Context.document) {
+      for (auto &entry : Context.document->XMLCache) {
+         if (entry.second IS document) {
+            return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normalisation needed here?
+         }
+      }
    }
 
    return std::nullopt;
 }
-   
+
 //********************************************************************************************************************
 
 std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,

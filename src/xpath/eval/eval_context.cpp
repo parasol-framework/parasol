@@ -824,14 +824,15 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
 extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 {
    if ((!Node) or (!xml)) return nullptr;
-
+   
    auto &map = xml->getMap();
    auto base = map.find(Node->ID);
    if ((base != map.end()) and (base->second IS Node)) return xml;
 
-   auto registered = xml->DocumentNodeOwners.find(Node);
-   if (registered != xml->DocumentNodeOwners.end()) {
-      if (auto document = registered->second; document) return document;
+   for (auto &imp : xml->XMLCache) {
+      auto &imp_map = imp.second->getMap();
+      auto imported = imp_map.find(Node->ID);
+      if ((imported != imp_map.end()) and (imported->second IS Node)) return imp.second;
    }
 
    return nullptr;

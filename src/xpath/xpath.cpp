@@ -219,6 +219,9 @@ The XML parameter is not required for compilation, but can potentially enhance s
 expression.  An additional benefit is that error messages will be defined in the #ErrorMsg field of the XML object if
 parsing fails.
 
+Note: This function can hang temporarily if the expression references network URIs.  Consider calling it from a
+separate thread to avoid blocking in such cases.
+
 -INPUT-
 obj(XML) XML: The XML document context for the query (can be NULL if not needed).
 cstr Query: A valid XPath or XQuery expression string.
@@ -227,6 +230,8 @@ cstr Query: A valid XPath or XQuery expression string.
 -ERRORS-
 Okay
 NullArgs
+Syntax
+AllocMemory
 -END-
 
 *********************************************************************************************************************/

@@ -47,7 +47,6 @@ class AxisEvaluator {
    extXML * xml;
    XPathArena & arena;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
-   std::unordered_map<int, XMLTag *> id_lookup;
    bool id_cache_built = false;
 
    struct AncestorPathView {
@@ -108,8 +107,7 @@ class AxisEvaluator {
 
    // Helper methods for tag lookup
    void build_id_cache();
-   extXML * find_document_for_node(XMLTag *Node);
-   XMLTag * find_tag_by_id(XMLTag *ReferenceNode, int ID);
+   XMLTag * find_parent(XMLTag *ReferenceNode);
 
    public:
    explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}

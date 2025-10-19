@@ -19,6 +19,7 @@
 
 #include "eval.h"
 #include "eval_detail.h"
+#include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
 
@@ -38,7 +39,9 @@ XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XM
    initialise_query_context(QueryRoot);
 }
 
+//********************************************************************************************************************
 // Prepares the evaluation context for a new query, wiring prolog metadata and module caches when present.
+
 void XPathEvaluator::initialise_query_context(const XPathNode *Root)
 {
    context.prolog = nullptr;
@@ -78,7 +81,9 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    }
 }
 
+//********************************************************************************************************************
 // Returns true when the active prolog requests boundary-space preservation.
+
 bool XPathEvaluator::prolog_has_boundary_space_preserve() const
 {
    auto prolog = context.prolog;

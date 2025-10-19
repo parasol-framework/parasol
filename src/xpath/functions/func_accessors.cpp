@@ -12,6 +12,10 @@
 #include "../api/xpath_functions.h"
 #include "../../xml/xml.h"
 
+//********************************************************************************************************************
+// base-uri() as xs:anyURI?
+// Returns the base URI for the specified node, or the context node if no argument is provided
+
 XPathVal XPathFunctionLibrary::function_base_uri(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    XMLTag *target_node = nullptr;
@@ -33,6 +37,10 @@ XPathVal XPathFunctionLibrary::function_base_uri(const std::vector<XPathVal> &Ar
 
    return XPathVal(*base);
 }
+
+//********************************************************************************************************************
+// data($arg as item()*) as xs:anyAtomicType*
+// Returns the typed value for each item in the specified sequence
 
 XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
@@ -56,7 +64,7 @@ XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, 
    else sequence_value = &Args[0];
 
    size_t length = sequence_length(*sequence_value);
-   if (length IS 0u) return XPathVal(pf::vector<XMLTag *>());
+   if (!length) return XPathVal(pf::vector<XMLTag *>());
 
    SequenceBuilder builder;
 
@@ -102,6 +110,10 @@ XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, 
    return make_sequence_value(std::move(builder));
 }
 
+//********************************************************************************************************************
+// document-uri($arg as node()?) as xs:anyURI?
+// Returns the URI property for the specified node. 
+
 XPathVal XPathFunctionLibrary::function_document_uri(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    XMLTag *target_node = nullptr;
@@ -117,6 +129,10 @@ XPathVal XPathFunctionLibrary::function_document_uri(const std::vector<XPathVal>
 
    return XPathVal(*uri);
 }
+
+//********************************************************************************************************************
+// node-name($arg as node()?) as xs:QName?
+// Returns the node name for the specified node.
 
 XPathVal XPathFunctionLibrary::function_node_name(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
@@ -147,6 +163,8 @@ XPathVal XPathFunctionLibrary::function_node_name(const std::vector<XPathVal> &A
    return XPathVal(name);
 }
 
+//********************************************************************************************************************
+
 XPathVal XPathFunctionLibrary::function_nilled(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    XMLTag *target_node = nullptr;
@@ -164,12 +182,13 @@ XPathVal XPathFunctionLibrary::function_nilled(const std::vector<XPathVal> &Args
    return XPathVal(nilled);
 }
 
+//********************************************************************************************************************
+// static-base-uri() as xs:anyURI?
+// Returns the static base URI from the XQuery prolog, or the document base URI if none is defined.
+
 XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   (void)Args;
-
    XMLTag *target_node = Context.context_node;
-   const XMLAttrib *target_attribute = Context.attribute_node;
 
    if (!target_node and Context.document) {
       for (auto &tag : Context.document->Tags) {
@@ -179,7 +198,7 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
       }
    }
 
-   auto base = xpath::accessor::build_base_uri_chain(Context, target_node, target_attribute);
+   auto base = xpath::accessor::build_base_uri_chain(Context, target_node, Context.attribute_node);
    if (!base.has_value()) {
       if (Context.document) {
          std::string path = Context.document->Path;
@@ -192,11 +211,14 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
    return XPathVal(*base);
 }
 
+//********************************************************************************************************************
+// default-collation() as xs:anyURI
+// Returns the default collation URI from the XQuery prolog, or the codepoint collation if none is defined.
+
 XPathVal XPathFunctionLibrary::function_default_collation(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    (void)Args;
-   if (Context.prolog)
-   {
+   if (Context.prolog) {
       const std::string &collation = Context.prolog->default_collation;
       if (!collation.empty()) return XPathVal(collation);
    }
