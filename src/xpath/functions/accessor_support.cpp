@@ -291,7 +291,7 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
 
    for (auto &entry : Context.document->XMLCache) {
       if (entry.second IS document) {
-         return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normlisation needed here?
+         return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normalisation needed here?
       }
    }
 
