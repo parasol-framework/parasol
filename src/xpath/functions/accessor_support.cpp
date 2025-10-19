@@ -65,8 +65,9 @@ namespace xpath::accessor
          return nullptr;
       }
 
-      [[nodiscard]] static XMLTag * resolve_attribute_scope(const XPathContext &Context, XMLTag *NodeHint,
-         const XMLAttrib *Attribute, extXML *&Document)
+      // Returns the XML document that owns an attribute.  If a NodeHint is provided, it is checked first to see if it owns the attribute.
+
+      [[nodiscard]] static XMLTag * resolve_attribute_scope(const XPathContext &Context, XMLTag *NodeHint, const XMLAttrib *Attribute, extXML *&Document)
       {
          if (!Attribute) return NodeHint;
 
@@ -77,11 +78,9 @@ namespace xpath::accessor
             }
          }
 
-         auto locate_in_document = [&](extXML *Candidate) -> XMLTag *
-         {
+         auto locate_in_document = [&](extXML *Candidate) -> XMLTag * {
             if (!Candidate) return nullptr;
-            XMLTag *owner = find_attribute_owner(Candidate, Attribute);
-            if (owner) {
+            if (XMLTag *owner = find_attribute_owner(Candidate, Attribute); owner) {
                Document = Candidate;
                return owner;
             }
@@ -96,7 +95,7 @@ namespace xpath::accessor
             if (auto owner = locate_in_document(Context.document)) return owner;
 
             for (auto &entry : Context.document->DocumentCache) {
-               if (auto owner = locate_in_document(entry.second.get())) return owner;
+               if (auto owner = locate_in_document(entry.second)) return owner;
             }
          }
 
@@ -172,47 +171,42 @@ namespace xpath::accessor
          return pf::iequals(uri, "http://www.w3.org/2001/XMLSchema-instance");
       }
    }
+   
+   //********************************************************************************************************************
 
-   NodeOrigin locate_node_document(const XPathContext &Context, XMLTag *Node)
+   extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
    {
-      NodeOrigin origin;
-      if (!Node) return origin;
+      if (!Node) return nullptr;
 
       if (Context.document) {
          auto &map = Context.document->getMap();
          auto it = map.find(Node->ID);
          if ((it != map.end()) and (it->second IS Node)) {
-            origin.document = Context.document;
-            return origin;
+            return Context.document;
          }
-      }
 
-      if (Context.document) {
          auto entry = Context.document->DocumentNodeOwners.find(Node);
          if (entry != Context.document->DocumentNodeOwners.end()) {
-            if (auto doc = entry->second.lock()) {
-               origin.document = doc.get();
-               origin.holder = doc;
-               return origin;
-            }
+            if (entry->second) return entry->second;
          }
       }
-
-      return origin;
+      else return nullptr;
    }
+   
+   //********************************************************************************************************************
 
-   std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node,
-      const XMLAttrib *AttributeNode)
+   std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node, const XMLAttrib *AttributeNode)
    {
-      NodeOrigin origin = locate_node_document(Context, Node);
-      extXML *document = origin.document ? origin.document : Context.document;
+      extXML *document;
+      if (extXML *origin = locate_node_document(Context, Node)) document = origin;
+      else document = Context.document;
 
       if (AttributeNode) {
          Node = resolve_attribute_scope(Context, Node, AttributeNode, document);
 
          if (Node) {
-            NodeOrigin owner_origin = locate_node_document(Context, Node);
-            if (owner_origin.document) document = owner_origin.document;
+            extXML *owner_origin = locate_node_document(Context, Node);
+            if (owner_origin) document = owner_origin;
          }
       }
 
@@ -223,8 +217,8 @@ namespace xpath::accessor
       }
 
       if (!document) {
-         NodeOrigin owner_origin = locate_node_document(Context, Node);
-         if (owner_origin.document) document = owner_origin.document;
+         extXML *owner_origin = locate_node_document(Context, Node);
+         if (owner_origin) document = owner_origin;
          else document = Context.document;
       }
 
@@ -270,8 +264,8 @@ namespace xpath::accessor
    {
       if (!Node) return std::nullopt;
 
-      NodeOrigin origin = locate_node_document(Context, Node);
-      extXML *document = origin.document;
+      extXML *origin = locate_node_document(Context, Node);
+      extXML *document = origin;
       if (!document) return std::nullopt;
 
       if (auto path = document_path(document)) return xml::uri::normalise_uri_separators(*path);
@@ -279,7 +273,7 @@ namespace xpath::accessor
       if (!Context.document) return std::nullopt;
 
       for (const auto &entry : Context.document->DocumentCache) {
-         if (entry.second.get() IS document) return entry.first;
+         if (entry.second IS document) return entry.first;
       }
 
       return std::nullopt;
@@ -294,8 +288,8 @@ namespace xpath::accessor
       if (Node->Attribs.empty()) return nullptr;
       if (Node->Attribs[0].Name.empty()) return nullptr;
 
-      NodeOrigin origin = locate_node_document(Context, Node);
-      extXML *document = origin.document ? origin.document : Context.document;
+      extXML *origin = locate_node_document(Context, Node);
+      extXML *document = origin ? origin : Context.document;
       if ((!document) or (!document->SchemaContext)) return nullptr;
 
       auto descriptor = find_element_descriptor(document, Node->Attribs[0].Name);
@@ -315,8 +309,8 @@ namespace xpath::accessor
       if ((!Node) or Node->Attribs.empty()) return false;
       if (Node->Attribs[0].Name.empty()) return false;
 
-      NodeOrigin origin = locate_node_document(Context, Node);
-      extXML *document = origin.document ? origin.document : Context.document;
+      extXML *origin = locate_node_document(Context, Node);
+      extXML *document = origin ? origin : Context.document;
 
       for (size_t index = 1; index < Node->Attribs.size(); ++index) {
          const XMLAttrib &attrib = Node->Attribs[index];

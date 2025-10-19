@@ -831,7 +831,7 @@ extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 
    auto registered = xml->DocumentNodeOwners.find(Node);
    if (registered != xml->DocumentNodeOwners.end()) {
-      if (auto document = registered->second.lock(); document) return document.get();
+      if (auto document = registered->second; document) return document;
    }
 
    return nullptr;

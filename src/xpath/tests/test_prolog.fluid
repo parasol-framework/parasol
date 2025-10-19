@@ -211,6 +211,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Module imports without loader support should emit a structural diagnostic
+-- TODO: Module importing has been implemented, update test.
 
 function testModuleImportDeclaration()
    local xml = obj.new('xml', {
@@ -244,6 +245,7 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Module import namespaces should be normalised for cache lookups
+-- TODO: Module importing has been implemented, update test.
 
 function testModuleImportNamespaceNormalisation()
    local xml = obj.new('xml', {

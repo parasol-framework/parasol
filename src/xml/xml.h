@@ -163,11 +163,22 @@ class extXML : public objXML {
    // then this lookup table returns the most recently assigned URI.
    ankerl::unordered_dense::map<std::string, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
-   ankerl::unordered_dense::map<std::string, std::shared_ptr<extXML>> DocumentCache;
+   // XQuery cache for loaded XML documents and unparsed text.  These resources are owned exclusively by the XML
+   // object.  Potentially, multiple XPath objects can reference a single document.  For that reason, ownership
+   // is maintained for the lifetime of the XML object so that we can simplify resource management.
+
+   ankerl::unordered_dense::map<std::string, extXML *> DocumentCache;
    ankerl::unordered_dense::map<std::string, std::shared_ptr<std::string>> UnparsedTextCache;
-   ankerl::unordered_dense::map<const XMLTag *, std::weak_ptr<extXML>> DocumentNodeOwners;
+   ankerl::unordered_dense::map<const XMLTag *, extXML *> DocumentNodeOwners;
 
    extXML() : ReadOnly(false), StaleMap(true) { }
+
+   ~extXML() {
+      // Clean up cached documents
+      for (auto &entry : DocumentCache) {
+         if (entry.second) FreeResource(entry.second);
+      }
+   }
 
    [[nodiscard]] ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
       if (StaleMap) {
