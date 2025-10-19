@@ -8,6 +8,7 @@
 #include <optional>
 #include <algorithm>
 #include "../xpath.h"
+#include "../functions/accessor_support.h"
 #include "../../xml/xml.h"
 #include "../../xml/uri_utils.h"
 
@@ -74,6 +75,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       return value;
    };
 
+   auto base_directory = xpath::accessor::resolve_document_base_directory(xml.operator->());
+
    auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
       std::string normalised = normalise_cache_key(hint);
       if (normalised.empty()) return std::string();
@@ -93,14 +96,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
          if (!xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
       }
 
-      if (xml->Path and xml->Path[0]) {
-         std::string base_path = normalise_cache_key(std::string(xml->Path));
-         size_t slash = base_path.rfind('/');
-         std::string directory;
-         if (slash != std::string::npos) directory = base_path.substr(0u, slash + 1u);
-         else directory.clear();
-
-         std::string combined = directory;
+      if (base_directory) {
+         std::string combined = *base_directory;
          combined.append(normalised);
          return normalise_cache_key(combined);
       }
