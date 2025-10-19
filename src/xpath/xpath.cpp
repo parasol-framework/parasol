@@ -120,6 +120,7 @@ Examples:
 #include "../link/unicode.h"
 #include "../xml/uri_utils.h"
 #include "../xml/xml.h"
+#include "functions/accessor_support.h"
 #include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
 #include "parse/xpath_parser.h"
@@ -293,10 +294,8 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
       if (xml and prolog) {
          if (prolog->static_base_uri.empty()) {
-            if (xml->Path) {
-               std::string inherited_base(xml->Path);
-               inherited_base = xml::uri::normalise_uri_separators(std::move(inherited_base));
-               prolog->static_base_uri = std::move(inherited_base);
+            if (auto base = xpath::accessor::resolve_document_base_directory(xml)) {
+               prolog->static_base_uri = std::move(*base);
             }
          }
       }
