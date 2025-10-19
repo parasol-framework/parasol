@@ -25,7 +25,7 @@ namespace xml::schema
 
 namespace xpath::accessor
 {
-   extXML * locate_node_document(const XPathContext &Context, XMLTag *Node);
+   [[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XMLTag *Node);
 
    std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XMLTag *Node, const XMLAttrib *AttributeNode);
 

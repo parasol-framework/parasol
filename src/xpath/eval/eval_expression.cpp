@@ -5,6 +5,7 @@
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
 #include <parasol/strings.hpp>
+#include <format>
 #include <utility>
 
 // Resolves a variable reference by consulting the dynamic context, document bindings, and finally the prolog.
@@ -27,11 +28,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
 
          auto uri_entry = SourceProlog.declared_namespace_uris.find(prefix);
          if (uri_entry not_eq SourceProlog.declared_namespace_uris.end()) {
-            std::string expanded("Q{");
-            expanded.append(uri_entry->second);
-            expanded.push_back('}');
-            expanded.append(local_name_view);
-            return expanded;
+            return std::format("Q{{{}}}{}", uri_entry->second, local_name_view);
          }
 
          if (context.document) {
@@ -39,11 +36,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
             if (prefix_it not_eq context.document->Prefixes.end()) {
                auto ns_it = context.document->NSRegistry.find(prefix_it->second);
                if (ns_it not_eq context.document->NSRegistry.end()) {
-                  std::string expanded("Q{");
-                  expanded.append(ns_it->second);
-                  expanded.push_back('}');
-                  expanded.append(local_name_view);
-                  return expanded;
+                  return std::format("Q{{{}}}{}", ns_it->second, local_name_view);
                }
             }
          }
@@ -154,11 +147,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          const XQueryVariable *module_variable = module_prolog->find_variable(name);
 
          if (!module_uri.empty() and !imported_local_name.empty()) {
-            canonical_lookup.reserve(module_uri.size() + imported_local_name.size() + 3U);
-            canonical_lookup.append("Q{");
-            canonical_lookup.append(module_uri);
-            canonical_lookup.push_back('}');
-            canonical_lookup.append(imported_local_name);
+            canonical_lookup = std::format("Q{{{}}}{}", module_uri, imported_local_name);
          }
 
          if (!module_variable and !canonical_lookup.empty()) {
@@ -1201,12 +1190,14 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
          if (context.variables and context.variables->empty() IS false) {
             std::string binding_list;
-            binding_list.reserve(context.variables->size() * 16);
-            bool first_binding = true;
-            for (const auto &entry : *context.variables) {
-               if (!first_binding) binding_list.append(", ");
-               binding_list.append(entry.first);
-               first_binding = false;
+            auto it = context.variables->begin();
+            if (it not_eq context.variables->end()) {
+               binding_list = it->first;
+               ++it;
+               for (; it not_eq context.variables->end(); ++it) {
+                  binding_list.append(", ");
+                  binding_list.append(it->first);
+               }
             }
             log.msg(VLF::TRACE, "Context bindings available: [%s]", binding_list.c_str());
          }

@@ -164,6 +164,8 @@ XPathVal XPathFunctionLibrary::function_node_name(const std::vector<XPathVal> &A
 }
 
 //********************************************************************************************************************
+// nilled($arg as node()?) as xs:boolean
+// Returns true if the specified element node has an explicit xsi:nil="true" attribute.
 
 XPathVal XPathFunctionLibrary::function_nilled(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
@@ -215,9 +217,8 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
 // default-collation() as xs:anyURI
 // Returns the default collation URI from the XQuery prolog, or the codepoint collation if none is defined.
 
-XPathVal XPathFunctionLibrary::function_default_collation(const std::vector<XPathVal> &Args, const XPathContext &Context)
+XPathVal XPathFunctionLibrary::function_default_collation(const std::vector<XPathVal> &, const XPathContext &Context)
 {
-   (void)Args;
    if (Context.prolog) {
       const std::string &collation = Context.prolog->default_collation;
       if (!collation.empty()) return XPathVal(collation);

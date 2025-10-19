@@ -185,8 +185,9 @@ namespace xpath::accessor {
 }
 
 //********************************************************************************************************************
+// Locates the document that contains a particular node.
 
-extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
+[[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
 {
    if (!Node) return nullptr;
 
@@ -303,6 +304,7 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
 }
 
 //********************************************************************************************************************
+// Infers the schema type for an element node.
 
 std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,
    const XMLAttrib *AttributeNode)
@@ -330,6 +332,7 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPath
 }
 
 //********************************************************************************************************************
+// Determines whether an element is explicitly marked as nilled via the xsi:nil attribute.
 
 bool is_element_explicitly_nilled(const XPathContext &Context, XMLTag *Node)
 {
