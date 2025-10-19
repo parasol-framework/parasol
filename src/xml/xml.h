@@ -168,7 +168,9 @@ class extXML : public objXML {
    // is maintained for the lifetime of the XML object so that we can simplify resource management.
 
    ankerl::unordered_dense::map<std::string, extXML *> DocumentCache;
-   ankerl::unordered_dense::map<std::string, std::shared_ptr<std::string>> UnparsedTextCache;
+   ankerl::unordered_dense::map<std::string, std::string> UnparsedTextCache;
+
+   // Note: Referenced documents are to be treated as read-only or the XMLTag pointers will become invalid.
    ankerl::unordered_dense::map<const XMLTag *, extXML *> DocumentNodeOwners;
 
    extXML() : ReadOnly(false), StaleMap(true) { }

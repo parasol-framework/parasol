@@ -136,11 +136,18 @@ static extXML * load_document(extXML *Owner, const std::string &URI)
 }
 
 //*********************************************************************************************************************
-// Load (or retrieve from cache) a text resource.
+// Load (or retrieve from cache) a text resource.  Returns true if successful.
+// TODO: Support encodings other than UTF-8.
+// TODO: Support relative URIs based on the context document location.
+// TODO: Support loading files from http:// and other URI schemes (or implement in the File class).
 
 static bool read_text_resource(extXML *Owner, const std::string &URI, const std::optional<std::string> &Encoding,
-   std::shared_ptr<std::string> &Result)
+   std::string * &Result)
 {
+   pf::Log log(__FUNCTION__);
+
+   log.branch("Loading text resource: %s", URI.c_str());
+
    if (!Owner) return false;
 
    if (Encoding.has_value()) {
@@ -150,30 +157,28 @@ static bool read_text_resource(extXML *Owner, const std::string &URI, const std:
 
    auto existing = Owner->UnparsedTextCache.find(URI);
    if (existing != Owner->UnparsedTextCache.end()) {
-      Result = existing->second;
+      Result = &existing->second;
       return true;
    }
 
    if (is_string_uri(URI)) {
-      auto text = std::make_shared<std::string>(normalise_newlines(URI.substr(7u)));
-      Owner->UnparsedTextCache[URI] = text;
-      Result = text;
-      return true;
+      // TODO: Support loading from URI locations.
+      Result = nullptr;
+      return false;
    }
 
-   CacheFile *filecache = nullptr;
-   if (LoadFile(URI.c_str(), LDF::NIL, &filecache) != ERR::Okay) return false;
-
-   std::shared_ptr<std::string> text = std::make_shared<std::string>((CSTRING)filecache->Data, filecache->Size);
-   UnloadFile(filecache);
-
-   *text = normalise_newlines(*text);
-   Owner->UnparsedTextCache[URI] = text;
-   Result = text;
-   return true;
+   objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
+   if (file.ok()) {
+      std::string buffer;
+      buffer.resize(file->get<size_t>(FID_Size));
+      file->read(buffer.data(), buffer.size());
+      Owner->UnparsedTextCache[URI] = std::move(normalise_newlines(buffer));
+      Result = &Owner->UnparsedTextCache[URI];
+      return true;
+   }
+   else return false;
 }
 
-//*********************************************************************************************************************
 //*********************************************************************************************************************
 // Locate the root node of the document containing a given node.
 
@@ -448,7 +453,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathVal
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::string());
 
-   std::shared_ptr<std::string> text;
+   std::string *text;
    if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(std::string());
 
    return XPathVal(*text);
@@ -475,7 +480,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(false);
 
-   std::shared_ptr<std::string> text;
+   std::string *text;
    if (read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(true);
    return XPathVal(false);
 }
@@ -501,7 +506,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
-   std::shared_ptr<std::string> text;
+   std::string *text;
    if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
 
    std::vector<std::string> lines;

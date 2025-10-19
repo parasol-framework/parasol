@@ -3226,6 +3226,11 @@ struct Object { // Must be 64-bit aligned
 
 namespace pf {
 
+// Object creation helper class.  Usage examples:
+//
+//   objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
+//   if (file.ok()) { ... }
+
 template<class T = Object>
 class Create {
    private:

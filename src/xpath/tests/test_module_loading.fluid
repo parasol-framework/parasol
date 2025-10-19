@@ -173,20 +173,6 @@ end
 -- Validate module namespace matches import
 
 function testNamespaceValidation()
-   -- Create a module with wrong namespace
-   local bad_module = [[
-      module namespace wrong = "http://example.com/wrong";
-      declare function wrong:test() { 42 };
-   ]]
-
-   local file = obj.new('file', {
-      path = 'modules/bad_namespace.xq',
-      flags = 'NEW|WRITE'
-   })
-   file.acWrite(bad_module)
-   file = nil
-
-   -- Try to import it with different namespace
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local query = [[
@@ -207,8 +193,6 @@ end
 -- Reject non-library modules on import
 
 function testLibraryModuleValidation()
-   -- Utilise a main module (not library)
-
    local xml = obj.new('xml', { statement = '<root/>' })
 
    local query = [[
