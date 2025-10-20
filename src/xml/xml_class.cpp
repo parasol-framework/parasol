@@ -1982,10 +1982,18 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 
 static ERR SET_Statement(extXML *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
+   bool has_value = ((Value) and (*Value));
+
+   // Preserve any caller-supplied base path when setting inline XML content so that
+   // relative module imports can still resolve correctly.  Historically this routine
+   // discarded #Path, which caused the XPath module loader to lose the base directory
+   // as soon as #Statement was assigned before #Path during object initialisation.
+   // Only clear the path when the caller explicitly clears the statement content.
+   if ((!has_value) and (Self->Path)) { FreeResource(Self->Path); Self->Path = nullptr; }
+
    Self->Statement.clear();
 
-   if ((Value) and (*Value)) {
+   if (has_value) {
       if (Self->initialised()) {
          Self->Tags.clear();
          Self->LineNo = 1;
