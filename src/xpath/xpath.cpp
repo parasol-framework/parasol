@@ -258,9 +258,9 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
       auto tokens = tokeniser.tokenize(Query);
       XPathParseResult parse_result = parser.parse(tokens);
-      
+
       auto prolog = parse_result.prolog;
-      
+
       std::unique_ptr<XPathNode> root_node;
       if ((prolog) and (prolog->is_library_module)) {
          // XQuery module detected - empty result is normal

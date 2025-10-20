@@ -3094,7 +3094,7 @@ const T3 unicode_property_data<T1, T2, T3>::rangetable[] =
 	//  #46 (4909+1): bp=Any
 	0x0000, 0x10FFFF,
 	//  #47 (4910+0): bp=Assigned
-	
+
 	//  #48 (4910+4): bp=Bidi_Control:Bidi_C
 	0x061C, 0x061C, 0x200E, 0x200F, 0x202A, 0x202E, 0x2066, 0x2069,
 	//  #49 (4914+114): bp=Bidi_Mirrored:Bidi_M

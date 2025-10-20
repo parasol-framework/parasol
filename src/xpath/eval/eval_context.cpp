@@ -824,7 +824,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
 extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 {
    if ((!Node) or (!xml)) return nullptr;
-   
+
    auto &map = xml->getMap();
    auto base = map.find(Node->ID);
    if ((base != map.end()) and (base->second IS Node)) return xml;

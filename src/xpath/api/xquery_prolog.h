@@ -76,24 +76,24 @@ struct XQueryModuleCache {
 };
 
 //********************************************************************************************************************
-// If an XQuery expression contains a prolog, it will be parsed into this structure and maintained in the XPathNode 
+// If an XQuery expression contains a prolog, it will be parsed into this structure and maintained in the XPathNode
 // prolog field.
 
 struct XQueryProlog {
    XQueryProlog();
-   
+
    struct CopyNamespaces {
       bool preserve = true;
       bool inherit = true;
    } copy_namespaces;
-   
+
    struct ExportValidationResult {
       bool valid = true;
       std::string error_message;
       std::string problematic_qname;
       bool is_function = false;  // true if problematic item is a function, false if variable
    };
-   
+
    enum class BoundarySpace { Preserve, Strip } boundary_space = BoundarySpace::Strip;
    enum class ConstructionMode { Preserve, Strip } construction_mode = ConstructionMode::Strip;
    enum class OrderingMode { Ordered, Unordered } ordering_mode = OrderingMode::Ordered;
@@ -114,7 +114,7 @@ struct XQueryProlog {
    std::string default_collation;
    ankerl::unordered_dense::map<std::string, DecimalFormat> decimal_formats;
    ankerl::unordered_dense::map<std::string, std::string> options;
-   
+
    bool is_library_module = false;
    bool static_base_uri_declared = false;
    bool default_collation_declared = false;

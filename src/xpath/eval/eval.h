@@ -69,7 +69,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
-   
+
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    extXML * resolve_document_for_node(XMLTag *Node) const;
    bool is_foreign_document_node(XMLTag *Node) const;
@@ -77,7 +77,7 @@ class XPathEvaluator : public XPathErrorReporter {
       const std::vector<const XPathNode *> &, size_t, uint32_t, bool &);
    XPathVal evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
    XPathVal evaluate_path_from_nodes(const NODES &,
-      const std::vector<const XMLAttrib *> &, const std::vector<const XPathNode *> &, const XPathNode *, 
+      const std::vector<const XMLAttrib *> &, const std::vector<const XPathNode *> &, const XPathNode *,
       const XPathNode *, uint32_t);
    ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR process_expression_node_set(const XPathVal &Value);
@@ -155,7 +155,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    // Entry point for compiled XPath evaluation
    ERR find_tag(const XPathNode &, uint32_t);
-   
+
    inline bool is_trace_enabled() const { return trace_xpath_enabled; }
 
    // Full XPath expression evaluation returning computed values.  Will update the provided XPathValue

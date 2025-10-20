@@ -112,7 +112,7 @@ XPathVal XPathFunctionLibrary::function_data(const std::vector<XPathVal> &Args, 
 
 //********************************************************************************************************************
 // document-uri($arg as node()?) as xs:anyURI?
-// Returns the URI property for the specified node. 
+// Returns the URI property for the specified node.
 
 XPathVal XPathFunctionLibrary::function_document_uri(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {

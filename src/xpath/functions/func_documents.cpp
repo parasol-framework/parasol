@@ -62,7 +62,7 @@ static bool resolve_resource_location(const XPathContext &Context, const std::st
 
 //*********************************************************************************************************************
 // Load (or retrieve from cache) an XML document.
-// Note: For the time being, cached XML documents are considered read-only (modifying the tags would upset cached 
+// Note: For the time being, cached XML documents are considered read-only (modifying the tags would upset cached
 // tag references).
 
 static extXML * load_document(extXML *Owner, const std::string &URI)

@@ -1,3 +1,14 @@
+// XQuery Prolog and Module Management
+//
+// Implements the XQuery prolog data structures used by the XPath/XQuery engine. The prolog records
+// construction mode, default namespaces, collations, decimal formats, and user declarations of functions
+// and variables. It also normalises QNames, resolves prefixes, and validates that library modules export
+// symbols in the declared target namespace.
+//
+// This translation unit additionally provides a lightweight module cache that consults the owning XML
+// document, resolves import location hints, loads library modules, compiles them, and enforces circular-
+// dependency and namespace checks. Prolog lookups (functions, variables, prefixes) are optimised via
+// canonical keys such as the qname/arity signature.
 
 #include "xquery_prolog.h"
 #include "xpath_errors.h"
@@ -15,13 +26,9 @@
 //********************************************************************************************************************
 // Builds a canonical identifier combining the QName and arity so functions can be stored in a flat map.
 
-[[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity) {
-   std::string signature;
-   signature.reserve(QName.size() + 16U);
-   signature.append(QName);
-   signature.push_back('/');
-   signature.append(std::to_string(Arity));
-   return signature;
+[[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity)
+{
+   return std::format("{}/{}", QName, Arity);
 }
 
 //********************************************************************************************************************
@@ -44,7 +51,7 @@ std::string XQueryFunction::signature() const
 //********************************************************************************************************************
 // Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
 
-XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog, 
+XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog,
    XPathErrorReporter &reporter) const
 {
    pf::Log log(__FUNCTION__);
@@ -57,7 +64,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       reporter.record_error("XQST0059: Cannot load module without a pre-existing XML object: " + std::string(URI));
       return nullptr;
    }
-   
+
    pf::ScopedObjectLock<extXML> xml(owner);
    if (not xml.granted()) {
       reporter.record_error(std::format("XQST0059: Cannot lock XML object #{} for module loading: {}", owner, std::string(URI)));
@@ -101,8 +108,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       }
 
       if (base_directory) {
-         std::string combined = *base_directory;
-         combined.append(normalised);
+         std::string combined = std::format("{}{}", *base_directory, normalised);
          return normalise_cache_key(combined);
       }
 
@@ -139,7 +145,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       reporter.record_error("XQST0059: No import declaration found for: " + uri_key);
       return nullptr;
    }
-   
+
    std::vector<std::string> location_candidates;
    if (import_decl) {
       for (const auto &hint : import_decl->location_hints) {
@@ -200,8 +206,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    if (!content) {
       std::string attempted;
       for (size_t index = 0; index < location_candidates.size(); ++index) {
-         if (index > 0) attempted.append(", ");
-         attempted.append(location_candidates[index]);
+         if (index > 0) attempted += std::format(", {}", location_candidates[index]);
+         else attempted += std::string(location_candidates[index]);
       }
 
       reporter.record_error(std::format("XQST0059: Cannot load module for namespace {} (attempted: {})", uri_key, attempted));
@@ -296,7 +302,7 @@ uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *doc
 
    if (prefix.empty()) {
       if (default_element_namespace.has_value()) return *default_element_namespace;
-      return 0U;
+      return 0;
    }
 
    if (document) {
@@ -304,7 +310,7 @@ uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *doc
       if (doc_entry != document->Prefixes.end()) return doc_entry->second;
    }
 
-   return 0U;
+   return 0;
 }
 
 //********************************************************************************************************************
@@ -411,9 +417,9 @@ XQueryProlog::ExportValidationResult XQueryProlog::validate_library_exports_deta
       // prefix:local format
       size_t colon = qname.find(':');
       if (colon IS std::string::npos) return false;
-      std::string_view prefix = qname.substr(0U, colon);
+      std::string_view prefix = qname.substr(0, colon);
       uint32_t prefix_hash = resolve_prefix(prefix, nullptr);
-      if (prefix_hash IS 0U) return false;
+      if (prefix_hash IS 0) return false;
       return prefix_hash IS module_hash;
    };
 
@@ -467,11 +473,7 @@ std::shared_ptr<XQueryModuleCache> XQueryProlog::get_module_cache() const
 std::string XQueryProlog::normalise_function_qname(std::string_view qname, const XPathNode *Node) const
 {
    auto build_expanded = [](const std::string &NamespaceURI, std::string_view Local) {
-      std::string expanded("Q{");
-      expanded.append(NamespaceURI);
-      expanded.push_back('}');
-      expanded.append(Local);
-      return expanded;
+      return std::format("Q{{{}}}{}", NamespaceURI, Local);
    };
 
    size_t colon = qname.find(':');
@@ -501,11 +503,7 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
    }
 
    if (default_function_namespace.has_value()) {
-      std::string expanded("Q{");
-      expanded.append(std::to_string(*default_function_namespace));
-      expanded.push_back('}');
-      expanded.append(qname);
-      return expanded;
+      return std::format("Q{{{}}}{}", *default_function_namespace, qname);
    }
 
    return std::string(qname);

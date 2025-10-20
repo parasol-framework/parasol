@@ -29,7 +29,7 @@ struct DUNIT {
    DUNIT(const std::string_view pValue, DU pDefaultType = DU::PIXEL, double pMin = std::numeric_limits<double>::min());
 
    double px(class layout &) const;
-   
+
    constexpr bool empty() { return (type IS DU::NIL) or (!value); }
    constexpr void clear() { value = 0; type = DU::PIXEL; }
 

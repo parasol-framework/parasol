@@ -8,6 +8,341 @@
 #include <format>
 #include <utility>
 
+struct SequenceEntry {
+   XMLTag * node = nullptr;
+   const XMLAttrib * attribute = nullptr;
+   std::string string_value;
+};
+
+struct ForBindingDefinition {
+   std::string name;
+   const XPathNode * sequence = nullptr;
+};
+
+struct QuantifiedBindingDefinition {
+   std::string name;
+   const XPathNode * sequence = nullptr;
+};
+
+//********************************************************************************************************************
+// File-local helpers extracted from large embedded lambdas to reduce function length and improve readability.
+
+static std::string canonicalise_variable_qname(std::string_view Candidate,
+   const XQueryProlog &SourceProlog, const extXML *Document)
+{
+   if ((Candidate.size() > 2) and (Candidate[0] IS 'Q') and (Candidate[1] IS '{')) {
+      return std::string(Candidate);
+   }
+
+   size_t colon_position = Candidate.find(':');
+   if (colon_position != std::string_view::npos) {
+      std::string prefix(Candidate.substr(0, colon_position));
+      std::string_view local_name_view = Candidate.substr(colon_position + 1);
+
+      auto uri_entry = SourceProlog.declared_namespace_uris.find(prefix);
+      if (uri_entry != SourceProlog.declared_namespace_uris.end()) {
+         return std::format("Q{{{}}}{}", uri_entry->second, local_name_view);
+      }
+
+      if (Document) {
+         auto prefix_it = Document->Prefixes.find(prefix);
+         if (prefix_it != Document->Prefixes.end()) {
+            auto ns_it = Document->NSRegistry.find(prefix_it->second);
+            if (ns_it != Document->NSRegistry.end()) {
+               return std::format("Q{{{}}}{}", ns_it->second, local_name_view);
+            }
+         }
+      }
+   }
+
+   return std::string(Candidate);
+}
+
+//********************************************************************************************************************
+
+static void append_value_to_sequence(const XPathVal &Value, std::vector<SequenceEntry> &Entries,
+   int &NextConstructedNodeId, std::vector<std::unique_ptr<XMLTag>> &ConstructedNodes)
+{
+   if (Value.Type IS XPVT::NodeSet) {
+      bool use_override = Value.node_set_string_override.has_value() and Value.node_set_string_values.empty();
+      for (size_t index = 0; index < Value.node_set.size(); ++index) {
+         XMLTag *node = Value.node_set[index];
+         if (not node) continue;
+
+         const XMLAttrib *attribute = nullptr;
+         if (index < Value.node_set_attributes.size()) attribute = Value.node_set_attributes[index];
+
+         std::string item_string;
+         if (index < Value.node_set_string_values.size()) item_string = Value.node_set_string_values[index];
+         else if (use_override) item_string = *Value.node_set_string_override;
+         else if (attribute) item_string = attribute->Value;
+         else item_string = XPathVal::node_string_value(node);
+
+         Entries.push_back({ node, attribute, std::move(item_string) });
+      }
+      return;
+   }
+
+   std::string text = Value.to_string();
+   pf::vector<XMLAttrib> text_attribs;
+   text_attribs.emplace_back("", text);
+
+   XMLTag text_node(NextConstructedNodeId--, 0, text_attribs);
+   text_node.ParentID = 0;
+
+   auto stored = std::make_unique<XMLTag>(std::move(text_node));
+   XMLTag *root = stored.get();
+   ConstructedNodes.push_back(std::move(stored));
+
+   Entries.push_back({ root, nullptr, std::move(text) });
+}
+
+//********************************************************************************************************************
+
+enum class BinaryOperationKind {
+   AND,
+   OR,
+   UNION,
+   INTERSECT,
+   EXCEPT,
+   COMMA,
+   EQ,
+   NE,
+   EQ_WORD,
+   NE_WORD,
+   LT,
+   LE,
+   GT,
+   GE,
+   ADD,
+   SUB,
+   MUL,
+   DIV,
+   MOD,
+   UNKNOWN
+};
+
+static BinaryOperationKind map_binary_operation(std::string_view Op)
+{
+   if (Op IS "and") return BinaryOperationKind::AND;
+   if (Op IS "or") return BinaryOperationKind::OR;
+   if (Op IS "|") return BinaryOperationKind::UNION;
+   if (Op IS "intersect") return BinaryOperationKind::INTERSECT;
+   if (Op IS "except") return BinaryOperationKind::EXCEPT;
+   if (Op IS ",") return BinaryOperationKind::COMMA;
+   if (Op IS "=") return BinaryOperationKind::EQ;
+   if (Op IS "!=") return BinaryOperationKind::NE;
+   if (Op IS "eq") return BinaryOperationKind::EQ_WORD;
+   if (Op IS "ne") return BinaryOperationKind::NE_WORD;
+   if ((Op IS "<") or (Op IS "lt")) return BinaryOperationKind::LT;
+   if ((Op IS "<=") or (Op IS "le")) return BinaryOperationKind::LE;
+   if ((Op IS ">") or (Op IS "gt")) return BinaryOperationKind::GT;
+   if ((Op IS ">=") or (Op IS "ge")) return BinaryOperationKind::GE;
+   if (Op IS "+") return BinaryOperationKind::ADD;
+   if (Op IS "-") return BinaryOperationKind::SUB;
+   if (Op IS "*") return BinaryOperationKind::MUL;
+   if (Op IS "div") return BinaryOperationKind::DIV;
+   if (Op IS "mod") return BinaryOperationKind::MOD;
+   return BinaryOperationKind::UNKNOWN;
+}
+
+//********************************************************************************************************************
+
+static bool append_iteration_value_helper(const XPathVal &IterationValue, NODES &CombinedNodes,
+   std::vector<const XMLAttrib *> &CombinedAttributes, std::vector<std::string> &CombinedStrings,
+   std::optional<std::string> &CombinedOverride)
+{
+   if (IterationValue.Type IS XPVT::NodeSet) {
+      size_t length = IterationValue.node_set.size();
+      if (length < IterationValue.node_set_attributes.size()) length = IterationValue.node_set_attributes.size();
+      if (length < IterationValue.node_set_string_values.size()) length = IterationValue.node_set_string_values.size();
+      if ((length IS 0) and IterationValue.node_set_string_override.has_value()) length = 1;
+
+      for (size_t node_index = 0; node_index < length; ++node_index) {
+         XMLTag *node = node_index < IterationValue.node_set.size() ? IterationValue.node_set[node_index] : nullptr;
+         CombinedNodes.push_back(node);
+
+         const XMLAttrib *attribute = nullptr;
+         if (node_index < IterationValue.node_set_attributes.size()) attribute = IterationValue.node_set_attributes[node_index];
+         CombinedAttributes.push_back(attribute);
+
+         std::string node_string;
+         bool use_override = IterationValue.node_set_string_override.has_value() and IterationValue.node_set_string_values.empty() and (node_index IS 0);
+         if (node_index < IterationValue.node_set_string_values.size()) node_string = IterationValue.node_set_string_values[node_index];
+         else if (use_override) node_string = *IterationValue.node_set_string_override;
+         else if (attribute) node_string = attribute->Value;
+         else if (node) node_string = XPathVal::node_string_value(node);
+
+         CombinedStrings.push_back(node_string);
+         if (not CombinedOverride.has_value()) CombinedOverride = node_string;
+      }
+
+      if (IterationValue.node_set_string_override.has_value() and IterationValue.node_set_string_values.empty()) {
+         if (not CombinedOverride.has_value()) CombinedOverride = IterationValue.node_set_string_override;
+      }
+
+      return true;
+   }
+
+   if (IterationValue.is_empty()) return true;
+
+   std::string atomic_string = IterationValue.to_string();
+   CombinedNodes.push_back(nullptr);
+   CombinedAttributes.push_back(nullptr);
+   CombinedStrings.push_back(atomic_string);
+   if (not CombinedOverride.has_value()) CombinedOverride = atomic_string;
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool evaluate_for_bindings_recursive(XPathEvaluator &Self, XPathContext &Context,
+   const std::vector<ForBindingDefinition> &Bindings, size_t BindingIndex,
+   const XPathNode *ReturnNode, uint32_t CurrentPrefix, NODES &CombinedNodes,
+   std::vector<const XMLAttrib *> &CombinedAttributes, std::vector<std::string> &CombinedStrings,
+   std::optional<std::string> &CombinedOverride, bool &ExpressionUnsupported)
+{
+   if (BindingIndex >= Bindings.size()) {
+      auto iteration_value = Self.evaluate_expression(ReturnNode, CurrentPrefix);
+      if (ExpressionUnsupported) return false;
+      if (not append_iteration_value_helper(iteration_value, CombinedNodes, CombinedAttributes, CombinedStrings, CombinedOverride)) return false;
+      return true;
+   }
+
+   const auto &binding = Bindings[BindingIndex];
+   if (not binding.sequence) {
+      ExpressionUnsupported = true;
+      return false;
+   }
+
+   const std::string variable_name = binding.name;
+
+   auto sequence_value = Self.evaluate_expression(binding.sequence, CurrentPrefix);
+   if (ExpressionUnsupported) return false;
+
+   if (sequence_value.Type != XPVT::NodeSet) {
+      ExpressionUnsupported = true;
+      return false;
+   }
+
+   size_t sequence_size = sequence_value.node_set.size();
+
+   if (sequence_size IS 0) return true;
+
+   for (size_t index = 0; index < sequence_size; ++index) {
+      XMLTag *item_node = sequence_value.node_set[index];
+      const XMLAttrib *item_attribute = nullptr;
+      if (index < sequence_value.node_set_attributes.size()) {
+         item_attribute = sequence_value.node_set_attributes[index];
+      }
+
+      XPathVal bound_value;
+      bound_value.Type = XPVT::NodeSet;
+      bound_value.preserve_node_order = false;
+      bound_value.node_set.push_back(item_node);
+      bound_value.node_set_attributes.push_back(item_attribute);
+
+      std::string item_string;
+      bool use_override = sequence_value.node_set_string_override.has_value() and (index IS 0) and sequence_value.node_set_string_values.empty();
+      if (index < sequence_value.node_set_string_values.size()) {
+         item_string = sequence_value.node_set_string_values[index];
+      }
+      else if (use_override) item_string = *sequence_value.node_set_string_override;
+      else if (item_node) item_string = XPathVal::node_string_value(item_node);
+
+      bound_value.node_set_string_values.push_back(item_string);
+      bound_value.node_set_string_override = item_string;
+
+      VariableBindingGuard iteration_guard(Context, variable_name, std::move(bound_value));
+
+      Self.push_context(item_node, index + 1, sequence_size, item_attribute);
+      bool iteration_ok = evaluate_for_bindings_recursive(Self, Context, Bindings, BindingIndex + 1,
+         ReturnNode, CurrentPrefix, CombinedNodes, CombinedAttributes, CombinedStrings, CombinedOverride, ExpressionUnsupported);
+      Self.pop_context();
+
+      if (not iteration_ok) return false;
+      if (ExpressionUnsupported) return false;
+   }
+
+   return true;
+}
+
+//********************************************************************************************************************
+
+static bool evaluate_quantified_binding_recursive(XPathEvaluator &Self, XPathContext &Context,
+   const std::vector<QuantifiedBindingDefinition> &Bindings, size_t BindingIndex,
+   bool IsSome, bool IsEvery, const XPathNode *ConditionNode, uint32_t CurrentPrefix,
+   bool &ExpressionUnsupported)
+{
+   if (BindingIndex >= Bindings.size()) {
+      auto condition_value = Self.evaluate_expression(ConditionNode, CurrentPrefix);
+      if (ExpressionUnsupported) return false;
+      return condition_value.to_boolean();
+   }
+
+   const auto &binding = Bindings[BindingIndex];
+   if (not binding.sequence) {
+      ExpressionUnsupported = true;
+      return false;
+   }
+
+   const std::string variable_name = binding.name;
+
+   auto sequence_value = Self.evaluate_expression(binding.sequence, CurrentPrefix);
+   if (ExpressionUnsupported) return false;
+
+   if (sequence_value.Type != XPVT::NodeSet) {
+      ExpressionUnsupported = true;
+      return false;
+   }
+
+   size_t sequence_size = sequence_value.node_set.size();
+
+   if (sequence_size IS 0) return IsEvery;
+
+   for (size_t index = 0; index < sequence_size; ++index) {
+      XMLTag *item_node = sequence_value.node_set[index];
+      const XMLAttrib *item_attribute = nullptr;
+      if (index < sequence_value.node_set_attributes.size()) {
+         item_attribute = sequence_value.node_set_attributes[index];
+      }
+
+      XPathVal bound_value;
+      bound_value.Type = XPVT::NodeSet;
+      bound_value.preserve_node_order = false;
+      bound_value.node_set.push_back(item_node);
+      bound_value.node_set_attributes.push_back(item_attribute);
+
+      std::string item_string;
+      bool use_override = sequence_value.node_set_string_override.has_value() and (index IS 0) and sequence_value.node_set_string_values.empty();
+      if (index < sequence_value.node_set_string_values.size()) {
+         item_string = sequence_value.node_set_string_values[index];
+      }
+      else if (use_override) item_string = *sequence_value.node_set_string_override;
+      else if (item_node) item_string = XPathVal::node_string_value(item_node);
+
+      bound_value.node_set_string_values.push_back(item_string);
+      bound_value.node_set_string_override = item_string;
+
+      VariableBindingGuard iteration_guard(Context, variable_name, std::move(bound_value));
+
+      Self.push_context(item_node, index + 1, sequence_size, item_attribute);
+      bool branch_result = evaluate_quantified_binding_recursive(Self, Context, Bindings, BindingIndex + 1,
+         IsSome, IsEvery, ConditionNode, CurrentPrefix, ExpressionUnsupported);
+      Self.pop_context();
+
+      if (ExpressionUnsupported) return false;
+
+      if (branch_result) {
+         if (IsSome) return true;
+      }
+      else if (IsEvery) return false;
+   }
+
+   return IsEvery;
+}
+
+//********************************************************************************************************************
 // Resolves a variable reference by consulting the dynamic context, document bindings, and finally the prolog.
 
 bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
@@ -15,35 +350,6 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
 {
    std::string name(QName);
    std::string normalised_name(name);
-
-   auto canonicalise_qname = [&](std::string_view Candidate, const XQueryProlog &SourceProlog) {
-      if ((Candidate.size() > 2) and (Candidate[0] IS 'Q') and (Candidate[1] IS '{')) {
-         return std::string(Candidate);
-      }
-
-      size_t colon_position = Candidate.find(':');
-      if (colon_position != std::string_view::npos) {
-         std::string prefix(Candidate.substr(0, colon_position));
-         std::string_view local_name_view = Candidate.substr(colon_position + 1);
-
-         auto uri_entry = SourceProlog.declared_namespace_uris.find(prefix);
-         if (uri_entry not_eq SourceProlog.declared_namespace_uris.end()) {
-            return std::format("Q{{{}}}{}", uri_entry->second, local_name_view);
-         }
-
-         if (context.document) {
-            auto prefix_it = context.document->Prefixes.find(prefix);
-            if (prefix_it not_eq context.document->Prefixes.end()) {
-               auto ns_it = context.document->NSRegistry.find(prefix_it->second);
-               if (ns_it not_eq context.document->NSRegistry.end()) {
-                  return std::format("Q{{{}}}{}", ns_it->second, local_name_view);
-               }
-            }
-         }
-      }
-
-      return std::string(Candidate);
-   };
 
    if (context.variables) {
       auto local_variable = context.variables->find(name);
@@ -72,7 +378,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    std::string canonical_lookup;
 
    if (not variable) {
-      uint32_t namespace_hash = 0U;
+      uint32_t namespace_hash = 0;
 
       if ((name.size() > 2) and (name[0] IS 'Q') and (name[1] IS '{')) {
          size_t closing = name.find('}');
@@ -83,7 +389,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          }
       }
 
-      if (namespace_hash IS 0) {
+      if (not namespace_hash) {
          auto separator = name.find(':');
          if (separator != std::string::npos) {
             std::string prefix = name.substr(0, separator);
@@ -91,12 +397,12 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
             namespace_hash = prolog->resolve_prefix(prefix, context.document);
             if (namespace_hash != 0) {
                auto uri_entry = prolog->declared_namespace_uris.find(prefix);
-               if (uri_entry not_eq prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
+               if (uri_entry != prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
                else if (context.document) {
                   auto prefix_it = context.document->Prefixes.find(prefix);
-                  if (prefix_it not_eq context.document->Prefixes.end()) {
+                  if (prefix_it != context.document->Prefixes.end()) {
                      auto ns_it = context.document->NSRegistry.find(prefix_it->second);
-                     if (ns_it not_eq context.document->NSRegistry.end()) module_uri = ns_it->second;
+                     if (ns_it != context.document->NSRegistry.end()) module_uri = ns_it->second;
                   }
                }
             }
@@ -199,9 +505,9 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    if (owner_prolog) {
       if (not canonical_lookup.empty()) normalised_name = canonical_lookup;
       else {
-         normalised_name = canonicalise_qname(name, *owner_prolog);
+         normalised_name = canonicalise_variable_qname(name, *owner_prolog, context.document);
          if (normalised_name IS name) {
-            normalised_name = canonicalise_qname(variable->qname, *owner_prolog);
+            normalised_name = canonicalise_variable_qname(variable->qname, *owner_prolog, context.document);
          }
       }
    }
@@ -212,7 +518,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return true;
    }
 
-   if (normalised_name not_eq name) {
+   if (normalised_name != name) {
       auto alias_value = prolog_variable_cache.find(name);
       if (alias_value != prolog_variable_cache.end()) {
          prolog_variable_cache.insert_or_assign(normalised_name, alias_value->second);
@@ -221,11 +527,11 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       }
    }
 
-   if (variable->qname not_eq normalised_name) {
+   if (variable->qname != normalised_name) {
       auto declared_value = prolog_variable_cache.find(variable->qname);
       if (declared_value != prolog_variable_cache.end()) {
          prolog_variable_cache.insert_or_assign(normalised_name, declared_value->second);
-         if (normalised_name not_eq name) {
+         if (normalised_name != name) {
             prolog_variable_cache.insert_or_assign(name, declared_value->second);
          }
          OutValue = declared_value->second;
@@ -279,11 +585,11 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    auto inserted = prolog_variable_cache.insert_or_assign(normalised_name, computed_value);
    OutValue = inserted.first->second;
 
-   if (normalised_name not_eq name) {
+   if (normalised_name != name) {
       prolog_variable_cache.insert_or_assign(name, inserted.first->second);
    }
 
-   if (variable->qname not_eq normalised_name and variable->qname not_eq name) {
+   if (variable->qname != normalised_name and variable->qname != name) {
       prolog_variable_cache.insert_or_assign(variable->qname, inserted.first->second);
    }
 
@@ -291,6 +597,20 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
 }
 
 //********************************************************************************************************************
+// Evaluates an XPath/XQuery expression node and returns its computed value.  Responsibilities:
+//
+// - Dispatches on node kind (numbers, literals, constructors, paths, predicates, and control flow).
+// - Preserves XPath semantics such as document order, short-circuiting (and/or), and context-sensitive
+//   evaluation for filters, paths, and quantified/for expressions.
+// - Integrates XQuery Prolog settings (ordering, construction, namespaces) and consults the module cache
+//   when user-defined functions or variables require module resolution.
+// - Uses push_context/pop_context to manage the evaluation context for node-set operations and predicates.
+// - Signals unsupported constructs via 'expression_unsupported' and reports diagnostics with record_error().
+// - Produces results as XPathVal, including node-set values with associated attribute/string metadata.
+//
+// Notes:
+// - Function is side-effect free for input XML; constructed text nodes are owned by 'constructed_nodes'.
+// - Returns empty values on failure paths; callers must check 'expression_unsupported' when necessary.
 
 XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix)
 {
@@ -301,92 +621,80 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
-   if (ExprNode->type IS XPathNodeType::EMPTY_SEQUENCE) {
-      // Return an empty node-set to represent the empty sequence
-      return XPathVal(pf::vector<XMLTag *>{});
-   }
-
-   if (ExprNode->type IS XPathNodeType::NUMBER) {
-      char *end_ptr = nullptr;
-      double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
-      if ((end_ptr) and (*end_ptr IS '\0')) return XPathVal(value);
-      return XPathVal(std::numeric_limits<double>::quiet_NaN());
-   }
-
-   if ((ExprNode->type IS XPathNodeType::LITERAL) or (ExprNode->type IS XPathNodeType::STRING)) {
-      return XPathVal(ExprNode->value);
-   }
-
-   if (ExprNode->type IS XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR) {
-      return evaluate_direct_element_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR) {
-      return evaluate_computed_element_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR) {
-      return evaluate_computed_attribute_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::TEXT_CONSTRUCTOR) {
-      return evaluate_text_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::COMMENT_CONSTRUCTOR) {
-      return evaluate_comment_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::PI_CONSTRUCTOR) {
-      return evaluate_pi_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::DOCUMENT_CONSTRUCTOR) {
-      return evaluate_document_constructor(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::LOCATION_PATH) {
-      return evaluate_path_expression_value(ExprNode, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::UNION) {
-      std::vector<const XPathNode *> branches;
-      branches.reserve(ExprNode->child_count());
-
-      for (size_t index = 0; index < ExprNode->child_count(); ++index) {
-         auto *branch = ExprNode->get_child(index);
-         if (branch) branches.push_back(branch);
+   // Use a switch for common node kinds for clarity and consistent early-returns
+   switch (ExprNode->type) {
+      case XPathNodeType::EMPTY_SEQUENCE: {
+         // Return an empty node-set to represent the empty sequence
+         return XPathVal(pf::vector<XMLTag *>{});
       }
-
-      return evaluate_union_value(branches, CurrentPrefix);
-   }
-
-   if (ExprNode->type IS XPathNodeType::CONDITIONAL) {
-      if (ExprNode->child_count() < 3) {
-         expression_unsupported = true;
-         return XPathVal();
+      case XPathNodeType::NUMBER: {
+         char *end_ptr = nullptr;
+         double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
+         if ((end_ptr) and (*end_ptr IS '\0')) return XPathVal(value);
+         return XPathVal(std::numeric_limits<double>::quiet_NaN());
       }
-
-      auto *condition_node = ExprNode->get_child(0);
-      auto *then_node = ExprNode->get_child(1);
-      auto *else_node = ExprNode->get_child(2);
-
-      if ((not condition_node) or (not then_node) or (not else_node)) {
-         expression_unsupported = true;
-         return XPathVal();
+      case XPathNodeType::LITERAL:
+      case XPathNodeType::STRING: {
+         return XPathVal(ExprNode->value);
       }
-
-      auto condition_value = evaluate_expression(condition_node, CurrentPrefix);
-      if (expression_unsupported) return XPathVal();
-
-      bool condition_boolean = condition_value.to_boolean();
-      auto *selected_node = condition_boolean ? then_node : else_node;
-      auto branch_value = evaluate_expression(selected_node, CurrentPrefix);
-      return branch_value;
+      case XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR: {
+         return evaluate_direct_element_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR: {
+         return evaluate_computed_element_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR: {
+         return evaluate_computed_attribute_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::TEXT_CONSTRUCTOR: {
+         return evaluate_text_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::COMMENT_CONSTRUCTOR: {
+         return evaluate_comment_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::PI_CONSTRUCTOR: {
+         return evaluate_pi_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::DOCUMENT_CONSTRUCTOR: {
+         return evaluate_document_constructor(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::LOCATION_PATH: {
+         return evaluate_path_expression_value(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::UNION: {
+         std::vector<const XPathNode *> branches;
+         branches.reserve(ExprNode->child_count());
+         for (size_t index = 0; index < ExprNode->child_count(); ++index) {
+            auto *branch = ExprNode->get_child(index);
+            if (branch) branches.push_back(branch);
+         }
+         return evaluate_union_value(branches, CurrentPrefix);
+      }
+      case XPathNodeType::CONDITIONAL: {
+         if (ExprNode->child_count() < 3) {
+            expression_unsupported = true;
+            return XPathVal();
+         }
+         auto *condition_node = ExprNode->get_child(0);
+         auto *then_node = ExprNode->get_child(1);
+         auto *else_node = ExprNode->get_child(2);
+         if ((not condition_node) or (not then_node) or (not else_node)) {
+            expression_unsupported = true;
+            return XPathVal();
+         }
+         auto condition_value = evaluate_expression(condition_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+         bool condition_boolean = condition_value.to_boolean();
+         auto *selected_node = condition_boolean ? then_node : else_node;
+         auto branch_value = evaluate_expression(selected_node, CurrentPrefix);
+         return branch_value;
+      }
+      default: break; // handled below
    }
 
    // LET expressions share the same diagnostic surface as the parser.  Whenever a binding fails we populate
    // extXML::ErrorMsg so Fluid callers receive precise feedback rather than generic failure codes.
+
    if (ExprNode->type IS XPathNodeType::LET_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          record_error("LET expression requires at least one binding and a return clause.", ExprNode, true);
@@ -439,6 +747,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
    // FLWOR evaluation mirrors that approach, capturing structural and runtime issues so test_xpath_flwor.fluid can assert
    // on human-readable error text while we continue to guard performance-sensitive paths.
+
    if (ExprNode->type IS XPathNodeType::FLWOR_EXPRESSION) {
       return evaluate_flwor_pipeline(ExprNode, CurrentPrefix);
    }
@@ -455,13 +764,15 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          return XPathVal();
       }
 
-      struct ForBindingDefinition {
-         std::string name;
-         const XPathNode * sequence;
-      };
-
       std::vector<ForBindingDefinition> bindings;
       bindings.reserve(ExprNode->child_count());
+
+      // Support both the current and historical AST layouts for simple for-expressions.
+      // Older parsers encoded a single binding by placing the variable name in
+      // ExprNode->value and the iteration sequence at child(0), with the return
+      // expression as the last child. Newer trees emit one or more explicit
+      // FOR_BINDING children followed by the return expression. The flag below
+      // allows the evaluator to accept either form for backwards compatibility.
 
       bool legacy_layout = false;
 
@@ -476,6 +787,9 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             bindings.push_back({ binding_node->value, binding_node->get_child(0) });
             continue;
          }
+
+         // Encountered a child that is not a FOR_BINDING: treat the node
+         // as using the legacy single-binding layout described above.
 
          legacy_layout = true;
          break;
@@ -507,118 +821,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       std::vector<const XMLAttrib *> combined_attributes;
       std::optional<std::string> combined_override;
 
-      auto append_iteration_value = [&](const XPathVal &iteration_value) -> bool {
-         if (iteration_value.Type IS XPVT::NodeSet) {
-            size_t length = iteration_value.node_set.size();
-            if (length < iteration_value.node_set_attributes.size()) length = iteration_value.node_set_attributes.size();
-            if (length < iteration_value.node_set_string_values.size()) length = iteration_value.node_set_string_values.size();
-            if ((length IS 0) and iteration_value.node_set_string_override.has_value()) length = 1;
-
-            for (size_t node_index = 0; node_index < length; ++node_index) {
-               XMLTag *node = node_index < iteration_value.node_set.size() ? iteration_value.node_set[node_index] : nullptr;
-               combined_nodes.push_back(node);
-
-               const XMLAttrib *attribute = nullptr;
-               if (node_index < iteration_value.node_set_attributes.size()) attribute = iteration_value.node_set_attributes[node_index];
-               combined_attributes.push_back(attribute);
-
-               std::string node_string;
-               bool use_override = iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty() and (node_index IS 0);
-               if (node_index < iteration_value.node_set_string_values.size()) node_string = iteration_value.node_set_string_values[node_index];
-               else if (use_override) node_string = *iteration_value.node_set_string_override;
-               else if (attribute) node_string = attribute->Value;
-               else if (node) node_string = XPathVal::node_string_value(node);
-
-               combined_strings.push_back(node_string);
-               if (not combined_override.has_value()) combined_override = node_string;
-            }
-
-            if (iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty()) {
-               if (not combined_override.has_value()) combined_override = iteration_value.node_set_string_override;
-            }
-
-            return true;
-         }
-
-         if (iteration_value.is_empty()) return true;
-
-         std::string atomic_string = iteration_value.to_string();
-         combined_nodes.push_back(nullptr);
-         combined_attributes.push_back(nullptr);
-         combined_strings.push_back(atomic_string);
-         if (not combined_override.has_value()) combined_override = atomic_string;
-         return true;
-      };
-
-      std::function<bool(size_t)> evaluate_bindings = [&](size_t binding_index) -> bool {
-         if (binding_index >= bindings.size()) {
-            auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
-            if (expression_unsupported) return false;
-
-            if (not append_iteration_value(iteration_value)) return false;
-            return true;
-         }
-
-         const auto &binding = bindings[binding_index];
-         if (not binding.sequence) {
-            expression_unsupported = true;
-            return false;
-         }
-
-         const std::string variable_name = binding.name;
-
-         auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
-         if (expression_unsupported) return false;
-
-         if (sequence_value.Type != XPVT::NodeSet) {
-            expression_unsupported = true;
-            return false;
-         }
-
-         size_t sequence_size = sequence_value.node_set.size();
-
-         if (sequence_size IS 0) return true;
-
-         for (size_t index = 0; index < sequence_size; ++index) {
-            XMLTag *item_node = sequence_value.node_set[index];
-            const XMLAttrib *item_attribute = nullptr;
-            if (index < sequence_value.node_set_attributes.size()) {
-               item_attribute = sequence_value.node_set_attributes[index];
-            }
-
-         XPathVal bound_value;
-         bound_value.Type = XPVT::NodeSet;
-         bound_value.preserve_node_order = false;
-         bound_value.node_set.push_back(item_node);
-         bound_value.node_set_attributes.push_back(item_attribute);
-
-            std::string item_string;
-            bool use_override = sequence_value.node_set_string_override.has_value() and
-               (index IS 0) and sequence_value.node_set_string_values.empty();
-            if (index < sequence_value.node_set_string_values.size()) {
-               item_string = sequence_value.node_set_string_values[index];
-            }
-            else if (use_override) item_string = *sequence_value.node_set_string_override;
-            else if (item_node) item_string = XPathVal::node_string_value(item_node);
-
-            bound_value.node_set_string_values.push_back(item_string);
-            bound_value.node_set_string_override = item_string;
-
-            VariableBindingGuard iteration_guard(context, variable_name, std::move(bound_value));
-
-            push_context(item_node, index + 1, sequence_size, item_attribute);
-            bool iteration_ok = evaluate_bindings(binding_index + 1);
-            pop_context();
-
-            if (not iteration_ok) return false;
-
-            if (expression_unsupported) return false;
-         }
-
-         return true;
-      };
-
-      bool evaluation_ok = evaluate_bindings(0);
+      bool evaluation_ok = evaluate_for_bindings_recursive(*this, context, bindings, 0, return_node, CurrentPrefix,
+         combined_nodes, combined_attributes, combined_strings, combined_override, expression_unsupported);
       if (not evaluation_ok) return XPathVal();
       if (expression_unsupported) return XPathVal();
 
@@ -653,11 +857,6 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          return XPathVal();
       }
 
-      struct QuantifiedBindingDefinition {
-         std::string name;
-         const XPathNode * sequence;
-      };
-
       std::vector<QuantifiedBindingDefinition> bindings;
       bindings.reserve(ExprNode->child_count());
 
@@ -681,78 +880,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          return XPathVal();
       }
 
-      std::function<bool(size_t)> evaluate_binding = [&](size_t binding_index) -> bool {
-         if (binding_index >= bindings.size()) {
-            auto condition_value = evaluate_expression(condition_node, CurrentPrefix);
-            if (expression_unsupported) return false;
-            return condition_value.to_boolean();
-         }
-
-         const auto &binding = bindings[binding_index];
-         if (not binding.sequence) {
-            expression_unsupported = true;
-            return false;
-         }
-
-         const std::string variable_name = binding.name;
-
-         auto sequence_value = evaluate_expression(binding.sequence, CurrentPrefix);
-         if (expression_unsupported) return false;
-
-         if (sequence_value.Type != XPVT::NodeSet) {
-            expression_unsupported = true;
-            return false;
-         }
-
-         size_t sequence_size = sequence_value.node_set.size();
-
-         if (sequence_size IS 0) return is_every;
-
-         for (size_t index = 0; index < sequence_size; ++index) {
-            XMLTag *item_node = sequence_value.node_set[index];
-            const XMLAttrib *item_attribute = nullptr;
-            if (index < sequence_value.node_set_attributes.size()) {
-               item_attribute = sequence_value.node_set_attributes[index];
-            }
-
-         XPathVal bound_value;
-         bound_value.Type = XPVT::NodeSet;
-         bound_value.preserve_node_order = false;
-         bound_value.node_set.push_back(item_node);
-         bound_value.node_set_attributes.push_back(item_attribute);
-
-            std::string item_string;
-            bool use_override = sequence_value.node_set_string_override.has_value() and
-               (index IS 0) and sequence_value.node_set_string_values.empty();
-            if (index < sequence_value.node_set_string_values.size()) {
-               item_string = sequence_value.node_set_string_values[index];
-            }
-            else if (use_override) item_string = *sequence_value.node_set_string_override;
-            else if (item_node) item_string = XPathVal::node_string_value(item_node);
-
-            bound_value.node_set_string_values.push_back(item_string);
-            bound_value.node_set_string_override = item_string;
-
-            VariableBindingGuard iteration_guard(context, variable_name, std::move(bound_value));
-
-            push_context(item_node, index + 1, sequence_size, item_attribute);
-            bool branch_result = evaluate_binding(binding_index + 1);
-            pop_context();
-
-            if (expression_unsupported) return false;
-
-            if (branch_result) {
-               if (is_some) return true;
-            }
-            else {
-               if (is_every) return false;
-            }
-         }
-
-         return is_every;
-      };
-
-      bool quant_result = evaluate_binding(0);
+      bool quant_result = evaluate_quantified_binding_recursive(*this, context, bindings, 0,
+         is_some, is_every, condition_node, CurrentPrefix, expression_unsupported);
       if (expression_unsupported) return XPathVal();
 
       return XPathVal(quant_result);
@@ -894,12 +1023,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
       }
 
-      return evaluate_path_from_nodes(base_value.node_set,
-                                      base_value.node_set_attributes,
-                                      steps,
-                                      attribute_step,
-                                      attribute_test,
-                                      CurrentPrefix);
+      return evaluate_path_from_nodes(base_value.node_set, base_value.node_set_attributes, steps, attribute_step,
+         attribute_test, CurrentPrefix);
    }
 
    if (ExprNode->type IS XPathNodeType::FUNCTION_CALL) {
@@ -935,102 +1060,62 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       const std::string &operation = ExprNode->value;
 
-      // TODO: Hash the operation with pf::strhash() and use switch-case for better performance.
-
-      if (operation IS "and") {
-         auto left_value = evaluate_expression(left_node, CurrentPrefix);
-         if (expression_unsupported) return XPathVal();
-
-         bool left_boolean = left_value.to_boolean();
-         if (not left_boolean) return XPathVal(false);
-
-         auto right_value = evaluate_expression(right_node, CurrentPrefix);
-         if (expression_unsupported) return XPathVal();
-
-         bool right_boolean = right_value.to_boolean();
-         return XPathVal(right_boolean);
+      // Switch-based dispatch for common logical/set operations
+      switch (map_binary_operation(operation)) {
+         case BinaryOperationKind::AND: {
+            auto left_value = evaluate_expression(left_node, CurrentPrefix);
+            if (expression_unsupported) return XPathVal();
+            bool left_boolean = left_value.to_boolean();
+            if (not left_boolean) return XPathVal(false);
+            auto right_value = evaluate_expression(right_node, CurrentPrefix);
+            if (expression_unsupported) return XPathVal();
+            bool right_boolean = right_value.to_boolean();
+            return XPathVal(right_boolean);
+         }
+         case BinaryOperationKind::OR: {
+            auto left_value = evaluate_expression(left_node, CurrentPrefix);
+            if (expression_unsupported) return XPathVal();
+            bool left_boolean = left_value.to_boolean();
+            if (left_boolean) return XPathVal(true);
+            auto right_value = evaluate_expression(right_node, CurrentPrefix);
+            if (expression_unsupported) return XPathVal();
+            bool right_boolean = right_value.to_boolean();
+            return XPathVal(right_boolean);
+         }
+         case BinaryOperationKind::UNION: {
+            std::vector<const XPathNode *> branches;
+            branches.reserve(2);
+            if (left_node) branches.push_back(left_node);
+            if (right_node) branches.push_back(right_node);
+            return evaluate_union_value(branches, CurrentPrefix);
+         }
+         case BinaryOperationKind::INTERSECT: {
+            return evaluate_intersect_value(left_node, right_node, CurrentPrefix);
+         }
+         case BinaryOperationKind::EXCEPT: {
+            return evaluate_except_value(left_node, right_node, CurrentPrefix);
+         }
+         default: {
+            // Other operations handled below
+            break;
+         }
       }
 
-      if (operation IS "or") {
+      // and/or/union/intersect/except handled above via switch
+
+      BinaryOperationKind op_kind = map_binary_operation(operation);
+
+      if (op_kind IS BinaryOperationKind::COMMA) {
          auto left_value = evaluate_expression(left_node, CurrentPrefix);
          if (expression_unsupported) return XPathVal();
-
-         bool left_boolean = left_value.to_boolean();
-         if (left_boolean) return XPathVal(true);
-
          auto right_value = evaluate_expression(right_node, CurrentPrefix);
          if (expression_unsupported) return XPathVal();
-
-         bool right_boolean = right_value.to_boolean();
-         return XPathVal(right_boolean);
-      }
-
-      if (operation IS "|") {
-         std::vector<const XPathNode *> branches;
-         branches.reserve(2);
-         if (left_node) branches.push_back(left_node);
-         if (right_node) branches.push_back(right_node);
-         return evaluate_union_value(branches, CurrentPrefix);
-      }
-
-      if (operation IS "intersect") return evaluate_intersect_value(left_node, right_node, CurrentPrefix);
-      if (operation IS "except") return evaluate_except_value(left_node, right_node, CurrentPrefix);
-
-      if (operation IS ",")
-      {
-         auto left_value = evaluate_expression(left_node, CurrentPrefix);
-         if (expression_unsupported) return XPathVal();
-
-         auto right_value = evaluate_expression(right_node, CurrentPrefix);
-         if (expression_unsupported) return XPathVal();
-
-         struct SequenceEntry
-         {
-            XMLTag *node = nullptr;
-            const XMLAttrib *attribute = nullptr;
-            std::string string_value;
-         };
 
          std::vector<SequenceEntry> entries;
          entries.reserve(left_value.node_set.size() + right_value.node_set.size());
 
-         auto append_value = [&](const XPathVal &value) {
-            if (value.Type IS XPVT::NodeSet) {
-               bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty();
-               for (size_t index = 0; index < value.node_set.size(); ++index) {
-                  XMLTag *node = value.node_set[index];
-                  if (not node) continue;
-
-                  const XMLAttrib *attribute = nullptr;
-                  if (index < value.node_set_attributes.size()) attribute = value.node_set_attributes[index];
-
-                  std::string item_string;
-                  if (index < value.node_set_string_values.size()) item_string = value.node_set_string_values[index];
-                  else if (use_override) item_string = *value.node_set_string_override;
-                  else if (attribute) item_string = attribute->Value;
-                  else item_string = XPathVal::node_string_value(node);
-
-                  entries.push_back({ node, attribute, std::move(item_string) });
-               }
-               return;
-            }
-
-            std::string text = value.to_string();
-            pf::vector<XMLAttrib> text_attribs;
-            text_attribs.emplace_back("", text);
-
-            XMLTag text_node(next_constructed_node_id--, 0, text_attribs);
-            text_node.ParentID = 0;
-
-            auto stored = std::make_unique<XMLTag>(std::move(text_node));
-            XMLTag *root = stored.get();
-            constructed_nodes.push_back(std::move(stored));
-
-            entries.push_back({ root, nullptr, std::move(text) });
-         };
-
-         append_value(left_value);
-         append_value(right_value);
+         append_value_to_sequence(left_value, entries, next_constructed_node_id, constructed_nodes);
+         append_value_to_sequence(right_value, entries, next_constructed_node_id, constructed_nodes);
 
          if (entries.empty()) {
             NODES empty_nodes;
@@ -1060,115 +1145,101 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       auto right_value = evaluate_expression(right_node, CurrentPrefix);
       if (expression_unsupported) return XPathVal();
 
-      // TODO: Hash operation variable and use switch-case for better performance.
-
-      if (operation IS "=") {
-         bool equals = compare_xpath_values(left_value, right_value);
-         return XPathVal(equals);
+      switch (op_kind) {
+         case BinaryOperationKind::EQ: {
+            bool equals = compare_xpath_values(left_value, right_value);
+            return XPathVal(equals);
+         }
+         case BinaryOperationKind::NE: {
+            bool equals = compare_xpath_values(left_value, right_value);
+            return XPathVal(not equals);
+         }
+         case BinaryOperationKind::EQ_WORD: {
+            auto left_scalar = promote_value_comparison_operand(left_value);
+            auto right_scalar = promote_value_comparison_operand(right_value);
+            if (not left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+            bool equals = compare_xpath_values(*left_scalar, *right_scalar);
+            return XPathVal(equals);
+         }
+         case BinaryOperationKind::NE_WORD: {
+            auto left_scalar = promote_value_comparison_operand(left_value);
+            auto right_scalar = promote_value_comparison_operand(right_value);
+            if (not left_scalar.has_value() or (not right_scalar.has_value())) return XPathVal(false);
+            bool equals = compare_xpath_values(*left_scalar, *right_scalar);
+            return XPathVal(not equals);
+         }
+         case BinaryOperationKind::LT: {
+            // Handles both symbol '<' and textual 'lt'
+            if (operation IS "lt") {
+               auto left_scalar = promote_value_comparison_operand(left_value);
+               auto right_scalar = promote_value_comparison_operand(right_value);
+               if (not left_scalar.has_value() or (not right_scalar.has_value())) return XPathVal(false);
+               bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS);
+               return XPathVal(result);
+            }
+            bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS);
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::LE: {
+            if (operation IS "le") {
+               auto left_scalar = promote_value_comparison_operand(left_value);
+               auto right_scalar = promote_value_comparison_operand(right_value);
+               if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
+               bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS_OR_EQUAL);
+               return XPathVal(result);
+            }
+            bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS_OR_EQUAL);
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::GT: {
+            if (operation IS "gt") {
+               auto left_scalar = promote_value_comparison_operand(left_value);
+               auto right_scalar = promote_value_comparison_operand(right_value);
+               if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
+               bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER);
+               return XPathVal(result);
+            }
+            bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER);
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::GE: {
+            if (operation IS "ge") {
+               auto left_scalar = promote_value_comparison_operand(left_value);
+               auto right_scalar = promote_value_comparison_operand(right_value);
+               if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
+               bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER_OR_EQUAL);
+               return XPathVal(result);
+            }
+            bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER_OR_EQUAL);
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::ADD: {
+            double result = left_value.to_number() + right_value.to_number();
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::SUB: {
+            double result = left_value.to_number() - right_value.to_number();
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::MUL: {
+            double result = left_value.to_number() * right_value.to_number();
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::DIV: {
+            double result = left_value.to_number() / right_value.to_number();
+            return XPathVal(result);
+         }
+         case BinaryOperationKind::MOD: {
+            double left_number = left_value.to_number();
+            double right_number = right_value.to_number();
+            double result = std::fmod(left_number, right_number);
+            return XPathVal(result);
+         }
+         default: {
+            expression_unsupported = true;
+            return XPathVal();
+         }
       }
-
-      if (operation IS "!=") {
-         bool equals = compare_xpath_values(left_value, right_value);
-         return XPathVal(not equals);
-      }
-
-      if (operation IS "eq") {
-         auto left_scalar = promote_value_comparison_operand(left_value);
-         auto right_scalar = promote_value_comparison_operand(right_value);
-         if (not left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
-         bool equals = compare_xpath_values(*left_scalar, *right_scalar);
-         return XPathVal(equals);
-      }
-
-      if (operation IS "ne") {
-         auto left_scalar = promote_value_comparison_operand(left_value);
-         auto right_scalar = promote_value_comparison_operand(right_value);
-         if (not left_scalar.has_value() or (not right_scalar.has_value())) return XPathVal(false);
-         bool equals = compare_xpath_values(*left_scalar, *right_scalar);
-         return XPathVal(not equals);
-      }
-
-      if (operation IS "<") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS);
-         return XPathVal(result);
-      }
-
-      if (operation IS "<=") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::LESS_OR_EQUAL);
-         return XPathVal(result);
-      }
-
-      if (operation IS ">") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER);
-         return XPathVal(result);
-      }
-
-      if (operation IS ">=") {
-         bool result = compare_xpath_relational(left_value, right_value, RelationalOperator::GREATER_OR_EQUAL);
-         return XPathVal(result);
-      }
-
-      if (operation IS "lt") {
-         auto left_scalar = promote_value_comparison_operand(left_value);
-         auto right_scalar = promote_value_comparison_operand(right_value);
-         if (not left_scalar.has_value() or (not right_scalar.has_value())) return XPathVal(false);
-         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS);
-         return XPathVal(result);
-      }
-
-      if (operation IS "le") {
-         auto left_scalar = promote_value_comparison_operand(left_value);
-         auto right_scalar = promote_value_comparison_operand(right_value);
-         if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
-         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS_OR_EQUAL);
-         return XPathVal(result);
-      }
-
-      if (operation IS "gt") {
-         auto left_scalar = promote_value_comparison_operand(left_value);
-         auto right_scalar = promote_value_comparison_operand(right_value);
-         if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
-         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER);
-         return XPathVal(result);
-      }
-
-      if (operation IS "ge") {
-         auto left_scalar = promote_value_comparison_operand(left_value);
-         auto right_scalar = promote_value_comparison_operand(right_value);
-         if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
-         bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER_OR_EQUAL);
-         return XPathVal(result);
-      }
-
-      if (operation IS "+") {
-         double result = left_value.to_number() + right_value.to_number();
-         return XPathVal(result);
-      }
-
-      if (operation IS "-") {
-         double result = left_value.to_number() - right_value.to_number();
-         return XPathVal(result);
-      }
-
-      if (operation IS "*") {
-         double result = left_value.to_number() * right_value.to_number();
-         return XPathVal(result);
-      }
-
-      if (operation IS "div") {
-         double result = left_value.to_number() / right_value.to_number();
-         return XPathVal(result);
-      }
-
-      if (operation IS "mod") {
-         double left_number = left_value.to_number();
-         double right_number = right_value.to_number();
-         double result = std::fmod(left_number, right_number);
-         return XPathVal(result);
-      }
-
-      expression_unsupported = true;
-      return XPathVal();
    }
 
    // EXPRESSION nodes are wrappers - unwrap to the child node
@@ -1191,10 +1262,10 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          if (context.variables and context.variables->empty() IS false) {
             std::string binding_list;
             auto it = context.variables->begin();
-            if (it not_eq context.variables->end()) {
+            if (it != context.variables->end()) {
                binding_list = it->first;
                ++it;
-               for (; it not_eq context.variables->end(); ++it) {
+               for (; it != context.variables->end(); ++it) {
                   binding_list.append(", ");
                   binding_list.append(it->first);
                }

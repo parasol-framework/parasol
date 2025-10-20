@@ -1797,7 +1797,7 @@ all currently loaded data will be cleared and the file will be parsed automatica
 The XML class supports ~Core.LoadFile(), so an XML file can be pre-cached by the program if it is frequently used
 during a program's life cycle.
 
-In the case where a #Statement has been defined, setting the Path with a folder reference may be necessary to 
+In the case where a #Statement has been defined, setting the Path with a folder reference may be necessary to
 establish the base path for relative references in XQuery statements (e.g. for importing XQuery modules).
 
 *********************************************************************************************************************/

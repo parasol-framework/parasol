@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Evaluation Engine
 //
 // The evaluator coordinates the complete XPath execution pipeline for Parasol's XML subsystem.  It

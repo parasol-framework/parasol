@@ -168,7 +168,7 @@ bool XPathParser::is_function_call_ahead(size_t Index) const
 
 //********************************************************************************************************************
 
-static std::string_view keyword_from_token_type(XPathTokenType Type) 
+static std::string_view keyword_from_token_type(XPathTokenType Type)
 {
    switch (Type) {
       case XPathTokenType::AND:               return "and";
@@ -1454,7 +1454,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
 
             // Check if the expression only consumed a single token that's a FLWOR structural keyword.
             // This indicates the parser mistakenly treated a keyword like 'return' as an element name.
-            
+
             if ((current_token IS expr_start_pos + 1) and (expr_start_pos < tokens.size())) {
                const auto &consumed_token = tokens[expr_start_pos];
                std::string_view keyword = keyword_from_token_type(consumed_token.type);

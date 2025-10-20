@@ -13,7 +13,7 @@ function testBasicModuleImport()
 
    local mod_content = file.readAll(glScriptFolder .. '/modules/math_utils.xq')
    assert(mod_content, 'Module file not found: modules/math_utils.xq')
-   
+
    local err, compiled_mod = mXq.compile(xml, mod_content)
    assert(err == ERR_Okay, 'Module compilation failed: ' .. tostring(xml.errorMsg))
 
