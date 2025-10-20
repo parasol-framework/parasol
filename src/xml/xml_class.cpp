@@ -212,8 +212,9 @@ cstr Statement: An XPath or XQuery string to evaluate.
 !&cstr Result: An allocated string from the evaluation is returned here.
 
 -ERRORS-
-Okay: Operation successful.
-
+Okay
+NullArgs
+AllocMemory
 -END-
 
 A pointer to a std::string as a result would be better, but not supported by FDL yet (does work for functions).
@@ -228,6 +229,8 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
 
    if ((not Args) or (not Args->Statement)) return log.warning(ERR::NullArgs);
 
+   log.branch("");
+
    load_xpath();
 
    APTR cp;
@@ -241,7 +244,10 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
       FreeResource(cp);
       return error;
    }
-   else return error;
+   else {
+      log.warning("Compile failed: %s", Self->ErrorMsg.c_str());
+      return error;
+   }
 }
 
 /*********************************************************************************************************************
@@ -689,6 +695,9 @@ static ERR XML_Init(extXML *Self)
    pf::Log log;
 
    if (Self->isSubClass()) return ERR::Okay; // Break here for sub-classes to perform initialisation
+
+   // Statement has precedence over the Path because it's sometimes used in conjunction with the Statement when
+   // a base path is required for relative URI resolution.
 
    if (not Self->Statement.empty()) {
       Self->LineNo = 1;
@@ -1788,6 +1797,9 @@ all currently loaded data will be cleared and the file will be parsed automatica
 The XML class supports ~Core.LoadFile(), so an XML file can be pre-cached by the program if it is frequently used
 during a program's life cycle.
 
+In the case where a #Statement has been defined, setting the Path with a folder reference may be necessary to 
+establish the base path for relative references in XQuery statements (e.g. for importing XQuery modules).
+
 *********************************************************************************************************************/
 
 static ERR GET_Path(extXML *Self, STRING *Value)
@@ -1800,7 +1812,6 @@ static ERR SET_Path(extXML *Self, CSTRING Value)
 {
    if (Self->Source) SET_Source(Self, nullptr);
    if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
-   Self->Statement.clear();
 
    if (pf::startswith("string:", Value)) {
       // If the string: path type is used then we can optimise things by setting the following path string as the

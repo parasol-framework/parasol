@@ -6,7 +6,7 @@
 -- Basic module import and function call
 
 function testBasicModuleImport()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace math = "http://example.com/math"
@@ -24,7 +24,7 @@ end
 -- Call multiple functions from imported module
 
 function testMultipleFunctionsFromModule()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace math = "http://example.com/math"
@@ -45,7 +45,7 @@ end
 -- Access module variables
 
 function testModuleVariables()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace math = "http://example.com/math"
@@ -64,7 +64,7 @@ end
 -- Import and use multiple modules
 
 function testMultipleModuleImports()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace math = "http://example.com/math"
@@ -86,7 +86,7 @@ end
 -- Module importing other modules (transitive imports)
 
 function testTransitiveModuleImports()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace comp = "http://example.com/composite"
@@ -107,7 +107,7 @@ end
 -- Module loaded once and cached across queries
 
 function testModuleCaching()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    -- First query using math module
    local query1 = [[
@@ -136,7 +136,7 @@ end
 -- Detect circular module dependencies
 
 function testCircularDependencyDetection()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace a = "http://example.com/circular-a"
@@ -155,7 +155,7 @@ end
 -- Error when module file not found
 
 function testMissingModuleError()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace missing = "http://example.com/missing"
@@ -173,7 +173,7 @@ end
 -- Validate module namespace matches import
 
 function testNamespaceValidation()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace expected = "http://example.com/expected"
@@ -193,7 +193,7 @@ end
 -- Reject non-library modules on import
 
 function testLibraryModuleValidation()
-   local xml = obj.new('xml', { statement = '<root/>' })
+   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
 
    local query = [[
       import module namespace main = "http://example.com/main"
@@ -219,6 +219,7 @@ return {
       'testNamespaceValidation', 'testLibraryModuleValidation'
    },
    init = function(ScriptFolder)
+      glScriptFolder = ScriptFolder
    end,
    cleanup = function()
    end

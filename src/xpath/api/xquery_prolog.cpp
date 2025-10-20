@@ -47,6 +47,10 @@ std::string XQueryFunction::signature() const
 XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog, 
    XPathErrorReporter &reporter) const
 {
+   pf::Log log(__FUNCTION__);
+
+   log.branch("URI: %.*s", int(URI.size()), URI.data());
+
    if (URI.empty()) return nullptr;
 
    if (not owner) {
@@ -56,7 +60,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    
    pf::ScopedObjectLock<extXML> xml(owner);
    if (not xml.granted()) {
-      reporter.record_error("XQST0059: Cannot lock XML object for module loading: " + std::string(URI));
+      reporter.record_error(std::format("XQST0059: Cannot lock XML object #{} for module loading: {}", xml->UID, std::string(URI)));
       return nullptr;
    }
 
@@ -75,7 +79,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       return value;
    };
 
-   auto base_directory = xpath::accessor::resolve_document_base_directory(xml.operator->());
+   auto base_directory = xpath::accessor::resolve_document_base_directory(*xml);
 
    auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
       std::string normalised = normalise_cache_key(hint);

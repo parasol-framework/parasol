@@ -209,9 +209,9 @@ namespace xp {
 /*********************************************************************************************************************
 
 -FUNCTION-
-Compile: Compiles an XPath or XQuery expression into an executable form.
+Compile: Compiles an XQuery expressions into an executable form.
 
-Call the Compile function to convert a valid XPath or XQuery expression string into a compiled form that can be
+Call the Compile function to convert a valid XQuery expression string into a compiled form that can be
 executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency
 and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and
 are treated as read-only for thread-safety.
@@ -225,7 +225,7 @@ separate thread to avoid blocking in such cases.
 
 -INPUT-
 obj(XML) XML: The XML document context for the query (can be NULL if not needed).
-cstr Query: A valid XPath or XQuery expression string.
+cstr Query: A valid XQuery / XPath expression string.
 !&ptr Result: Receives a pointer to an XPathNode object on success.
 
 -ERRORS-
@@ -243,23 +243,26 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
    if ((not Query) or (not Result)) return ERR::NullArgs;
 
-   XPathNode *cmp;
-   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&cmp, nullptr) IS ERR::Okay) {
-      SetResourceMgr(cmp, &glNodeManager);
+   int len = 0;
+   while ((Query[len]) and (Query[len] != '\n')) len++;
+   log.branch("XML: %d, Query: %.*s", XML ? XML->UID : 0, len, Query);
+
+   XPathNode *node;
+   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&node, nullptr) IS ERR::Okay) {
+      SetResourceMgr(node, &glNodeManager);
 
       XPathTokeniser tokeniser;
       XPathParser parser;
 
       auto tokens = tokeniser.tokenize(Query);
-      auto parse_result = parser.parse(tokens);
-
-      auto xml = XML ? (extXML *)XML : nullptr;
+      XPathParseResult parse_result = parser.parse(tokens);
 
       if (!parse_result.expression) {
          auto parser_errors = parser.get_errors();
          std::string message;
-         if (xml) {
-            if (parser_errors.empty()) xml->ErrorMsg = "Failed to parse XPath expression";
+         if (XML) {
+            auto xml = (extXML *)XML;
+            if (parser_errors.empty()) xml->ErrorMsg = "Failed to parse XQuery expression";
             else {
                xml->ErrorMsg.clear();
                bool append_split = false;
@@ -272,9 +275,9 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
             message = xml->ErrorMsg;
          }
          else {
-            if (parser_errors.empty()) message = "Failed to parse XPath expression";
+            if (parser_errors.empty()) message = "Failed to parse XQuery expression";
             else {
-               message = "XPath compilation error: ";
+               message = "XQuery compilation error: ";
                for (const auto &err : parser_errors) {
                   if (!message.empty()) message += "; ";
                   message += err;
@@ -282,38 +285,49 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
             }
          }
          if (!message.empty()) log.warning("%s", message.c_str());
-         FreeResource(cmp);
+         FreeResource(node);
          return ERR::Syntax;
       }
 
       auto root_node = std::move(parse_result.expression);
-      new (cmp) XPathNode(std::move(*root_node));
+      new (node) XPathNode(std::move(*root_node));
 
-      auto prolog = parse_result.prolog;
-      if (!prolog) prolog = std::make_shared<XQueryProlog>();
+      // If the expression featured an XQuery prolog then it needs a little more configuration.
 
-      if (xml and prolog) {
-         if (prolog->static_base_uri.empty()) {
-            if (auto base = xpath::accessor::resolve_document_base_directory(xml)) {
-               prolog->static_base_uri = std::move(*base);
+      if (XML) {
+         // Move the prolog across if one was created during parsing.
+
+         auto prolog = parse_result.prolog;
+
+         if (prolog) {
+            if (prolog->static_base_uri.empty()) {
+               if (auto base = xpath::accessor::resolve_document_base_directory((extXML *)XML)) {
+                  prolog->static_base_uri = std::move(*base);
+               }
             }
          }
+         else prolog = std::make_shared<XQueryProlog>(); // Dummy prolog
+
+         node->set_prolog(prolog);
+
+         // Move the module cache across if one was created during parsing.
+
+         std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
+         if (not module_cache) {
+            module_cache = std::make_shared<XQueryModuleCache>();
+            module_cache->owner = XML->UID;
+         }
+
+         if (module_cache) {
+            node->set_module_cache(module_cache);
+            prolog->bind_module_cache(module_cache);
+         }
+      }
+      else if (parse_result.prolog) {
+         log.warning("XQuery prolog provided without XML context; base URI and module cache may be incomplete");
       }
 
-      cmp->set_prolog(prolog);
-
-      std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
-      if (!module_cache and xml) {
-         module_cache = std::make_shared<XQueryModuleCache>();
-         module_cache->owner = xml->UID;
-      }
-
-      if (module_cache) {
-         cmp->set_module_cache(module_cache);
-         prolog->bind_module_cache(module_cache);
-      }
-
-      *Result = cmp;
+      *Result = node;
       return ERR::Okay;
    }
    else return ERR::AllocMemory;
@@ -322,15 +336,15 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 /*********************************************************************************************************************
 
 -FUNCTION-
-Evaluate: Evaluates a compiled XPath or XQuery expression against an XML document.
+Evaluate: Evaluates a compiled XQuery expression against an XML document.
 
-Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.  The result of the
+Use Evaluate to run a previously compiled XQuery expression against an XML document.  The result of the
 evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including
 node sets, strings, numbers, or booleans.
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
-ptr Query: The compiled XPath or XQuery expression.
+ptr Query: The compiled XQuery / XPath expression.
 !&struct(XPathValue) Result: Receives the result of the evaluation.
 
 -ERRORS-
@@ -367,6 +381,7 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
       auto err = eval.evaluate_xpath_expression(*compiled_path, (XPathVal *)xpv);
       if (err != ERR::Okay) {
          FreeResource(xpv);
+         log.warning("%s", xml->ErrorMsg.c_str());
       }
       else *Result = xpv;
       return err;

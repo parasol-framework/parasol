@@ -373,22 +373,22 @@ constexpr std::array<char, 256> to_lower_table = []() {
    return table;
 }();
 
-constexpr bool is_name_char(char ch) noexcept
+[[maybe_unused]] constexpr bool is_name_char(char ch) noexcept
 {
    return (name_char_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
 }
 
-constexpr bool is_name_start(char ch) noexcept
+[[maybe_unused]] constexpr bool is_name_start(char ch) noexcept
 {
    return (name_start_table[uint8_t(ch) >> 6] & (uint64_t{1} << (ch & 63))) != 0;
 }
 
-constexpr char to_lower(char ch) noexcept
+[[maybe_unused]] constexpr char to_lower(char ch) noexcept
 {
    return to_lower_table[uint8_t(ch)];
 }
 
-static bool is_string_uri(std::string_view Value)
+[[maybe_unused]] static bool is_string_uri(std::string_view Value)
 {
    return not Value.rfind("string:", 0);
 }
@@ -450,11 +450,7 @@ static std::string normalise_newlines(const std::string &Input)
       return true;
    }
 
-   if (is_string_uri(URI)) {
-      // TODO: Support loading from URI locations.
-      Result = nullptr;
-      return false;
-   }
+   // TODO: File class needs to support URI locations (http://, file:// etc).
 
    objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
    if (file.ok()) {
