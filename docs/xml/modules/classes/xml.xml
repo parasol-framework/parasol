@@ -15,7 +15,7 @@
     <category>Data</category>
     <copyright>Paul Manias © 2001-2025</copyright>
     <description>
-<p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 queries, content manipulation and document validation.</p>
+<p>The XML class is designed to provide robust functionality for creating, parsing and maintaining XML data structures. It supports both well-formed and loosely structured XML documents, offering flexible parsing behaviours to accommodate various XML formats.  The class includes comprehensive support for XPath 2.0 and XQuery 1.0 queries, content manipulation and document validation.</p>
 <p>The class has been designed in such a way as to accommodate other structured data formats such as JSON and YAML.  In this way, the class not only provides XML support but also serves as Parasol's general-purpose structured data handler.  It also makes it trivial to convert between different structured data formats, and benefit from the cross-application use of features, such as applying XPath 2.0 queries on data originating from YAML.</p>
 <header>Data Loading and Parsing</header>
 <p>XML documents can be loaded into an XML object through multiple mechanisms:</p>
@@ -69,7 +69,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
     <action>
       <name>GetKey</name>
-      <comment>Retrieves data using XPath 2.0 queries.</comment>
+      <comment>Deprecated.  Use the Evaluate() method instead.</comment>
       <prototype>ERR acGetKey(*Object, CSTRING Key, STRING Value, INT Size)</prototype>
       <input>
         <param type="CSTRING" name="Key">The name of a key value.</param>
@@ -77,16 +77,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <param type="INT" name="Size">Indicates the byte size of the Buffer.</param>
       </input>
       <description>
-<p>The XML class uses key-values for the execution of XPath 2.0 queries.  Documentation of the XPath standard is out of the scope for this document, however the following examples illustrate common uses for this query language and a number of special instructions that we support:</p>
-<types type="Path">
-<type name="/menu/submenu">Return the content of the submenu tag whose parent is the first menu.</type>
-<type name="/menu[2]/submenu">Return the content of the submenu tag whose parent is the third menu.</type>
-<type name="count(/menu)">Return a count of all menu tags at the root level.</type>
-<type name="/menu/window/@title">Return the value of the title attribute from the window tag.</type>
-<type name="exists(/menu/@title)">Return <code>1</code> if a menu with a title attribute can be matched, otherwise <code>0</code>.</type>
-<type name="exists(/menu/text())">Return <code>1</code> if menu contains content.</type>
-<type name="//window">Return content of the first window discovered at any branch of the XML tree (double-slash enables flat scanning of the XML tree).</type>
-</types>
+<p>Deprecated.  Use the Evaluate() method instead.</p>
       </description>
     </action>
 
@@ -159,6 +150,8 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
+        <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
       </result>
     </method>
 
@@ -700,6 +693,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <description>
 <p>XML documents can be loaded from the file system by specifying a file path in this field.  If set post-initialisation, all currently loaded data will be cleared and the file will be parsed automatically.</p>
 <p>The XML class supports <function module="Core">LoadFile</function>, so an XML file can be pre-cached by the program if it is frequently used during a program's life cycle.</p>
+<p>In the case where a <fl>Statement</fl> has been defined, setting the Path with a folder reference may be necessary to establish the base path for relative references in XQuery statements (e.g. for importing XQuery modules).</p>
       </description>
     </field>
 

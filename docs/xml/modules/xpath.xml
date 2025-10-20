@@ -60,34 +60,37 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
 
   <function>
     <name>Compile</name>
-    <comment>Compiles an XPath or XQuery expression into an executable form.</comment>
+    <comment>Compiles an XQuery expressions into an executable form.</comment>
     <prototype>ERR xp::Compile(objXML * XML, CSTRING Query, APTR * Result)</prototype>
     <input>
       <param type="objXML *" name="XML">The XML document context for the query (can be NULL if not needed).</param>
-      <param type="CSTRING" name="Query">A valid XPath or XQuery expression string.</param>
+      <param type="CSTRING" name="Query">A valid XQuery / XPath expression string.</param>
       <param type="APTR *" name="Result">Receives a pointer to an XPathNode object on success.</param>
     </input>
     <description>
-<p>Call the Compile function to convert a valid XPath or XQuery expression string into a compiled form that can be executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and are treated as read-only for thread-safety.</p>
+<p>Call the Compile function to convert a valid XQuery expression string into a compiled form that can be executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and are treated as read-only for thread-safety.</p>
 <p>The XML parameter is not required for compilation, but can potentially enhance syntax checking when parsing the expression.  An additional benefit is that error messages will be defined in the #ErrorMsg field of the XML object if parsing fails.</p>
+<p>Note: This function can hang temporarily if the expression references network URIs.  Consider calling it from a separate thread to avoid blocking in such cases.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
+      <error code="AllocMemory">AllocMemory() failed to create a new memory block.</error>
+      <error code="Syntax">Invalid syntax detected.</error>
       <error code="NullArgs">Function call missing argument value(s)</error>
     </result>
   </function>
 
   <function>
     <name>Evaluate</name>
-    <comment>Evaluates a compiled XPath or XQuery expression against an XML document.</comment>
+    <comment>Evaluates a compiled XQuery expression against an XML document.</comment>
     <prototype>ERR xp::Evaluate(objXML * XML, APTR Query, struct XPathValue ** Result)</prototype>
     <input>
       <param type="objXML *" name="XML">The XML document to evaluate the query against.</param>
-      <param type="APTR" name="Query">The compiled XPath or XQuery expression.</param>
+      <param type="APTR" name="Query">The compiled XQuery / XPath expression.</param>
       <param type="struct XPathValue **" name="Result">Receives the result of the evaluation.</param>
     </input>
     <description>
-<p>Use Evaluate to run a previously compiled XPath or XQuery expression against an XML document.  The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
+<p>Use Evaluate to run a previously compiled XQuery expression against an XML document.  The result of the evaluation is returned in the Result parameter as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
     </description>
     <result type="ERR">
       <error code="Okay">Operation successful.</error>
