@@ -5,6 +5,7 @@
 
 local glBaseFolder = 'temp:xpath_accessor_tests/'
 local glAccessorXML = nil
+local glXMLPath = glBaseFolder .. 'primary.xml'
 
 local function ensureFolder(path)
    local err = mSys.CreateFolder(path, 0)
@@ -23,8 +24,9 @@ function testBaseUriResolvesXmlBase()
       'base-uri() should reflect xml:base inheritance and resolve to the leaf resource, got ' .. nz(hasLeafSuffix, 'NIL'))
 
    local err, rootBase = glAccessorXML.mtEvaluate('base-uri(/root)')
-   assert((rootBase != nil) and rootBase:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
-      'base-uri() should return the source document path for the root element, got ' .. nz(rootBase, 'NIL'))
+
+   local err, type = mSys.AnalysePath(rootBase .. 'primary.xml')
+   assert(err == ERR_Okay and type == LOC_FILE, "base-uri() should return a path to the primary.xml file, got " .. nz(rootBase, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -32,7 +34,7 @@ end
 
 function testDocumentUriReturnsDocumentPath()
    local err, docUri = glAccessorXML.mtEvaluate('document-uri(/root/*[local-name()="child" and namespace-uri()="urn:test"])')
-   assert((docUri != nil) and docUri:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
+   assert((docUri != nil) and docUri:find(glXMLPath, 1, true) != nil,
       'document-uri() should return the document path for descendant nodes, got ' .. nz(docUri, 'NIL'))
 end
 
@@ -77,8 +79,9 @@ end
 
 function testStaticBaseUriReflectsDocument()
    local err, staticBase = glAccessorXML.mtEvaluate('static-base-uri()')
-   assert((staticBase != nil) and staticBase:find(glBaseFolder .. 'primary.xml', 1, true) != nil,
-      'static-base-uri() should reflect the primary document base, got ' .. nz(staticBase, 'NIL'))
+
+   local err, type = mSys.AnalysePath(staticBase .. 'primary.xml')
+   assert(err == ERR_Okay and type == LOC_FILE, "static-base-uri() should return a path to the primary.xml file, got " .. nz(staticBase, 'NIL'))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -106,7 +109,7 @@ return {
       mSys.DeleteFile(glBaseFolder)
       ensureFolder(glBaseFolder)
 
-      file.writeAll(glBaseFolder .. 'primary.xml', table.concat({
+      file.writeAll(glXMLPath, table.concat({
          '<?xml version="1.0"?>',
          '<root xml:base="nested/">',
          '   <ns:child xmlns:ns="urn:test" xml:base="entries/">',
@@ -120,7 +123,7 @@ return {
          '</root>'
       }))
 
-      glAccessorXML = obj.new('xml', { path = glBaseFolder .. 'primary.xml' })
+      glAccessorXML = obj.new('xml', { path = glXMLPath })
    end,
    cleanup = function()
       mSys.DeleteFile(glBaseFolder)

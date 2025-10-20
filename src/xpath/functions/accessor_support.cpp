@@ -14,6 +14,8 @@
 #include "../../xml/schema/schema_parser.h"
 #include "../../xml/uri_utils.h"
 
+#include <parasol/modules/core.h>
+
 #include <parasol/strings.hpp>
 
 #include <algorithm>
@@ -32,14 +34,56 @@ namespace xpath::accessor {
 
 //********************************************************************************************************************
 
-[[nodiscard]] static std::optional<std::string> document_path(extXML *Document)
+[[nodiscard]] static std::optional<std::string> trim_to_base_directory(std::string candidate)
+{
+   if (candidate.empty()) return std::nullopt;
+
+   size_t boundary = candidate.find_last_of("/\\");
+   if (boundary IS std::string::npos) boundary = candidate.find_last_of(':');
+
+   if (boundary IS std::string::npos) return std::nullopt;
+
+   std::string folder(candidate.substr(0U, boundary + 1U));
+   return xml::uri::normalise_uri_separators(std::move(folder));
+}
+
+//********************************************************************************************************************
+
+std::optional<std::string> resolve_document_base_directory(extXML *Document)
 {
    if (!Document) return std::nullopt;
 
-   std::string path = Document->Path;
-   if (!path.empty()) return path;
+   if (Document->Path) {
+      std::string candidate(Document->Path);
+      std::string resolved;
+
+      if (ResolvePath(candidate, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) candidate = std::move(resolved);
+
+      if (auto folder = trim_to_base_directory(candidate)) return folder;
+
+      if (auto fallback = trim_to_base_directory(std::string(Document->Path))) return fallback;
+   }
+
+   if (objTask *task = CurrentTask()) {
+      CSTRING task_path = nullptr;
+      if ((task->get(FID_Path, task_path) IS ERR::Okay) and task_path) {
+         std::string working(task_path);
+         if (!working.empty()) {
+            char last = working.back();
+            if ((last != '/') and (last != '\\')) working.push_back('/');
+            return xml::uri::normalise_uri_separators(std::move(working));
+         }
+      }
+   }
 
    return std::nullopt;
+}
+
+//********************************************************************************************************************
+
+[[nodiscard]] static std::optional<std::string> document_path(extXML *Document)
+{
+   return resolve_document_base_directory(Document);
 }
 
 //********************************************************************************************************************

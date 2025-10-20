@@ -8,6 +8,7 @@
 #include <optional>
 #include <algorithm>
 #include "../xpath.h"
+#include "../functions/accessor_support.h"
 #include "../../xml/xml.h"
 #include "../../xml/uri_utils.h"
 
@@ -46,6 +47,10 @@ std::string XQueryFunction::signature() const
 XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog, 
    XPathErrorReporter &reporter) const
 {
+   pf::Log log(__FUNCTION__);
+
+   log.branch("URI: %.*s", int(URI.size()), URI.data());
+
    if (URI.empty()) return nullptr;
 
    if (not owner) {
@@ -55,7 +60,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    
    pf::ScopedObjectLock<extXML> xml(owner);
    if (not xml.granted()) {
-      reporter.record_error("XQST0059: Cannot lock XML object for module loading: " + std::string(URI));
+      reporter.record_error(std::format("XQST0059: Cannot lock XML object #{} for module loading: {}", xml->UID, std::string(URI)));
       return nullptr;
    }
 
@@ -73,6 +78,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       }
       return value;
    };
+
+   auto base_directory = xpath::accessor::resolve_document_base_directory(*xml);
 
    auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
       std::string normalised = normalise_cache_key(hint);
@@ -93,14 +100,8 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
          if (!xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
       }
 
-      if (xml->Path and xml->Path[0]) {
-         std::string base_path = normalise_cache_key(std::string(xml->Path));
-         size_t slash = base_path.rfind('/');
-         std::string directory;
-         if (slash != std::string::npos) directory = base_path.substr(0u, slash + 1u);
-         else directory.clear();
-
-         std::string combined = directory;
+      if (base_directory) {
+         std::string combined = *base_directory;
          combined.append(normalised);
          return normalise_cache_key(combined);
       }
@@ -190,7 +191,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    const std::optional<std::string> encoding("utf-8");
 
    for (const auto &candidate : location_candidates) {
-      if (read_text_resource(xml.operator->(), candidate, encoding, content)) {
+      if (read_text_resource(*xml, candidate, encoding, content)) {
          loaded_location = candidate;
          break;
       }

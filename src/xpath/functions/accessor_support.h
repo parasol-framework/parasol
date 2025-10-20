@@ -31,6 +31,8 @@ namespace xpath::accessor
 
    std::optional<std::string> resolve_document_uri(const XPathContext &Context, XMLTag *Node);
 
+   std::optional<std::string> resolve_document_base_directory(extXML *Document);
+
    std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,
       const XMLAttrib *AttributeNode);
 
