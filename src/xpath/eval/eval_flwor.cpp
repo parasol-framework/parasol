@@ -24,6 +24,7 @@
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
+#include <format>
 
 static size_t hash_xpath_group_value(const XPathVal &Value);
 
@@ -243,19 +244,10 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
          case XPVT::NodeSet: {
             size_t length = nodeset_length(value);
-            std::string summary("node-set[");
-            summary.append(std::to_string(length));
-            summary.push_back(']');
-
-            if (length > 0) {
-               std::string preview = nodeset_string_at(value, 0);
-               if (!preview.empty()) {
-                  summary.append(": ");
-                  summary.append(preview);
-               }
-            }
-
-            return summary;
+            std::string preview;
+            if (length > 0) preview = nodeset_string_at(value, 0);
+            if (preview.empty()) return std::format("node-set[{}]", length);
+            else return std::format("node-set[{}]: {}", length, preview);
          }
 
          default:
@@ -272,17 +264,16 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       entries.reserve(tuple.bindings.size());
 
       for (const auto &entry : tuple.bindings) {
-         std::string binding = entry.first;
-         binding.append("=");
-         binding.append(describe_value_for_trace(entry.second));
-         entries.push_back(std::move(binding));
+         entries.push_back(std::format("{}={}", entry.first, describe_value_for_trace(entry.second)));
       }
 
       std::sort(entries.begin(), entries.end());
 
-      std::string summary;
-      for (size_t index = 0; index < entries.size(); ++index) {
-         if (index > 0) summary.append(", ");
+      if (entries.empty()) return std::string();
+
+      std::string summary = entries[0];
+      for (size_t index = 1; index < entries.size(); ++index) {
+         summary.append(", ");
          summary.append(entries[index]);
       }
 
@@ -292,9 +283,9 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    auto describe_value_sequence = [&](const auto &values) -> std::string {
       if (values.empty()) return std::string();
 
-      std::string summary;
-      for (size_t index = 0; index < values.size(); ++index) {
-         if (index > 0) summary.append(" | ");
+      std::string summary = describe_value_for_trace(values[0]);
+      for (size_t index = 1; index < values.size(); ++index) {
+         summary.append(" | ");
          summary.append(describe_value_for_trace(values[index]));
       }
 
@@ -395,34 +386,17 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          record_error("FLWOR expression contains an invalid clause.", Node, true);
          return XPathVal();
       }
-
-      if ((child->type IS XPathNodeType::FOR_BINDING) or (child->type IS XPathNodeType::LET_BINDING)) {
+      else if ((child->type IS XPathNodeType::FOR_BINDING) or (child->type IS XPathNodeType::LET_BINDING)) {
          binding_nodes.push_back(child);
-         continue;
       }
-
-      if (child->type IS XPathNodeType::WHERE_CLAUSE) {
-         where_clause = child;
-         continue;
+      else if (child->type IS XPathNodeType::WHERE_CLAUSE) where_clause = child;
+      else if (child->type IS XPathNodeType::GROUP_CLAUSE) group_clause = child;
+      else if (child->type IS XPathNodeType::ORDER_CLAUSE) order_clause = child;
+      else if (child->type IS XPathNodeType::COUNT_CLAUSE) count_clause = child;
+      else {
+         record_error("FLWOR expression contains an unsupported clause type.", child, true);
+         return XPathVal();
       }
-
-      if (child->type IS XPathNodeType::GROUP_CLAUSE) {
-         group_clause = child;
-         continue;
-      }
-
-      if (child->type IS XPathNodeType::ORDER_CLAUSE) {
-         order_clause = child;
-         continue;
-      }
-
-      if (child->type IS XPathNodeType::COUNT_CLAUSE) {
-         count_clause = child;
-         continue;
-      }
-
-      record_error("FLWOR expression contains an unsupported clause type.", child, true);
-      return XPathVal();
    }
 
    if (binding_nodes.empty()) {
@@ -876,10 +850,12 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       if (tracing_flwor) {
          std::string index_summary;
-         index_summary.reserve(tuples.size() * 4);
-         for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
-            if (tuple_index > 0) index_summary.append(", ");
-            index_summary.append(std::to_string(tuples[tuple_index].original_index));
+         if (!tuples.empty()) {
+            index_summary = std::to_string(tuples[0].original_index);
+            for (size_t tuple_index = 1; tuple_index < tuples.size(); ++tuple_index) {
+               index_summary.append(", ");
+               index_summary.append(std::to_string(tuples[tuple_index].original_index));
+            }
          }
 
          const char *sort_mode = order_clause->order_clause_is_stable ? "stable" : "unstable";

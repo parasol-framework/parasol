@@ -210,7 +210,7 @@ function testExternalFunctionErrorHandling()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Module imports without loader support should emit a structural diagnostic
+-- Module imports without an installed loader should emit a load-failure diagnostic
 
 function testModuleImportDeclaration()
    local xml = obj.new('xml', {
@@ -219,8 +219,8 @@ function testModuleImportDeclaration()
 
    local err = xml.mtEvaluate('import module namespace math = "urn:math"; math:square(2)')
    local message = tostring(xml.errorMsg)
-   assert(message == "Module function resolution is not implemented for namespace 'urn:math'.", 'Module import should record structural diagnostic, got ' .. message)
-end
+   assert(message == "Module 'urn:math' could not be loaded for function 'Q{urn:math}square'.", 'Module import should record structural diagnostic, got ' .. message)
+   end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Default function namespace should canonicalise prolog function names
@@ -252,8 +252,8 @@ function testModuleImportNamespaceNormalisation()
 
    local err = xml.mtEvaluate('import module namespace math = "urn:math\\library"; math:square(2)')
    local message = tostring(xml.errorMsg)
-   assert(message == "Module function resolution is not implemented for namespace 'urn:math/library'.", 'Module import namespaces should be normalised, got ' .. message)
-end
+   assert(message == "Module 'urn:math/library' could not be loaded for function 'Q{urn:math/library}square'.", 'Module import namespaces should be normalised, got ' .. message)
+   end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- User-defined functions with type annotations should parse without errors

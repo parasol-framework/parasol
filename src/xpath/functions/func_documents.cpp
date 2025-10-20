@@ -22,34 +22,6 @@ namespace { // Anonymous namespace for internal linkage
 namespace fs = std::filesystem;
 
 //*********************************************************************************************************************
-
-static bool is_string_uri(std::string_view Value)
-{
-   return not Value.rfind("string:", 0);
-}
-
-//*********************************************************************************************************************
-// Normalise newlines in a text resource to just LF (\n).
-
-static std::string normalise_newlines(const std::string &Input)
-{
-   std::string output;
-   output.reserve(Input.length());
-
-   size_t index = 0;
-   while (index < Input.length()) {
-      if (char ch = Input[index]; ch IS '\r') {
-         output.push_back('\n');
-         if ((index + 1 < Input.length()) and (Input[index + 1] IS '\n')) index++;
-      }
-      else output.push_back(ch);
-      index++;
-   }
-
-   return output;
-}
-
-//*********************************************************************************************************************
 // Get the directory of the current document, if available.
 
 static std::optional<std::string> get_context_directory(const XPathContext &Context)
@@ -89,99 +61,32 @@ static bool resolve_resource_location(const XPathContext &Context, const std::st
 }
 
 //*********************************************************************************************************************
-// Register document nodes with their owner document for cross-document XPath processing.
-
-static void register_document_node(extXML *Owner, const std::shared_ptr<extXML> &Document, XMLTag &Tag)
-{
-   if ((!Owner) or (!Document)) return;
-
-   Owner->DocumentNodeOwners[&Tag] = Document;
-   for (auto &child : Tag.Children) register_document_node(Owner, Document, child);
-}
-
-//*********************************************************************************************************************
-
-static void register_document_nodes(extXML *Owner, const std::shared_ptr<extXML> &Document)
-{
-   if ((!Owner) or (!Document)) return;
-   for (auto &tag : Document->Tags) register_document_node(Owner, Document, tag);
-}
-
-//*********************************************************************************************************************
 // Load (or retrieve from cache) an XML document.
+// Note: For the time being, cached XML documents are considered read-only (modifying the tags would upset cached 
+// tag references).
 
-static std::shared_ptr<extXML> load_document(extXML *Owner, const std::string &URI)
+static extXML * load_document(extXML *Owner, const std::string &URI)
 {
    if (!Owner) return nullptr;
 
-   auto existing = Owner->DocumentCache.find(URI);
-   if (existing != Owner->DocumentCache.end()) return existing->second;
+   auto existing = Owner->XMLCache.find(URI);
+   if (existing != Owner->XMLCache.end()) return existing->second;
 
-   std::shared_ptr<extXML> document;
+   extXML *document;
 
-   if (is_string_uri(URI)) {
-      if (auto raw = pf::Create<extXML>::global({
-            fl::Statement(URI.substr(7)), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE)
-         })) {
-         document = pf::make_shared_object(raw);
-      }
-   }
-   else {
-      if (auto raw = pf::Create<extXML>::global({
-            fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE)
-         })) {
-         document = pf::make_shared_object(raw);
-      }
-   }
+   // TODO: Loading from URI's needs to be supported by the File class.
+
+   pf::SwitchContext ctx(Owner);
+   document = pf::Create<extXML>::global({ fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
 
    if (!document) return nullptr;
    if (document->Tags.empty()) return nullptr;
 
-   (void)document->getMap();
-   register_document_nodes(Owner, document);
-   Owner->DocumentCache[URI] = document;
+   (void)document->getMap(); // Build ID map now
+   Owner->XMLCache[URI] = document;
    return document;
 }
 
-//*********************************************************************************************************************
-// Load (or retrieve from cache) a text resource.
-
-static bool read_text_resource(extXML *Owner, const std::string &URI, const std::optional<std::string> &Encoding,
-   std::shared_ptr<std::string> &Result)
-{
-   if (!Owner) return false;
-
-   if (Encoding.has_value()) {
-      std::string lowered = lowercase_copy(*Encoding);
-      if ((lowered != "utf-8") and (lowered != "utf8")) return false;
-   }
-
-   auto existing = Owner->UnparsedTextCache.find(URI);
-   if (existing != Owner->UnparsedTextCache.end()) {
-      Result = existing->second;
-      return true;
-   }
-
-   if (is_string_uri(URI)) {
-      auto text = std::make_shared<std::string>(normalise_newlines(URI.substr(7u)));
-      Owner->UnparsedTextCache[URI] = text;
-      Result = text;
-      return true;
-   }
-
-   CacheFile *filecache = nullptr;
-   if (LoadFile(URI.c_str(), LDF::NIL, &filecache) != ERR::Okay) return false;
-
-   std::shared_ptr<std::string> text = std::make_shared<std::string>((CSTRING)filecache->Data, filecache->Size);
-   UnloadFile(filecache);
-
-   *text = normalise_newlines(*text);
-   Owner->UnparsedTextCache[URI] = text;
-   Result = text;
-   return true;
-}
-
-//*********************************************************************************************************************
 //*********************************************************************************************************************
 // Locate the root node of the document containing a given node.
 
@@ -303,9 +208,7 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 
    if (!node) return XPathVal(pf::vector<XMLTag *>());
 
-   xpath::accessor::NodeOrigin origin = xpath::accessor::locate_node_document(Context, node);
-   std::shared_ptr<extXML> holder = origin.holder;
-   extXML *document = origin.document;
+   extXML *document = xpath::accessor::locate_node_document(Context, node);
    if (!document) return XPathVal(pf::vector<XMLTag *>());
 
    XMLTag *root = locate_root_node(document, node);
@@ -357,11 +260,12 @@ XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal
 
    if (is_string_uri(resolved)) return XPathVal(true);
 
-   if (Context.document->DocumentCache.find(resolved) != Context.document->DocumentCache.end()) return XPathVal(true);
+   if (Context.document->XMLCache.find(resolved) != Context.document->XMLCache.end()) return XPathVal(true);
 
-   CacheFile *filecache = nullptr;
-   if (LoadFile(resolved.c_str(), LDF::NIL, &filecache) IS ERR::Okay) {
-      UnloadFile(filecache);
+   // TODO: Testing validity of URI's needs to be supported by the File class.
+
+   LOC file_type;
+   if (AnalysePath(resolved.c_str(), &file_type) IS ERR::Okay) {
       return XPathVal(true);
    }
 
@@ -458,7 +362,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathVal
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::string());
 
-   std::shared_ptr<std::string> text;
+   std::string *text;
    if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(std::string());
 
    return XPathVal(*text);
@@ -485,7 +389,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(false);
 
-   std::shared_ptr<std::string> text;
+   std::string *text;
    if (read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(true);
    return XPathVal(false);
 }
@@ -511,7 +415,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
-   std::shared_ptr<std::string> text;
+   std::string *text;
    if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
 
    std::vector<std::string> lines;
@@ -588,8 +492,8 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
    std::unordered_set<const XMLTag *> seen;
    collect_idref_matches(Context.document, requested_ids, seen, results);
 
-   for (const auto &entry : Context.document->DocumentCache) {
-      collect_idref_matches(entry.second.get(), requested_ids, seen, results);
+   for (const auto &entry : Context.document->XMLCache) {
+      collect_idref_matches(entry.second, requested_ids, seen, results);
    }
 
    return XPathVal(results);

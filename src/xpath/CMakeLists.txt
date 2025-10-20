@@ -36,7 +36,7 @@ add_library (xml_xpath_functions OBJECT
 
 target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
 set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
-add_compile_definitions("PRV_XPATH_MODULE" "PRV_XML")
+add_compile_definitions("PRV_XML" "PRV_XPATH_MODULE")
 add_dependencies (xpath build_headers xml)
 
 # Module Code
@@ -71,6 +71,7 @@ flute_test (${MOD}_xpath_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanc
 flute_test (${MOD}_xpath_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_paths.fluid")
 flute_test (${MOD}_xpath_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.fluid")
 flute_test (${MOD}_xpath_flwor_clauses "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor_clauses.fluid")
+flute_test (${MOD}_xpath_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.fluid")
 
 if (ENABLE_UNIT_TESTS)
    flute_test (${MOD}_xpath_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.fluid")

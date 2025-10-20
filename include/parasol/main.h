@@ -110,7 +110,8 @@ class ScopedAccessMemory { // C++ wrapper for automatically releasing locked mem
 };
 
 //********************************************************************************************************************
-// Defer() function for calling lambdas at end-of-scope
+// Defer() function for calling lambdas at end-of-scope.
+// Example: auto cleanup = pf::Defer([&]() { log.msg("Finished"); });
 
 template <typename FUNC> struct deferred_call {
    deferred_call(const deferred_call &that) = delete;

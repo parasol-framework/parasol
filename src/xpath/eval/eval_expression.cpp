@@ -5,13 +5,45 @@
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
 #include <parasol/strings.hpp>
+#include <format>
 #include <utility>
 
 // Resolves a variable reference by consulting the dynamic context, document bindings, and finally the prolog.
+
 bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
    XPathVal &OutValue, const XPathNode *ReferenceNode)
 {
    std::string name(QName);
+   std::string normalised_name(name);
+
+   auto canonicalise_qname = [&](std::string_view Candidate, const XQueryProlog &SourceProlog) {
+      if ((Candidate.size() > 2) and (Candidate[0] IS 'Q') and (Candidate[1] IS '{')) {
+         return std::string(Candidate);
+      }
+
+      size_t colon_position = Candidate.find(':');
+      if (colon_position != std::string_view::npos) {
+         std::string prefix(Candidate.substr(0, colon_position));
+         std::string_view local_name_view = Candidate.substr(colon_position + 1);
+
+         auto uri_entry = SourceProlog.declared_namespace_uris.find(prefix);
+         if (uri_entry not_eq SourceProlog.declared_namespace_uris.end()) {
+            return std::format("Q{{{}}}{}", uri_entry->second, local_name_view);
+         }
+
+         if (context.document) {
+            auto prefix_it = context.document->Prefixes.find(prefix);
+            if (prefix_it not_eq context.document->Prefixes.end()) {
+               auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+               if (ns_it not_eq context.document->NSRegistry.end()) {
+                  return std::format("Q{{{}}}{}", ns_it->second, local_name_view);
+               }
+            }
+         }
+      }
+
+      return std::string(Candidate);
+   };
 
    if (context.variables) {
       auto local_variable = context.variables->find(name);
@@ -30,40 +62,175 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    }
 
    auto prolog = context.prolog;
-   if (!prolog) return false;
-
-   auto cached_value = prolog_variable_cache.find(name);
-   if (cached_value != prolog_variable_cache.end()) {
-      OutValue = cached_value->second;
-      return true;
-   }
+   if (not prolog) return false;
 
    const XQueryVariable *variable = prolog->find_variable(QName);
-   if (!variable) {
-      auto separator = name.find(':');
-      if (separator != std::string::npos) {
-         std::string prefix = name.substr(0, separator);
-         uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
-         if (namespace_hash != 0) {
-            for (const auto &import : prolog->module_imports) {
-               if (pf::strhash(import.target_namespace) IS namespace_hash) {
-                  if (!context.module_cache) {
-                     std::string message = "Module variable '" + name + "' requires a module cache.";
-                     record_error(message, ReferenceNode, true);
-                     return false;
-                  }
+   std::shared_ptr<XQueryProlog> owner_prolog = prolog;
+   auto active_module_cache = context.module_cache;
+   std::string module_uri;
+   std::string imported_local_name;
+   std::string canonical_lookup;
 
-                  std::string message = "Module variable resolution is not implemented for namespace '";
-                  message.append(import.target_namespace);
-                  message.append("'.");
-                  record_error(message, ReferenceNode, true);
-                  return false;
+   if (not variable) {
+      uint32_t namespace_hash = 0U;
+
+      if ((name.size() > 2) and (name[0] IS 'Q') and (name[1] IS '{')) {
+         size_t closing = name.find('}');
+         if (closing != std::string::npos) {
+            module_uri = name.substr(2, closing - 2);
+            imported_local_name = name.substr(closing + 1);
+            if (not module_uri.empty()) namespace_hash = pf::strhash(module_uri);
+         }
+      }
+
+      if (namespace_hash IS 0) {
+         auto separator = name.find(':');
+         if (separator != std::string::npos) {
+            std::string prefix = name.substr(0, separator);
+            imported_local_name = name.substr(separator + 1);
+            namespace_hash = prolog->resolve_prefix(prefix, context.document);
+            if (namespace_hash != 0) {
+               auto uri_entry = prolog->declared_namespace_uris.find(prefix);
+               if (uri_entry not_eq prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
+               else if (context.document) {
+                  auto prefix_it = context.document->Prefixes.find(prefix);
+                  if (prefix_it not_eq context.document->Prefixes.end()) {
+                     auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+                     if (ns_it not_eq context.document->NSRegistry.end()) module_uri = ns_it->second;
+                  }
                }
             }
          }
       }
 
-      return false;
+      const XQueryModuleImport *matched_import = nullptr;
+      if (namespace_hash != 0) {
+         for (const auto &import : prolog->module_imports) {
+            if (pf::strhash(import.target_namespace) IS namespace_hash) {
+               matched_import = &import;
+               if (module_uri.empty()) module_uri = import.target_namespace;
+               break;
+            }
+         }
+      }
+
+      if (matched_import) {
+         if (module_uri.empty()) {
+            std::string message = "Module variable '" + name + "' has an unresolved namespace.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         auto module_cache = context.module_cache;
+         if (not module_cache) {
+            std::string message = "Module variable '" + name + "' requires a module cache.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         (void)module_cache->fetch_or_load(module_uri, *prolog, *this);
+
+         auto module_info = module_cache->find_module(module_uri);
+         if (not module_info) {
+            std::string message = "Module '" + module_uri + "' could not be loaded for variable '" + name + "'.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         auto module_prolog = module_info->prolog;
+         if (not module_prolog) {
+            std::string message = "Module '" + module_uri + "' does not expose a prolog.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         const XQueryVariable *module_variable = module_prolog->find_variable(name);
+
+         if (not module_uri.empty() and not imported_local_name.empty()) {
+            canonical_lookup = std::format("Q{{{}}}{}", module_uri, imported_local_name);
+         }
+
+         if (not module_variable and not canonical_lookup.empty()) {
+            module_variable = module_prolog->find_variable(canonical_lookup);
+         }
+
+         if (not module_variable) {
+            for (const auto &entry : module_prolog->variables) {
+               const auto &candidate = entry.second;
+               if (candidate.qname IS name) {
+                  module_variable = &candidate;
+                  break;
+               }
+
+               if (not canonical_lookup.empty() and (candidate.qname IS canonical_lookup)) {
+                  module_variable = &candidate;
+                  break;
+               }
+
+               size_t colon_pos = candidate.qname.find(':');
+               if ((colon_pos != std::string::npos) and !imported_local_name.empty()) {
+                  std::string candidate_prefix = candidate.qname.substr(0, colon_pos);
+                  std::string candidate_local = candidate.qname.substr(colon_pos + 1);
+                  if (candidate_local IS imported_local_name) {
+                     uint32_t candidate_hash = module_prolog->resolve_prefix(candidate_prefix, nullptr);
+                     if (candidate_hash IS namespace_hash) {
+                        module_variable = &candidate;
+                        break;
+                     }
+                  }
+               }
+            }
+         }
+
+         if (not module_variable) {
+            std::string message = "Module variable '" + name + "' is not declared by namespace '" + module_uri + "'.";
+            record_error(message, ReferenceNode, true);
+            return false;
+         }
+
+         variable = module_variable;
+         owner_prolog = module_prolog;
+         active_module_cache = module_cache;
+      }
+
+      if (not variable) return false;
+   }
+
+   if (owner_prolog) {
+      if (not canonical_lookup.empty()) normalised_name = canonical_lookup;
+      else {
+         normalised_name = canonicalise_qname(name, *owner_prolog);
+         if (normalised_name IS name) {
+            normalised_name = canonicalise_qname(variable->qname, *owner_prolog);
+         }
+      }
+   }
+
+   auto cached_value = prolog_variable_cache.find(normalised_name);
+   if (cached_value != prolog_variable_cache.end()) {
+      OutValue = cached_value->second;
+      return true;
+   }
+
+   if (normalised_name not_eq name) {
+      auto alias_value = prolog_variable_cache.find(name);
+      if (alias_value != prolog_variable_cache.end()) {
+         prolog_variable_cache.insert_or_assign(normalised_name, alias_value->second);
+         OutValue = alias_value->second;
+         return true;
+      }
+   }
+
+   if (variable->qname not_eq normalised_name) {
+      auto declared_value = prolog_variable_cache.find(variable->qname);
+      if (declared_value != prolog_variable_cache.end()) {
+         prolog_variable_cache.insert_or_assign(normalised_name, declared_value->second);
+         if (normalised_name not_eq name) {
+            prolog_variable_cache.insert_or_assign(name, declared_value->second);
+         }
+         OutValue = declared_value->second;
+         return true;
+      }
    }
 
    if (variable->is_external) {
@@ -72,21 +239,36 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return false;
    }
 
-   if (!variable->initializer) {
+   if (not variable->initializer) {
       std::string message = "Variable '" + name + "' is missing an initialiser.";
       record_error(message, ReferenceNode, true);
       return false;
    }
 
-   if (variables_in_evaluation.find(name) != variables_in_evaluation.end()) {
+   if (variables_in_evaluation.find(normalised_name) != variables_in_evaluation.end()) {
       std::string message = "Variable '" + name + "' has a circular dependency.";
       record_error(message, ReferenceNode, true);
       return false;
    }
 
-   variables_in_evaluation.insert(name);
+   auto previous_prolog = context.prolog;
+   auto previous_cache = context.module_cache;
+
+   bool switched_context = false;
+   if (owner_prolog and (owner_prolog.get() != previous_prolog.get())) {
+      context.prolog = owner_prolog;
+      if (active_module_cache) context.module_cache = active_module_cache;
+      switched_context = true;
+   }
+
+   variables_in_evaluation.insert(normalised_name);
    XPathVal computed_value = evaluate_expression(variable->initializer.get(), CurrentPrefix);
-   variables_in_evaluation.erase(name);
+   variables_in_evaluation.erase(normalised_name);
+
+   if (switched_context) {
+      context.prolog = previous_prolog;
+      context.module_cache = previous_cache;
+   }
 
    if (expression_unsupported) {
       std::string message = "Failed to evaluate initialiser for variable '" + name + "'.";
@@ -94,8 +276,17 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       return false;
    }
 
-   auto inserted = prolog_variable_cache.insert_or_assign(name, std::move(computed_value));
+   auto inserted = prolog_variable_cache.insert_or_assign(normalised_name, computed_value);
    OutValue = inserted.first->second;
+
+   if (normalised_name not_eq name) {
+      prolog_variable_cache.insert_or_assign(name, inserted.first->second);
+   }
+
+   if (variable->qname not_eq normalised_name and variable->qname not_eq name) {
+      prolog_variable_cache.insert_or_assign(variable->qname, inserted.first->second);
+   }
+
    return true;
 }
 
@@ -105,7 +296,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 {
    pf::Log log("XPath");
 
-   if (!ExprNode) {
+   if (not ExprNode) {
       record_error("Unsupported XPath expression: empty node", (const XPathNode *)nullptr, true);
       return XPathVal();
    }
@@ -180,7 +371,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       auto *then_node = ExprNode->get_child(1);
       auto *else_node = ExprNode->get_child(2);
 
-      if ((!condition_node) or (!then_node) or (!else_node)) {
+      if ((not condition_node) or (not then_node) or (not else_node)) {
          expression_unsupported = true;
          return XPathVal();
       }
@@ -203,7 +394,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
-      if (!return_node) {
+      if (not return_node) {
          record_error("LET expression is missing its return clause.", ExprNode, true);
          return XPathVal();
       }
@@ -213,7 +404,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
          const XPathNode *binding_node = ExprNode->get_child(index);
-         if ((!binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
+         if ((not binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
             record_error("LET expression contains an invalid binding clause.", binding_node ? binding_node : ExprNode, true);
             return XPathVal();
          }
@@ -224,7 +415,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
 
          const XPathNode *binding_expr = binding_node->get_child(0);
-         if (!binding_expr) {
+         if (not binding_expr) {
             record_error("Let binding requires an expression node.", binding_node, true);
             return XPathVal();
          }
@@ -259,7 +450,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
-      if (!return_node) {
+      if (not return_node) {
          expression_unsupported = true;
          return XPathVal();
       }
@@ -297,7 +488,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
 
          const XPathNode *sequence_node = ExprNode->get_child(0);
-         if ((!sequence_node) or (!return_node) or ExprNode->value.empty()) {
+         if ((not sequence_node) or (not return_node) or ExprNode->value.empty()) {
             expression_unsupported = true;
             return XPathVal();
          }
@@ -339,11 +530,11 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                else if (node) node_string = XPathVal::node_string_value(node);
 
                combined_strings.push_back(node_string);
-               if (!combined_override.has_value()) combined_override = node_string;
+               if (not combined_override.has_value()) combined_override = node_string;
             }
 
             if (iteration_value.node_set_string_override.has_value() and iteration_value.node_set_string_values.empty()) {
-               if (!combined_override.has_value()) combined_override = iteration_value.node_set_string_override;
+               if (not combined_override.has_value()) combined_override = iteration_value.node_set_string_override;
             }
 
             return true;
@@ -355,7 +546,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          combined_nodes.push_back(nullptr);
          combined_attributes.push_back(nullptr);
          combined_strings.push_back(atomic_string);
-         if (!combined_override.has_value()) combined_override = atomic_string;
+         if (not combined_override.has_value()) combined_override = atomic_string;
          return true;
       };
 
@@ -364,12 +555,12 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             auto iteration_value = evaluate_expression(return_node, CurrentPrefix);
             if (expression_unsupported) return false;
 
-            if (!append_iteration_value(iteration_value)) return false;
+            if (not append_iteration_value(iteration_value)) return false;
             return true;
          }
 
          const auto &binding = bindings[binding_index];
-         if (!binding.sequence) {
+         if (not binding.sequence) {
             expression_unsupported = true;
             return false;
          }
@@ -419,7 +610,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             bool iteration_ok = evaluate_bindings(binding_index + 1);
             pop_context();
 
-            if (!iteration_ok) return false;
+            if (not iteration_ok) return false;
 
             if (expression_unsupported) return false;
          }
@@ -428,7 +619,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       };
 
       bool evaluation_ok = evaluate_bindings(0);
-      if (!evaluation_ok) return XPathVal();
+      if (not evaluation_ok) return XPathVal();
       if (expression_unsupported) return XPathVal();
 
       XPathVal result;
@@ -451,13 +642,13 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       bool is_some = ExprNode->value IS "some";
       bool is_every = ExprNode->value IS "every";
 
-      if ((!is_some) and (!is_every)) {
+      if ((not is_some) and (not is_every)) {
          expression_unsupported = true;
          return XPathVal();
       }
 
       const XPathNode *condition_node = ExprNode->get_child(ExprNode->child_count() - 1);
-      if (!condition_node) {
+      if (not condition_node) {
          expression_unsupported = true;
          return XPathVal();
       }
@@ -472,7 +663,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
          const XPathNode *binding_node = ExprNode->get_child(index);
-         if ((!binding_node) or (binding_node->type != XPathNodeType::QUANTIFIED_BINDING)) {
+         if ((not binding_node) or (binding_node->type != XPathNodeType::QUANTIFIED_BINDING)) {
             expression_unsupported = true;
             return XPathVal();
          }
@@ -498,7 +689,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
 
          const auto &binding = bindings[binding_index];
-         if (!binding.sequence) {
+         if (not binding.sequence) {
             expression_unsupported = true;
             return false;
          }
@@ -588,7 +779,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       for (size_t predicate_index = 1; predicate_index < ExprNode->child_count(); ++predicate_index) {
          auto *predicate_node = ExprNode->get_child(predicate_index);
-         if (!predicate_node) continue;
+         if (not predicate_node) continue;
 
          std::vector<size_t> passed;
          passed.reserve(working_indices.size());
@@ -639,7 +830,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       }
 
       std::optional<std::string> first_value;
-      if (!working_indices.empty()) {
+      if (not working_indices.empty()) {
          size_t first_index = working_indices[0];
          if (base_value.node_set_string_override.has_value() and (first_index IS 0)) {
             first_value = base_value.node_set_string_override;
@@ -681,17 +872,17 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       const XPathNode *attribute_step = nullptr;
       const XPathNode *attribute_test = nullptr;
 
-      if (!steps.empty()) {
+      if (not steps.empty()) {
          auto *last_step = steps.back();
          const XPathNode *axis_node = nullptr;
          const XPathNode *node_test = nullptr;
 
          for (size_t index = 0; index < last_step->child_count(); ++index) {
             auto *child = last_step->get_child(index);
-            if (!child) continue;
+            if (not child) continue;
 
             if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-            else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+            else if ((not node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
                                        (child->type IS XPathNodeType::WILDCARD) or
                                        (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
          }
@@ -727,7 +918,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (expression_unsupported) return XPathVal();
 
       if (ExprNode->value IS "-") return XPathVal(-operand.to_number());
-      if (ExprNode->value IS "not") return XPathVal(!operand.to_boolean());
+      if (ExprNode->value IS "not") return XPathVal(not operand.to_boolean());
 
       expression_unsupported = true;
       return XPathVal();
@@ -751,7 +942,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          if (expression_unsupported) return XPathVal();
 
          bool left_boolean = left_value.to_boolean();
-         if (!left_boolean) return XPathVal(false);
+         if (not left_boolean) return XPathVal(false);
 
          auto right_value = evaluate_expression(right_node, CurrentPrefix);
          if (expression_unsupported) return XPathVal();
@@ -808,7 +999,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                bool use_override = value.node_set_string_override.has_value() and value.node_set_string_values.empty();
                for (size_t index = 0; index < value.node_set.size(); ++index) {
                   XMLTag *node = value.node_set[index];
-                  if (!node) continue;
+                  if (not node) continue;
 
                   const XMLAttrib *attribute = nullptr;
                   if (index < value.node_set_attributes.size()) attribute = value.node_set_attributes[index];
@@ -878,13 +1069,13 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       if (operation IS "!=") {
          bool equals = compare_xpath_values(left_value, right_value);
-         return XPathVal(!equals);
+         return XPathVal(not equals);
       }
 
       if (operation IS "eq") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+         if (not left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
          bool equals = compare_xpath_values(*left_scalar, *right_scalar);
          return XPathVal(equals);
       }
@@ -892,9 +1083,9 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (operation IS "ne") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+         if (not left_scalar.has_value() or (not right_scalar.has_value())) return XPathVal(false);
          bool equals = compare_xpath_values(*left_scalar, *right_scalar);
-         return XPathVal(!equals);
+         return XPathVal(not equals);
       }
 
       if (operation IS "<") {
@@ -920,7 +1111,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (operation IS "lt") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+         if (not left_scalar.has_value() or (not right_scalar.has_value())) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS);
          return XPathVal(result);
       }
@@ -928,7 +1119,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (operation IS "le") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+         if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::LESS_OR_EQUAL);
          return XPathVal(result);
       }
@@ -936,7 +1127,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (operation IS "gt") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+         if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER);
          return XPathVal(result);
       }
@@ -944,7 +1135,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       if (operation IS "ge") {
          auto left_scalar = promote_value_comparison_operand(left_value);
          auto right_scalar = promote_value_comparison_operand(right_value);
-         if (!left_scalar.has_value() or !right_scalar.has_value()) return XPathVal(false);
+         if (not left_scalar.has_value() or not right_scalar.has_value()) return XPathVal(false);
          bool result = compare_xpath_relational(*left_scalar, *right_scalar, RelationalOperator::GREATER_OR_EQUAL);
          return XPathVal(result);
       }
@@ -999,12 +1190,14 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          log.msg(VLF::TRACE, "Variable lookup failed for '%s'", ExprNode->value.c_str());
          if (context.variables and context.variables->empty() IS false) {
             std::string binding_list;
-            binding_list.reserve(context.variables->size() * 16);
-            bool first_binding = true;
-            for (const auto &entry : *context.variables) {
-               if (!first_binding) binding_list.append(", ");
-               binding_list.append(entry.first);
-               first_binding = false;
+            auto it = context.variables->begin();
+            if (it not_eq context.variables->end()) {
+               binding_list = it->first;
+               ++it;
+               for (; it not_eq context.variables->end(); ++it) {
+                  binding_list.append(", ");
+                  binding_list.append(it->first);
+               }
             }
             log.msg(VLF::TRACE, "Context bindings available: [%s]", binding_list.c_str());
          }

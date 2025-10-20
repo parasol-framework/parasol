@@ -18,6 +18,7 @@
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
 #include <parasol/strings.hpp>
+#include <format>
 
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
@@ -31,7 +32,7 @@ inline bool is_ncname_start(char Ch)
 }
 
 //********************************************************************************************************************
-// Determines whether a character qualifies as a subsequent character in an XML NCName (alphanumerics, hyphen '-',
+// Determines whether a character qualifies as a subsequent character in an XML NCName (alpha-numerics, hyphen '-',
 // or period '.'). Used in conjunction with is_ncname_start to validate complete NCName strings.
 
 inline bool is_ncname_char(char Ch)
@@ -66,8 +67,8 @@ static std::string trim_constructor_whitespace(std::string_view Value)
    size_t start = 0;
    size_t end = Value.length();
 
-   while ((start < end) and (uint8_t(Value[start]) <= 0x20u)) ++start;
-   while ((end > start) and (uint8_t(Value[end - 1]) <= 0x20u)) --end;
+   while ((start < end) and (uint8_t(Value[start]) <= 0x20)) ++start;
+   while ((end > start) and (uint8_t(Value[end - 1]) <= 0x20)) --end;
 
    return std::string(Value.substr(start, end - start));
 }
@@ -75,7 +76,7 @@ static std::string trim_constructor_whitespace(std::string_view Value)
 static bool is_xml_whitespace_only(std::string_view Value)
 {
    for (char ch : Value) {
-      if (uint8_t(ch) > 0x20u) return false;
+      if (uint8_t(ch) > 0x20) return false;
    }
    return true;
 }
@@ -142,8 +143,7 @@ static ConstructorQName parse_constructor_qname_string(std::string_view Value)
 
 std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_view Text, bool IsLiteral) const
 {
-   if (Text.empty())
-   {
+   if (Text.empty()) {
       if (IsLiteral) return std::string();
       if (prolog_has_boundary_space_preserve()) return std::string();
       return std::nullopt;
@@ -171,8 +171,8 @@ std::optional<std::string> XPathEvaluator::prepare_constructor_text(std::string_
 }
 
 //********************************************************************************************************************
-
 // Attempts to resolve a function call against the prolog before consulting the built-in library.
+
 std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::string_view FunctionName,
    const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
 {
@@ -182,10 +182,10 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    std::string namespace_uri;
    bool has_expanded_name = false;
 
-   if ((FunctionName.size() > 2U) and (FunctionName[0] IS 'Q') and (FunctionName[1] IS '{')) {
+   if ((FunctionName.size() > 2) and (FunctionName[0] IS 'Q') and (FunctionName[1] IS '{')) {
       size_t closing = FunctionName.find('}');
       if (closing != std::string::npos) {
-         namespace_uri = std::string(FunctionName.substr(2U, closing - 2U));
+         namespace_uri = std::string(FunctionName.substr(2, closing - 2));
          has_expanded_name = true;
       }
    }
@@ -193,9 +193,7 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    const XQueryFunction *function = prolog->find_function(FunctionName, Args.size());
    if (function) {
       if (function->is_external) {
-         std::string message = "External function '";
-         message.append(function->qname);
-         message.append("' is not supported.");
+         auto message = std::format("External function '{}' is not supported.", function->qname);
          record_error(message, FuncNode, true);
          return XPathVal();
       }
@@ -213,91 +211,131 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    }
 
    if (arity_mismatch) {
-      std::string message = "Function '";
-      message.append(canonical_name);
-      message.append("' does not accept ");
-      message.append(std::to_string(Args.size()));
-      message.append(Args.size() IS 1 ? " argument." : " arguments.");
+      auto message = std::format("Function '{}' does not accept {} {}.",
+         canonical_name, Args.size(), Args.size() IS 1 ? "argument" : "arguments");
       record_error(message, FuncNode, true);
       return XPathVal();
    }
 
-   if (has_expanded_name) {
-      uint32_t namespace_hash = namespace_uri.empty() ? 0 : pf::strhash(namespace_uri);
-      if (namespace_hash != 0) {
-         for (const auto &import : prolog->module_imports) {
-            if (pf::strhash(import.target_namespace) IS namespace_hash) {
-               if (!context.module_cache) {
-                  std::string message = "Module function '";
-                  message.append(canonical_name);
-                  message.append("' requires a module cache.");
-                  record_error(message, FuncNode, true);
-                  return XPathVal();
-               }
+   uint32_t namespace_hash = 0;
+   std::string module_uri;
 
-               std::string message = "Module function resolution is not implemented for namespace '";
-               message.append(import.target_namespace);
-               message.append("'.");
-               record_error(message, FuncNode, true);
-               return XPathVal();
-            }
-         }
+   if (has_expanded_name) {
+      if (!namespace_uri.empty()) {
+         namespace_hash = pf::strhash(namespace_uri);
+         module_uri = namespace_uri;
       }
    }
    else {
       auto separator = FunctionName.find(':');
       if (separator != std::string_view::npos) {
          std::string prefix(FunctionName.substr(0, separator));
-         uint32_t namespace_hash = prolog->resolve_prefix(prefix, context.document);
+         namespace_hash = prolog->resolve_prefix(prefix, context.document);
          if (namespace_hash != 0) {
-            for (const auto &import : prolog->module_imports) {
-               if (pf::strhash(import.target_namespace) IS namespace_hash) {
-                  if (!context.module_cache) {
-                     std::string message = "Module function '";
-                     message.append(canonical_name);
-                     message.append("' requires a module cache.");
-                     record_error(message, FuncNode, true);
-                     return XPathVal();
-                  }
-
-                  std::string message = "Module function resolution is not implemented for namespace '";
-                  message.append(import.target_namespace);
-                  message.append("'.");
-                  record_error(message, FuncNode, true);
-                  return XPathVal();
+            auto uri_entry = prolog->declared_namespace_uris.find(prefix);
+            if (uri_entry != prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
+            else if (context.document) {
+               auto prefix_it = context.document->Prefixes.find(prefix);
+               if (prefix_it != context.document->Prefixes.end()) {
+                  auto ns_it = context.document->NSRegistry.find(prefix_it->second);
+                  if (ns_it != context.document->NSRegistry.end()) module_uri = ns_it->second;
                }
             }
          }
       }
    }
 
-   return std::nullopt;
+   const XQueryModuleImport *matched_import = nullptr;
+   if (namespace_hash != 0) {
+      for (const auto &import : prolog->module_imports) {
+         if (pf::strhash(import.target_namespace) IS namespace_hash) {
+            matched_import = &import;
+            if (module_uri.empty()) module_uri = import.target_namespace;
+            break;
+         }
+      }
+   }
+
+   if (!matched_import) return std::nullopt;
+
+   if (module_uri.empty()) {
+      auto message = std::format("Module function '{}' has an unresolved namespace.", canonical_name);
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_cache = context.module_cache;
+   if (!module_cache) {
+      auto message = std::format("Module function '{}' requires a module cache.", canonical_name);
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_document = module_cache->fetch_or_load(module_uri, *prolog, *this);
+   (void)module_document;
+
+   auto module_info = module_cache->find_module(module_uri);
+   if (!module_info) {
+      auto message = std::format("Module '{}' could not be loaded for function '{}'.", module_uri, canonical_name);
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_prolog = module_info->prolog;
+   if (!module_prolog) {
+      auto message = std::format("Module '{}' does not expose a prolog.", module_uri);
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto module_function = module_prolog->find_function(FunctionName, Args.size());
+   if (!module_function) {
+      auto alternative_name = module_prolog->normalise_function_qname(FunctionName, module_info->compiled_query);
+      if (alternative_name != FunctionName) {
+         module_function = module_prolog->find_function(alternative_name, Args.size());
+      }
+   }
+
+   if (!module_function) {
+      auto message = std::format("Module function '{}' is not exported by namespace '{}'.", canonical_name, module_uri);
+      record_error(message, FuncNode, true);
+      return XPathVal();
+   }
+
+   auto previous_prolog = context.prolog;
+   auto previous_cache = context.module_cache;
+
+   context.prolog = module_prolog;
+   context.module_cache = module_cache;
+
+   XPathVal resolved_value = evaluate_user_defined_function(*module_function, Args, CurrentPrefix, FuncNode);
+
+   context.prolog = previous_prolog;
+   context.module_cache = previous_cache;
+
+   return resolved_value;
 }
 
+//********************************************************************************************************************
 // Evaluates a prolog-defined function by binding arguments and executing the stored body expression.
+
 XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Function,
    const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode)
 {
    if (Function.is_external) {
-      std::string message = "External function '";
-      message.append(Function.qname);
-      message.append("' is not supported.");
+      auto message = std::format("External function '{}' is not supported.", Function.qname);
       record_error(message, FuncNode, true);
       return XPathVal();
    }
 
    if (!Function.body) {
-      std::string message = "Function '";
-      message.append(Function.qname);
-      message.append("' is missing a body.");
+      auto message = std::format("Function '{}' is missing a body.", Function.qname);
       record_error(message, FuncNode, true);
       return XPathVal();
    }
 
    if (Function.parameter_names.size() != Args.size()) {
-      std::string message = "Function '";
-      message.append(Function.qname);
-      message.append("' parameter mismatch.");
+      auto message = std::format("Function '{}' parameter mismatch.", Function.qname);
       record_error(message, FuncNode, true);
       return XPathVal();
    }
@@ -311,9 +349,7 @@ XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Fu
 
    auto result = evaluate_expression(Function.body.get(), CurrentPrefix);
    if (expression_unsupported) {
-      std::string message = "Function '";
-      message.append(Function.qname);
-      message.append("' evaluation failed.");
+      auto message = std::format("Function '{}' evaluation failed.", Function.qname);
       record_error(message, FuncNode);
    }
 
@@ -1273,35 +1309,22 @@ std::optional<std::string> XPathEvaluator::evaluate_attribute_value_template(con
       if (xml) evaluation_error = xml->ErrorMsg;
 
       if (evaluation_failed) {
-         std::string signature = build_ast_signature(expr);
-         std::string variable_list;
-         if (context.variables->empty()) variable_list.assign("[]");
-         else {
-            variable_list.reserve(context.variables->size() * 16);
-            variable_list.push_back('[');
-            bool first_binding = true;
-            for (const auto &binding : *context.variables) {
-               if (not first_binding) variable_list.append(", ");
-               variable_list.append(binding.first);
-               first_binding = false;
+         auto build_variable_list = [](const auto &variables) {
+            if (variables.empty()) return std::string("[]");
+            std::string result = "[";
+            bool first = true;
+            for (const auto &binding : variables) {
+               result += std::format("{}{}", first ? "" : ", ", binding.first);
+               first = false;
             }
-            variable_list.push_back(']');
-         }
+            return result + "]";
+         };
+
+         std::string signature = build_ast_signature(expr);
+         std::string variable_list = build_variable_list(*context.variables);
 
          if (is_trace_enabled()) {
-            std::string signature = build_ast_signature(expr);
             int variable_count = std::ssize(*context.variables);
-            std::string variable_list;
-            variable_list.reserve(variable_count * 16);
-            variable_list.push_back('[');
-            bool first_binding = true;
-            for (const auto &binding : *context.variables) {
-               if (not first_binding) variable_list.append(", ");
-               variable_list.append(binding.first);
-               first_binding = false;
-            }
-            variable_list.push_back(']');
-
             log.msg(VLF::TRACE, "AVT context variable count: %d", variable_count);
             log.msg(VLF::TRACE, "AVT expression failed: %s | context-vars=%s | prev-flag=%s",
                signature.c_str(), variable_list.c_str(), previous_flag ? "true" : "false");
@@ -2129,13 +2152,15 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
    }
 
    if (tracing_xpath) {
-      std::string original_summary;
-      original_summary.reserve(entries.size() * 4);
-      for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
-         if (entry_index > 0) original_summary.append(", ");
-         original_summary.append(std::to_string(entries[entry_index].original_index));
-      }
+      auto build_index_summary = [](const auto &entries_list) {
+         std::string result;
+         for (size_t i = 0; i < entries_list.size(); ++i) {
+            result += std::format("{}{}", i > 0 ? ", " : "", entries_list[i].original_index);
+         }
+         return result;
+      };
 
+      std::string original_summary = build_index_summary(entries);
       trace_nodes_detail("FLWOR emit initial tuple materialisation: nodes=%zu, attributes=%zu, order=[%s]",
          entries.size(), Value.node_set_attributes.size(), original_summary.c_str());
 
@@ -2172,13 +2197,15 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       }
 
       if (tracing_xpath) {
-         std::string preserved_summary;
-         preserved_summary.reserve(unique_entries.size() * 4);
-         for (size_t entry_index = 0; entry_index < unique_entries.size(); ++entry_index) {
-            if (entry_index > 0) preserved_summary.append(", ");
-            preserved_summary.append(std::to_string(unique_entries[entry_index].original_index));
-         }
+         auto build_index_summary = [](const auto &entries_list) {
+            std::string result;
+            for (size_t i = 0; i < entries_list.size(); ++i) {
+               result += std::format("{}{}", i > 0 ? ", " : "", entries_list[i].original_index);
+            }
+            return result;
+         };
 
+         std::string preserved_summary = build_index_summary(unique_entries);
          trace_nodes_detail("FLWOR emit preserved-order pass: unique=%zu, order=[%s]", unique_entries.size(),
             preserved_summary.c_str());
       }
@@ -2199,13 +2226,15 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       entries.erase(unique_end, entries.end());
 
       if (tracing_xpath) {
-         std::string sorted_summary;
-         sorted_summary.reserve(entries.size() * 4);
-         for (size_t entry_index = 0; entry_index < entries.size(); ++entry_index) {
-            if (entry_index > 0) sorted_summary.append(", ");
-            sorted_summary.append(std::to_string(entries[entry_index].original_index));
-         }
+         auto build_index_summary = [](const auto &entries_list) {
+            std::string result;
+            for (size_t i = 0; i < entries_list.size(); ++i) {
+               result += std::format("{}{}", i > 0 ? ", " : "", entries_list[i].original_index);
+            }
+            return result;
+         };
 
+         std::string sorted_summary = build_index_summary(entries);
          trace_nodes_detail("FLWOR emit document-order pass: unique=%zu, order=[%s]", entries.size(),
             sorted_summary.c_str());
       }
@@ -2308,7 +2337,7 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
    std::string builtin_local;
    bool builtin_has_expanded = false;
 
-   if ((function_name.size() > 2U) and (function_name[0] IS 'Q') and (function_name[1] IS '{')) {
+   if ((function_name.size() > 2) and (function_name[0] IS 'Q') and (function_name[1] IS '{')) {
       size_t closing = function_name.find('}');
       if (closing != std::string::npos) {
          builtin_namespace = function_name.substr(2, closing - 2);
@@ -2341,21 +2370,14 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
 
    auto &library = XPathFunctionLibrary::instance();
 
-   if (builtin_has_expanded)
-   {
+   if (builtin_has_expanded) {
       static const std::string builtin_namespace_uri("http://www.w3.org/2005/xpath-functions");
-      if (builtin_namespace IS builtin_namespace_uri)
-      {
+      if (builtin_namespace IS builtin_namespace_uri) {
          builtin_lookup_name = builtin_local;
       }
-      else
-      {
-         if (library.has_function(function_name))
-         {
-            builtin_lookup_name = function_name;
-         }
-         else if ((not builtin_local.empty()) and library.has_function(builtin_local))
-         {
+      else {
+         if (library.has_function(function_name)) builtin_lookup_name = function_name;
+         else if ((not builtin_local.empty()) and library.has_function(builtin_local)) {
             builtin_lookup_name = builtin_local;
          }
       }
