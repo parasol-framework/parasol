@@ -243,6 +243,8 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
    if ((not Query) or (not Result)) return ERR::NullArgs;
 
+   *Result = nullptr;
+
    int len = 0;
    while ((Query[len]) and (Query[len] != '\n')) len++;
    log.branch("XML: %d, Query: %.*s", XML ? XML->UID : 0, len, Query);
@@ -256,48 +258,41 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
       auto tokens = tokeniser.tokenize(Query);
       XPathParseResult parse_result = parser.parse(tokens);
-
-      if (!parse_result.expression) {
+      
+      auto prolog = parse_result.prolog;
+      
+      std::unique_ptr<XPathNode> root_node;
+      if ((prolog) and (prolog->is_library_module)) {
+         // XQuery module detected - empty result is normal
+         // Synthesise an empty-sequence expression node so downstream code has a valid AST.
+         log.msg("XQuery module compiled");
+         root_node = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+      }
+      else if (not parse_result.expression) {
          auto parser_errors = parser.get_errors();
          std::string message;
-         if (XML) {
-            auto xml = (extXML *)XML;
-            if (parser_errors.empty()) xml->ErrorMsg = "Failed to parse XQuery expression";
-            else {
-               xml->ErrorMsg.clear();
-               bool append_split = false;
-               for (const auto &err : parser_errors) {
-                  if (append_split) xml->ErrorMsg += "; ";
-                  else append_split = true;
-                  xml->ErrorMsg += err;
-               }
-            }
-            message = xml->ErrorMsg;
-         }
+
+         if (parser_errors.empty()) message = "Failed to parse XQuery expression";
          else {
-            if (parser_errors.empty()) message = "Failed to parse XQuery expression";
-            else {
-               message = "XQuery compilation error: ";
-               for (const auto &err : parser_errors) {
-                  if (!message.empty()) message += "; ";
-                  message += err;
-               }
+            for (const auto &err : parser_errors) {
+               if (not message.empty()) message += "; ";
+               message += err;
             }
          }
-         if (!message.empty()) log.warning("%s", message.c_str());
+
+         if (XML) ((extXML *)XML)->ErrorMsg = message;
+         if (not message.empty()) log.warning("%s", message.c_str());
          FreeResource(node);
          return ERR::Syntax;
       }
+      else root_node = std::move(parse_result.expression);
 
-      auto root_node = std::move(parse_result.expression);
       new (node) XPathNode(std::move(*root_node));
 
       // If the expression featured an XQuery prolog then it needs a little more configuration.
 
       if (XML) {
          // Move the prolog across if one was created during parsing.
-
-         auto prolog = parse_result.prolog;
 
          if (prolog) {
             if (prolog->static_base_uri.empty()) {
@@ -323,7 +318,7 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
             prolog->bind_module_cache(module_cache);
          }
       }
-      else if (parse_result.prolog) {
+      else if (prolog) {
          log.warning("XQuery prolog provided without XML context; base URI and module cache may be incomplete");
       }
 

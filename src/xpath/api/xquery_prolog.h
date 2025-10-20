@@ -63,11 +63,11 @@ struct XQueryModuleImport {
 
 struct XQueryModuleCache {
    struct ModuleInfo {
-      XPathNode *compiled_query;
+      XPathNode *compiled_query = nullptr;
       std::shared_ptr<XQueryProlog> prolog; // TODO: Is this needed?  prolog already exists in XPathNode
    };
 
-   OBJECTID owner; // Referenced as a UID from xp::Compile() because it's a weak reference.
+   OBJECTID owner = 0; // Referenced as a UID from xp::Compile() because it's a weak reference.
    mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
 

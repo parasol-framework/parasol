@@ -86,8 +86,7 @@ struct XPathBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_XPATH_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_XPATH_MODULE)
 extern struct XPathBase *XPathBase;
 namespace xp {
 inline ERR Compile(objXML *XML, CSTRING Query, APTR *Result) { return XPathBase->_Compile(XML,Query,Result); }
@@ -103,5 +102,4 @@ extern ERR Query(objXML *XML, APTR Query, FUNCTION *Callback);
 extern ERR UnitTest(APTR Meta);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 

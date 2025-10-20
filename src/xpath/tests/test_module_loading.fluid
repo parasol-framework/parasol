@@ -1,12 +1,23 @@
 -- XQuery module loading integration tests
 
    include 'xml'
+   mXq = mod.load('xpath')
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Basic module import and function call
 
 function testBasicModuleImport()
    local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
+
+   -- Initial verification of module file existence and that it is compilable
+
+   local mod_content = file.readAll(glScriptFolder .. '/modules/math_utils.xq')
+   assert(mod_content, 'Module file not found: modules/math_utils.xq')
+   
+   local err, compiled_mod = mXq.compile(xml, mod_content)
+   assert(err == ERR_Okay, 'Module compilation failed: ' .. tostring(xml.errorMsg))
+
+   -- Test the ability to import the module and run it
 
    local query = [[
       import module namespace math = "http://example.com/math"

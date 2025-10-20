@@ -191,7 +191,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    const std::optional<std::string> encoding("utf-8");
 
    for (const auto &candidate : location_candidates) {
-      if (read_text_resource(xml.operator->(), candidate, encoding, content)) {
+      if (read_text_resource(*xml, candidate, encoding, content)) {
          loaded_location = candidate;
          break;
       }
