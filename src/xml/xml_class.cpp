@@ -1942,6 +1942,10 @@ Be aware that setting this field with an invalid statement will result in an emp
 Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the
 statement unless a predefined starting position is set by the #Start field.  The string result is an allocation that
 must be freed.
+
+If the statement is an XQuery expression with base-uri references, the #Path field should be set to establish
+the base path for relative references.
+
 -END-
 
 *********************************************************************************************************************/
@@ -1982,7 +1986,6 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 
 static ERR SET_Statement(extXML *Self, CSTRING Value)
 {
-   if (Self->Path) { FreeResource(Self->Path); Self->Path = nullptr; }
    Self->Statement.clear();
 
    if ((Value) and (*Value)) {
