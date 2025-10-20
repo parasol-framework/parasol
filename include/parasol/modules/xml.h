@@ -547,8 +547,7 @@ struct XMLBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_XML_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_XML_MODULE)
 extern struct XMLBase *XMLBase;
 namespace xml {
 inline ERR XValueToNumber(struct XPathValue *Value, double *Result) { return XMLBase->_XValueToNumber(Value,Result); }
@@ -562,5 +561,4 @@ extern ERR XValueToString(const struct XPathValue *Value, std::string *Result);
 extern ERR XValueNodes(struct XPathValue *Value, pf::vector<struct XMLTag *> *Result);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 

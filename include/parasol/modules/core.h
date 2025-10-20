@@ -2166,8 +2166,7 @@ struct CoreBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_CORE_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_CORE_MODULE)
 extern struct CoreBase *CoreBase;
 inline ERR AccessMemory(MEMORYID Memory, MEM Flags, int MilliSeconds, APTR *Result) { return CoreBase->_AccessMemory(Memory,Flags,MilliSeconds,Result); }
 inline ERR Action(AC Action, OBJECTPTR Object, APTR Parameters) { return CoreBase->_Action(Action,Object,Parameters); }
@@ -2350,7 +2349,6 @@ extern "C" OBJECTPTR ParentContext(void);
 extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 extern "C" ERR ProtectMemory(APTR Address, MEM Flags);
 #endif // PARASOL_STATIC
-#endif
 
 
 //********************************************************************************************************************

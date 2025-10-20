@@ -2002,14 +2002,14 @@ function processSourceFiles()
          exec(idlExtract)
       end
 
-      // Process -FUNCTION- definitions
+      -- Process -FUNCTION- definitions
 
       if (glFeedback == 'verbose') then
          print()
          print('File: ' .. path)
       end
 
-      // Extract possible content from within comments so that we don't get interference from the code while parsing.
+      -- Extract possible content from within comments so that we don't get interference from the code while parsing.
 
       local extracted_content = ''
       for extract in string.gmatch(content, '[^/]/%*+(.-)%*+/') do
@@ -2017,7 +2017,7 @@ function processSourceFiles()
       end
       content = extracted_content
 
-      // Parse each line individually
+      -- Parse each line individually
 
       local currentExtract = nil
       local processing = nil
@@ -2101,7 +2101,7 @@ function processFunction(extract)
       def.result = cType({ type="error", values={ }, isFunction=true }, "Function " .. name)
 
       for line in string.gmatch(errors, "(.-)\n") do
-         if not nz(line) then break end // A double line-break forces a premature end to error processing.
+         if not nz(line) then break end -- A double line-break forces a premature end to error processing.
 
          local ecode, comment = line:match("(%a-):%s+(.+)")
          if nz(ecode) and nz(comment) then
@@ -2141,7 +2141,7 @@ end
 -- Function definitions can be embedded into source code with the idlFunction() routine.
 
 function idlFunction(Name, Category, Comment, Status, Description, Def)
-   // Find the registered function definition that must have been pre-declared in the FDL.
+   -- Find the registered function definition that must have been pre-declared in the FDL.
 
    local func
    for k, f in ipairs(glFunctions) do
@@ -2218,7 +2218,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
                proto = proto .. "..."
                doc_proto = doc_proto .. "..."
                if not nz(outValues) then
-                  // This special case is required when '...' is the first parameter.
+                  -- This special case is required when '...' is the first parameter.
                   if (param.fullType.fd == "FD_VARTAGS") then
                      proto = "int64_t," .. proto
                   else
@@ -2356,9 +2356,8 @@ function saveOutput()
             end
             out = out .. "#endif // PARASOL_STATIC\n"
             out = out .. "};\n\n"
-            out = out .. "#ifndef PRV_" .. glModule.name:upper() .. "_MODULE\n"
 
-            out = out .. "#ifndef PARASOL_STATIC\n"
+            out = out .. "#if !defined(PARASOL_STATIC) and !defined(PRV_" .. glModule.name:upper() .. "_MODULE)\n"
             out = out .. "extern struct " .. glModule.name .. "Base *" .. glModule.name .. "Base;\n"
             if nz(glFunctionPrefix) then
                out = out .. "namespace " .. glFunctionPrefix:lower() .. " {\n"
@@ -2383,8 +2382,7 @@ function saveOutput()
             if nz(glFunctionPrefix) then
                out = out .. "} // namespace\n"
             end
-            out = out .. "#endif // PARASOL_STATIC\n"
-            out = out .. "#endif\n\n"
+            out = out .. "#endif // PARASOL_STATIC\n\n"
             file.acWrite(out, out:len())
          else
             local str = glOutput[a] .. "\n"
@@ -2582,7 +2580,7 @@ end
 
 ----------------------------------------------------------------------------------------------------------------------
 
-   glProgram     = 'idl-c' // FDL's can read this
+   glProgram     = 'idl-c' -- FDL's can read this
    glSource      = arg('src')
    glOutputPath  = arg('output')
    glFeedback    = arg('feedback')

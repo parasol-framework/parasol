@@ -20,8 +20,7 @@ struct FluidBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_FLUID_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_FLUID_MODULE)
 extern struct FluidBase *FluidBase;
 namespace fl {
 template<class... Args> ERR SetVariable(OBJECTPTR Script, CSTRING Name, int Type, Args... Tags) { return FluidBase->_SetVariable(Script,Name,Type,Tags...); }
@@ -31,5 +30,4 @@ namespace fl {
 extern ERR SetVariable(OBJECTPTR Script, CSTRING Name, int Type, ...);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 

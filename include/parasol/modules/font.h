@@ -286,8 +286,7 @@ struct FontBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_FONT_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_FONT_MODULE)
 extern struct FontBase *FontBase;
 namespace fnt {
 inline ERR GetList(struct FontList **Result) { return FontBase->_GetList(Result); }
@@ -307,5 +306,4 @@ extern ERR SelectFont(CSTRING Name, CSTRING Style, CSTRING *Path, FMETA *Meta);
 extern ERR ResolveFamilyName(CSTRING String, CSTRING *Result);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 

@@ -3431,8 +3431,7 @@ struct VectorBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_VECTOR_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_VECTOR_MODULE)
 extern struct VectorBase *VectorBase;
 namespace vec {
 inline ERR DrawPath(objBitmap *Bitmap, APTR Path, double StrokeWidth, OBJECTPTR StrokeStyle, OBJECTPTR FillStyle) { return VectorBase->_DrawPath(Bitmap,Path,StrokeWidth,StrokeStyle,FillStyle); }
@@ -3502,7 +3501,6 @@ extern ERR FlushMatrix(struct VectorMatrix *Matrix);
 extern ERR TracePath(APTR Path, FUNCTION *Callback, double Scale);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 
 
 //********************************************************************************************************************

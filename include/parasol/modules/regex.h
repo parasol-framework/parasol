@@ -56,8 +56,7 @@ struct RegexBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_REGEX_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_REGEX_MODULE)
 extern struct RegexBase *RegexBase;
 namespace rx {
 inline ERR Compile(const std::string_view & Pattern, REGEX Flags, std::string *ErrorMsg, struct Regex **Result) { return RegexBase->_Compile(Pattern,Flags,ErrorMsg,Result); }
@@ -75,7 +74,6 @@ extern ERR Split(struct Regex *Regex, const std::string_view & Text, pf::vector<
 extern ERR GetCaptureIndex(struct Regex *Regex, const std::string_view & Name, pf::vector<int> *Indices);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 
 
 #ifndef PRV_REGEX_MODULE

@@ -1751,8 +1751,7 @@ struct DisplayBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_DISPLAY_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_DISPLAY_MODULE)
 extern struct DisplayBase *DisplayBase;
 namespace gfx {
 inline objPointer * AccessPointer(void) { return DisplayBase->_AccessPointer(); }
@@ -1842,7 +1841,6 @@ extern ERR UnsubscribeInput(int Handle);
 extern ERR WindowHook(OBJECTID SurfaceID, WH Event, FUNCTION *Callback);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 
 // Direct ColourFormat versions
 

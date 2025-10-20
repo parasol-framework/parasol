@@ -666,8 +666,7 @@ struct NetworkBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_NETWORK_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_NETWORK_MODULE)
 extern struct NetworkBase *NetworkBase;
 namespace net {
 inline ERR StrToAddress(CSTRING String, struct IPAddress *Address) { return NetworkBase->_StrToAddress(String,Address); }
@@ -689,5 +688,4 @@ extern uint32_t LongToHost(uint32_t Value);
 extern ERR SetSSL(objNetSocket *NetSocket, CSTRING Command, CSTRING Value);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 

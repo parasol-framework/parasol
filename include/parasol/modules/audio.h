@@ -517,8 +517,7 @@ struct AudioBase {
 #endif // PARASOL_STATIC
 };
 
-#ifndef PRV_AUDIO_MODULE
-#ifndef PARASOL_STATIC
+#if !defined(PARASOL_STATIC) and !defined(PRV_AUDIO_MODULE)
 extern struct AudioBase *AudioBase;
 namespace snd {
 inline ERR MixContinue(objAudio *Audio, int Handle) { return AudioBase->_MixContinue(Audio,Handle); }
@@ -550,5 +549,4 @@ extern ERR MixStartSequence(objAudio *Audio, int Handle);
 extern ERR MixEndSequence(objAudio *Audio, int Handle);
 } // namespace
 #endif // PARASOL_STATIC
-#endif
 
