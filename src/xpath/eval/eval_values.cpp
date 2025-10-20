@@ -290,7 +290,7 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
 
    auto module_function = module_prolog->find_function(FunctionName, Args.size());
    if (!module_function) {
-      auto alternative_name = module_prolog->normalise_function_qname(FunctionName, module_info->compiled_query);
+      auto alternative_name = module_prolog->normalise_function_qname(FunctionName, module_info);
       if (alternative_name != FunctionName) {
          module_function = module_prolog->find_function(alternative_name, Args.size());
       }

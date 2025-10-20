@@ -51,7 +51,7 @@ std::string XQueryFunction::signature() const
 //********************************************************************************************************************
 // Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
 
-XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog,
+XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog,
    XPathErrorReporter &reporter) const
 {
    pf::Log log(__FUNCTION__);
@@ -78,9 +78,9 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    };
 
    auto strip_file_scheme = [](const std::string &value) -> std::string {
-      if (!value.rfind("file:", 0)) {
+      if (not value.rfind("file:", 0)) {
          std::string stripped = value.substr(5);
-         if (!stripped.rfind("//", 0)) stripped = stripped.substr(2);
+         if (not stripped.rfind("//", 0)) stripped = stripped.substr(2);
          return stripped;
       }
       return value;
@@ -93,18 +93,18 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       if (normalised.empty()) return std::string();
 
       if (xml::uri::is_absolute_uri(normalised)) {
-         if (!normalised.rfind("file:", 0)) {
+         if (not normalised.rfind("file:", 0)) {
             return normalise_cache_key(strip_file_scheme(normalised));
          }
          return std::string();
       }
 
-      if (!prolog.static_base_uri.empty()) {
+      if (not prolog.static_base_uri.empty()) {
          std::string resolved = xml::uri::resolve_relative_uri(normalised, prolog.static_base_uri);
-         if (!resolved.rfind("file:", 0)) {
+         if (not resolved.rfind("file:", 0)) {
             return normalise_cache_key(strip_file_scheme(resolved));
          }
-         if (!xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
+         if (not xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
       }
 
       if (base_directory) {
@@ -121,7 +121,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    // Check if already loaded
 
    auto existing = modules.find(uri_key);
-   if (existing != modules.end()) return existing->second.compiled_query;
+   if (existing != modules.end()) return existing->second;
 
    // Detect circular dependencies
 
@@ -160,13 +160,13 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
             }
          }
 
-         if (!duplicate) location_candidates.push_back(candidate);
+         if (not duplicate) location_candidates.push_back(candidate);
       }
    }
 
    // Check document cache for pre-loaded modules
 
-   auto find_module = [&](const std::string &key) -> XPathNode * {
+   auto find_module = [&](const std::string &key) -> XMODULE * {
       auto cache_entry = xml->ModuleCache.find(key);
       if (cache_entry != xml->ModuleCache.end()) return cache_entry->second;
       else return nullptr;
@@ -203,7 +203,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
       }
    }
 
-   if (!content) {
+   if (not content) {
       std::string attempted;
       for (size_t index = 0; index < location_candidates.size(); ++index) {
          if (index > 0) attempted += std::format(", {}", location_candidates[index]);
@@ -215,7 +215,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    }
 
    // Compile the module query
-   XPathNode *compiled = nullptr;
+   XMODULE *compiled = nullptr;
    if (xp::Compile((objXML *)*xml, content->c_str(), (APTR*)&compiled) != ERR::Okay) {
       reporter.record_error(std::format("Cannot compile module: {}", URI));
       return nullptr;
@@ -240,7 +240,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
 
    // Validate exports
 
-   if (!module_prolog->validate_library_exports()) {
+   if (not module_prolog->validate_library_exports()) {
       FreeResource(compiled);
       reporter.record_error(std::format("Module exports not in target namespace: {}", uri_key));
       return nullptr;
@@ -248,25 +248,25 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
 
    // Cache the module
 
-   modules[uri_key] = { .compiled_query = compiled, .prolog = module_prolog };
+   modules[uri_key] = compiled;
    xml->ModuleCache[uri_key] = compiled;
    if (original_uri != uri_key) xml->ModuleCache[original_uri] = compiled;
-   if (!loaded_location.empty()) xml->ModuleCache[loaded_location] = compiled;
+   if (not loaded_location.empty()) xml->ModuleCache[loaded_location] = compiled;
 
    return compiled;
 }
 
 //********************************************************************************************************************
 
-const XQueryModuleCache::ModuleInfo * XQueryModuleCache::find_module(std::string_view uri) const
+const XMODULE * XQueryModuleCache::find_module(std::string_view uri) const
 {
    std::string original(uri);
    std::string uri_key = xml::uri::normalise_uri_separators(original);
    auto existing = modules.find(uri_key);
-   if (existing != modules.end()) return &existing->second;
+   if (existing != modules.end()) return existing->second;
    if (uri_key != original) {
       auto fallback = modules.find(original);
-      if (fallback != modules.end()) return &fallback->second;
+      if (fallback != modules.end()) return fallback->second;
    }
    return nullptr;
 }
