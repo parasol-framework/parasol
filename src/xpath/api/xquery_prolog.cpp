@@ -60,7 +60,7 @@ XPathNode * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryP
    
    pf::ScopedObjectLock<extXML> xml(owner);
    if (not xml.granted()) {
-      reporter.record_error(std::format("XQST0059: Cannot lock XML object #{} for module loading: {}", xml->UID, std::string(URI)));
+      reporter.record_error(std::format("XQST0059: Cannot lock XML object #{} for module loading: {}", owner, std::string(URI)));
       return nullptr;
    }
 
