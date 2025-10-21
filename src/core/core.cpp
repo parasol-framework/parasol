@@ -710,8 +710,6 @@ void print_diagnosis(int Signal)
 
    // Print details of the object context at the time of the crash.  If this code fails, it indicates that the object context is corrupt.
 
-   auto ctx = tlContext;
-
    if (glCodeIndex != CP_PRINT_CONTEXT) {
       #ifdef __unix__
          fprintf(fd, "  Page Fault:     %p\n", glPageFault);
@@ -726,16 +724,16 @@ void print_diagnosis(int Signal)
       }
       glCodeIndex = CP_PRINT_CONTEXT;
 
-      if (ctx->object()) {
+      if (tlContext.back().obj) {
          CLASSID class_id = CLASSID::NIL;
          CSTRING class_name;
-         if (ctx != &glTopContext) {
-            if ((class_id = ctx->object()->classID()) != CLASSID::NIL) class_name = ResolveClassID(class_id);
+         if (tlContext.size() != 1) {
+            if ((class_id = tlContext.back().obj->classID()) != CLASSID::NIL) class_name = ResolveClassID(class_id);
             else class_name = "None";
          }
          else class_name = "None";
 
-         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", ctx->object()->UID, ctx->object(), class_name, uint32_t(class_id));
+         fprintf(fd, "  Object Context: #%d / %p [Class: %s / $%.8x]\n", tlContext.back().obj->UID, tlContext.back().obj, class_name, uint32_t(class_id));
       }
 
       glPageFault = 0;
@@ -745,11 +743,11 @@ void print_diagnosis(int Signal)
 
    if (glCodeIndex != CP_PRINT_ACTION) {
       glCodeIndex = CP_PRINT_ACTION;
-      if (ctx->action > AC::NIL) {
-         if (ctx->field) fprintf(fd, "  Last Action:    Set.%s\n", ctx->field->Name);
-         else fprintf(fd, "  Last Action:    %s\n", ActionTable[int(ctx->action)].Name);
+      if (tlContext.back().action > AC::NIL) {
+         if (tlContext.back().field) fprintf(fd, "  Last Action:    Set.%s\n", tlContext.back().field->Name);
+         else fprintf(fd, "  Last Action:    %s\n", ActionTable[int(tlContext.back().action)].Name);
       }
-      else if (ctx->action < AC::NIL) fprintf(fd, "  Last Method:    %d\n", int(ctx->action));
+      else if (tlContext.back().action < AC::NIL) fprintf(fd, "  Last Method:    %d\n", int(tlContext.back().action));
    }
    else fprintf(fd, "  The action table is corrupt.\n");
 

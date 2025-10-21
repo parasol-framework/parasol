@@ -757,7 +757,7 @@ ERR SubscribeTimer(double Interval, FUNCTION *Callback, APTR *Subscription)
    if ((!Interval) or (!Callback)) return log.warning(ERR::NullArgs);
    if (Interval < 0) return log.warning(ERR::Args);
 
-   auto subscriber = tlContext->object();
+   auto subscriber = tlContext.back().obj;
    if (subscriber->collecting()) return log.warning(ERR::InvalidState);
 
    if (Callback->Type IS CALL::SCRIPT) log.msg(VLF::BRANCH|VLF::FUNCTION|VLF::DETAIL, "Interval: %.3fs", Interval);

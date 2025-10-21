@@ -751,7 +751,26 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern thread_local class extObjectContext *tlContext;
+#if defined(__MINGW32__) || defined(__MINGW64__)
+// MinGW TLS destructor bug workaround: use a thread-local pointer and lazy init to avoid non-trivial TLS dtors
+extern thread_local pf::vector<ObjectContext> *tlContextPtr;
+
+static inline pf::vector<ObjectContext> & tls_get_context() noexcept 
+{
+   if (!tlContextPtr) {
+      auto p = new pf::vector<ObjectContext>();
+      p->reserve(16);
+      p->emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
+      tlContextPtr = p;
+   }
+   return *tlContextPtr;
+}
+
+#define tlContext (tls_get_context())
+
+#else
+extern thread_local pf::vector<ObjectContext> tlContext;
+#endif
 extern thread_local class TaskMessage *tlCurrentMsg;
 extern thread_local bool tlMainThread;
 extern thread_local int16_t tlMsgRecursion;
@@ -880,51 +899,58 @@ class TaskMessage {
 
 class extObjectContext : public ObjectContext {
    public:
-   extObjectContext() { // Dummy initialisation
-      stack  = nullptr;
+   inline extObjectContext() noexcept { // Dummy initialisation
       obj    = &glDummyObject;
       field  = nullptr;
       action = AC::NIL;
    }
 
-   extObjectContext(OBJECTPTR pObject, AC pAction, struct Field *pField = nullptr) {
-      stack  = tlContext;
+   inline extObjectContext(OBJECTPTR pObject, AC pAction) noexcept {
+      tlContext.emplace_back(pObject, nullptr, pAction);
+
+      obj    = pObject;
+      field  = nullptr;
+      action = pAction;
+   }
+
+   inline extObjectContext(OBJECTPTR pObject, struct Field *pField = nullptr) noexcept {
+      tlContext.emplace_back(pObject, pField, AC::NIL);
+
+      obj    = pObject;
+      field  = pField;
+      action = AC::NIL;
+   }
+
+   inline extObjectContext(OBJECTPTR pObject, struct Field *pField, AC pAction) noexcept {
+      tlContext.emplace_back(pObject, pField, pAction);
+
       obj    = pObject;
       field  = pField;
       action = pAction;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Wdangling-pointer"
-      tlContext = this;
-      #pragma GCC diagnostic pop
    }
 
-   ~extObjectContext() {
-      if (stack) tlContext = stack;
-   }
-
-   // Return the nearest object for resourcing purposes.  Note that an action ID of 0 has special meaning and indicates
-   // that resources should be tracked to the next object on the stack (this feature is used by GetField*() functionality).
-
-   inline OBJECTPTR resource() const {
-      if (action != AC::NIL) return obj;
-      else {
-         for (auto ctx = stack; ctx; ctx=ctx->stack) {
-            if (action != AC::NIL) return ctx->obj;
-         }
-         return &glDummyObject;
-      }
-   }
-
-   inline OBJECTPTR setContext(OBJECTPTR pObject) {
-      auto old = obj;
-      obj = pObject;
-      return old;
-   }
-
-   constexpr inline OBJECTPTR object() const { // Return the object that has the context (but not necessarily for resourcing)
-      return obj;
+   inline ~extObjectContext() noexcept {
+      // Pop the context frame we pushed in the constructor
+      tlContext.pop_back();
    }
 };
+
+[[maybe_unused]] static inline OBJECTPTR current_resource()
+{
+   // Field contexts are not treated as resource nodes (i.e. we want GetField to track to the caller)
+   for (auto it=tlContext.rbegin(); it != tlContext.rend(); ++it) {
+      if (not it->field) return it->obj;
+   }
+   return &glDummyObject;
+}
+
+[[maybe_unused]] static inline OBJECTPTR current_action()
+{
+   for (auto it=tlContext.rbegin(); it != tlContext.rend(); ++it) {
+      if (it->action != AC::NIL) return it->obj;
+   }
+   return &glDummyObject;
+}
 
 //********************************************************************************************************************
 

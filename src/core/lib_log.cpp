@@ -211,11 +211,11 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
 
       // If no header is provided, make one to match the current context
 
-      auto ctx = tlContext;
-      auto obj = ctx->object();
-      if (ctx->action > AC::NIL) action = ActionTable[int(ctx->action)].Name;
-      else if (ctx->action < AC::NIL) {
-         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx->action)].Name;
+      auto &ctx = tlContext.back();
+      auto obj = ctx.obj;
+      if (ctx.action > AC::NIL) action = ActionTable[int(ctx.action)].Name;
+      else if (ctx.action < AC::NIL) {
+         if (obj->Class) action = ((extMetaClass *)obj->Class)->Methods[-int(ctx.action)].Name;
          else action = "Method";
       }
       else action = "App";
@@ -267,13 +267,13 @@ void VLogF(VLF Flags, CSTRING Header, CSTRING Message, va_list Args)
             name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
             if (glLogLevel > 5) {
-               if (ctx->field) {
-                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx->field->Name);
+               if (ctx.field) {
+                  fprintf(stderr, "%s[%s%s%s:%d:%s] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID, ctx.field->Name);
                }
                else fprintf(stderr, "%s[%s%s%s:%d] ", msgheader, (action) ? action : (STRING)"", (action) ? ":" : "", name, obj->UID);
             }
-            else if (ctx->field) {
-               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx->field->Name);
+            else if (ctx.field) {
+               fprintf(stderr, "%s[%s:%d:%s] ", msgheader, name, obj->UID, ctx.field->Name);
             }
             else fprintf(stderr, "%s[%s:%d] ", msgheader, name, obj->UID);
          }
@@ -328,12 +328,12 @@ ERR FuncError(CSTRING Header, ERR Code)
    if (glLogLevel < 2) return Code;
    if ((tlDepth >= glMaxDepth) or (tlLogStatus <= 0)) return Code;
 
-   auto ctx = tlContext;
-   auto obj = tlContext->object();
+   auto &ctx = tlContext.back();
+   auto obj = ctx.obj;
    if (!Header) {
-      if (ctx->action > AC::NIL) Header = ActionTable[int(ctx->action)].Name;
-      else if (ctx->action < AC::NIL) {
-         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-int(ctx->action)].Name;
+      if (ctx.action > AC::NIL) Header = ActionTable[int(ctx.action)].Name;
+      else if (ctx.action < AC::NIL) {
+         if (obj->Class) Header = ((extMetaClass *)obj->Class)->Methods[-int(ctx.action)].Name;
          else Header = "Method";
       }
       else Header = "Function";
@@ -369,8 +369,8 @@ ERR FuncError(CSTRING Header, ERR Code)
       if (obj->Class) {
          CSTRING name = obj->Name[0] ? obj->Name : obj->Class->ClassName;
 
-         if (ctx->field) {
-            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx->field->Name, glMessages[int(Code)], hiend);
+         if (ctx.field) {
+            fprintf(stderr, "%s%s[%s:%d:%s] %s%s\n", histart, msgheader, name, obj->UID, ctx.field->Name, glMessages[int(Code)], hiend);
          }
          else fprintf(stderr, "%s%s[%s:%d] %s%s\n", histart, msgheader, name, obj->UID, glMessages[int(Code)], hiend);
       }

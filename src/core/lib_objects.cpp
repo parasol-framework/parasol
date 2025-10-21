@@ -767,7 +767,7 @@ obj: Returns an object pointer (of which the process has exclusive access to).  
 
 OBJECTPTR CurrentContext(void)
 {
-   return tlContext->object();
+   return tlContext.back().obj;
 }
 
 /*********************************************************************************************************************
@@ -789,9 +789,11 @@ obj: An object reference is returned, or `NULL` if there is no parent context.
 
 OBJECTPTR ParentContext(void)
 {
-   auto parent = tlContext->stack;
-   while ((parent) and (parent->object() IS tlContext->object())) parent = parent->stack;
-   return parent ? parent->object() : (OBJECTPTR)nullptr;
+   for (auto it=tlContext.rbegin()+1; it != tlContext.rend(); ++it) {
+      if (it->obj != tlContext.back().obj) return it->obj;
+   }
+
+   return nullptr;
 }
 
 /*********************************************************************************************************************
@@ -921,8 +923,8 @@ ERR FindObject(CSTRING InitialName, CLASSID ClassID, FOF Flags, OBJECTID *Result
       }
 
       if (iequals("owner", InitialName)) {
-         if ((tlContext != &glTopContext) and (tlContext->object()->Owner)) {
-            *Result = tlContext->object()->Owner->UID;
+         if (tlContext.back().obj->Owner) {
+            *Result = tlContext.back().obj->Owner->UID;
             return ERR::Okay;
          }
          else return ERR::DoesNotExist;
@@ -966,7 +968,7 @@ resource(Message): A !Message structure is returned if the function is called in
 
 Message * GetActionMsg(void)
 {
-   if (auto obj = tlContext->resource()) {
+   if (auto obj = current_action()) {
       if (obj->defined(NF::MESSAGE) and (obj->ActionDepth IS 1)) {
          return (Message *)tlCurrentMsg;
       }
@@ -1359,18 +1361,15 @@ ERR NewObject(CLASSID ClassID, NF Flags, OBJECTPTR *Object)
             }
          }
       }
-      else if (tlContext != &glTopContext) { // Track the object to the current context
-         if (auto obj = tlContext->resource(); obj IS &glDummyObject) { // If dummy object, track to the task
+      else { // Track the object to the current context
+         auto obj = current_resource();
+         if (obj IS &glDummyObject) { // If dummy object, track to the task
             if (glCurrentTask) {
                ScopedObjectAccess lock(glCurrentTask);
                SetOwner(head, glCurrentTask);
             }
          }
          else SetOwner(head, obj);
-      }
-      else if (glCurrentTask) {
-         ScopedObjectAccess lock(glCurrentTask);
-         SetOwner(head, glCurrentTask);
       }
 
       // After the header has been created we can set the context, then call the base class's NewObject() support.  If this
@@ -1716,80 +1715,24 @@ ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner)
 /*********************************************************************************************************************
 
 -FUNCTION-
-SetContext: Declares the owner of future allocated resources.
-
-This function defines the object that has control of the current thread.  Once called, all further resource
-allocations are assigned to that object.  This is significant for the automatic collection of memory and object
-resources.  For example:
-
-<pre>
-InitObject(display);
-auto ctx = SetContext(display);
-
-   NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, nullptr);
-
-SetContext(ctx);
-FreeResource(display->UID);
-</pre>
-
-The above code allocates a @Bitmap and a memory block, both of which will be contained by the display. When
-~FreeResource() is called, both the bitmap and memory block will be automatically removed as they have a dependency
-on the display's existence.  Please keep in mind that the following is incorrect:
-
-<pre>
-InitObject(display);
-auto ctx = SetContext(display);
-
-   NewObject(CLASSID::BITMAP, &bitmap);
-   AllocMemory(1000, MEM::DATA, &memory, nullptr);
-
-SetContext(ctx);
-FreeResource(display->UID); // The bitmap and memory would be auto-collected
-FreeResource(bitmap->UID);  // Reference is no longer valid
-FreeResource(memory);  // Reference is no longer valid
-</pre>
-
-As the bitmap and memory block would have been freed as members of the display, their references are invalid when
-manually terminated in the following instructions.
-
-SetContext() is intended for use by modules and classes.  Do not use it in an application unless conditions
-necessitate its use.  The Core automatically manages the context when calling class actions, methods and interactive
-fields.
-
--INPUT-
-obj Object: Pointer to the object that will take on the new context.  If `NULL`, no change to the context will be made.
-
--RESULT-
-obj: Returns a pointer to the previous context.  Because contexts nest, the client must call SetContext() a second time with this pointer in order to keep the process stable.
-
-*********************************************************************************************************************/
-
-OBJECTPTR SetContext(OBJECTPTR Object)
-{
-   if (Object) return tlContext->setContext(Object);
-   else return tlContext->object();
-}
-/*********************************************************************************************************************
-
--FUNCTION-
 SetObjectContext: Private.
 
 For internal use only.  Provides an access point for the Object class to manage object context in the Core.
 
--INPUT-
-struct(ObjectContext) Context: Reference to an ObjectContext structure.
+Set either one of Field or ActionID, never both.  If both are empty, the context is that of a resource node.
+Resource managers are expected to check up the stack if the operating context is required.
 
--RESULT-
-struct(ObjectContext): Returns a pointer to the previous context.
+-INPUT-
+obj Object: Object to host the current context.  If NULL, the current context is popped.
+ptr(struct(Field)) Field: Active field, if any.
+int(AC) ActionID: Active action, if any.
 
 *********************************************************************************************************************/
 
-ObjectContext * SetObjectContext(ObjectContext *Context)
+void SetObjectContext(OBJECTPTR Object, Field *Field, AC ActionID)
 {
-   auto stack = tlContext;
-   tlContext = (extObjectContext *)Context;
-   return stack;
+   if (not Object) tlContext.pop_back();
+   else tlContext.emplace_back(Object, Field, ActionID);
 }
 
 /*********************************************************************************************************************
@@ -1968,7 +1911,7 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
 
    if (ActionID IS AC::NIL) { // Unsubscribe all actions associated with the subscriber.
       if (glSubscriptions.contains(Object->UID)) {
-         auto subscriber = tlContext->object()->UID;
+         auto subscriber = tlContext.back().obj->UID;
          bool need_restart = true;
          while (need_restart) {
             need_restart = false;
@@ -1994,7 +1937,7 @@ ERR UnsubscribeAction(OBJECTPTR Object, ACTIONID ActionID)
       }
    }
    else if ((glSubscriptions.contains(Object->UID)) and (glSubscriptions[Object->UID].contains(int(ActionID)))) {
-      auto subscriber = tlContext->object()->UID;
+      auto subscriber = tlContext.back().obj->UID;
 
       auto &list = glSubscriptions[Object->UID][int(ActionID)];
       // Use C++20 std::erase_if for cleaner removal

@@ -328,13 +328,11 @@ ERR CLASS_Init(extMetaClass *Self)
 
    // Record the name of the module that owns this class.
 
-   auto ctx = tlContext;
-   while (ctx != &glTopContext) {
-      if (ctx->object()->classID() IS CLASSID::ROOTMODULE) {
-         Self->Root = (RootModule *)ctx->object();
+   for (auto it=tlContext.rbegin(); it != tlContext.rend()-1; it++) {
+      if (it->obj->classID() IS CLASSID::ROOTMODULE) {
+         Self->Root = (RootModule *)it->obj;
          break;
       }
-      ctx = ctx->stack;
    }
 
    bool save = false;
