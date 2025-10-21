@@ -19,6 +19,7 @@
 #include <parasol/strings.hpp>
 
 #include <algorithm>
+#include <filesystem>
 #include <format>
 #include <string_view>
 
@@ -37,6 +38,13 @@ namespace xpath::accessor {
 [[nodiscard]] static std::optional<std::string> trim_to_base_directory(std::string candidate)
 {
    if (candidate.empty()) return std::nullopt;
+
+   std::error_code status_error;
+   auto status = std::filesystem::status(std::filesystem::path(candidate), status_error);
+   if ((not status_error) and std::filesystem::is_directory(status)) {
+      if ((candidate.back() != '/') and (candidate.back() != '\\')) candidate.push_back('/');
+      return xml::uri::normalise_uri_separators(std::move(candidate));
+   }
 
    size_t boundary = candidate.find_last_of("/\\");
    if (boundary IS std::string::npos) boundary = candidate.find_last_of(':');
