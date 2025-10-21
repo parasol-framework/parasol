@@ -1174,7 +1174,7 @@ struct ScriptArg { // For use with sc::Exec
     "ResolveClassName",
     "SendMessage",
     "SetOwner",
-    "SetContext",
+    "ProtectMemory",
     "SetObjectContext",
     "FieldName",
     "ScanDir",
@@ -1223,8 +1223,7 @@ struct ScriptArg { // For use with sc::Exec
     "ResolveUserID",
     "CreateLink",
     "ParentContext",
-    "SetResourceMgr",
-    "ProtectMemory")
+    "SetResourceMgr")
 
   c_insert([=[
 
@@ -1519,13 +1518,13 @@ template <> inline int FIELD_TYPECHECK<std::string>() { return FD_STRING|FD_CPP;
 
 //********************************************************************************************************************
 
-class ObjectContext {
-public:
-   OBJECTPTR obj = nullptr;                 // The object that currently has the operating context.
-   struct Field *field = nullptr;           // Set if the context is linked to a get/set field operation.  For logging purposes only.
-   class extObjectContext *stack = nullptr; // Call stack.
-   AC action = AC::NIL;                     // Set if the context enters an action or method routine.
+struct ObjectContext {
+   OBJECTPTR obj = nullptr;       // The object that currently has the operating context.
+   struct Field *field = nullptr; // Set if the context is linked to a get/set field operation.  For logging purposes only.
+   AC action = AC::NIL;           // Set if the context enters an action or method routine.
 };
+
+inline void RestoreObjectContext() { SetObjectContext(nullptr, nullptr, AC::NIL); }
 
 //********************************************************************************************************************
 // Header used for all objects.
@@ -1757,8 +1756,7 @@ struct Object { // Must be 64-bit aligned
 
    private:
    template <class T> ERR get_unit(Object *Object, struct Field &Field, T &Value) {
-      auto new_context = ObjectContext{ Object, &Field };
-      auto ctx = SetObjectContext(&new_context);
+      SetObjectContext(Object, &Field, AC::NIL);
 
       ERR error = ERR::Okay;
       if (Field.Flags & (FD_DOUBLE|FD_INT64|FD_INT)) {
@@ -1768,17 +1766,17 @@ struct Object { // Must be 64-bit aligned
       }
       else error = ERR::FieldTypeMismatch;
 
-      SetObjectContext(ctx);
+      RestoreObjectContext();
       return error;
    }
 
    inline std::pair<ERR, APTR> get_field_value(Object *Object, struct Field &Field, int8_t Buffer[8], int &ArraySize) {
       if (Field.GetValue) {
-         auto new_context = ObjectContext{ Object, &Field };
-         auto ctx = SetObjectContext(&new_context);
+         SetObjectContext(Object, &Field, AC::NIL);
          auto get_field = (ERR (*)(APTR, APTR, int &))Field.GetValue;
-         SetObjectContext(ctx);
-         return std::make_pair(get_field(Object, Buffer, ArraySize), Buffer);
+         auto pair = std::make_pair(get_field(Object, Buffer, ArraySize), Buffer);
+         RestoreObjectContext();
+         return pair;
       }
       else return std::make_pair(ERR::Okay, ((int8_t *)Object) + Field.Offset);
    }
@@ -1975,11 +1973,10 @@ struct Object { // Must be 64-bit aligned
          if (!field->readable()) return ERR::NoFieldAccess;
 
          if (field->Flags & FD_UNIT) {
-            auto new_context = ObjectContext{ target, field };
-            auto ctx = SetObjectContext(&new_context);
+            SetObjectContext(target, field, AC::NIL);
             auto get_field = (ERR (*)(APTR, Unit &))field->GetValue;
             auto error = get_field(target, Value);
-            SetObjectContext(ctx);
+            RestoreObjectContext();
             return error;
          }
          else return ERR::FieldTypeMismatch;
@@ -2023,11 +2020,10 @@ struct Object { // Must be 64-bit aligned
          Elements = -1;
 
          if (field->GetValue) {
-            auto new_context = ObjectContext{ target, field };
-            auto ctx = SetObjectContext(&new_context);
+            SetObjectContext(target, field, AC::NIL);
             auto get_field = (ERR (*)(APTR, T * &, int &))field->GetValue;
             auto error = get_field(target, data, Elements);
-            SetObjectContext(ctx);
+            RestoreObjectContext();
             if (error != ERR::Okay) return error;
          }
          else if (field->Arg) { // Fixed-size array (embedded)

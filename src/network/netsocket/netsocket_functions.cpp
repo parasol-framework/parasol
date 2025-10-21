@@ -216,7 +216,7 @@ static void server_accept_client_impl(HOSTHANDLE SocketFD, extNetSocket *Self)
    uint8_t ip[8];
    SocketHandle clientfd;
 
-   log.traceBranch("FD: %" PRId64, int64_t(SocketFD));
+   log.traceBranch("NetSocket: #%d, FD: %" PRId64, Self->UID, int64_t(SocketFD));
 
    pf::SwitchContext context(Self);
 

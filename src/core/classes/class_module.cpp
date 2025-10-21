@@ -332,8 +332,6 @@ static ERR MODULE_Init(extModule *Self)
 
    // Check if the module is resident.  If not, we need to load and prepare the module for a shared environment.
 
-   OBJECTPTR context = nullptr;
-
    std::string_view name = std::string_view(Self->Name);
    if (auto i = name.find_last_of(":/\\"); i != std::string::npos) {
       name.remove_prefix(i+1);
@@ -357,7 +355,7 @@ static ERR MODULE_Init(extModule *Self)
 
       root_mod = true;
 
-      context = SetContext(master);
+      pf::SwitchContext ctx(master);
 
       master->LibraryName.assign(name);
 
@@ -419,9 +417,6 @@ static ERR MODULE_Init(extModule *Self)
          log.warning(ERR::ModuleMissingInit);
          goto exit;
       }
-
-      SetContext(context);
-      context = nullptr;
    }
    else {
       error = log.warning(ERR::NewObject);
@@ -472,7 +467,6 @@ static ERR MODULE_Init(extModule *Self)
 
 exit:
    if (error != ERR::Okay) { // Free allocations if an error occurred
-
       if ((error & ERR::Notified) IS ERR::Okay) log.msg("\"%s\" failed: %s", Self->Name.c_str(), GetErrorMsg(error));
       error &= ~(ERR::Notified);
 
@@ -483,7 +477,6 @@ exit:
       }
    }
 
-   if (context) SetContext(context);
    return error;
 }
 

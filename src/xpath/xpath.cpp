@@ -142,9 +142,8 @@ extern "C" ERR load_regex(void)
 {
 #ifndef PARASOL_STATIC
    if (not modRegex) {
-      auto context = SetContext(glContext);
+      pf::SwitchContext ctx(glContext);
       if (objModule::load("regex", &modRegex, &RegexBase) != ERR::Okay) return ERR::InitModule;
-      SetContext(context);
    }
 #endif
    return ERR::Okay;

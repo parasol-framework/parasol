@@ -598,7 +598,7 @@ ERR ReleaseMemory(MEMORYID MemoryID)
    auto mem = glPrivateMemory.find(MemoryID);
 
    if ((mem IS glPrivateMemory.end()) or (!mem->second.Address)) { // Sanity check; this should never happen
-      if (tlContext->object()->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext->object()->UID, tlContext->object()->className());
+      if (tlContext.back().obj->Class) log.warning("Unable to find a record for memory address #%d [Context %d, Class %s].", MemoryID, tlContext.back().obj->UID, tlContext.back().obj->className());
       else log.warning("Unable to find a record for memory #%d.", MemoryID);
       return ERR::Search;
    }

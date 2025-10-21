@@ -83,9 +83,8 @@ static ERR load_xpath(void)
 {
 #ifndef PARASOL_STATIC
    if (not modXPath) {
-      auto context = SetContext(modContext);
+      pf::SwitchContext ctx(modContext);
       if (objModule::load("xpath", &modXPath, &XPathBase) != ERR::Okay) return ERR::InitModule;
-      SetContext(context);
    }
 #endif
    return ERR::Okay;
