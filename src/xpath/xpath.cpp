@@ -291,35 +291,20 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
 
       // If the expression featured an XQuery prolog then it needs a little more configuration.
 
-      if (XML) {
-         // Move the prolog across if one was created during parsing.
+      if (prolog) node->set_prolog(prolog);
 
-         if (prolog) {
-            if (prolog->static_base_uri.empty()) {
-               if (auto base = xpath::accessor::resolve_document_base_directory((extXML *)XML)) {
-                  prolog->static_base_uri = std::move(*base);
-               }
-            }
-         }
-         else prolog = std::make_shared<XQueryProlog>(); // Dummy prolog
+      // Move the module cache across if one was created during parsing.
 
-         node->set_prolog(prolog);
-
-         // Move the module cache across if one was created during parsing.
-
-         std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
-         if (not module_cache) {
-            module_cache = std::make_shared<XQueryModuleCache>();
-            module_cache->owner = XML->UID;
-         }
-
-         if (module_cache) {
-            node->set_module_cache(module_cache);
-            prolog->bind_module_cache(module_cache);
-         }
+      std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
+      if (not module_cache) {
+         module_cache = std::make_shared<XQueryModuleCache>();
+         // An XML object is required for module importation to work correctly.
+         if (XML) module_cache->owner = XML->UID;
       }
-      else if (prolog) {
-         log.warning("XQuery prolog provided without XML context; base URI and module cache may be incomplete");
+
+      if (module_cache) {
+         node->set_module_cache(module_cache);
+         if (prolog) prolog->bind_module_cache(module_cache);
       }
 
       *Result = node;
@@ -389,7 +374,7 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
 -FUNCTION-
 Query: For node-based queries, evaluates a compiled expression and calls a function for each matching node.
 
-Use the Query function to scan an XML document for tags or attributes that match a compiled XPath or XQuery expression.
+Use the Query function to scan an XML document for tags or attributes that match a compiled XQuery expression.
 For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.
 
 If no callback is provided, the search stops after the first match and the @XML object's cursor markers will reflect
@@ -399,7 +384,7 @@ Note that valid function execution can return `ERR:Search` if zero matches are f
 
 -INPUT-
 obj(XML) XML: The XML document to evaluate the query against.
-ptr Query: The compiled XPath or XQuery expression.
+ptr Query: The compiled XQuery / XPath expression.
 ptr(func) Callback: Pointer to a callback function that will be called for each matching node.  Can be NULL if searching for the first matching node.
 
 -ERRORS-

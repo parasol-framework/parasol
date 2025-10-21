@@ -96,6 +96,12 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
          if (not normalised.rfind("file:", 0)) {
             return normalise_cache_key(strip_file_scheme(normalised));
          }
+         // Treat Windows-style drive paths (e.g. "E:/...") as filesystem paths
+         if ((normalised.size() >= 3) and (((normalised[0] >= 'A') and (normalised[0] <= 'Z')) or
+             ((normalised[0] >= 'a') and (normalised[0] <= 'z'))) and (normalised[1] IS ':') and
+             ((normalised[2] IS '/') or (normalised[2] IS '\\'))) {
+            return normalise_cache_key(normalised);
+         }
          return std::string();
       }
 
@@ -103,6 +109,12 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
          std::string resolved = xml::uri::resolve_relative_uri(normalised, prolog.static_base_uri);
          if (not resolved.rfind("file:", 0)) {
             return normalise_cache_key(strip_file_scheme(resolved));
+         }
+         // Accept absolute Windows drive paths resolved from a non-URI base
+         if ((resolved.size() >= 3) and (((resolved[0] >= 'A') and (resolved[0] <= 'Z')) or
+             ((resolved[0] >= 'a') and (resolved[0] <= 'z'))) and (resolved[1] IS ':') and
+             ((resolved[2] IS '/') or (resolved[2] IS '\\'))) {
+            return normalise_cache_key(resolved);
          }
          if (not xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
       }
@@ -172,12 +184,22 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       else return nullptr;
    };
 
-   if (auto cached = find_module(uri_key)) return cached;
+   if (auto cached = find_module(uri_key)) {
+      // Mirror document-cached module into this cache for consistent lookups
+      modules[uri_key] = cached;
+      return cached;
+   }
    if (original_uri != uri_key) {
-      if (auto cached = find_module(original_uri)) return cached;
+      if (auto cached = find_module(original_uri)) {
+         modules[uri_key] = cached;
+         return cached;
+      }
    }
    for (const auto &candidate : location_candidates) {
-      if (auto cached = find_module(candidate)) return cached;
+      if (auto cached = find_module(candidate)) {
+         modules[uri_key] = cached;
+         return cached;
+      }
    }
 
    // Mark as loading to detect recursion
@@ -246,7 +268,23 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       return nullptr;
    }
 
-   // Cache the module
+   // The static_base_uri will initially be set to the XML object's path, change it to the actual folder that the
+   // file was loaded from.
+
+   module_prolog->static_base_uri = xml::uri::extract_directory_path(loaded_location.empty() ? uri_key : loaded_location);
+   log.msg("static-base-uri updated to %s", module_prolog->static_base_uri.c_str());
+
+   // Eagerly resolve transitive imports to detect cycles and propagate base URIs
+   for (const auto &imp : module_prolog->module_imports) {
+      auto dep = fetch_or_load(imp.target_namespace, *module_prolog, reporter);
+      if (not dep) {
+         // Do not cache partially loaded module on failure
+         FreeResource(compiled);
+         return nullptr;
+      }
+   }
+
+   // Cache the module (only after resolving imports to allow circular detection via loading_in_progress)
 
    modules[uri_key] = compiled;
    xml->ModuleCache[uri_key] = compiled;
@@ -484,6 +522,12 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
       auto uri_entry = declared_namespace_uris.find(prefix);
       if (uri_entry != declared_namespace_uris.end()) {
          return build_expanded(uri_entry->second, local_view);
+      }
+
+      // Built-in fallback for the standard function namespace prefix "fn"
+      if (prefix IS std::string("fn")) {
+         static const std::string functions_ns("http://www.w3.org/2005/xpath-functions");
+         return build_expanded(functions_ns, local_view);
       }
 
       if (Node) {

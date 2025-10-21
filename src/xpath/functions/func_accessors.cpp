@@ -201,10 +201,10 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
    }
 
    auto base = xpath::accessor::build_base_uri_chain(Context, target_node, Context.attribute_node);
-   if (!base.has_value()) {
-      if (Context.document) {
-         std::string path = Context.document->Path;
-         if (!path.empty()) base = path;
+   if (not base.has_value()) {
+      if (Context.prolog) return XPathVal(Context.prolog->static_base_uri);
+      else if (Context.document) {
+         if (Context.document->Path) return XPathVal(Context.document->Path);
       }
    }
 

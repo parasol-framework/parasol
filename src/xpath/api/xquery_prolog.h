@@ -71,7 +71,9 @@ struct XQueryModuleImport {
 using XMODULE = XPathNode;
 
 struct XQueryModuleCache {
-   OBJECTID owner = 0; // Referenced as a UID from xp::Compile() because it's a weak reference.
+   // Referenced as a UID from xp::Compile() because it's a weak reference.
+   // Used by fetch_or_load() primarily to determine the origin path of the XML data.
+   OBJECTID owner = 0;
    mutable ankerl::unordered_dense::map<std::string, XMODULE *> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
 

@@ -437,11 +437,12 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          (void)module_cache->fetch_or_load(module_uri, *prolog, *this);
 
          auto module_info = module_cache->find_module(module_uri);
-         if (not module_info) {
-            std::string message = "Module '" + module_uri + "' could not be loaded for variable '" + name + "'.";
-            record_error(message, ReferenceNode, true);
-            return false;
-         }
+          if (not module_info) {
+             std::string message = "Module '" + module_uri + "' could not be loaded for variable '" + name + "'.";
+             // Preserve earlier loader diagnostics when present
+             record_error(message, ReferenceNode, false);
+             return false;
+          }
 
          if (not module_info) {
             std::string message = "Module '" + module_uri + "' does not expose a prolog.";

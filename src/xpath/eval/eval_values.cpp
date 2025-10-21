@@ -277,7 +277,8 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    auto module_info = module_cache->find_module(module_uri);
    if (!module_info) {
       auto message = std::format("Module '{}' could not be loaded for function '{}'.", module_uri, canonical_name);
-      record_error(message, FuncNode, true);
+      // Do not force override; preserve earlier, more specific loader diagnostics
+      record_error(message, FuncNode, false);
       return XPathVal();
    }
 
@@ -2330,6 +2331,12 @@ XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint3
       auto *argument_node = FuncNode->get_child(index);
       args.push_back(evaluate_expression(argument_node, CurrentPrefix));
       if (expression_unsupported) return XPathVal();
+   }
+
+   // Canonicalise function QName using prolog/document mappings so built-ins and module functions resolve
+   if (auto prolog = context.prolog) {
+      std::string canonical = prolog->normalise_function_qname(function_name, nullptr);
+      if (canonical != function_name) function_name = std::move(canonical);
    }
 
    std::string builtin_lookup_name = function_name;

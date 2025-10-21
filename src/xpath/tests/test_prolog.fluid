@@ -219,7 +219,11 @@ function testModuleImportDeclaration()
 
    local err = xml.mtEvaluate('import module namespace math = "urn:math"; math:square(2)')
    local message = tostring(xml.errorMsg)
-   assert(message == "Module 'urn:math' could not be loaded for function 'Q{urn:math}square'.", 'Module import should record structural diagnostic, got ' .. message)
+   -- Loader now emits a structured error with code and attempted locations
+   assert(string.find(message, 'XQST0059', 1, true)
+      and string.find(message, 'Cannot load module for namespace', 1, true)
+      and string.find(message, 'urn:math', 1, true),
+      'Module import should record structural diagnostic, got ' .. message)
    end
 
 -----------------------------------------------------------------------------------------------------------------------

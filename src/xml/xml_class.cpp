@@ -200,15 +200,15 @@ static ERR XML_DataFeed(extXML *Self, struct acDataFeed *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-Evaluate: Run an XPath 2.0 or XQuery expression against the XML data.
+Evaluate: Run an XQuery expression against the XML data.
 
-The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML
-object.  This is a lazy execution method that compiles and evaluates the provided expression in a single
+The Evaluate method allows the execution of XPath 2.0+ and XQuery 1.0+ expressions against the data contained within
+the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single
 step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the
 Compile and Evaluate functions in the XPath module.
 
 -INPUT-
-cstr Statement: An XPath or XQuery string to evaluate.
+cstr Statement: An XQuery expression to evaluate.
 !&cstr Result: An allocated string from the evaluation is returned here.
 
 -ERRORS-
@@ -2043,7 +2043,7 @@ static ERR GET_Tags(extXML *Self, XMLTag **Values, int *Elements)
 LoadSchema: Load an XML Schema definition to enable schema-aware validation.
 
 This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded,
-schema metadata is available for validation and XPath evaluation routines that utilise schema-aware behaviour.
+schema metadata is available for validation and XQuery evaluation routines that utilise schema-aware behaviour.
 
 -INPUT-
 cstr Path: File system path to the XML Schema (XSD) document.
