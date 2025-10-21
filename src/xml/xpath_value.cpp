@@ -218,13 +218,24 @@ std::string XPathVal::to_string() const
 
       case XPVT::NodeSet: {
          if (node_set_string_override.has_value()) return *node_set_string_override;
+
+         if (not node_set_string_values.empty()) {
+            if (node_set_string_values.size() IS 1) return node_set_string_values[0];
+
+            std::string joined;
+            for (size_t i = 0; i < node_set_string_values.size(); ++i) {
+               if (i > 0) joined.push_back(':');
+               joined += node_set_string_values[i];
+            }
+            return joined;
+         }
+
          if (not node_set_attributes.empty()) {
             const XMLAttrib *attribute = node_set_attributes[0];
             if (attribute) return attribute->Value;
          }
-         if (not node_set_string_values.empty()) return node_set_string_values[0];
-         if (node_set.empty()) return "";
 
+         if (node_set.empty()) return std::string();
          return node_string_value(node_set[0]);
       }
    }
@@ -330,4 +341,3 @@ XPathVal xpath_nodeset_singleton(XMLTag *Node, const XMLAttrib *Attribute,
    std::optional<std::string> override_value(StringValue);
    return xpath_nodeset_from_components(std::move(nodes), std::move(attributes), std::move(strings), std::move(override_value));
 }
-

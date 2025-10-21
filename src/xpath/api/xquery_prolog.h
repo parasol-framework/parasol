@@ -14,13 +14,14 @@ struct XPathNode;
 class extXML;
 struct XQueryProlog;
 
-class XPathErrorReporter
-{
+class XPathErrorReporter {
    public:
    virtual ~XPathErrorReporter() = default;
    virtual void record_error(std::string_view Message, bool Force = false) = 0;
    virtual void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) = 0;
 };
+
+// Represents a user-defined decimal format declared in the prolog.
 
 struct DecimalFormat {
    std::string name;
@@ -36,6 +37,8 @@ struct DecimalFormat {
    std::string pattern_separator = ";";
 };
 
+// Represents a user-defined XQuery function declared in the prolog.
+
 struct XQueryFunction {
    std::string qname;
    std::vector<std::string> parameter_names;
@@ -47,11 +50,15 @@ struct XQueryFunction {
    [[nodiscard]] std::string signature() const;
 };
 
+// Represents a user-defined XQuery variable declared in the prolog.
+
 struct XQueryVariable {
    std::string qname;
    std::unique_ptr<XPathNode> initializer;
    bool is_external = false;
 };
+
+// Represents an XQuery module import declaration.
 
 struct XQueryModuleImport {
    std::string target_namespace;
@@ -61,18 +68,17 @@ struct XQueryModuleImport {
 //********************************************************************************************************************
 // Utilised by XPathNode to cache imported modules.
 
-struct XQueryModuleCache {
-   struct ModuleInfo {
-      XPathNode *compiled_query = nullptr;
-      std::shared_ptr<XQueryProlog> prolog; // TODO: Is this needed?  prolog already exists in XPathNode
-   };
+using XMODULE = XPathNode;
 
-   OBJECTID owner = 0; // Referenced as a UID from xp::Compile() because it's a weak reference.
-   mutable ankerl::unordered_dense::map<std::string, ModuleInfo> modules;
+struct XQueryModuleCache {
+   // Referenced as a UID from xp::Compile() because it's a weak reference.
+   // Used by fetch_or_load() primarily to determine the origin path of the XML data.
+   OBJECTID owner = 0;
+   mutable ankerl::unordered_dense::map<std::string, XMODULE *> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
 
-   [[nodiscard]] XPathNode * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
-   [[nodiscard]] const ModuleInfo * find_module(std::string_view uri) const;
+   [[nodiscard]] XMODULE * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
+   [[nodiscard]] const XMODULE * find_module(std::string_view uri) const;
 };
 
 //********************************************************************************************************************
@@ -101,19 +107,22 @@ struct XQueryProlog {
 
    ankerl::unordered_dense::map<std::string, uint32_t> declared_namespaces;
    ankerl::unordered_dense::map<std::string, std::string> declared_namespace_uris;
+   ankerl::unordered_dense::map<std::string, XQueryVariable> variables;
+   ankerl::unordered_dense::map<std::string, XQueryFunction> functions;
+   ankerl::unordered_dense::map<std::string, DecimalFormat> decimal_formats;
+   ankerl::unordered_dense::map<std::string, std::string> options;
+
+   std::vector<XQueryModuleImport> module_imports;
+
    std::optional<uint32_t> default_element_namespace;
    std::optional<uint32_t> default_function_namespace;
    std::optional<std::string> default_element_namespace_uri;
    std::optional<std::string> default_function_namespace_uri;
-   ankerl::unordered_dense::map<std::string, XQueryVariable> variables;
-   ankerl::unordered_dense::map<std::string, XQueryFunction> functions;
-   std::vector<XQueryModuleImport> module_imports;
    std::optional<std::string> module_namespace_uri;
    std::optional<std::string> module_namespace_prefix;
+
    std::string static_base_uri;
    std::string default_collation;
-   ankerl::unordered_dense::map<std::string, DecimalFormat> decimal_formats;
-   ankerl::unordered_dense::map<std::string, std::string> options;
 
    bool is_library_module = false;
    bool static_base_uri_declared = false;

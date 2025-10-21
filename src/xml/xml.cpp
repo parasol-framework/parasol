@@ -279,6 +279,60 @@ ERR XValueToString(const XPathValue *Value, std::string *Result)
    if (Value->Type IS XPVT::NIL) return log.warning(ERR::NoData);
 
    auto val = (XPathVal *)Value;
+
+   if (Value->Type IS XPVT::NodeSet) {
+      // Provide a user-friendly sequence string for NodeSet values that encode sequences of atomic items.
+      // Prefer explicit string vectors when present; fall back to attribute/text extraction.
+      if (val->node_set_string_override.has_value()) {
+         *Result = *val->node_set_string_override;
+         return ERR::Okay;
+      }
+
+      if (!val->node_set_string_values.empty()) {
+         if (val->node_set_string_values.size() IS 1) {
+            *Result = val->node_set_string_values[0];
+            return ERR::Okay;
+         }
+
+         std::string joined;
+         for (size_t i = 0; i < val->node_set_string_values.size(); ++i) {
+            if (i > 0) joined.push_back(':');
+            joined += val->node_set_string_values[i];
+         }
+         *Result = std::move(joined);
+         return ERR::Okay;
+      }
+
+      // Attributes: join attribute string values if multiple
+      if (!val->node_set_attributes.empty()) {
+         std::string joined;
+         size_t count = std::max(val->node_set_attributes.size(), val->node_set.size());
+         for (size_t i = 0; i < count; ++i) {
+            if (i > 0) joined.push_back(':');
+            if (i < val->node_set_attributes.size() && val->node_set_attributes[i]) joined += val->node_set_attributes[i]->Value;
+            else if (i < val->node_set.size() && val->node_set[i]) joined += XPathVal::node_string_value(val->node_set[i]);
+         }
+         *Result = std::move(joined);
+         return ERR::Okay;
+      }
+
+      // Generic nodes: join text values if multiple
+      if (!val->node_set.empty()) {
+         if (val->node_set.size() IS 1) {
+            *Result = XPathVal::node_string_value(val->node_set[0]);
+            return ERR::Okay;
+         }
+
+         std::string joined;
+         for (size_t i = 0; i < val->node_set.size(); ++i) {
+            if (i > 0) joined.push_back(':');
+            joined += XPathVal::node_string_value(val->node_set[i]);
+         }
+         *Result = std::move(joined);
+         return ERR::Okay;
+      }
+   }
+
    *Result = val->to_string();
    return ERR::Okay;
 }

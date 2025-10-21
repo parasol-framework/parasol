@@ -429,8 +429,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
 
          auto module_cache = context.module_cache;
          if (not module_cache) {
-            std::string message = "Module variable '" + name + "' requires a module cache.";
-            record_error(message, ReferenceNode, true);
+            record_error("Module variable '" + name + "' requires a module cache.", ReferenceNode, true);
             return false;
          }
 
@@ -438,30 +437,27 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
 
          auto module_info = module_cache->find_module(module_uri);
          if (not module_info) {
-            std::string message = "Module '" + module_uri + "' could not be loaded for variable '" + name + "'.";
-            record_error(message, ReferenceNode, true);
+            // Preserve earlier loader diagnostics when present
+            record_error("Module '" + module_uri + "' could not be loaded for variable '" + name + "'.", ReferenceNode, false);
+            return false;
+         }
+         else if (not module_info->prolog) {
+            record_error("Module '" + module_uri + "' does not expose a prolog.", ReferenceNode, false);
             return false;
          }
 
-         auto module_prolog = module_info->prolog;
-         if (not module_prolog) {
-            std::string message = "Module '" + module_uri + "' does not expose a prolog.";
-            record_error(message, ReferenceNode, true);
-            return false;
-         }
-
-         const XQueryVariable *module_variable = module_prolog->find_variable(name);
+         const XQueryVariable *module_variable = module_info->prolog->find_variable(name);
 
          if (not module_uri.empty() and not imported_local_name.empty()) {
             canonical_lookup = std::format("Q{{{}}}{}", module_uri, imported_local_name);
          }
 
          if (not module_variable and not canonical_lookup.empty()) {
-            module_variable = module_prolog->find_variable(canonical_lookup);
+            module_variable = module_info->prolog->find_variable(canonical_lookup);
          }
 
          if (not module_variable) {
-            for (const auto &entry : module_prolog->variables) {
+            for (const auto &entry : module_info->prolog->variables) {
                const auto &candidate = entry.second;
                if (candidate.qname IS name) {
                   module_variable = &candidate;
@@ -478,7 +474,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
                   std::string candidate_prefix = candidate.qname.substr(0, colon_pos);
                   std::string candidate_local = candidate.qname.substr(colon_pos + 1);
                   if (candidate_local IS imported_local_name) {
-                     uint32_t candidate_hash = module_prolog->resolve_prefix(candidate_prefix, nullptr);
+                     uint32_t candidate_hash = module_info->prolog->resolve_prefix(candidate_prefix, nullptr);
                      if (candidate_hash IS namespace_hash) {
                         module_variable = &candidate;
                         break;
@@ -495,7 +491,7 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          }
 
          variable = module_variable;
-         owner_prolog = module_prolog;
+         owner_prolog = module_info->prolog;
          active_module_cache = module_cache;
       }
 

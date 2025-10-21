@@ -745,6 +745,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 <p>Set the Statement field to parse an XML formatted data string through the object.  If this field is set after initialisation then the XML object will clear any existing data first.</p>
 <p>Be aware that setting this field with an invalid statement will result in an empty XML object.</p>
 <p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the <fl>Start</fl> field.  The string result is an allocation that must be freed.</p>
+<p>If the statement is an XQuery expression with base-uri references, the <fl>Path</fl> field should be set to establish the base path for relative references.</p>
       </description>
     </field>
 
