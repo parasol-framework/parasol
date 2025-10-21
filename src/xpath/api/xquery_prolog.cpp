@@ -271,8 +271,10 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    // The static_base_uri will initially be set to the XML object's path, change it to the actual folder that the
    // file was loaded from.
 
-   module_prolog->static_base_uri = xml::uri::extract_directory_path(loaded_location.empty() ? uri_key : loaded_location);
-   log.msg("static-base-uri updated to %s", module_prolog->static_base_uri.c_str());
+   if (not module_prolog->static_base_uri_declared) {
+      module_prolog->static_base_uri = xml::uri::extract_directory_path(loaded_location.empty() ? uri_key : loaded_location);
+      log.msg("static-base-uri updated to %s", module_prolog->static_base_uri.c_str());
+   }
 
    // Eagerly resolve transitive imports to detect cycles and propagate base URIs
    for (const auto &imp : module_prolog->module_imports) {
