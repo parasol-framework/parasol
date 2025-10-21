@@ -277,6 +277,46 @@ public:
       }
    }
 
+   void resize(size_type Count) {
+      if (Count < length) {
+         // Shrink: destroy elements from Count to length
+         for (size_type i = Count; i < length; ++i) {
+            elements[i].~T();
+         }
+         length = Count;
+      }
+      else if (Count > length) {
+         // Grow: ensure capacity and default-construct new elements
+         if (Count > capacity) {
+            reserveCapacity(Count);
+         }
+         for (size_type i = length; i < Count; ++i) {
+            new (elements + i) T();
+         }
+         length = Count;
+      }
+   }
+
+   void resize(size_type Count, const value_type &Value) {
+      if (Count < length) {
+         // Shrink: destroy elements from Count to length
+         for (size_type i = Count; i < length; ++i) {
+            elements[i].~T();
+         }
+         length = Count;
+      }
+      else if (Count > length) {
+         // Grow: ensure capacity and copy-construct new elements
+         if (Count > capacity) {
+            reserveCapacity(Count);
+         }
+         for (size_type i = length; i < Count; ++i) {
+            new (elements + i) T(Value);
+         }
+         length = Count;
+      }
+   }
+
    inline void clear() {
       clearElements<T>();
       length = 0;

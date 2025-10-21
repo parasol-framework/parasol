@@ -751,7 +751,26 @@ extern std::atomic_int glUniqueMsgID;
 //********************************************************************************************************************
 // Thread specific variables - these do not require locks.
 
-extern thread_local std::vector<ObjectContext> tlContext;
+#if defined(__MINGW32__) || defined(__MINGW64__)
+// MinGW TLS destructor bug workaround: use a thread-local pointer and lazy init to avoid non-trivial TLS dtors
+extern thread_local pf::vector<ObjectContext> *tlContextPtr;
+
+static inline pf::vector<ObjectContext> & tls_get_context() noexcept 
+{
+   if (!tlContextPtr) {
+      auto p = new pf::vector<ObjectContext>();
+      p->reserve(16);
+      p->emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
+      tlContextPtr = p;
+   }
+   return *tlContextPtr;
+}
+
+#define tlContext (tls_get_context())
+
+#else
+extern thread_local pf::vector<ObjectContext> tlContext;
+#endif
 extern thread_local class TaskMessage *tlCurrentMsg;
 extern thread_local bool tlMainThread;
 extern thread_local int16_t tlMsgRecursion;

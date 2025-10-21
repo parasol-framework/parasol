@@ -201,14 +201,19 @@ thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks 
 
 Object glDummyObject;
 
-static std::vector<ObjectContext> make_initial_context()
+#if defined(__MINGW32__) || defined(__MINGW64__)
+thread_local pf::vector<ObjectContext> *tlContextPtr = nullptr; // Lazy init via tls_get_context()
+#else
+static pf::vector<ObjectContext> make_initial_context()
 {
-   std::vector<ObjectContext> v;
+   pf::vector<ObjectContext> v;
+   v.reserve(16);
    v.emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
    return v;
 }
 
-thread_local std::vector<ObjectContext> tlContext = make_initial_context();
+thread_local pf::vector<ObjectContext> tlContext = make_initial_context();
+#endif
 
 objTime *glTime = nullptr;
 
