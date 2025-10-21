@@ -104,10 +104,10 @@ ERR AllocMemory(int Size, MEM Flags, APTR *Address, MEMORYID *MemoryID)
    if ((Flags & (MEM::HIDDEN|MEM::UNTRACKED)) != MEM::NIL);
    else if ((Flags & MEM::CALLER) != MEM::NIL) {
       // Rarely used, but this feature allows methods to return memory that is tracked to the caller.
-      if (tlContext->stack) object_id = tlContext->stack->resource()->UID;
+      if (tlContext.size() > 2) object_id = tlContext[tlContext.size()-2].obj->UID;
       else object_id = glCurrentTask->UID;
    }
-   else if (tlContext != &glTopContext) object_id = tlContext->resource()->UID;
+   else if (tlContext.size() > 1) object_id = current_resource()->UID;
    else if (glCurrentTask) object_id = glCurrentTask->UID;
 
    uint32_t full_size = Size + MEMHEADER;

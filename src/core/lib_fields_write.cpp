@@ -329,7 +329,7 @@ static ERR writeval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Dat
    else if (Flags & FD_POINTER) {
       offset[0].Type = (Data) ? CALL::STD_C : CALL::NIL;
       offset[0].Routine = (FUNCTION *)Data;
-      offset[0].Context = tlContext->object();
+      offset[0].Context = tlContext.back().obj;
    }
    else return ERR::SetValueNotFunction;
    return ERR::Okay;
@@ -350,7 +350,7 @@ class FieldContext : public extObjectContext {
 
    public:
    FieldContext(OBJECTPTR Object, struct Field *Field) : extObjectContext(Object, AC::SetField) {
-      if ((tlContext->field IS Field) and (tlContext->object() IS Object)) { // Detect recursion
+      if ((tlContext.back().field IS Field) and (tlContext.back().obj IS Object)) { // Detect recursion
          success = false;
          return;
       }
@@ -463,7 +463,7 @@ static ERR setval_array(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 
 static ERR setval_function(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, int Elements)
 {
-   OBJECTPTR caller = tlContext->object();
+   OBJECTPTR caller = tlContext.back().obj;
    FieldContext ctx(Object, Field);
 
    if (Flags & FD_FUNCTION) {

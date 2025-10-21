@@ -439,19 +439,25 @@ class GuardedResource {
 template <class T>
 class SwitchContext { // C++ wrapper for changing the current context with a resource guard in place
    private:
-      OBJECTPTR old_context;
-      T new_context;
+      T *object;
+      bool restore;
+
    public:
-      SwitchContext(T NewContext) : new_context(NewContext) {
-         if (new_context) {
-            new_context->lock();
-            old_context = SetContext((OBJECTPTR)NewContext);
+      SwitchContext(T *NewContext) {
+         if (NewContext) {
+            object = NewContext;
+            object->lock();
+            SetObjectContext(NewContext, nullptr, AC::NIL);
+            restore = true;
          }
-         else old_context = nullptr;
+         else { // A null object is legal - we just do nothing.
+            object = nullptr;
+            restore = false;
+         }
       }
       ~SwitchContext() {
-         if (new_context) new_context->unlock();
-         if (old_context) SetContext(old_context); 
+         if (object) ((OBJECTPTR)object)->unlock();
+         if (restore) SetObjectContext(nullptr, nullptr, AC::NIL); 
       }
 };
 

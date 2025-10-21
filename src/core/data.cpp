@@ -200,8 +200,15 @@ thread_local int16_t tlPublicLockCount = 0; // This variable is controlled by GL
 thread_local int16_t tlPrivateLockCount = 0; // Count of private *memory* locks held per-thread
 
 Object glDummyObject;
-extObjectContext glTopContext; // Top-level context is a dummy and can be thread-shared
-thread_local extObjectContext *tlContext = &glTopContext;
+
+static std::vector<ObjectContext> make_initial_context()
+{
+   std::vector<ObjectContext> v;
+   v.emplace_back(ObjectContext { &glDummyObject, nullptr, AC::NIL });
+   return v;
+}
+
+thread_local std::vector<ObjectContext> tlContext = make_initial_context();
 
 objTime *glTime = nullptr;
 

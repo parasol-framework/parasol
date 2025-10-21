@@ -40,7 +40,7 @@ extern "C" CLASSID ResolveClassName(CSTRING Name);
 extern "C" ERR SendMessage(MSGID Type, MSF Flags, APTR Data, int Size);
 extern "C" ERR SetOwner(OBJECTPTR Object, OBJECTPTR Owner);
 extern "C" OBJECTPTR SetContext(OBJECTPTR Object);
-extern "C" struct ObjectContext * SetObjectContext(struct ObjectContext * Context);
+extern "C" void SetObjectContext(OBJECTPTR Object, struct Field * Field, AC ActionID);
 extern "C" CSTRING FieldName(uint32_t FieldID);
 extern "C" ERR ScanDir(struct DirInfo * Info);
 extern "C" ERR SetName(OBJECTPTR Object, CSTRING Name);

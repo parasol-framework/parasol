@@ -91,7 +91,7 @@ void CloseCore(void)
    // Critical variables are re-calculated for the close process - this will 'repair' any possible damage that may have
    // been caused to our internal data.
 
-   tlContext = &glTopContext;
+   tlContext.resize(1);
    tlDepth   = 0;
 
    if (glClassFile) { FreeResource(glClassFile); glClassFile = nullptr; }
