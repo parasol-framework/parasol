@@ -914,14 +914,6 @@ class extObjectContext : public ObjectContext {
       // Pop the context frame we pushed in the constructor
       tlContext.pop_back();
    }
-
-   inline OBJECTPTR setContext(OBJECTPTR pObject) {
-      // DEPRECATED
-      auto old = obj;
-      obj = pObject;
-      tlContext.back().obj = pObject;
-      return old;
-   }
 };
 
 [[maybe_unused]] static inline OBJECTPTR current_resource()
