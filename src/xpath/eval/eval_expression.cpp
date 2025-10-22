@@ -26,14 +26,12 @@ struct QuantifiedBindingDefinition {
    const XPathNode * sequence = nullptr;
 };
 
-struct CastTargetInfo
-{
+struct CastTargetInfo {
    std::string type_name;
    bool allows_empty = false;
 };
 
-static bool is_space_character(char ch) noexcept
-{
+static bool is_space_character(char ch) noexcept {
    return (ch IS ' ') or (ch IS '\t') or (ch IS '\n') or (ch IS '\r');
 }
 
@@ -49,8 +47,6 @@ static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
    while (end > start and is_space_character(Literal[end - 1])) end--;
 
    std::string_view trimmed = Literal.substr(start, end - start);
-
-   while ((!trimmed.empty()) and is_space_character(trimmed.back())) trimmed.remove_suffix(1);
 
    if ((!trimmed.empty()) and (trimmed.back() IS '?')) {
       info.allows_empty = true;
@@ -754,12 +750,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             return XPathVal();
          }
 
-         if (!source_descriptor->can_coerce_to(target_descriptor->schema_type)) {
-            auto message = std::format("XPTY0006: Value of type '{}' cannot be cast to '{}'.",
-               source_descriptor->type_name, target_descriptor->type_name);
-            record_error(message, ExprNode, true);
-            return XPathVal();
-         }
+         
 
          std::string operand_lexical = operand_value.to_string();
          XPathVal coerced = source_descriptor->coerce_value(operand_value, target_descriptor->schema_type);
