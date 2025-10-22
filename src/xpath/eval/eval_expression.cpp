@@ -3,6 +3,7 @@
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
+#include "../../xml/schema/type_checker.h"
 #include "../../xml/xml.h"
 #include <parasol/strings.hpp>
 #include <format>
@@ -13,6 +14,7 @@
 #include <cctype>
 #include <unordered_map>
 #include <system_error>
+#include <optional>
 
 struct SequenceEntry {
    XMLTag * node = nullptr;
@@ -35,8 +37,50 @@ struct CastTargetInfo {
    bool allows_empty = false;
 };
 
+enum class SequenceCardinality {
+   ExactlyOne,
+   ZeroOrOne,
+   OneOrMore,
+   ZeroOrMore
+};
+
+enum class SequenceItemKind {
+   Atomic,
+   Element,
+   Attribute,
+   Text,
+   Node,
+   Item,
+   EmptySequence
+};
+
+struct SequenceTypeInfo {
+   SequenceCardinality occurrence = SequenceCardinality::ExactlyOne;
+   SequenceItemKind kind = SequenceItemKind::Atomic;
+   std::string type_name;
+
+   [[nodiscard]] bool allows_empty() const
+   {
+      return (occurrence IS SequenceCardinality::ZeroOrOne) or (occurrence IS SequenceCardinality::ZeroOrMore);
+   }
+
+   [[nodiscard]] bool allows_multiple() const
+   {
+      return (occurrence IS SequenceCardinality::OneOrMore) or (occurrence IS SequenceCardinality::ZeroOrMore);
+   }
+};
+
 static bool is_space_character(char ch) noexcept {
    return (ch IS ' ') or (ch IS '\t') or (ch IS '\n') or (ch IS '\r');
+}
+
+static std::string_view trim_view(std::string_view Text)
+{
+   size_t start = 0;
+   while ((start < Text.size()) and is_space_character(Text[start])) start++;
+   size_t end = Text.size();
+   while ((end > start) and is_space_character(Text[end - 1])) end--;
+   return Text.substr(start, end - start);
 }
 
 static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
@@ -60,6 +104,99 @@ static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
 
    info.type_name.assign(trimmed);
    return info;
+}
+
+static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_view Literal)
+{
+   SequenceTypeInfo info;
+   auto trimmed = trim_view(Literal);
+   if (trimmed.empty()) return std::nullopt;
+
+   size_t end = trimmed.size();
+   char occurrence_marker = '\0';
+
+   while ((end > 0) and is_space_character(trimmed[end - 1])) end--;
+   if (end > 0) {
+      char marker = trimmed[end - 1];
+      if ((marker IS '?') or (marker IS '+') or (marker IS '*')) {
+         occurrence_marker = marker;
+         end--;
+         while ((end > 0) and is_space_character(trimmed[end - 1])) end--;
+      }
+   }
+
+   switch (occurrence_marker) {
+      case '?': info.occurrence = SequenceCardinality::ZeroOrOne; break;
+      case '+': info.occurrence = SequenceCardinality::OneOrMore; break;
+      case '*': info.occurrence = SequenceCardinality::ZeroOrMore; break;
+      default: break;
+   }
+
+   std::string_view core = trimmed.substr(0, end);
+   core = trim_view(core);
+   if (core.empty()) return std::nullopt;
+
+   if (core IS "item()") info.kind = SequenceItemKind::Item;
+   else if (core IS "node()") info.kind = SequenceItemKind::Node;
+   else if (core IS "element()") info.kind = SequenceItemKind::Element;
+   else if (core IS "attribute()") info.kind = SequenceItemKind::Attribute;
+   else if (core IS "text()") info.kind = SequenceItemKind::Text;
+   else if (core IS "empty-sequence()") info.kind = SequenceItemKind::EmptySequence;
+   else {
+      info.kind = SequenceItemKind::Atomic;
+      info.type_name.assign(core);
+   }
+
+   return info;
+}
+
+static size_t sequence_item_count(const XPathVal &Value)
+{
+   if (Value.Type IS XPVT::NodeSet) return Value.node_set.size();
+   if (Value.Type IS XPVT::NIL) return 0;
+
+   switch (Value.Type) {
+      case XPVT::Boolean:
+      case XPVT::Number:
+      case XPVT::String:
+      case XPVT::Date:
+      case XPVT::Time:
+      case XPVT::DateTime:
+         return 1;
+      default:
+         break;
+   }
+
+   return Value.is_empty() ? 0 : 1;
+}
+
+static std::string nodeset_item_string(const XPathVal &Value, size_t Index)
+{
+   if (Index < Value.node_set_string_values.size()) return Value.node_set_string_values[Index];
+
+   if ((Index < Value.node_set_attributes.size()) and Value.node_set_attributes[Index]) {
+      return Value.node_set_attributes[Index]->Value;
+   }
+
+   bool use_override = Value.node_set_string_override.has_value() and Value.node_set_string_values.empty();
+   if (use_override and (Index IS 0)) return *Value.node_set_string_override;
+
+   if (Index < Value.node_set.size() and Value.node_set[Index]) {
+      return XPathVal::node_string_value(Value.node_set[Index]);
+   }
+
+   return std::string();
+}
+
+static std::string describe_nodeset_item_kind(const XMLTag *Node, const XMLAttrib *Attribute)
+{
+   if (Attribute) return std::string("attribute()");
+   if (!Node) return std::string("item()");
+   if (Node->Attribs.empty()) return std::string("node()");
+   if (Node->Attribs[0].Name.empty()) return std::string("text()");
+   if ((Node->Flags & XTF::COMMENT) != XTF::NIL) return std::string("comment()");
+   if ((Node->Flags & XTF::INSTRUCTION) != XTF::NIL) return std::string("processing-instruction()");
+   return std::string("element()");
 }
 
 static bool is_valid_timezone(std::string_view Value)
@@ -997,6 +1134,196 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
          coerced.set_schema_type(target_descriptor);
          return coerced;
+      }
+      case XPathNodeType::TREAT_AS_EXPRESSION: {
+         if (ExprNode->child_count() IS 0) {
+            record_error("Treat as expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         auto sequence_info = parse_sequence_type_literal(ExprNode->value);
+         if (not sequence_info.has_value()) {
+            record_error("XPST0003: Treat as expression is missing its sequence type.", ExprNode, true);
+            return XPathVal();
+         }
+
+         const XPathNode *operand_node = ExprNode->get_child(0);
+         if (!operand_node) {
+            record_error("Treat as expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         XPathVal operand_value = evaluate_expression(operand_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         size_t item_count = sequence_item_count(operand_value);
+
+         if (sequence_info->kind IS SequenceItemKind::EmptySequence) {
+            if (item_count IS 0) return operand_value;
+
+            auto message = std::format("XPTY0004: Treat as expression for 'empty-sequence()' requires an empty operand, "
+               "but it contained {} item(s).", item_count);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if ((item_count IS 0) and (not sequence_info->allows_empty())) {
+            auto message = std::format("XPTY0004: Treat as expression for '{}' requires at least one item, "
+               "but the operand was empty.", ExprNode->value);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if ((item_count > 1) and (not sequence_info->allows_multiple())) {
+            auto message = std::format("XPTY0004: Treat as expression for '{}' allows at most one item, "
+               "but the operand had {} item(s).", ExprNode->value, item_count);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if ((sequence_info->occurrence IS SequenceCardinality::ExactlyOne) and (item_count != 1)) {
+            auto message = std::format("XPTY0004: Treat as expression for '{}' requires exactly one item, "
+               "but the operand had {} item(s).", ExprNode->value, item_count);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if (item_count IS 0) return operand_value;
+
+         if (sequence_info->kind IS SequenceItemKind::Item) return operand_value;
+
+         if (sequence_info->kind IS SequenceItemKind::Node) {
+            if (operand_value.Type IS XPVT::NodeSet) return operand_value;
+
+            auto message = std::format("XPTY0004: Treat as expression for 'node()' requires node values, but received '{}'.",
+               operand_value.to_string());
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if (sequence_info->kind IS SequenceItemKind::Element) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  XMLTag *node = operand_value.node_set[index];
+
+                  if (attribute or (not node) or (not node->isTag())) {
+                     auto encountered = describe_nodeset_item_kind(node, attribute);
+                     auto message = std::format("XPTY0004: Treat as expression for 'element()' encountered {}.", encountered);
+                     record_error(message, ExprNode, true);
+                     return XPathVal();
+                  }
+               }
+
+               return operand_value;
+            }
+
+            auto message = std::format("XPTY0004: Treat as expression for 'element()' requires node values, "
+               "but received '{}'.", operand_value.to_string());
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if (sequence_info->kind IS SequenceItemKind::Attribute) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  if (not attribute) {
+                     auto node = operand_value.node_set[index];
+                     auto encountered = describe_nodeset_item_kind(node, nullptr);
+                     auto message = std::format("XPTY0004: Treat as expression for 'attribute()' encountered {}.", encountered);
+                     record_error(message, ExprNode, true);
+                     return XPathVal();
+                  }
+               }
+
+               return operand_value;
+            }
+
+            auto message = std::format("XPTY0004: Treat as expression for 'attribute()' requires attribute nodes, "
+               "but received '{}'.", operand_value.to_string());
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         if (sequence_info->kind IS SequenceItemKind::Text) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  XMLTag *node = operand_value.node_set[index];
+
+                  bool is_text_node = node and (not node->Attribs.empty()) and node->Attribs[0].Name.empty();
+                  if (attribute or (not is_text_node)) {
+                     auto encountered = describe_nodeset_item_kind(node, attribute);
+                     auto message = std::format("XPTY0004: Treat as expression for 'text()' encountered {}.", encountered);
+                     record_error(message, ExprNode, true);
+                     return XPathVal();
+                  }
+               }
+
+               return operand_value;
+            }
+
+            auto message = std::format("XPTY0004: Treat as expression for 'text()' requires text nodes, but received '{}'.",
+               operand_value.to_string());
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         // Atomic sequence handling
+         auto &registry = xml::schema::registry();
+         auto target_descriptor = registry.find_descriptor(sequence_info->type_name);
+         if (!target_descriptor) {
+            auto message = std::format("XPST0052: Treat target type '{}' is not defined.", sequence_info->type_name);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         xml::schema::TypeChecker checker(registry);
+
+         if (operand_value.Type IS XPVT::NodeSet) {
+            for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
+               const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                  operand_value.node_set_attributes[index] : nullptr;
+               XMLTag *node = operand_value.node_set[index];
+
+               bool is_text_node = node and (not node->Attribs.empty()) and node->Attribs[0].Name.empty();
+               if (attribute or (not is_text_node)) {
+                  auto encountered = describe_nodeset_item_kind(node, attribute);
+                  auto message = std::format("XPTY0004: Treat as expression for '{}' encountered {} which is not an atomic value.",
+                     ExprNode->value, encountered);
+                  record_error(message, ExprNode, true);
+                  return XPathVal();
+               }
+
+               std::string lexical = nodeset_item_string(operand_value, index);
+               XPathVal item_value(lexical);
+               if (not checker.validate_value(item_value, *target_descriptor)) {
+                  std::string detail = checker.last_error();
+                  if (detail.empty()) detail = std::format("Value '{}' is not valid for type {}.", lexical, target_descriptor->type_name);
+                  auto message = std::format("XPTY0004: {}", detail);
+                  record_error(message, ExprNode, true);
+                  return XPathVal();
+               }
+            }
+
+            return operand_value;
+         }
+
+         if (not checker.validate_value(operand_value, *target_descriptor)) {
+            std::string detail = checker.last_error();
+            if (detail.empty()) detail = std::format("Value '{}' is not valid for type {}.", operand_value.to_string(),
+               target_descriptor->type_name);
+            auto message = std::format("XPTY0004: {}", detail);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         operand_value.set_schema_type(target_descriptor);
+         return operand_value;
       }
       case XPathNodeType::CASTABLE_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {

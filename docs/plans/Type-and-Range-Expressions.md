@@ -77,13 +77,13 @@ For each implementation:
 
 #### treat as Expression
 
-[ ] Add treat keyword handling in the tokeniser and AST node type TREAT_AS_EXPRESSION with fields for the asserted sequence type (including occurrence).
+[x] Add treat keyword handling in the tokeniser and AST node type TREAT_AS_EXPRESSION with fields for the asserted sequence type (including occurrence).
 
-[ ] Parser: hook into parse_unary_expr (before union/path parsing) to consume Expr treat as SequenceType, ensuring proper precedence and reuse of the sequence-type parsing routine.
+[x] Parser: hook into parse_unary_expr (before union/path parsing) to consume Expr treat as SequenceType, ensuring proper precedence and reuse of the sequence-type parsing routine.
 
-[ ] Evaluator: implement runtime cardinality/type verification without coercion; reuse schema registry to validate each item and raise XPTY0004 with descriptive message when assertion fails.
+[x] Evaluator: implement runtime cardinality/type verification without coercion; reuse schema registry to validate each item and raise XPTY0004 with descriptive message when assertion fails.
 
-[ ] Tests: assert success/failure for matching and non-matching types, including optional (?), one-or-more (+), and zero-or-more (*) occurrence indicators.
+[x] Tests: assert success/failure for matching and non-matching types, including optional (?), one-or-more (+), and zero-or-more (*) occurrence indicators.
 
 #### instance of Expression
 

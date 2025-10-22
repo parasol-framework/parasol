@@ -110,6 +110,7 @@ enum class XPathTokenType {
    SATISFIES,         // satisfies
    CAST,              // cast keyword
    CASTABLE,          // castable keyword
+   TREAT,             // treat keyword
    AS,                // as keyword
 
    // Arithmetic operators
