@@ -139,14 +139,14 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
     <method>
       <name>Evaluate</name>
-      <comment>Run an XPath 2.0 or XQuery expression against the XML data.</comment>
+      <comment>Run an XQuery expression against the XML data.</comment>
       <prototype>ERR xml::Evaluate(OBJECTPTR Object, CSTRING Statement, CSTRING * Result)</prototype>
       <input>
-        <param type="CSTRING" name="Statement">An XPath or XQuery string to evaluate.</param>
+        <param type="CSTRING" name="Statement">An XQuery expression to evaluate.</param>
         <param type="CSTRING *" name="Result">An allocated string from the evaluation is returned here.</param>
       </input>
       <description>
-<p>The Evaluate method allows the execution of XPath 2.0 or XQuery expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
+<p>The Evaluate method allows the execution of XPath 2.0+ and XQuery 1.0+ expressions against the data contained within the XML object.  This is a lazy execution method that compiles and evaluates the provided expression in a single step, returning the result as a string.  For more complex scenarios or repeated evaluations, consider using the Compile and Evaluate functions in the XPath module.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -404,7 +404,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
         <param type="CSTRING" name="Path">File system path to the XML Schema (XSD) document.</param>
       </input>
       <description>
-<p>This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, schema metadata is available for validation and XPath evaluation routines that utilise schema-aware behaviour.</p>
+<p>This method parses an XML Schema document and attaches its schema context to the current XML object.  Once loaded, schema metadata is available for validation and XQuery evaluation routines that utilise schema-aware behaviour.</p>
       </description>
       <result>
         <error code="Okay">Schema was successfully loaded and parsed.</error>

@@ -220,6 +220,8 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::SOME:              return "some";
       case XPathTokenType::EVERY:             return "every";
       case XPathTokenType::SATISFIES:         return "satisfies";
+      case XPathTokenType::CAST:              return "cast";
+      case XPathTokenType::AS:                return "as";
       case XPathTokenType::UNION:             return "union";
       case XPathTokenType::INTERSECT:         return "intersect";
       case XPathTokenType::EXCEPT:            return "except";
@@ -228,6 +230,19 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
    }
 
    return std::string_view();
+}
+
+//********************************************************************************************************************
+static std::string trim_copy(std::string_view Text)
+{
+   size_t start = 0;
+   while ((start < Text.size()) and (Text[start] IS ' ' or Text[start] IS '\t' or Text[start] IS '\n' or Text[start] IS '\r')) start++;
+   if (start >= Text.size()) return std::string();
+
+   size_t end = Text.size();
+   while (end > start and (Text[end - 1] IS ' ' or Text[end - 1] IS '\t' or Text[end - 1] IS '\n' or Text[end - 1] IS '\r')) end--;
+
+   return std::string(Text.substr(start, end - start));
 }
 
 //********************************************************************************************************************
@@ -338,7 +353,8 @@ std::optional<std::string> XPathParser::collect_sequence_type()
 
       bool add_space = !collected.empty();
       if (add_space) {
-         if ((previous_type IS XPathTokenType::COLON) or (token.type IS XPathTokenType::COLON)) add_space = false;
+         if ((previous_type IS XPathTokenType::COLON) or (token.type IS XPathTokenType::COLON) or
+             (previous_type IS XPathTokenType::QUESTION_MARK) or (token.type IS XPathTokenType::QUESTION_MARK)) add_space = false;
       }
 
       if (add_space) collected.push_back(' ');
@@ -1948,17 +1964,52 @@ std::unique_ptr<XPathNode> XPathParser::parse_additive_expr()
 // Parses multiplicative expressions for *, div, and mod operators with left-associative binding.
 
 std::unique_ptr<XPathNode> XPathParser::parse_multiplicative_expr() {
-   auto left = parse_unary_expr();
+   auto left = parse_cast_expr();
 
    while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::DIVIDE) or
           check(XPathTokenType::MODULO)) {
       XPathToken op = peek();
       advance();
-      auto right = parse_unary_expr();
+      auto right = parse_cast_expr();
       left = create_binary_op(std::move(left), op, std::move(right));
    }
 
    return left;
+}
+
+//********************************************************************************************************************
+// Parses cast expressions of the form Expr cast as SingleType.
+
+std::unique_ptr<XPathNode> XPathParser::parse_cast_expr()
+{
+   auto operand = parse_unary_expr();
+   if (not operand) return nullptr;
+
+   XPathToken cast_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   if (not match_identifier_keyword("cast", XPathTokenType::CAST, cast_token)) return operand;
+
+   if (not match_literal_keyword("as")) {
+      report_error("XPST0003: Expected 'as' after 'cast'.");
+      return nullptr;
+   }
+
+   auto type_name = parse_qname_string();
+   if (not type_name) {
+      report_error("XPST0003: Expected type name after 'as'.");
+      return nullptr;
+   }
+
+   std::string target_type = trim_copy(*type_name);
+   if (target_type.empty()) {
+      report_error("XPST0003: Cast expression requires a target type.");
+      return nullptr;
+   }
+
+   if (match(XPathTokenType::QUESTION_MARK)) target_type.push_back('?');
+
+   auto cast_node = std::make_unique<XPathNode>(XPathNodeType::CAST_EXPRESSION, std::move(target_type));
+   cast_node->add_child(std::move(operand));
+   return cast_node;
 }
 
 //********************************************************************************************************************

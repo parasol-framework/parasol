@@ -108,6 +108,8 @@ enum class XPathTokenType {
    SOME,              // some
    EVERY,             // every
    SATISFIES,         // satisfies
+   CAST,              // cast keyword
+   AS,                // as keyword
 
    // Arithmetic operators
    PLUS,              // +
@@ -136,6 +138,7 @@ enum class XPathTokenType {
 
    // Special tokens
    TEXT_CONTENT,      // literal content inside direct constructors
+   QUESTION_MARK,     // ? occurrence indicator
    END_OF_INPUT,
    UNKNOWN
 };

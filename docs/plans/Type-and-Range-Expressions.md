@@ -53,13 +53,13 @@ For each implementation:
 
 #### cast Expression
 
-[ ] Extend the tokeniser to recognise cast/as keywords (ensure as is treated correctly as a keyword token where needed) and add any missing token enum entries for clarity.
+[x] Extend the tokeniser to recognise cast/as keywords (ensure as is treated correctly as a keyword token where needed) and add any missing token enum entries for clarity.
 
-[ ] Introduce dedicated AST node types (e.g., CAST_EXPRESSION) in xpath.fdl and regenerate headers so the evaluator has a semantic hook.
+[x] Introduce dedicated AST node types (e.g., CAST_EXPRESSION) in xpath.fdl and regenerate headers so the evaluator has a semantic hook.
 
-[ ] Update parse_expr_single/parse_unary_expr to detect the Expr cast as SequenceType pattern, parse the target type with existing sequence-type helpers, and emit the new AST node (carry source location for error reporting).
+[x] Update parse_expr_single/parse_unary_expr to detect the Expr cast as SequenceType pattern, parse the target type with existing sequence-type helpers, and emit the new AST node (carry source location for error reporting).
 
-[ ] Implement evaluation support that resolves the target schema type, enforces single-item cardinality, performs type coercion via SchemaTypeDescriptor::coerce_value, and raises XPTY0004/XPTY0006 errors with helpful context when conversion fails.
+[x] Implement evaluation support that resolves the target schema type, enforces single-item cardinality, performs type coercion via SchemaTypeDescriptor::coerce_value, and raises XPTY0004/XPTY0006 errors with helpful context when conversion fails.
 
 [ ] Add positive/negative tests covering primitive type casts, invalid source cardinality, and conversion failures (new Fluid test file under src/xpath/tests/).
 

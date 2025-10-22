@@ -6,7 +6,9 @@
 #include "../../xml/xml.h"
 #include <parasol/strings.hpp>
 #include <format>
+#include <cmath>
 #include <utility>
+#include <string_view>
 
 struct SequenceEntry {
    XMLTag * node = nullptr;
@@ -23,6 +25,38 @@ struct QuantifiedBindingDefinition {
    std::string name;
    const XPathNode * sequence = nullptr;
 };
+
+struct CastTargetInfo {
+   std::string type_name;
+   bool allows_empty = false;
+};
+
+static bool is_space_character(char ch) noexcept {
+   return (ch IS ' ') or (ch IS '\t') or (ch IS '\n') or (ch IS '\r');
+}
+
+static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
+{
+   CastTargetInfo info;
+
+   size_t start = 0;
+   while ((start < Literal.size()) and is_space_character(Literal[start])) start++;
+   if (start >= Literal.size()) return info;
+
+   size_t end = Literal.size();
+   while (end > start and is_space_character(Literal[end - 1])) end--;
+
+   std::string_view trimmed = Literal.substr(start, end - start);
+
+   if ((!trimmed.empty()) and (trimmed.back() IS '?')) {
+      info.allows_empty = true;
+      trimmed.remove_suffix(1);
+      while ((!trimmed.empty()) and is_space_character(trimmed.back())) trimmed.remove_suffix(1);
+   }
+
+   info.type_name.assign(trimmed);
+   return info;
+}
 
 //********************************************************************************************************************
 // File-local helpers extracted from large embedded lambdas to reduce function length and improve readability.
@@ -656,6 +690,108 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       }
       case XPathNodeType::LOCATION_PATH: {
          return evaluate_path_expression_value(ExprNode, CurrentPrefix);
+      }
+      case XPathNodeType::CAST_EXPRESSION: {
+         if (ExprNode->child_count() IS 0) {
+            record_error("Cast expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         auto target_info = parse_cast_target_literal(ExprNode->value);
+         if (target_info.type_name.empty()) {
+            record_error("XPST0003: Cast expression is missing its target type.", ExprNode, true);
+            return XPathVal();
+         }
+
+         auto &registry = xml::schema::registry();
+         auto target_descriptor = registry.find_descriptor(target_info.type_name);
+         if (!target_descriptor) {
+            auto message = std::format("XPST0052: Cast target type '{}' is not defined.", target_info.type_name);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         const XPathNode *operand_node = ExprNode->get_child(0);
+         if (!operand_node) {
+            record_error("Cast expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         XPathVal operand_value = evaluate_expression(operand_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         if (operand_value.Type IS XPVT::NodeSet) {
+            size_t item_count = operand_value.node_set.size();
+            if (item_count IS 0) {
+               if (target_info.allows_empty) return XPathVal(pf::vector<XMLTag *>{});
+               auto message = std::format("XPTY0004: Cast to '{}' requires a single item, but the operand was empty.",
+                  target_descriptor->type_name);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            if (item_count > 1) {
+               auto message = std::format("XPTY0004: Cast to '{}' requires a single item, but the operand had {} items.",
+                  target_descriptor->type_name, item_count);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            std::string atomised_string = operand_value.to_string();
+            operand_value = XPathVal(atomised_string);
+            auto string_descriptor = registry.find_descriptor(xml::schema::SchemaType::XPathString);
+            if (string_descriptor) operand_value.set_schema_type(string_descriptor);
+         }
+
+         auto source_descriptor = schema_descriptor_for_value(operand_value);
+         if (!source_descriptor) source_descriptor = registry.find_descriptor(xml::schema::schema_type_for_xpath(operand_value.Type));
+         if (!source_descriptor) {
+            record_error("XPTY0006: Cast operand type could not be determined.", ExprNode, true);
+            return XPathVal();
+         }
+
+         
+
+         std::string operand_lexical = operand_value.to_string();
+         XPathVal coerced = source_descriptor->coerce_value(operand_value, target_descriptor->schema_type);
+
+         if (xml::schema::is_numeric(target_descriptor->schema_type)) {
+            double numeric_value = coerced.to_number();
+            if (std::isnan(numeric_value)) {
+               auto message = std::format("XPTY0006: Value '{}' cannot be cast to numeric type '{}'.",
+                  operand_lexical, target_descriptor->type_name);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+            coerced = XPathVal(numeric_value);
+         }
+         else if ((target_descriptor->schema_type IS xml::schema::SchemaType::XPathBoolean) or
+                  (target_descriptor->schema_type IS xml::schema::SchemaType::XSBoolean)) {
+            bool lexical_valid = true;
+            bool boolean_result = coerced.to_boolean();
+
+            if (operand_value.Type IS XPVT::String) {
+               auto parsed_boolean = parse_schema_boolean(operand_lexical);
+               if (not parsed_boolean.has_value()) lexical_valid = false;
+               else boolean_result = *parsed_boolean;
+            }
+
+            if (not lexical_valid) {
+               auto message = std::format("XPTY0006: Value '{}' cannot be cast to boolean type '{}'.",
+                  operand_lexical, target_descriptor->type_name);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            coerced = XPathVal(boolean_result);
+         }
+         else if ((target_descriptor->schema_type IS xml::schema::SchemaType::XPathString) or
+                  (target_descriptor->schema_type IS xml::schema::SchemaType::XSString)) {
+            coerced = XPathVal(operand_lexical);
+         }
+
+         coerced.set_schema_type(target_descriptor);
+         return coerced;
       }
       case XPathNodeType::UNION: {
          std::vector<const XPathNode *> branches;
