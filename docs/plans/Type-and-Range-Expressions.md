@@ -109,15 +109,15 @@ For each implementation:
 
 #### to Range Operator
 
-[ ] Tokeniser/enum: add a dedicated token for the to keyword and ensure it participates in operator precedence resolution.
+[x] Tokeniser/enum: add a dedicated token for the to keyword and ensure it participates in operator precedence resolution.
 
-[ ] Parser: introduce a parse_range_expr layer between additive and relational parsing so Expr to Expr binds tighter than comparison but looser than additive operations; ensure right-hand operand parsing allows nested ranges correctly.
+[x] Parser: introduce a parse_range_expr layer between additive and relational parsing so Expr to Expr binds tighter than comparison but looser than additive operations; ensure right-hand operand parsing allows nested ranges correctly.
 
-[ ] AST: either reuse a binary-op node with explicit operator string "to" or add RANGE_EXPRESSION for clarity in the evaluator.
+[x] AST: either reuse a binary-op node with explicit operator string "to" or add RANGE_EXPRESSION for clarity in the evaluator.
 
-[ ] Evaluator: implement sequence generation that handles numeric type promotion, ascending/descending validation (raise XPTY0004 for NaN or non-numeric inputs), and large-range safeguards; integrate into map_binary_operation and downstream execution switch.
+[x] Evaluator: implement sequence generation that handles numeric type promotion, ascending/descending validation (raise XPTY0004 for NaN or non-numeric inputs), and large-range safeguards; integrate into map_binary_operation and downstream execution switch.
 
-[ ] Tests: add coverage for positive ranges, negative step expectations (should error), boundary cases like identical endpoints, and invalid operands.
+[x] Tests: add coverage for positive ranges, negative step expectations (should error), boundary cases like identical endpoints, and invalid operands.
 
 #### Cross-Cutting Testing & Verification
 

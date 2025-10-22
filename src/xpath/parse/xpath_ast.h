@@ -116,6 +116,7 @@ enum class XPathTokenType {
    AS,                // as keyword
    INSTANCE,          // instance keyword
    OF,                // of keyword
+   TO,                // to keyword
 
    // Arithmetic operators
    PLUS,              // +

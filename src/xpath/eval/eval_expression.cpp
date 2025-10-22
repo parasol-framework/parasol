@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <system_error>
 #include <optional>
+#include <limits>
 
 struct SequenceEntry {
    XMLTag * node = nullptr;
@@ -512,6 +513,7 @@ enum class BinaryOperationKind {
    MUL,
    DIV,
    MOD,
+   RANGE,
    UNKNOWN
 };
 
@@ -536,8 +538,11 @@ static BinaryOperationKind map_binary_operation(std::string_view Op)
    if (Op IS "*") return BinaryOperationKind::MUL;
    if (Op IS "div") return BinaryOperationKind::DIV;
    if (Op IS "mod") return BinaryOperationKind::MOD;
+   if (Op IS "to") return BinaryOperationKind::RANGE;
    return BinaryOperationKind::UNKNOWN;
 }
+
+static constexpr int64_t RANGE_ITEM_LIMIT = 100000;
 
 //********************************************************************************************************************
 
@@ -2232,6 +2237,126 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             double right_number = right_value.to_number();
             double result = std::fmod(left_number, right_number);
             return XPathVal(result);
+         }
+         case BinaryOperationKind::RANGE: {
+            size_t start_count = sequence_item_count(left_value);
+            if (start_count IS 0) {
+               record_error("XPTY0004: Range start requires a single numeric value, but the operand was empty.", ExprNode, true);
+               return XPathVal();
+            }
+            if (start_count > 1) {
+               auto message = std::format(
+                  "XPTY0004: Range start requires a single numeric value, but the operand had {} items.", start_count);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            size_t end_count = sequence_item_count(right_value);
+            if (end_count IS 0) {
+               record_error("XPTY0004: Range end requires a single numeric value, but the operand was empty.", ExprNode, true);
+               return XPathVal();
+            }
+            if (end_count > 1) {
+               auto message = std::format(
+                  "XPTY0004: Range end requires a single numeric value, but the operand had {} items.", end_count);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            double start_numeric = left_value.to_number();
+            double end_numeric = right_value.to_number();
+
+            if (not std::isfinite(start_numeric) or not std::isfinite(end_numeric)) {
+               record_error("XPTY0004: Range boundaries must be finite numeric values.", ExprNode, true);
+               return XPathVal();
+            }
+
+            double start_integral = 0.0;
+            double end_integral = 0.0;
+            double start_fraction = std::modf(start_numeric, &start_integral);
+            double end_fraction = std::modf(end_numeric, &end_integral);
+
+            if (not (start_fraction IS 0.0)) {
+               auto lexical = left_value.to_string();
+               auto message = std::format(
+                  "XPTY0004: Range start value '{}' is not an integer.", lexical);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            if (not (end_fraction IS 0.0)) {
+               auto lexical = right_value.to_string();
+               auto message = std::format(
+                  "XPTY0004: Range end value '{}' is not an integer.", lexical);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            if ((start_integral < (double)std::numeric_limits<int64_t>::min()) or
+                (start_integral > (double)std::numeric_limits<int64_t>::max()) or
+                (end_integral < (double)std::numeric_limits<int64_t>::min()) or
+                (end_integral > (double)std::numeric_limits<int64_t>::max())) {
+               record_error("FOAR0002: Range boundaries fall outside supported integer limits.", ExprNode, true);
+               return XPathVal();
+            }
+
+            int64_t start_int = (int64_t)start_integral;
+            int64_t end_int = (int64_t)end_integral;
+
+            if (start_int > end_int) {
+               NODES empty_nodes;
+               XPathVal empty_result(empty_nodes);
+               empty_result.preserve_node_order = true;
+               return empty_result;
+            }
+
+            __int128 length_wide = (__int128)end_int - (__int128)start_int + 1;
+            if ((length_wide <= 0) or (length_wide > (__int128)RANGE_ITEM_LIMIT)) {
+               auto format_length = [](__int128 Value) -> std::string
+               {
+                  if (Value IS 0) return std::string("0");
+                  bool negative = Value < 0;
+                  unsigned __int128 magnitude = negative ? (unsigned __int128)(-Value) : (unsigned __int128)Value;
+                  std::string digits;
+                  while (magnitude > 0) {
+                     unsigned int remainder = (unsigned int)(magnitude % 10);
+                     digits.insert(digits.begin(), char('0' + remainder));
+                     magnitude /= 10;
+                  }
+                  if (negative) digits.insert(digits.begin(), '-');
+                  return digits;
+               };
+
+               auto start_lexical = format_xpath_number(start_numeric);
+               auto end_lexical = format_xpath_number(end_numeric);
+               auto length_string = format_length(length_wide);
+               auto message = std::format(
+                  "FOAR0002: Range from {} to {} produces {} items which exceeds the supported limit of {}.",
+                  start_lexical, end_lexical, length_string, RANGE_ITEM_LIMIT);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+
+            int64_t length = (int64_t)length_wide;
+
+            NODES range_nodes;
+            range_nodes.reserve((size_t)length);
+            std::vector<std::string> range_strings;
+            range_strings.reserve((size_t)length);
+
+            for (int64_t value = start_int; value <= end_int; ++value) {
+               range_nodes.push_back(nullptr);
+               range_strings.push_back(format_xpath_number((double)value));
+            }
+
+            XPathVal range_result;
+            range_result.Type = XPVT::NodeSet;
+            range_result.preserve_node_order = true;
+            range_result.node_set = std::move(range_nodes);
+            range_result.node_set_string_values = std::move(range_strings);
+            range_result.node_set_attributes.clear();
+            range_result.node_set_string_override.reset();
+            return range_result;
          }
          default: {
             expression_unsupported = true;

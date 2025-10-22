@@ -50,6 +50,7 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_equality_expr();
    std::unique_ptr<XPathNode> parse_relational_expr();
    std::unique_ptr<XPathNode> parse_instance_of_expr();
+   std::unique_ptr<XPathNode> parse_range_expr();
    std::unique_ptr<XPathNode> parse_additive_expr();
    std::unique_ptr<XPathNode> parse_multiplicative_expr();
    std::unique_ptr<XPathNode> parse_cast_expr();
