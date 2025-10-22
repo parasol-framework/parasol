@@ -224,6 +224,8 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::CASTABLE:          return "castable";
       case XPathTokenType::TREAT:             return "treat";
       case XPathTokenType::AS:                return "as";
+      case XPathTokenType::INSTANCE:          return "instance";
+      case XPathTokenType::OF:                return "of";
       case XPathTokenType::UNION:             return "union";
       case XPathTokenType::INTERSECT:         return "intersect";
       case XPathTokenType::EXCEPT:            return "except";
@@ -1930,7 +1932,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_equality_expr() {
 
 std::unique_ptr<XPathNode> XPathParser::parse_relational_expr()
 {
-   auto left = parse_additive_expr();
+   auto left = parse_instance_of_expr();
 
    while (check(XPathTokenType::LESS_THAN) or check(XPathTokenType::LESS_EQUAL) or
           check(XPathTokenType::GREATER_THAN) or check(XPathTokenType::GREATER_EQUAL) or
@@ -1938,11 +1940,48 @@ std::unique_ptr<XPathNode> XPathParser::parse_relational_expr()
           check(XPathTokenType::GT) or check(XPathTokenType::GE)) {
       XPathToken op = peek();
       advance();
-      auto right = parse_additive_expr();
+      auto right = parse_instance_of_expr();
       left = create_binary_op(std::move(left), op, std::move(right));
    }
 
    return left;
+}
+
+//********************************************************************************************************************
+// Parses instance of expressions of the form Expr instance of SequenceType.
+
+std::unique_ptr<XPathNode> XPathParser::parse_instance_of_expr()
+{
+   auto operand = parse_additive_expr();
+   if (not operand) return nullptr;
+
+   while (true) {
+      XPathToken instance_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (not match_identifier_keyword("instance", XPathTokenType::INSTANCE, instance_token)) break;
+
+      if (not match_literal_keyword("of")) {
+         report_error("XPST0003: Expected 'of' after 'instance'.");
+         return nullptr;
+      }
+
+      auto sequence_type_literal = collect_sequence_type();
+      if (not sequence_type_literal) {
+         report_error("XPST0003: Expected sequence type after 'instance of'.");
+         return nullptr;
+      }
+
+      std::string sequence_type = *sequence_type_literal;
+      if (sequence_type.empty()) {
+         report_error("XPST0003: Instance of expression requires a sequence type.");
+         return nullptr;
+      }
+
+      auto instance_node = std::make_unique<XPathNode>(XPathNodeType::INSTANCE_OF_EXPRESSION, std::move(sequence_type));
+      instance_node->add_child(std::move(operand));
+      operand = std::move(instance_node);
+   }
+
+   return operand;
 }
 
 //********************************************************************************************************************

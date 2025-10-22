@@ -85,15 +85,15 @@ For each implementation:
 
 #### instance of Expression
 
-[ ] Tokeniser: add instance keyword and ensure of is treated as part of the keyword sequence while remaining usable as an NCName when required.
+[x] Tokeniser: add instance keyword and ensure of is treated as part of the keyword sequence while remaining usable as an NCName when required.
 
-[ ] AST: define INSTANCE_OF_EXPRESSION storing both operand and parsed sequence type details.
+[x] AST: define INSTANCE_OF_EXPRESSION storing both operand and parsed sequence type details.
 
-[ ] Parser: integrate the Expr instance of SequenceType grammar near the relational/equality layer so it binds tighter than and/or but looser than arithmetic; update operator precedence tables accordingly.
+[x] Parser: integrate the Expr instance of SequenceType grammar near the relational/equality layer so it binds tighter than and/or but looser than arithmetic; update operator precedence tables accordingly.
 
-[ ] Evaluator: implement boolean semantics that iterate sequence members, consult schema descriptors for subtype relationships, and correctly handle empty sequences and occurrence indicators per XPath 2.0 rules.
+[x] Evaluator: implement boolean semantics that iterate sequence members, consult schema descriptors for subtype relationships, and correctly handle empty sequences and occurrence indicators per XPath 2.0 rules.
 
-[ ] Tests: create coverage for atomic types, union/list types (if available), and mismatched instances.
+[x] Tests: create coverage for atomic types, union/list types (if available), and mismatched instances.
 
 #### typeswitch Expression
 

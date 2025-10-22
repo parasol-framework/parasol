@@ -112,6 +112,8 @@ enum class XPathTokenType {
    CASTABLE,          // castable keyword
    TREAT,             // treat keyword
    AS,                // as keyword
+   INSTANCE,          // instance keyword
+   OF,                // of keyword
 
    // Arithmetic operators
    PLUS,              // +

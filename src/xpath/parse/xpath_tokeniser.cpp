@@ -82,7 +82,9 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "cast", XPathTokenType::CAST },
    KeywordMapping{ "castable", XPathTokenType::CASTABLE },
    KeywordMapping{ "treat", XPathTokenType::TREAT },
-   KeywordMapping{ "as", XPathTokenType::AS }
+   KeywordMapping{ "as", XPathTokenType::AS },
+   KeywordMapping{ "instance", XPathTokenType::INSTANCE },
+   KeywordMapping{ "of", XPathTokenType::OF }
 };
 
 constexpr std::array multi_char_operators{
