@@ -78,7 +78,9 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "count", XPathTokenType::COUNT },
    KeywordMapping{ "some", XPathTokenType::SOME },
    KeywordMapping{ "every", XPathTokenType::EVERY },
-   KeywordMapping{ "satisfies", XPathTokenType::SATISFIES }
+   KeywordMapping{ "satisfies", XPathTokenType::SATISFIES },
+   KeywordMapping{ "cast", XPathTokenType::CAST },
+   KeywordMapping{ "as", XPathTokenType::AS }
 };
 
 constexpr std::array multi_char_operators{
@@ -829,6 +831,7 @@ XPathToken XPathTokeniser::scan_operator()
       case '-': position++; return XPathToken(XPathTokenType::MINUS, single_char, start, 1);
       case ':': position++; return XPathToken(XPathTokenType::COLON, single_char, start, 1);
       case '$': position++; return XPathToken(XPathTokenType::DOLLAR, single_char, start, 1);
+      case '?': position++; return XPathToken(XPathTokenType::QUESTION_MARK, single_char, start, 1);
    }
 
    return XPathToken(XPathTokenType::UNKNOWN, std::string_view(""), start, 0);
