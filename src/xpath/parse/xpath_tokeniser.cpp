@@ -81,6 +81,7 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "some", XPathTokenType::SOME },
    KeywordMapping{ "every", XPathTokenType::EVERY },
    KeywordMapping{ "satisfies", XPathTokenType::SATISFIES },
+   KeywordMapping{ "to", XPathTokenType::TO },
    KeywordMapping{ "cast", XPathTokenType::CAST },
    KeywordMapping{ "castable", XPathTokenType::CASTABLE },
    KeywordMapping{ "treat", XPathTokenType::TREAT },

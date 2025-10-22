@@ -16,43 +16,38 @@ XPathVal XPathFunctionLibrary::function_number(const std::vector<XPathVal> &Args
 XPathVal XPathFunctionLibrary::function_sum(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.size() != 1) return XPathVal(0.0);
-   if (Args[0].Type != XPVT::NodeSet) return XPathVal(0.0);
+   if (Args[0].Type != XPVT::NodeSet) {
+      return XPathVal(0.0);
+   }
 
    const auto &nodeset = Args[0];
    double sum = 0.0;
 
-   // Handle attribute nodes if present
-   if (not nodeset.node_set_attributes.empty()) {
-      for (const XMLAttrib *attr : nodeset.node_set_attributes) {
-         if (attr) {
-            double value = XPathVal::string_to_number(attr->Value);
-            if (not std::isnan(value)) {
-               sum += value;
-            }
-         }
+   size_t length = nodeset.node_set.size();
+   if (length < nodeset.node_set_attributes.size()) length = nodeset.node_set_attributes.size();
+   if (length < nodeset.node_set_string_values.size()) length = nodeset.node_set_string_values.size();
+   if ((length IS 0) and nodeset.node_set_string_override.has_value()) length = 1;
+
+   bool use_override = nodeset.node_set_string_override.has_value() and nodeset.node_set_string_values.empty();
+
+   for (size_t index = 0; index < length; ++index) {
+      const XMLAttrib *attribute = nullptr;
+      if (index < nodeset.node_set_attributes.size()) attribute = nodeset.node_set_attributes[index];
+
+      std::string value_string;
+      if (attribute) value_string = attribute->Value;
+      else if (index < nodeset.node_set_string_values.size()) value_string = nodeset.node_set_string_values[index];
+      else if (use_override and (index IS 0)) value_string = *nodeset.node_set_string_override;
+      else if ((index < nodeset.node_set.size()) and nodeset.node_set[index]) {
+         value_string = XPathVal::node_string_value(nodeset.node_set[index]);
       }
+      else continue;
+
+      double value = XPathVal::string_to_number(value_string);
+      if (std::isnan(value)) continue;
+      sum += value;
    }
-   // Handle string values if present
-   else if (not nodeset.node_set_string_values.empty()) {
-      for (const std::string &str : nodeset.node_set_string_values) {
-         double value = XPathVal::string_to_number(str);
-         if (not std::isnan(value)) {
-            sum += value;
-         }
-      }
-   }
-   // Handle regular element nodes
-   else {
-      for (XMLTag *node : nodeset.node_set) {
-         if (node) {
-            std::string node_content = XPathVal::node_string_value(node);
-            double value = XPathVal::string_to_number(node_content);
-            if (not std::isnan(value)) {
-               sum += value;
-            }
-         }
-      }
-   }
+
    return XPathVal(sum);
 }
 

@@ -228,6 +228,7 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::AS:                return "as";
       case XPathTokenType::INSTANCE:          return "instance";
       case XPathTokenType::OF:                return "of";
+      case XPathTokenType::TO:                return "to";
       case XPathTokenType::UNION:             return "union";
       case XPathTokenType::INTERSECT:         return "intersect";
       case XPathTokenType::EXCEPT:            return "except";
@@ -1961,7 +1962,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_relational_expr()
 
 std::unique_ptr<XPathNode> XPathParser::parse_instance_of_expr()
 {
-   auto operand = parse_additive_expr();
+   auto operand = parse_range_expr();
    if (not operand) return nullptr;
 
    while (true) {
@@ -1991,6 +1992,26 @@ std::unique_ptr<XPathNode> XPathParser::parse_instance_of_expr()
    }
 
    return operand;
+}
+
+//********************************************************************************************************************
+// Parses range expressions of the form Expr to Expr, binding less tightly than additive operators.
+
+std::unique_ptr<XPathNode> XPathParser::parse_range_expr()
+{
+   auto left = parse_additive_expr();
+   if (not left) return nullptr;
+
+   XPathToken to_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   if (not match_identifier_keyword("to", XPathTokenType::TO, to_token)) return left;
+
+   auto right = parse_additive_expr();
+   if (not right) {
+      report_error("XPST0003: Range expression requires an expression after 'to'.");
+      return nullptr;
+   }
+
+   return create_binary_op(std::move(left), to_token, std::move(right));
 }
 
 //********************************************************************************************************************

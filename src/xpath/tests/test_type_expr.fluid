@@ -744,13 +744,13 @@ return {
       'testTypeswitchElement', 'testTypeswitchOccurrenceIndicators',
 
       -- To range operator tests
-      --'testRangeBasic', 'testRangeCount', 'testRangeSingleElement', 'testRangeEmpty',
-      --'testRangeNegative', 'testRangeZero', 'testRangeLarge', 'testRangeInFor',
-      --'testRangeWithPredicates', 'testRangeWithArithmetic', 'testRangeNonInteger',
+      'testRangeBasic', 'testRangeCount', 'testRangeSingleElement', 'testRangeEmpty',
+      'testRangeNegative', 'testRangeZero', 'testRangeLarge', 'testRangeInFor',
+      'testRangeWithPredicates', 'testRangeWithArithmetic', 'testRangeNonInteger',
 
       -- Combined expression tests
-      --'testCastWithRange', 'testInstanceOfWithTypeswitch', 'testCastableInConditional',
-      --'testTreatAsWithRange'
+      'testCastWithRange', 'testInstanceOfWithTypeswitch', 'testCastableInConditional',
+      'testTreatAsWithRange'
    },
    init = function(ScriptFolder)
       -- No global initialization needed
