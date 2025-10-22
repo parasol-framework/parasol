@@ -1,5 +1,8 @@
 # XPath Module
 
+# Enable unit tests for deep testing of non-release builds only.
+#set (ENABLE_UNIT_TESTS ON)
+
 set (MOD xpath)
 set (INC_MOD_XPATH TRUE PARENT_SCOPE)
 
@@ -14,12 +17,11 @@ idl_gen ("${MOD}.fdl"
 add_library (${MOD})
 target_link_libraries (${MOD} PUBLIC unicode)
 set_module_defaults (${MOD} "Xp")
-# Enable unit tests for deep testing of non-release builds only.
-#set (ENABLE_UNIT_TESTS ON)
 
 # XPath Support Library
 
-add_library (xml_xpath_functions OBJECT
+add_library (xquery_lib OBJECT
+   "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_common.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_navigation.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/eval/eval_context.cpp"
@@ -34,14 +36,15 @@ add_library (xml_xpath_functions OBJECT
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xpath_parser.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/parse/xpath_tokeniser.cpp")
 
-target_include_directories (xml_xpath_functions PRIVATE "${PROJECT_SOURCE_DIR}/include")
-set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
+target_include_directories (xquery_lib PRIVATE "${PROJECT_SOURCE_DIR}/include")
+set_target_properties (xquery_lib PROPERTIES CXX_STANDARD 20 POSITION_INDEPENDENT_CODE ON)
 add_compile_definitions("PRV_XML" "PRV_XPATH_MODULE")
 add_dependencies (xpath build_headers xml)
 
 # Enable precompiled headers for the xpath functions object library
 # This must be done before the module target to avoid circular dependencies
-target_precompile_headers(xml_xpath_functions PRIVATE
+
+target_precompile_headers(xquery_lib PRIVATE
    # Heavy STL headers used across most files
    <string>
    <string_view>
@@ -64,15 +67,15 @@ target_precompile_headers(xml_xpath_functions PRIVATE
    "${CMAKE_CURRENT_SOURCE_DIR}/../xml/xml.h"
    "${CMAKE_CURRENT_SOURCE_DIR}/xpath.h")
 
-# Enable precompiled headers for the XPath module
-# Reuse the PCH from the object library to save compilation time
-target_precompile_headers(${MOD} REUSE_FROM xml_xpath_functions)
+# Enable unity builds to speed up compilation of the xpath functions library
+
+set_target_properties(xquery_lib PROPERTIES UNITY_BUILD ON)
+set_target_properties(xquery_lib PROPERTIES UNITY_BUILD_BATCH_SIZE 8)
 
 # Module Code
 
 target_sources (${MOD} PRIVATE
-   "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp"
-   $<TARGET_OBJECTS:xml_xpath_functions>
+   $<TARGET_OBJECTS:xquery_lib>
    $<TARGET_OBJECTS:xml_schema>)
 
 if (ENABLE_UNIT_TESTS)
@@ -102,6 +105,7 @@ flute_test (${MOD}_xpath_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.flu
 flute_test (${MOD}_xpath_flwor_clauses "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor_clauses.fluid")
 flute_test (${MOD}_xpath_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.fluid")
 flute_test (${MOD}_xpath_type_expr "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_expr.fluid")
+flute_test (${MOD}_xpath_sequence_cardinality "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequence_cardinality.fluid")
 
 if (ENABLE_UNIT_TESTS)
    flute_test (${MOD}_xpath_unit_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unit_tests.fluid")

@@ -71,19 +71,6 @@ struct SequenceTypeInfo {
    }
 };
 
-static bool is_space_character(char ch) noexcept {
-   return (ch IS ' ') or (ch IS '\t') or (ch IS '\n') or (ch IS '\r');
-}
-
-static std::string_view trim_view(std::string_view Text)
-{
-   size_t start = 0;
-   while ((start < Text.size()) and is_space_character(Text[start])) start++;
-   size_t end = Text.size();
-   while ((end > start) and is_space_character(Text[end - 1])) end--;
-   return Text.substr(start, end - start);
-}
-
 static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
 {
    CastTargetInfo info;
@@ -157,19 +144,12 @@ static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_v
 
 static size_t sequence_item_count(const XPathVal &Value)
 {
-   if (Value.Type IS XPVT::NodeSet) return Value.node_set.size();
-   if (Value.Type IS XPVT::NIL) return 0;
-
-   switch (Value.Type) {
-      case XPVT::Boolean:
-      case XPVT::Number:
-      case XPVT::String:
-      case XPVT::Date:
-      case XPVT::Time:
-      case XPVT::DateTime:
-         return 1;
-      default:
-         break;
+   if (Value.Type IS XPVT::NodeSet) {
+      size_t length = Value.node_set.size();
+      if (length < Value.node_set_attributes.size()) length = Value.node_set_attributes.size();
+      if (length < Value.node_set_string_values.size()) length = Value.node_set_string_values.size();
+      if ((length IS 0) and Value.node_set_string_override.has_value()) length = 1;
+      return length;
    }
 
    return Value.is_empty() ? 0 : 1;
@@ -1100,9 +1080,12 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                Value.node_set_attributes[index] : nullptr;
             XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
 
-            if (attribute) return false;
-            if (!node) return false;
-            if (!is_constructed_scalar_text(node)) return false;
+            bool atomic_source = false;
+            if (attribute) atomic_source = true;                // attribute typed value is atomic
+            else if (!node) atomic_source = true;               // sequence built from atomic values (strings)
+            else if (is_constructed_scalar_text(node)) atomic_source = true; // constructed scalar text node
+
+            if (not atomic_source) return false;
 
             std::string lexical = nodeset_item_string(Value, index);
             XPathVal item_value(lexical);
@@ -1237,8 +1220,6 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             record_error("XPTY0006: Cast operand type could not be determined.", ExprNode, true);
             return XPathVal();
          }
-
-         
 
          std::string operand_lexical = operand_value.to_string();
          XPathVal coerced = source_descriptor->coerce_value(operand_value, target_descriptor->schema_type);

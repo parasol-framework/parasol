@@ -755,7 +755,7 @@ extern std::atomic_int glUniqueMsgID;
 // MinGW TLS destructor bug workaround: use a thread-local pointer and lazy init to avoid non-trivial TLS dtors
 extern thread_local pf::vector<ObjectContext> *tlContextPtr;
 
-static inline pf::vector<ObjectContext> & tls_get_context() noexcept 
+static inline pf::vector<ObjectContext> & tls_get_context() noexcept
 {
    if (!tlContextPtr) {
       auto p = new pf::vector<ObjectContext>();

@@ -20,6 +20,26 @@
 #include <limits>
 #include <string_view>
 
+//********************************************************************************************************************
+// Determines if the specified character is whitespace (space, tab, newline, or carriage return).
+
+bool is_space_character(char Ch) noexcept
+{
+   return (Ch IS ' ') or (Ch IS '\t') or (Ch IS '\n') or (Ch IS '\r');
+}
+
+//********************************************************************************************************************
+// Trims leading and trailing whitespace from a string view and returns the trimmed view.
+
+std::string_view trim_view(std::string_view Text)
+{
+   size_t start = 0;
+   while ((start < Text.size()) and is_space_character(Text[start])) start++;
+   size_t end = Text.size();
+   while ((end > start) and is_space_character(Text[end - 1])) end--;
+   return Text.substr(start, end - start);
+}
+
 // Retrieves or looks up the schema type descriptor for a given XPath value. Uses cached type info if available,
 // otherwise queries the schema registry for the value's schema type.
 

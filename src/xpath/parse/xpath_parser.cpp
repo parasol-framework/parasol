@@ -1,6 +1,7 @@
 
 #include "xpath_parser.h"
 #include "../api/xquery_prolog.h"
+#include "../eval/eval_detail.h"
 #include <algorithm>
 #include <parasol/strings.hpp>
 #include <utility>
@@ -237,19 +238,6 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
    }
 
    return std::string_view();
-}
-
-//********************************************************************************************************************
-static std::string trim_copy(std::string_view Text)
-{
-   size_t start = 0;
-   while ((start < Text.size()) and (Text[start] IS ' ' or Text[start] IS '\t' or Text[start] IS '\n' or Text[start] IS '\r')) start++;
-   if (start >= Text.size()) return std::string();
-
-   size_t end = Text.size();
-   while (end > start and (Text[end - 1] IS ' ' or Text[end - 1] IS '\t' or Text[end - 1] IS '\n' or Text[end - 1] IS '\r')) end--;
-
-   return std::string(Text.substr(start, end - start));
 }
 
 //********************************************************************************************************************
@@ -2074,7 +2062,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_cast_expr()
       return nullptr;
    }
 
-   std::string target_type = trim_copy(*type_name);
+   std::string target_type(trim_view(*type_name));
    if (target_type.empty()) {
       if (is_cast) report_error("XPST0003: Cast expression requires a target type.");
       else report_error("XPST0003: Castable expression requires a target type.");
@@ -2393,7 +2381,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_typeswitch_expr()
          return nullptr;
       }
 
-      std::string sequence_type = trim_copy(*sequence_literal);
+      std::string sequence_type(trim_view(*sequence_literal));
       if (sequence_type.empty()) {
          report_error("XPST0003: Case clause requires a sequence type.");
          return nullptr;
