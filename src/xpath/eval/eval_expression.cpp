@@ -75,8 +75,8 @@ static bool is_valid_timezone(std::string_view Value)
       int hour = (Value[1] - '0') * 10 + (Value[2] - '0');
       int minute = (Value[4] - '0') * 10 + (Value[5] - '0');
 
-      if ((hour < 0) or (hour > 14)) return false;
-      if ((minute < 0) or (minute >= 60)) return false;
+      if (hour > 14) return false;
+      if (minute >= 60) return false;
       if ((hour IS 14) and (minute != 0)) return false;
 
       return true;
