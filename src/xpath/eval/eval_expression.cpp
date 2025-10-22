@@ -175,7 +175,7 @@ static bool is_valid_xs_time(std::string_view Value)
 
    if ((Value[0] < '0') or (Value[0] > '9') or (Value[1] < '0') or (Value[1] > '9')) return false;
    int hour = (Value[0] - '0') * 10 + (Value[1] - '0');
-   if ((hour < 0) or (hour > 23)) return false;
+   if (hour > 23) return false;
 
    if (Value[2] != ':') return false;
    if ((Value[3] < '0') or (Value[3] > '9') or (Value[4] < '0') or (Value[4] > '9')) return false;
