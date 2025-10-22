@@ -57,6 +57,8 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "descending", XPathTokenType::DESCENDING },
    KeywordMapping{ "empty", XPathTokenType::EMPTY },
    KeywordMapping{ "default", XPathTokenType::DEFAULT },
+   KeywordMapping{ "typeswitch", XPathTokenType::TYPESWITCH },
+   KeywordMapping{ "case", XPathTokenType::CASE },
    KeywordMapping{ "declare", XPathTokenType::DECLARE },
    KeywordMapping{ "function", XPathTokenType::FUNCTION },
    KeywordMapping{ "variable", XPathTokenType::VARIABLE },

@@ -63,6 +63,16 @@ struct XPathNode {
       }
    };
 
+   struct XPathTypeswitchCaseInfo {
+      std::string variable_name;
+      std::string sequence_type;
+      bool is_default = false;
+
+      [[nodiscard]] bool has_variable() const { return !variable_name.empty(); }
+      [[nodiscard]] bool has_sequence_type() const { return !sequence_type.empty(); }
+      [[nodiscard]] bool is_default_case() const { return is_default; }
+   };
+
    XPathNodeType type;
    std::string value;
    std::vector<std::unique_ptr<XPathNode>> children;
@@ -73,6 +83,7 @@ struct XPathNode {
    bool order_clause_is_stable = false;
    std::optional<XPathOrderSpecOptions> order_spec_options;
    std::optional<XPathGroupKeyInfo> group_key_info;
+   std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
 
@@ -89,6 +100,12 @@ struct XPathNode {
    inline void set_group_key_info(XPathGroupKeyInfo Info) { group_key_info = std::move(Info); }
    [[nodiscard]] inline bool has_group_key_info() const { return group_key_info.has_value(); }
    [[nodiscard]] inline const XPathGroupKeyInfo * get_group_key_info() const { return group_key_info ? &(*group_key_info) : nullptr; }
+
+   inline void set_typeswitch_case_info(XPathTypeswitchCaseInfo Info) { typeswitch_case_info = std::move(Info); }
+
+   [[nodiscard]] inline bool has_typeswitch_case_info() const { return typeswitch_case_info.has_value(); }
+
+   [[nodiscard]] inline const XPathTypeswitchCaseInfo * get_typeswitch_case_info() const { return typeswitch_case_info ? &(*typeswitch_case_info) : nullptr; }
 
    void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
       attribute_value_has_expressions = false;

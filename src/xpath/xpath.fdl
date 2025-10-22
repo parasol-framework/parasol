@@ -71,7 +71,10 @@ enum('XPathNodeType', { type='int', start=0 },
    'EMPTY_SEQUENCE',
    'INSTANCE_OF_EXPRESSION',
    'TREAT_AS_EXPRESSION',
-   'CASTABLE_EXPRESSION')
+   'CASTABLE_EXPRESSION',
+   'TYPESWITCH_EXPRESSION',
+   'TYPESWITCH_CASE',
+   'TYPESWITCH_DEFAULT_CASE')
 
   functionNames("xp",
      "Compile",

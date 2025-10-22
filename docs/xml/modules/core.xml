@@ -818,7 +818,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
       <param type="CLASSID *" name="SubClass">Optional argument that can refer to a variable that will store the resulting sub-class ID (if the result is a base-class, this variable will receive a value of zero).</param>
     </input>
     <description>
-<p>This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be identified as a datatype of the <class name="Picture">Picture</class> class.  An MP3 file would be identified as a datatype of the <class name="Sound">Sound</class> class.</p>
+<p>This function examines the relationship between file data and Parasol classes.  For instance, a JPEG file would be identified as a datatype of the @Picture class.  An MP3 file would be identified as a datatype of the @Sound class.</p>
 <p>The method involves analysing the <code>Path</code>'s file extension and comparing it to the supported extensions of all available classes.  If a class supports the file extension, the ID of that class will be returned. If the file extension is not listed in the class dictionary or if it is listed more than once, the first 80 bytes of the file's data will be loaded and checked against classes that can match against file header information.  If a match is found, the ID of the matching class will be returned.</p>
 <p>The <code>ERR::Search</code> code is returned if a suitable class does not match the targeted file.</p>
     </description>
@@ -841,7 +841,7 @@ FindObject(&quot;SystemPointer&quot;, CLASSID::POINTER, FOF::NIL, &amp;id);
     </input>
     <description>
 <p>This function initialises objects so that they can be used for their intended purpose. Initialisation is compulsory, and a client may not call any actions or methods on an object until it has been initialised.  Exceptions to this rule only apply to the <code>GetKey()</code> and <code>SetKey()</code> actions.</p>
-<p>If the initialisation of an object fails due to a support problem (for example, if a PNG <class name="Picture">Picture</class> object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can support the object's configuration is available, the object's interface will be shared between both the base-class and the sub-class.</p>
+<p>If the initialisation of an object fails due to a support problem (for example, if a PNG @Picture object attempts to load a JPEG file), the initialiser will search for a sub-class that can handle the data.  If a sub-class that can support the object's configuration is available, the object's interface will be shared between both the base-class and the sub-class.</p>
 <p>If an object does not support the data or its configuration, an error code of <code>ERR::NoSupport</code> will be returned. Other appropriate error codes can be returned if initialisation fails.</p>
     </description>
     <result type="ERR">
@@ -1048,7 +1048,7 @@ parasol:pictures/    parasol:documents    parasol:documents (Existing documents 
 <p>This function can be used by classes that need fine-tuned control over notification events, as managed by the <function>SubscribeAction</function> function.  Normally the Core will automatically notify subscribers after an action is executed.  Using NotifySubscribers(), the client can instead manually notify subscribers during the execution of the action.</p>
 <p>Another useful aspect is that the client can control the parameter values that are passed on to the subscribers.</p>
 <p>NOTE: The use of NotifySubscribers() does not prevent the core from sending out an action notification as it normally would, which will cause duplication.  To prevent this, the client must logical-or the return code of the action function with <code>ERR::Notified</code>, e.g. <code>ERR::Okay|ERR::Notified</code>.</p>
-<p>In the following example the <class name="Surface">Surface</class> class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
+<p>In the following example the @Surface class uses NotifySubscribers() to convert a Move event to a Redimension event.  The parameter values are customised to support this, and the function returns <code>ERR::Notified</code> to prevent the core from sending out a Move notification.</p>
 <pre>ERR SURFACE_Move(extSurface *Self, struct acMove *Args)
 {
    if (!Args) return ERR::NullArgs|ERR::Notified;
@@ -1640,7 +1640,7 @@ static ResourceManager glNodeManager = {
     <description>
 <p>The SubscribeAction() function allows a client to receive a callback each time that an action is executed on an object.  This strategy is referred to as &quot;action monitoring&quot; and is often used for responding to UI events and the termination of objects.</p>
 <p>Subscriptions are context sensitive, so the <code>Callback</code> will execute in the space attributed to to the caller.</p>
-<p>The following example illustrates how to listen to a <class name="Surface">Surface</class> object's Redimension action and respond to resize events:</p>
+<p>The following example illustrates how to listen to a @Surface object's Redimension action and respond to resize events:</p>
 <pre>SubscribeAction(surface, AC::Redimension, C_FUNCTION(notify_resize, meta_ptr));
 </pre>
 <p>The template below illustrates how the <code>Callback</code> function should be constructed:</p>

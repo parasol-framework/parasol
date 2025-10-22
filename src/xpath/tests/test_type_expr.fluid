@@ -739,9 +739,9 @@ return {
       'testInstanceOfText',
 
       -- Typeswitch expression tests
-      --'testTypeswitchInteger', 'testTypeswitchString', 'testTypeswitchDefault',
-      --'testTypeswitchVariableBinding', 'testTypeswitchMultipleCases', 'testTypeswitchFirstMatchWins',
-      --'testTypeswitchElement', 'testTypeswitchOccurrenceIndicators',
+      'testTypeswitchInteger', 'testTypeswitchString', 'testTypeswitchDefault',
+      'testTypeswitchVariableBinding', 'testTypeswitchMultipleCases', 'testTypeswitchFirstMatchWins',
+      'testTypeswitchElement', 'testTypeswitchOccurrenceIndicators',
 
       -- To range operator tests
       --'testRangeBasic', 'testRangeCount', 'testRangeSingleElement', 'testRangeEmpty',

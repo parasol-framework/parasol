@@ -1010,6 +1010,130 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
+   auto matches_sequence_type = [&](const XPathVal &Value, const SequenceTypeInfo &SequenceInfo, const XPathNode *ContextNode)
+      -> std::optional<bool>
+   {
+      size_t item_count = sequence_item_count(Value);
+
+      if (SequenceInfo.kind IS SequenceItemKind::EmptySequence) return item_count IS 0;
+
+      if ((item_count IS 0) and (not SequenceInfo.allows_empty())) return false;
+      if ((item_count > 1) and (not SequenceInfo.allows_multiple())) return false;
+      if ((SequenceInfo.occurrence IS SequenceCardinality::ExactlyOne) and (item_count != 1)) return false;
+
+      if (item_count IS 0) return true;
+
+      if (SequenceInfo.kind IS SequenceItemKind::Item) return true;
+
+      if (SequenceInfo.kind IS SequenceItemKind::Node) {
+         if (Value.Type IS XPVT::NodeSet) {
+            for (size_t index = 0; index < item_count; ++index) {
+               const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
+                  Value.node_set_attributes[index] : nullptr;
+               XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+
+               if (attribute) continue;
+               if (!node) return false;
+               if (is_constructed_scalar_text(node)) return false;
+            }
+            return true;
+         }
+         return false;
+      }
+
+      if (SequenceInfo.kind IS SequenceItemKind::Element) {
+         if (Value.Type IS XPVT::NodeSet) {
+            for (size_t index = 0; index < item_count; ++index) {
+               const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
+                  Value.node_set_attributes[index] : nullptr;
+               XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+               if (attribute or (not node) or (not node->isTag())) return false;
+            }
+            return true;
+         }
+         return false;
+      }
+
+      if (SequenceInfo.kind IS SequenceItemKind::Attribute) {
+         if (Value.Type IS XPVT::NodeSet) {
+            for (size_t index = 0; index < item_count; ++index) {
+               const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
+                  Value.node_set_attributes[index] : nullptr;
+               if (!attribute) return false;
+            }
+            return true;
+         }
+         return false;
+      }
+
+      if (SequenceInfo.kind IS SequenceItemKind::Text) {
+         if (Value.Type IS XPVT::NodeSet) {
+            for (size_t index = 0; index < item_count; ++index) {
+               const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
+                  Value.node_set_attributes[index] : nullptr;
+               XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+               if (attribute or (not is_text_node(node))) return false;
+            }
+            return true;
+         }
+         return false;
+      }
+
+      auto &registry = xml::schema::registry();
+      auto target_descriptor = registry.find_descriptor(SequenceInfo.type_name);
+      if (!target_descriptor) {
+         auto message = std::format("XPST0052: Sequence type '{}' is not defined.", SequenceInfo.type_name);
+         record_error(message, ContextNode, true);
+         return std::nullopt;
+      }
+
+      xml::schema::TypeChecker checker(registry);
+
+      if (Value.Type IS XPVT::NodeSet) {
+         for (size_t index = 0; index < item_count; ++index) {
+            const XMLAttrib *attribute = (index < Value.node_set_attributes.size()) ?
+               Value.node_set_attributes[index] : nullptr;
+            XMLTag *node = (index < Value.node_set.size()) ? Value.node_set[index] : nullptr;
+
+            if (attribute) return false;
+            if (!node) return false;
+            if (!is_constructed_scalar_text(node)) return false;
+
+            std::string lexical = nodeset_item_string(Value, index);
+            XPathVal item_value(lexical);
+            if (not checker.validate_value(item_value, *target_descriptor)) return false;
+         }
+         return true;
+      }
+
+      auto target_schema = target_descriptor->schema_type;
+      auto value_schema = Value.get_schema_type();
+      auto value_descriptor = registry.find_descriptor(value_schema);
+
+      auto is_boolean_schema = [](xml::schema::SchemaType Type) noexcept
+      {
+         return (Type IS xml::schema::SchemaType::XPathBoolean) or (Type IS xml::schema::SchemaType::XSBoolean);
+      };
+
+      if (xml::schema::is_numeric(target_schema)) {
+         if (not xml::schema::is_numeric(value_schema)) return false;
+      }
+      else if (is_boolean_schema(target_schema)) {
+         if (not is_boolean_schema(value_schema)) return false;
+      }
+      else if (xml::schema::is_string_like(target_schema)) {
+         if (not xml::schema::is_string_like(value_schema)) return false;
+      }
+      else if (value_descriptor) {
+         if (not value_descriptor->is_derived_from(target_schema) and not target_descriptor->is_derived_from(value_schema)) {
+            return false;
+         }
+      }
+
+      if (not checker.validate_value(Value, *target_descriptor)) return false;
+      return true;
+   };
+
    // Use a switch for common node kinds for clarity and consistent early-returns
    switch (ExprNode->type) {
       case XPathNodeType::EMPTY_SEQUENCE: {
@@ -1381,103 +1505,9 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          XPathVal operand_value = evaluate_expression(operand_node, CurrentPrefix);
          if (expression_unsupported) return XPathVal();
 
-         size_t item_count = sequence_item_count(operand_value);
-
-         if (sequence_info->kind IS SequenceItemKind::EmptySequence) return XPathVal(item_count IS 0);
-
-         if ((item_count IS 0) and (not sequence_info->allows_empty())) return XPathVal(false);
-         if ((item_count > 1) and (not sequence_info->allows_multiple())) return XPathVal(false);
-         if ((sequence_info->occurrence IS SequenceCardinality::ExactlyOne) and (item_count != 1)) return XPathVal(false);
-         if (item_count IS 0) return XPathVal(true);
-
-         if (sequence_info->kind IS SequenceItemKind::Item) return XPathVal(true);
-
-         if (sequence_info->kind IS SequenceItemKind::Node) {
-            if (operand_value.Type IS XPVT::NodeSet) {
-               for (size_t index = 0; index < item_count; ++index) {
-                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
-                     operand_value.node_set_attributes[index] : nullptr;
-                  XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
-
-                  // Attributes are nodes; accept
-                  if (attribute) continue;
-
-                  // Must be an actual node, not a constructed scalar placeholder
-                  if (!node) return XPathVal(false);
-                  if (is_constructed_scalar_text(node)) return XPathVal(false);
-               }
-               return XPathVal(true);
-            }
-            return XPathVal(false);
-         }
-
-         if (sequence_info->kind IS SequenceItemKind::Element) {
-            if (operand_value.Type IS XPVT::NodeSet) {
-               for (size_t index = 0; index < item_count; ++index) {
-                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
-                     operand_value.node_set_attributes[index] : nullptr;
-                  XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
-                  if (attribute or (not node) or (not node->isTag())) return XPathVal(false);
-               }
-               return XPathVal(true);
-            }
-            return XPathVal(false);
-         }
-
-         if (sequence_info->kind IS SequenceItemKind::Attribute) {
-            if (operand_value.Type IS XPVT::NodeSet) {
-               for (size_t index = 0; index < item_count; ++index) {
-                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
-                     operand_value.node_set_attributes[index] : nullptr;
-                  if (!attribute) return XPathVal(false);
-               }
-               return XPathVal(true);
-            }
-            return XPathVal(false);
-         }
-
-         if (sequence_info->kind IS SequenceItemKind::Text) {
-            if (operand_value.Type IS XPVT::NodeSet) {
-               for (size_t index = 0; index < item_count; ++index) {
-                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
-                     operand_value.node_set_attributes[index] : nullptr;
-                  XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
-                  if (attribute or (not is_text_node(node))) return XPathVal(false);
-               }
-               return XPathVal(true);
-            }
-            return XPathVal(false);
-         }
-
-         auto &registry = xml::schema::registry();
-         auto target_descriptor = registry.find_descriptor(sequence_info->type_name);
-         if (!target_descriptor) {
-            auto message = std::format("XPST0052: Instance of target type '{}' is not defined.", sequence_info->type_name);
-            record_error(message, ExprNode, true);
-            return XPathVal();
-         }
-
-         xml::schema::TypeChecker checker(registry);
-
-         if (operand_value.Type IS XPVT::NodeSet) {
-            for (size_t index = 0; index < item_count; ++index) {
-               const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
-                  operand_value.node_set_attributes[index] : nullptr;
-               XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
-
-               if (attribute) return XPathVal(false);
-               if (!node) return XPathVal(false);
-               if (!is_constructed_scalar_text(node)) return XPathVal(false);
-
-               std::string lexical = nodeset_item_string(operand_value, index);
-               XPathVal item_value(lexical);
-               if (not checker.validate_value(item_value, *target_descriptor)) return XPathVal(false);
-            }
-            return XPathVal(true);
-         }
-
-         if (not checker.validate_value(operand_value, *target_descriptor)) return XPathVal(false);
-         return XPathVal(true);
+         auto match_result = matches_sequence_type(operand_value, *sequence_info, ExprNode);
+         if (not match_result.has_value()) return XPathVal();
+         return XPathVal(*match_result);
       }
       case XPathNodeType::CASTABLE_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {
@@ -1534,6 +1564,100 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          std::string operand_lexical = operand_value.to_string();
          bool castable_success = is_value_castable_to_type(operand_value, source_descriptor, target_descriptor, operand_lexical);
          return XPathVal(castable_success);
+      }
+      case XPathNodeType::TYPESWITCH_EXPRESSION: {
+         if (ExprNode->child_count() < 2) {
+            record_error("Typeswitch expression requires at least one clause.", ExprNode, true);
+            return XPathVal();
+         }
+
+         const XPathNode *operand_node = ExprNode->get_child(0);
+         if (!operand_node) {
+            record_error("Typeswitch expression is missing its operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         XPathVal operand_value = evaluate_expression(operand_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         const XPathNode *default_clause = nullptr;
+
+         for (size_t index = 1; index < ExprNode->child_count(); ++index) {
+            const XPathNode *clause_node = ExprNode->get_child(index);
+            if (!clause_node) continue;
+
+            if (clause_node->type IS XPathNodeType::TYPESWITCH_CASE) {
+               const auto *info = clause_node->get_typeswitch_case_info();
+               if ((not info) or (not info->has_sequence_type())) {
+                  record_error("Typeswitch case clause is missing its sequence type.", clause_node, true);
+                  return XPathVal();
+               }
+
+               auto sequence_info = parse_sequence_type_literal(info->sequence_type);
+               if (not sequence_info.has_value()) {
+                  record_error("XPST0003: Typeswitch case sequence type could not be parsed.", clause_node, true);
+                  return XPathVal();
+               }
+
+               auto match_result = matches_sequence_type(operand_value, *sequence_info, clause_node);
+               if (not match_result.has_value()) return XPathVal();
+               if (*match_result) {
+                  if (clause_node->child_count() IS 0) {
+                     record_error("Typeswitch case clause requires a return expression.", clause_node, true);
+                     return XPathVal();
+                  }
+
+                  const XPathNode *branch_expr = clause_node->get_child(0);
+                  if (!branch_expr) {
+                     record_error("Typeswitch case clause requires a return expression.", clause_node, true);
+                     return XPathVal();
+                  }
+
+                  std::optional<VariableBindingGuard> binding_guard;
+                  if (info->has_variable()) binding_guard.emplace(context, info->variable_name, operand_value);
+
+                  auto branch_value = evaluate_expression(branch_expr, CurrentPrefix);
+                  if (expression_unsupported) return XPathVal();
+                  return branch_value;
+               }
+
+               continue;
+            }
+
+            if (clause_node->type IS XPathNodeType::TYPESWITCH_DEFAULT_CASE) {
+               default_clause = clause_node;
+               continue;
+            }
+
+            record_error("Typeswitch expression encountered an unknown clause.", clause_node, true);
+            return XPathVal();
+         }
+
+         if (!default_clause) {
+            record_error("Typeswitch expression requires a default clause.", ExprNode, true);
+            return XPathVal();
+         }
+
+         if (default_clause->child_count() IS 0) {
+            record_error("Typeswitch default clause requires a return expression.", default_clause, true);
+            return XPathVal();
+         }
+
+         const XPathNode *default_expr = default_clause->get_child(0);
+         if (!default_expr) {
+            record_error("Typeswitch default clause requires a return expression.", default_clause, true);
+            return XPathVal();
+         }
+
+         std::optional<VariableBindingGuard> default_guard;
+         const auto *default_info = default_clause->get_typeswitch_case_info();
+         if (default_info and default_info->has_variable()) {
+            default_guard.emplace(context, default_info->variable_name, operand_value);
+         }
+
+         auto default_value = evaluate_expression(default_expr, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+         return default_value;
       }
       case XPathNodeType::UNION: {
          std::vector<const XPathNode *> branches;

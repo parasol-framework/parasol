@@ -86,6 +86,8 @@ enum class XPathTokenType {
    DESCENDING,        // descending
    EMPTY,             // empty
    DEFAULT,           // default
+   TYPESWITCH,        // typeswitch keyword
+   CASE,              // case keyword
    DECLARE,           // declare keyword
    FUNCTION,          // function keyword
    VARIABLE,          // variable keyword
