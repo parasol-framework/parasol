@@ -61,8 +61,6 @@ For each implementation:
 
 [x] Implement evaluation support that resolves the target schema type, enforces single-item cardinality, performs type coercion via SchemaTypeDescriptor::coerce_value, and raises XPTY0004/XPTY0006 errors with helpful context when conversion fails.
 
-[ ] Add positive/negative tests covering primitive type casts, invalid source cardinality, and conversion failures (new Fluid test file under src/xpath/tests/).
-
 #### castable Expression
 
 [x] Tokeniser: ensure castable is recognised distinctly so it does not collide with element names in non-keyword contexts.
@@ -77,13 +75,13 @@ For each implementation:
 
 #### treat as Expression
 
-[ ] Add treat keyword handling in the tokeniser and AST node type TREAT_AS_EXPRESSION with fields for the asserted sequence type (including occurrence).
+[x] Add treat keyword handling in the tokeniser and AST node type TREAT_AS_EXPRESSION with fields for the asserted sequence type (including occurrence).
 
-[ ] Parser: hook into parse_unary_expr (before union/path parsing) to consume Expr treat as SequenceType, ensuring proper precedence and reuse of the sequence-type parsing routine.
+[x] Parser: hook into parse_unary_expr (before union/path parsing) to consume Expr treat as SequenceType, ensuring proper precedence and reuse of the sequence-type parsing routine.
 
-[ ] Evaluator: implement runtime cardinality/type verification without coercion; reuse schema registry to validate each item and raise XPTY0004 with descriptive message when assertion fails.
+[x] Evaluator: implement runtime cardinality/type verification without coercion; reuse schema registry to validate each item and raise XPTY0004 with descriptive message when assertion fails.
 
-[ ] Tests: assert success/failure for matching and non-matching types, including optional (?), one-or-more (+), and zero-or-more (*) occurrence indicators.
+[x] Tests: assert success/failure for matching and non-matching types, including optional (?), one-or-more (+), and zero-or-more (*) occurrence indicators.
 
 #### instance of Expression
 

@@ -222,6 +222,7 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::SATISFIES:         return "satisfies";
       case XPathTokenType::CAST:              return "cast";
       case XPathTokenType::CASTABLE:          return "castable";
+      case XPathTokenType::TREAT:             return "treat";
       case XPathTokenType::AS:                return "as";
       case XPathTokenType::UNION:             return "union";
       case XPathTokenType::INTERSECT:         return "intersect";
@@ -2045,7 +2046,36 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr()
       return create_unary_op(op, std::move(operand));
    }
 
-   return parse_union_expr();
+   auto operand = parse_union_expr();
+   if (not operand) return nullptr;
+
+   while (true) {
+      XPathToken treat_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (not match_identifier_keyword("treat", XPathTokenType::TREAT, treat_token)) break;
+
+      if (not match_literal_keyword("as")) {
+         report_error("XPST0003: Expected 'as' after 'treat'.");
+         return nullptr;
+      }
+
+      auto sequence_type_literal = collect_sequence_type();
+      if (not sequence_type_literal) {
+         report_error("XPST0003: Expected sequence type after 'treat as'.");
+         return nullptr;
+      }
+
+      std::string sequence_type = *sequence_type_literal;
+      if (sequence_type.empty()) {
+         report_error("XPST0003: Treat as expression requires a sequence type.");
+         return nullptr;
+      }
+
+      auto treat_node = std::make_unique<XPathNode>(XPathNodeType::TREAT_AS_EXPRESSION, std::move(sequence_type));
+      treat_node->add_child(std::move(operand));
+      operand = std::move(treat_node);
+   }
+
+   return operand;
 }
 
 //********************************************************************************************************************

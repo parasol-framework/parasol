@@ -233,7 +233,7 @@ function testTreatAsOneOrMore()
    local xml = obj.new("xml", { statement = '<root><item>1</item><item>2</item></root>' })
 
    -- Multiple items treated as one-or-more
-   local err, result = xml.mtEvaluate('/root/item/text() treat as xs:string+')
+   local err, result = xml.mtEvaluate('data(/root/item/text()) treat as xs:string+')
    assert(err == ERR_Okay, "Treat as one-or-more should succeed: " .. mSys.GetErrorMsg(err))
 
    -- Empty sequence should fail with +
@@ -711,9 +711,9 @@ return {
       'testCastableEmptySequence', 'testCastableFromAttribute',
 
       -- Treat as expression tests
-      --'testTreatAsMatchingType', 'testTreatAsString', 'testTreatAsMismatchedType',
-      --'testTreatAsOptional', 'testTreatAsOneOrMore', 'testTreatAsZeroOrMore',
-      --'testTreatAsElementSequence',
+      'testTreatAsMatchingType', 'testTreatAsString', 'testTreatAsMismatchedType',
+      'testTreatAsOptional', 'testTreatAsOneOrMore', 'testTreatAsZeroOrMore',
+      'testTreatAsElementSequence',
 
       -- Instance of expression tests
       --'testInstanceOfInteger', 'testInstanceOfNonMatchingType', 'testInstanceOfString',
