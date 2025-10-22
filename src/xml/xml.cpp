@@ -38,7 +38,7 @@ document access.  XQuery support excludes the following:
 
 <list type="bullet">
 <li>Schema-aware processing: Type validation against XML Schema is not supported.</li>
-<li>Type operations: The `typeswitch`, `treat as`, `cast as`, `castable as`, and `instance of` expressions are not supported.</li>
+<li>Type operations: The `typeswitch`, `treat as`, and `instance of` expressions are not supported.</li>
 <li>Module imports: XQuery module import declarations are not supported.</li>
 </list>
 

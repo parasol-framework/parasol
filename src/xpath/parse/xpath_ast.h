@@ -109,6 +109,7 @@ enum class XPathTokenType {
    EVERY,             // every
    SATISFIES,         // satisfies
    CAST,              // cast keyword
+   CASTABLE,          // castable keyword
    AS,                // as keyword
 
    // Arithmetic operators

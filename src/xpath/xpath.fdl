@@ -68,7 +68,8 @@ enum('XPathNodeType', { type='int', start=0 },
    'DOCUMENT_CONSTRUCTOR',
    'CONSTRUCTOR_CONTENT',
    'ATTRIBUTE_VALUE_TEMPLATE',
-   'EMPTY_SEQUENCE')
+   'EMPTY_SEQUENCE',
+   'CASTABLE_EXPRESSION')
 
   functionNames("xp",
      "Compile",

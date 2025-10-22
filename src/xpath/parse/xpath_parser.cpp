@@ -221,6 +221,7 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::EVERY:             return "every";
       case XPathTokenType::SATISFIES:         return "satisfies";
       case XPathTokenType::CAST:              return "cast";
+      case XPathTokenType::CASTABLE:          return "castable";
       case XPathTokenType::AS:                return "as";
       case XPathTokenType::UNION:             return "union";
       case XPathTokenType::INTERSECT:         return "intersect";
@@ -1985,11 +1986,15 @@ std::unique_ptr<XPathNode> XPathParser::parse_cast_expr()
    auto operand = parse_unary_expr();
    if (not operand) return nullptr;
 
-   XPathToken cast_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
-   if (not match_identifier_keyword("cast", XPathTokenType::CAST, cast_token)) return operand;
+   XPathToken keyword_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   bool is_cast = false;
+
+   if (match_identifier_keyword("cast", XPathTokenType::CAST, keyword_token)) is_cast = true;
+   else if (not match_identifier_keyword("castable", XPathTokenType::CASTABLE, keyword_token)) return operand;
 
    if (not match_literal_keyword("as")) {
-      report_error("XPST0003: Expected 'as' after 'cast'.");
+      if (is_cast) report_error("XPST0003: Expected 'as' after 'cast'.");
+      else report_error("XPST0003: Expected 'as' after 'castable'.");
       return nullptr;
    }
 
@@ -2001,13 +2006,15 @@ std::unique_ptr<XPathNode> XPathParser::parse_cast_expr()
 
    std::string target_type = trim_copy(*type_name);
    if (target_type.empty()) {
-      report_error("XPST0003: Cast expression requires a target type.");
+      if (is_cast) report_error("XPST0003: Cast expression requires a target type.");
+      else report_error("XPST0003: Castable expression requires a target type.");
       return nullptr;
    }
 
    if (match(XPathTokenType::QUESTION_MARK)) target_type.push_back('?');
 
-   auto cast_node = std::make_unique<XPathNode>(XPathNodeType::CAST_EXPRESSION, std::move(target_type));
+   auto node_type = is_cast ? XPathNodeType::CAST_EXPRESSION : XPathNodeType::CASTABLE_EXPRESSION;
+   auto cast_node = std::make_unique<XPathNode>(node_type, std::move(target_type));
    cast_node->add_child(std::move(operand));
    return cast_node;
 }
