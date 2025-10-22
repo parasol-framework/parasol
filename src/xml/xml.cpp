@@ -18,7 +18,7 @@ sections, processing instructions, and DOCTYPE declarations.  Documents can be l
 and modified programmatically through a tree-based API.  The parser validates well-formedness and provides detailed
 error reporting for malformed documents.
 
-<header>XPath 2.0 Support</header>
+<header>XPath 2.0+ Support</header>
 
 All aspects of XPath 2.0 are supported except for the following:
 
@@ -29,7 +29,7 @@ All aspects of XPath 2.0 are supported except for the following:
 <li>Custom collations: Only the W3C codepoint collation (`http://www.w3.org/2005/xpath-functions/collation/codepoint`) is supported.  Custom collation URIs are rejected.</li>
 </list>
 
-<header>XQuery 1.0 Support</header>
+<header>XQuery 1.0+ Support</header>
 
 The module implements core XQuery 1.0 functionality, including FLWOR expressions (`for`, `let`, `where`, `order by`,
 `return`, `group by`, `count` clauses), node constructors (element, attribute, document, text, comment, processing
@@ -38,8 +38,6 @@ document access.  XQuery support excludes the following:
 
 <list type="bullet">
 <li>Schema-aware processing: Type validation against XML Schema is not supported.</li>
-<li>Type operations: The `typeswitch`, `treat as`, and `instance of` expressions are not supported.</li>
-<li>Module imports: XQuery module import declarations are not supported.</li>
 </list>
 
 -END-
