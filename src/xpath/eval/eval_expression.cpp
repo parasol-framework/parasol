@@ -185,7 +185,7 @@ static bool is_valid_xs_time(std::string_view Value)
    if (Value[5] != ':') return false;
    if ((Value[6] < '0') or (Value[6] > '9') or (Value[7] < '0') or (Value[7] > '9')) return false;
    int second = (Value[6] - '0') * 10 + (Value[7] - '0');
-   if ((second < 0) or (second >= 60)) return false;
+   if (second >= 60) return false;
 
    size_t index = 8;
    if ((index < Value.size()) and (Value[index] IS '.'))
