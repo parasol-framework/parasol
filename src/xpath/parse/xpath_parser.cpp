@@ -1,6 +1,7 @@
 
 #include "xpath_parser.h"
 #include "../api/xquery_prolog.h"
+#include "../eval/eval_detail.h"
 #include <algorithm>
 #include <parasol/strings.hpp>
 #include <utility>
@@ -198,6 +199,8 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::DESCENDING:        return "descending";
       case XPathTokenType::EMPTY:             return "empty";
       case XPathTokenType::DEFAULT:           return "default";
+      case XPathTokenType::TYPESWITCH:        return "typeswitch";
+      case XPathTokenType::CASE:              return "case";
       case XPathTokenType::DECLARE:           return "declare";
       case XPathTokenType::FUNCTION:          return "function";
       case XPathTokenType::VARIABLE:          return "variable";
@@ -220,6 +223,13 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
       case XPathTokenType::SOME:              return "some";
       case XPathTokenType::EVERY:             return "every";
       case XPathTokenType::SATISFIES:         return "satisfies";
+      case XPathTokenType::CAST:              return "cast";
+      case XPathTokenType::CASTABLE:          return "castable";
+      case XPathTokenType::TREAT:             return "treat";
+      case XPathTokenType::AS:                return "as";
+      case XPathTokenType::INSTANCE:          return "instance";
+      case XPathTokenType::OF:                return "of";
+      case XPathTokenType::TO:                return "to";
       case XPathTokenType::UNION:             return "union";
       case XPathTokenType::INTERSECT:         return "intersect";
       case XPathTokenType::EXCEPT:            return "except";
@@ -314,7 +324,7 @@ std::optional<std::string> XPathParser::parse_qname_string()
 
 //********************************************************************************************************************
 
-std::optional<std::string> XPathParser::collect_sequence_type()
+std::optional<std::string> XPathParser::collect_sequence_type(bool StopAtReturnKeyword)
 {
    std::string collected;
    int paren_depth = 0;
@@ -329,6 +339,11 @@ std::optional<std::string> XPathParser::collect_sequence_type()
       if ((token.type IS XPathTokenType::ASSIGN) and (paren_depth IS 0)) break;
       if ((token.type IS XPathTokenType::SEMICOLON) and (paren_depth IS 0)) break;
       if (check_literal_keyword("external") and (paren_depth IS 0)) break;
+      if (StopAtReturnKeyword and (token.type IS XPathTokenType::RETURN) and (paren_depth IS 0)) {
+         // Permit QNames such as xs:return by ensuring the keyword is not part of a prefixed name.
+         if (previous_type IS XPathTokenType::COLON) {}
+         else break;
+      }
 
       if (token.type IS XPathTokenType::LPAREN) paren_depth++;
       else if (token.type IS XPathTokenType::RPAREN) {
@@ -338,7 +353,8 @@ std::optional<std::string> XPathParser::collect_sequence_type()
 
       bool add_space = !collected.empty();
       if (add_space) {
-         if ((previous_type IS XPathTokenType::COLON) or (token.type IS XPathTokenType::COLON)) add_space = false;
+         if ((previous_type IS XPathTokenType::COLON) or (token.type IS XPathTokenType::COLON) or
+             (previous_type IS XPathTokenType::QUESTION_MARK) or (token.type IS XPathTokenType::QUESTION_MARK)) add_space = false;
       }
 
       if (add_space) collected.push_back(' ');
@@ -1346,6 +1362,8 @@ std::unique_ptr<XPathNode> XPathParser::parse_expr_single()
 {
    if (check(XPathTokenType::IF)) return parse_if_expr();
 
+   if (check_identifier_keyword("typeswitch")) return parse_typeswitch_expr();
+
    if (check(XPathTokenType::FOR) or check(XPathTokenType::LET) or check_identifier_keyword("let")) {
       return parse_flwor_expr();
    }
@@ -1912,7 +1930,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_equality_expr() {
 
 std::unique_ptr<XPathNode> XPathParser::parse_relational_expr()
 {
-   auto left = parse_additive_expr();
+   auto left = parse_instance_of_expr();
 
    while (check(XPathTokenType::LESS_THAN) or check(XPathTokenType::LESS_EQUAL) or
           check(XPathTokenType::GREATER_THAN) or check(XPathTokenType::GREATER_EQUAL) or
@@ -1920,11 +1938,68 @@ std::unique_ptr<XPathNode> XPathParser::parse_relational_expr()
           check(XPathTokenType::GT) or check(XPathTokenType::GE)) {
       XPathToken op = peek();
       advance();
-      auto right = parse_additive_expr();
+      auto right = parse_instance_of_expr();
       left = create_binary_op(std::move(left), op, std::move(right));
    }
 
    return left;
+}
+
+//********************************************************************************************************************
+// Parses instance of expressions of the form Expr instance of SequenceType.
+
+std::unique_ptr<XPathNode> XPathParser::parse_instance_of_expr()
+{
+   auto operand = parse_range_expr();
+   if (not operand) return nullptr;
+
+   while (true) {
+      XPathToken instance_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (not match_identifier_keyword("instance", XPathTokenType::INSTANCE, instance_token)) break;
+
+      if (not match_literal_keyword("of")) {
+         report_error("XPST0003: Expected 'of' after 'instance'.");
+         return nullptr;
+      }
+
+      auto sequence_type_literal = collect_sequence_type();
+      if (not sequence_type_literal) {
+         report_error("XPST0003: Expected sequence type after 'instance of'.");
+         return nullptr;
+      }
+
+      std::string sequence_type = *sequence_type_literal;
+      if (sequence_type.empty()) {
+         report_error("XPST0003: Instance of expression requires a sequence type.");
+         return nullptr;
+      }
+
+      auto instance_node = std::make_unique<XPathNode>(XPathNodeType::INSTANCE_OF_EXPRESSION, std::move(sequence_type));
+      instance_node->add_child(std::move(operand));
+      operand = std::move(instance_node);
+   }
+
+   return operand;
+}
+
+//********************************************************************************************************************
+// Parses range expressions of the form Expr to Expr, binding less tightly than additive operators.
+
+std::unique_ptr<XPathNode> XPathParser::parse_range_expr()
+{
+   auto left = parse_additive_expr();
+   if (not left) return nullptr;
+
+   XPathToken to_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   if (not match_identifier_keyword("to", XPathTokenType::TO, to_token)) return left;
+
+   auto right = parse_additive_expr();
+   if (not right) {
+      report_error("XPST0003: Range expression requires an expression after 'to'.");
+      return nullptr;
+   }
+
+   return create_binary_op(std::move(left), to_token, std::move(right));
 }
 
 //********************************************************************************************************************
@@ -1948,17 +2023,58 @@ std::unique_ptr<XPathNode> XPathParser::parse_additive_expr()
 // Parses multiplicative expressions for *, div, and mod operators with left-associative binding.
 
 std::unique_ptr<XPathNode> XPathParser::parse_multiplicative_expr() {
-   auto left = parse_unary_expr();
+   auto left = parse_cast_expr();
 
    while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::DIVIDE) or
           check(XPathTokenType::MODULO)) {
       XPathToken op = peek();
       advance();
-      auto right = parse_unary_expr();
+      auto right = parse_cast_expr();
       left = create_binary_op(std::move(left), op, std::move(right));
    }
 
    return left;
+}
+
+//********************************************************************************************************************
+// Parses cast expressions of the form Expr cast as SingleType.
+
+std::unique_ptr<XPathNode> XPathParser::parse_cast_expr()
+{
+   auto operand = parse_unary_expr();
+   if (not operand) return nullptr;
+
+   XPathToken keyword_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   bool is_cast = false;
+
+   if (match_identifier_keyword("cast", XPathTokenType::CAST, keyword_token)) is_cast = true;
+   else if (not match_identifier_keyword("castable", XPathTokenType::CASTABLE, keyword_token)) return operand;
+
+   if (not match_literal_keyword("as")) {
+      if (is_cast) report_error("XPST0003: Expected 'as' after 'cast'.");
+      else report_error("XPST0003: Expected 'as' after 'castable'.");
+      return nullptr;
+   }
+
+   auto type_name = parse_qname_string();
+   if (not type_name) {
+      report_error("XPST0003: Expected type name after 'as'.");
+      return nullptr;
+   }
+
+   std::string target_type(trim_view(*type_name));
+   if (target_type.empty()) {
+      if (is_cast) report_error("XPST0003: Cast expression requires a target type.");
+      else report_error("XPST0003: Castable expression requires a target type.");
+      return nullptr;
+   }
+
+   if (match(XPathTokenType::QUESTION_MARK)) target_type.push_back('?');
+
+   auto node_type = is_cast ? XPathNodeType::CAST_EXPRESSION : XPathNodeType::CASTABLE_EXPRESSION;
+   auto cast_node = std::make_unique<XPathNode>(node_type, std::move(target_type));
+   cast_node->add_child(std::move(operand));
+   return cast_node;
 }
 
 //********************************************************************************************************************
@@ -1987,7 +2103,36 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr()
       return create_unary_op(op, std::move(operand));
    }
 
-   return parse_union_expr();
+   auto operand = parse_union_expr();
+   if (not operand) return nullptr;
+
+   while (true) {
+      XPathToken treat_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (not match_identifier_keyword("treat", XPathTokenType::TREAT, treat_token)) break;
+
+      if (not match_literal_keyword("as")) {
+         report_error("XPST0003: Expected 'as' after 'treat'.");
+         return nullptr;
+      }
+
+      auto sequence_type_literal = collect_sequence_type();
+      if (not sequence_type_literal) {
+         report_error("XPST0003: Expected sequence type after 'treat as'.");
+         return nullptr;
+      }
+
+      std::string sequence_type = *sequence_type_literal;
+      if (sequence_type.empty()) {
+         report_error("XPST0003: Treat as expression requires a sequence type.");
+         return nullptr;
+      }
+
+      auto treat_node = std::make_unique<XPathNode>(XPathNodeType::TREAT_AS_EXPRESSION, std::move(sequence_type));
+      treat_node->add_child(std::move(operand));
+      operand = std::move(treat_node);
+   }
+
+   return operand;
 }
 
 //********************************************************************************************************************
@@ -2183,6 +2328,124 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr()
    conditional->add_child(std::move(then_branch));
    conditional->add_child(std::move(else_branch));
    return conditional;
+}
+
+//********************************************************************************************************************
+// Parses XPath 2.0 typeswitch expressions including case clauses and the mandatory default clause.
+
+std::unique_ptr<XPathNode> XPathParser::parse_typeswitch_expr()
+{
+   XPathToken keyword_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   if (not match_identifier_keyword("typeswitch", XPathTokenType::TYPESWITCH, keyword_token)) {
+      report_error("XPST0003: Expected 'typeswitch' expression.");
+      return nullptr;
+   }
+
+   if (not match(XPathTokenType::LPAREN)) {
+      report_error("XPST0003: Expected '(' after 'typeswitch'.");
+      return nullptr;
+   }
+
+   auto operand_expr = parse_expr();
+   if (not operand_expr) return nullptr;
+
+   if (not match(XPathTokenType::RPAREN)) {
+      report_error("XPST0003: Expected ')' after typeswitch operand.");
+      return nullptr;
+   }
+
+   std::vector<std::unique_ptr<XPathNode>> case_nodes;
+   bool saw_case_clause = false;
+
+   while (true) {
+      XPathToken case_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (not match_identifier_keyword("case", XPathTokenType::CASE, case_token)) break;
+
+      saw_case_clause = true;
+
+      std::string variable_name;
+      if (match(XPathTokenType::DOLLAR)) {
+         auto variable_qname = parse_qname_string();
+         if (not variable_qname) return nullptr;
+         variable_name = *variable_qname;
+
+         if (not match_literal_keyword("as")) {
+            report_error("XPST0003: Expected 'as' after case variable name.");
+            return nullptr;
+         }
+      }
+
+      auto sequence_literal = collect_sequence_type(true);
+      if (not sequence_literal) {
+         report_error("XPST0003: Case clause requires a sequence type.");
+         return nullptr;
+      }
+
+      std::string sequence_type(trim_view(*sequence_literal));
+      if (sequence_type.empty()) {
+         report_error("XPST0003: Case clause requires a sequence type.");
+         return nullptr;
+      }
+
+      XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+      if (not match_identifier_keyword("return", XPathTokenType::RETURN, return_token)) {
+         report_error("XPST0003: Expected 'return' in typeswitch case clause.");
+         return nullptr;
+      }
+
+      auto branch_expr = parse_expr_single();
+      if (not branch_expr) return nullptr;
+
+      auto case_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_CASE);
+      XPathNode::XPathTypeswitchCaseInfo info;
+      info.variable_name = std::move(variable_name);
+      info.sequence_type = std::move(sequence_type);
+      case_node->set_typeswitch_case_info(std::move(info));
+      case_node->add_child(std::move(branch_expr));
+      case_nodes.push_back(std::move(case_node));
+   }
+
+   if (not saw_case_clause) {
+      report_error("XPST0003: Typeswitch expression requires at least one case clause.");
+      return nullptr;
+   }
+
+   XPathToken default_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   if (not match_identifier_keyword("default", XPathTokenType::DEFAULT, default_token)) {
+      report_error("XPST0003: Typeswitch expression requires a default clause.");
+      return nullptr;
+   }
+
+   std::string default_variable;
+   if (match(XPathTokenType::DOLLAR)) {
+      auto variable_qname = parse_qname_string();
+      if (not variable_qname) return nullptr;
+      default_variable = *variable_qname;
+   }
+
+   XPathToken return_token(XPathTokenType::UNKNOWN, std::string_view(), 0, 0);
+   if (not match_identifier_keyword("return", XPathTokenType::RETURN, return_token)) {
+      report_error("XPST0003: Expected 'return' in typeswitch default clause.");
+      return nullptr;
+   }
+
+   auto default_expr = parse_expr_single();
+   if (not default_expr) return nullptr;
+
+   auto typeswitch_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_EXPRESSION);
+   typeswitch_node->add_child(std::move(operand_expr));
+
+   for (auto &node : case_nodes) typeswitch_node->add_child(std::move(node));
+
+   auto default_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_DEFAULT_CASE);
+   XPathNode::XPathTypeswitchCaseInfo default_info;
+   default_info.variable_name = std::move(default_variable);
+   default_info.is_default = true;
+   default_node->set_typeswitch_case_info(std::move(default_info));
+   default_node->add_child(std::move(default_expr));
+   typeswitch_node->add_child(std::move(default_node));
+
+   return typeswitch_node;
 }
 
 //********************************************************************************************************************

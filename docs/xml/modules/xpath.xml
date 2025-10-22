@@ -104,11 +104,11 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
     <prototype>ERR xp::Query(objXML * XML, APTR Query, FUNCTION * Callback)</prototype>
     <input>
       <param type="objXML *" name="XML">The XML document to evaluate the query against.</param>
-      <param type="APTR" name="Query">The compiled XPath or XQuery expression.</param>
+      <param type="APTR" name="Query">The compiled XQuery / XPath expression.</param>
       <param type="FUNCTION *" name="Callback">Pointer to a callback function that will be called for each matching node.  Can be NULL if searching for the first matching node.</param>
     </input>
     <description>
-<p>Use the Query function to scan an XML document for tags or attributes that match a compiled XPath or XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
+<p>Use the Query function to scan an XML document for tags or attributes that match a compiled XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
 <p>If no callback is provided, the search stops after the first match and the <class name="XML">XML</class> object's cursor markers will reflect the position of the node.</p>
 <p>Note that valid function execution can return <code>ERR:Search</code> if zero matches are found.</p>
     </description>
@@ -126,6 +126,8 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
       <const name="ATTRIBUTE_VALUE_TEMPLATE"/>
       <const name="AXIS_SPECIFIER"/>
       <const name="BINARY_OP"/>
+      <const name="CASTABLE_EXPRESSION"/>
+      <const name="CAST_EXPRESSION"/>
       <const name="COMMENT_CONSTRUCTOR"/>
       <const name="COMPUTED_ATTRIBUTE_CONSTRUCTOR"/>
       <const name="COMPUTED_ELEMENT_CONSTRUCTOR"/>
@@ -145,6 +147,7 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
       <const name="FUNCTION_CALL"/>
       <const name="GROUP_CLAUSE"/>
       <const name="GROUP_KEY"/>
+      <const name="INSTANCE_OF_EXPRESSION"/>
       <const name="LET_BINDING"/>
       <const name="LET_EXPRESSION"/>
       <const name="LITERAL"/>
@@ -165,6 +168,10 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
       <const name="STEP"/>
       <const name="STRING"/>
       <const name="TEXT_CONSTRUCTOR"/>
+      <const name="TREAT_AS_EXPRESSION"/>
+      <const name="TYPESWITCH_CASE"/>
+      <const name="TYPESWITCH_DEFAULT_CASE"/>
+      <const name="TYPESWITCH_EXPRESSION"/>
       <const name="UNARY_OP"/>
       <const name="UNION"/>
       <const name="VARIABLE_REFERENCE"/>

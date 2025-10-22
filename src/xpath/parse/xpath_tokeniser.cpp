@@ -57,6 +57,8 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "descending", XPathTokenType::DESCENDING },
    KeywordMapping{ "empty", XPathTokenType::EMPTY },
    KeywordMapping{ "default", XPathTokenType::DEFAULT },
+   KeywordMapping{ "typeswitch", XPathTokenType::TYPESWITCH },
+   KeywordMapping{ "case", XPathTokenType::CASE },
    KeywordMapping{ "declare", XPathTokenType::DECLARE },
    KeywordMapping{ "function", XPathTokenType::FUNCTION },
    KeywordMapping{ "variable", XPathTokenType::VARIABLE },
@@ -78,7 +80,14 @@ constexpr std::array keyword_mappings{
    KeywordMapping{ "count", XPathTokenType::COUNT },
    KeywordMapping{ "some", XPathTokenType::SOME },
    KeywordMapping{ "every", XPathTokenType::EVERY },
-   KeywordMapping{ "satisfies", XPathTokenType::SATISFIES }
+   KeywordMapping{ "satisfies", XPathTokenType::SATISFIES },
+   KeywordMapping{ "to", XPathTokenType::TO },
+   KeywordMapping{ "cast", XPathTokenType::CAST },
+   KeywordMapping{ "castable", XPathTokenType::CASTABLE },
+   KeywordMapping{ "treat", XPathTokenType::TREAT },
+   KeywordMapping{ "as", XPathTokenType::AS },
+   KeywordMapping{ "instance", XPathTokenType::INSTANCE },
+   KeywordMapping{ "of", XPathTokenType::OF }
 };
 
 constexpr std::array multi_char_operators{
@@ -829,6 +838,7 @@ XPathToken XPathTokeniser::scan_operator()
       case '-': position++; return XPathToken(XPathTokenType::MINUS, single_char, start, 1);
       case ':': position++; return XPathToken(XPathTokenType::COLON, single_char, start, 1);
       case '$': position++; return XPathToken(XPathTokenType::DOLLAR, single_char, start, 1);
+      case '?': position++; return XPathToken(XPathTokenType::QUESTION_MARK, single_char, start, 1);
    }
 
    return XPathToken(XPathTokenType::UNKNOWN, std::string_view(""), start, 0);

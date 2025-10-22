@@ -36,6 +36,10 @@ int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightV
 int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XPathVal &RightValue,
    bool RightEmpty, const XPathOrderComparatorOptions &Options);
 
+// String and whitespace utilities
+bool is_space_character(char Ch) noexcept;
+std::string_view trim_view(std::string_view Text);
+
 // Predicate value extraction and comparison (implemented in xpath_evaluator_predicates.cpp)
 std::string node_set_string_value(const XPathVal &Value, size_t Index);
 double node_set_number_value(const XPathVal &Value, size_t Index);

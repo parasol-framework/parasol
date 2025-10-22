@@ -86,6 +86,8 @@ enum class XPathTokenType {
    DESCENDING,        // descending
    EMPTY,             // empty
    DEFAULT,           // default
+   TYPESWITCH,        // typeswitch keyword
+   CASE,              // case keyword
    DECLARE,           // declare keyword
    FUNCTION,          // function keyword
    VARIABLE,          // variable keyword
@@ -108,6 +110,13 @@ enum class XPathTokenType {
    SOME,              // some
    EVERY,             // every
    SATISFIES,         // satisfies
+   CAST,              // cast keyword
+   CASTABLE,          // castable keyword
+   TREAT,             // treat keyword
+   AS,                // as keyword
+   INSTANCE,          // instance keyword
+   OF,                // of keyword
+   TO,                // to keyword
 
    // Arithmetic operators
    PLUS,              // +
@@ -136,6 +145,7 @@ enum class XPathTokenType {
 
    // Special tokens
    TEXT_CONTENT,      // literal content inside direct constructors
+   QUESTION_MARK,     // ? occurrence indicator
    END_OF_INPUT,
    UNKNOWN
 };
