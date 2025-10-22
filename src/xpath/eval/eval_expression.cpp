@@ -115,7 +115,6 @@ static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_v
    size_t end = trimmed.size();
    char occurrence_marker = '\0';
 
-   while ((end > 0) and is_space_character(trimmed[end - 1])) end--;
    if (end > 0) {
       char marker = trimmed[end - 1];
       if ((marker IS '?') or (marker IS '+') or (marker IS '*')) {
