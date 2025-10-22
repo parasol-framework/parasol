@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Sequence Functions
 
 XPathVal XPathFunctionLibrary::function_index_of(const std::vector<XPathVal> &Args, const XPathContext &Context)

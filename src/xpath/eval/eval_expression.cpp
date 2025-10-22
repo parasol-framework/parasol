@@ -1398,7 +1398,13 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                   const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
                      operand_value.node_set_attributes[index] : nullptr;
                   XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
-                  if ((not attribute) and (not node)) return XPathVal(false);
+
+                  // Attributes are nodes; accept
+                  if (attribute) continue;
+
+                  // Must be an actual node, not a constructed scalar placeholder
+                  if (!node) return XPathVal(false);
+                  if (is_constructed_scalar_text(node)) return XPathVal(false);
                }
                return XPathVal(true);
             }

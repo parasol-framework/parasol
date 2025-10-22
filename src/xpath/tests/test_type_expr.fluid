@@ -301,6 +301,23 @@ function testInstanceOfBoolean()
    assert(result == "true", "true() should be instance of xs:boolean, got: " .. result)
 end
 
+-- Regression: atomic sequences must not satisfy node() tests
+function testInstanceOfNodeWithAtomicSequence()
+   local xml = obj.new("xml", { statement = '<root attr="v">text</root>' })
+
+   -- Purely atomic sequence should not be instance of node()
+   local err, result = xml.mtEvaluate('(1, 2) instance of node()')
+   assert(err == ERR_Okay, "Instance of node() on atomic sequence should evaluate: " .. mSys.GetErrorMsg(err))
+   assert(result == "false", "(1, 2) must not satisfy node(), got: " .. nz(result, 'NIL'))
+
+   -- Control checks: real nodes should satisfy node()
+   local err2, result2 = xml.mtEvaluate('/root/text() instance of node()')
+   assert(err2 == ERR_Okay and result2 == "true", "text() should satisfy node(), got: " .. nz(result2, 'NIL'))
+
+   local err3, result3 = xml.mtEvaluate('/root/@attr instance of node()')
+   assert(err3 == ERR_Okay and result3 == "true", "@attr should satisfy node(), got: " .. nz(result3, 'NIL'))
+end
+
 -- Test instance of with occurrence indicator ?
 function testInstanceOfOptional()
    local xml = obj.new("xml", { statement = '<root/>' })
