@@ -171,3 +171,79 @@ class XPathEvaluator : public XPathErrorReporter {
    void pop_cursor_state();
    bool has_cursor_state() const { return !cursor_stack.empty(); }
 };
+
+enum class BinaryOperationKind {
+   AND,
+   OR,
+   UNION,
+   INTERSECT,
+   EXCEPT,
+   COMMA,
+   EQ,
+   NE,
+   EQ_WORD,
+   NE_WORD,
+   LT,
+   LE,
+   GT,
+   GE,
+   ADD,
+   SUB,
+   MUL,
+   DIV,
+   MOD,
+   RANGE,
+   UNKNOWN
+};
+
+struct SequenceEntry {
+   XMLTag * node = nullptr;
+   const XMLAttrib * attribute = nullptr;
+   std::string string_value;
+};
+
+struct ForBindingDefinition {
+   std::string name;
+   const XPathNode * sequence = nullptr;
+};
+
+struct QuantifiedBindingDefinition {
+   std::string name;
+   const XPathNode * sequence = nullptr;
+};
+
+struct CastTargetInfo {
+   std::string type_name;
+   bool allows_empty = false;
+};
+
+enum class SequenceCardinality {
+   ExactlyOne,
+   ZeroOrOne,
+   OneOrMore,
+   ZeroOrMore
+};
+
+enum class SequenceItemKind {
+   Atomic,
+   Element,
+   Attribute,
+   Text,
+   Node,
+   Item,
+   EmptySequence
+};
+
+struct SequenceTypeInfo {
+   SequenceCardinality occurrence = SequenceCardinality::ExactlyOne;
+   SequenceItemKind kind = SequenceItemKind::Atomic;
+   std::string type_name;
+
+   [[nodiscard]] inline bool allows_empty() const {
+      return (occurrence IS SequenceCardinality::ZeroOrOne) or (occurrence IS SequenceCardinality::ZeroOrMore);
+   }
+
+   [[nodiscard]] inline bool allows_multiple() const {
+      return (occurrence IS SequenceCardinality::OneOrMore) or (occurrence IS SequenceCardinality::ZeroOrMore);
+   }
+};

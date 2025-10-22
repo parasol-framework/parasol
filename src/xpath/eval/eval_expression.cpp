@@ -5,6 +5,7 @@
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/schema/type_checker.h"
 #include "../../xml/xml.h"
+
 #include <parasol/strings.hpp>
 #include <format>
 #include <cmath>
@@ -16,60 +17,10 @@
 #include <system_error>
 #include <optional>
 #include <limits>
+#include "checked_arith.h"
 
-struct SequenceEntry {
-   XMLTag * node = nullptr;
-   const XMLAttrib * attribute = nullptr;
-   std::string string_value;
-};
-
-struct ForBindingDefinition {
-   std::string name;
-   const XPathNode * sequence = nullptr;
-};
-
-struct QuantifiedBindingDefinition {
-   std::string name;
-   const XPathNode * sequence = nullptr;
-};
-
-struct CastTargetInfo {
-   std::string type_name;
-   bool allows_empty = false;
-};
-
-enum class SequenceCardinality {
-   ExactlyOne,
-   ZeroOrOne,
-   OneOrMore,
-   ZeroOrMore
-};
-
-enum class SequenceItemKind {
-   Atomic,
-   Element,
-   Attribute,
-   Text,
-   Node,
-   Item,
-   EmptySequence
-};
-
-struct SequenceTypeInfo {
-   SequenceCardinality occurrence = SequenceCardinality::ExactlyOne;
-   SequenceItemKind kind = SequenceItemKind::Atomic;
-   std::string type_name;
-
-   [[nodiscard]] bool allows_empty() const
-   {
-      return (occurrence IS SequenceCardinality::ZeroOrOne) or (occurrence IS SequenceCardinality::ZeroOrMore);
-   }
-
-   [[nodiscard]] bool allows_multiple() const
-   {
-      return (occurrence IS SequenceCardinality::OneOrMore) or (occurrence IS SequenceCardinality::ZeroOrMore);
-   }
-};
+//********************************************************************************************************************
+// Parses a cast target type specification, extracting the type name and optional empty sequence indicator.
 
 static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
 {
@@ -93,6 +44,9 @@ static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
    info.type_name.assign(trimmed);
    return info;
 }
+
+//********************************************************************************************************************
+// Parses a sequence type literal string, extracting cardinality markers and the item kind or atomic type.
 
 static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_view Literal)
 {
@@ -142,6 +96,9 @@ static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_v
    return info;
 }
 
+//********************************************************************************************************************
+// Computes the number of items in a sequence value, accounting for node-sets and scalar values.
+
 static size_t sequence_item_count(const XPathVal &Value)
 {
    if (Value.Type IS XPVT::NodeSet) {
@@ -154,6 +111,9 @@ static size_t sequence_item_count(const XPathVal &Value)
 
    return Value.is_empty() ? 0 : 1;
 }
+
+//********************************************************************************************************************
+// Extracts the string value of a node-set item at the specified index, with fallback to node string conversion.
 
 static std::string nodeset_item_string(const XPathVal &Value, size_t Index)
 {
@@ -173,6 +133,9 @@ static std::string nodeset_item_string(const XPathVal &Value, size_t Index)
    return std::string();
 }
 
+//********************************************************************************************************************
+// Returns a human-readable description of the node kind (element, attribute, text, comment, processing-instruction).
+
 static std::string describe_nodeset_item_kind(const XMLTag *Node, const XMLAttrib *Attribute)
 {
    if (Attribute) return std::string("attribute()");
@@ -184,6 +147,9 @@ static std::string describe_nodeset_item_kind(const XMLTag *Node, const XMLAttri
    return std::string("element()");
 }
 
+//********************************************************************************************************************
+// Determines whether the given node is a text node (identified by an empty attribute name in Attribs[0]).
+
 static bool is_text_node(const XMLTag *Node)
 {
    if (!Node) return false;
@@ -191,11 +157,17 @@ static bool is_text_node(const XMLTag *Node)
    return Node->Attribs[0].Name.empty();
 }
 
+//********************************************************************************************************************
+// Identifies text nodes that were constructed (have zero parent ID) rather than parsed from a document.
+
 static bool is_constructed_scalar_text(const XMLTag *Node)
 {
    if (!is_text_node(Node)) return false;
    return Node->ParentID IS 0;
 }
+
+//********************************************************************************************************************
+// Validates the format and range of an XML Schema timezone component (empty, 'Z', or ±HH:MM format).
 
 static bool is_valid_timezone(std::string_view Value)
 {
@@ -219,6 +191,9 @@ static bool is_valid_timezone(std::string_view Value)
 
    return false;
 }
+
+//********************************************************************************************************************
+// Parses and validates the date components (year, month, day) from an XML Schema date string.
 
 static bool parse_xs_date_components(std::string_view Value, long long &Year, int &Month, int &Day, size_t &NextIndex)
 {
@@ -281,6 +256,9 @@ static bool parse_xs_date_components(std::string_view Value, long long &Year, in
    return true;
 }
 
+//********************************************************************************************************************
+// Validates that a string conforms to the xs:date format (with optional timezone).
+
 static bool is_valid_xs_date(std::string_view Value)
 {
    long long year = 0;
@@ -293,6 +271,9 @@ static bool is_valid_xs_date(std::string_view Value)
    return is_valid_timezone(timezone);
 }
 
+//********************************************************************************************************************
+// Validates that a string conforms to the xs:date format without a timezone component.
+
 static bool is_valid_xs_date_no_timezone(std::string_view Value)
 {
    long long year = 0;
@@ -303,6 +284,9 @@ static bool is_valid_xs_date_no_timezone(std::string_view Value)
    if (not parse_xs_date_components(Value, year, month, day, next_index)) return false;
    return next_index IS Value.size();
 }
+
+//********************************************************************************************************************
+// Validates that a string conforms to the xs:time format with optional fractional seconds and timezone.
 
 static bool is_valid_xs_time(std::string_view Value)
 {
@@ -335,6 +319,9 @@ static bool is_valid_xs_time(std::string_view Value)
    return is_valid_timezone(timezone);
 }
 
+//********************************************************************************************************************
+// Validates that a string conforms to the xs:dateTime format (date part with 'T' separator and time part).
+
 static bool is_valid_xs_datetime(std::string_view Value)
 {
    size_t position = Value.find('T');
@@ -349,6 +336,9 @@ static bool is_valid_xs_datetime(std::string_view Value)
 }
 
 static thread_local std::unordered_map<std::string, std::weak_ptr<xml::schema::SchemaTypeDescriptor>> cast_target_cache;
+
+//********************************************************************************************************************
+// Tests whether a value can be safely cast to a target type using schema-aware coercion rules.
 
 static bool is_value_castable_to_type(const XPathVal &Value,
    const std::shared_ptr<xml::schema::SchemaTypeDescriptor> &SourceDescriptor,
@@ -399,7 +389,7 @@ static bool is_value_castable_to_type(const XPathVal &Value,
 }
 
 //********************************************************************************************************************
-// File-local helpers extracted from large embedded lambdas to reduce function length and improve readability.
+// Expands a variable QName to its canonical form, resolving namespace prefixes to URI references.
 
 static std::string canonicalise_variable_qname(std::string_view Candidate,
    const XQueryProlog &SourceProlog, const extXML *Document)
@@ -433,6 +423,7 @@ static std::string canonicalise_variable_qname(std::string_view Candidate,
 }
 
 //********************************************************************************************************************
+// Appends a value to a sequence, decomposing node-sets into individual nodes or wrapping scalars as text nodes.
 
 static void append_value_to_sequence(const XPathVal &Value, std::vector<SequenceEntry> &Entries,
    int &NextConstructedNodeId, std::vector<std::unique_ptr<XMLTag>> &ConstructedNodes)
@@ -472,30 +463,7 @@ static void append_value_to_sequence(const XPathVal &Value, std::vector<Sequence
 }
 
 //********************************************************************************************************************
-
-enum class BinaryOperationKind {
-   AND,
-   OR,
-   UNION,
-   INTERSECT,
-   EXCEPT,
-   COMMA,
-   EQ,
-   NE,
-   EQ_WORD,
-   NE_WORD,
-   LT,
-   LE,
-   GT,
-   GE,
-   ADD,
-   SUB,
-   MUL,
-   DIV,
-   MOD,
-   RANGE,
-   UNKNOWN
-};
+// Maps string operator symbols and keywords to their corresponding binary operation kinds.
 
 static BinaryOperationKind map_binary_operation(std::string_view Op)
 {
@@ -525,6 +493,7 @@ static BinaryOperationKind map_binary_operation(std::string_view Op)
 static constexpr int64_t RANGE_ITEM_LIMIT = 100000;
 
 //********************************************************************************************************************
+// Appends items from an iteration value to combined node-set containers, handling both node-sets and scalars.
 
 static bool append_iteration_value_helper(const XPathVal &IterationValue, NODES &CombinedNodes,
    std::vector<const XMLAttrib *> &CombinedAttributes, std::vector<std::string> &CombinedStrings,
@@ -573,6 +542,7 @@ static bool append_iteration_value_helper(const XPathVal &IterationValue, NODES 
 }
 
 //********************************************************************************************************************
+// Recursively evaluates nested for-loop bindings, iterating through sequence items and accumulating results.
 
 static bool evaluate_for_bindings_recursive(XPathEvaluator &Self, XPathContext &Context,
    const std::vector<ForBindingDefinition> &Bindings, size_t BindingIndex,
@@ -646,6 +616,7 @@ static bool evaluate_for_bindings_recursive(XPathEvaluator &Self, XPathContext &
 }
 
 //********************************************************************************************************************
+// Recursively evaluates nested quantified expression bindings for 'some' and 'every' expressions.
 
 static bool evaluate_quantified_binding_recursive(XPathEvaluator &Self, XPathContext &Context,
    const std::vector<QuantifiedBindingDefinition> &Bindings, size_t BindingIndex,
@@ -2291,26 +2262,12 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                return empty_result;
             }
 
-            __int128 length_wide = (__int128)end_int - (__int128)start_int + 1;
-            if ((length_wide <= 0) or (length_wide > (__int128)RANGE_ITEM_LIMIT)) {
-               auto format_length = [](__int128 Value) -> std::string
-               {
-                  if (Value IS 0) return std::string("0");
-                  bool negative = Value < 0;
-                  unsigned __int128 magnitude = negative ? (unsigned __int128)(-Value) : (unsigned __int128)Value;
-                  std::string digits;
-                  while (magnitude > 0) {
-                     unsigned int remainder = (unsigned int)(magnitude % 10);
-                     digits.insert(digits.begin(), char('0' + remainder));
-                     magnitude /= 10;
-                  }
-                  if (negative) digits.insert(digits.begin(), '-');
-                  return digits;
-               };
-
+            uint64_t length_u64 = 0;
+            (void)compute_range_length_s64(start_int, end_int, length_u64);
+            if ((length_u64 IS 0) or (length_u64 > (uint64_t)RANGE_ITEM_LIMIT)) {
                auto start_lexical = format_xpath_number(start_numeric);
                auto end_lexical = format_xpath_number(end_numeric);
-               auto length_string = format_length(length_wide);
+               auto length_string = std::to_string(length_u64);
                auto message = std::format(
                   "FOAR0002: Range from {} to {} produces {} items which exceeds the supported limit of {}.",
                   start_lexical, end_lexical, length_string, RANGE_ITEM_LIMIT);
@@ -2318,7 +2275,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                return XPathVal();
             }
 
-            int64_t length = (int64_t)length_wide;
+            int64_t length = (int64_t)length_u64;
 
             NODES range_nodes;
             range_nodes.reserve((size_t)length);
