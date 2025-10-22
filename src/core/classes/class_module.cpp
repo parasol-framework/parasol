@@ -86,7 +86,7 @@ static STRUCTS glStructures = {
 #include "../idl.h"
 
 static RootModule glCoreRoot;
-struct ModHeader glCoreHeader(nullptr, nullptr, nullptr, nullptr, glIDL, &glStructures, "core", "Sys");
+struct ModHeader glCoreHeader(nullptr, nullptr, nullptr, nullptr, nullptr, glIDL, &glStructures, "core", "Sys");
 
 static RootModule * check_resident(extModule *, std::string_view);
 static void free_module(MODHANDLE handle);
