@@ -2064,7 +2064,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr()
          return nullptr;
       }
 
-      std::string sequence_type = trim_copy(*sequence_type_literal);
+      std::string sequence_type = *sequence_type_literal;
       if (sequence_type.empty()) {
          report_error("XPST0003: Treat as expression requires a sequence type.");
          return nullptr;
