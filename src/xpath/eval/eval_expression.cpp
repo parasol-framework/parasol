@@ -203,6 +203,19 @@ static std::string describe_nodeset_item_kind(const XMLTag *Node, const XMLAttri
    return std::string("element()");
 }
 
+static bool is_text_node(const XMLTag *Node)
+{
+   if (!Node) return false;
+   if (Node->Attribs.empty()) return false;
+   return Node->Attribs[0].Name.empty();
+}
+
+static bool is_constructed_scalar_text(const XMLTag *Node)
+{
+   if (!is_text_node(Node)) return false;
+   return Node->ParentID IS 0;
+}
+
 static bool is_valid_timezone(std::string_view Value)
 {
    if (Value.empty()) return true;
@@ -1346,6 +1359,119 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
          operand_value.set_schema_type(target_descriptor);
          return operand_value;
+      }
+      case XPathNodeType::INSTANCE_OF_EXPRESSION: {
+         if (ExprNode->child_count() IS 0) {
+            record_error("Instance of expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         auto sequence_info = parse_sequence_type_literal(ExprNode->value);
+         if (not sequence_info.has_value()) {
+            record_error("XPST0003: Instance of expression is missing its sequence type.", ExprNode, true);
+            return XPathVal();
+         }
+
+         const XPathNode *operand_node = ExprNode->get_child(0);
+         if (!operand_node) {
+            record_error("Instance of expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         XPathVal operand_value = evaluate_expression(operand_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         size_t item_count = sequence_item_count(operand_value);
+
+         if (sequence_info->kind IS SequenceItemKind::EmptySequence) return XPathVal(item_count IS 0);
+
+         if ((item_count IS 0) and (not sequence_info->allows_empty())) return XPathVal(false);
+         if ((item_count > 1) and (not sequence_info->allows_multiple())) return XPathVal(false);
+         if ((sequence_info->occurrence IS SequenceCardinality::ExactlyOne) and (item_count != 1)) return XPathVal(false);
+         if (item_count IS 0) return XPathVal(true);
+
+         if (sequence_info->kind IS SequenceItemKind::Item) return XPathVal(true);
+
+         if (sequence_info->kind IS SequenceItemKind::Node) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < item_count; ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
+                  if ((not attribute) and (not node)) return XPathVal(false);
+               }
+               return XPathVal(true);
+            }
+            return XPathVal(false);
+         }
+
+         if (sequence_info->kind IS SequenceItemKind::Element) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < item_count; ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
+                  if (attribute or (not node) or (not node->isTag())) return XPathVal(false);
+               }
+               return XPathVal(true);
+            }
+            return XPathVal(false);
+         }
+
+         if (sequence_info->kind IS SequenceItemKind::Attribute) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < item_count; ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  if (!attribute) return XPathVal(false);
+               }
+               return XPathVal(true);
+            }
+            return XPathVal(false);
+         }
+
+         if (sequence_info->kind IS SequenceItemKind::Text) {
+            if (operand_value.Type IS XPVT::NodeSet) {
+               for (size_t index = 0; index < item_count; ++index) {
+                  const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                     operand_value.node_set_attributes[index] : nullptr;
+                  XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
+                  if (attribute or (not is_text_node(node))) return XPathVal(false);
+               }
+               return XPathVal(true);
+            }
+            return XPathVal(false);
+         }
+
+         auto &registry = xml::schema::registry();
+         auto target_descriptor = registry.find_descriptor(sequence_info->type_name);
+         if (!target_descriptor) {
+            auto message = std::format("XPST0052: Instance of target type '{}' is not defined.", sequence_info->type_name);
+            record_error(message, ExprNode, true);
+            return XPathVal();
+         }
+
+         xml::schema::TypeChecker checker(registry);
+
+         if (operand_value.Type IS XPVT::NodeSet) {
+            for (size_t index = 0; index < item_count; ++index) {
+               const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
+                  operand_value.node_set_attributes[index] : nullptr;
+               XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
+
+               if (attribute) return XPathVal(false);
+               if (!node) return XPathVal(false);
+               if (!is_constructed_scalar_text(node)) return XPathVal(false);
+
+               std::string lexical = nodeset_item_string(operand_value, index);
+               XPathVal item_value(lexical);
+               if (not checker.validate_value(item_value, *target_descriptor)) return XPathVal(false);
+            }
+            return XPathVal(true);
+         }
+
+         if (not checker.validate_value(operand_value, *target_descriptor)) return XPathVal(false);
+         return XPathVal(true);
       }
       case XPathNodeType::CASTABLE_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {

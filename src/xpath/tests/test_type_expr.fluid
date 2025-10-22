@@ -716,10 +716,10 @@ return {
       'testTreatAsElementSequence',
 
       -- Instance of expression tests
-      --'testInstanceOfInteger', 'testInstanceOfNonMatchingType', 'testInstanceOfString',
-      --'testInstanceOfBoolean', 'testInstanceOfOptional', 'testInstanceOfOneOrMore',
-      --'testInstanceOfZeroOrMore', 'testInstanceOfElement', 'testInstanceOfAttribute',
-      --'testInstanceOfText',
+      'testInstanceOfInteger', 'testInstanceOfNonMatchingType', 'testInstanceOfString',
+      'testInstanceOfBoolean', 'testInstanceOfOptional', 'testInstanceOfOneOrMore',
+      'testInstanceOfZeroOrMore', 'testInstanceOfElement', 'testInstanceOfAttribute',
+      'testInstanceOfText',
 
       -- Typeswitch expression tests
       --'testTypeswitchInteger', 'testTypeswitchString', 'testTypeswitchDefault',
