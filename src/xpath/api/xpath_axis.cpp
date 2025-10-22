@@ -139,19 +139,30 @@ bool AxisEvaluator::is_reverse_axis(AxisType Axis) {
 
 XMLTag * AxisEvaluator::find_parent(XMLTag *ReferenceNode)
 {
-   auto ID = ReferenceNode->ParentID;
-   if ((ID IS 0) or (!xml)) return nullptr;
+   if ((!ReferenceNode) or (!xml)) return nullptr;
 
-   auto &map = xml->getMap();
-   auto iter = map.find(ReferenceNode->ParentID);
-   if (iter != map.end()) return iter->second;
+   auto parent_id = ReferenceNode->ParentID;
+   if (parent_id IS 0) return nullptr;
+
+   auto resolve_in_document = [ReferenceNode, parent_id](extXML *Document) -> XMLTag * {
+      if (!Document) return nullptr;
+
+      auto &map = Document->getMap();
+      auto node_iter = map.find(ReferenceNode->ID);
+      if (node_iter IS map.end()) return nullptr;
+      if (!(node_iter->second IS ReferenceNode)) return nullptr;
+
+      auto parent_iter = map.find(parent_id);
+      if (parent_iter IS map.end()) return nullptr;
+      return parent_iter->second;
+   };
+
+   if (auto *parent = resolve_in_document(xml)) return parent;
 
    if (!xml->XMLCache.empty()) {
       for (auto &entry : xml->XMLCache) {
-         auto other_xml = entry.second;
-         auto &other_map = other_xml->getMap();
-         auto tag = other_map.find(ReferenceNode->ParentID);
-         if (tag != other_map.end()) return tag->second;
+         auto *other_xml = entry.second;
+         if (auto *parent = resolve_in_document(other_xml)) return parent;
       }
    }
 
