@@ -65,15 +65,15 @@ For each implementation:
 
 #### castable Expression
 
-[ ] Tokeniser: ensure castable is recognised distinctly so it does not collide with element names in non-keyword contexts.
+[x] Tokeniser: ensure castable is recognised distinctly so it does not collide with element names in non-keyword contexts.
 
-[ ] AST: add CASTABLE_EXPRESSION node with room to record the type literal and optional ? occurrence indicator.
+[x] AST: add CASTABLE_EXPRESSION node with room to record the type literal and optional ? occurrence indicator.
 
-[ ] Parser: add a dedicated production alongside cast that parses Expr castable as SequenceType, reusing the sequence-type parser and storing any ? occurrence marker for evaluation.
+[x] Parser: add a dedicated production alongside cast that parses Expr castable as SequenceType, reusing the sequence-type parser and storing any ? occurrence marker for evaluation.
 
-[ ] Evaluator: implement boolean result semantics that mirror cast without performing the conversion, using schema helpers to determine castability while suppressing exceptions; ensure memoised type resolution to avoid repeated registry lookups.
+[x] Evaluator: implement boolean result semantics that mirror cast without performing the conversion, using schema helpers to determine castability while suppressing exceptions; ensure memoised type resolution to avoid repeated registry lookups.
 
-[ ] Tests: cover true/false outcomes for the same inputs as cast, plus edge cases where castable succeeds but cast would raise a dynamic error.
+[x] Tests: cover true/false outcomes for the same inputs as cast, plus edge cases where castable succeeds but cast would raise a dynamic error.
 
 #### treat as Expression
 

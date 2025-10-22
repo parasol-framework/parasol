@@ -9,6 +9,10 @@
 #include <cmath>
 #include <utility>
 #include <string_view>
+#include <charconv>
+#include <cctype>
+#include <unordered_map>
+#include <system_error>
 
 struct SequenceEntry {
    XMLTag * node = nullptr;
@@ -56,6 +60,207 @@ static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
 
    info.type_name.assign(trimmed);
    return info;
+}
+
+static bool is_valid_timezone(std::string_view Value)
+{
+   if (Value.empty()) return true;
+   if ((Value.size() IS 1) and (Value[0] IS 'Z')) return true;
+
+   if ((Value.size() IS 6) and ((Value[0] IS '+') or (Value[0] IS '-')))
+   {
+      if ((Value[3] != ':') or (Value[4] < '0') or (Value[4] > '9') or (Value[5] < '0') or (Value[5] > '9')) return false;
+      if ((Value[1] < '0') or (Value[1] > '9') or (Value[2] < '0') or (Value[2] > '9')) return false;
+
+      int hour = (Value[1] - '0') * 10 + (Value[2] - '0');
+      int minute = (Value[4] - '0') * 10 + (Value[5] - '0');
+
+      if (hour > 14) return false;
+      if (minute >= 60) return false;
+      if ((hour IS 14) and (minute != 0)) return false;
+
+      return true;
+   }
+
+   return false;
+}
+
+static bool parse_xs_date_components(std::string_view Value, long long &Year, int &Month, int &Day, size_t &NextIndex)
+{
+   if (Value.empty()) return false;
+
+   size_t index = 0;
+   bool negative = false;
+
+   if ((Value[index] IS '+') or (Value[index] IS '-'))
+   {
+      negative = Value[index] IS '-';
+      index++;
+      if (index >= Value.size()) return false;
+   }
+
+   size_t year_start = index;
+   while ((index < Value.size()) and (Value[index] >= '0') and (Value[index] <= '9')) index++;
+   size_t year_digits = index - year_start;
+   if (year_digits < 4) return false;
+
+   long long year_value = 0;
+   auto result = std::from_chars(Value.data() + year_start, Value.data() + index, year_value);
+   if (result.ec != std::errc()) return false;
+   if (negative) year_value = -year_value;
+
+   if ((index >= Value.size()) or (Value[index] != '-')) return false;
+   index++;
+   if (index + 2 > Value.size()) return false;
+
+   int month_value = (Value[index] - '0') * 10 + (Value[index + 1] - '0');
+   if ((month_value < 1) or (month_value > 12)) return false;
+   index += 2;
+
+   if ((index >= Value.size()) or (Value[index] != '-')) return false;
+   index++;
+   if (index + 2 > Value.size()) return false;
+
+   int day_value = (Value[index] - '0') * 10 + (Value[index + 1] - '0');
+   if ((day_value < 1) or (day_value > 31)) return false;
+   index += 2;
+
+   int max_day = 31;
+   if ((month_value IS 4) or (month_value IS 6) or (month_value IS 9) or (month_value IS 11)) max_day = 30;
+   else if (month_value IS 2)
+   {
+      bool leap = false;
+      if ((year_value % 4) IS 0)
+      {
+         leap = ((year_value % 100) != 0) or ((year_value % 400) IS 0);
+      }
+      max_day = leap ? 29 : 28;
+   }
+
+   if (day_value > max_day) return false;
+
+   Year = year_value;
+   Month = month_value;
+   Day = day_value;
+   NextIndex = index;
+   return true;
+}
+
+static bool is_valid_xs_date(std::string_view Value)
+{
+   long long year = 0;
+   int month = 0;
+   int day = 0;
+   size_t next_index = 0;
+
+   if (not parse_xs_date_components(Value, year, month, day, next_index)) return false;
+   std::string_view timezone = Value.substr(next_index);
+   return is_valid_timezone(timezone);
+}
+
+static bool is_valid_xs_date_no_timezone(std::string_view Value)
+{
+   long long year = 0;
+   int month = 0;
+   int day = 0;
+   size_t next_index = 0;
+
+   if (not parse_xs_date_components(Value, year, month, day, next_index)) return false;
+   return next_index IS Value.size();
+}
+
+static bool is_valid_xs_time(std::string_view Value)
+{
+   if (Value.size() < 8) return false;
+
+   if ((Value[0] < '0') or (Value[0] > '9') or (Value[1] < '0') or (Value[1] > '9')) return false;
+   int hour = (Value[0] - '0') * 10 + (Value[1] - '0');
+   if (hour > 23) return false;
+
+   if (Value[2] != ':') return false;
+   if ((Value[3] < '0') or (Value[3] > '9') or (Value[4] < '0') or (Value[4] > '9')) return false;
+   int minute = (Value[3] - '0') * 10 + (Value[4] - '0');
+   if (minute >= 60) return false;
+
+   if (Value[5] != ':') return false;
+   if ((Value[6] < '0') or (Value[6] > '9') or (Value[7] < '0') or (Value[7] > '9')) return false;
+   int second = (Value[6] - '0') * 10 + (Value[7] - '0');
+   if (second >= 60) return false;
+
+   size_t index = 8;
+   if ((index < Value.size()) and (Value[index] IS '.'))
+   {
+      index++;
+      size_t fraction_start = index;
+      while ((index < Value.size()) and (Value[index] >= '0') and (Value[index] <= '9')) index++;
+      if (index IS fraction_start) return false;
+   }
+
+   std::string_view timezone = Value.substr(index);
+   return is_valid_timezone(timezone);
+}
+
+static bool is_valid_xs_datetime(std::string_view Value)
+{
+   size_t position = Value.find('T');
+   if (position IS std::string_view::npos) return false;
+
+   std::string_view date_part = Value.substr(0, position);
+   std::string_view time_part = Value.substr(position + 1);
+   if (time_part.empty()) return false;
+
+   if (not is_valid_xs_date_no_timezone(date_part)) return false;
+   return is_valid_xs_time(time_part);
+}
+
+static thread_local std::unordered_map<std::string, std::weak_ptr<xml::schema::SchemaTypeDescriptor>> cast_target_cache;
+
+static bool is_value_castable_to_type(const XPathVal &Value,
+   const std::shared_ptr<xml::schema::SchemaTypeDescriptor> &SourceDescriptor,
+   const std::shared_ptr<xml::schema::SchemaTypeDescriptor> &TargetDescriptor,
+   std::string_view Lexical)
+{
+   if (!TargetDescriptor) return false;
+
+   auto target_type = TargetDescriptor->schema_type;
+
+   if ((target_type IS xml::schema::SchemaType::XPathString) or (target_type IS xml::schema::SchemaType::XSString)) {
+      return true;
+   }
+
+   XPathVal coerced = Value;
+   if (SourceDescriptor) coerced = SourceDescriptor->coerce_value(Value, target_type);
+
+   if (xml::schema::is_numeric(target_type)) {
+      double numeric_value = coerced.to_number();
+      return !std::isnan(numeric_value);
+   }
+
+   if ((target_type IS xml::schema::SchemaType::XPathBoolean) or (target_type IS xml::schema::SchemaType::XSBoolean)) {
+      if (Value.Type IS XPVT::String) {
+         auto parsed_boolean = parse_schema_boolean(Lexical);
+         return parsed_boolean.has_value();
+      }
+      return true;
+   }
+
+   if (target_type IS xml::schema::SchemaType::XSDate) {
+      if ((Value.Type IS XPVT::Date) or (Value.Type IS XPVT::DateTime)) return true;
+      return is_valid_xs_date(Lexical);
+   }
+
+   if (target_type IS xml::schema::SchemaType::XSDateTime) {
+      if (Value.Type IS XPVT::DateTime) return true;
+      return is_valid_xs_datetime(Lexical);
+   }
+
+   if (target_type IS xml::schema::SchemaType::XSTime) {
+      if (Value.Type IS XPVT::Time) return true;
+      return is_valid_xs_time(Lexical);
+   }
+
+   if (SourceDescriptor) return SourceDescriptor->can_coerce_to(target_type);
+   return false;
 }
 
 //********************************************************************************************************************
@@ -792,6 +997,62 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
          coerced.set_schema_type(target_descriptor);
          return coerced;
+      }
+      case XPathNodeType::CASTABLE_EXPRESSION: {
+         if (ExprNode->child_count() IS 0) {
+            record_error("Castable expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         auto target_info = parse_cast_target_literal(ExprNode->value);
+         if (target_info.type_name.empty()) {
+            record_error("XPST0003: Castable expression is missing its target type.", ExprNode, true);
+            return XPathVal();
+         }
+
+         auto &registry = xml::schema::registry();
+         std::shared_ptr<xml::schema::SchemaTypeDescriptor> target_descriptor;
+
+         auto cache_entry = cast_target_cache.find(target_info.type_name);
+         if (cache_entry != cast_target_cache.end()) target_descriptor = cache_entry->second.lock();
+
+         if (!target_descriptor) {
+            target_descriptor = registry.find_descriptor(target_info.type_name);
+            if (!target_descriptor) {
+               auto message = std::format("XPST0052: Cast target type '{}' is not defined.", target_info.type_name);
+               record_error(message, ExprNode, true);
+               return XPathVal();
+            }
+            cast_target_cache.insert_or_assign(target_info.type_name, target_descriptor);
+         }
+
+         const XPathNode *operand_node = ExprNode->get_child(0);
+         if (!operand_node) {
+            record_error("Castable expression requires an operand.", ExprNode, true);
+            return XPathVal();
+         }
+
+         XPathVal operand_value = evaluate_expression(operand_node, CurrentPrefix);
+         if (expression_unsupported) return XPathVal();
+
+         if (operand_value.Type IS XPVT::NodeSet) {
+            size_t item_count = operand_value.node_set.size();
+            if (item_count IS 0) return XPathVal(target_info.allows_empty);
+            if (item_count > 1) return XPathVal(false);
+
+            std::string atomised_string = operand_value.to_string();
+            operand_value = XPathVal(atomised_string);
+            auto string_descriptor = registry.find_descriptor(xml::schema::SchemaType::XPathString);
+            if (string_descriptor) operand_value.set_schema_type(string_descriptor);
+         }
+
+         auto source_descriptor = schema_descriptor_for_value(operand_value);
+         if (!source_descriptor) source_descriptor = registry.find_descriptor(xml::schema::schema_type_for_xpath(operand_value.Type));
+         if (!source_descriptor) return XPathVal(false);
+
+         std::string operand_lexical = operand_value.to_string();
+         bool castable_success = is_value_castable_to_type(operand_value, source_descriptor, target_descriptor, operand_lexical);
+         return XPathVal(castable_success);
       }
       case XPathNodeType::UNION: {
          std::vector<const XPathNode *> branches;

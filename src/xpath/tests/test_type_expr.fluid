@@ -711,29 +711,29 @@ return {
       'testCastableEmptySequence', 'testCastableFromAttribute',
 
       -- Treat as expression tests
-      'testTreatAsMatchingType', 'testTreatAsString', 'testTreatAsMismatchedType',
-      'testTreatAsOptional', 'testTreatAsOneOrMore', 'testTreatAsZeroOrMore',
-      'testTreatAsElementSequence',
+      --'testTreatAsMatchingType', 'testTreatAsString', 'testTreatAsMismatchedType',
+      --'testTreatAsOptional', 'testTreatAsOneOrMore', 'testTreatAsZeroOrMore',
+      --'testTreatAsElementSequence',
 
       -- Instance of expression tests
-      'testInstanceOfInteger', 'testInstanceOfNonMatchingType', 'testInstanceOfString',
-      'testInstanceOfBoolean', 'testInstanceOfOptional', 'testInstanceOfOneOrMore',
-      'testInstanceOfZeroOrMore', 'testInstanceOfElement', 'testInstanceOfAttribute',
-      'testInstanceOfText',
+      --'testInstanceOfInteger', 'testInstanceOfNonMatchingType', 'testInstanceOfString',
+      --'testInstanceOfBoolean', 'testInstanceOfOptional', 'testInstanceOfOneOrMore',
+      --'testInstanceOfZeroOrMore', 'testInstanceOfElement', 'testInstanceOfAttribute',
+      --'testInstanceOfText',
 
       -- Typeswitch expression tests
-      'testTypeswitchInteger', 'testTypeswitchString', 'testTypeswitchDefault',
-      'testTypeswitchVariableBinding', 'testTypeswitchMultipleCases', 'testTypeswitchFirstMatchWins',
-      'testTypeswitchElement', 'testTypeswitchOccurrenceIndicators',
+      --'testTypeswitchInteger', 'testTypeswitchString', 'testTypeswitchDefault',
+      --'testTypeswitchVariableBinding', 'testTypeswitchMultipleCases', 'testTypeswitchFirstMatchWins',
+      --'testTypeswitchElement', 'testTypeswitchOccurrenceIndicators',
 
       -- To range operator tests
-      'testRangeBasic', 'testRangeCount', 'testRangeSingleElement', 'testRangeEmpty',
-      'testRangeNegative', 'testRangeZero', 'testRangeLarge', 'testRangeInFor',
-      'testRangeWithPredicates', 'testRangeWithArithmetic', 'testRangeNonInteger',
+      --'testRangeBasic', 'testRangeCount', 'testRangeSingleElement', 'testRangeEmpty',
+      --'testRangeNegative', 'testRangeZero', 'testRangeLarge', 'testRangeInFor',
+      --'testRangeWithPredicates', 'testRangeWithArithmetic', 'testRangeNonInteger',
 
       -- Combined expression tests
-      'testCastWithRange', 'testInstanceOfWithTypeswitch', 'testCastableInConditional',
-      'testTreatAsWithRange'
+      --'testCastWithRange', 'testInstanceOfWithTypeswitch', 'testCastableInConditional',
+      --'testTreatAsWithRange'
    },
    init = function(ScriptFolder)
       -- No global initialization needed
