@@ -638,7 +638,7 @@ static bool evaluate_for_bindings_recursive(XPathEvaluator &Self, XPathContext &
       bound_value.Type = XPVT::NodeSet;
       bound_value.preserve_node_order = false;
       bound_value.node_set.push_back(item_node);
-      if (item_attribute) bound_value.node_set_attributes.push_back(item_attribute);
+      bound_value.node_set_attributes.push_back(item_attribute);
 
       std::string item_string;
       bool use_override = sequence_value.node_set_string_override.has_value() and (index IS 0) and sequence_value.node_set_string_values.empty();
@@ -709,7 +709,7 @@ static bool evaluate_quantified_binding_recursive(XPathEvaluator &Self, XPathCon
       bound_value.Type = XPVT::NodeSet;
       bound_value.preserve_node_order = false;
       bound_value.node_set.push_back(item_node);
-      if (item_attribute) bound_value.node_set_attributes.push_back(item_attribute);
+      bound_value.node_set_attributes.push_back(item_attribute);
 
       std::string item_string;
       bool use_override = sequence_value.node_set_string_override.has_value() and (index IS 0) and sequence_value.node_set_string_values.empty();
@@ -2276,12 +2276,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             double start_fraction = std::modf(start_numeric, &start_integral);
             double end_fraction = std::modf(end_numeric, &end_integral);
 
-            auto fraction_is_zero = [](double Fraction) noexcept
-            {
-               return std::fabs(Fraction) <= std::numeric_limits<double>::epsilon();
-            };
-
-            if (not fraction_is_zero(start_fraction)) {
+            if (not (start_fraction IS 0.0)) {
                auto lexical = left_value.to_string();
                auto message = std::format(
                   "XPTY0004: Range start value '{}' is not an integer.", lexical);
@@ -2289,7 +2284,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                return XPathVal();
             }
 
-            if (not fraction_is_zero(end_fraction)) {
+            if (not (end_fraction IS 0.0)) {
                auto lexical = right_value.to_string();
                auto message = std::format(
                   "XPTY0004: Range end value '{}' is not an integer.", lexical);
@@ -2315,18 +2310,34 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                return empty_result;
             }
 
-            long double length_ld = static_cast<long double>(end_int) - static_cast<long double>(start_int) + 1.0L;
-            if (length_ld > static_cast<long double>(RANGE_ITEM_LIMIT)) {
+            __int128 length_wide = (__int128)end_int - (__int128)start_int + 1;
+            if ((length_wide <= 0) or (length_wide > (__int128)RANGE_ITEM_LIMIT)) {
+               auto format_length = [](__int128 Value) -> std::string
+               {
+                  if (Value IS 0) return std::string("0");
+                  bool negative = Value < 0;
+                  unsigned __int128 magnitude = negative ? (unsigned __int128)(-Value) : (unsigned __int128)Value;
+                  std::string digits;
+                  while (magnitude > 0) {
+                     unsigned int remainder = (unsigned int)(magnitude % 10);
+                     digits.insert(digits.begin(), char('0' + remainder));
+                     magnitude /= 10;
+                  }
+                  if (negative) digits.insert(digits.begin(), '-');
+                  return digits;
+               };
+
                auto start_lexical = format_xpath_number(start_numeric);
                auto end_lexical = format_xpath_number(end_numeric);
+               auto length_string = format_length(length_wide);
                auto message = std::format(
-                  "FOAR0002: Range from {} to {} produces {:.0Lf} items which exceeds the supported limit of {}.",
-                  start_lexical, end_lexical, length_ld, RANGE_ITEM_LIMIT);
+                  "FOAR0002: Range from {} to {} produces {} items which exceeds the supported limit of {}.",
+                  start_lexical, end_lexical, length_string, RANGE_ITEM_LIMIT);
                record_error(message, ExprNode, true);
                return XPathVal();
             }
 
-            int64_t length = (int64_t)length_ld;
+            int64_t length = (int64_t)length_wide;
 
             NODES range_nodes;
             range_nodes.reserve((size_t)length);
