@@ -97,15 +97,15 @@ For each implementation:
 
 #### typeswitch Expression
 
-[ ] Extend tokeniser keyword mapping for typeswitch, case, and default while keeping them valid NCNames in constructor contexts.
+[x] Extend tokeniser keyword mapping for typeswitch, case, and default while keeping them valid NCNames in constructor contexts.
 
-[ ] AST: add node types such as TYPESWITCH_EXPRESSION, CASE_CLAUSE, and DEFAULT_CASE, storing variable names, sequence types, and branch expressions.
+[x] AST: add node types such as TYPESWITCH_EXPRESSION, CASE_CLAUSE, and DEFAULT_CASE, storing variable names, sequence types, and branch expressions.
 
-[ ] Parser: implement a new production (likely dispatched from parse_expr_single) that handles typeswitch ( Expr ) case $Var as SequenceType return Expr ... default return Expr, including support for optional $Var bindings and case fall-through ordering. Reuse sequence-type parsing helpers and ensure braces/parentheses are consumed accurately for error reporting.
+[x] Parser: implement a new production (likely dispatched from parse_expr_single) that handles typeswitch ( Expr ) case $Var as SequenceType return Expr ... default return Expr, including support for optional $Var bindings and case fall-through ordering. Reuse sequence-type parsing helpers and ensure braces/parentheses are consumed accurately for error reporting.
 
-[ ] Evaluator: add dispatcher logic that evaluates the operand once, iterates case clauses performing instance of checks in order, binds the variable (if present) within branch scope, and executes the matching branch or the default; propagate dynamic errors and respect variable scoping rules in XPathEvaluator.
+[x] Evaluator: add dispatcher logic that evaluates the operand once, iterates case clauses performing instance of checks in order, binds the variable (if present) within branch scope, and executes the matching branch or the default; propagate dynamic errors and respect variable scoping rules in XPathEvaluator.
 
-[ ] Tests: cover scenarios with multiple cases, first-match wins, default-only fallbacks, and type mismatches.
+[x] Tests: cover scenarios with multiple cases, first-match wins, default-only fallbacks, and type mismatches.
 
 #### to Range Operator
 

@@ -59,6 +59,7 @@ class XPathParser {
    std::unique_ptr<XPathNode> parse_path_expr();
    std::unique_ptr<XPathNode> parse_filter_expr();
    std::unique_ptr<XPathNode> parse_if_expr();
+   std::unique_ptr<XPathNode> parse_typeswitch_expr();
    std::unique_ptr<XPathNode> parse_quantified_expr();
    std::unique_ptr<XPathNode> parse_location_path();
    std::unique_ptr<XPathNode> parse_absolute_location_path();
@@ -111,7 +112,7 @@ class XPathParser {
    std::optional<std::string> parse_ncname();
    std::optional<std::string> parse_string_literal_value();
    std::optional<std::string> parse_uri_literal();
-   std::optional<std::string> collect_sequence_type();
+   std::optional<std::string> collect_sequence_type(bool StopAtReturnKeyword = false);
 
    // Utility methods
    [[nodiscard]] inline bool check(XPathTokenType type) const {
