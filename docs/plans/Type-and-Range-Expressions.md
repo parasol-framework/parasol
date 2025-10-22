@@ -61,8 +61,6 @@ For each implementation:
 
 [x] Implement evaluation support that resolves the target schema type, enforces single-item cardinality, performs type coercion via SchemaTypeDescriptor::coerce_value, and raises XPTY0004/XPTY0006 errors with helpful context when conversion fails.
 
-[ ] Add positive/negative tests covering primitive type casts, invalid source cardinality, and conversion failures (new Fluid test file under src/xpath/tests/).
-
 #### castable Expression
 
 [x] Tokeniser: ensure castable is recognised distinctly so it does not collide with element names in non-keyword contexts.

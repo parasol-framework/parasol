@@ -135,12 +135,17 @@ static std::optional<SequenceTypeInfo> parse_sequence_type_literal(std::string_v
    core = trim_view(core);
    if (core.empty()) return std::nullopt;
 
-   if (core IS "item()") info.kind = SequenceItemKind::Item;
-   else if (core IS "node()") info.kind = SequenceItemKind::Node;
-   else if (core IS "element()") info.kind = SequenceItemKind::Element;
-   else if (core IS "attribute()") info.kind = SequenceItemKind::Attribute;
-   else if (core IS "text()") info.kind = SequenceItemKind::Text;
-   else if (core IS "empty-sequence()") info.kind = SequenceItemKind::EmptySequence;
+   // Normalise away internal whitespace for node-test tokens like "element()" which may appear as "element ( )"
+   std::string core_compact;
+   core_compact.reserve(core.size());
+   for (char ch : core) { if ((ch != ' ') and (ch != '\t') and (ch != '\r') and (ch != '\n')) core_compact.push_back(ch); }
+
+   if (core_compact IS "item()") info.kind = SequenceItemKind::Item;
+   else if (core_compact IS "node()") info.kind = SequenceItemKind::Node;
+   else if (core_compact IS "element()") info.kind = SequenceItemKind::Element;
+   else if (core_compact IS "attribute()") info.kind = SequenceItemKind::Attribute;
+   else if (core_compact IS "text()") info.kind = SequenceItemKind::Text;
+   else if (core_compact IS "empty-sequence()") info.kind = SequenceItemKind::EmptySequence;
    else {
       info.kind = SequenceItemKind::Atomic;
       info.type_name.assign(core);
@@ -1284,20 +1289,37 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          xml::schema::TypeChecker checker(registry);
 
          if (operand_value.Type IS XPVT::NodeSet) {
-            for (size_t index = 0; index < operand_value.node_set.size(); ++index) {
+            size_t length = sequence_item_count(operand_value);
+            for (size_t index = 0; index < length; ++index) {
                const XMLAttrib *attribute = (index < operand_value.node_set_attributes.size()) ?
                   operand_value.node_set_attributes[index] : nullptr;
-               XMLTag *node = operand_value.node_set[index];
+               XMLTag *node = (index < operand_value.node_set.size()) ? operand_value.node_set[index] : nullptr;
 
-               bool is_text_node = node and (not node->Attribs.empty()) and node->Attribs[0].Name.empty();
-               if (attribute or (not is_text_node)) {
+               // Attributes are never atomic for treat as
+               if (attribute) {
                   auto encountered = describe_nodeset_item_kind(node, attribute);
-                  auto message = std::format("XPTY0004: Treat as expression for '{}' encountered {} which is not an atomic value.",
+                  auto message = std::format(
+                     "XPTY0004: Treat as expression for '{}' encountered {} which is not an atomic value.",
                      ExprNode->value, encountered);
                   record_error(message, ExprNode, true);
                   return XPathVal();
                }
 
+               // Permit constructed scalar placeholders produced by comma sequences: text nodes with no parent
+               if (node) {
+                  bool is_text_node = (not node->Attribs.empty()) and node->Attribs[0].Name.empty();
+                  bool constructed_scalar = is_text_node and (node->ParentID IS 0);
+                  if (not constructed_scalar) {
+                     auto encountered = describe_nodeset_item_kind(node, attribute);
+                     auto message = std::format(
+                        "XPTY0004: Treat as expression for '{}' encountered {} which is not an atomic value.",
+                        ExprNode->value, encountered);
+                     record_error(message, ExprNode, true);
+                     return XPathVal();
+                  }
+               }
+
+               // Validate the lexical form of each atomic item against the target type
                std::string lexical = nodeset_item_string(operand_value, index);
                XPathVal item_value(lexical);
                if (not checker.validate_value(item_value, *target_descriptor)) {
@@ -1309,6 +1331,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                }
             }
 
+            // Operand already represents an atomic sequence in this value model; return unchanged
             return operand_value;
          }
 
