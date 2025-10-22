@@ -8,7 +8,7 @@ Add parsing and evaluation support for XPath 2.0 type-related expressions (`cast
 
 ## Test Strategy (Defined Up-Front)
 1. **New Fluid Tests** (DONE)
-   - Add tests to `src/xml/tests/test_xpath_type_expressions.fluid` covering:
+   - Add tests to `src/xpath/tests/test_type_expr.fluid` covering:
      - Successful and failing `cast`/`castable` operations for primitive types (string, decimal, date, etc.).
      - `treat as` with both satisfied and violated type assertions.
      - `instance of` across various schema types, including unions and lists.
@@ -123,9 +123,9 @@ For each implementation:
 
 #### Cross-Cutting Testing & Verification
 
-[ ] Create comprehensive Fluid test suites under src/xpath/tests/ and src/xml/tests/ targeting the new expressions and ensuring error codes align with spec expectations.
+Build and run the XML/XPath modules (cmake --build ... --target xml xpath) and execute targeted ctest labels after each feature increment to catch regressions early.
 
-[ ] Build and run the XML/XPath modules (cmake --build ... --target xml xpath) and execute targeted ctest labels after each feature increment to catch regressions early.
+[X] Create comprehensive Fluid test suites under src/xpath/tests/ targeting the new expressions and ensuring error codes align with spec expectations.
 
 [ ] Perform regression sweeps on the existing XPath and XML test suites once all features are integrated.
 

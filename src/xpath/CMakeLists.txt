@@ -39,6 +39,35 @@ set_target_properties (xml_xpath_functions PROPERTIES CXX_STANDARD 20 POSITION_I
 add_compile_definitions("PRV_XML" "PRV_XPATH_MODULE")
 add_dependencies (xpath build_headers xml)
 
+# Enable precompiled headers for the xpath functions object library
+# This must be done before the module target to avoid circular dependencies
+target_precompile_headers(xml_xpath_functions PRIVATE
+   # Heavy STL headers used across most files
+   <string>
+   <string_view>
+   <vector>
+   <memory>
+   <optional>
+   <format>
+   <utility>
+   <unordered_map>
+   <unordered_set>
+   <algorithm>
+   # Parasol framework headers
+   <parasol/main.h>
+   <parasol/modules/xml.h>
+   <parasol/modules/xpath.h>
+   <parasol/strings.hpp>
+   # Third-party dependency
+   <ankerl/unordered_dense.h>
+   # Core internal headers
+   "${CMAKE_CURRENT_SOURCE_DIR}/../xml/xml.h"
+   "${CMAKE_CURRENT_SOURCE_DIR}/xpath.h")
+
+# Enable precompiled headers for the XPath module
+# Reuse the PCH from the object library to save compilation time
+target_precompile_headers(${MOD} REUSE_FROM xml_xpath_functions)
+
 # Module Code
 
 target_sources (${MOD} PRIVATE
