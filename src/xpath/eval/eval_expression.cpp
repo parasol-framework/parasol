@@ -180,7 +180,7 @@ static bool is_valid_xs_time(std::string_view Value)
    if (Value[2] != ':') return false;
    if ((Value[3] < '0') or (Value[3] > '9') or (Value[4] < '0') or (Value[4] > '9')) return false;
    int minute = (Value[3] - '0') * 10 + (Value[4] - '0');
-   if ((minute < 0) or (minute >= 60)) return false;
+   if (minute >= 60) return false;
 
    if (Value[5] != ':') return false;
    if ((Value[6] < '0') or (Value[6] > '9') or (Value[7] < '0') or (Value[7] > '9')) return false;
