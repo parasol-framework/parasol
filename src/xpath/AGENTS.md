@@ -720,7 +720,7 @@ This dual testing approach ensures comprehensive coverage at both the internal i
 
 if (auto xml = objXML::create { fl::Path("document.xml") }; xml.ok()) {
    XPathParseResult *query;
-   if (xp::Compile(xml, "//book[@price < 20]/title", &query) IS ERR::Okay) {
+   if (xp::Compile(*xml, "//book[@price < 20]/title", &query) IS ERR::Okay) {
       XPathValue *result;
       if (xp::Evaluate(*xml, query, &result) IS ERR::Okay) {
          // Process result node set
