@@ -17,6 +17,7 @@
 // independently of XML parsing.
 
 #include "eval.h"
+#include "../parse/xpath_parser.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
@@ -29,6 +30,17 @@
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
 XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XML), query_root(QueryRoot), axis_evaluator(XML, arena)
+{
+   trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
+   context.document = XML;
+   context.expression_unsupported = &expression_unsupported;
+   context.schema_registry = &xml::schema::registry();
+   context.variables = &variable_storage;
+   initialise_query_context(QueryRoot);
+}
+
+XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XPathParseResult *ParseContext)
+   : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
    context.document = XML;
@@ -55,13 +67,11 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
 
-   if (source) {
-      prolog = source->get_prolog();
-      module_cache = source->get_module_cache();
+   // Prefer explicit parse context (from XPathParseResult) if provided
+   if (parse_context) {
+      prolog = parse_context->prolog;
+      module_cache = parse_context->module_cache;
    }
-
-   if (!prolog and query_root) prolog = query_root->get_prolog();
-   if (!module_cache and query_root) module_cache = query_root->get_module_cache();
 
    context.prolog = std::move(prolog);
    context.module_cache = std::move(module_cache);
@@ -71,7 +81,6 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    }
 
    auto prolog_ptr = context.prolog;
-   if (!prolog_ptr and query_root) prolog_ptr = query_root->get_prolog();
 
    construction_preserve_mode = false;
    if (prolog_ptr) {
@@ -86,7 +95,6 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
 bool XPathEvaluator::prolog_has_boundary_space_preserve() const
 {
    auto prolog = context.prolog;
-   if (!prolog and query_root) prolog = query_root->get_prolog();
    if (!prolog) return false;
    return prolog->boundary_space IS XQueryProlog::BoundarySpace::Preserve;
 }
@@ -97,7 +105,6 @@ bool XPathEvaluator::prolog_construction_preserve() const
    if (construction_preserve_mode) return true;
 
    auto prolog = context.prolog;
-   if (!prolog and query_root) prolog = query_root->get_prolog();
    if (!prolog) return false;
    return prolog->construction_mode IS XQueryProlog::ConstructionMode::Preserve;
 }

@@ -84,8 +84,6 @@ struct XPathNode {
    std::optional<XPathOrderSpecOptions> order_spec_options;
    std::optional<XPathGroupKeyInfo> group_key_info;
    std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
-   std::shared_ptr<XQueryProlog> prolog;
-   std::shared_ptr<XQueryModuleCache> module_cache;
 
    XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
@@ -130,10 +128,4 @@ struct XPathNode {
    [[nodiscard]] inline const XPathOrderSpecOptions * get_order_spec_options() const {
       return order_spec_options ? &(*order_spec_options) : nullptr;
    }
-
-   inline void set_prolog(std::shared_ptr<XQueryProlog> value) { prolog = std::move(value); }
-   [[nodiscard]] inline std::shared_ptr<XQueryProlog> get_prolog() const { return prolog; }
-
-   inline void set_module_cache(std::shared_ptr<XQueryModuleCache> value) { module_cache = std::move(value); }
-   [[nodiscard]] inline std::shared_ptr<XQueryModuleCache> get_module_cache() const { return module_cache; }
 };

@@ -305,14 +305,14 @@ static void test_prolog_in_xpath() {
       extXML xml;
       xml.Path = const_cast<char *>("file:///sample\\doc.xml");
 
-      XPathNode *compiled = nullptr;
+      XPathParseResult *compiled = nullptr;
       ERR error = ::xp::Compile(&xml, "1", (APTR *)&compiled);
       bool success = (error IS ERR::Okay) and (compiled not_eq nullptr);
       bool inherited = false;
 
       if (success)
       {
-         auto prolog_ptr = compiled->get_prolog();
+         auto prolog_ptr = compiled->prolog;
          if (prolog_ptr)
          {
             inherited = prolog_ptr->static_base_uri IS std::string("file:///sample/doc.xml");

@@ -590,7 +590,7 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
 
    if (DisplayID) {
       if (glDisplayInfo.DisplayID IS DisplayID) {
-         copymem(&glDisplayInfo, Info, InfoSize);
+         pf::copymem(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else if (ScopedObjectLock<extDisplay> display(DisplayID, 5000); display.granted()) {
@@ -757,12 +757,12 @@ ERR get_display_info(OBJECTID DisplayID, DISPLAYINFO *Info, int InfoSize)
       }
       else return log.warning(ERR::TimeOut);
 
-      copymem(glDisplayInfo, Info, InfoSize);
+      pf::copymem(&glDisplayInfo, Info, InfoSize);
       return ERR::Okay;
 #else
 
       if (glDisplayInfo.DisplayID) {
-         copymem(glDisplayInfo, Info, InfoSize);
+         pf::copymem(&glDisplayInfo, Info, InfoSize);
          return ERR::Okay;
       }
       else {
@@ -1569,4 +1569,3 @@ static STRUCTS glStructures = {
 
 PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
 extern "C" struct ModHeader * register_display_module() { return &ModHeader; }
-

@@ -55,14 +55,7 @@ if (BUILD_DEFS) # Customised idl_c() equivalent, this is for defining the output
    add_dependencies (build_headers display_defs)
 endif ()
 
-link_directories("/usr/X11R6/lib" "/usr/lib")
-
-   CHECK_C_SOURCE_COMPILES ("
-#include <X11/extensions/Xrandr.h>
-int main() {
-   return 0;
-}"
-   XRANDR_INSTALLED)
+link_directories(X11_INCLUDE_DIR)
 
    CHECK_C_SOURCE_COMPILES ("
 #include <X11/Xlib.h>
@@ -72,14 +65,17 @@ int main() {
 }"
    XDGA_INSTALLED)
 
-if (XRANDR_INSTALLED)
-   add_definitions ("-DXRANDR_ENABLED")
-else ()
-   message (STATUS "XRandR headers unavailable; building without XRandR support")
-endif ()
+if (X11_FOUND)
+   add_definitions ("-DX11_ENABLED")
+   if (X11_Xrandr_FOUND)
+      add_definitions ("-DXRANDR_ENABLED")
+   else ()
+      message (STATUS "XRandR headers unavailable; building without XRandR support")
+   endif ()
 
-if (XDGA_INSTALLED)
-   add_definitions ("-DXDGA_ENABLED")
+   if (XDGA_INSTALLED)
+      add_definitions ("-DXDGA_ENABLED")
+   endif ()
 endif ()
 
 add_library (${MOD})
@@ -105,16 +101,22 @@ elseif (ANDROID)
    # GL2 Link: -ljnigraphics -lEGL -lGLESv2 -DGLES2
    # GL3 Link: -ljnigraphics -lEGL -lGLESv3 -DGLES3
 else ()
-   # X11
-   # Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
 	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-strict-overflow")
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-strict-overflow")
-   target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
-   set (DISPLAY_PRIVATE_LIBS ${MATH_LINK} Xrender Xext X11)
-   if (XRANDR_INSTALLED)
-      list (APPEND DISPLAY_PRIVATE_LIBS Xrandr)
-   endif ()
-   target_link_libraries (${MOD} PRIVATE ${DISPLAY_PRIVATE_LIBS}) # x11/libXxf86dga.a
 
-   add_compile_definitions ("__X11DGA__" "__xwindows__")
+   target_sources (${MOD} PRIVATE ${FUNCTIONS} ${CLASSES})
+
+   set (DISPLAY_PRIVATE_LIBS ${MATH_LINK})
+
+   if (X11_FOUND)
+      # Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
+
+      list (APPEND DISPLAY_PRIVATE_LIBS Xrender Xext X11)
+      if (X11_Xrandr_FOUND)
+         list (APPEND DISPLAY_PRIVATE_LIBS Xrandr)
+      endif ()
+      target_link_libraries (${MOD} PRIVATE ${DISPLAY_PRIVATE_LIBS}) # x11/libXxf86dga.a
+
+      add_compile_definitions ("__X11DGA__" "__xwindows__")
+   endif ()
 endif ()

@@ -40,6 +40,7 @@ std::string_view trim_view(std::string_view Text)
    return Text.substr(start, end - start);
 }
 
+//********************************************************************************************************************
 // Retrieves or looks up the schema type descriptor for a given XPath value. Uses cached type info if available,
 // otherwise queries the schema registry for the value's schema type.
 
@@ -52,6 +53,7 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(c
    return registry.find_descriptor(type);
 }
 
+//********************************************************************************************************************
 // Determines if two XPath values should be compared as booleans based on their types. Returns true if either
 // value is already a boolean, or if both values' schema types support coercion to XPath boolean type.
 
@@ -68,6 +70,7 @@ bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right)
           right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean);
 }
 
+//********************************************************************************************************************
 // Determines if two XPath values should be compared as numeric values by checking if both values' schema
 // descriptors support coercion to XPath number type.
 
@@ -81,6 +84,7 @@ bool should_compare_as_numeric(const XPathVal &Left, const XPathVal &Right)
           right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathNumber);
 }
 
+//********************************************************************************************************************
 // Compares two floating-point numbers for equality using epsilon-based tolerance to handle floating-point
 // precision issues. Special handling for NaN (always unequal) and infinity (equal only if both infinite
 // with same sign). Uses relative epsilon for values larger than 1.0 and absolute epsilon otherwise.
@@ -100,6 +104,7 @@ bool numeric_equal(double Left, double Right)
    else return std::fabs(Left - Right) <= larger * std::numeric_limits<double>::epsilon() * 16;
 }
 
+//********************************************************************************************************************
 // Performs relational comparisons (less than, greater than, etc.) between two numeric values. Returns false
 // if either value is NaN, otherwise applies the specified comparison operator.
 

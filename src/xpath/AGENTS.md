@@ -94,13 +94,13 @@ src/xpath/
 
 ## Core Structures and Types
 
-### XPathNode Structure
+### Compiled Query Result
 
-Represents a compiled XPath or XQuery expression as an Abstract Syntax Tree (AST).
+Represents a compiled XPath/XQuery expression result, including the root AST and prolog/module metadata.
 
 **Include:** `<parasol/modules/xpath.h>`
 
-The XPathNode structure is an opaque type representing compiled XPath expressions. It is created via `xp::Compile()` and used with `xp::Evaluate()` and `xp::Query()`.
+Use `xp::Compile()` to obtain an opaque `XPathParseResult*`. Pass this directly to `xp::Evaluate()` and `xp::Query()`. The evaluator reads the AST (`expression`) and prolog/module cache from the parse result.
 
 **Key Properties:**
 - Thread-safe and reusable across multiple XML documents
@@ -152,7 +152,7 @@ Key node types include:
 XPath and XQuery expressions must be compiled before evaluation. Compilation validates syntax, builds an optimised AST, and prepares the expression for execution.
 
 **Key Function:**
-- `xp::Compile(objXML *XML, CSTRING Query, XPathNode **Result)`
+- `xp::Compile(objXML *XML, CSTRING Query, XPathParseResult **Result)`
 
 **Compilation Process:**
 1. Tokenisation - Break expression into tokens
@@ -170,7 +170,7 @@ XPath and XQuery expressions must be compiled before evaluation. Compilation val
 Compiled expressions can be evaluated against XML documents to produce typed results.
 
 **Key Function:**
-- `xp::Evaluate(objXML *XML, XPathNode *Query, XPathValue **Result)`
+- `xp::Evaluate(objXML *XML, XPathParseResult *Query, XPathValue **Result)`
 
 **Evaluation Modes:**
 - **Value Mode**: Returns complete typed result (XPathValue)
@@ -188,7 +188,7 @@ Compiled expressions can be evaluated against XML documents to produce typed res
 For processing large result sets or when only node matching is needed, use the Query function with callbacks.
 
 **Key Function:**
-- `xp::Query(objXML *XML, XPathNode *Query, FUNCTION *Callback)`
+- `xp::Query(objXML *XML, XPathParseResult *Query, FUNCTION *Callback)`
 
 **Callback Pattern:**
 ```cpp
@@ -719,7 +719,7 @@ This dual testing approach ensures comprehensive coverage at both the internal i
 #include <parasol/modules/xpath.h>
 
 if (auto xml = objXML::create { fl::Path("document.xml") }; xml.ok()) {
-   XPathNode *query;
+   XPathParseResult *query;
    if (xp::Compile(*xml, "//book[@price < 20]/title", &query) IS ERR::Okay) {
       XPathValue *result;
       if (xp::Evaluate(*xml, query, &result) IS ERR::Okay) {
@@ -746,7 +746,7 @@ static ERR process_book(objXML *XML, int TagID, CSTRING Attrib) {
    return ERR::Okay;
 }
 
-XPathNode *query;
+XPathParseResult *query;
 if (xp::Compile(xml, "//book[@category='fiction']", &query) IS ERR::Okay) {
    FUNCTION callback = C_FUNCTION(process_book);
    xp::Query(xml, query, &callback);
@@ -780,7 +780,7 @@ xml->setVariable("minPrice", 10.0);
 xml->setVariable("maxPrice", 50.0);
 xml->setVariable("category", "fiction");
 
-XPathNode *query;
+XPathParseResult *query;
 xp::Compile(xml, "//book[@price >= $minPrice and @price <= $maxPrice "
                  "and @category = $category]", &query);
 
@@ -860,3 +860,4 @@ Use the `xp::Query()` function with callbacks for streaming evaluation of large 
 - **API Reference**: See `docs/xml/modules/xpath.xml` for complete API documentation
 
 This guide provides the essential information needed for AI agents to work effectively with the Parasol XPath module, covering architecture, language support, function library, and integration patterns.
+

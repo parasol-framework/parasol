@@ -11,6 +11,7 @@
 // canonical keys such as the qname/arity signature.
 
 #include "xquery_prolog.h"
+#include "../parse/xpath_parser.h"
 #include "xpath_errors.h"
 #include <parasol/strings.hpp>
 #include <parasol/modules/xpath.h>
@@ -245,7 +246,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
 
    // Verify that it's a library module
 
-   auto module_prolog = compiled->get_prolog();
+   auto module_prolog = compiled->prolog;
    if ((not module_prolog) or (not module_prolog->is_library_module)) {
       FreeResource(compiled);
       reporter.record_error(std::format("Module is not a library module: {}", uri_key));
@@ -531,16 +532,6 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
          static const std::string functions_ns("http://www.w3.org/2005/xpath-functions");
          return build_expanded(functions_ns, local_view);
       }
-
-      if (Node) {
-         if (auto other_prolog = Node->get_prolog()) {
-            auto uri_entry2 = other_prolog->declared_namespace_uris.find(prefix);
-            if (uri_entry2 != other_prolog->declared_namespace_uris.end()) {
-               return build_expanded(uri_entry2->second, local_view);
-            }
-         }
-      }
-
       return std::string(qname);
    }
 

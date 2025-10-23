@@ -66,7 +66,7 @@ static uint32_t VideoReadPixel(objBitmap *, int, int);
 static void  VideoReadRGBPixel(objBitmap *, int, int, RGB8 *);
 static void  VideoReadRGBIndex(objBitmap *, uint8_t *, RGB8 *);
 
-#else
+#elif defined(__xwindows__) or defined(__ANDROID__) or defined(_GLES_)
 
 static void VideoDrawPixel32(objBitmap *, int, int, uint32_t);
 static void VideoDrawPixel24(objBitmap *, int, int, uint32_t);
@@ -1232,8 +1232,18 @@ static ERR BITMAP_Init(extBitmap *Self)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) Self->Flags |= BMF::2DACCELERATED;
 
-#else
-   #error Platform requires memory allocation routines for the Bitmap class.
+#else // Software rendering only
+   Self->DataFlags &= ~(MEM::TEXTURE|MEM::VIDEO);
+
+   if (!Self->Data) {
+      if ((Self->Flags & BMF::NO_DATA) IS BMF::NIL) {
+         if (!Self->Size) return log.warning(ERR::FieldNotSet);
+         if (AllocMemory(Self->Size, MEM::NO_BLOCKING|MEM::NO_POOL|MEM::NO_CLEAR|Self->DataFlags, &Self->Data) IS ERR::Okay) {
+            Self->prvAFlags |= BF_DATA;
+         }
+         else return log.warning(ERR::AllocMemory);
+      }
+   }
 #endif
 
    // Determine the correct pixel format for the bitmap
@@ -2686,7 +2696,7 @@ static ERR CalculatePixelRoutines(extBitmap *Self)
       return ERR::Okay;
    }
 
-#else
+#elif defined(__xwindows__) or defined(__ANDROID__) or defined(_GLES_)
 
    if ((Self->DataFlags & (MEM::VIDEO|MEM::TEXTURE)) != MEM::NIL) {
       switch(Self->BytesPerPixel) {
@@ -2864,4 +2874,3 @@ ERR create_bitmap_class(void)
 
    return clBitmap ? ERR::Okay : ERR::AddClass;
 }
-

@@ -16,6 +16,9 @@ class extXML;
 #include "../api/xpath_axis.h"
 #include "../api/xpath_functions.h"
 
+// Forward declaration to avoid pulling parser headers here
+struct XPathParseResult;
+
 struct XMLAttrib;
 class CompiledXPath;
 
@@ -31,6 +34,7 @@ class XPathEvaluator : public XPathErrorReporter {
    private:
    extXML * xml;
    const XPathNode * query_root = nullptr;
+   const XPathParseResult * parse_context = nullptr;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
@@ -45,8 +49,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    // Tracks in-scope namespace declarations while building constructed nodes so nested
    // constructors inherit and override prefixes correctly.
-   struct ConstructorNamespaceScope
-   {
+   struct ConstructorNamespaceScope {
       const ConstructorNamespaceScope * parent = nullptr;
       std::unordered_map<std::string, uint32_t> prefix_bindings;
       std::optional<uint32_t> default_namespace;
@@ -142,6 +145,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    public:
    explicit XPathEvaluator(extXML *XML, const XPathNode *QueryRoot = nullptr);
+   XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XPathParseResult *ParseContext);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
