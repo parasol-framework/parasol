@@ -851,7 +851,7 @@ static ERR DISPLAY_Init(extDisplay *Self)
       }
 
    #else
-      #error This platform requires display initialisation code.
+      return log.warning(ERR::NoSupport);
    #endif
 
    if ((Self->Flags & SCR::BUFFER) != SCR::NIL) alloc_display_buffer(Self);
@@ -1101,13 +1101,9 @@ static ERR DISPLAY_NewObject(extDisplay *Self)
 
    #else
 
-      strcopy("Unknown", Self->CertificationDate, sizeof(Self->CertificationDate));
       strcopy("Unknown", Self->Chipset, sizeof(Self->Chipset));
       strcopy("Unknown", Self->Display, sizeof(Self->Display));
       strcopy("Unknown", Self->DisplayManufacturer, sizeof(Self->DisplayManufacturer));
-      strcopy("Unknown", Self->DriverCopyright, sizeof(Self->DriverCopyright));
-      strcopy("Unknown", Self->DriverVendor, sizeof(Self->DriverVendor));
-      strcopy("Unknown", Self->DriverVersion, sizeof(Self->DriverVersion));
       strcopy("Unknown", Self->Manufacturer, sizeof(Self->Manufacturer));
 
    #endif
@@ -1844,7 +1840,7 @@ ERR DISPLAY_Show(extDisplay *Self)
       Self->Flags &= ~SCR::NOACCELERATION;
 
    #else
-      #error Display code is required for this platform.
+      return log.warning(ERR::NoSupport);
    #endif
 
    Self->Flags |= SCR::VISIBLE;
