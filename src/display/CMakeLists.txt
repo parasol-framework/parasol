@@ -109,10 +109,9 @@ else ()
    set (DISPLAY_PRIVATE_LIBS ${MATH_LINK})
 
    if (X11_FOUND)
-      # X11
       # Apt package requirements: libxrandr-dev libxxf86vm-dev libxxf86dga-dev
 
-      list (APPEND DISPLAY_PRIVATE_LIBS X11_LIBRARIES) # Xrender Xext X11
+      list (APPEND DISPLAY_PRIVATE_LIBS Xrender Xext X11)
       if (X11_Xrandr_FOUND)
          list (APPEND DISPLAY_PRIVATE_LIBS Xrandr)
       endif ()
