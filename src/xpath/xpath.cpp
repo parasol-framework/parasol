@@ -419,8 +419,8 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    auto query = (XPathParseResult *)Query;
    // No longer mutate the AST; evaluator is given parse context directly.
 
-   XPathEvaluator eval(xml, ((XPathParseResult *)Query)->expression.get(), (XPathParseResult *)Query);
-   return eval.find_tag(*((XPathParseResult *)Query)->expression.get(), 0); // Returns ERR:Search if no match
+   XPathEvaluator eval(xml, query->expression.get(), query);
+   return eval.find_tag(*(query->expression.get()), 0); // Returns ERR:Search if no match
 }
 
 /*********************************************************************************************************************
