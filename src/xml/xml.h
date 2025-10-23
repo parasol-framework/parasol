@@ -16,6 +16,9 @@
 #include "schema/schema_parser.h"
 #include <parasol/modules/xpath.h>
 
+// Forward declare to avoid heavy parser headers here
+struct XPathParseResult;
+
 #include <concepts>
 #include <ranges>
 #include <algorithm>
@@ -167,11 +170,11 @@ class extXML : public objXML {
    ankerl::unordered_dense::map<PREFIX, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
    // XQuery cache for imported modules.  These resources are owned exclusively by the XML object.  Potentially,
-   // multiple XPathNode objects from xp::Compile() can reference a single module file that only needs to be stored once.  For that
+   // multiple compiled query results from xp::Compile() can reference a single module file that only needs to be stored once.  For that
    // reason, ownership is maintained for the lifetime of the XML object so that we can simplify resource management.
    // Managed by fetch_or_load_module()
 
-   ankerl::unordered_dense::map<URI_STR, class XPathNode *> ModuleCache; // Compiled from ModuleCache
+   ankerl::unordered_dense::map<URI_STR, struct XPathParseResult *> ModuleCache; // Compiled from ModuleCache
 
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;

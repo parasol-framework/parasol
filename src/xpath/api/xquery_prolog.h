@@ -66,9 +66,11 @@ struct XQueryModuleImport {
 };
 
 //********************************************************************************************************************
-// Utilised by XPathNode to cache imported modules.
+// Utilised to cache imported XQuery modules (compiled query result).
+// Forward declare to avoid coupling headers; concrete definition in parse/xpath_parser.h
+struct XPathParseResult;
 
-using XMODULE = XPathNode;
+using XMODULE = XPathParseResult;
 
 struct XQueryModuleCache {
    // Referenced as a UID from xp::Compile() because it's a weak reference.

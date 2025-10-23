@@ -154,12 +154,12 @@ extern "C" ERR load_regex(void)
 
 static ERR xpnode_free(APTR Address)
 {
-   ((XPathNode *)Address)->~XPathNode();
+   ((XPathParseResult *)Address)->~XPathParseResult();
    return ERR::Okay;
 }
 
 static ResourceManager glNodeManager = {
-   "XPathNode",
+   "XPathParseResult",
    &xpnode_free
 };
 
@@ -248,26 +248,29 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
    while ((Query[len]) and (Query[len] != '\n')) len++;
    log.branch("XML: %d, Query: %.*s", XML ? XML->UID : 0, len, Query);
 
-   XPathNode *node;
-   if (AllocMemory(sizeof(XPathNode), MEM::MANAGED, (APTR *)&node, nullptr) IS ERR::Okay) {
+   XPathParseResult *node;
+   if (AllocMemory(sizeof(XPathParseResult), MEM::MANAGED, (APTR *)&node, nullptr) IS ERR::Okay) {
       SetResourceMgr(node, &glNodeManager);
+
+      // Construct the result object in-place before assigning into it
+      new (node) XPathParseResult();
 
       XPathTokeniser tokeniser;
       XPathParser parser;
 
       auto tokens = tokeniser.tokenize(Query);
-      XPathParseResult parse_result = parser.parse(tokens);
+      auto parsed = parser.parse(tokens);
+      *node = std::move(parsed);
 
-      auto prolog = parse_result.prolog;
+      auto prolog = node->prolog;
 
-      std::unique_ptr<XPathNode> root_node;
       if ((prolog) and (prolog->is_library_module)) {
          // XQuery module detected - empty result is normal
          // Synthesise an empty-sequence expression node so downstream code has a valid AST.
          log.msg("XQuery module compiled");
-         root_node = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+         if (not node->expression) node->expression = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
       }
-      else if (not parse_result.expression) {
+      else if (not node->expression) {
          auto parser_errors = parser.get_errors();
          std::string message;
 
@@ -284,25 +287,23 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
          FreeResource(node);
          return ERR::Syntax;
       }
-      else root_node = std::move(parse_result.expression);
-
-      new (node) XPathNode(std::move(*root_node));
 
       // If the expression featured an XQuery prolog then it needs a little more configuration.
-
-      if (prolog) node->set_prolog(prolog);
+      if (prolog and node->expression) node->expression->set_prolog(prolog);
 
       // Move the module cache across if one was created during parsing.
 
-      std::shared_ptr<XQueryModuleCache> module_cache = parse_result.module_cache;
+      std::shared_ptr<XQueryModuleCache> module_cache = node->module_cache;
       if (not module_cache) {
          module_cache = std::make_shared<XQueryModuleCache>();
          // An XML object is required for module importation to work correctly.
          if (XML) module_cache->owner = XML->UID;
       }
 
-      if (module_cache) {
-         node->set_module_cache(module_cache);
+      if (module_cache and node->expression) {
+         node->expression->set_module_cache(module_cache);
+         // Retain a copy on the result as well
+         node->module_cache = module_cache;
          if (prolog) prolog->bind_module_cache(module_cache);
       }
 
@@ -344,7 +345,7 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
 
    if (xml->Tags.empty()) return log.warning(ERR::NoData);
 
-   auto compiled_path = (XPathNode *)Query;
+   auto query = (XPathParseResult *)Query;
 
    xml->Attrib.clear();
    xml->ErrorMsg.clear();
@@ -355,9 +356,11 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
    if (AllocMemory(sizeof(XPathVal), MEM::DATA|MEM::MANAGED, (APTR *)&xpv, nullptr) IS ERR::Okay) {
       SetResourceMgr(xpv, &glXPVManager);
       new (xpv) XPathVal(); // Placement new to construct a dummy XPathVal object
+      
+      if (query->prolog and query->expression) query->expression->set_prolog(query->prolog);
 
-      XPathEvaluator eval(xml, compiled_path);
-      auto err = eval.evaluate_xpath_expression(*compiled_path, (XPathVal *)xpv);
+      XPathEvaluator eval(xml, query->expression.get());
+      auto err = eval.evaluate_xpath_expression(*(query->expression.get()), (XPathVal *)xpv);
       if (err != ERR::Okay) {
          FreeResource(xpv);
          log.warning("%s", xml->ErrorMsg.c_str());
@@ -414,9 +417,12 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    xml->Cursor = xml->Tags.begin();
    xml->ErrorMsg.clear();
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
+   
+   auto query = (XPathParseResult *)Query;
+   if (query->prolog and query->expression) query->expression->set_prolog(query->prolog);
 
-   XPathEvaluator eval(xml, (XPathNode *)Query);
-   return eval.find_tag(*(XPathNode *)Query, 0); // Returns ERR:Search if no match
+   XPathEvaluator eval(xml, ((XPathParseResult *)Query)->expression.get());
+   return eval.find_tag(*((XPathParseResult *)Query)->expression.get(), 0); // Returns ERR:Search if no match
 }
 
 /*********************************************************************************************************************
