@@ -532,16 +532,6 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
          static const std::string functions_ns("http://www.w3.org/2005/xpath-functions");
          return build_expanded(functions_ns, local_view);
       }
-
-      if (Node) {
-         if (auto other_prolog = Node->get_prolog()) {
-            auto uri_entry2 = other_prolog->declared_namespace_uris.find(prefix);
-            if (uri_entry2 != other_prolog->declared_namespace_uris.end()) {
-               return build_expanded(uri_entry2->second, local_view);
-            }
-         }
-      }
-
       return std::string(qname);
    }
 

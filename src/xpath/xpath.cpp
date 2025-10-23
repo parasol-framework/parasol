@@ -288,8 +288,8 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
          return ERR::Syntax;
       }
 
-      // If the expression featured an XQuery prolog then it needs a little more configuration.
-      if (prolog and node->expression) node->expression->set_prolog(prolog);
+      // If the expression featured an XQuery prolog then attach it to the parse result only.
+      // Evaluator reads from the parse context; do not mutate the AST.
 
       // Move the module cache across if one was created during parsing.
 
@@ -300,9 +300,8 @@ ERR Compile(objXML *XML, CSTRING Query, APTR *Result)
          if (XML) module_cache->owner = XML->UID;
       }
 
-      if (module_cache and node->expression) {
-         node->expression->set_module_cache(module_cache);
-         // Retain a copy on the result as well
+      if (module_cache) {
+         // Retain on the result only; evaluator uses parse-context.
          node->module_cache = module_cache;
          if (prolog) prolog->bind_module_cache(module_cache);
       }
@@ -356,10 +355,9 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
    if (AllocMemory(sizeof(XPathVal), MEM::DATA|MEM::MANAGED, (APTR *)&xpv, nullptr) IS ERR::Okay) {
       SetResourceMgr(xpv, &glXPVManager);
       new (xpv) XPathVal(); // Placement new to construct a dummy XPathVal object
-      
-      if (query->prolog and query->expression) query->expression->set_prolog(query->prolog);
+      // No longer mutate the AST; evaluator is given parse context directly.
 
-      XPathEvaluator eval(xml, query->expression.get());
+      XPathEvaluator eval(xml, query->expression.get(), query);
       auto err = eval.evaluate_xpath_expression(*(query->expression.get()), (XPathVal *)xpv);
       if (err != ERR::Okay) {
          FreeResource(xpv);
@@ -419,9 +417,9 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
    
    auto query = (XPathParseResult *)Query;
-   if (query->prolog and query->expression) query->expression->set_prolog(query->prolog);
+   // No longer mutate the AST; evaluator is given parse context directly.
 
-   XPathEvaluator eval(xml, ((XPathParseResult *)Query)->expression.get());
+   XPathEvaluator eval(xml, ((XPathParseResult *)Query)->expression.get(), (XPathParseResult *)Query);
    return eval.find_tag(*((XPathParseResult *)Query)->expression.get(), 0); // Returns ERR:Search if no match
 }
 
