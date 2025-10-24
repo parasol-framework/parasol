@@ -95,15 +95,6 @@ an escape character in attribute strings.  The `@*` syntax matches any attribute
 
 -END-
 
-Examples:
-
-  /menu/window[@title='foo']/...
-  /menu[=contentmatch]
-  /menu//window
-  /menu/window/ * (First child of the window tag)
-  /menu/ *[@id='5']
-  /root/section[@*="alpha"] (Match any attribute with value "alpha")
-
 *********************************************************************************************************************/
 
 #include <parasol/modules/xml.h>

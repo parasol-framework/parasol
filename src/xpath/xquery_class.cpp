@@ -8,9 +8,101 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 XQuery: Provides an interface for XQuery evaluation and execution.
 
-...
+The XQuery class provides comprehensive support for executing XPath 2.0 and XQuery expressions, enabling navigation 
+of XML documents.  It operates in conjunction with the @XML class to provide a standards-compliant query
+engine with extensive functionality.
+
+<header>XPath 2.0 Path Expressions</header>
+
+The class supports the full XPath 2.0 specification for navigating XML documents, including all 13 standard axes
+(`child`, `descendant`, `descendant-or-self`, `following`, `following-sibling`, `parent`, `ancestor`,
+`ancestor-or-self`, `preceding`, `preceding-sibling`, `self`, `attribute`, and `namespace`), node tests for element
+names, wildcards (`*`), and attribute selectors (`@attr`), numeric position filters (`[1]`, `[2]`), comparison
+operators, and complex boolean expressions in predicates.  Both absolute paths (`/root/element`), relative paths
+(`element/subelement`), and recursive descent (`//element`) are supported.
+
+<header>XQuery Language Support</header>
+
+The class implements core XQuery 1.0 functionality including FLWOR expressions (`for`, `let`, `where`, `order by`,
+and `return` clauses) for advanced querying, sequence operations for constructing, filtering, and manipulating
+sequences of nodes and values, and a comprehensive type system supporting strings, numbers, booleans, node sets,
+dates, durations, and QNames.
+
+Informal support for XQuery 2.0 functionality is also included but the feature-set is not yet complete.
+
+<header>Function Library</header>
+
+A rich set of standard functions is provided across multiple categories:
+
+<list type="bullet">
+<li>Node Functions: `position()`, `last()`, `count()`, `id()`, `name()`, `local-name()`, `namespace-uri()`, `root()`, `node-name()`, `base-uri()`</li>
+<li>String Functions: `concat()`, `substring()`, `contains()`, `starts-with()`, `ends-with()`, `string-length()`, `normalize-space()`, `upper-case()`, `lower-case()`, `translate()`, `string-join()`, `encode-for-uri()`, `escape-html-uri()`</li>
+<li>Numeric Functions: `number()`, `sum()`, `floor()`, `ceiling()`, `round()`, `round-half-to-even()`, `abs()`, `min()`, `max()`, `avg()`</li>
+<li>Boolean Functions: `boolean()`, `not()`, `true()`, `false()`, `exists()`, `empty()`, `lang()`</li>
+<li>Sequence Functions: `distinct-values()`, `index-of()`, `insert-before()`, `remove()`, `reverse()`, `subsequence()`, `unordered()`, `deep-equal()`, `zero-or-one()`, `one-or-more()`, `exactly-one()`</li>
+<li>Regular Expressions: `matches()`, `replace()`, `tokenize()`, `analyze-string()`</li>
+<li>Date and Time Functions: `current-date()`, `current-time()`, `current-dateTime()`, date and time component extractors, timezone adjustments, duration calculations</li>
+<li>Document Functions: `doc()`, `doc-available()`, `collection()`, `unparsed-text()`, `unparsed-text-lines()`, `document-uri()`</li>
+<li>QName Functions: `QName()`, `resolve-QName()`, `prefix-from-QName()`, `local-name-from-QName()`, `namespace-uri-from-QName()`, `namespace-uri-for-prefix()`, `in-scope-prefixes()`</li>
+<li>URI Functions: `resolve-uri()`, `iri-to-uri()`</li>
+<li>Formatting Functions: `format-date()`, `format-time()`, `format-dateTime()`, `format-integer()`</li>
+<li>Utility Functions: `error()`, `trace()`</li>
+</list>
+
+<header>Expression Compilation</header>
+
+XPath and XQuery expressions are compiled into an optimised internal representation for efficient reuse.  Expressions
+can be run in their own thread, with the result available in #Result and #ResultString on completion, but the targeted XML
+object will be locked for the duration of the query.
+
+<header>Evaluation Modes</header>
+
+There are two distinct methods for query evaluation.  Value evaluation returns typed results (&XPathValue)
+that can represent node sets, strings, numbers, booleans, dates, or sequences.  Node iteration invokes a callback
+function for each matching node, enabling streaming processing of large result sets.
+
+<header>Usage Patterns</header>
+
+Compiling and evaluating queries:
+
+<pre>
+objXQuery::create query { statement="/bookstore/book[@price < 10]/title" };
+if (query.ok()) {
+   XPathValue *result;
+   if (query->evaluate(xml) IS ERR::Okay) {
+      log.msg("Got: %s", query->get<CSTRING>(FID_ResultString));
+   }
+}
+</pre>
+
+Node iteration with callbacks:
+
+<pre>
+objXQuery::create query { statement="//chapter[@status='draft']" };
+if (query.ok()) {
+   auto callback = C_FUNCTION(process_node);
+   query->search(xml, &callback);
+}
+</pre>
+
+<header>Extensions</header>
+
+The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the
+`[=...]` syntax allows matching on encapsulated content, e.g., `/menu[=contentmatch]`.  Backslash (`\`) can be used as
+an escape character in attribute strings.
 
 -END-
+
+TODO:
+
+* Use GetKey() and SetKey() for defining variables in the query context.
+* Add support for custom functions via a new method, e.g., RegisterFunction().
+* Add DeclareNamespace(Prefix, URI) method to define namespaces for use in queries.
+* Provide ListVariables() and ListFunctions() methods to enumerate available variables and functions in the compiled query.
+* Allow modules to be preloaded - this would mean loading the module as a separate XQuery and adding it via a new method.
+  Alternatively we could provide a callback that is invoked when an import is encountered to allow the host application to supply
+  the XQuery module.
+* Could define an ExpectedResult field that defines an XPathValueType and throws an error if the result does not match.
 
 *********************************************************************************************************************/
 
@@ -94,14 +186,14 @@ static ERR XQUERY_Clear(extXQuery *Self)
 /*********************************************************************************************************************
 
 -METHOD-
-Evaluate: Run an XQuery expression against an XQuery document.
+Evaluate: Run an XQuery expression against an XML document.
 
 Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned
 in the #Result field as !XPathValue, which can represent various types of data including node sets, strings, numbers,
 or booleans.
 
 -INPUT-
-obj(XML) XML: Targeted XML document to query.
+obj(XML) XML: Targeted XML document to query.  Can be NULL for XQuery expressions that do not require a context.
 
 -ERRORS-
 Okay
@@ -126,22 +218,26 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
+   
+   Self->ErrorMsg.clear();
 
    if (xml) {
+      pf::ScopedObjectLock lock(xml);
+
       xml->Attrib.clear();
       xml->CursorTags = &xml->Tags;
       xml->Cursor = xml->Tags.begin();
+      XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
+      auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+      if (err != ERR::Okay) log.warning("%s", Self->ErrorMsg.c_str());
+      return err;
    }
-
-   Self->ErrorMsg.clear();
-
-   XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
-   auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
-   if (err != ERR::Okay) {
-      log.warning("%s", Self->ErrorMsg.c_str());
+   else {
+      XPathEvaluator eval(nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
+      auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+      if (err != ERR::Okay) log.warning("%s", Self->ErrorMsg.c_str());
+      return err;
    }
-
-   return err;
 }
 
 //********************************************************************************************************************
@@ -182,11 +278,21 @@ static ERR XQUERY_NewPlacement(extXQuery *Self)
 }
 
 /*********************************************************************************************************************
+-ACTION-
+Reset: Clears the information held in an XQuery object.
+*********************************************************************************************************************/
+
+static ERR XQUERY_Reset(extXQuery *Self)
+{
+   return acClear(Self);
+}
+
+/*********************************************************************************************************************
 
 -METHOD-
-Query: For node-based queries, evaluates a compiled expression and calls a function for each matching node.
+Search: For node-based queries, calls a function for each matching node.
 
-Use the Query function to scan an XML document for tags or attributes that match a compiled XQuery expression.
+Use the Search method to scan an XML document for tags or attributes that match a compiled XQuery expression.
 For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.
 
 If no callback is provided, the search stops after the first match and the @XML object's cursor markers will reflect
@@ -195,23 +301,22 @@ the position of the node.
 Note that valid function execution can return `ERR:Search` if zero matches are found.
 
 -INPUT-
-obj(XML) XML: Targeted XML document to query.
+obj(XML) XML: Target XML document to search.
 ptr(func) Callback: Optional callback function to invoke for each matching node.
 
 -ERRORS-
 Okay: At least one matching node was found and processed.
 NullArgs: At least one required parameter was not provided.
-NoData: The XML document contains no data to search.
 Syntax: The provided query expression has syntax errors.
 Search: No matching node was found.
 
 *********************************************************************************************************************/
 
-static ERR XQUERY_Query(extXQuery *Self, struct xq::Query *Args)
+static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if (not Args->XML) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 60);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
@@ -225,6 +330,8 @@ static ERR XQUERY_Query(extXQuery *Self, struct xq::Query *Args)
    Self->XML = xml;
 
    if (xml) {
+      pf::ScopedObjectLock lock(xml);
+
       if (Args->Callback) Self->Callback = *Args->Callback;
       else Self->Callback.Type = CALL::NIL;
 
@@ -234,20 +341,13 @@ static ERR XQUERY_Query(extXQuery *Self, struct xq::Query *Args)
       xml->Cursor = xml->Tags.begin();
 
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
+      XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
+      return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
    }
-
-   XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
-   return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
-}
-
-/*********************************************************************************************************************
--ACTION-
-Reset: Clears the information held in an XQuery object.
-*********************************************************************************************************************/
-
-static ERR XQUERY_Reset(extXQuery *Self)
-{
-   return acClear(Self);
+   else {
+      XPathEvaluator eval(nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
+      return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
+   }
 }
 
 /*********************************************************************************************************************

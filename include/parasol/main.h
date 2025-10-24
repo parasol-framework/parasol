@@ -198,6 +198,9 @@ class ScopedObjectLock {
             obj = (T *)Object;
             quicklock = true;
          }
+         #ifdef __GNUC__ // Suppress GCC false-positive warning
+         else obj = nullptr;
+         #endif
       }
 
       inline ~ScopedObjectLock() {
