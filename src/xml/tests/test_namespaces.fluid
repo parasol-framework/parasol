@@ -107,9 +107,9 @@ function testNamespaceXPath()
    assert(xml.tags, "XML should parse successfully")
 
    -- Should find namespaced items
-   local err, count = xml.mtCount('/root/ns:item')
+   local err, count = xml.mtEvaluate('count(/root/ns:item)')
    assert(err == ERR_Okay, "Count query should succeed")
-   assert(count == 2, "Should find 2 namespaced items")
+   assert(tonumber(count) == 2, "Should find 2 namespaced items")
 
    -- Should find non-namespaced item
    local err2, itemId = xml.mtFindTag('/root/item[@id="3"]')

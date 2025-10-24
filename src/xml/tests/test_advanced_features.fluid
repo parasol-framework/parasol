@@ -233,11 +233,6 @@ function testCountMethods()
       statement = '<root><section><item/><item/></section><section><item/><item/><item/></section></root>'
    })
 
-   -- Test Count method
-   local err, methodCount = xml.mtCount('//item')
-   assert(err == ERR_Okay, "Count method should succeed")
-   assert(methodCount == 5, "Should count all items: got " .. methodCount)
-
    -- Test count: mtEvaluate
    local err, keyCount = xml.mtEvaluate('count(//item)')
    assert(tonumber(keyCount) == 5, "Should count all items: got " .. keyCount)
