@@ -142,19 +142,18 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
     { id=10, name="FindTag" },
     { id=11, name="Filter" },
     { id=12, name="Evaluate" },
-    { id=13, name="Count" },
+    { id=13, name="ValidateDocument" },
     { id=14, name="InsertContent" },
     { id=15, name="RemoveXPath" },
-    { id=18, name="GetTag" },
-    { id=19, name="RegisterNamespace" },
-    { id=20, name="GetNamespaceURI" },
-    { id=21, name="SetTagNamespace" },
-    { id=22, name="ResolvePrefix" },
-    { id=23, name="SetVariable" },
-    { id=24, name="GetEntity" },
-    { id=25, name="GetNotation" },
-    { id=26, name="LoadSchema" },
-    { id=27, name="ValidateDocument" }
+    { id=16, name="GetTag" },
+    { id=17, name="RegisterNamespace" },
+    { id=18, name="GetNamespaceURI" },
+    { id=19, name="SetTagNamespace" },
+    { id=20, name="ResolvePrefix" },
+    { id=21, name="SetVariable" },
+    { id=22, name="GetEntity" },
+    { id=23, name="GetNotation" },
+    { id=24, name="LoadSchema" }
   })
 
   class("XML", { src="xml_class.cpp", output="xml_class_def.c" }, [[

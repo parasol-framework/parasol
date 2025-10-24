@@ -88,56 +88,6 @@ static ERR XML_Clear(extXML *Self)
 
 /*********************************************************************************************************************
 
--METHOD-
-Count: Count all tags that match a given XPath expression.
-
-This method will count all tags that match a given `XPath` and return the value in the `Result` parameter.  It is
-optimised for performance and does not modify the XML structure in any way.  It is safe to call concurrently from
-multiple threads.
-
--INPUT-
-cstr XPath: A valid XPath expression string defining the elements to count.  The expression must conform to XPath 2.0 syntax with Parasol extensions.
-&int Result: Pointer to an integer variable that will receive the total count of matching tags.
-
--ERRORS-
-Okay: The count operation completed successfully.
-NullArgs: Either the XPath parameter or Result parameter was NULL.
-
--END-
-
-*********************************************************************************************************************/
-
-static thread_local int tlXMLCounter;
-
-static ERR xml_count(extXML *Self, XMLTag &Tag, CSTRING Attrib)
-{
-   tlXMLCounter++;
-   return ERR::Okay;
-}
-
-static ERR XML_Count(extXML *Self, struct xml::Count *Args)
-{
-   pf::Log log;
-
-   if ((not Args) or (not Args->XPath)) return log.warning(ERR::NullArgs);
-
-   load_xpath();
-
-   tlXMLCounter = 0;
-
-   APTR cp;
-   if (xp::Compile(Self, Args->XPath, &cp) IS ERR::Okay) {
-      auto call = C_FUNCTION(xml_count);
-      xp::Query(Self, cp, &call);
-      FreeResource(cp);
-   }
-
-   Args->Result = tlXMLCounter;
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
-
 -ACTION-
 DataFeed: Processes and integrates external XML data into the object's document structure.
 

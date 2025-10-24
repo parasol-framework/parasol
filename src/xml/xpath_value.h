@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Value System Interface
 //
 // Defines the XPathVal class, which represents typed values in XPath evaluation.  XPathVal extends the public
@@ -28,15 +27,16 @@
 
 using NODES = pf::vector<XMLTag *>;
 
-namespace xml::schema
-{
-   enum class SchemaType;
-   class SchemaTypeDescriptor;
-   class SchemaTypeRegistry;
-   [[nodiscard]] SchemaType schema_type_for_xpath(XPVT) noexcept;
-   [[nodiscard]] bool is_numeric(SchemaType) noexcept;
-   SchemaTypeRegistry & registry();
-}
+namespace xml::schema {
+
+enum class SchemaType;
+class SchemaTypeDescriptor;
+class SchemaTypeRegistry;
+[[nodiscard]] SchemaType schema_type_for_xpath(XPVT) noexcept;
+[[nodiscard]] bool is_numeric(SchemaType) noexcept;
+SchemaTypeRegistry & registry();
+
+} // namespace
 
 class XPathVal : public XPathValue
 {
@@ -64,10 +64,8 @@ class XPathVal : public XPathValue
    double to_number() const;
    std::string to_string() const;
    NODES to_node_set() const;
-
    bool is_empty() const;
    size_t size() const;
-
    bool has_schema_info() const;
    void set_schema_type(std::shared_ptr<xml::schema::SchemaTypeDescriptor> TypeInfo);
    bool validate_against_schema() const;
@@ -78,11 +76,9 @@ class XPathVal : public XPathValue
 };
 
 std::string format_xpath_number(double Value);
-std::optional<bool> parse_schema_boolean(std::string_view Value);
-XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *> Nodes,
+std::optional<bool> parse_schema_boolean(std::string_view);
+XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *>,
    std::vector<const XMLAttrib *> Attributes = {},
    std::vector<std::string> Strings = {},
    std::optional<std::string> Override = std::nullopt);
-XPathVal xpath_nodeset_singleton(XMLTag *Node, const XMLAttrib *Attribute,
-   std::string StringValue);
-
+XPathVal xpath_nodeset_singleton(XMLTag *, const XMLAttrib *, std::string);

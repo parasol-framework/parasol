@@ -21,8 +21,7 @@
 struct XQueryProlog;
 struct XQueryModuleCache;
 
-struct XPathParseResult
-{
+struct XPathParseResult {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;

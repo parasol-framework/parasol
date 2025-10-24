@@ -189,19 +189,18 @@ struct InsertXPath { CSTRING XPath; XMI Where; CSTRING XML; int Result; static c
 struct FindTag { CSTRING XPath; FUNCTION * Callback; int Result; static const AC id = AC(-10); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Filter { CSTRING XPath; static const AC id = AC(-11); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Evaluate { CSTRING Statement; CSTRING Result; static const AC id = AC(-12); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct Count { CSTRING XPath; int Result; static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ValidateDocument { static const AC id = AC(-13); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct InsertContent { int Index; XMI Where; CSTRING Content; int Result; static const AC id = AC(-14); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RemoveXPath { CSTRING XPath; int Limit; static const AC id = AC(-15); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-25); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct LoadSchema { CSTRING Path; static const AC id = AC(-26); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct ValidateDocument { static const AC id = AC(-27); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetTag { int Index; struct XMLTag * Result; static const AC id = AC(-16); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC(-17); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct LoadSchema { CSTRING Path; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -333,11 +332,8 @@ class objXML : public Object {
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR count(CSTRING XPath, int * Result) noexcept {
-      struct xml::Count args = { XPath, (int)0 };
-      ERR error = Action(AC(-13), this, &args);
-      if (Result) *Result = args.Result;
-      return(error);
+   inline ERR validateDocument() noexcept {
+      return(Action(AC(-13), this, nullptr));
    }
    inline ERR insertContent(int Index, XMI Where, CSTRING Content, int * Result) noexcept {
       struct xml::InsertContent args = { Index, Where, Content, (int)0 };
@@ -351,54 +347,51 @@ class objXML : public Object {
    }
    inline ERR getTag(int Index, struct XMLTag ** Result) noexcept {
       struct xml::GetTag args = { Index, (struct XMLTag *)0 };
-      ERR error = Action(AC(-18), this, &args);
+      ERR error = Action(AC(-16), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR registerNamespace(CSTRING URI, uint32_t * Result) noexcept {
       struct xml::RegisterNamespace args = { URI, (uint32_t)0 };
-      ERR error = Action(AC(-19), this, &args);
+      ERR error = Action(AC(-17), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR getNamespaceURI(uint32_t NamespaceID, CSTRING * Result) noexcept {
       struct xml::GetNamespaceURI args = { NamespaceID, (CSTRING)0 };
-      ERR error = Action(AC(-20), this, &args);
+      ERR error = Action(AC(-18), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR setTagNamespace(int TagID, int NamespaceID) noexcept {
       struct xml::SetTagNamespace args = { TagID, NamespaceID };
-      return(Action(AC(-21), this, &args));
+      return(Action(AC(-19), this, &args));
    }
    inline ERR resolvePrefix(CSTRING Prefix, int TagID, uint32_t * Result) noexcept {
       struct xml::ResolvePrefix args = { Prefix, TagID, (uint32_t)0 };
-      ERR error = Action(AC(-22), this, &args);
+      ERR error = Action(AC(-20), this, &args);
       if (Result) *Result = args.Result;
       return(error);
    }
    inline ERR setVariable(CSTRING Key, CSTRING Value) noexcept {
       struct xml::SetVariable args = { Key, Value };
-      return(Action(AC(-23), this, &args));
+      return(Action(AC(-21), this, &args));
    }
    inline ERR getEntity(CSTRING Name, CSTRING * Value) noexcept {
       struct xml::GetEntity args = { Name, (CSTRING)0 };
-      ERR error = Action(AC(-24), this, &args);
+      ERR error = Action(AC(-22), this, &args);
       if (Value) *Value = args.Value;
       return(error);
    }
    inline ERR getNotation(CSTRING Name, CSTRING * Value) noexcept {
       struct xml::GetNotation args = { Name, (CSTRING)0 };
-      ERR error = Action(AC(-25), this, &args);
+      ERR error = Action(AC(-23), this, &args);
       if (Value) *Value = args.Value;
       return(error);
    }
    inline ERR loadSchema(CSTRING Path) noexcept {
       struct xml::LoadSchema args = { Path };
-      return(Action(AC(-26), this, &args));
-   }
-   inline ERR validateDocument() noexcept {
-      return(Action(AC(-27), this, nullptr));
+      return(Action(AC(-24), this, &args));
    }
 
    // Customised field setting

@@ -121,23 +121,6 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
 
   <methods>
     <method>
-      <name>Count</name>
-      <comment>Count all tags that match a given XPath expression.</comment>
-      <prototype>ERR xml::Count(OBJECTPTR Object, CSTRING XPath, INT * Result)</prototype>
-      <input>
-        <param type="CSTRING" name="XPath">A valid XPath expression string defining the elements to count.  The expression must conform to XPath 2.0 syntax with Parasol extensions.</param>
-        <param type="INT *" name="Result">Pointer to an integer variable that will receive the total count of matching tags.</param>
-      </input>
-      <description>
-<p>This method will count all tags that match a given <code>XPath</code> and return the value in the <code>Result</code> parameter.  It is optimised for performance and does not modify the XML structure in any way.  It is safe to call concurrently from multiple threads.</p>
-      </description>
-      <result>
-        <error code="Okay">The count operation completed successfully.</error>
-        <error code="NullArgs">Either the XPath parameter or Result parameter was NULL.</error>
-      </result>
-    </method>
-
-    <method>
       <name>Evaluate</name>
       <comment>Run an XQuery expression against the XML data.</comment>
       <prototype>ERR xml::Evaluate(OBJECTPTR Object, CSTRING Statement, CSTRING * Result)</prototype>

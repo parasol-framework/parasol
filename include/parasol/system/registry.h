@@ -111,5 +111,6 @@ enum class CLASSID : uint32_t {
    FILTEREFFECT = 0x79e93e58UL,
    CONTROLLER = 0xbf67c809UL,
    NETCLIENT = 0x05bdfa0bUL,
+   XQUERY = 0x2808c653UL,
 };
 
