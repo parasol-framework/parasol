@@ -743,15 +743,15 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
          if (separator != std::string::npos) {
             std::string prefix = name.substr(0, separator);
             imported_local_name = name.substr(separator + 1);
-            namespace_hash = prolog->resolve_prefix(prefix, context.document);
+            namespace_hash = prolog->resolve_prefix(prefix, context.xml);
             if (namespace_hash != 0) {
                auto uri_entry = prolog->declared_namespace_uris.find(prefix);
                if (uri_entry != prolog->declared_namespace_uris.end()) module_uri = uri_entry->second;
-               else if (context.document) {
-                  auto prefix_it = context.document->Prefixes.find(prefix);
-                  if (prefix_it != context.document->Prefixes.end()) {
-                     auto ns_it = context.document->NSRegistry.find(prefix_it->second);
-                     if (ns_it != context.document->NSRegistry.end()) module_uri = ns_it->second;
+               else if (context.xml) {
+                  auto prefix_it = context.xml->Prefixes.find(prefix);
+                  if (prefix_it != context.xml->Prefixes.end()) {
+                     auto ns_it = context.xml->NSRegistry.find(prefix_it->second);
+                     if (ns_it != context.xml->NSRegistry.end()) module_uri = ns_it->second;
                   }
                }
             }
@@ -850,9 +850,9 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
    if (owner_prolog) {
       if (not canonical_lookup.empty()) normalised_name = canonical_lookup;
       else {
-         normalised_name = canonicalise_variable_qname(name, *owner_prolog, context.document);
+         normalised_name = canonicalise_variable_qname(name, *owner_prolog, context.xml);
          if (normalised_name IS name) {
-            normalised_name = canonicalise_variable_qname(variable->qname, *owner_prolog, context.document);
+            normalised_name = canonicalise_variable_qname(variable->qname, *owner_prolog, context.xml);
          }
       }
    }

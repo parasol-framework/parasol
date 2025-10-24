@@ -150,10 +150,10 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
       if (auto owner = locate_in_document(Document)) return owner;
    }
 
-   if (Context.document) {
-      if (auto owner = locate_in_document(Context.document)) return owner;
+   if (Context.xml) {
+      if (auto owner = locate_in_document(Context.xml)) return owner;
 
-      for (auto &entry : Context.document->XMLCache) {
+      for (auto &entry : Context.xml->XMLCache) {
          if (auto owner = locate_in_document(entry.second)) return owner;
       }
    }
@@ -243,14 +243,14 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
 {
    if (!Node) return nullptr;
 
-   if (Context.document) {
-      auto &map = Context.document->getMap();
+   if (Context.xml) {
+      auto &map = Context.xml->getMap();
       auto it = map.find(Node->ID);
       if ((it != map.end()) and (it->second IS Node)) {
-         return Context.document;
+         return Context.xml;
       }
 
-      for (auto &it : Context.document->XMLCache) {
+      for (auto &it : Context.xml->XMLCache) {
          extXML *cached_xml = it.second;
          auto &cached_map = cached_xml->getMap();
          auto cit = cached_map.find(Node->ID);
@@ -268,7 +268,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
 {
    extXML *document;
    if (extXML *origin = locate_node_document(Context, Node)) document = origin;
-   else document = Context.document;
+   else document = Context.xml;
 
    if (AttributeNode) {
       Node = resolve_attribute_scope(Context, Node, AttributeNode, document);
@@ -280,7 +280,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
    }
 
    if (!Node) {
-      auto base = document_path(document ? document : Context.document);
+      auto base = document_path(document ? document : Context.xml);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
       return std::nullopt;
    }
@@ -288,17 +288,17 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
    if (!document) {
       extXML *owner_origin = locate_node_document(Context, Node);
       if (owner_origin) document = owner_origin;
-      else document = Context.document;
+      else document = Context.xml;
    }
 
    if ((Node->ParentID IS 0) and (!AttributeNode)) { // Root-level node with no attribute
-      auto base = document_path(document ? document : Context.document);
+      auto base = document_path(document ? document : Context.xml);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
    }
 
    const std::string * cached_base = nullptr;
    if (document) cached_base = document->findBaseURI(Node->ID);
-   else if (Context.document) cached_base = Context.document->findBaseURI(Node->ID);
+   else if (Context.xml) cached_base = Context.xml->findBaseURI(Node->ID);
 
    if (cached_base) return xml::uri::normalise_uri_separators(*cached_base);
 
@@ -344,8 +344,8 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
 
    // Perform a reverse lookup in the XML cache to find the document URI.
 
-   if (Context.document) {
-      for (auto &entry : Context.document->XMLCache) {
+   if (Context.xml) {
+      for (auto &entry : Context.xml->XMLCache) {
          if (entry.second IS document) {
             return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normalisation needed here?
          }
@@ -368,7 +368,7 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPath
    if (Node->Attribs[0].Name.empty()) return nullptr;
 
    extXML *origin = locate_node_document(Context, Node);
-   extXML *document = origin ? origin : Context.document;
+   extXML *document = origin ? origin : Context.xml;
    if ((!document) or (!document->SchemaContext)) return nullptr;
 
    auto descriptor = find_element_descriptor(document, Node->Attribs[0].Name);
@@ -392,7 +392,7 @@ bool is_element_explicitly_nilled(const XPathContext &Context, XMLTag *Node)
    if (Node->Attribs[0].Name.empty()) return false;
 
    extXML *origin = locate_node_document(Context, Node);
-   extXML *document = origin ? origin : Context.document;
+   extXML *document = origin ? origin : Context.xml;
 
    for (size_t index = 1; index < Node->Attribs.size(); ++index) {
       const XMLAttrib &attrib = Node->Attribs[index];

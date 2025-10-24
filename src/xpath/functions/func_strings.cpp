@@ -757,7 +757,7 @@ XPathVal XPathFunctionLibrary::function_resolve_uri(const std::vector<XPathVal> 
    std::string base;
 
    if ((Args.size() > 1) and (not Args[1].is_empty())) base = Args[1].to_string();
-   else if (Context.document) base = Context.document->Path;
+   else if (Context.xml) base = Context.xml->Path;
 
    if (relative.empty()) {
       if (base.empty()) return XPathVal();
@@ -858,4 +858,3 @@ XPathVal XPathFunctionLibrary::function_format_integer(const std::vector<XPathVa
    std::string formatted = format_integer_picture(rounded, picture);
    return XPathVal(formatted);
 }
-

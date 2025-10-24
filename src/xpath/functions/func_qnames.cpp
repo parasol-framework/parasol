@@ -229,8 +229,8 @@ XPathVal XPathFunctionLibrary::function_resolve_QName(const std::vector<XPathVal
    if ((not element_node) or (not element_node->isTag())) return XPathVal(pf::vector<XMLTag *>());
 
    std::string namespace_uri;
-   if (prefix.empty()) namespace_uri = find_in_scope_namespace(element_node, Context.document, std::string());
-   else namespace_uri = find_namespace_for_prefix(element_node, Context.document, prefix);
+   if (prefix.empty()) namespace_uri = find_in_scope_namespace(element_node, Context.xml, std::string());
+   else namespace_uri = find_namespace_for_prefix(element_node, Context.xml, prefix);
 
    if ((not prefix.empty()) and namespace_uri.empty()) {
       if (Context.expression_unsupported) *Context.expression_unsupported = true;
@@ -302,8 +302,8 @@ XPathVal XPathFunctionLibrary::function_namespace_uri_for_prefix(const std::vect
    if ((not element_node) or (not element_node->isTag())) return XPathVal(pf::vector<XMLTag *>());
 
    std::string namespace_uri;
-   if (prefix.empty()) namespace_uri = find_in_scope_namespace(element_node, Context.document, std::string());
-   else namespace_uri = find_namespace_for_prefix(element_node, Context.document, prefix);
+   if (prefix.empty()) namespace_uri = find_in_scope_namespace(element_node, Context.xml, std::string());
+   else namespace_uri = find_namespace_for_prefix(element_node, Context.xml, prefix);
 
    if (namespace_uri.empty()) return XPathVal(pf::vector<XMLTag *>());
    return XPathVal(namespace_uri);
@@ -323,11 +323,11 @@ XPathVal XPathFunctionLibrary::function_in_scope_prefixes(const std::vector<XPat
       return make_sequence_value(std::move(builder));
    }
 
-   std::vector<std::string> prefixes = collect_in_scope_prefixes(element_node, Context.document);
-   if (Context.document) {
+   std::vector<std::string> prefixes = collect_in_scope_prefixes(element_node, Context.xml);
+   if (Context.xml) {
       auto missing_default = std::find(prefixes.begin(), prefixes.end(), std::string()) == prefixes.end();
       if (missing_default) {
-         std::string default_namespace = find_in_scope_namespace(element_node, Context.document, std::string());
+         std::string default_namespace = find_in_scope_namespace(element_node, Context.xml, std::string());
          if (not default_namespace.empty()) prefixes.push_back(std::string());
       }
    }
@@ -338,4 +338,3 @@ XPathVal XPathFunctionLibrary::function_in_scope_prefixes(const std::vector<XPat
 
    return make_sequence_value(std::move(builder));
 }
-

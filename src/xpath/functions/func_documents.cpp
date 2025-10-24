@@ -26,15 +26,15 @@ namespace fs = std::filesystem;
 
 static std::optional<std::string> get_context_directory(const XPathContext &Context)
 {
-   if ((Context.document) and (Context.document->Path) and (*Context.document->Path)) {
+   if ((Context.xml) and (Context.xml->Path) and (*Context.xml->Path)) {
       std::string resolved;
-      if (ResolvePath(Context.document->Path, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) {
+      if (ResolvePath(Context.xml->Path, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) {
          fs::path base_path(resolved);
          base_path = base_path.parent_path();
          return base_path.string();
       }
 
-      std::string raw = Context.document->Path;
+      std::string raw = Context.xml->Path;
       size_t slash = raw.find_last_of("/\\");
       if (slash != std::string::npos) return raw.substr(0, slash + 1u);
    }
@@ -224,7 +224,7 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
-   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
+   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
@@ -232,7 +232,7 @@ XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, c
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
-   auto document = load_document(Context.document, resolved);
+   auto document = load_document(Context.xml, resolved);
    if (!document) return XPathVal(pf::vector<XMLTag *>());
 
    pf::vector<XMLTag *> nodes;
@@ -250,7 +250,7 @@ XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, c
 XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(false);
-   if (!Context.document) return XPathVal(false);
+   if (!Context.xml) return XPathVal(false);
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(false);
@@ -260,7 +260,7 @@ XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal
 
    if (is_string_uri(resolved)) return XPathVal(true);
 
-   if (Context.document->XMLCache.find(resolved) != Context.document->XMLCache.end()) return XPathVal(true);
+   if (Context.xml->XMLCache.find(resolved) != Context.xml->XMLCache.end()) return XPathVal(true);
 
    // TODO: Testing validity of URI's needs to be supported by the File class.
 
@@ -277,7 +277,7 @@ XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal
 
 XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
+   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string resolved;
    if (Args.empty()) {
@@ -297,7 +297,7 @@ XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &
    pf::vector<XMLTag *> nodes;
 
    for (const auto &entry : entries) {
-      auto document = load_document(Context.document, entry);
+      auto document = load_document(Context.xml, entry);
       if (!document) continue;
 
       for (auto &tag : document->Tags) {
@@ -314,7 +314,7 @@ XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &
 
 XPathVal XPathFunctionLibrary::function_uri_collection(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
-   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
+   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string resolved;
    if (Args.empty()) {
@@ -348,7 +348,7 @@ XPathVal XPathFunctionLibrary::function_uri_collection(const std::vector<XPathVa
 XPathVal XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(std::string());
-   if (!Context.document) return XPathVal(std::string());
+   if (!Context.xml) return XPathVal(std::string());
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(std::string());
@@ -363,7 +363,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathVal
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::string());
 
    std::string *text;
-   if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(std::string());
+   if (!read_text_resource(Context.xml, resolved, encoding, text)) return XPathVal(std::string());
 
    return XPathVal(*text);
 }
@@ -375,7 +375,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
    const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(false);
-   if (!Context.document) return XPathVal(false);
+   if (!Context.xml) return XPathVal(false);
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(false);
@@ -390,7 +390,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(false);
 
    std::string *text;
-   if (read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(true);
+   if (read_text_resource(Context.xml, resolved, encoding, text)) return XPathVal(true);
    return XPathVal(false);
 }
 
@@ -401,7 +401,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
-   if (!Context.document) return XPathVal(pf::vector<XMLTag *>());
+   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
@@ -416,7 +416,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
    std::string *text;
-   if (!read_text_resource(Context.document, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
+   if (!read_text_resource(Context.xml, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
 
    std::vector<std::string> lines;
 
@@ -445,7 +445,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
 {
    pf::vector<XMLTag *> results;
    if (Args.empty()) return XPathVal(results);
-   if (!Context.document) return XPathVal(results);
+   if (!Context.xml) return XPathVal(results);
 
    std::unordered_set<std::string> requested_ids;
 
@@ -490,12 +490,11 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
    if (requested_ids.empty()) return XPathVal(results);
 
    std::unordered_set<const XMLTag *> seen;
-   collect_idref_matches(Context.document, requested_ids, seen, results);
+   collect_idref_matches(Context.xml, requested_ids, seen, results);
 
-   for (const auto &entry : Context.document->XMLCache) {
+   for (const auto &entry : Context.xml->XMLCache) {
       collect_idref_matches(entry.second, requested_ids, seen, results);
    }
 
    return XPathVal(results);
 }
-

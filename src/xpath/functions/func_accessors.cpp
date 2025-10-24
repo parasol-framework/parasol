@@ -192,8 +192,8 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
 {
    XMLTag *target_node = Context.context_node;
 
-   if (!target_node and Context.document) {
-      for (auto &tag : Context.document->Tags) {
+   if (!target_node and Context.xml) {
+      for (auto &tag : Context.xml->Tags) {
          if ((tag.Flags & XTF::INSTRUCTION) != XTF::NIL) continue;
          target_node = &tag;
          break;
@@ -203,8 +203,8 @@ XPathVal XPathFunctionLibrary::function_static_base_uri(const std::vector<XPathV
    auto base = xpath::accessor::build_base_uri_chain(Context, target_node, Context.attribute_node);
    if (not base.has_value()) {
       if (Context.prolog) return XPathVal(Context.prolog->static_base_uri);
-      else if (Context.document) {
-         if (Context.document->Path) return XPathVal(Context.document->Path);
+      else if (Context.xml) {
+         if (Context.xml->Path) return XPathVal(Context.xml->Path);
       }
    }
 
@@ -226,4 +226,3 @@ XPathVal XPathFunctionLibrary::function_default_collation(const std::vector<XPat
 
    return XPathVal(std::string("http://www.w3.org/2005/xpath-functions/collation/codepoint"));
 }
-

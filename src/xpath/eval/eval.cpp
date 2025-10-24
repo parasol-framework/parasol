@@ -32,7 +32,7 @@
 XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) : xml(XML), query_root(QueryRoot), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
-   context.document = XML;
+   context.xml = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
    context.variables = &variable_storage;
@@ -43,7 +43,7 @@ XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XP
    : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
-   context.document = XML;
+   context.xml = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
    context.variables = &variable_storage;

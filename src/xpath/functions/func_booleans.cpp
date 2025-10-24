@@ -33,7 +33,7 @@ XPathVal XPathFunctionLibrary::function_lang(const std::vector<XPathVal> &Args, 
    XMLTag *node = Context.context_node;
    if (not node) return XPathVal(false);
 
-   std::string language = find_language_for_node(node, Context.document);
+   std::string language = find_language_for_node(node, Context.xml);
    if (language.empty()) return XPathVal(false);
 
    return XPathVal(language_matches(language, requested));
@@ -55,4 +55,3 @@ XPathVal XPathFunctionLibrary::function_exists(const std::vector<XPathVal> &Args
 
    return XPathVal(true);
 }
-

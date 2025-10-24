@@ -192,9 +192,9 @@ XPathVal XPathFunctionLibrary::call_function(std::string_view Name, const std::v
 
    *Context.expression_unsupported = true;
 
-   if (Context.document) {
-      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
-      Context.document->ErrorMsg.append("Unsupported XPath function: ").append(Name);
+   if (Context.xml) {
+      if (not Context.xml->ErrorMsg.empty()) Context.xml->ErrorMsg.append("\n");
+      Context.xml->ErrorMsg.append("Unsupported XPath function: ").append(Name);
    }
 
    return XPathVal();

@@ -37,13 +37,13 @@ XPathVal XPathFunctionLibrary::function_error(const std::vector<XPathVal> &Args,
       *Context.expression_unsupported = true;
    }
 
-   if (Context.document) {
-      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
+   if (Context.xml) {
+      if (not Context.xml->ErrorMsg.empty()) Context.xml->ErrorMsg.append("\n");
       if (detail.empty()) {
-         Context.document->ErrorMsg.append(std::format("XPath error {}: {}", error_code, description));
+         Context.xml->ErrorMsg.append(std::format("XPath error {}: {}", error_code, description));
       }
       else {
-         Context.document->ErrorMsg.append(std::format("XPath error {}: {} [{}]", error_code, description, detail));
+         Context.xml->ErrorMsg.append(std::format("XPath error {}: {} [{}]", error_code, description, detail));
       }
    }
 
@@ -74,4 +74,3 @@ XPathVal XPathFunctionLibrary::function_trace(const std::vector<XPathVal> &Args,
 
    return value;
 }
-

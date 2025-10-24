@@ -107,13 +107,12 @@ class CursorGuard {
 
 void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
-   auto document = context.document ? context.document : xml;
    context_stack.push_back(context);
    context.context_node = Node;
    context.attribute_node = Attribute;
    context.position = Position;
    context.size = Size;
-   context.document = document;
+   context.xml = context.xml ? context.xml : xml;
 }
 
 //********************************************************************************************************************
@@ -126,7 +125,7 @@ void XPathEvaluator::pop_context()
       context.attribute_node = nullptr;
       context.position = 1;
       context.size = 1;
-      context.document = xml;
+      context.xml = xml;
       return;
    }
 

@@ -69,7 +69,7 @@ XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, co
    for (const auto &arg : Args) collect_from_value(arg);
 
    if (requested_ids.empty()) return XPathVal(results);
-   if (not Context.document) return XPathVal(results);
+   if (not Context.xml) return XPathVal(results);
 
    std::unordered_set<int> seen_tags;
 
@@ -96,7 +96,7 @@ XPathVal XPathFunctionLibrary::function_id(const std::vector<XPathVal> &Args, co
       for (auto &child : Tag.Children) visit(child);
    };
 
-   for (auto &root : Context.document->Tags) visit(root);
+   for (auto &root : Context.xml->Tags) visit(root);
 
    return XPathVal(results);
 }
@@ -155,8 +155,8 @@ XPathVal XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathVal
       XMLTag *scope_node = target_node ? target_node : Context.context_node;
       if (not scope_node) return XPathVal(std::string());
 
-      if (Context.document) {
-         std::string uri = find_in_scope_namespace(scope_node, Context.document, prefix);
+      if (Context.xml) {
+         std::string uri = find_in_scope_namespace(scope_node, Context.xml, prefix);
          return XPathVal(uri);
       }
 
@@ -177,14 +177,14 @@ XPathVal XPathFunctionLibrary::function_namespace_uri(const std::vector<XPathVal
       if (pf::iequals(prefix, "xmlns")) return XPathVal("http://www.w3.org/2000/xmlns/");
    }
 
-   if ((target_node->NamespaceID != 0) and Context.document) {
-      if (auto uri = Context.document->getNamespaceURI(target_node->NamespaceID)) return XPathVal(*uri);
+   if ((target_node->NamespaceID != 0) and Context.xml) {
+      if (auto uri = Context.xml->getNamespaceURI(target_node->NamespaceID)) return XPathVal(*uri);
    }
 
-   if (Context.document) {
+   if (Context.xml) {
       std::string uri;
-      if (not prefix.empty()) uri = find_in_scope_namespace(target_node, Context.document, prefix);
-      else uri = find_in_scope_namespace(target_node, Context.document, std::string());
+      if (not prefix.empty()) uri = find_in_scope_namespace(target_node, Context.xml, prefix);
+      else uri = find_in_scope_namespace(target_node, Context.xml, std::string());
       return XPathVal(uri);
    }
 
@@ -211,4 +211,3 @@ XPathVal XPathFunctionLibrary::function_name(const std::vector<XPathVal> &Args, 
    if (!name.empty() and name.front() IS '?') name.erase(0, 1);
    return XPathVal(std::move(name));
 }
-
