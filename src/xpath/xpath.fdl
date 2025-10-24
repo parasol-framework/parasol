@@ -77,8 +77,5 @@ enum('XPathNodeType', { type='int', start=0 },
    'TYPESWITCH_DEFAULT_CASE')
 
   functionNames("xp",
-     "Compile",
-     "Evaluate",
-     "Query",
      "UnitTest")
 end)
