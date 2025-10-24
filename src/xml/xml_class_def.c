@@ -35,7 +35,6 @@ FDEF maInsertXPath[] = { { "XPath", FD_STR }, { "Where", FD_INT }, { "XML", FD_S
 FDEF maFindTag[] = { { "XPath", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maFilter[] = { { "XPath", FD_STR }, { 0, 0 } };
 FDEF maEvaluate[] = { { "Statement", FD_STR }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
-FDEF maCount[] = { { "XPath", FD_STR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maInsertContent[] = { { "Index", FD_INT }, { "Where", FD_INT }, { "Content", FD_STR }, { "Result", FD_INT|FD_RESULT }, { 0, 0 } };
 FDEF maRemoveXPath[] = { { "XPath", FD_STR }, { "Limit", FD_INT }, { 0, 0 } };
 FDEF maGetTag[] = { { "Index", FD_INT }, { "XMLTag:Result", FD_PTR|FD_STRUCT|FD_RESULT }, { 0, 0 } };
@@ -61,19 +60,18 @@ static const struct MethodEntry clXMLMethods[] = {
    { AC(-10), (APTR)XML_FindTag, "FindTag", maFindTag, sizeof(struct xml::FindTag) },
    { AC(-11), (APTR)XML_Filter, "Filter", maFilter, sizeof(struct xml::Filter) },
    { AC(-12), (APTR)XML_Evaluate, "Evaluate", maEvaluate, sizeof(struct xml::Evaluate) },
-   { AC(-13), (APTR)XML_Count, "Count", maCount, sizeof(struct xml::Count) },
+   { AC(-13), (APTR)XML_ValidateDocument, "ValidateDocument", 0, 0 },
    { AC(-14), (APTR)XML_InsertContent, "InsertContent", maInsertContent, sizeof(struct xml::InsertContent) },
    { AC(-15), (APTR)XML_RemoveXPath, "RemoveXPath", maRemoveXPath, sizeof(struct xml::RemoveXPath) },
-   { AC(-18), (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xml::GetTag) },
-   { AC(-19), (APTR)XML_RegisterNamespace, "RegisterNamespace", maRegisterNamespace, sizeof(struct xml::RegisterNamespace) },
-   { AC(-20), (APTR)XML_GetNamespaceURI, "GetNamespaceURI", maGetNamespaceURI, sizeof(struct xml::GetNamespaceURI) },
-   { AC(-21), (APTR)XML_SetTagNamespace, "SetTagNamespace", maSetTagNamespace, sizeof(struct xml::SetTagNamespace) },
-   { AC(-22), (APTR)XML_ResolvePrefix, "ResolvePrefix", maResolvePrefix, sizeof(struct xml::ResolvePrefix) },
-   { AC(-23), (APTR)XML_SetVariable, "SetVariable", maSetVariable, sizeof(struct xml::SetVariable) },
-   { AC(-24), (APTR)XML_GetEntity, "GetEntity", maGetEntity, sizeof(struct xml::GetEntity) },
-   { AC(-25), (APTR)XML_GetNotation, "GetNotation", maGetNotation, sizeof(struct xml::GetNotation) },
-   { AC(-26), (APTR)XML_LoadSchema, "LoadSchema", maLoadSchema, sizeof(struct xml::LoadSchema) },
-   { AC(-27), (APTR)XML_ValidateDocument, "ValidateDocument", 0, 0 },
+   { AC(-16), (APTR)XML_GetTag, "GetTag", maGetTag, sizeof(struct xml::GetTag) },
+   { AC(-17), (APTR)XML_RegisterNamespace, "RegisterNamespace", maRegisterNamespace, sizeof(struct xml::RegisterNamespace) },
+   { AC(-18), (APTR)XML_GetNamespaceURI, "GetNamespaceURI", maGetNamespaceURI, sizeof(struct xml::GetNamespaceURI) },
+   { AC(-19), (APTR)XML_SetTagNamespace, "SetTagNamespace", maSetTagNamespace, sizeof(struct xml::SetTagNamespace) },
+   { AC(-20), (APTR)XML_ResolvePrefix, "ResolvePrefix", maResolvePrefix, sizeof(struct xml::ResolvePrefix) },
+   { AC(-21), (APTR)XML_SetVariable, "SetVariable", maSetVariable, sizeof(struct xml::SetVariable) },
+   { AC(-22), (APTR)XML_GetEntity, "GetEntity", maGetEntity, sizeof(struct xml::GetEntity) },
+   { AC(-23), (APTR)XML_GetNotation, "GetNotation", maGetNotation, sizeof(struct xml::GetNotation) },
+   { AC(-24), (APTR)XML_LoadSchema, "LoadSchema", maLoadSchema, sizeof(struct xml::LoadSchema) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

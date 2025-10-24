@@ -190,12 +190,14 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       modules[uri_key] = cached;
       return cached;
    }
+
    if (original_uri != uri_key) {
       if (auto cached = find_module(original_uri)) {
          modules[uri_key] = cached;
          return cached;
       }
    }
+
    for (const auto &candidate : location_candidates) {
       if (auto cached = find_module(candidate)) {
          modules[uri_key] = cached;

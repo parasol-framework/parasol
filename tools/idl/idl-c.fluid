@@ -1353,7 +1353,7 @@ function processMethod(class, extract)
       method = class.lookupMethods[name]
       if (method == nil) then error("Method '" .. name .. "' is not registered in the FDL.") end
    else
-      error("Methods need to be pre-defined for class '" .. nz(class.name,"NIL") .. "'")
+      error("Methods need to be pre-defined for class '" .. nz(class.name,"NIL") .. "' with methods()")
    end
 
    method.params = { }

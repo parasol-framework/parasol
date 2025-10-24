@@ -980,4 +980,5 @@
 #define FID_TabOrder 0xa10b2cb8LL
 #define FID_TextFlags 0x1bce45f7LL
 #define FID_TotalStops 0xc961c5a2LL
+#define FID_ResultString 0x7212b53bLL
 

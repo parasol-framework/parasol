@@ -399,7 +399,7 @@ constexpr std::array<char, 256> to_lower_table = []() {
 //********************************************************************************************************************
 // Returns a lower-case copy of the input string. Operates on bytes; suitable for ASCII and Latin-1 strings.
 
-inline std::string lowercase_copy(const std::string &Value)
+[[maybe_unused]] inline std::string lowercase_copy(const std::string &Value)
 {
    std::string result = Value;
    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char Ch) { return char(std::tolower(Ch)); });
@@ -409,7 +409,7 @@ inline std::string lowercase_copy(const std::string &Value)
 //*********************************************************************************************************************
 // Normalise newlines in a text resource to just LF (\n).
 
-static std::string normalise_newlines(const std::string &Input)
+[[maybe_unused]] static std::string normalise_newlines(const std::string &Input)
 {
    std::string output;
    output.reserve(Input.length());

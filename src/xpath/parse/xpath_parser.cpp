@@ -14,7 +14,7 @@ static std::string_view keyword_from_token_type(XPathTokenType Type);
 //   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
 //   - prolog: the parsed XQuery prolog
 //   - (optional) module cache and other metadata
-// Errors are signaled by a nullptr expression and can be inspected via the error list.
+// Errors can be inspected via the error list.
 
 XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
 {

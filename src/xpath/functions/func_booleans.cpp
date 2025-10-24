@@ -47,13 +47,9 @@ XPathVal XPathFunctionLibrary::function_exists(const std::vector<XPathVal> &Args
 
    if (value.Type IS XPVT::NodeSet) {
       if (not value.node_set.empty()) return XPathVal(true);
-
       if (value.node_set_string_override.has_value()) return XPathVal(true);
-
       if (not value.node_set_string_values.empty()) return XPathVal(true);
-
       if (not value.node_set_attributes.empty()) return XPathVal(true);
-
       return XPathVal(false);
    }
 

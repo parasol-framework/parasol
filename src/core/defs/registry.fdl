@@ -107,5 +107,6 @@ header({ path="system/registry", copyright="Paul Manias 1996-2025" }, function()
     "WAVEFUNCTIONFX",
     "FILTEREFFECT",
     "CONTROLLER",
-    "NETCLIENT")
+    "NETCLIENT",
+    "XQUERY")
 end)

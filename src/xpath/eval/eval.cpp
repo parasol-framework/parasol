@@ -62,8 +62,6 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
 
    if (Root) query_root = Root;
 
-   const XPathNode *source = Root ? Root : query_root;
-
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
 

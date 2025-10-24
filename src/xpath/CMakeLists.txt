@@ -9,8 +9,7 @@ set (INC_MOD_XPATH TRUE PARENT_SCOPE)
 idl_gen ("${MOD}.fdl"
    NAME ${MOD}_defs
    OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h"
-   FILES
-     "xpath.cpp"
+   FILES "xpath.cpp"
    ARGS  "output-defs=xpath_def.c" "output-proto=xpath_def.c"
    APPEND_IDL "${MOD}_def.c")
 
