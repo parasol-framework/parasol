@@ -10,7 +10,6 @@
 // dependency and namespace checks. Prolog lookups (functions, variables, prefixes) are optimised via
 // canonical keys such as the qname/arity signature.
 
-#include "xquery_prolog.h"
 #include "../parse/xpath_parser.h"
 #include "xpath_errors.h"
 #include <parasol/strings.hpp>
@@ -519,10 +518,9 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
       return std::format("Q{{{}}}{}", NamespaceURI, Local);
    };
 
-   size_t colon = qname.find(':');
-   if (colon != std::string_view::npos) {
+   if (size_t colon = qname.find(':'); colon != std::string_view::npos) {
       std::string prefix(qname.substr(0, colon));
-      std::string_view local_view = qname.substr(colon + 1U);
+      std::string_view local_view = qname.substr(colon + 1);
 
       auto uri_entry = declared_namespace_uris.find(prefix);
       if (uri_entry != declared_namespace_uris.end()) {
@@ -536,14 +534,11 @@ std::string XQueryProlog::normalise_function_qname(std::string_view qname, const
       }
       return std::string(qname);
    }
-
-   if (default_function_namespace_uri.has_value()) {
+   else if (default_function_namespace_uri.has_value()) {
       return build_expanded(*default_function_namespace_uri, qname);
    }
-
-   if (default_function_namespace.has_value()) {
+   else if (default_function_namespace.has_value()) {
       return std::format("Q{{{}}}{}", *default_function_namespace, qname);
    }
-
-   return std::string(qname);
+   else return std::string(qname);
 }

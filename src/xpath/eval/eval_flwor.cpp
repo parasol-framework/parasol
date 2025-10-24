@@ -698,7 +698,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       struct OrderSpecMetadata {
          const XPathNode *node = nullptr;
-         XPathNode::XPathOrderSpecOptions options{};
+         XPathOrderSpecOptions options{};
          bool has_options = false;
          XPathOrderComparatorOptions comparator_options{};
       };

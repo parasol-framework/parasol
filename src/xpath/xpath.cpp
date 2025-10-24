@@ -121,7 +121,6 @@ Examples:
 #include "../xml/uri_utils.h"
 #include "../xml/xml.h"
 #include "functions/accessor_support.h"
-#include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
 #include "parse/xpath_parser.h"
 #include "eval/eval.h"
@@ -419,7 +418,7 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    xml->Cursor = xml->Tags.begin();
    xml->ErrorMsg.clear();
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
-   
+
    auto query = (XPathParseResult *)Query;
    // No longer mutate the AST; evaluator is given parse context directly.
 

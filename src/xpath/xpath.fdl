@@ -75,7 +75,7 @@ enum('XPathNodeType', { type='int', start=0 },
    'TYPESWITCH_EXPRESSION',
    'TYPESWITCH_CASE',
    'TYPESWITCH_DEFAULT_CASE')
-   
+
   methods("xquery", "XQ", {
     { id=1, name="Evaluate" },
     { id=2, name="Query" }

@@ -18,13 +18,14 @@ static ERR build_query(extXQuery *Self)
 {
    pf::Log log;
 
-   if (Self->Statement.empty()) return log.warning(ERR::FieldNotSet);
-   
-   Self->ErrorMsg.clear();
+   Self->StaleBuild = false;
 
-   int len = 0;
-   while ((Self->Statement[len] != '\n') and (len < std::ssize(Self->Statement)) and (len < 60)) len++;
-   log.branch("Expression: %.*s", len, Self->Statement.c_str());
+   if (Self->Statement.empty()) {
+      Self->ErrorMsg = "Statement field undefined";
+      return log.warning(ERR::FieldNotSet);
+   }
+
+   Self->ErrorMsg.clear();
 
    XPathTokeniser tokeniser;
    XPathParser parser;
@@ -77,7 +78,6 @@ Clear: Completely clears all XQuery data and resets the object to its initial st
 
 Use Clear() to remove the resources consumed by the XQuery while still retaining it for future use.
 
--END-
 *********************************************************************************************************************/
 
 static ERR XQUERY_Clear(extXQuery *Self)
@@ -85,7 +85,9 @@ static ERR XQUERY_Clear(extXQuery *Self)
    Self->ErrorMsg.clear();
    Self->ParseResult.prolog.reset();
    Self->ParseResult.expression.reset();
+   Self->ResultString.clear();
    Self->Result = XPathVal();
+   Self->StaleBuild = true;
    return ERR::Okay;
 }
 
@@ -94,9 +96,9 @@ static ERR XQUERY_Clear(extXQuery *Self)
 -METHOD-
 Evaluate: Run an XQuery expression against an XQuery document.
 
-Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the
-evaluation is returned in the #Result field as !XPathValue, which can represent various types of data including
-node sets, strings, numbers, or booleans.
+Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned
+in the #Result field as !XPathValue, which can represent various types of data including node sets, strings, numbers,
+or booleans.
 
 -INPUT-
 obj(XML) XML: Targeted XML document to query.
@@ -105,7 +107,6 @@ obj(XML) XML: Targeted XML document to query.
 Okay
 NullArgs
 AllocMemory
--END-
 
 *********************************************************************************************************************/
 
@@ -113,18 +114,24 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 {
    pf::Log log;
 
-   if ((not Args) or (not Args->XML)) return log.warning(ERR::NullArgs);
+   if (not Args) return log.warning(ERR::NullArgs);
 
-   log.branch("");
+   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 60);
+   while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
+   log.branch("Expression: %.*s", len, Self->Statement.c_str());
+
+   if (Self->StaleBuild) {
+      if (auto err = build_query(Self); err != ERR::Okay) return err;
+   }
 
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
 
-   if (xml->Tags.empty()) return log.warning(ERR::NoData);
-
-   xml->Attrib.clear();
-   xml->CursorTags = &xml->Tags;
-   xml->Cursor = xml->Tags.begin();
+   if (xml) {
+      xml->Attrib.clear();
+      xml->CursorTags = &xml->Tags;
+      xml->Cursor = xml->Tags.begin();
+   }
 
    Self->ErrorMsg.clear();
 
@@ -159,7 +166,6 @@ If parsing fails, the object will not be initialised and an error message will b
 Note: This function can hang temporarily if the expression references network URIs.  Consider calling it from a
 separate thread to avoid blocking in such cases.
 
--END-
 *********************************************************************************************************************/
 
 static ERR XQUERY_Init(extXQuery *Self)
@@ -198,7 +204,6 @@ NullArgs: At least one required parameter was not provided.
 NoData: The XML document contains no data to search.
 Syntax: The provided query expression has syntax errors.
 Search: No matching node was found.
--END-
 
 *********************************************************************************************************************/
 
@@ -206,23 +211,31 @@ static ERR XQUERY_Query(extXQuery *Self, struct xq::Query *Args)
 {
    pf::Log log(__FUNCTION__);
 
-   if (not Args->XML) return ERR::NullArgs;
+   if (not Args->XML) return log.warning(ERR::NullArgs);
+
+   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 60);
+   while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
+   log.branch("Expression: %.*s", len, Self->Statement.c_str());
+
+   if (Self->StaleBuild) {
+      if (auto err = build_query(Self); err != ERR::Okay) return err;
+   }
 
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
 
-   if (xml->Tags.empty()) return log.warning(ERR::NoData); // Empty document
+   if (xml) {
+      if (Args->Callback) Self->Callback = *Args->Callback;
+      else Self->Callback.Type = CALL::NIL;
 
-   if (Args->Callback) Self->Callback = *Args->Callback;
-   else Self->Callback.Type = CALL::NIL;
+      // TODO: Can these fields be moved to extXQuery?
+      xml->Attrib.clear();
+      xml->CursorTags = &xml->Tags;
+      xml->Cursor = xml->Tags.begin();
 
-   // TODO: Can these fields be moved to extXQuery?
-   xml->Attrib.clear();
-   xml->CursorTags = &xml->Tags;
-   xml->Cursor = xml->Tags.begin();
-   
-   (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
-   
+      (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
+   }
+
    XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
    return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
 }
@@ -230,7 +243,6 @@ static ERR XQUERY_Query(extXQuery *Self, struct xq::Query *Args)
 /*********************************************************************************************************************
 -ACTION-
 Reset: Clears the information held in an XQuery object.
--END-
 *********************************************************************************************************************/
 
 static ERR XQUERY_Reset(extXQuery *Self)
@@ -241,10 +253,9 @@ static ERR XQUERY_Reset(extXQuery *Self)
 /*********************************************************************************************************************
 
 -FIELD-
-ErrorMsg: A textual description of the last parse error.
+ErrorMsg: A readable description of the last parse or execution error.
 
-This field may provide a textual description of the last parse error that occurred, in conjunction with the most
-recently received error code.  Issues parsing malformed XPath expressions may also be reported here.
+This field may provide a textual description of the last parse or execution error that occurred.
 
 *********************************************************************************************************************/
 
@@ -259,19 +270,8 @@ static ERR GET_ErrorMsg(extXQuery *Self, CSTRING *Value)
 -FIELD-
 Path: Base path for resolving relative references.
 
-Set the Path field to parse an XQuery formatted data string through the object.  If this field is set after
-initialisation then the XQuery object will clear any existing data first.
-
-Be aware that setting this field with an invalid statement will result in an empty XQuery object.
-
-Reading the Statement field will return a serialised string of XQuery data.  By default all tags will be included in the
-statement unless a predefined starting position is set by the #Start field.  The string result is an allocation that
-must be freed.
-
-If the statement is an XQuery expression with base-uri references, the #Path field should be set to establish
-the base path for relative references.
-
--END-
+Set the Path field to define the base-uri for an XQuery expression.  If left unset, the path will be computed through
+automated means on-the-fly, which relies  on the working directory or XML document path.
 
 *********************************************************************************************************************/
 
@@ -313,8 +313,6 @@ Result: Returns the results of the most recently executed query.
 Following the successful execution of an XQuery expression, the results can be retrieved as an XPathValue object
 through this field.
 
--END-
-
 *********************************************************************************************************************/
 
 static ERR GET_Result(extXQuery *Self, XPathValue **Value)
@@ -331,20 +329,19 @@ static ERR GET_Result(extXQuery *Self, XPathValue **Value)
 -FIELD-
 ResultString: Returns the results of the most recently executed query as a string.
 
-Following the successful execution of an XQuery expression, the results can be retrieved as a string through this 
+Following the successful execution of an XQuery expression, the results can be retrieved as a string through this
 field.  The string representation is generated from the #Result field, which holds the raw evaluation output.
 
-Note that if the result is empty, the returned string will also be empty (i.e. is not considered an error).  The 
+Note that if the result is empty, the returned string will also be empty (i.e. is not considered an error).  The
 string is managed internally and does not require manual deallocation.
 
 The string result becomes invalid if the XQuery object is modified, re-executed or destroyed.
-
--END-
 
 *********************************************************************************************************************/
 
 static ERR GET_ResultString(extXQuery *Self, CSTRING *Value)
 {
+   // Return the cached string if it exists.
    if (not Self->ResultString.empty()) {
       *Value = Self->ResultString.c_str();
       return ERR::Okay;
@@ -356,7 +353,7 @@ static ERR GET_ResultString(extXQuery *Self, CSTRING *Value)
       return ERR::Okay;
    }
    else {
-      Self->ResultString = Self->Result.to_string();
+      Self->ResultString = Self->Result.to_string();  // Cache the result
       *Value = Self->ResultString.c_str();
       return ERR::Okay;
    }
@@ -367,14 +364,10 @@ static ERR GET_ResultString(extXQuery *Self, CSTRING *Value)
 -FIELD-
 Statement: XQuery data is processed through this field.
 
-Set the Statement field to parse an XQuery formatted data string through the object.  If this field is set after
-initialisation then the XQuery object will clear any existing data first.
+Set the Statement field with an XPath or XQuery expression for compilation.
 
-Be aware that setting this field with an invalid statement will result in an empty XQuery object.
-
-Reading the Statement field will return a serialised string of XQuery data.  By default all tags will be included in the
-statement unless a predefined starting position is set by the #Start field.  The string result is an allocation that
-must be freed.
+If this field is set after initialisation then @Clear() will be applied to the object first.  The expression will
+be compiled on the next execution attempt.
 
 If the statement is an XQuery expression with base-uri references, the #Path field should be set to establish
 the base path for relative references.
@@ -385,8 +378,6 @@ the base path for relative references.
 
 static ERR GET_Statement(extXQuery *Self, STRING *Value)
 {
-   pf::Log log;
-
    if (not Self->initialised()) {
       if (not Self->Statement.empty()) {
          *Value = pf::strclone(Self->Statement.c_str());
@@ -394,16 +385,13 @@ static ERR GET_Statement(extXQuery *Self, STRING *Value)
       }
       else return ERR::FieldNotSet;
    }
-
-   if ((*Value = pf::strclone(Self->Statement.c_str()))) {
-      return ERR::Okay;
-   }
+   else if ((*Value = pf::strclone(Self->Statement.c_str()))) return ERR::Okay;
    else return ERR::AllocMemory;
 }
 
 static ERR SET_Statement(extXQuery *Self, CSTRING Value)
 {
-   Self->Statement.clear();
+   XQUERY_Clear(Self);
 
    if ((Value) and (*Value)) {
       Self->Statement = Value;
@@ -420,7 +408,7 @@ static ERR SET_Statement(extXQuery *Self, CSTRING Value)
 #include "xquery_class_def.cpp"
 
 static const FieldArray clFields[] = {
-   // Virtual fields 
+   // Virtual fields
    //{ "Callback",     FDF_FUNCTIONPTR|FDF_RW,   GET_Callback, SET_Callback },
    { "ErrorMsg",     FDF_STRING|FDF_R,         GET_ErrorMsg },
    { "Path",         FDF_STRING|FDF_RW,        GET_Path, SET_Path },

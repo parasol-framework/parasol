@@ -1,6 +1,5 @@
 
 #include "xpath_parser.h"
-#include "../api/xquery_prolog.h"
 #include "../eval/eval_detail.h"
 #include <algorithm>
 #include <parasol/strings.hpp>
@@ -1738,7 +1737,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
       }
 
       auto key_node = std::make_unique<XPathNode>(XPathNodeType::GROUP_KEY);
-      XPathNode::XPathGroupKeyInfo info;
+      XPathGroupKeyInfo info;
       info.variable_name = std::move(variable_name);
       key_node->set_group_key_info(std::move(info));
       key_node->add_child(std::move(key_expr));
@@ -1808,7 +1807,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
    auto spec_node = std::make_unique<XPathNode>(XPathNodeType::ORDER_SPEC);
    spec_node->add_child(std::move(order_expr));
 
-   XPathNode::XPathOrderSpecOptions options;
+   XPathOrderSpecOptions options;
    bool has_options = false;
 
    XPathToken keyword_token(XPathTokenType::UNKNOWN, std::string_view());
@@ -2397,7 +2396,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_typeswitch_expr()
       if (not branch_expr) return nullptr;
 
       auto case_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_CASE);
-      XPathNode::XPathTypeswitchCaseInfo info;
+      XPathTypeswitchCaseInfo info;
       info.variable_name = std::move(variable_name);
       info.sequence_type = std::move(sequence_type);
       case_node->set_typeswitch_case_info(std::move(info));
@@ -2438,7 +2437,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_typeswitch_expr()
    for (auto &node : case_nodes) typeswitch_node->add_child(std::move(node));
 
    auto default_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_DEFAULT_CASE);
-   XPathNode::XPathTypeswitchCaseInfo default_info;
+   XPathTypeswitchCaseInfo default_info;
    default_info.variable_name = std::move(default_variable);
    default_info.is_default = true;
    default_node->set_typeswitch_case_info(std::move(default_info));
