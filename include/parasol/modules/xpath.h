@@ -20,6 +20,8 @@
 
 #endif
 
+class objXQuery;
+
 enum class XPathNodeType : int {
    NIL = 0,
    LOCATION_PATH = 0,
@@ -76,6 +78,44 @@ enum class XPathNodeType : int {
    TYPESWITCH_EXPRESSION = 51,
    TYPESWITCH_CASE = 52,
    TYPESWITCH_DEFAULT_CASE = 53,
+};
+
+// XQuery class definition
+
+#define VER_XQUERY (1.000000)
+
+// XQuery methods
+
+namespace xq {
+struct Evaluate { objXML * XML; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct Query { objXML * XML; FUNCTION * Callback; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+
+} // namespace
+
+class objXQuery : public Object {
+   public:
+   static constexpr CLASSID CLASS_ID = CLASSID::XQUERY;
+   static constexpr CSTRING CLASS_NAME = "XQuery";
+
+   using create = pf::Create<objXQuery>;
+
+   // Action stubs
+
+   inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
+   inline ERR init() noexcept { return InitObject(this); }
+   inline ERR query() noexcept { return Action(AC::Query, this, nullptr); }
+   inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }
+   inline ERR evaluate(objXML * XML) noexcept {
+      struct xq::Evaluate args = { XML };
+      return(Action(AC(-1), this, &args));
+   }
+   inline ERR query(objXML * XML, FUNCTION Callback) noexcept {
+      struct xq::Query args = { XML, &Callback };
+      return(Action(AC(-2), this, &args));
+   }
+
+   // Customised field setting
+
 };
 
 #ifdef PARASOL_STATIC

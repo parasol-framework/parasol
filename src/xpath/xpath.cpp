@@ -134,6 +134,9 @@ JUMPTABLE_REGEX
 
 static OBJECTPTR glContext = nullptr;
 static OBJECTPTR modRegex = nullptr;
+static OBJECTPTR clXQuery = nullptr;
+
+static ERR add_xquery_class(void);
 
 //*********************************************************************************************************************
 // Dynamic loader for the Regex functionality.  We only load it as needed due to the size of the module.
@@ -188,7 +191,7 @@ static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
    CoreBase = pCore;
    glContext = CurrentContext();
-   return ERR::Okay;
+   return add_xquery_class();
 }
 
 static ERR MODOpen(OBJECTPTR Module)
@@ -199,6 +202,7 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
+   if (clXQuery) { FreeResource(clXQuery); clXQuery = nullptr; }
    if (modRegex) { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
 }
@@ -451,6 +455,8 @@ ERR UnitTest(APTR Meta)
 }
 
 } // namespace xp
+
+#include "xquery_class.cpp"
 
 //********************************************************************************************************************
 

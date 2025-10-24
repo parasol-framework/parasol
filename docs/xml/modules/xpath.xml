@@ -56,6 +56,9 @@ if (xp::Compile(xml, &quot;//chapter[@status='draft']&quot;, &amp;query) IS ERR:
 </pre>
 <header>Extensions</header>
 <p>The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the <code>[=...]</code> syntax allows matching on encapsulated content, e.g., <code>/menu[=contentmatch]</code>.  Backslash (<code>\</code>) can be used as an escape character in attribute strings.  The <code>@*</code> syntax matches any attribute, e.g., <code>/root/section[@*=&quot;alpha&quot;]</code>.</p></description>
+    <classes>
+      <class>XQuery</class>
+    </classes>
   </info>
 
   <function>

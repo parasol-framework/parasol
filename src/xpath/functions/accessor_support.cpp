@@ -1,11 +1,9 @@
-//*****************************************************************************************************************
 // XPath Accessor Support Utilities
 //
 // Shared helpers that offer document and schema discovery for accessor-style XPath functions.  The routines
 // consolidate logic that was previously embedded inside the document helper functions so that fn:base-uri(),
 // fn:document-uri(), fn:data(), fn:nilled() and related calls can reuse consistent behaviour regardless of the
 // source document for a node.
-//*****************************************************************************************************************
 
 #include "accessor_support.h"
 
