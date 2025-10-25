@@ -3356,6 +3356,12 @@ class Create {
       T * & operator*() { return obj; }; // To allow object pointer referencing when calling functions
 
       inline bool ok() { return error == ERR::Okay; }
+
+      inline T * detach() { // Return a direct pointer to the object and prevent automated destruction
+         T *result = obj;
+         obj = nullptr;
+         return result;
+      }
 };
 }
 

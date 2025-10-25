@@ -171,7 +171,7 @@ class extXML : public objXML {
    // reason, ownership is maintained for the lifetime of the XML object so that we can simplify resource management.
    // Managed by fetch_or_load_module()
 
-   ankerl::unordered_dense::map<URI_STR, struct XPathParseResult *> ModuleCache; // Compiled from ModuleCache
+   ankerl::unordered_dense::map<URI_STR, std::shared_ptr<struct XPathParseResult>> ModuleCache; // Compiled from ModuleCache
 
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
@@ -183,10 +183,6 @@ class extXML : public objXML {
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    ~extXML() {
-      for (auto &entry : ModuleCache) {
-         if (entry.second) FreeResource(entry.second);
-      }
-
       for (auto &entry : XMLCache) {
          if (entry.second) FreeResource(entry.second);
       }
