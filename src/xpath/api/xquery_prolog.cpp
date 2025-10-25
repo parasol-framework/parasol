@@ -49,45 +49,6 @@ std::string XQueryFunction::signature() const
 }
 
 //********************************************************************************************************************
-
-static ERR xpCompile(objXML *XML, CSTRING Query, XPathParseResult &Result)
-{
-   XPathTokeniser tokeniser;
-   XPathParser parser;
-
-   auto tokens = tokeniser.tokenize(Query);
-   Result = parser.parse(tokens);
-
-   if ((Result.prolog) and (Result.prolog->is_library_module)) {
-      // Synthesise an empty-sequence expression node so downstream code has a valid AST.
-      if (not Result.expression) Result.expression = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
-   }
-   else if (not Result.expression) {
-      return ERR::Syntax;
-   }
-
-   // If the expression featured an XQuery prolog then attach it to the parse result only.
-   // Evaluator reads from the parse context; do not mutate the AST.
-
-   // Move the module cache across if one was created during parsing.
-
-   std::shared_ptr<XQueryModuleCache> module_cache = Result.module_cache;
-   if (not module_cache) {
-      module_cache = std::make_shared<XQueryModuleCache>();
-      // An XML object is required for module importation to work correctly.
-      if (XML) module_cache->owner = XML->UID;
-   }
-
-   if (module_cache) {
-      // Retain on the result only; evaluator uses parse-context.
-      Result.module_cache = module_cache;
-      if (Result.prolog) Result.prolog->bind_module_cache(module_cache);
-   }
-
-   return ERR::Okay;
-}
-
-//********************************************************************************************************************
 // Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
 
 XPathParseResult * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog,
@@ -284,9 +245,30 @@ XPathParseResult * XQueryModuleCache::fetch_or_load(std::string_view URI, const 
    // Compile the module query
 
    XPathParseResult compiled;
-   if (xpCompile((objXML *)xml, content->c_str(), compiled) != ERR::Okay) {
-      reporter.record_error(std::format("Cannot compile module: {}", URI));
-      return nullptr;
+   {
+      XPathTokeniser tokeniser;
+      XPathParser parser;
+
+      auto tokens = tokeniser.tokenize(content->c_str());
+      compiled = parser.parse(tokens);
+
+      if ((compiled.prolog) and (compiled.prolog->is_library_module)) {
+         if (not compiled.expression) compiled.expression = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+      }
+      else if (not compiled.expression) {
+         reporter.record_error(std::format("Cannot compile module: {}", URI));
+         return nullptr;
+      }
+
+      // Bind/propagate module cache for subsequent imports and evaluation
+      std::shared_ptr<XQueryModuleCache> module_cache_ptr = prolog.get_module_cache();
+      if (not module_cache_ptr) {
+         module_cache_ptr = std::make_shared<XQueryModuleCache>();
+         if (xml) module_cache_ptr->owner = xml->UID;
+      }
+
+      compiled.module_cache = module_cache_ptr;
+      if (compiled.prolog) compiled.prolog->bind_module_cache(module_cache_ptr);
    }
 
    // Verify that it's a library module
