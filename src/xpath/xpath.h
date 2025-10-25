@@ -683,16 +683,14 @@ struct XQueryProlog {
 
 struct XPathParseResult;
 
-using XMODULE = XPathParseResult;
-
 struct XQueryModuleCache {
    // Referenced as a UID from xp::Compile() because it's a weak reference.
    // Used by fetch_or_load() primarily to determine the origin path of the XML data.
    OBJECTID owner = 0;
-   mutable ankerl::unordered_dense::map<std::string, XMODULE *> modules;
+   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<XPathParseResult>> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
 
-   [[nodiscard]] XMODULE * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
-   [[nodiscard]] const XMODULE * find_module(std::string_view uri) const;
+   [[nodiscard]] XPathParseResult * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
+   [[nodiscard]] const XPathParseResult * find_module(std::string_view uri) const;
 };
 

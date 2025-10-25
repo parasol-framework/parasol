@@ -85,8 +85,5 @@ enum('XPathNodeType', { type='int', start=0 },
   ]])
 
   functionNames("xp",
-     "Compile",
-     "Evaluate",
-     "Query",
      "UnitTest")
 end)

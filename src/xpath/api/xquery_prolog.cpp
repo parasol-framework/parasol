@@ -49,9 +49,48 @@ std::string XQueryFunction::signature() const
 }
 
 //********************************************************************************************************************
+
+static ERR xpCompile(objXML *XML, CSTRING Query, XPathParseResult &Result)
+{
+   XPathTokeniser tokeniser;
+   XPathParser parser;
+
+   auto tokens = tokeniser.tokenize(Query);
+   Result = parser.parse(tokens);
+
+   if ((Result.prolog) and (Result.prolog->is_library_module)) {
+      // Synthesise an empty-sequence expression node so downstream code has a valid AST.
+      if (not Result.expression) Result.expression = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+   }
+   else if (not Result.expression) {
+      return ERR::Syntax;
+   }
+
+   // If the expression featured an XQuery prolog then attach it to the parse result only.
+   // Evaluator reads from the parse context; do not mutate the AST.
+
+   // Move the module cache across if one was created during parsing.
+
+   std::shared_ptr<XQueryModuleCache> module_cache = Result.module_cache;
+   if (not module_cache) {
+      module_cache = std::make_shared<XQueryModuleCache>();
+      // An XML object is required for module importation to work correctly.
+      if (XML) module_cache->owner = XML->UID;
+   }
+
+   if (module_cache) {
+      // Retain on the result only; evaluator uses parse-context.
+      Result.module_cache = module_cache;
+      if (Result.prolog) Result.prolog->bind_module_cache(module_cache);
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
 // Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
 
-XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog,
+XPathParseResult * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &prolog,
    XPathErrorReporter &reporter) const
 {
    pf::Log log(__FUNCTION__);
@@ -71,7 +110,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       return nullptr;
    }
 
-   extXML* xml = nullptr;
+   extXML *xml = nullptr;
    if (unknown_owner->classID() IS CLASSID::XML) xml = (extXML *)(unknown_owner.obj);
    else xml = ((extXQuery *)(unknown_owner.obj))->XML;
 
@@ -90,7 +129,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       return value;
    };
 
-   auto base_directory = xpath::accessor::resolve_document_base_directory(xml);
+   auto base_dir = xpath::accessor::resolve_document_base_directory(xml);
 
    auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
       std::string normalised = normalise_cache_key(hint);
@@ -123,8 +162,8 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
          if (not xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
       }
 
-      if (base_directory) {
-         std::string combined = std::format("{}{}", *base_directory, normalised);
+      if (base_dir) {
+         std::string combined = std::format("{}{}", *base_dir, normalised);
          return normalise_cache_key(combined);
       }
 
@@ -137,7 +176,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    // Check if already loaded
 
    auto existing = modules.find(uri_key);
-   if (existing != modules.end()) return existing->second;
+   if (existing != modules.end()) return existing->second.get();
 
    // Detect circular dependencies
 
@@ -182,7 +221,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
 
    // Check document cache for pre-loaded modules
 
-   auto find_module = [&](const std::string &key) -> XMODULE * {
+   auto find_module = [&](const std::string &key) -> std::shared_ptr<XPathParseResult> {
       auto cache_entry = xml->ModuleCache.find(key);
       if (cache_entry != xml->ModuleCache.end()) return cache_entry->second;
       else return nullptr;
@@ -191,20 +230,20 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    if (auto cached = find_module(uri_key)) {
       // Mirror document-cached module into this cache for consistent lookups
       modules[uri_key] = cached;
-      return cached;
+      return cached.get();
    }
 
    if (original_uri != uri_key) {
       if (auto cached = find_module(original_uri)) {
          modules[uri_key] = cached;
-         return cached;
+         return cached.get();
       }
    }
 
    for (const auto &candidate : location_candidates) {
       if (auto cached = find_module(candidate)) {
          modules[uri_key] = cached;
-         return cached;
+         return cached.get();
       }
    }
 
@@ -243,17 +282,17 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    }
 
    // Compile the module query
-   XMODULE *compiled = nullptr;
-   if (xp::Compile((objXML *)xml, content->c_str(), (APTR*)&compiled) != ERR::Okay) {
+
+   XPathParseResult compiled;
+   if (xpCompile((objXML *)xml, content->c_str(), compiled) != ERR::Okay) {
       reporter.record_error(std::format("Cannot compile module: {}", URI));
       return nullptr;
    }
 
    // Verify that it's a library module
 
-   auto module_prolog = compiled->prolog;
+   auto module_prolog = compiled.prolog;
    if ((not module_prolog) or (not module_prolog->is_library_module)) {
-      FreeResource(compiled);
       reporter.record_error(std::format("Module is not a library module: {}", uri_key));
       return nullptr;
    }
@@ -261,7 +300,6 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    // Validate namespace matches
 
    if (module_prolog->module_namespace_uri != uri_key) {
-      FreeResource(compiled);
       reporter.record_error(std::format("Module namespace mismatch: expected {}", uri_key));
       return nullptr;
    }
@@ -269,7 +307,6 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    // Validate exports
 
    if (not module_prolog->validate_library_exports()) {
-      FreeResource(compiled);
       reporter.record_error(std::format("Module exports not in target namespace: {}", uri_key));
       return nullptr;
    }
@@ -284,35 +321,33 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
 
    // Eagerly resolve transitive imports to detect cycles and propagate base URIs
    for (const auto &imp : module_prolog->module_imports) {
-      auto dep = fetch_or_load(imp.target_namespace, *module_prolog, reporter);
-      if (not dep) {
+      if (not fetch_or_load(imp.target_namespace, *module_prolog, reporter)) {
          // Do not cache partially loaded module on failure
-         FreeResource(compiled);
          return nullptr;
       }
    }
 
    // Cache the module (only after resolving imports to allow circular detection via loading_in_progress)
 
-   modules[uri_key] = compiled;
-   xml->ModuleCache[uri_key] = compiled;
-   if (original_uri != uri_key) xml->ModuleCache[original_uri] = compiled;
-   if (not loaded_location.empty()) xml->ModuleCache[loaded_location] = compiled;
+   modules[uri_key] = std::make_shared<XPathParseResult>(std::move(compiled));
+   xml->ModuleCache[uri_key] = modules[uri_key];
+   if (original_uri != uri_key) xml->ModuleCache[original_uri] = modules[uri_key];
+   if (not loaded_location.empty()) xml->ModuleCache[loaded_location] = modules[uri_key];
 
-   return compiled;
+   return modules[uri_key].get();
 }
 
 //********************************************************************************************************************
 
-const XMODULE * XQueryModuleCache::find_module(std::string_view uri) const
+const XPathParseResult * XQueryModuleCache::find_module(std::string_view uri) const
 {
    std::string original(uri);
    std::string uri_key = xml::uri::normalise_uri_separators(original);
    auto existing = modules.find(uri_key);
-   if (existing != modules.end()) return existing->second;
+   if (existing != modules.end()) return existing->second.get();
    if (uri_key != original) {
       auto fallback = modules.find(original);
-      if (fallback != modules.end()) return fallback->second;
+      if (fallback != modules.end()) return fallback->second.get();
    }
    return nullptr;
 }

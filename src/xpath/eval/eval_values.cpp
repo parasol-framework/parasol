@@ -271,9 +271,8 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
       return XPathVal();
    }
 
-   auto module_document = module_cache->fetch_or_load(module_uri, *prolog, *this);
-   (void)module_document;
-
+   (void)module_cache->fetch_or_load(module_uri, *prolog, *this);
+   
    auto module_info = module_cache->find_module(module_uri);
    if (!module_info) {
       auto message = std::format("Module '{}' could not be loaded for function '{}'.", module_uri, canonical_name);
