@@ -409,7 +409,6 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
    if (has_root) initial_context.push_back(nullptr);
    else {
       if (context.context_node) initial_context.push_back(context.context_node);
-      else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) initial_context.push_back(&(*xml->Cursor));
       else initial_context.push_back(nullptr);
    }
 
@@ -715,8 +714,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
    auto saved_cursor_stack = cursor_stack;
-   auto saved_cursor_tags = xml->CursorTags;
-   auto saved_cursor = xml->Cursor;
    auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
@@ -740,8 +737,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
@@ -750,8 +745,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
          context = saved_context;
          context_stack = saved_context_stack;
          cursor_stack = saved_cursor_stack;
-         xml->CursorTags = saved_cursor_tags;
-         xml->Cursor = saved_cursor;
          xml->Attrib = saved_attrib;
          expression_unsupported = true;
          return XPathVal();
@@ -761,8 +754,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
          context = saved_context;
          context_stack = saved_context_stack;
          cursor_stack = saved_cursor_stack;
-         xml->CursorTags = saved_cursor_tags;
-         xml->Cursor = saved_cursor;
          xml->Attrib = saved_attrib;
          expression_unsupported = true;
          return XPathVal();
@@ -818,8 +809,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
    context         = saved_context;
    context_stack   = saved_context_stack;
    cursor_stack    = saved_cursor_stack;
-   xml->CursorTags = saved_cursor_tags;
-   xml->Cursor     = saved_cursor;
    xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
@@ -862,8 +851,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    auto saved_context = context;
    auto saved_context_stack = context_stack;
    auto saved_cursor_stack = cursor_stack;
-   auto saved_cursor_tags = xml->CursorTags;
-   auto saved_cursor = xml->Cursor;
    auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
@@ -871,8 +858,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
@@ -892,8 +877,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       context         = saved_context;
       context_stack   = saved_context_stack;
       cursor_stack    = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor     = saved_cursor;
       xml->Attrib     = saved_attrib;
       return XPathVal();
    }
@@ -903,8 +886,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
       context         = saved_context;
       context_stack   = saved_context_stack;
       cursor_stack    = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor     = saved_cursor;
       xml->Attrib     = saved_attrib;
       return XPathVal();
    }
@@ -979,8 +960,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    context = saved_context;
    context_stack   = saved_context_stack;
    cursor_stack    = saved_cursor_stack;
-   xml->CursorTags = saved_cursor_tags;
-   xml->Cursor     = saved_cursor;
    xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
@@ -1023,8 +1002,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    auto saved_context       = context;
    auto saved_context_stack = context_stack;
    auto saved_cursor_stack  = cursor_stack;
-   auto saved_cursor_tags   = xml->CursorTags;
-   auto saved_cursor        = xml->Cursor;
    auto saved_attrib        = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
@@ -1032,8 +1009,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
@@ -1053,8 +1028,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
       return XPathVal();
    }
@@ -1064,8 +1037,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
       return XPathVal();
    }
@@ -1140,8 +1111,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    context = saved_context;
    context_stack = saved_context_stack;
    cursor_stack = saved_cursor_stack;
-   xml->CursorTags = saved_cursor_tags;
-   xml->Cursor = saved_cursor;
    xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 

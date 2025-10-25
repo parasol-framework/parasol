@@ -150,9 +150,6 @@ class extXML : public objXML {
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
 
-   TAGS *CursorParent;  // Parent tag, if any
-   TAGS *CursorTags;    // Updated by findTag().  This is the tag array to which the Cursor reference belongs
-   CURSOR Cursor;       // Resulting cursor position (tag) after a successful search.
    FUNCTION Callback;
 
    std::shared_ptr<xml::schema::SchemaContext> SchemaContext;

@@ -225,8 +225,6 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
       pf::ScopedObjectLock lock(xml);
 
       xml->Attrib.clear();
-      xml->CursorTags = &xml->Tags;
-      xml->Cursor = xml->Tags.begin();
       XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
       if (err != ERR::Okay) log.warning("%s", Self->ErrorMsg.c_str());
@@ -342,8 +340,6 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
       // TODO: Can these fields be moved to extXQuery?
       xml->Attrib.clear();
-      xml->CursorTags = &xml->Tags;
-      xml->Cursor = xml->Tags.begin();
 
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
       XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);

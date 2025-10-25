@@ -342,8 +342,6 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
 
    xml->Attrib.clear();
    xml->ErrorMsg.clear();
-   xml->CursorTags = &xml->Tags;
-   xml->Cursor = xml->Tags.begin();
 
    XPathVal *xpv;
    if (AllocMemory(sizeof(XPathVal), MEM::DATA|MEM::MANAGED, (APTR *)&xpv, nullptr) IS ERR::Okay) {
@@ -405,8 +403,6 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    else xml->Callback.Type = CALL::NIL;
 
    xml->Attrib.clear();
-   xml->CursorTags = &xml->Tags;
-   xml->Cursor = xml->Tags.begin();
    xml->ErrorMsg.clear();
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
