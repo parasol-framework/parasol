@@ -1,22 +1,8 @@
 //********************************************************************************************************************
 // XPath Document and Text Retrieval Functions
 
-#include <parasol/modules/xml.h>
-#include <parasol/modules/core.h>
-#include <parasol/strings.hpp>
-
-#include "../api/xpath_functions.h"
-#include "../../xml/xml.h"
 #include "accessor_support.h"
-
-#include <algorithm>
-#include <cctype>
-#include <cmath>
 #include <filesystem>
-#include <optional>
-#include <string_view>
-#include <unordered_set>
-
 namespace { // Anonymous namespace for internal linkage
 
 namespace fs = std::filesystem;

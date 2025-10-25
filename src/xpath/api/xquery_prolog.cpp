@@ -11,15 +11,7 @@
 // canonical keys such as the qname/arity signature.
 
 #include "xpath_errors.h"
-#include <parasol/strings.hpp>
-#include <parasol/modules/xpath.h>
-#include <utility>
-#include <format>
-#include <optional>
-#include <algorithm>
-#include "../xpath.h"
 #include "../functions/accessor_support.h"
-#include "../../xml/xml.h"
 #include "../../xml/uri_utils.h"
 
 //********************************************************************************************************************

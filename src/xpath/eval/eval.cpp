@@ -19,9 +19,6 @@
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
-#include "../../xml/xml.h"
-
-#include <format>
 
 //********************************************************************************************************************
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures

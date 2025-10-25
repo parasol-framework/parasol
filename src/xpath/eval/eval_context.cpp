@@ -17,9 +17,7 @@
 // whilst preserving the correct semantics for position() and last() functions.
 
 #include "eval_detail.h"
-#include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
-#include "../../xml/xml.h"
 
 namespace {
 

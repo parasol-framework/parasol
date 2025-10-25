@@ -4,12 +4,7 @@
 // default-collation) by combining the shared document/schema utilities in accessor_support.cpp with the
 // sequence-building helpers declared in xpath_functions.cpp.
 
-#include <parasol/modules/xml.h>
-
 #include "accessor_support.h"
-#include "../api/xpath_functions.h"
-#include "../../xml/xml.h"
-
 //********************************************************************************************************************
 // base-uri() as xs:anyURI?
 // Returns the base URI for the specified node, or the context node if no argument is provided

@@ -12,13 +12,7 @@
 // All value evaluators consume comparison utilities from xpath_evaluator_detail.h and navigation
 // functions from xpath_evaluator_navigation.cpp to maintain clean separation of concerns.
 
-#include "eval_detail.h"
 #include "../api/xpath_functions.h"
-#include "../../xml/schema/schema_types.h"
-#include "../../xml/xml.h"
-#include <parasol/strings.hpp>
-#include <format>
-
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
 // underscore '_'). Used for validating constructor names and QName components.

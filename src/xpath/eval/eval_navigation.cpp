@@ -16,15 +16,6 @@
 // and handles both relative and absolute location paths.  By separating navigation concerns from
 // expression evaluation, the code remains modular and testable.
 
-#include "eval_detail.h"
-#include "../../xml/schema/schema_types.h"
-#include "../../xml/xml.h"
-
-#include <optional>
-#include <string>
-#include <string_view>
-#include <vector>
-
 //********************************************************************************************************************
 // Axis Navigation Helpers
 //

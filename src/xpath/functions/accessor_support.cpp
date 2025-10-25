@@ -6,20 +6,7 @@
 // source document for a node.
 
 #include "accessor_support.h"
-
-#include "../api/xpath_functions.h"
-#include "../../xml/xml.h"
-#include "../../xml/schema/schema_parser.h"
-#include "../../xml/uri_utils.h"
-
-#include <parasol/modules/core.h>
-
-#include <parasol/strings.hpp>
-
-#include <algorithm>
 #include <filesystem>
-#include <format>
-#include <string_view>
 
 namespace xpath::accessor {
 

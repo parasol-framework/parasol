@@ -1,21 +1,7 @@
 
 #include "eval_detail.h"
-#include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/schema/type_checker.h"
-#include "../../xml/xml.h"
-
-#include <parasol/strings.hpp>
-#include <format>
-#include <cmath>
-#include <utility>
-#include <string_view>
-#include <charconv>
-#include <cctype>
-#include <unordered_map>
-#include <system_error>
-#include <optional>
-#include <limits>
 #include "checked_arith.h"
 
 //********************************************************************************************************************
