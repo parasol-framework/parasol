@@ -1,5 +1,4 @@
 
-#include "eval.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"

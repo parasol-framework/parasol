@@ -16,7 +16,6 @@
 // and tokeniser remain ignorant of runtime data structures, and testing of the evaluator can be done
 // independently of XML parsing.
 
-#include "eval.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
@@ -32,6 +31,7 @@ XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot)
    : xml(XML), query_root(QueryRoot), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
+   context.eval = this;
    context.xml = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
@@ -43,6 +43,7 @@ XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XP
    : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
+   context.eval = this;
    context.xml = XML;
    context.expression_unsupported = &expression_unsupported;
    context.schema_registry = &xml::schema::registry();
@@ -93,7 +94,7 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
 bool XPathEvaluator::prolog_has_boundary_space_preserve() const
 {
    auto prolog = context.prolog;
-   if (!prolog) return false;
+   if (not prolog) return false;
    return prolog->boundary_space IS XQueryProlog::BoundarySpace::Preserve;
 }
 
@@ -104,7 +105,7 @@ bool XPathEvaluator::prolog_construction_preserve() const
    if (construction_preserve_mode) return true;
 
    auto prolog = context.prolog;
-   if (!prolog) return false;
+   if (not prolog) return false;
    return prolog->construction_mode IS XQueryProlog::ConstructionMode::Preserve;
 }
 
@@ -113,7 +114,7 @@ bool XPathEvaluator::prolog_construction_preserve() const
 bool XPathEvaluator::prolog_ordering_is_ordered() const
 {
    auto prolog = context.prolog;
-   if (!prolog) return true;
+   if (not prolog) return true;
    return prolog->ordering_mode IS XQueryProlog::OrderingMode::Ordered;
 }
 
@@ -122,7 +123,7 @@ bool XPathEvaluator::prolog_ordering_is_ordered() const
 bool XPathEvaluator::prolog_empty_is_greatest() const
 {
    auto prolog = context.prolog;
-   if (!prolog) return true;
+   if (not prolog) return true;
    return prolog->empty_order IS XQueryProlog::EmptyOrder::Greatest;
 }
 
@@ -130,7 +131,7 @@ bool XPathEvaluator::prolog_empty_is_greatest() const
 
 std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 {
-   if (!Node) return std::string("#");
+   if (not Node) return std::string("#");
 
    std::string children_sig;
    for (size_t index = 0; index < Node->child_count(); ++index) {
@@ -186,7 +187,7 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
 
       if (frame.context_node) {
          node_id = frame.context_node->ID;
-         if (!frame.context_node->Attribs.empty()) node_name = frame.context_node->Attribs[0].Name.c_str();
+         if (not frame.context_node->Attribs.empty()) node_name = frame.context_node->Attribs[0].Name.c_str();
 
          // Document label: 'this' if owned by this->xml, 'foreign' if another extXML, otherwise 'unknown'
          if (is_foreign_document_node(frame.context_node)) doc_label = "foreign";
@@ -209,13 +210,13 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
 
    // Optionally include variable bindings present in the current context
 
-   if (!context.variables->empty()) {
+   if (not context.variables->empty()) {
       // Build a comma-separated list of variable names (best-effort, avoid allocations where possible)
       std::string names;
       names.reserve(64);
       bool first = true;
       for (const auto &entry : *context.variables) {
-         if (!first) names += ", ";
+         if (not first) names += ", ";
          first = false;
          names += entry.first;
       }
@@ -247,7 +248,7 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
 
       // Set context to document root if not already set
 
-      if (!context.context_node) push_context(&xml->Tags[0], 1, 1);
+      if (not context.context_node) push_context(&xml->Tags[0], 1, 1);
    }
 
    // Evaluate the compiled AST and return the XPathVal directly

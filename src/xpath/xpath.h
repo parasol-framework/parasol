@@ -405,8 +405,8 @@ struct XQueryModuleCache {
    mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<XPathParseResult>> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
 
-   [[nodiscard]] XPathParseResult * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
-   [[nodiscard]] const XPathParseResult * find_module(std::string_view uri) const;
+   XPathParseResult * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
+   const XPathParseResult * find_module(std::string_view uri) const;
 };
 
 //********************************************************************************************************************
@@ -715,3 +715,534 @@ struct XQueryProlog {
    private:
    std::weak_ptr<XQueryModuleCache> module_cache;
 };
+
+struct TransparentStringHash {
+   using is_transparent = void;
+
+   size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
+   size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
+   size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
+};
+
+struct TransparentStringEqual {
+   using is_transparent = void;
+
+   bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
+   bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+   bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+};
+
+namespace xml::schema {
+   class SchemaTypeRegistry;
+   SchemaTypeRegistry & registry();
+}
+
+class XPathArena {
+   private:
+   template<typename T>
+   struct VectorPool {
+      // Supplies cleared std::vector instances for XPath evaluation and reuses
+      // them to avoid repeated heap allocations during query processing.
+      std::vector<std::unique_ptr<std::vector<T>>> storage;
+      std::vector<std::vector<T> *> free_list;
+
+      // Fetches an available vector from the free list, or allocates a new
+      // one, ensuring the container is reset before handing it to the caller.
+      std::vector<T> & acquire() {
+         if (!free_list.empty()) {
+            auto *vector = free_list.back();
+            free_list.pop_back();
+            vector->clear();
+            return *vector;
+         }
+
+         storage.push_back(std::make_unique<std::vector<T>>());
+         auto &vector = *storage.back();
+         vector.clear();
+         return vector;
+      }
+
+      void release(std::vector<T> &vector) {
+         vector.clear();
+         free_list.push_back(&vector);
+      }
+
+      // Clears the pool state while retaining allocated storage, preparing the
+      // vectors for reuse without incurring new allocations.
+      void reset() {
+         free_list.clear();
+         for (auto &entry : storage) {
+            entry->clear();
+            free_list.push_back(entry.get());
+         }
+      }
+   };
+
+   // Specialized pool for XMLTag * that uses pf::vector
+   struct NodeVectorPool {
+      std::vector<std::unique_ptr<NODES>> storage;
+      std::vector<NODES *> free_list;
+
+      NODES & acquire() {
+         if (!free_list.empty()) {
+            auto *vector = free_list.back();
+            free_list.pop_back();
+            vector->clear();
+            return *vector;
+         }
+
+         storage.push_back(std::make_unique<NODES>());
+         auto &vector = *storage.back();
+         vector.clear();
+         return vector;
+      }
+
+      void release(NODES &vector) {
+         vector.clear();
+         free_list.push_back(&vector);
+      }
+
+      void reset() {
+         free_list.clear();
+         for (auto &entry : storage) {
+            entry->clear();
+            free_list.push_back(entry.get());
+         }
+      }
+   };
+
+   NodeVectorPool node_vectors;
+   VectorPool<const XMLAttrib *> attribute_vectors;
+   VectorPool<std::string> string_vectors;
+
+   public:
+   XPathArena() = default;
+   XPathArena(const XPathArena &) = delete;
+   XPathArena & operator=(const XPathArena &) = delete;
+
+   NODES & acquire_node_vector() { return node_vectors.acquire(); }
+   void release_node_vector(NODES &Vector) { node_vectors.release(Vector); }
+
+   std::vector<const XMLAttrib *> & acquire_attribute_vector() { return attribute_vectors.acquire(); }
+   void release_attribute_vector(std::vector<const XMLAttrib *> &Vector) { attribute_vectors.release(Vector); }
+
+   std::vector<std::string> & acquire_string_vector() { return string_vectors.acquire(); }
+   void release_string_vector(std::vector<std::string> &Vector) { string_vectors.release(Vector); }
+
+   void reset() {
+      node_vectors.reset();
+      attribute_vectors.reset();
+      string_vectors.reset();
+   }
+};
+
+//********************************************************************************************************************
+// XPath Axis Types
+
+enum class AxisType {
+   CHILD,
+   DESCENDANT,
+   PARENT,
+   ANCESTOR,
+   FOLLOWING_SIBLING,
+   PRECEDING_SIBLING,
+   FOLLOWING,
+   PRECEDING,
+   ATTRIBUTE,
+   NAMESPACE,
+   SELF,
+   DESCENDANT_OR_SELF,
+   ANCESTOR_OR_SELF
+};
+
+//********************************************************************************************************************
+// Axis Evaluation Engine
+
+class AxisEvaluator {
+   private:
+   extXML * xml;
+   XPathArena & arena;
+   std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
+   bool id_cache_built = false;
+
+   struct AncestorPathView {
+      std::span<XMLTag *const> Path;
+      NODES * Storage = nullptr;
+      bool Cached = false;
+   };
+
+   std::unordered_map<XMLTag *, NODES *> ancestor_path_cache;
+   std::vector<std::unique_ptr<NODES>> ancestor_path_storage;
+   std::unordered_map<uint64_t, bool> document_order_cache;
+
+   // Optimized namespace handling data structures
+   struct NamespaceDeclaration {
+      std::string prefix;
+      std::string uri;
+
+      bool operator<(const NamespaceDeclaration &other) const {
+         return prefix < other.prefix;
+      }
+   };
+
+   // Reusable storage for namespace processing to avoid allocations
+   std::vector<NamespaceDeclaration> namespace_declarations;
+   std::vector<int> visited_node_ids;
+
+   // Namespace node pool for reuse to reduce allocations
+   std::vector<std::unique_ptr<XMLTag>> namespace_node_pool;
+
+   // Helper methods for specific axes
+   void evaluate_child_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_descendant_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_parent_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_ancestor_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_following_sibling_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_preceding_sibling_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_following_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_preceding_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_namespace_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_self_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_descendant_or_self_axis(XMLTag *ContextNode, NODES &Output);
+   void evaluate_ancestor_or_self_axis(XMLTag *ContextNode, NODES &Output);
+
+   void collect_subtree_reverse(XMLTag *Node, NODES &Output);
+
+   // Optimized namespace collection
+   void collect_namespace_declarations(XMLTag *Node, std::vector<NamespaceDeclaration> &declarations);
+
+   // Namespace node pooling helpers
+   XMLTag * acquire_namespace_node();
+   void recycle_namespace_nodes();
+
+   // Document order utilities
+   void sort_document_order(NODES &Nodes);
+   AncestorPathView build_ancestor_path(XMLTag *Node);
+   void release_ancestor_path(AncestorPathView &View);
+   uint64_t make_document_order_key(XMLTag *Left, XMLTag *Right);
+
+   // Helper methods for tag lookup
+   void build_id_cache();
+   XMLTag * find_parent(XMLTag *ReferenceNode);
+
+   public:
+   explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}
+
+   // Main evaluation method
+   void evaluate_axis(AxisType Axis, XMLTag *ContextNode, NODES &Output);
+
+   // Evaluation lifecycle helpers
+   void reset_namespace_nodes();
+
+   // Node-set utilities
+   void normalise_node_set(NODES &Nodes);
+   bool is_before_in_document_order(XMLTag *Node1, XMLTag *Node2);
+
+   // Utility methods
+   static AxisType parse_axis_name(std::string_view AxisName);
+   static std::string_view axis_name_to_string(AxisType Axis);
+   static bool is_reverse_axis(AxisType Axis);
+
+   // Capacity estimation helper
+   size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
+};
+
+struct XPathParseResult;
+
+struct XMLAttrib;
+class CompiledXPath;
+class XPathContext;
+class XPathEvaluator;
+
+//********************************************************************************************************************
+// XPath Evaluation Context.  Stored in XPathEvaluator and initialised in its constructor.
+// The context is pushed and popped as a stack frame during the evaluation process.
+
+struct XPathContext {
+   XPathEvaluator *eval = nullptr;
+   XMLTag *context_node = nullptr;
+   const XMLAttrib * attribute_node = nullptr;
+   size_t position = 1;
+   size_t size = 1;
+   ankerl::unordered_dense::map<std::string, XPathVal> * variables = nullptr;
+   extXML *xml = nullptr;
+   bool *expression_unsupported = nullptr;
+   xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
+   std::shared_ptr<XQueryProlog> prolog;
+   std::shared_ptr<XQueryModuleCache> module_cache;
+      
+   [[nodiscard]] inline std::shared_ptr<XQueryModuleCache> modules();
+
+   XPathContext() = default;
+};
+
+class XPathEvaluator : public XPathErrorReporter {
+   public:
+
+   enum class PredicateResult {
+      MATCH,
+      NO_MATCH,
+      UNSUPPORTED
+   };
+
+   extXML * xml;
+   const XPathNode * query_root = nullptr;
+   const XPathParseResult * parse_context = nullptr;
+   XPathContext context;
+   XPathArena arena;
+   AxisEvaluator axis_evaluator;
+   bool expression_unsupported = false;
+   bool trace_xpath_enabled = false;
+   bool construction_preserve_mode = false;
+
+   // Variable storage owned by the evaluator
+   ankerl::unordered_dense::map<std::string, XPathVal> variable_storage;
+   ankerl::unordered_dense::map<std::string, XPathVal> prolog_variable_cache;
+   std::unordered_set<std::string> variables_in_evaluation;
+
+   // Tracks in-scope namespace declarations while building constructed nodes so nested
+   // constructors inherit and override prefixes correctly.
+   struct ConstructorNamespaceScope {
+      const ConstructorNamespaceScope * parent = nullptr;
+      std::unordered_map<std::string, uint32_t> prefix_bindings;
+      std::optional<uint32_t> default_namespace;
+   };
+
+   std::vector<std::unique_ptr<XMLTag>> constructed_nodes;
+   int next_constructed_node_id = -1;
+
+   struct AxisMatch {
+      XMLTag * node = nullptr;
+      const XMLAttrib * attribute = nullptr;
+   };
+
+   using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
+
+   struct CursorState {
+      pf::vector<XMLTag> * tags;
+      size_t index;
+   };
+
+   std::vector<CursorState> cursor_stack;
+   std::vector<XPathContext> context_stack;
+
+   std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
+   extXML * resolve_document_for_node(XMLTag *Node) const;
+   bool is_foreign_document_node(XMLTag *Node) const;
+   NODES collect_step_results(const std::vector<AxisMatch> &,
+      const std::vector<const XPathNode *> &, size_t, uint32_t, bool &);
+   XPathVal evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix);
+   XPathVal evaluate_path_from_nodes(const NODES &,
+      const std::vector<const XMLAttrib *> &, const std::vector<const XPathNode *> &, const XPathNode *,
+      const XPathNode *, uint32_t);
+   ERR evaluate_top_level_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   ERR process_expression_node_set(const XPathVal &Value);
+   XPathVal evaluate_union_value(const std::vector<const XPathNode *> &Branches, uint32_t CurrentPrefix);
+   XPathVal evaluate_intersect_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
+   XPathVal evaluate_except_value(const XPathNode *Left, const XPathNode *Right, uint32_t CurrentPrefix);
+   ERR evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_flwor_pipeline(const XPathNode *Node, uint32_t CurrentPrefix);
+   void initialise_query_context(const XPathNode *Root);
+
+   std::optional<uint32_t> resolve_constructor_prefix(const ConstructorNamespaceScope &Scope,
+      std::string_view Prefix) const;
+   uint32_t register_constructor_namespace(const std::string &URI) const;
+   XMLTag clone_node_subtree(const XMLTag &Source, int ParentID);
+   bool append_constructor_sequence(XMLTag &Parent, const XPathVal &Value,
+      uint32_t CurrentPrefix, const ConstructorNamespaceScope &Scope, bool PreserveConstruction);
+   std::optional<std::string> evaluate_attribute_value_template(const XPathConstructorAttribute &Attribute,
+      uint32_t CurrentPrefix);
+   std::optional<std::string> evaluate_constructor_content_string(const XPathNode *Node, uint32_t CurrentPrefix,
+      bool ApplyWhitespaceRules, bool PreserveConstruction);
+   std::optional<std::string> evaluate_constructor_name_string(const XPathNode *Node, uint32_t CurrentPrefix);
+   std::optional<std::string> prepare_constructor_text(std::string_view Text, bool IsLiteral) const;
+   bool prolog_has_boundary_space_preserve() const;
+   bool prolog_construction_preserve() const;
+   bool prolog_ordering_is_ordered() const;
+   bool prolog_empty_is_greatest() const;
+   std::optional<XMLTag> build_direct_element_node(const XPathNode *Node, uint32_t CurrentPrefix,
+      ConstructorNamespaceScope *ParentScope, int ParentID);
+   XPathVal evaluate_direct_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
+      const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches);
+   ERR apply_predicates_to_candidates(const std::vector<const XPathNode *> &PredicateNodes,
+      uint32_t CurrentPrefix, std::vector<AxisMatch> &Candidates, std::vector<AxisMatch> &ScratchBuffer);
+   ERR process_step_matches(const std::vector<AxisMatch> &Matches, AxisType Axis, bool IsLastStep,
+      bool &Matched, std::vector<AxisMatch> &NextContext, bool &ShouldTerminate);
+   ERR invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bool &Matched, bool &ShouldTerminate);
+
+   PredicateResult dispatch_predicate_operation(std::string_view OperationName, const XPathNode *Expression,
+      uint32_t CurrentPrefix);
+   const std::unordered_map<std::string_view, PredicateHandler> &predicate_handler_map() const;
+   PredicateResult handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t CurrentPrefix);
+   PredicateResult handle_attribute_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix);
+   PredicateResult handle_content_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix);
+
+   std::string build_ast_signature(const XPathNode *Node) const;
+
+   void record_error(std::string_view Message, bool Force = false) override;
+   void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) override;
+   std::optional<XPathVal> resolve_user_defined_function(std::string_view FunctionName,
+      const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
+   XPathVal evaluate_user_defined_function(const XQueryFunction &Function,
+      const std::vector<XPathVal> &Args, uint32_t CurrentPrefix, const XPathNode *FuncNode);
+   bool resolve_variable_value(std::string_view QName, uint32_t CurrentPrefix,
+      XPathVal &OutValue, const XPathNode *ReferenceNode);
+
+   public:
+   explicit XPathEvaluator(extXML *XML, const XPathNode *QueryRoot = nullptr);
+   XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XPathParseResult *ParseContext);
+
+   ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
+   ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
+   ERR evaluate_step_ast(const XPathNode *StepNode, uint32_t CurrentPrefix);
+   ERR evaluate_step_sequence(const NODES &ContextNodes, const std::vector<const XPathNode *> &Steps, size_t StepIndex, uint32_t CurrentPrefix, bool &Matched);
+   bool match_node_test(const XPathNode *NodeTest, AxisType Axis, XMLTag *Candidate, const XMLAttrib *Attribute, uint32_t CurrentPrefix);
+   PredicateResult evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix);
+
+   XPathVal evaluate_expression(const XPathNode *ExprNode, uint32_t CurrentPrefix);
+   XPathVal evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix);
+
+   // Entry point for compiled XPath evaluation
+   ERR find_tag(const XPathNode &, uint32_t);
+
+   inline bool is_trace_enabled() const { return trace_xpath_enabled; }
+
+   // Full XPath expression evaluation returning computed values.  Will update the provided XPathValue
+   ERR evaluate_xpath_expression(const XPathNode &, XPathVal *, uint32_t CurrentPrefix = 0);
+
+   // Context management for AST evaluation
+   void push_context(XMLTag *Node, size_t Position = 1, size_t Size = 1, const XMLAttrib *Attribute = nullptr);
+   void pop_context();
+
+   [[nodiscard]] inline XMLTag * get_context_node() const;
+
+   // Stack management for deep traversal
+   void push_cursor_state();
+   void pop_cursor_state();
+
+   bool has_cursor_state() const { return !cursor_stack.empty(); }
+};
+
+enum class BinaryOperationKind {
+   AND,
+   OR,
+   UNION,
+   INTERSECT,
+   EXCEPT,
+   COMMA,
+   EQ,
+   NE,
+   EQ_WORD,
+   NE_WORD,
+   LT,
+   LE,
+   GT,
+   GE,
+   ADD,
+   SUB,
+   MUL,
+   DIV,
+   MOD,
+   RANGE,
+   UNKNOWN
+};
+
+struct SequenceEntry {
+   XMLTag * node = nullptr;
+   const XMLAttrib * attribute = nullptr;
+   std::string string_value;
+};
+
+struct ForBindingDefinition {
+   std::string name;
+   const XPathNode * sequence = nullptr;
+};
+
+struct QuantifiedBindingDefinition {
+   std::string name;
+   const XPathNode * sequence = nullptr;
+};
+
+struct CastTargetInfo {
+   std::string type_name;
+   bool allows_empty = false;
+};
+
+enum class SequenceCardinality {
+   ExactlyOne,
+   ZeroOrOne,
+   OneOrMore,
+   ZeroOrMore
+};
+
+enum class SequenceItemKind {
+   Atomic,
+   Element,
+   Attribute,
+   Text,
+   Node,
+   Item,
+   EmptySequence
+};
+
+struct SequenceTypeInfo {
+   SequenceCardinality occurrence = SequenceCardinality::ExactlyOne;
+   SequenceItemKind kind = SequenceItemKind::Atomic;
+   std::string type_name;
+
+   [[nodiscard]] inline bool allows_empty() const {
+      return (occurrence IS SequenceCardinality::ZeroOrOne) or (occurrence IS SequenceCardinality::ZeroOrMore);
+   }
+
+   [[nodiscard]] inline bool allows_multiple() const {
+      return (occurrence IS SequenceCardinality::OneOrMore) or (occurrence IS SequenceCardinality::ZeroOrMore);
+   }
+};
+
+//********************************************************************************************************************
+
+class VariableBindingGuard
+{
+   private:
+   XPathContext & context;
+   std::string variable_name;
+   std::optional<XPathVal> previous_value;
+   bool had_previous_value = false;
+
+   public:
+   VariableBindingGuard(XPathContext &Context, std::string Name, XPathVal Value)
+      : context(Context), variable_name(std::move(Name))
+   {
+      auto existing = context.variables->find(variable_name);
+      had_previous_value = (existing != context.variables->end());
+      if (had_previous_value) previous_value = existing->second;
+
+      (*context.variables)[variable_name] = std::move(Value);
+   }
+
+   ~VariableBindingGuard() {
+      if (had_previous_value) (*context.variables)[variable_name] = *previous_value;
+      else context.variables->erase(variable_name);
+   }
+
+   VariableBindingGuard(const VariableBindingGuard &) = delete;
+   VariableBindingGuard & operator=(const VariableBindingGuard &) = delete;
+
+   VariableBindingGuard(VariableBindingGuard &&) = default;
+   VariableBindingGuard & operator=(VariableBindingGuard &&) = default;
+};
+
+[[nodiscard]] inline XMLTag * XPathEvaluator::get_context_node() const { return context.context_node; };
+[[nodiscard]] inline std::shared_ptr<XQueryModuleCache> XPathContext::modules() { return eval->parse_context->module_cache; };

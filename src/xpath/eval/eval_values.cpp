@@ -12,7 +12,6 @@
 // All value evaluators consume comparison utilities from xpath_evaluator_detail.h and navigation
 // functions from xpath_evaluator_navigation.cpp to maintain clean separation of concerns.
 
-#include "eval.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"

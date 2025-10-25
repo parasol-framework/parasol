@@ -13,8 +13,6 @@
 // This implementation focuses on producing clean token streams that simplify the parser's job, allowing
 // the parser to focus on grammatical structure rather than low-level character processing.
 
-#include "xpath_tokeniser.h"
-
 #include <parasol/main.h>
 
 #include <array>

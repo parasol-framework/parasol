@@ -19,7 +19,6 @@
 //   - Count clauses: assign position counters to tuples
 //   - Return expressions: evaluate results for each tuple and combine into final node-set
 
-#include "eval.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"

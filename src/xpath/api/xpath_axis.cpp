@@ -14,8 +14,6 @@
 // XPath's ordering semantics.  Splitting these operations out keeps the evaluator readable and makes it easier to
 // extend axis support in the future (for example, by adding document order caches or debugging hooks).
 
-#include "xpath_axis.h"
-
 struct AxisNameMapping {
    AxisType Type;
    std::string_view Name;

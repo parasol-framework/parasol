@@ -16,10 +16,8 @@
 // environments.  By maintaining explicit context stacks, the evaluator can traverse complex expressions
 // whilst preserving the correct semantics for position() and last() functions.
 
-#include "eval.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
-#include "../api/xpath_axis.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/xml.h"
 
@@ -70,12 +68,14 @@ class ContextGuard {
 
 void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
 {
-   context_stack.push_back(context);
+   context_stack.push_back(context); // Save frame
+   // Set new frame details
    context.context_node = Node;
    context.attribute_node = Attribute;
    context.position = Position;
    context.size = Size;
-   context.xml = context.xml ? context.xml : xml;
+   // Retain existing contextual XML, otherwise inherit from evaluator
+   if (!context.xml) context.xml = xml;
 }
 
 //********************************************************************************************************************
@@ -89,11 +89,11 @@ void XPathEvaluator::pop_context()
       context.position = 1;
       context.size = 1;
       context.xml = xml;
-      return;
    }
-
-   context = context_stack.back();
-   context_stack.pop_back();
+   else {
+      context = context_stack.back();
+      context_stack.pop_back();
+   }
 }
 
 //********************************************************************************************************************

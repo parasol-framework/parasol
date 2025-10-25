@@ -1,11 +1,9 @@
-//********************************************************************************************************************
 // XPath Accessor Support Utilities
 //
 // These helpers centralise the document and schema lookups required by accessor-style XPath functions.  The
 // routines replicate the behaviour previously embedded inside func_documents.cpp so that the accessor
 // implementations can determine owning documents, resolve xml:base inheritance, and query schema metadata in a
 // consistent manner regardless of the source tree for a node.
-//********************************************************************************************************************
 
 #pragma once
 

@@ -112,8 +112,6 @@ an escape character in attribute strings.  The `@*` syntax matches any attribute
 #include "../xml/uri_utils.h"
 #include "../xml/xml.h"
 #include "functions/accessor_support.h"
-#include "parse/xpath_tokeniser.h"
-#include "eval/eval.h"
 #include "xpath.h"
 
 JUMPTABLE_CORE
