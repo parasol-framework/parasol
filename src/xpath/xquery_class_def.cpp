@@ -12,9 +12,11 @@ static const struct MethodEntry clXQueryMethods[] = {
 static const struct ActionArray clXQueryActions[] = {
    { AC::Clear, XQUERY_Clear },
    { AC::Free, XQUERY_Free },
+   { AC::GetKey, XQUERY_GetKey },
    { AC::Init, XQUERY_Init },
    { AC::NewPlacement, XQUERY_NewPlacement },
    { AC::Reset, XQUERY_Reset },
+   { AC::SetKey, XQUERY_SetKey },
    { AC::NIL, nullptr }
 };
 

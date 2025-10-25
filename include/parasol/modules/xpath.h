@@ -102,8 +102,18 @@ class objXQuery : public Object {
    // Action stubs
 
    inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
+   inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
+      struct acGetKey args = { Key, Value, Size };
+      auto error = Action(AC::GetKey, this, &args);
+      if ((error != ERR::Okay) and (Value)) Value[0] = 0;
+      return error;
+   }
    inline ERR init() noexcept { return InitObject(this); }
    inline ERR reset() noexcept { return Action(AC::Reset, this, nullptr); }
+   inline ERR acSetKey(CSTRING FieldName, CSTRING Value) noexcept {
+      struct acSetKey args = { FieldName, Value };
+      return Action(AC::SetKey, this, &args);
+   }
    inline ERR evaluate(objXML * XML) noexcept {
       struct xq::Evaluate args = { XML };
       return(Action(AC(-1), this, &args));

@@ -378,6 +378,21 @@ struct XPathParseResult {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
+/*
+   ankerl::unordered_dense::map<std::string, class extXML *> XMLCache;
+
+   XPathParseResult() = default;
+   XPathParseResult(XPathParseResult &&) = default;
+   XPathParseResult &operator=(XPathParseResult &&) = default;
+   XPathParseResult(const XPathParseResult &) = delete;
+   XPathParseResult &operator=(const XPathParseResult &) = delete;
+
+   ~XPathParseResult() {
+      for (auto &entry : XMLCache) {
+         if (entry.second) FreeResource(entry.second);
+      }
+   }
+*/
 };
 
 //********************************************************************************************************************

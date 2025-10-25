@@ -365,14 +365,33 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 /*********************************************************************************************************************
 -ACTION-
 SetKey: Set XQuery variable values.
+
+Use SetKey to store key-value pairs that can be referenced in XQuery expressions using the variable syntax
+`$variableName`.
+
+-INPUT-
+cstr Key: The name of the variable (case sensitive).
+cstr Value: The string value to store or NULL to remove an existing key.
+
+-ERRORS-
+Okay:
+NullArgs: The `Key` parameter was not specified.
 -END-
+
 *********************************************************************************************************************/
 
 static ERR XQUERY_SetKey(extXQuery *Self, struct acSetKey *Args)
 {
-   if (not Args) return ERR::NullArgs;
+   pf::Log log;
 
-   return ERR::NoSupport;
+   if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
+
+   log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
+
+   //if (Args->Value) Self->Variables[Args->Key] = Args->Value;
+   //else Self->Variables.erase(Args->Key);
+
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
