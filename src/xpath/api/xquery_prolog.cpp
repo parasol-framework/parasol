@@ -65,13 +65,17 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       return nullptr;
    }
 
-   pf::ScopedObjectLock<extXML> xml(owner);
-   if (not xml.granted()) {
+   pf::ScopedObjectLock<Object> unknown_owner(owner);
+   if (not unknown_owner.granted()) {
       reporter.record_error(std::format("XQST0059: Cannot lock XML object #{} for module loading: {}", owner, std::string(URI)));
       return nullptr;
    }
 
-   pf::SwitchContext ctx(*xml);
+   extXML* xml = nullptr;
+   if (unknown_owner->classID() IS CLASSID::XML) xml = (extXML *)(unknown_owner.obj);
+   else xml = ((extXQuery *)(unknown_owner.obj))->XML;
+
+   pf::SwitchContext ctx(xml);
 
    auto normalise_cache_key = [](const std::string &value) -> std::string {
       return xml::uri::normalise_uri_separators(value);
@@ -86,7 +90,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
       return value;
    };
 
-   auto base_directory = xpath::accessor::resolve_document_base_directory(*xml);
+   auto base_directory = xpath::accessor::resolve_document_base_directory(xml);
 
    auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
       std::string normalised = normalise_cache_key(hint);
@@ -221,7 +225,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
    const std::optional<std::string> encoding("utf-8");
 
    for (const auto &candidate : location_candidates) {
-      if (read_text_resource(*xml, candidate, encoding, content)) {
+      if (read_text_resource(xml, candidate, encoding, content)) {
          loaded_location = candidate;
          break;
       }
@@ -240,7 +244,7 @@ XMODULE * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryPro
 
    // Compile the module query
    XMODULE *compiled = nullptr;
-   if (xp::Compile((objXML *)*xml, content->c_str(), (APTR*)&compiled) != ERR::Okay) {
+   if (xp::Compile((objXML *)xml, content->c_str(), (APTR*)&compiled) != ERR::Okay) {
       reporter.record_error(std::format("Cannot compile module: {}", URI));
       return nullptr;
    }

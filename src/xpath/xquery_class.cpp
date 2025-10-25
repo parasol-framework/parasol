@@ -309,18 +309,19 @@ Okay: At least one matching node was found and processed.
 NullArgs: At least one required parameter was not provided.
 Syntax: The provided query expression has syntax errors.
 Search: No matching node was found.
+Terminate: The callback function requested termination of the search.
 
 *********************************************************************************************************************/
 
 static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 {
-   pf::Log log(__FUNCTION__);
+   pf::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
 
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 60);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
-   log.branch("Expression: %.*s", len, Self->Statement.c_str());
+   log.branch("Expression: %.*s; Callback: %c", len, Self->Statement.c_str(), Args->Callback ? (Args->Callback->Type != CALL::NIL ? 'Y' : 'N') : 'N');
 
    if (Self->StaleBuild) {
       if (auto err = build_query(Self); err != ERR::Okay) return err;
@@ -328,12 +329,16 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
+   Self->ErrorMsg.clear();
+   if (xml) xml->ErrorMsg.clear();
 
    if (xml) {
       pf::ScopedObjectLock lock(xml);
 
-      if (Args->Callback) Self->Callback = *Args->Callback;
+      if ((Args->Callback) and (Args->Callback->defined())) Self->Callback = *Args->Callback;
       else Self->Callback.Type = CALL::NIL;
+
+      xml->Callback = Self->Callback; // TODO: TEMPORARY
 
       // TODO: Can these fields be moved to extXQuery?
       xml->Attrib.clear();
@@ -342,7 +347,9 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
       XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
-      return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
+      auto error = eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
+      if (not xml->ErrorMsg.empty()) Self->ErrorMsg = xml->ErrorMsg;
+      return error;
    }
    else {
       XPathEvaluator eval(nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);

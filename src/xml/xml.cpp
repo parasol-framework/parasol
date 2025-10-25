@@ -65,28 +65,9 @@ JUMPTABLE_CORE
 
 static OBJECTPTR clXML = nullptr;
 static OBJECTPTR modContext = nullptr;
-static uint32_t glTagID = 1;
-
-#ifndef PARASOL_STATIC
-JUMPTABLE_XPATH
-static OBJECTPTR modXPath = nullptr;
-#endif
+static std::atomic<uint32_t> glTagID = 1;
 
 #include "xml_def.c"
-
-//*********************************************************************************************************************
-// Dynamic loader for the XPath functionality.  We only load it as needed due to the size of the module.
-
-static ERR load_xpath(void)
-{
-#ifndef PARASOL_STATIC
-   if (not modXPath) {
-      pf::SwitchContext ctx(modContext);
-      if (objModule::load("xpath", &modXPath, &XPathBase) != ERR::Okay) return ERR::InitModule;
-   }
-#endif
-   return ERR::Okay;
-}
 
 //*********************************************************************************************************************
 

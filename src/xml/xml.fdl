@@ -69,8 +69,8 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
   -- Note that if a tag specifies a namespace prefix then it will appear in the first XMLAttrib with the name
 
   struct("XMLTag", { type="XMLTag" }, [[
-    int ID           # Unique ID assigned to the tag on creation
-    int ParentID     # Unique ID of the parent tag
+    int ID           # Globally unique ID assigned to the tag on creation.
+    int ParentID     # UID of the parent tag
     int LineNo       # Line number on which this tag was encountered
     int(XTF) Flags   # Optional flags
     uint NamespaceID # Hash of namespace URI or 0 for no namespace
