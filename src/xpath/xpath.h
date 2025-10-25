@@ -679,9 +679,6 @@ struct XQueryProlog {
 
 //********************************************************************************************************************
 // Utilised to cache imported XQuery modules (compiled query result).
-// Forward declare to avoid coupling headers; concrete definition in parse/xpath_parser.h
-
-struct XPathParseResult;
 
 struct XQueryModuleCache {
    // Referenced as a UID from xp::Compile() because it's a weak reference.

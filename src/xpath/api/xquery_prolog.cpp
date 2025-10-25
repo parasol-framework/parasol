@@ -183,8 +183,8 @@ XPathParseResult * XQueryModuleCache::fetch_or_load(std::string_view URI, const 
    // Check document cache for pre-loaded modules
 
    auto find_module = [&](const std::string &key) -> std::shared_ptr<XPathParseResult> {
-      auto cache_entry = xml->ModuleCache.find(key);
-      if (cache_entry != xml->ModuleCache.end()) return cache_entry->second;
+      auto cache_entry = modules.find(key);
+      if (cache_entry != modules.end()) return cache_entry->second;
       else return nullptr;
    };
 
@@ -311,10 +311,9 @@ XPathParseResult * XQueryModuleCache::fetch_or_load(std::string_view URI, const 
 
    // Cache the module (only after resolving imports to allow circular detection via loading_in_progress)
 
-   modules[uri_key] = std::make_shared<XPathParseResult>(std::move(compiled));
-   xml->ModuleCache[uri_key] = modules[uri_key];
-   if (original_uri != uri_key) xml->ModuleCache[original_uri] = modules[uri_key];
-   if (not loaded_location.empty()) xml->ModuleCache[loaded_location] = modules[uri_key];
+   modules[uri_key] = std::make_shared<XPathParseResult>(std::move(compiled)); // XQueryModuleCache.modules
+   if (original_uri != uri_key) modules[original_uri] = modules[uri_key];
+   if (not loaded_location.empty()) modules[loaded_location] = modules[uri_key];
 
    return modules[uri_key].get();
 }

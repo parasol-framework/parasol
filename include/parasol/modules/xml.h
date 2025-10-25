@@ -217,7 +217,6 @@ class objXML : public Object {
    STRING    SystemID; // System identifier for external DTD
    OBJECTPTR Source;  // Set this field if the XML data is to be sourced from another object.
    XMF       Flags;   // Controls XML parsing behaviour and processing options.
-   int       Start;   // Set a starting cursor to affect the starting point for some XML operations.
    int       Modified; // A timestamp of when the XML data was last modified.
    ERR       ParseError; // Private
    int       LineNo;  // Private
@@ -428,11 +427,6 @@ class objXML : public Object {
 
    inline ERR setFlags(const XMF Value) noexcept {
       this->Flags = Value;
-      return ERR::Okay;
-   }
-
-   inline ERR setStart(const int Value) noexcept {
-      this->Start = Value;
       return ERR::Okay;
    }
 
