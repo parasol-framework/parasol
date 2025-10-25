@@ -158,9 +158,6 @@ static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 static ERR MODExpunge(void)
 {
    if (clXML) { FreeResource(clXML); clXML = nullptr; }
-#ifndef PARASOL_STATIC
-   if (modXPath) { FreeResource(modXPath); modXPath = nullptr; }
-#endif
    return ERR::Okay;
 }
 
