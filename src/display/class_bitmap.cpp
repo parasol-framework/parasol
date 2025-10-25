@@ -344,6 +344,24 @@ ERR unlock_surface(extBitmap *Bitmap)
    return ERR::Okay;
 }
 
+#else
+
+ERR lock_surface(extBitmap *Bitmap, int16_t Access)
+{
+   if (!Bitmap->Data) {
+      pf::Log log(__FUNCTION__);
+      log.warning("[Bitmap:%d] Bitmap is missing the Data field.", Bitmap->UID);
+      return ERR::FieldNotSet;
+   }
+
+   return ERR::Okay;
+}
+
+ERR unlock_surface(extBitmap *Bitmap)
+{
+   return ERR::Okay;
+}
+
 #endif
 
 //********************************************************************************************************************

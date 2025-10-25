@@ -223,7 +223,7 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          if (error = xq->evaluate(Self); error IS ERR::Okay) {
             CSTRING result;
-            if (xq->get(FID_ResultString, result) IS ERR::Okay) Args->Result = result;
+            if (xq->get(FID_ResultString, result) IS ERR::Okay) Args->Result = pf::strclone(result);
             FreeResource(xq);
             if (!Args->Result) return log.warning(ERR::AllocMemory);
             return ERR::Okay;
