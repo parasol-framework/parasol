@@ -224,12 +224,17 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
       }
 
       case AxisType::NAMESPACE: {
-         if (attribute_context) break;
-         if (ContextNode) {
-            auto &namespace_buffer = arena.acquire_node_vector();
-            axis_evaluator.evaluate_axis(AxisType::NAMESPACE, ContextNode, namespace_buffer);
-            append_nodes(namespace_buffer);
-         }
+         // Namespace axis is not supported. Record an error and return no matches.
+         // See XPST0134: The namespace axis is not supported.
+         record_error("XPST0134: The namespace axis is not supported.", true);
+
+         // Former code:
+         //if (attribute_context) break;
+         //if (ContextNode) {
+         //   auto &namespace_buffer = arena.acquire_node_vector();
+         //   axis_evaluator.evaluate_axis(AxisType::NAMESPACE, ContextNode, namespace_buffer);
+         //   append_nodes(namespace_buffer);
+         //}
          break;
       }
    }

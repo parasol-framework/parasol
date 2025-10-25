@@ -76,6 +76,14 @@ enum('XPathNodeType', { type='int', start=0 },
    'TYPESWITCH_CASE',
    'TYPESWITCH_DEFAULT_CASE')
 
+  methods("xquery", "XQ", {
+    { id=1, name="Evaluate" },
+    { id=2, name="Search" }
+  })
+
+  class("XQuery", { src="xquery_class.cpp", output="xquery_class_def.cpp" }, [[
+  ]])
+
   functionNames("xp",
      "Compile",
      "Evaluate",

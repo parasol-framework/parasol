@@ -63,43 +63,6 @@ class ContextGuard {
    }
 };
 
-class CursorGuard {
-   private:
-   XPathEvaluator * evaluator;
-   bool active;
-
-   public:
-   explicit CursorGuard(XPathEvaluator &Evaluator) : evaluator(&Evaluator), active(true) {
-      evaluator->push_cursor_state();
-   }
-
-   CursorGuard(CursorGuard &&Other) noexcept : evaluator(Other.evaluator), active(Other.active) {
-      Other.evaluator = nullptr;
-      Other.active = false;
-   }
-
-   CursorGuard & operator=(CursorGuard &&Other) noexcept {
-      if (this IS &Other) return *this;
-
-      if (active and evaluator) evaluator->pop_cursor_state();
-
-      evaluator = Other.evaluator;
-      active = Other.active;
-
-      Other.evaluator = nullptr;
-      Other.active = false;
-
-      return *this;
-   }
-
-   CursorGuard(const CursorGuard &) = delete;
-   CursorGuard & operator=(const CursorGuard &) = delete;
-
-   ~CursorGuard() {
-      if (active and evaluator) evaluator->pop_cursor_state();
-   }
-};
-
 } // namespace
 
 //********************************************************************************************************************
@@ -131,43 +94,6 @@ void XPathEvaluator::pop_context()
 
    context = context_stack.back();
    context_stack.pop_back();
-}
-
-//********************************************************************************************************************
-// Snapshot cursor state so legacy cursor-based APIs can be restored after XPath evaluation.
-
-void XPathEvaluator::push_cursor_state()
-{
-   CursorState state{};
-   state.tags = xml->CursorTags;
-
-   if ((xml->CursorTags) and (xml->CursorTags->begin() != xml->CursorTags->end())) {
-      state.index = size_t(xml->Cursor - xml->CursorTags->begin());
-   }
-   else state.index = 0;
-
-   cursor_stack.push_back(state);
-}
-
-//********************************************************************************************************************
-// Reinstate any saved cursor state.
-
-void XPathEvaluator::pop_cursor_state()
-{
-   if (cursor_stack.empty()) return;
-
-   auto state = cursor_stack.back();
-   cursor_stack.pop_back();
-
-   xml->CursorTags = state.tags;
-
-   if (!xml->CursorTags) return;
-
-   auto begin = xml->CursorTags->begin();
-   if (state.index >= size_t(xml->CursorTags->size())) {
-      xml->Cursor = xml->CursorTags->end();
-   }
-   else xml->Cursor = begin + state.index;
 }
 
 //********************************************************************************************************************
@@ -261,7 +187,6 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
    }
    else {
       if (context.context_node) initial_context.push_back(context.context_node);
-      else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) initial_context.push_back(&(*xml->Cursor));
       else initial_context.push_back(nullptr);
    }
 
@@ -285,8 +210,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
    auto saved_context = context;
    auto saved_context_stack = context_stack;
    auto saved_cursor_stack = cursor_stack;
-   auto saved_cursor_tags = xml->CursorTags;
-   auto saved_cursor = xml->Cursor;
    auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
@@ -308,8 +231,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->CursorTags = saved_cursor_tags;
-      xml->Cursor = saved_cursor;
       xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
@@ -325,8 +246,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
    context = saved_context;
    context_stack = saved_context_stack;
    cursor_stack = saved_cursor_stack;
-   xml->CursorTags = saved_cursor_tags;
-   xml->Cursor = saved_cursor;
    xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
@@ -347,7 +266,6 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
 
    NODES context_nodes;
    if (context.context_node) context_nodes.push_back(context.context_node);
-   else if ((xml->CursorTags) and (xml->Cursor != xml->CursorTags->end())) context_nodes.push_back(&(*xml->Cursor));
    else context_nodes.push_back(nullptr);
 
    bool matched = false;
@@ -425,7 +343,7 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
    if (not Node) return ERR::Okay;
 
    TAGS * tags = nullptr;
-   bool is_constructed = (Node->ID < 0);
+   bool is_constructed = (Node->ID <= 0);
 
    if (is_constructed) {
       // Node was constructed on-the-fly and has no representation in the xml object.
@@ -433,9 +351,8 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
 
       xml->appendTags(*Node);
       tags = &xml->Tags;
-      xml->Cursor = xml->Tags.end() - 1;
    }
-   else if (tags = xml->getInsert(Node, xml->Cursor); not tags) {
+   else if (tags = xml->getTags(Node); not tags) {
       log.warning("Unable to locate tag list for callback on node ID %d.", Node->ID);
       return ERR::Search;
    }
@@ -450,8 +367,6 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
 
    Matched = true;
 
-   xml->CursorTags = tags;
-
    if (Attribute) xml->Attrib = Attribute->Name;
    else xml->Attrib.clear();
 
@@ -459,8 +374,6 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
       ShouldTerminate = true;
       return ERR::Okay;
    }
-
-   CursorGuard cursor_guard(*this);
 
    ERR callback_error = ERR::Okay;
    if (xml->Callback.isC()) {

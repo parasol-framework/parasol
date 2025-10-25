@@ -14,7 +14,7 @@ function testTagsArray()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
--- Test the FindTag() and GetTag() methods.
+-- Test the FindTag() callbacks and GetTag() method.
 
 function testIndexing()
    local totalFunctions = 0

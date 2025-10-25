@@ -59,6 +59,42 @@ validation instead.
 
 *********************************************************************************************************************/
 
+// Use in search() calls to report the first matching tag.  Expects an int reference in the Meta parameter.
+
+static ERR save_matching_tag(extXML *Self, int TagID, CSTRING Attrib, int *TagResult)
+{
+   *TagResult = TagID;
+   return ERR::Terminate; // We only want the first match
+}
+
+//********************************************************************************************************************
+
+struct find_all_tags_opt {
+   int TagID = 0;
+   FUNCTION *Callback = nullptr;
+};
+
+static ERR find_all_tags(extXML *Self, int TagID, CSTRING Attrib, find_all_tags_opt *Options)
+{
+   if (not Options->TagID) Options->TagID = TagID; // Store the first matching tag ID
+
+   ERR callback_error = ERR::Okay;
+   if (Options->Callback->isC()) {
+      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))Options->Callback->Routine;
+      callback_error = routine(Self, TagID, Attrib, Options->Callback->Meta);
+   }
+   else if (Options->Callback->isScript()) {
+      if (sc::Call(*Options->Callback, std::to_array<ScriptArg>({
+         { "XML",  Self, FD_OBJECTPTR },
+         { "Tag",  TagID },
+         { "Attrib", Attrib }
+      }), callback_error) != ERR::Okay) return ERR::Terminate;
+   }
+   else return ERR::InvalidValue;
+
+   return callback_error;
+}
+
 /*********************************************************************************************************************
 -ACTION-
 Clear: Completely clears all XML data and resets the object to its initial state.
@@ -180,24 +216,33 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
    if ((not Args) or (not Args->Statement)) return log.warning(ERR::NullArgs);
 
    log.branch("");
-
-   load_xpath();
-
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->Statement, &cp); error IS ERR::Okay) {
-      XPathValue *xpv;
-      if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
-         auto str = ((XPathVal *)xpv)->to_string();
-         if (!(Args->Result = pf::strclone(str.c_str()))) error = ERR::AllocMemory;
-         FreeResource(xpv);
+   
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->Statement);
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         if (error = xq->evaluate(Self); error IS ERR::Okay) {
+            CSTRING result;
+            if (xq->get(FID_ResultString, result) IS ERR::Okay) Args->Result = pf::strclone(result);
+            FreeResource(xq);
+            if (!Args->Result) return log.warning(ERR::AllocMemory);
+            return ERR::Okay;
+         }
+         else {
+            CSTRING str;
+            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            FreeResource(xq);
+            return error;
+         }
       }
-      FreeResource(cp);
-      return error;
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
+         return error;
+      }
    }
-   else {
-      log.warning("Compile failed: %s", Self->ErrorMsg.c_str());
-      return error;
-   }
+   else return log.warning(ERR::NewObject);
 }
 
 /*********************************************************************************************************************
@@ -225,21 +270,47 @@ Search: No matching tag could be found for the specified XPath expression.
 
 static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
-   if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
+   pf::Log log;
 
-   load_xpath();
+   if ((not Args) or (not Args->XPath)) return log.warning(ERR::NullArgs);
 
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
-      if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
-         auto new_tags = TAGS(Self->Cursor, Self->Cursor + 1);
-         Self->Tags = std::move(new_tags);
-         Self->modified();
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->XPath);
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         int tag_id = 0;
+         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         if (error = xq->search(Self, callback); error IS ERR::Terminate) {
+            if (tag_id) {
+               auto tag = Self->getTag(tag_id);
+               auto new_tags = TAGS(tag, tag + 1);
+               Self->Tags = std::move(new_tags);
+               Self->modified();
+            }
+            FreeResource(xq);
+            return ERR::Okay;
+         }
+         else {
+            if (error IS ERR::Okay) { // Nothing found
+               error = ERR::Search;
+               Self->ErrorMsg = "No matching tag found";
+            }
+            else {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            }
+            FreeResource(xq);
+            return error;
+         }
       }
-      FreeResource(cp);
-      return error;
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
+         return error;
+      }
    }
-   else return error;
+   else return log.warning(ERR::NewObject);
 }
 
 /*********************************************************************************************************************
@@ -258,7 +329,7 @@ When a callback function is specified, FindTag continues searching through the e
 provided function for each matching element.  This enables comprehensive processing of all matching elements in a
 single traversal.
 
-The C++ prototype for Callback is `ERR Function(*XML, XMLTag &Tag, CSTRING Attrib)`.
+The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.
 
 The callback should return `ERR::Okay` to continue processing, or `ERR::Terminate` to halt the search immediately.
 All other error codes are ignored to maintain search robustness.
@@ -268,7 +339,7 @@ Note: If an error occurs, check the #ErrorMsg field for a custom error message c
 -INPUT-
 cstr XPath: A valid XPath expression string conforming to XPath 2.0 syntax with Parasol extensions.  Must not be NULL or empty.
 ptr(func) Callback: Optional pointer to a callback function for processing multiple matches.
-&int Result: Pointer to an integer that will receive the unique ID of the first matching tag.  Only valid when no callback is provided.
+&int Result: UID of the first matching tag.  Only valid when Callback is undefined.
 
 -ERRORS-
 Okay: A matching tag was found (or callback processing completed successfully).
@@ -287,28 +358,52 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
+   
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->XPath);
 
-   load_xpath();
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         // TODO: Should verify that the compiled expression is an XPath and not an XQuery
 
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
-      error = xp::Query(Self, cp, Args->Callback);
-      FreeResource(cp);
+         find_all_tags_opt opt;
 
-      if (error IS ERR::Okay) {
-         if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
-         Args->Result = Self->Cursor->ID;
-         return ERR::Okay;
+         FUNCTION callback;
+         if ((Args->Callback) and (Args->Callback->defined())) {
+            opt.Callback = Args->Callback;
+            callback = C_FUNCTION(find_all_tags, &opt);
+            error = xq->search((objXML *)Self, callback);
+         }
+         else {
+            callback = C_FUNCTION(save_matching_tag, &opt.TagID);
+            error = xq->search((objXML *)Self, callback);
+            if (error IS ERR::Terminate) error = ERR::Okay; // Terminate means a match was accepted
+            else if (error IS ERR::Okay) error = ERR::Search; // Nothing found
+         }
+
+         if (error IS ERR::Okay) {
+            FreeResource(xq);
+
+            if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", opt.TagID, Self->Attrib.c_str());
+            Args->Result = opt.TagID;
+            return ERR::Okay;
+         }
+         else {
+            CSTRING str;
+            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            FreeResource(xq);
+            if ((Args->Callback) and (error IS ERR::Search)) return ERR::Okay;
+            else return error;
+         }
       }
-
-      if (Args->Callback) {
-         if (error IS ERR::Search) return ERR::Okay;
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
          return error;
       }
-
-      return error;
    }
-   else return error;
+   else return ERR::NewObject;
 }
 
 //********************************************************************************************************************
@@ -520,24 +615,35 @@ static ERR XML_GetKey(extXML *Self, struct acGetKey *Args)
    if ((not Args->Key) or (not Args->Value) or (Args->Size < 1)) return log.warning(ERR::NullArgs);
    if (not Self->initialised()) return log.warning(ERR::NotInitialised);
 
-   load_xpath();
-
    Args->Value[0] = 0;
 
    log.error("GetKey() usage is deprecated in the XML class.  Use Evaluate() instead.");
 
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
-      XPathValue *xpv;
-      if (error = xp::Evaluate(Self, cp, &xpv); error IS ERR::Okay) {
-         auto str = ((XPathVal *)xpv)->to_string();
-         pf::strcopy(str, Args->Value, Args->Size);
-         FreeResource(xpv);
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->Key);
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         if (error = xq->evaluate(Self); error IS ERR::Okay) {
+            auto result = xq->get<CSTRING>(FID_ResultString);
+            if (result) pf::strcopy(result, Args->Value, Args->Size);
+            FreeResource(xq);
+            return ERR::Okay;
+         }
+         else {
+            CSTRING str;
+            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            FreeResource(xq);
+            return error;
+         }
       }
-      FreeResource(cp);
-      return error;
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
+         return error;
+      }
    }
-   else return error;
+   else return log.warning(ERR::NewObject);
 }
 
 /*********************************************************************************************************************
@@ -865,20 +971,41 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
 
    log.branch("Insert: %d, XPath: %s", int(Args->Where), Args->XPath);
 
-   load_xpath();
-
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
-      if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
-         xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
-         if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
-            Args->Result = insert.Result;
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->XPath);
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         int tag_id = 0;
+         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
+            xml::InsertXML insert { .Index = tag_id, .Where = Args->Where, .XML = Args->XML };
+            if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
+               Args->Result = insert.Result;
+            }
+            FreeResource(xq);
+            return error;
+         }
+         else {
+            if (error IS ERR::Okay) {
+               error = ERR::Search; // No match found
+               Self->ErrorMsg = "XPath did not resolve to a valid location.";
+            }
+            else {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            }
+            FreeResource(xq);
+            return error;
          }
       }
-      FreeResource(cp);
-      return error;
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
+         return error;
+      }
    }
-   else return error;
+   else return log.warning(ERR::NewObject);
 }
 
 /*********************************************************************************************************************
@@ -1130,40 +1257,51 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
    if ((Self->Flags & XMF::LOCK_REMOVE) != XMF::NIL) return log.warning(ERR::ReadOnly);
 
-   load_xpath();
-
    auto limit = Args->Limit;
    if (limit IS -1) limit = 0x7fffffff;
    else if (not limit) limit = 1;
 
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
-      while (limit > 0) {
-         if (xp::Query(Self, cp, nullptr) != ERR::Okay) break;
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->XPath);
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         while (limit > 0) {
+            int tag_id = 0;
+            auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+            if (xq->search((objXML *)Self, callback) != ERR::Terminate) break;
+            auto tag = Self->getTag(tag_id);
+            if (!tag) break; // Sanity check
 
-         if (not Self->Attrib.empty()) { // Remove an attribute
-            auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
-               return pf::iequals(Self->Attrib, a.Name);
-            });
-            if (it != Self->Cursor->Attribs.end()) Self->Cursor->Attribs.erase(it);
-         }
-         else if (Self->Cursor->ParentID) {
-            if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
-               auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
-                  return Self->Cursor->ID IS child.ID;
+            if (not Self->Attrib.empty()) { // Remove an attribute
+               auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
+                  return pf::iequals(Self->Attrib, a.Name);
                });
-               if (it != parent->Children.end()) parent->Children.erase(it);
+               if (it != tag->Attribs.end()) tag->Attribs.erase(it);
             }
+            else if (tag->ParentID) {
+               if (auto parent = Self->getTag(tag->ParentID)) {
+                  auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
+                     return tag->ID IS child.ID;
+                  });
+                  if (it != parent->Children.end()) parent->Children.erase(it);
+               }
+            }
+            else {
+               auto it = std::ranges::find_if(Self->Tags, [&](const auto& scan) {
+                  return tag->ID IS scan.ID;
+               });
+               if (it != Self->Tags.end()) Self->Tags.erase(it);
+            }
+            limit--;
          }
-         else {
-            auto it = std::ranges::find_if(Self->Tags, [&](const auto& tag) {
-               return Self->Cursor->ID IS tag.ID;
-            });
-            if (it != Self->Tags.end()) Self->Tags.erase(it);
-         }
-         limit--;
       }
-      FreeResource(cp);
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
+         return error;
+      }
+      FreeResource(xq);
    }
 
    Self->modified();
@@ -1432,40 +1570,64 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
-   load_xpath();
+   objXQuery *xq;
+   if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+      xq->set(FID_Statement, Args->Key);
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         int tag_id = 0;
+         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
+            auto tag = Self->getTag(tag_id);
+            if (!tag) {
+               FreeResource(xq);
+               return log.warning(ERR::SanityCheckFailed);
+            }
 
-   APTR cp;
-   if (auto error = xp::Compile(Self, Args->Key, &cp); error IS ERR::Okay) {
-      if (error = xp::Query(Self, cp, nullptr); error IS ERR::Okay) {
-         if (not Self->Attrib.empty()) { // Updating or adding an attribute
-            auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
-               return pf::iequals(Self->Attrib, a.Name);
-            });
+            if (not Self->Attrib.empty()) { // Updating or adding an attribute
+               auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
+                  return pf::iequals(Self->Attrib, a.Name);
+               });
 
-            if (it != Self->Cursor->Attribs.end()) it->Value = Args->Value; // Modify existing
-            else Self->Cursor->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
-            Self->Modified++;
-         }
-         else if (not Self->Cursor->Children.empty()) { // Update existing content
-            Self->Cursor->Children[0].Attribs[0].Value = Args->Value;
-            Self->Modified++;
+               if (it != tag->Attribs.end()) it->Value = Args->Value; // Modify existing
+               else tag->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
+               Self->Modified++;
+            }
+            else if (not tag->Children.empty()) { // Update existing content
+               tag->Children[0].Attribs[0].Value = Args->Value;
+               Self->Modified++;
+            }
+            else {
+               tag->Children.emplace_back(XMLTag(glTagID++, 0, {
+                  { "", std::string(Args->Value) }
+               }));
+               Self->modified();
+            }
+            FreeResource(xq);
+            return ERR::Okay;
          }
          else {
-            Self->Cursor->Children.emplace_back(XMLTag(glTagID++, 0, {
-               { "", std::string(Args->Value) }
-            }));
-            Self->modified();
+            if (error IS ERR::Okay) {
+               Self->ErrorMsg = "XPath did not resolve to a valid location.";
+               error = ERR::Search;
+            }
+            else {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+               FreeResource(xq);
+            }
+            log.warning("Failed to find '%s'", Args->Key);
+            return error;
          }
       }
-      else log.warning("Failed to find '%s'", Args->Key);
-
-      FreeResource(cp);
-      return error;
+      else {
+         CSTRING str;
+         if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+         FreeResource(xq);
+         log.msg("Failed to compile '%s'", Args->Key);
+         return error;
+      }
    }
-   else {
-      log.msg("Failed to compile '%s'", Args->Key);
-      return ERR::Syntax;
-   }
+   else return log.warning(ERR::NewObject);
 }
 
 /*********************************************************************************************************************
@@ -1538,8 +1700,6 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
    if ((not Args) or (not Args->Sort)) return log.warning(ERR::NullArgs);
    if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
 
-   load_xpath();
-
    CURSOR tag;
    TAGS *branch;
    if ((not Args->XPath) or (not Args->XPath[0])) {
@@ -1548,13 +1708,31 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       if (not tag) return ERR::Okay;
    }
    else {
-      APTR cp;
-      if (auto error = xp::Compile(Self, Args->XPath, &cp); error IS ERR::Okay) {
-         error = xp::Query(Self, cp, nullptr);
-         FreeResource(cp);
-         if (error != ERR::Okay) return log.warning(ERR::Search);
+      objXQuery *xq;
+      if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
+         xq->set(FID_Statement, Args->XPath);
+         if (auto error = xq->init(); error IS ERR::Okay) {
+            int tag_id = 0;
+            auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+            if (error = xq->search((objXML *)Self, callback); error != ERR::Terminate) {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+               FreeResource(xq);
+               return log.warning(ERR::Search);
+            }
+
+            FreeResource(xq);
+
+            branch = &Self->Map[tag_id]->Children;
+         }
+         else {
+            CSTRING str;
+            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            FreeResource(xq);
+            return log.warning(error);
+         }
       }
-      branch = &Self->Cursor->Children;
+      else return log.warning(ERR::NewObject);
    }
 
    if (branch->size() < 2) return ERR::Okay;

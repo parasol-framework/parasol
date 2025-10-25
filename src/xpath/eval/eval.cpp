@@ -66,6 +66,7 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    std::shared_ptr<XQueryModuleCache> module_cache;
 
    // Prefer explicit parse context (from XPathParseResult) if provided
+
    if (parse_context) {
       prolog = parse_context->prolog;
       module_cache = parse_context->module_cache;
@@ -82,8 +83,7 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
 
    construction_preserve_mode = false;
    if (prolog_ptr) {
-      construction_preserve_mode =
-         (prolog_ptr->construction_mode IS XQueryProlog::ConstructionMode::Preserve);
+      construction_preserve_mode = (prolog_ptr->construction_mode IS XQueryProlog::ConstructionMode::Preserve);
    }
 }
 
@@ -98,6 +98,7 @@ bool XPathEvaluator::prolog_has_boundary_space_preserve() const
 }
 
 // Determines whether construction mode should preserve boundary whitespace during node creation.
+
 bool XPathEvaluator::prolog_construction_preserve() const
 {
    if (construction_preserve_mode) return true;
@@ -108,6 +109,7 @@ bool XPathEvaluator::prolog_construction_preserve() const
 }
 
 // Reports whether the prolog enforces ordered results for sequence operations.
+
 bool XPathEvaluator::prolog_ordering_is_ordered() const
 {
    auto prolog = context.prolog;
@@ -116,6 +118,7 @@ bool XPathEvaluator::prolog_ordering_is_ordered() const
 }
 
 // Indicates whether empty sequences should compare as greatest according to the prolog settings.
+
 bool XPathEvaluator::prolog_empty_is_greatest() const
 {
    auto prolog = context.prolog;
@@ -239,11 +242,13 @@ ERR XPathEvaluator::find_tag(const XPathNode &XPath, uint32_t CurrentPrefix)
 
 ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *Result, uint32_t CurrentPrefix)
 {
-   (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
+   if (xml) {
+      (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
 
-   // Set context to document root if not already set
+      // Set context to document root if not already set
 
-   if (!context.context_node) push_context(&xml->Tags[0], 1, 1);
+      if (!context.context_node) push_context(&xml->Tags[0], 1, 1);
+   }
 
    // Evaluate the compiled AST and return the XPathVal directly
 

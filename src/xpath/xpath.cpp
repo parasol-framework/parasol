@@ -95,15 +95,6 @@ an escape character in attribute strings.  The `@*` syntax matches any attribute
 
 -END-
 
-Examples:
-
-  /menu/window[@title='foo']/...
-  /menu[=contentmatch]
-  /menu//window
-  /menu/window/ * (First child of the window tag)
-  /menu/ *[@id='5']
-  /root/section[@*="alpha"] (Match any attribute with value "alpha")
-
 *********************************************************************************************************************/
 
 #include <parasol/modules/xml.h>
@@ -121,7 +112,6 @@ Examples:
 #include "../xml/uri_utils.h"
 #include "../xml/xml.h"
 #include "functions/accessor_support.h"
-#include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
 #include "parse/xpath_parser.h"
 #include "eval/eval.h"
@@ -134,6 +124,9 @@ JUMPTABLE_REGEX
 
 static OBJECTPTR glContext = nullptr;
 static OBJECTPTR modRegex = nullptr;
+static OBJECTPTR clXQuery = nullptr;
+
+static ERR add_xquery_class(void);
 
 //*********************************************************************************************************************
 // Dynamic loader for the Regex functionality.  We only load it as needed due to the size of the module.
@@ -188,7 +181,7 @@ static ERR MODInit(OBJECTPTR pModule, struct CoreBase *pCore)
 {
    CoreBase = pCore;
    glContext = CurrentContext();
-   return ERR::Okay;
+   return add_xquery_class();
 }
 
 static ERR MODOpen(OBJECTPTR Module)
@@ -199,6 +192,7 @@ static ERR MODOpen(OBJECTPTR Module)
 
 static ERR MODExpunge(void)
 {
+   if (clXQuery) { FreeResource(clXQuery); clXQuery = nullptr; }
    if (modRegex) { FreeResource(modRegex); modRegex = nullptr; }
    return ERR::Okay;
 }
@@ -348,8 +342,6 @@ ERR Evaluate(objXML *XML, APTR Query, XPathValue **Result)
 
    xml->Attrib.clear();
    xml->ErrorMsg.clear();
-   xml->CursorTags = &xml->Tags;
-   xml->Cursor = xml->Tags.begin();
 
    XPathVal *xpv;
    if (AllocMemory(sizeof(XPathVal), MEM::DATA|MEM::MANAGED, (APTR *)&xpv, nullptr) IS ERR::Okay) {
@@ -411,11 +403,9 @@ ERR Query(objXML *XML, APTR Query, FUNCTION *Callback)
    else xml->Callback.Type = CALL::NIL;
 
    xml->Attrib.clear();
-   xml->CursorTags = &xml->Tags;
-   xml->Cursor = xml->Tags.begin();
    xml->ErrorMsg.clear();
    (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
-   
+
    auto query = (XPathParseResult *)Query;
    // No longer mutate the AST; evaluator is given parse context directly.
 
@@ -451,6 +441,8 @@ ERR UnitTest(APTR Meta)
 }
 
 } // namespace xp
+
+#include "xquery_class.cpp"
 
 //********************************************************************************************************************
 

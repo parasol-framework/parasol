@@ -1532,7 +1532,7 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
 {
    if (Context.expression_unsupported) *Context.expression_unsupported = true;
 
-   if (Context.document) {
+   if (Context.xml) {
       // Determine the appropriate XQuery error code based on the function name
       std::string error_code;
       if (FunctionName IS "zero-or-one") error_code = "FORG0003";
@@ -1540,8 +1540,8 @@ static void flag_cardinality_error(const XPathContext &Context, std::string_view
       else if (FunctionName IS "exactly-one") error_code = "FORG0005";
       else error_code = "FORG0006"; // General invalid argument type
 
-      if (not Context.document->ErrorMsg.empty()) Context.document->ErrorMsg.append("\n");
-      Context.document->ErrorMsg.append(std::format("{}: XPath function {}: {}", error_code, FunctionName, Message));
+      if (not Context.xml->ErrorMsg.empty()) Context.xml->ErrorMsg.append("\n");
+      Context.xml->ErrorMsg.append(std::format("{}: XPath function {}: {}", error_code, FunctionName, Message));
    }
 }
 

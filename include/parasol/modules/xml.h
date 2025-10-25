@@ -112,8 +112,8 @@ typedef struct XMLAttrib {
 } XMLATTRIB;
 
 typedef struct XMLTag {
-   int      ID;                      // Unique ID assigned to the tag on creation
-   int      ParentID;                // Unique ID of the parent tag
+   int      ID;                      // Globally unique ID assigned to the tag on creation.
+   int      ParentID;                // UID of the parent tag
    int      LineNo;                  // Line number on which this tag was encountered
    XTF      Flags;                   // Optional flags
    uint32_t NamespaceID;             // Hash of namespace URI or 0 for no namespace

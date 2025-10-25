@@ -1,10 +1,8 @@
-//********************************************************************************************************************
 // XPath Accessor Functions
 //
 // Implements XPath 2.0 accessor helpers (base-uri, data, document-uri, node-name, nilled, static-base-uri and
 // default-collation) by combining the shared document/schema utilities in accessor_support.cpp with the
 // sequence-building helpers declared in xpath_functions.cpp.
-//********************************************************************************************************************
 
 #include <parasol/modules/xml.h>
 
