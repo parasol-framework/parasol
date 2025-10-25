@@ -154,12 +154,10 @@ static ERR build_query(extXQuery *Self)
    if (not module_cache) {
       module_cache = std::make_shared<XQueryModuleCache>();
       module_cache->owner = Self->UID;
+      Self->ParseResult.module_cache = module_cache;
    }
 
-   if (module_cache) { // Retain on the result only; evaluator uses parse-context.
-      Self->ParseResult.module_cache = module_cache;
-      if (Self->ParseResult.prolog) Self->ParseResult.prolog->bind_module_cache(module_cache);
-   }
+   if (Self->ParseResult.prolog) Self->ParseResult.prolog->bind_module_cache(module_cache);
 
    return ERR::Okay;
 }

@@ -305,6 +305,8 @@ enum class XPathTokenType {
    UNKNOWN
 };
 
+//********************************************************************************************************************
+
 struct XPathToken {
    XPathTokenType type;
    std::string_view value;
@@ -330,6 +332,8 @@ struct XPathToken {
       return is_attribute_value and !attribute_value_parts.empty();
    }
 };
+
+extern std::string_view keyword_from_token_type(XPathTokenType Type);
 
 //********************************************************************************************************************
 
@@ -470,11 +474,22 @@ class XPathParser {
    bool parse_import_statement(XQueryProlog &prolog);
    bool parse_import_module_decl(XQueryProlog &prolog);
    bool parse_import_schema_decl();
-   bool consume_declaration_separator();
    std::optional<std::string> parse_qname_string();
    std::optional<std::string> parse_ncname();
    std::optional<std::string> parse_string_literal_value();
-   std::optional<std::string> parse_uri_literal();
+
+   inline std::optional<std::string> parse_uri_literal() {
+      return parse_string_literal_value();
+   }
+
+   // Consumes any declaration separators (semicolons) and returns true if any were found.
+
+   inline bool consume_declaration_separator() {
+      bool consumed = false;
+      while (match(XPathTokenType::SEMICOLON)) consumed = true;
+      return consumed;
+   }
+
    std::optional<std::string> collect_sequence_type(bool StopAtReturnKeyword = false);
 
    // Utility methods
@@ -501,7 +516,9 @@ class XPathParser {
    // in name contexts (element names, attribute names, function names, etc.).
    // All XPath/XQuery keywords are valid XML names and should be permitted.
 
-   [[nodiscard]] bool is_keyword_acceptable_as_identifier(XPathTokenType Type) const;
+   [[nodiscard]] inline bool is_keyword_acceptable_as_identifier(XPathTokenType Type) const {
+      return not keyword_from_token_type(Type).empty();
+   }
 
    // Helper that treats keyword tokens as identifiers in name contexts.
    // Use this for steps, function names, predicates, and variable bindings, where keywords are valid identifiers.
@@ -591,13 +608,6 @@ public:
    bool StaleBuild = true; // If true, the compiled query needs to be rebuilt.
 
 /* TODO: Variables formerly from the XML object
-
-   // XQuery cache for imported modules.  These resources are owned exclusively by the XML object.  Potentially,
-   // multiple compiled query results from xp::Compile() can reference a single module file that only needs to be stored once.  For that
-   // reason, ownership is maintained for the lifetime of the XML object so that we can simplify resource management.
-   // Managed by fetch_or_load_module()
-
-   ankerl::unordered_dense::map<URI_STR, struct extXQuery *> ModuleCache; // Compiled from ModuleCache
 
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
