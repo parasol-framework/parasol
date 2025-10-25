@@ -280,9 +280,9 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          int tag_id = 0;
          auto callback = C_FUNCTION(save_matching_tag, &tag_id);
-         if (error = xq->search(Self, callback); (error IS ERR::Okay) or (error IS ERR::Terminate)) {
+         if (error = xq->search(Self, callback); error IS ERR::Terminate) {
             if (tag_id) {
-               auto tag = Self->Map[tag_id];
+               auto tag = Self->getTag(tag_id);
                auto new_tags = TAGS(tag, tag + 1);
                Self->Tags = std::move(new_tags);
                Self->modified();
@@ -291,8 +291,14 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
             return ERR::Okay;
          }
          else {
-            CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            if (error IS ERR::Okay) { // Nothing found
+               error = ERR::Search;
+               Self->ErrorMsg = "No matching tag found";
+            }
+            else {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            }
             FreeResource(xq);
             return error;
          }
@@ -1260,25 +1266,29 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
       xq->set(FID_Statement, Args->XPath);
       if (auto error = xq->init(); error IS ERR::Okay) {
          while (limit > 0) {
-            if (xq->search((objXML *)Self, FUNCTION()) != ERR::Okay) break;
+            int tag_id = 0;
+            auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+            if (xq->search((objXML *)Self, callback) != ERR::Terminate) break;
+            auto tag = Self->getTag(tag_id);
+            if (!tag) break; // Sanity check
 
             if (not Self->Attrib.empty()) { // Remove an attribute
-               auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
+               auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
                   return pf::iequals(Self->Attrib, a.Name);
                });
-               if (it != Self->Cursor->Attribs.end()) Self->Cursor->Attribs.erase(it);
+               if (it != tag->Attribs.end()) tag->Attribs.erase(it);
             }
             else if (Self->Cursor->ParentID) {
-               if (auto parent = Self->getTag(Self->Cursor->ParentID)) {
+               if (auto parent = Self->getTag(tag->ParentID)) {
                   auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
-                     return Self->Cursor->ID IS child.ID;
+                     return tag->ID IS child.ID;
                   });
                   if (it != parent->Children.end()) parent->Children.erase(it);
                }
             }
             else {
-               auto it = std::ranges::find_if(Self->Tags, [&](const auto& tag) {
-                  return Self->Cursor->ID IS tag.ID;
+               auto it = std::ranges::find_if(Self->Tags, [&](const auto& scan) {
+                  return tag->ID IS scan.ID;
                });
                if (it != Self->Tags.end()) Self->Tags.erase(it);
             }
