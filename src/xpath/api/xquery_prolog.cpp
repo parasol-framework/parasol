@@ -10,7 +10,6 @@
 // dependency and namespace checks. Prolog lookups (functions, variables, prefixes) are optimised via
 // canonical keys such as the qname/arity signature.
 
-#include "../parse/xpath_parser.h"
 #include "xpath_errors.h"
 #include <parasol/strings.hpp>
 #include <parasol/modules/xpath.h>

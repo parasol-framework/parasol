@@ -1,5 +1,4 @@
 
-#include "xpath_parser.h"
 #include "../eval/eval_detail.h"
 #include <algorithm>
 #include <parasol/strings.hpp>

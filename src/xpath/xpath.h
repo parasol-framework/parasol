@@ -377,6 +377,20 @@ struct XPathParseResult {
 };
 
 //********************************************************************************************************************
+// Utilised to cache imported XQuery modules (compiled query result).
+
+struct XQueryModuleCache {
+   // Referenced as a UID from xp::Compile() because it's a weak reference.
+   // Used by fetch_or_load() primarily to determine the origin path of the XML data.
+   OBJECTID owner = 0;
+   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<XPathParseResult>> modules;
+   mutable std::unordered_set<std::string> loading_in_progress;
+
+   [[nodiscard]] XPathParseResult * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
+   [[nodiscard]] const XPathParseResult * find_module(std::string_view uri) const;
+};
+
+//********************************************************************************************************************
 // XPath Parser
 
 class XPathParser {
@@ -676,18 +690,3 @@ struct XQueryProlog {
    private:
    std::weak_ptr<XQueryModuleCache> module_cache;
 };
-
-//********************************************************************************************************************
-// Utilised to cache imported XQuery modules (compiled query result).
-
-struct XQueryModuleCache {
-   // Referenced as a UID from xp::Compile() because it's a weak reference.
-   // Used by fetch_or_load() primarily to determine the origin path of the XML data.
-   OBJECTID owner = 0;
-   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<XPathParseResult>> modules;
-   mutable std::unordered_set<std::string> loading_in_progress;
-
-   [[nodiscard]] XPathParseResult * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
-   [[nodiscard]] const XPathParseResult * find_module(std::string_view uri) const;
-};
-

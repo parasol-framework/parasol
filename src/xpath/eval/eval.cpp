@@ -17,7 +17,6 @@
 // independently of XML parsing.
 
 #include "eval.h"
-#include "../parse/xpath_parser.h"
 #include "eval_detail.h"
 #include "../api/xpath_functions.h"
 #include "../../xml/schema/schema_types.h"
