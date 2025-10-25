@@ -1712,12 +1712,18 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
          xq->set(FID_Statement, Args->XPath);
          if (auto error = xq->init(); error IS ERR::Okay) {
-            if (error = xq->search((objXML *)Self, FUNCTION()); error != ERR::Okay) {
+            int tag_id = 0;
+            auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+            if (error = xq->search((objXML *)Self, callback); error != ERR::Terminate) {
                CSTRING str;
                if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
                FreeResource(xq);
                return log.warning(ERR::Search);
             }
+
+            FreeResource(xq);
+
+            branch = &Self->Map[tag_id]->Children;
          }
          else {
             CSTRING str;
@@ -1725,11 +1731,8 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
             FreeResource(xq);
             return log.warning(error);
          }
-         FreeResource(xq);
       }
       else return log.warning(ERR::NewObject);
-
-      branch = &Self->Cursor->Children;
    }
 
    if (branch->size() < 2) return ERR::Okay;
