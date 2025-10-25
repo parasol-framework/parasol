@@ -972,7 +972,7 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
          int tag_id = 0;
          auto callback = C_FUNCTION(save_matching_tag, &tag_id);
          if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
-            xml::InsertXML insert { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
+            xml::InsertXML insert { .Index = tag_id, .Where = Args->Where, .XML = Args->XML };
             if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
                Args->Result = insert.Result;
             }
