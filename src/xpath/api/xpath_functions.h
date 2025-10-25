@@ -49,8 +49,10 @@ namespace xml::schema {
    SchemaTypeRegistry & registry();
 }
 
+class XPathEvaluator;
+
 //********************************************************************************************************************
-// XPath Evaluation Context
+// XPath Evaluation Context.  Stored in XPathEvaluator and initialised in its constructor.
 
 struct XPathContext {
    XMLTag * context_node = nullptr;
@@ -65,15 +67,6 @@ struct XPathContext {
    std::shared_ptr<XQueryModuleCache> module_cache;
 
    XPathContext() = default;
-   XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
-                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr,
-                xml::schema::SchemaTypeRegistry *Registry = nullptr,
-                ankerl::unordered_dense::map<std::string, XPathVal> *Variables = nullptr,
-                std::shared_ptr<XQueryProlog> Prolog = nullptr,
-                std::shared_ptr<XQueryModuleCache> ModuleCache = nullptr)
-      : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), variables(Variables),
-        xml(Document), expression_unsupported(UnsupportedFlag), schema_registry(Registry),
-        prolog(std::move(Prolog)), module_cache(std::move(ModuleCache)) {}
 };
 
 //********************************************************************************************************************
