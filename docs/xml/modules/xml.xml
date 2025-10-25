@@ -148,8 +148,8 @@
     </struct>
 
     <struct name="XMLTag" typeName="XMLTAG">
-      <field name="ID" type="INT">Unique ID assigned to the tag on creation</field>
-      <field name="ParentID" type="INT">Unique ID of the parent tag</field>
+      <field name="ID" type="INT">Globally unique ID assigned to the tag on creation.</field>
+      <field name="ParentID" type="INT">UID of the parent tag</field>
       <field name="LineNo" type="INT">Line number on which this tag was encountered</field>
       <field name="Flags" type="XTF" lookup="XTF">Optional flags</field>
       <field name="NamespaceID" type="UINT">Hash of namespace URI or 0 for no namespace</field>

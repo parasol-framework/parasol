@@ -59,6 +59,42 @@ validation instead.
 
 *********************************************************************************************************************/
 
+// Use in search() calls to report the first matching tag.  Expects an int reference in the Meta parameter.
+
+static ERR save_matching_tag(extXML *Self, int TagID, CSTRING Attrib, int *TagResult)
+{
+   *TagResult = TagID;
+   return ERR::Terminate; // We only want the first match
+}
+
+//********************************************************************************************************************
+
+struct find_all_tags_opt {
+   int TagID = 0;
+   FUNCTION *Callback = nullptr;
+};
+
+static ERR find_all_tags(extXML *Self, int TagID, CSTRING Attrib, find_all_tags_opt *Options)
+{
+   if (not Options->TagID) Options->TagID = TagID; // Store the first matching tag ID
+
+   ERR callback_error = ERR::Okay;
+   if (Options->Callback->isC()) {
+      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))Options->Callback->Routine;
+      callback_error = routine(Self, TagID, Attrib, Options->Callback->Meta);
+   }
+   else if (Options->Callback->isScript()) {
+      if (sc::Call(*Options->Callback, std::to_array<ScriptArg>({
+         { "XML",  Self, FD_OBJECTPTR },
+         { "Tag",  TagID },
+         { "Attrib", Attrib }
+      }), callback_error) != ERR::Okay) return ERR::Terminate;
+   }
+   else return ERR::InvalidValue;
+
+   return callback_error;
+}
+
 /*********************************************************************************************************************
 -ACTION-
 Clear: Completely clears all XML data and resets the object to its initial state.
@@ -232,12 +268,6 @@ Search: No matching tag could be found for the specified XPath expression.
 
 *********************************************************************************************************************/
 
-static ERR filter_callback(extXML *Self, int TagID, CSTRING Attrib, int *TagResult)
-{
-   *TagResult = TagID;
-   return ERR::Terminate; // We only want the first match
-}
-
 static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 {
    pf::Log log;
@@ -249,7 +279,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
       xq->set(FID_Statement, Args->XPath);
       if (auto error = xq->init(); error IS ERR::Okay) {
          int tag_id = 0;
-         auto callback = C_FUNCTION(filter_callback, &tag_id);
+         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
          if (error = xq->search(Self, callback); (error IS ERR::Okay) or (error IS ERR::Terminate)) {
             if (tag_id) {
                auto tag = Self->Map[tag_id];
@@ -326,12 +356,30 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
    objXQuery *xq;
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->XPath);
-      if (auto error = xq->init(); error IS ERR::Okay) {    
-         if (error = xq->search((objXML *)Self, Args->Callback ? *Args->Callback : FUNCTION()); error IS ERR::Okay) {
+
+      if (auto error = xq->init(); error IS ERR::Okay) {
+         // TODO: Should verify that the compiled expression is an XPath and not an XQuery
+
+         find_all_tags_opt opt;
+
+         FUNCTION callback;
+         if ((Args->Callback) and (Args->Callback->defined())) {
+            opt.Callback = Args->Callback;
+            callback = C_FUNCTION(find_all_tags, &opt);
+            error = xq->search((objXML *)Self, callback);
+         }
+         else {
+            callback = C_FUNCTION(save_matching_tag, &opt.TagID);
+            error = xq->search((objXML *)Self, callback);
+            if (error IS ERR::Terminate) error = ERR::Okay; // Terminate means a match was accepted
+            else if (error IS ERR::Okay) error = ERR::Search; // Nothing found
+         }
+
+         if (error IS ERR::Okay) {
             FreeResource(xq);
 
             if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
-            Args->Result = Self->Cursor->ID;
+            Args->Result = opt.TagID;
             return ERR::Okay;
          }
          else {
