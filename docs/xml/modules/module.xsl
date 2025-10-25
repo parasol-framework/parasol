@@ -300,6 +300,7 @@
               <li><a href="classes/config.html" class="rounded">Config</a></li>
               <li><a href="classes/script.html" class="rounded">Script</a></li>
               <li><a href="classes/xml.html" class="rounded">XML</a></li>
+              <li><a href="classes/xquery.html" class="rounded">XQuery</a></li>
             </ul>
           </div>
         </li>

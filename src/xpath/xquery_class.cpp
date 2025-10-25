@@ -363,6 +363,7 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 }
 
 /*********************************************************************************************************************
+
 -ACTION-
 SetKey: Set XQuery variable values.
 

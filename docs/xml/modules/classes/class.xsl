@@ -242,7 +242,7 @@
                         <li class="api-ref"><a class="rounded" href="../regex.html">Regex</a></li>
                         <li class="api-ref"><a class="rounded" href="../vector.html">Vector</a></li>
                         <li class="api-ref"><a class="rounded" href="../xml.html">XML</a></li>
-                        <li class="api-ref"><a class="rounded" href="../xpath.html">XPath</a></li>
+                        <li class="api-ref"><a class="rounded" href="../xquery.html">XQuery</a></li>
                       </ul>
                     </div>
                   </li>
@@ -281,6 +281,7 @@
                         <li class="api-ref"><a class="rounded" href="config.html">Config</a></li>
                         <li class="api-ref"><a class="rounded" href="script.html">Script</a></li>
                         <li class="api-ref"><a class="rounded" href="xml.html">XML</a></li>
+                        <li class="api-ref"><a class="rounded" href="xquery.html">XQuery</a></li>
                       </ul>
                     </div>
                   </li>
