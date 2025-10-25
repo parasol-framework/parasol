@@ -44,13 +44,13 @@ struct TransparentStringEqual {
    bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
 };
 
-//********************************************************************************************************************
-// XPath Evaluation Context
-
 namespace xml::schema {
    class SchemaTypeRegistry;
    SchemaTypeRegistry & registry();
 }
+
+//********************************************************************************************************************
+// XPath Evaluation Context
 
 struct XPathContext {
    XMLTag * context_node = nullptr;
@@ -75,6 +75,8 @@ struct XPathContext {
         xml(Document), expression_unsupported(UnsupportedFlag), schema_registry(Registry),
         prolog(std::move(Prolog)), module_cache(std::move(ModuleCache)) {}
 };
+
+//********************************************************************************************************************
 
 class VariableBindingGuard
 {

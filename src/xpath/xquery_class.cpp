@@ -12,7 +12,7 @@ The XQuery class provides comprehensive support for executing XPath 2.0 and XQue
 of XML documents.  It operates in conjunction with the @XML class to provide a standards-compliant query
 engine with extensive functionality.
 
-<header>XPath 2.0 Path Expressions</header>
+<header>XPath 2.0 Path Expressions</>
 
 The class supports the full XPath 2.0 specification for navigating XML documents, including all 13 standard axes
 (`child`, `descendant`, `descendant-or-self`, `following`, `following-sibling`, `parent`, `ancestor`,
@@ -21,7 +21,7 @@ names, wildcards (`*`), and attribute selectors (`@attr`), numeric position filt
 operators, and complex boolean expressions in predicates.  Both absolute paths (`/root/element`), relative paths
 (`element/subelement`), and recursive descent (`//element`) are supported.
 
-<header>XQuery Language Support</header>
+<header>XQuery Language Support</>
 
 The class implements core XQuery 1.0 functionality including FLWOR expressions (`for`, `let`, `where`, `order by`,
 and `return` clauses) for advanced querying, sequence operations for constructing, filtering, and manipulating
@@ -30,7 +30,7 @@ dates, durations, and QNames.
 
 Informal support for XQuery 2.0 functionality is also included but the feature-set is not yet complete.
 
-<header>Function Library</header>
+<header>Function Library</>
 
 A rich set of standard functions is provided across multiple categories:
 
@@ -49,19 +49,19 @@ A rich set of standard functions is provided across multiple categories:
 <li>Utility Functions: `error()`, `trace()`</li>
 </list>
 
-<header>Expression Compilation</header>
+<header>Expression Compilation</>
 
 XPath and XQuery expressions are compiled into an optimised internal representation for efficient reuse.  Expressions
 can be run in their own thread, with the result available in #Result and #ResultString on completion, but the targeted XML
 object will be locked for the duration of the query.
 
-<header>Evaluation Modes</header>
+<header>Evaluation Modes</>
 
 There are two distinct methods for query evaluation.  Value evaluation returns typed results (&XPathValue)
 that can represent node sets, strings, numbers, booleans, dates, or sequences.  Node iteration invokes a callback
 function for each matching node, enabling streaming processing of large result sets.
 
-<header>Usage Patterns</header>
+<header>Usage Patterns</>
 
 Compiling and evaluating queries:
 
@@ -85,7 +85,7 @@ if (query.ok()) {
 }
 </pre>
 
-<header>Extensions</header>
+<header>Extensions</>
 
 The module includes several Parasol-specific extensions beyond the standard specification.  Content matching with the
 `[=...]` syntax allows matching on encapsulated content, e.g., `/menu[=contentmatch]`.  Backslash (`\`) can be used as
@@ -147,8 +147,6 @@ static ERR build_query(extXQuery *Self)
 
    // If the expression featured an XQuery prolog then attach it to the parse result only.
    // Evaluator reads from the parse context; do not mutate the AST.
-
-   // Move the module cache across if one was created during parsing.
 
    std::shared_ptr<XQueryModuleCache> module_cache = Self->ParseResult.module_cache;
    if (not module_cache) {
@@ -242,6 +240,19 @@ static ERR XQUERY_Free(extXQuery *Self)
 {
    Self->~extXQuery();
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+-ACTION-
+GetKey: Read XQuery variable values.
+-END-
+*********************************************************************************************************************/
+
+static ERR XQUERY_GetKey(extXQuery *Self, struct acGetKey *Args)
+{
+   if (not Args) return ERR::NullArgs;
+
+   return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************
@@ -349,6 +360,19 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
       XPathEvaluator eval(nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
       return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
    }
+}
+
+/*********************************************************************************************************************
+-ACTION-
+SetKey: Set XQuery variable values.
+-END-
+*********************************************************************************************************************/
+
+static ERR XQUERY_SetKey(extXQuery *Self, struct acSetKey *Args)
+{
+   if (not Args) return ERR::NullArgs;
+
+   return ERR::NoSupport;
 }
 
 /*********************************************************************************************************************

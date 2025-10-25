@@ -110,27 +110,24 @@ template<typename Key>
 concept MapKey = std::equality_comparable<Key> and std::default_initializable<Key>;
 
 template<MapKey Key, typename Value>
-[[nodiscard]] inline auto find_in_map(
-   const ankerl::unordered_dense::map<Key, Value>& Map,
-   const Key& SearchKey) noexcept -> const Value*
+[[nodiscard]] inline auto find_in_map(const ankerl::unordered_dense::map<Key, Value> &Map,
+   const Key& SearchKey) noexcept -> const Value *
 {
    auto it = Map.find(SearchKey);
    return (it != Map.end()) ? &it->second : nullptr;
 }
 
 template<MapKey Key, typename Value>
-[[nodiscard]] inline auto find_in_map(
-   ankerl::unordered_dense::map<Key, Value>& Map,
-   const Key& SearchKey) noexcept -> Value*
+[[nodiscard]] inline auto find_in_map(ankerl::unordered_dense::map<Key, Value> &Map,
+   const Key& SearchKey) noexcept -> Value *
 {
    auto it = Map.find(SearchKey);
    return (it != Map.end()) ? &it->second : nullptr;
 }
 
 template<typename Range, typename Pred>
-   requires std::ranges::input_range<Range> and
-            std::predicate<Pred, std::ranges::range_reference_t<Range>>
-[[nodiscard]] inline auto find_if_range(Range&& range, Pred pred)
+   requires std::ranges::input_range<Range> and std::predicate<Pred, std::ranges::range_reference_t<Range>>
+[[nodiscard]] inline auto find_if_range(Range &&range, Pred pred)
 {
    return std::ranges::find_if(std::forward<Range>(range), pred);
 }
