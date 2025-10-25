@@ -378,7 +378,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
          if (error IS ERR::Okay) {
             FreeResource(xq);
 
-            if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", Self->Cursor->ID, Self->Attrib.c_str());
+            if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", opt.TagID, Self->Attrib.c_str());
             Args->Result = opt.TagID;
             return ERR::Okay;
          }
@@ -969,8 +969,10 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->XPath);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         if (error = xq->search((objXML *)Self, FUNCTION()); error IS ERR::Okay) {
-            xml::InsertXML insert = { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
+         int tag_id = 0;
+         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
+            xml::InsertXML insert { .Index = Self->Cursor->ID, .Where = Args->Where, .XML = Args->XML };
             if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
                Args->Result = insert.Result;
             }
@@ -978,8 +980,14 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
             return error;
          }
          else {
-            CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            if (error IS ERR::Okay) {
+               error = ERR::Search; // No match found
+               Self->ErrorMsg = "XPath did not resolve to a valid location.";
+            }
+            else {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+            }
             FreeResource(xq);
             return error;
          }
