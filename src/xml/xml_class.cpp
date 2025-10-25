@@ -1278,7 +1278,7 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
                });
                if (it != tag->Attribs.end()) tag->Attribs.erase(it);
             }
-            else if (Self->Cursor->ParentID) {
+            else if (tag->ParentID) {
                if (auto parent = Self->getTag(tag->ParentID)) {
                   auto it = std::ranges::find_if(parent->Children, [&](const auto& child) {
                      return tag->ID IS child.ID;
@@ -1574,22 +1574,30 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->Key);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         if (error = xq->search((objXML *)Self, FUNCTION()); error IS ERR::Okay) {
+         int tag_id = 0;
+         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
+            auto tag = Self->getTag(tag_id);
+            if (!tag) {
+               FreeResource(xq);
+               return log.warning(ERR::SanityCheckFailed);
+            }
+
             if (not Self->Attrib.empty()) { // Updating or adding an attribute
-               auto it = std::ranges::find_if(Self->Cursor->Attribs, [&](const auto& a) {
+               auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
                   return pf::iequals(Self->Attrib, a.Name);
                });
 
-               if (it != Self->Cursor->Attribs.end()) it->Value = Args->Value; // Modify existing
-               else Self->Cursor->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
+               if (it != tag->Attribs.end()) it->Value = Args->Value; // Modify existing
+               else tag->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
                Self->Modified++;
             }
-            else if (not Self->Cursor->Children.empty()) { // Update existing content
-               Self->Cursor->Children[0].Attribs[0].Value = Args->Value;
+            else if (not tag->Children.empty()) { // Update existing content
+               tag->Children[0].Attribs[0].Value = Args->Value;
                Self->Modified++;
             }
             else {
-               Self->Cursor->Children.emplace_back(XMLTag(glTagID++, 0, {
+               tag->Children.emplace_back(XMLTag(glTagID++, 0, {
                   { "", std::string(Args->Value) }
                }));
                Self->modified();
@@ -1598,9 +1606,15 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
             return ERR::Okay;
          }
          else {
-            CSTRING str;
-            if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
-            FreeResource(xq);
+            if (error IS ERR::Okay) {
+               Self->ErrorMsg = "XPath did not resolve to a valid location.";
+               error = ERR::Search;
+            }
+            else {
+               CSTRING str;
+               if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
+               FreeResource(xq);
+            }
             log.warning("Failed to find '%s'", Args->Key);
             return error;
          }
