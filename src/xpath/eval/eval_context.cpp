@@ -345,7 +345,7 @@ static ERR advance_step_context(XPathEvaluator &Eval, const std::vector<XPathEva
    AxisType Axis, const XPathNode *NodeTest, const std::vector<const XPathNode *> &PredicateNodes,
    bool IsLastStep, uint32_t CurrentPrefix, bool &Matched, std::vector<XPathEvaluator::AxisMatch> &NextContext,
    std::vector<XPathEvaluator::AxisMatch> &AxisCandidates, std::vector<XPathEvaluator::AxisMatch> &PredicateBuffer,
-   bool ShouldTerminate)
+   bool &ShouldTerminate)
 {
    ShouldTerminate = false;
    NextContext.clear();
