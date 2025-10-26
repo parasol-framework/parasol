@@ -13,6 +13,7 @@
 // functions from xpath_evaluator_navigation.cpp to maintain clean separation of concerns.
 
 #include "../api/xpath_functions.h"
+
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
 // underscore '_'). Used for validating constructor names and QName components.

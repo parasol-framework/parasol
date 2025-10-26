@@ -113,7 +113,7 @@ std::string XQueryFunction::signature() const
 //********************************************************************************************************************
 // Attempts to locate a compiled module for the supplied URI, optionally consulting the owning document cache.
 
-CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &Prolog,
+CompiledXQuery * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQueryProlog &Prolog,
    XPathEvaluator &Eval) const
 {
    pf::Log log(__FUNCTION__);
@@ -229,7 +229,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
    // Compile the module query
 
-   CompiledXPath compiled;
+   CompiledXQuery compiled;
    {
       XPathTokeniser tokeniser;
       XPathParser parser;
@@ -296,7 +296,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
    // Cache the module (only after resolving imports to allow circular detection via loading_in_progress)
 
-   modules[uri_key] = std::make_shared<CompiledXPath>(std::move(compiled)); // XQueryModuleCache.modules
+   modules[uri_key] = std::make_shared<CompiledXQuery>(std::move(compiled)); // XQueryModuleCache.modules
    if (original_uri != uri_key) modules[original_uri] = modules[uri_key];
    if (not loaded_location.empty()) modules[loaded_location] = modules[uri_key];
 
@@ -305,7 +305,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
 //********************************************************************************************************************
 
-const CompiledXPath * XQueryModuleCache::find_module(std::string_view uri) const
+const CompiledXQuery * XQueryModuleCache::find_module(std::string_view uri) const
 {
    std::string original(uri);
    std::string uri_key = xml::uri::normalise_uri_separators(original);

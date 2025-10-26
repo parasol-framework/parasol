@@ -6,15 +6,15 @@
 #include "../../xml/uri_utils.h"
 
 //********************************************************************************************************************
-// Parses a list of XPath tokens and returns an CompiledXPath object containing:
+// Parses a list of XPath tokens and returns an CompiledXQuery object containing:
 //   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
 //   - prolog: the parsed XQuery prolog
 //   - (optional) module cache and other metadata
 // Errors can be inspected via the error list.
 
-CompiledXPath XPathParser::parse(const std::vector<XPathToken> &TokenList)
+CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
 {
-   CompiledXPath result;
+   CompiledXQuery result;
    result.prolog = std::make_shared<XQueryProlog>();
    active_prolog = result.prolog.get();
 

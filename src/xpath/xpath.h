@@ -10,6 +10,193 @@
 
 //*********************************************************************************************************************
 
+enum class BinaryOperationKind {
+   AND,
+   OR,
+   UNION,
+   INTERSECT,
+   EXCEPT,
+   COMMA,
+   EQ,
+   NE,
+   EQ_WORD,
+   NE_WORD,
+   LT,
+   LE,
+   GT,
+   GE,
+   ADD,
+   SUB,
+   MUL,
+   DIV,
+   MOD,
+   RANGE,
+   UNKNOWN
+};
+
+enum class XPathTokenType {
+   // Path operators
+   SLASH,             // /
+   DOUBLE_SLASH,      // //
+   DOT,               // .
+   DOUBLE_DOT,        // ..
+
+   // Identifiers and literals
+   IDENTIFIER,        // element names, function names
+   STRING,            // quoted strings
+   NUMBER,            // numeric literals
+   WILDCARD,          // *
+
+   // Brackets and delimiters
+   LBRACKET,          // [
+   RBRACKET,          // ]
+   LPAREN,            // (
+   RPAREN,            // )
+   AT,                // @
+   COMMA,             // ,
+   SEMICOLON,         // ;
+   PIPE,              // |
+   UNION,             // union keyword
+   INTERSECT,         // intersect keyword
+   EXCEPT,            // except keyword
+
+   // Operators
+   EQUALS,            // =
+   NOT_EQUALS,        // !=
+   LESS_THAN,         // <
+   LESS_EQUAL,        // <=
+   GREATER_THAN,      // >
+   GREATER_EQUAL,     // >=
+   EQ,                // eq
+   NE,                // ne
+   LT,                // lt
+   LE,                // le
+   GT,                // gt
+   GE,                // ge
+
+   // Boolean operators
+   AND,               // and
+   OR,                // or
+   NOT,               // not
+
+   // Flow keywords
+   IF,                // if
+   THEN,              // then
+   ELSE,              // else
+   FOR,               // for
+   LET,               // let
+   IN,                // in
+   RETURN,            // return
+   WHERE,             // where
+   GROUP,             // group
+   BY,                // by
+   ORDER,             // order
+   STABLE,            // stable
+   ASCENDING,         // ascending
+   DESCENDING,        // descending
+   EMPTY,             // empty
+   DEFAULT,           // default
+   TYPESWITCH,        // typeswitch keyword
+   CASE,              // case keyword
+   DECLARE,           // declare keyword
+   FUNCTION,          // function keyword
+   VARIABLE,          // variable keyword
+   NAMESPACE,         // namespace keyword
+   EXTERNAL,          // external keyword
+   BOUNDARY_SPACE,    // boundary-space keyword
+   BASE_URI,          // base-uri keyword
+   GREATEST,          // greatest
+   LEAST,             // least
+   COLLATION,         // collation
+   CONSTRUCTION,      // construction
+   ORDERING,          // ordering keyword used in prolog
+   COPY_NAMESPACES,   // copy-namespaces keyword
+   DECIMAL_FORMAT,    // decimal-format keyword
+   OPTION,            // option keyword
+   IMPORT,            // import keyword
+   MODULE,            // module keyword
+   SCHEMA,            // schema keyword
+   COUNT,             // count
+   SOME,              // some
+   EVERY,             // every
+   SATISFIES,         // satisfies
+   CAST,              // cast keyword
+   CASTABLE,          // castable keyword
+   TREAT,             // treat keyword
+   AS,                // as keyword
+   INSTANCE,          // instance keyword
+   OF,                // of keyword
+   TO,                // to keyword
+
+   // Arithmetic operators
+   PLUS,              // +
+   MINUS,             // -
+   MULTIPLY,          // * (when not wildcard)
+   DIVIDE,            // div
+   MODULO,            // mod
+
+   // Axis specifiers
+   AXIS_SEPARATOR,    // ::
+   COLON,             // :
+
+   // Variables and functions
+   DOLLAR,            // $
+   ASSIGN,            // :=
+
+   // Constructor delimiters
+   LBRACE,            // {
+   RBRACE,            // }
+   TAG_OPEN,          // < (direct constructors)
+   CLOSE_TAG_OPEN,    // </
+   TAG_CLOSE,         // >
+   EMPTY_TAG_CLOSE,   // />
+   PI_START,          // <?
+   PI_END,            // ?>
+
+   // Special tokens
+   TEXT_CONTENT,      // literal content inside direct constructors
+   QUESTION_MARK,     // ? occurrence indicator
+   END_OF_INPUT,
+   UNKNOWN
+};
+
+// XPath Axis Types
+
+enum class AxisType {
+   CHILD,
+   DESCENDANT,
+   PARENT,
+   ANCESTOR,
+   FOLLOWING_SIBLING,
+   PRECEDING_SIBLING,
+   FOLLOWING,
+   PRECEDING,
+   ATTRIBUTE,
+   NAMESPACE,
+   SELF,
+   DESCENDANT_OR_SELF,
+   ANCESTOR_OR_SELF
+};
+
+enum class SequenceCardinality {
+   ExactlyOne,
+   ZeroOrOne,
+   OneOrMore,
+   ZeroOrMore
+};
+
+enum class SequenceItemKind {
+   Atomic,
+   Element,
+   Attribute,
+   Text,
+   Node,
+   Item,
+   EmptySequence
+};
+
+//********************************************************************************************************************
+
 struct XPathNode;
 
 class XPathErrorReporter {
@@ -179,134 +366,6 @@ struct XPathNode {
 //********************************************************************************************************************
 // XPath Tokenization Infrastructure
 
-enum class XPathTokenType {
-   // Path operators
-   SLASH,              // /
-   DOUBLE_SLASH,       // //
-   DOT,               // .
-   DOUBLE_DOT,        // ..
-
-   // Identifiers and literals
-   IDENTIFIER,         // element names, function names
-   STRING,            // quoted strings
-   NUMBER,            // numeric literals
-   WILDCARD,          // *
-
-   // Brackets and delimiters
-   LBRACKET,          // [
-   RBRACKET,          // ]
-   LPAREN,            // (
-   RPAREN,            // )
-   AT,                // @
-   COMMA,             // ,
-   SEMICOLON,         // ;
-   PIPE,              // |
-   UNION,             // union keyword
-   INTERSECT,         // intersect keyword
-   EXCEPT,            // except keyword
-
-   // Operators
-   EQUALS,            // =
-   NOT_EQUALS,        // !=
-   LESS_THAN,         // <
-   LESS_EQUAL,        // <=
-   GREATER_THAN,      // >
-   GREATER_EQUAL,     // >=
-   EQ,                // eq
-   NE,                // ne
-   LT,                // lt
-   LE,                // le
-   GT,                // gt
-   GE,                // ge
-
-   // Boolean operators
-   AND,               // and
-   OR,                // or
-   NOT,               // not
-
-   // Flow keywords
-   IF,                // if
-   THEN,              // then
-   ELSE,              // else
-   FOR,               // for
-   LET,               // let
-   IN,                // in
-   RETURN,            // return
-   WHERE,             // where
-   GROUP,             // group
-   BY,                // by
-   ORDER,             // order
-   STABLE,            // stable
-   ASCENDING,         // ascending
-   DESCENDING,        // descending
-   EMPTY,             // empty
-   DEFAULT,           // default
-   TYPESWITCH,        // typeswitch keyword
-   CASE,              // case keyword
-   DECLARE,           // declare keyword
-   FUNCTION,          // function keyword
-   VARIABLE,          // variable keyword
-   NAMESPACE,         // namespace keyword
-   EXTERNAL,          // external keyword
-   BOUNDARY_SPACE,    // boundary-space keyword
-   BASE_URI,          // base-uri keyword
-   GREATEST,          // greatest
-   LEAST,             // least
-   COLLATION,         // collation
-   CONSTRUCTION,      // construction
-   ORDERING,          // ordering keyword used in prolog
-   COPY_NAMESPACES,   // copy-namespaces keyword
-   DECIMAL_FORMAT,    // decimal-format keyword
-   OPTION,            // option keyword
-   IMPORT,            // import keyword
-   MODULE,            // module keyword
-   SCHEMA,            // schema keyword
-   COUNT,             // count
-   SOME,              // some
-   EVERY,             // every
-   SATISFIES,         // satisfies
-   CAST,              // cast keyword
-   CASTABLE,          // castable keyword
-   TREAT,             // treat keyword
-   AS,                // as keyword
-   INSTANCE,          // instance keyword
-   OF,                // of keyword
-   TO,                // to keyword
-
-   // Arithmetic operators
-   PLUS,              // +
-   MINUS,             // -
-   MULTIPLY,          // * (when not wildcard)
-   DIVIDE,            // div
-   MODULO,            // mod
-
-   // Axis specifiers
-   AXIS_SEPARATOR,    // ::
-   COLON,             // :
-
-   // Variables and functions
-   DOLLAR,            // $
-   ASSIGN,            // :=
-
-   // Constructor delimiters
-   LBRACE,            // {
-   RBRACE,            // }
-   TAG_OPEN,          // < (direct constructors)
-   CLOSE_TAG_OPEN,    // </
-   TAG_CLOSE,         // >
-   EMPTY_TAG_CLOSE,   // />
-   PI_START,          // <?
-   PI_END,            // ?>
-
-   // Special tokens
-   TEXT_CONTENT,      // literal content inside direct constructors
-   QUESTION_MARK,     // ? occurrence indicator
-   END_OF_INPUT,
-   UNKNOWN
-};
-
-//********************************************************************************************************************
-
 struct XPathToken {
    XPathTokenType type;
    std::string_view value;
@@ -376,7 +435,7 @@ class XPathTokeniser {
 struct XQueryProlog;
 struct XQueryModuleCache;
 
-struct CompiledXPath {
+struct CompiledXQuery {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
@@ -384,13 +443,13 @@ struct CompiledXPath {
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
 
-   CompiledXPath() = default;
-   CompiledXPath(CompiledXPath &&) = default;
-   CompiledXPath &operator=(CompiledXPath &&) = default;
-   CompiledXPath(const CompiledXPath &) = delete;
-   CompiledXPath &operator=(const CompiledXPath &) = delete;
+   CompiledXQuery() = default;
+   CompiledXQuery(CompiledXQuery &&) = default;
+   CompiledXQuery &operator=(CompiledXQuery &&) = default;
+   CompiledXQuery(const CompiledXQuery &) = delete;
+   CompiledXQuery &operator=(const CompiledXQuery &) = delete;
 
-   ~CompiledXPath() {
+   ~CompiledXQuery() {
       for (auto &entry : XMLCache) {
          if (entry.second) FreeResource(entry.second);
       }
@@ -407,12 +466,12 @@ struct XQueryModuleCache {
    // Referenced as a UID from xp::Compile() because it's a weak reference.
    // Used by fetch_or_load() primarily to determine the origin path of the XML data.
    extXQuery *query = nullptr;
-   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<CompiledXPath>> modules;
+   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<CompiledXQuery>> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
    std::string base_path;
 
-   CompiledXPath * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathEvaluator &) const;
-   const CompiledXPath * find_module(std::string_view uri) const;
+   CompiledXQuery * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathEvaluator &) const;
+   const CompiledXQuery * find_module(std::string_view uri) const;
 };
 
 //********************************************************************************************************************
@@ -599,7 +658,7 @@ class XPathParser {
    public:
    XPathParser() : current_token(0) {}
 
-   CompiledXPath parse(const std::vector<XPathToken> &TokenList);
+   CompiledXQuery parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
 
@@ -619,7 +678,7 @@ public:
    FUNCTION Callback;
    std::string Statement;
    std::string ErrorMsg;
-   CompiledXPath ParseResult; // Result of parsing the query.
+   CompiledXQuery ParseResult; // Result of parsing the query.
    XPathVal Result; // Result of the last execution.
    std::string ResultString; // Cached string representation of the result.
    std::string Path; // Base path for resolving relative URIs.
@@ -825,30 +884,11 @@ class XPathArena {
 };
 
 //********************************************************************************************************************
-// XPath Axis Types
-
-enum class AxisType {
-   CHILD,
-   DESCENDANT,
-   PARENT,
-   ANCESTOR,
-   FOLLOWING_SIBLING,
-   PRECEDING_SIBLING,
-   FOLLOWING,
-   PRECEDING,
-   ATTRIBUTE,
-   NAMESPACE,
-   SELF,
-   DESCENDANT_OR_SELF,
-   ANCESTOR_OR_SELF
-};
-
-//********************************************************************************************************************
 // Axis Evaluation Engine
 
 class AxisEvaluator {
    private:
-   CompiledXPath *state;
+   CompiledXQuery *state;
    extXML *xml;
    XPathArena & arena;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
@@ -915,7 +955,7 @@ class AxisEvaluator {
    XMLTag * find_parent(XMLTag *ReferenceNode);
 
    public:
-   explicit AxisEvaluator(CompiledXPath *State, extXML *XML, XPathArena &Arena) 
+   explicit AxisEvaluator(CompiledXQuery *State, extXML *XML, XPathArena &Arena) 
       : state(State), xml(XML), arena(Arena) {}
 
    // Main evaluation method
@@ -937,10 +977,8 @@ class AxisEvaluator {
    size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
 };
 
-struct CompiledXPath;
-
 struct XMLAttrib;
-class CompiledXPath;
+class CompiledXQuery;
 class XPathContext;
 class XPathEvaluator;
 
@@ -977,7 +1015,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    extXML * xml;
    const XPathNode * query_root = nullptr;
-   CompiledXPath * parse_context = nullptr;
+   CompiledXQuery * parse_context = nullptr;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
@@ -1091,7 +1129,7 @@ class XPathEvaluator : public XPathErrorReporter {
       XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:
-   XPathEvaluator(extXML *, const XPathNode *, CompiledXPath *);
+   XPathEvaluator(extXML *, const XPathNode *, CompiledXQuery *);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -1124,29 +1162,7 @@ class XPathEvaluator : public XPathErrorReporter {
    bool has_cursor_state() const { return !cursor_stack.empty(); }
 };
 
-enum class BinaryOperationKind {
-   AND,
-   OR,
-   UNION,
-   INTERSECT,
-   EXCEPT,
-   COMMA,
-   EQ,
-   NE,
-   EQ_WORD,
-   NE_WORD,
-   LT,
-   LE,
-   GT,
-   GE,
-   ADD,
-   SUB,
-   MUL,
-   DIV,
-   MOD,
-   RANGE,
-   UNKNOWN
-};
+//********************************************************************************************************************
 
 struct SequenceEntry {
    XMLTag * node = nullptr;
@@ -1167,23 +1183,6 @@ struct QuantifiedBindingDefinition {
 struct CastTargetInfo {
    std::string type_name;
    bool allows_empty = false;
-};
-
-enum class SequenceCardinality {
-   ExactlyOne,
-   ZeroOrOne,
-   OneOrMore,
-   ZeroOrMore
-};
-
-enum class SequenceItemKind {
-   Atomic,
-   Element,
-   Attribute,
-   Text,
-   Node,
-   Item,
-   EmptySequence
 };
 
 struct SequenceTypeInfo {
