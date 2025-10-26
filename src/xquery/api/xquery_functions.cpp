@@ -16,7 +16,7 @@
 
 #include <parasol/modules/regex.h>
 
-#include "xpath_functions.h"
+#include "xquery_functions.h"
 #include "../../xml/schema/type_checker.h"
 #include "../../xml/uri_utils.h"
 

@@ -1,12 +1,12 @@
 #pragma once
 
-// Name:      xpath.h
+// Name:      xquery.h
 // Copyright: Paul Manias © 2025
 // Generator: idl-c
 
 #include <parasol/main.h>
 
-#define MODVERSION_XPATH (1)
+#define MODVERSION_XQUERY (1)
 
 #include <parasol/modules/xml.h>
 
@@ -22,7 +22,7 @@
 
 class objXQuery;
 
-enum class XPathNodeType : int {
+enum class XQueryNodeType : int {
    NIL = 0,
    LOCATION_PATH = 0,
    STEP = 1,
@@ -140,24 +140,24 @@ class objXQuery : public Object {
 };
 
 #ifdef PARASOL_STATIC
-#define JUMPTABLE_XPATH [[maybe_unused]] static struct XPathBase *XPathBase = nullptr;
+#define JUMPTABLE_XQUERY [[maybe_unused]] static struct XQueryBase *XQueryBase = nullptr;
 #else
-#define JUMPTABLE_XPATH struct XPathBase *XPathBase = nullptr;
+#define JUMPTABLE_XQUERY struct XQueryBase *XQueryBase = nullptr;
 #endif
 
-struct XPathBase {
+struct XQueryBase {
 #ifndef PARASOL_STATIC
    ERR (*_UnitTest)(APTR Meta);
 #endif // PARASOL_STATIC
 };
 
-#if !defined(PARASOL_STATIC) and !defined(PRV_XPATH_MODULE)
-extern struct XPathBase *XPathBase;
-namespace xp {
-inline ERR UnitTest(APTR Meta) { return XPathBase->_UnitTest(Meta); }
+#if !defined(PARASOL_STATIC) and !defined(PRV_XQUERY_MODULE)
+extern struct XQueryBase *XQueryBase;
+namespace xq {
+inline ERR UnitTest(APTR Meta) { return XQueryBase->_UnitTest(Meta); }
 } // namespace
 #else
-namespace xp {
+namespace xq {
 extern ERR UnitTest(APTR Meta);
 } // namespace
 #endif // PARASOL_STATIC

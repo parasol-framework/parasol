@@ -45,7 +45,7 @@ document access.  XQuery support excludes the following:
 *********************************************************************************************************************/
 
 #include <parasol/modules/xml.h>
-#include <parasol/modules/xpath.h>
+#include <parasol/modules/xquery.h>
 #include <parasol/strings.hpp>
 #include <array>
 #include <format>

@@ -17,7 +17,7 @@
 // independently of XML parsing.
 
 #include "eval_detail.h"
-#include "../api/xpath_functions.h"
+#include "../api/xquery_functions.h"
 #include "../../xml/schema/schema_types.h"
 
 //********************************************************************************************************************
@@ -137,7 +137,7 @@ void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
 
-   pf::Log("XPath").msg("%.*s", (int)Message.size(), Message.data());
+   pf::Log("XPath").warning("%.*s", (int)Message.size(), Message.data());
 
    if (xml) {
       if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
@@ -245,7 +245,7 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
    initialise_query_context(&XPath);
 
    const XPathNode *node = &XPath;
-   if (node->type IS XPathNodeType::EXPRESSION) {
+   if (node->type IS XQueryNodeType::EXPRESSION) {
       if (node->child_count() > 0) node = node->get_child(0);
       else node = nullptr;
    }

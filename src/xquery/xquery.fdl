@@ -1,12 +1,10 @@
 --$FLUID:Include
 
-module({ name="XPath", src="xpath.cpp", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
+module({ name="XQuery", src="xquery.cpp", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
   c_include("<parasol/modules/xml.h>")
   cpp_include("<functional>", "<optional>", "<sstream>", "<parasol/strings.hpp>")
 
--- XPath AST Node Structure
-
-enum('XPathNodeType', { type='int', start=0 },
+enum('XQueryNodeType', { type='int', start=0 },
    -- Location path components
    'LOCATION_PATH',
    'STEP',
@@ -84,6 +82,6 @@ enum('XPathNodeType', { type='int', start=0 },
   class("XQuery", { src="xquery_class.cpp", output="xquery_class_def.cpp" }, [[
   ]])
 
-  functionNames("xp",
+  functionNames("xq",
      "UnitTest")
 end)

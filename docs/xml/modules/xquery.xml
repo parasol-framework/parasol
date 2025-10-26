@@ -3,20 +3,20 @@
 
 <book>
   <info>
-    <name>XPath</name>
+    <name>XQuery</name>
     <type>module</type>
     <comment>Provides XPath 2.0 and XQuery 1.0+ support for the XML module.</comment>
     <version>1</version>
     <copyright>Paul Manias © 2025</copyright>
     <description>
-<p>The XPath module provides comprehensive support for XPath 2.0 and XQuery languages, enabling powerful querying and navigation of XML documents.  It provides the <class name="XQuery">XQuery</class> class as its primary interface, and operates in conjunction with the <class name="XML">XML</class> class to provide a standards-compliant query engine with extensive functionality.</p></description>
+<p>The XQuery module provides comprehensive support for XPath 2.0 and XQuery languages, enabling powerful querying and navigation of XML documents.  It provides the <class name="XQuery">XQuery</class> class as its primary interface, and operates in conjunction with the <class name="XML">XML</class> class to provide a standards-compliant query engine with extensive functionality.</p></description>
     <classes>
       <class>XQuery</class>
     </classes>
   </info>
 
   <types>
-    <constants lookup="XPathNodeType">
+    <constants lookup="XQueryNodeType">
       <const name="ATTRIBUTE_VALUE_TEMPLATE"/>
       <const name="AXIS_SPECIFIER"/>
       <const name="BINARY_OP"/>

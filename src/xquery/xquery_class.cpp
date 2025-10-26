@@ -129,7 +129,7 @@ static ERR build_query(extXQuery *Self)
       // XQuery module detected - empty result is normal
       // Synthesise an empty-sequence expression node so downstream code has a valid AST.
       log.msg("XQuery module compiled");
-      if (not Self->ParseResult.expression) Self->ParseResult.expression = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+      if (not Self->ParseResult.expression) Self->ParseResult.expression = std::make_unique<XPathNode>(XQueryNodeType::EMPTY_SEQUENCE);
    }
    else if (not Self->ParseResult.expression) {
       auto parser_errors = parser.get_errors();

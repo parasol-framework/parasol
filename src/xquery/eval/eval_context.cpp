@@ -77,19 +77,19 @@ static void normalise_location_path(const XPathNode *PathNode, std::vector<const
       auto child = PathNode->get_child(i);
       if (not child) continue;
 
-      if ((i IS 0) and (child->type IS XPathNodeType::ROOT)) {
+      if ((i IS 0) and (child->type IS XQueryNodeType::ROOT)) {
          HasRoot = true;
          RootDescendant = child->value IS "//";
          continue;
       }
 
-      if (child->type IS XPathNodeType::STEP) Steps.push_back(child);
+      if (child->type IS XQueryNodeType::STEP) Steps.push_back(child);
    }
 
    if (RootDescendant) {
-      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+      auto descendant_step = std::make_unique<XPathNode>(XQueryNodeType::STEP);
+      descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, "node"));
       Steps.insert(Steps.begin(), descendant_step.get());
       OwnedSteps.push_back(std::move(descendant_step));
    }
@@ -124,7 +124,7 @@ struct ParsedStep {
 static ParsedStep parse_step_node(const XPathNode *StepNode)
 {
    ParsedStep out;
-   if ((not StepNode) or (StepNode->type != XPathNodeType::STEP)) return out;
+   if ((not StepNode) or (StepNode->type != XQueryNodeType::STEP)) return out;
 
    out.predicate_nodes.reserve(StepNode->child_count());
 
@@ -132,17 +132,19 @@ static ParsedStep parse_step_node(const XPathNode *StepNode)
       auto child = StepNode->get_child(i);
       if (not child) continue;
 
-      if (child->type IS XPathNodeType::AXIS_SPECIFIER) out.axis_node = child;
-      else if (child->type IS XPathNodeType::PREDICATE) out.predicate_nodes.push_back(child);
-      else if ((not out.node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
-                                     (child->type IS XPathNodeType::WILDCARD) or
-                                     (child->type IS XPathNodeType::NODE_TYPE_TEST))) {
+      if (child->type IS XQueryNodeType::AXIS_SPECIFIER) out.axis_node = child;
+      else if (child->type IS XQueryNodeType::PREDICATE) out.predicate_nodes.push_back(child);
+      else if ((not out.node_test) and ((child->type IS XQueryNodeType::NAME_TEST) or
+                                     (child->type IS XQueryNodeType::WILDCARD) or
+                                     (child->type IS XQueryNodeType::NODE_TYPE_TEST))) {
          out.node_test = child;
       }
    }
 
    return out;
 }
+
+//********************************************************************************************************************
 
 static std::vector<ParsedStep> parse_steps_vector(const std::vector<const XPathNode *> &Steps)
 {
@@ -193,36 +195,36 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
    if (not Node) return ERR::Failed;
 
    switch (Node->type) {
-      case XPathNodeType::LOCATION_PATH:
+      case XQueryNodeType::LOCATION_PATH:
          return evaluate_location_path(Node, CurrentPrefix);
 
-      case XPathNodeType::STEP:
+      case XQueryNodeType::STEP:
          return evaluate_step_ast(Node, CurrentPrefix);
 
-      case XPathNodeType::UNION:
+      case XQueryNodeType::UNION:
          return evaluate_union(Node, CurrentPrefix);
 
-      case XPathNodeType::PATH:
+      case XQueryNodeType::PATH:
          if ((Node->child_count() > 0) and Node->get_child(0) and
-             (Node->get_child(0)->type IS XPathNodeType::LOCATION_PATH)) {
+             (Node->get_child(0)->type IS XQueryNodeType::LOCATION_PATH)) {
             return evaluate_location_path(Node->get_child(0), CurrentPrefix);
          }
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
-      case XPathNodeType::EXPRESSION:
-      case XPathNodeType::FILTER:
-      case XPathNodeType::BINARY_OP:
-      case XPathNodeType::UNARY_OP:
-      case XPathNodeType::FUNCTION_CALL:
-      case XPathNodeType::LITERAL:
-      case XPathNodeType::VARIABLE_REFERENCE:
-      case XPathNodeType::NUMBER:
-      case XPathNodeType::STRING:
-      case XPathNodeType::CONDITIONAL:
-      case XPathNodeType::FOR_EXPRESSION:
-      case XPathNodeType::LET_EXPRESSION:
-      case XPathNodeType::FLWOR_EXPRESSION:
-      case XPathNodeType::QUANTIFIED_EXPRESSION:
+      case XQueryNodeType::EXPRESSION:
+      case XQueryNodeType::FILTER:
+      case XQueryNodeType::BINARY_OP:
+      case XQueryNodeType::UNARY_OP:
+      case XQueryNodeType::FUNCTION_CALL:
+      case XQueryNodeType::LITERAL:
+      case XQueryNodeType::VARIABLE_REFERENCE:
+      case XQueryNodeType::NUMBER:
+      case XQueryNodeType::STRING:
+      case XQueryNodeType::CONDITIONAL:
+      case XQueryNodeType::FOR_EXPRESSION:
+      case XQueryNodeType::LET_EXPRESSION:
+      case XQueryNodeType::FLWOR_EXPRESSION:
+      case XQueryNodeType::QUANTIFIED_EXPRESSION:
          return evaluate_top_level_expression(Node, CurrentPrefix);
 
       default:
@@ -238,7 +240,7 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 {
    pf::Log log(__FUNCTION__);
 
-   if ((not PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return log.warning(ERR::Failed);
+   if ((not PathNode) or (PathNode->type != XQueryNodeType::LOCATION_PATH)) return log.warning(ERR::Failed);
 
    std::vector<const XPathNode *> steps;
    std::vector<std::unique_ptr<XPathNode>> owned_steps;
@@ -266,7 +268,7 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 
 ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::UNION)) return ERR::Failed;
+   if ((not Node) or (Node->type != XQueryNodeType::UNION)) return ERR::Failed;
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
@@ -608,7 +610,7 @@ ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std:
       if (current_context.empty()) break;
 
       auto step_node = Steps[step_index];
-      if ((not step_node) or (step_node->type != XPathNodeType::STEP)) return ERR::Failed;
+      if ((not step_node) or (step_node->type != XQueryNodeType::STEP)) return ERR::Failed;
       auto &parsed = parsed_steps[step_index];
       AxisType axis = AxisType::CHILD;
       if (parsed.axis_node) axis = AxisEvaluator::parse_axis_name(parsed.axis_node->value);
@@ -657,10 +659,8 @@ XPathEvaluator::PredicateResult XPathEvaluator::dispatch_predicate_operation(std
 //********************************************************************************************************************
 // Predicate handler for the attribute-exists operation.
 
-XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
+XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicate(const XPathNode *Expression, uint32_t /*CurrentPrefix*/)
 {
-   (void)CurrentPrefix;
-
    auto *candidate = context.context_node;
    if (not candidate) return PredicateResult::NO_MATCH;
    if ((not Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
@@ -668,15 +668,13 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicat
    const XPathNode *name_node = Expression->get_child(0);
    if (not name_node) return PredicateResult::UNSUPPORTED;
 
-   const std::string &attribute_name = name_node->value;
-
-   if (attribute_name IS "*") {
+   if (name_node->value IS "*") {
       return (candidate->Attribs.size() > 1) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
    }
 
    for (int index = 1; index < std::ssize(candidate->Attribs); ++index) {
       auto &attrib = candidate->Attribs[index];
-      if (pf::iequals(attrib.Name, attribute_name)) return PredicateResult::MATCH;
+      if (pf::iequals(attrib.Name, name_node->value)) return PredicateResult::MATCH;
    }
 
    return PredicateResult::NO_MATCH;
@@ -699,7 +697,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
    std::string attribute_value;
    bool wildcard_value = false;
 
-   if (value_node->type IS XPathNodeType::LITERAL) {
+   if (value_node->type IS XQueryNodeType::LITERAL) {
       attribute_value = value_node->value;
       wildcard_value = attribute_value.find('*') != std::string::npos;
    }
@@ -751,7 +749,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
    std::string expected;
    bool wildcard_value = false;
 
-   if (value_node->type IS XPathNodeType::LITERAL) {
+   if (value_node->type IS XQueryNodeType::LITERAL) {
       expected = value_node->value;
       wildcard_value = expected.find('*') != std::string::npos;
    }
@@ -783,8 +781,9 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
 //********************************************************************************************************************
 // Evaluate a predicate expression, applying XPath predicate coercion rules.
 
-XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
-   if ((not PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
+XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) 
+{
+   if ((not PredicateNode) or (PredicateNode->type != XQueryNodeType::PREDICATE)) {
       return PredicateResult::UNSUPPORTED;
    }
 
@@ -793,7 +792,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
    const XPathNode *expression = PredicateNode->get_child(0);
    if (not expression) return PredicateResult::UNSUPPORTED;
 
-   if (expression->type IS XPathNodeType::BINARY_OP) {
+   if (expression->type IS XQueryNodeType::BINARY_OP) {
       auto *candidate = context.context_node;
       if (not candidate) return PredicateResult::NO_MATCH;
 
@@ -881,7 +880,7 @@ NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &Context
    }
 
    auto step_node = Steps[StepIndex];
-   if ((not step_node) or (step_node->type != XPathNodeType::STEP)) {
+   if ((not step_node) or (step_node->type != XQueryNodeType::STEP)) {
       Unsupported = true;
       return results;
    }

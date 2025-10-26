@@ -2,7 +2,7 @@
 // This file contains compiled-in unit tests for the XPath module, primarily for debugging prolog integration.
 // Unit tests need to be enabled in the CMakeLists.txt file and then launched from test_unit_tests.fluid
 
-#include "xpath.h"
+#include "xquery.h"
 #include "api/xquery_prolog.h"
 #include "parse/xpath_tokeniser.h"
 #include "../xml/xml.h"

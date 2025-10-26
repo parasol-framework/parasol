@@ -105,22 +105,22 @@ CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
       result.expression.reset();
       return result;
    }
-   else if (expression->type IS XPathNodeType::LOCATION_PATH) {
+   else if (expression->type IS XQueryNodeType::LOCATION_PATH) {
       result.expression = std::move(expression);
       return result;
    }
 
-   if (expression->type IS XPathNodeType::PATH) {
+   if (expression->type IS XQueryNodeType::PATH) {
       if (expression->child_count() IS 1) {
          auto child = std::move(expression->children[0]);
-         if (child and (child->type IS XPathNodeType::LOCATION_PATH)) {
+         if (child and (child->type IS XQueryNodeType::LOCATION_PATH)) {
             result.expression = std::move(child);
             return result;
          }
       }
    }
 
-   auto root = std::make_unique<XPathNode>(XPathNodeType::EXPRESSION);
+   auto root = std::make_unique<XPathNode>(XQueryNodeType::EXPRESSION);
    root->add_child(std::move(expression));
    result.expression = std::move(root);
    return result;
@@ -1028,7 +1028,7 @@ bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenT
 
 std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right)
 {
-   auto binary_op = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, std::string(Op.value));
+   auto binary_op = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, std::string(Op.value));
    binary_op->add_child(std::move(Left));
    binary_op->add_child(std::move(Right));
    return binary_op;
@@ -1039,7 +1039,7 @@ std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNo
 
 std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand)
 {
-   auto unary_op = std::make_unique<XPathNode>(XPathNodeType::UNARY_OP, std::string(Op.value));
+   auto unary_op = std::make_unique<XPathNode>(XQueryNodeType::UNARY_OP, std::string(Op.value));
    unary_op->add_child(std::move(Operand));
    return unary_op;
 }
@@ -1050,16 +1050,16 @@ std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, st
 
 std::unique_ptr<XPathNode> XPathParser::parse_location_path()
 {
-   auto path = std::make_unique<XPathNode>(XPathNodeType::LOCATION_PATH);
+   auto path = std::make_unique<XPathNode>(XQueryNodeType::LOCATION_PATH);
 
    bool is_absolute = false;
    if (match(XPathTokenType::SLASH)) {
       is_absolute = true;
-      path->add_child(std::make_unique<XPathNode>(XPathNodeType::ROOT, "/"));
+      path->add_child(std::make_unique<XPathNode>(XQueryNodeType::ROOT, "/"));
    }
    else if (match(XPathTokenType::DOUBLE_SLASH)) {
       is_absolute = true;
-      path->add_child(std::make_unique<XPathNode>(XPathNodeType::ROOT, "//"));
+      path->add_child(std::make_unique<XPathNode>(XQueryNodeType::ROOT, "//"));
    }
 
    // Parse steps
@@ -1084,9 +1084,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path()
       if (match(XPathTokenType::SLASH)) continue;
 
       if (match(XPathTokenType::DOUBLE_SLASH)) {
-         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+         auto descendant_step = std::make_unique<XPathNode>(XQueryNodeType::STEP);
+         descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+         descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, "node"));
          path->add_child(std::move(descendant_step));
          continue;
       }
@@ -1103,20 +1103,20 @@ std::unique_ptr<XPathNode> XPathParser::parse_location_path()
 
 std::unique_ptr<XPathNode> XPathParser::parse_step()
 {
-   auto step = std::make_unique<XPathNode>(XPathNodeType::STEP);
+   auto step = std::make_unique<XPathNode>(XQueryNodeType::STEP);
 
    // Handle abbreviated steps
    if (check(XPathTokenType::DOT)) {
       advance();
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "self"));
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+      step->add_child(std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "self"));
+      step->add_child(std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, "node"));
       return step;
    }
 
    if (check(XPathTokenType::DOUBLE_DOT)) {
       advance();
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "parent"));
-      step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+      step->add_child(std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "parent"));
+      step->add_child(std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, "node"));
       return step;
    }
 
@@ -1127,12 +1127,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_step()
          std::string axis_name(peek().value);
          advance(); // consume axis name
          advance(); // consume "::"
-         auto axis = std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, axis_name);
+         auto axis = std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, axis_name);
          step->add_child(std::move(axis));
       }
    }
    else if (match(XPathTokenType::AT)) { // Handle attribute axis (@)
-      auto axis = std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "attribute");
+      auto axis = std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "attribute");
       step->add_child(std::move(axis));
    }
 
@@ -1161,7 +1161,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
 {
    if (check(XPathTokenType::WILDCARD)) {
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::WILDCARD, "*");
+      return std::make_unique<XPathNode>(XQueryNodeType::WILDCARD, "*");
    }
    else if (is_identifier_token(peek())) {
       std::string name(peek().value);
@@ -1197,7 +1197,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
             }
 
             if (has_errors()) return nullptr;
-            else return std::make_unique<XPathNode>(XPathNodeType::PROCESSING_INSTRUCTION_TEST, target);
+            else return std::make_unique<XPathNode>(XQueryNodeType::PROCESSING_INSTRUCTION_TEST, target);
          }
 
          if (not match(XPathTokenType::RPAREN)) {
@@ -1205,7 +1205,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
             return nullptr;
          }
 
-         return std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, name);
+         return std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, name);
       }
 
       advance();
@@ -1218,7 +1218,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
          }
       }
 
-      return std::make_unique<XPathNode>(XPathNodeType::NAME_TEST, name);
+      return std::make_unique<XPathNode>(XQueryNodeType::NAME_TEST, name);
    }
 
    return nullptr;
@@ -1232,13 +1232,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
 {
    if (not match(XPathTokenType::LBRACKET)) return nullptr;
 
-   auto predicate = std::make_unique<XPathNode>(XPathNodeType::PREDICATE);
+   auto predicate = std::make_unique<XPathNode>(XQueryNodeType::PREDICATE);
 
    if (check(XPathTokenType::NUMBER)) {
       // Index predicate [1], [2], etc.
       std::string index(peek().value);
       advance();
-      predicate->add_child(std::make_unique<XPathNode>(XPathNodeType::NUMBER, index));
+      predicate->add_child(std::make_unique<XPathNode>(XQueryNodeType::NUMBER, index));
    }
    else if (check(XPathTokenType::EQUALS)) {
       // Content predicate [=value]
@@ -1246,7 +1246,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
       auto content_value = parse_predicate_value();
 
       if (content_value) {
-         auto content_test = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, "content-equals");
+         auto content_test = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, "content-equals");
          content_test->add_child(std::move(content_value));
          predicate->add_child(std::move(content_test));
       }
@@ -1276,16 +1276,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
                auto attr_value = parse_predicate_value();
 
                if (attr_value) {
-                  auto attr_test = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, "attribute-equals");
-                  attr_test->add_child(std::make_unique<XPathNode>(XPathNodeType::LITERAL, attr_name));
+                  auto attr_test = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, "attribute-equals");
+                  attr_test->add_child(std::make_unique<XPathNode>(XQueryNodeType::LITERAL, attr_name));
                   attr_test->add_child(std::move(attr_value));
                   attribute_expression = std::move(attr_test);
                }
                else report_error("XPST0003: Expected literal after '=' in attribute predicate");
             }
             else {
-               auto attr_exists = std::make_unique<XPathNode>(XPathNodeType::BINARY_OP, "attribute-exists");
-               attr_exists->add_child(std::make_unique<XPathNode>(XPathNodeType::LITERAL, attr_name));
+               auto attr_exists = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, "attribute-exists");
+               attr_exists->add_child(std::make_unique<XPathNode>(XQueryNodeType::LITERAL, attr_name));
                attribute_expression = std::move(attr_exists);
             }
 
@@ -1321,7 +1321,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
 
    if (is_identifier_token(peek()) or check(XPathTokenType::NUMBER)) {
@@ -1333,7 +1333,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
          advance();
       }
 
-      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
 
    if (check(XPathTokenType::DOLLAR)) return parse_variable_reference();
@@ -1412,7 +1412,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
             auto sequence_expr = parse_expr_single();
             if (not sequence_expr) return nullptr;
 
-            auto binding_node = std::make_unique<XPathNode>(XPathNodeType::FOR_BINDING, variable_name);
+            auto binding_node = std::make_unique<XPathNode>(XQueryNodeType::FOR_BINDING, variable_name);
             binding_node->add_child(std::move(sequence_expr));
             binding_nodes.push_back(std::move(binding_node));
 
@@ -1469,7 +1469,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
                }
             }
 
-            auto binding_node = std::make_unique<XPathNode>(XPathNodeType::LET_BINDING, variable_name);
+            auto binding_node = std::make_unique<XPathNode>(XQueryNodeType::LET_BINDING, variable_name);
             binding_node->add_child(std::move(binding_expr));
             binding_nodes.push_back(std::move(binding_node));
 
@@ -1615,9 +1615,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
    }
 
    if (not has_non_binding_clause and saw_for and !saw_let) {
-      auto for_node = std::make_unique<XPathNode>(XPathNodeType::FOR_EXPRESSION);
+      auto for_node = std::make_unique<XPathNode>(XQueryNodeType::FOR_EXPRESSION);
       for (auto &binding : binding_nodes) {
-         if ((not binding) or !(binding->type IS XPathNodeType::FOR_BINDING)) {
+         if ((not binding) or !(binding->type IS XQueryNodeType::FOR_BINDING)) {
             report_error("XPST0003: Invalid for binding in FLWOR expression");
             return nullptr;
          }
@@ -1628,9 +1628,9 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
    }
 
    if (not has_non_binding_clause and saw_let and !saw_for) {
-      auto let_node = std::make_unique<XPathNode>(XPathNodeType::LET_EXPRESSION);
+      auto let_node = std::make_unique<XPathNode>(XQueryNodeType::LET_EXPRESSION);
       for (auto &binding : binding_nodes) {
-         if ((not binding) or !(binding->type IS XPathNodeType::LET_BINDING)) {
+         if ((not binding) or !(binding->type IS XQueryNodeType::LET_BINDING)) {
             report_error("XPST0003: Invalid let binding in FLWOR expression");
             return nullptr;
          }
@@ -1640,7 +1640,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_flwor_expr()
       return let_node;
    }
 
-   auto flwor_node = std::make_unique<XPathNode>(XPathNodeType::FLWOR_EXPRESSION);
+   auto flwor_node = std::make_unique<XPathNode>(XQueryNodeType::FLWOR_EXPRESSION);
    for (auto &binding : binding_nodes) {
       if (not binding) {
          report_error("XPST0003: Invalid clause in FLWOR expression");
@@ -1677,7 +1677,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_where_clause()
       return nullptr;
    }
 
-   auto clause = std::make_unique<XPathNode>(XPathNodeType::WHERE_CLAUSE);
+   auto clause = std::make_unique<XPathNode>(XQueryNodeType::WHERE_CLAUSE);
    clause->add_child(std::move(predicate));
    return clause;
 }
@@ -1699,7 +1699,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
       return nullptr;
    }
 
-   auto clause = std::make_unique<XPathNode>(XPathNodeType::GROUP_CLAUSE);
+   auto clause = std::make_unique<XPathNode>(XQueryNodeType::GROUP_CLAUSE);
 
    bool expect_key = true;
    while (expect_key) {
@@ -1723,7 +1723,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_group_clause()
          return nullptr;
       }
 
-      auto key_node = std::make_unique<XPathNode>(XPathNodeType::GROUP_KEY);
+      auto key_node = std::make_unique<XPathNode>(XQueryNodeType::GROUP_KEY);
       XPathGroupKeyInfo info;
       info.variable_name = std::move(variable_name);
       key_node->set_group_key_info(std::move(info));
@@ -1764,7 +1764,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_clause(bool StartsWithStable
       return nullptr;
    }
 
-   auto clause = std::make_unique<XPathNode>(XPathNodeType::ORDER_CLAUSE);
+   auto clause = std::make_unique<XPathNode>(XQueryNodeType::ORDER_CLAUSE);
    clause->order_clause_is_stable = clause_is_stable;
 
    auto first_spec = parse_order_spec();
@@ -1791,7 +1791,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
       return nullptr;
    }
 
-   auto spec_node = std::make_unique<XPathNode>(XPathNodeType::ORDER_SPEC);
+   auto spec_node = std::make_unique<XPathNode>(XQueryNodeType::ORDER_SPEC);
    spec_node->add_child(std::move(order_expr));
 
    XPathOrderSpecOptions options;
@@ -1857,7 +1857,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_count_clause()
    auto variable_name_opt = parse_qname_string();
    if (not variable_name_opt) return nullptr;
 
-   return std::make_unique<XPathNode>(XPathNodeType::COUNT_CLAUSE, *variable_name_opt);
+   return std::make_unique<XPathNode>(XQueryNodeType::COUNT_CLAUSE, *variable_name_opt);
 }
 
 //********************************************************************************************************************
@@ -1960,7 +1960,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_instance_of_expr()
          return nullptr;
       }
 
-      auto instance_node = std::make_unique<XPathNode>(XPathNodeType::INSTANCE_OF_EXPRESSION, std::move(sequence_type));
+      auto instance_node = std::make_unique<XPathNode>(XQueryNodeType::INSTANCE_OF_EXPRESSION, std::move(sequence_type));
       instance_node->add_child(std::move(operand));
       operand = std::move(instance_node);
    }
@@ -2057,7 +2057,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_cast_expr()
 
    if (match(XPathTokenType::QUESTION_MARK)) target_type.push_back('?');
 
-   auto node_type = is_cast ? XPathNodeType::CAST_EXPRESSION : XPathNodeType::CASTABLE_EXPRESSION;
+   auto node_type = is_cast ? XQueryNodeType::CAST_EXPRESSION : XQueryNodeType::CASTABLE_EXPRESSION;
    auto cast_node = std::make_unique<XPathNode>(node_type, std::move(target_type));
    cast_node->add_child(std::move(operand));
    return cast_node;
@@ -2113,7 +2113,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_unary_expr()
          return nullptr;
       }
 
-      auto treat_node = std::make_unique<XPathNode>(XPathNodeType::TREAT_AS_EXPRESSION, std::move(sequence_type));
+      auto treat_node = std::make_unique<XPathNode>(XQueryNodeType::TREAT_AS_EXPRESSION, std::move(sequence_type));
       treat_node->add_child(std::move(operand));
       operand = std::move(treat_node);
    }
@@ -2156,7 +2156,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_union_expr()
 
    if (not check(XPathTokenType::PIPE) and !check_identifier_keyword("union")) return left;
 
-   auto union_node = std::make_unique<XPathNode>(XPathNodeType::UNION);
+   auto union_node = std::make_unique<XPathNode>(XQueryNodeType::UNION);
    union_node->add_child(std::move(left));
 
    while (true) {
@@ -2209,7 +2209,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_path_expr()
       auto location = parse_location_path();
       if (not location) return nullptr;
 
-      auto path_node = std::make_unique<XPathNode>(XPathNodeType::PATH);
+      auto path_node = std::make_unique<XPathNode>(XQueryNodeType::PATH);
       path_node->add_child(std::move(location));
       return path_node;
    }
@@ -2234,7 +2234,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
       if (not predicate) return nullptr;
 
       if (not has_predicate) {
-         auto filter = std::make_unique<XPathNode>(XPathNodeType::FILTER);
+         auto filter = std::make_unique<XPathNode>(XQueryNodeType::FILTER);
          filter->add_child(std::move(current));
          current = std::move(filter);
          has_predicate = true;
@@ -2254,18 +2254,18 @@ std::unique_ptr<XPathNode> XPathParser::parse_filter_expr()
       auto relative = parse_location_path();
       if (not relative) return nullptr;
 
-      auto path_node = std::make_unique<XPathNode>(XPathNodeType::PATH);
+      auto path_node = std::make_unique<XPathNode>(XQueryNodeType::PATH);
       path_node->add_child(std::move(current));
 
       if (slash_type IS XPathTokenType::DOUBLE_SLASH) {
-         auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
-         descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+         auto descendant_step = std::make_unique<XPathNode>(XQueryNodeType::STEP);
+         descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+         descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, "node"));
          path_node->add_child(std::move(descendant_step));
       }
 
       for (auto &child : relative->children) {
-         if (child and (child->type IS XPathNodeType::STEP)) {
+         if (child and (child->type IS XQueryNodeType::STEP)) {
             path_node->add_child(std::move(child));
          }
       }
@@ -2309,7 +2309,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_if_expr()
 
    auto else_branch = parse_expr_single();
 
-   auto conditional = std::make_unique<XPathNode>(XPathNodeType::CONDITIONAL);
+   auto conditional = std::make_unique<XPathNode>(XQueryNodeType::CONDITIONAL);
    conditional->add_child(std::move(condition));
    conditional->add_child(std::move(then_branch));
    conditional->add_child(std::move(else_branch));
@@ -2382,7 +2382,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_typeswitch_expr()
       auto branch_expr = parse_expr_single();
       if (not branch_expr) return nullptr;
 
-      auto case_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_CASE);
+      auto case_node = std::make_unique<XPathNode>(XQueryNodeType::TYPESWITCH_CASE);
       XPathTypeswitchCaseInfo info;
       info.variable_name = std::move(variable_name);
       info.sequence_type = std::move(sequence_type);
@@ -2418,12 +2418,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_typeswitch_expr()
    auto default_expr = parse_expr_single();
    if (not default_expr) return nullptr;
 
-   auto typeswitch_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_EXPRESSION);
+   auto typeswitch_node = std::make_unique<XPathNode>(XQueryNodeType::TYPESWITCH_EXPRESSION);
    typeswitch_node->add_child(std::move(operand_expr));
 
    for (auto &node : case_nodes) typeswitch_node->add_child(std::move(node));
 
-   auto default_node = std::make_unique<XPathNode>(XPathNodeType::TYPESWITCH_DEFAULT_CASE);
+   auto default_node = std::make_unique<XPathNode>(XQueryNodeType::TYPESWITCH_DEFAULT_CASE);
    XPathTypeswitchCaseInfo default_info;
    default_info.variable_name = std::move(default_variable);
    default_info.is_default = true;
@@ -2447,7 +2447,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
       is_every = true;
    }
 
-   auto quant_node = std::make_unique<XPathNode>(XPathNodeType::QUANTIFIED_EXPRESSION, is_some ? "some" : "every");
+   auto quant_node = std::make_unique<XPathNode>(XQueryNodeType::QUANTIFIED_EXPRESSION, is_some ? "some" : "every");
 
    bool expect_binding = true;
    while (expect_binding) {
@@ -2468,7 +2468,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_quantified_expr()
       auto sequence_expr = parse_expr_single();
       if (not sequence_expr) return nullptr;
 
-      auto binding_node = std::make_unique<XPathNode>(XPathNodeType::QUANTIFIED_BINDING, variable_name);
+      auto binding_node = std::make_unique<XPathNode>(XQueryNodeType::QUANTIFIED_BINDING, variable_name);
       binding_node->add_child(std::move(sequence_expr));
       quant_node->add_child(std::move(binding_node));
 
@@ -2498,7 +2498,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
       // Check for empty sequence ()
       if (check(XPathTokenType::RPAREN)) {
          advance(); // consume RPAREN
-         return std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+         return std::make_unique<XPathNode>(XQueryNodeType::EMPTY_SEQUENCE);
       }
 
       auto expr = parse_expr();
@@ -2519,13 +2519,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
 
    if (check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::NUMBER, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::NUMBER, value);
    }
 
    if (check(XPathTokenType::DOLLAR)) {
@@ -2539,12 +2539,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
    if (is_identifier_token(peek())) {
       size_t saved_index = current_token;
       auto qname = parse_qname_string();
-      if (qname) return std::make_unique<XPathNode>(XPathNodeType::LITERAL, *qname);
+      if (qname) return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, *qname);
 
       current_token = saved_index;
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::LITERAL, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
 
    return nullptr;
@@ -2565,7 +2565,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_function_call()
       canonical_name = active_prolog->normalise_function_qname(canonical_name);
    }
 
-   auto function_node = std::make_unique<XPathNode>(XPathNodeType::FUNCTION_CALL, std::move(canonical_name));
+   auto function_node = std::make_unique<XPathNode>(XQueryNodeType::FUNCTION_CALL, std::move(canonical_name));
 
    while (not check(XPathTokenType::RPAREN) and !is_at_end()) {
       auto arg = parse_expr_single();
@@ -2607,7 +2607,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_number()
    if (check(XPathTokenType::NUMBER)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::NUMBER, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::NUMBER, value);
    }
    return nullptr;
 }
@@ -2617,7 +2617,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_literal()
    if (check(XPathTokenType::STRING)) {
       std::string value(peek().value);
       advance();
-      return std::make_unique<XPathNode>(XPathNodeType::STRING, value);
+      return std::make_unique<XPathNode>(XQueryNodeType::STRING, value);
    }
    return nullptr;
 }
@@ -2627,7 +2627,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
    if (check(XPathTokenType::DOLLAR)) {
       advance();
       auto name = parse_qname_string();
-      if (name) return std::make_unique<XPathNode>(XPathNodeType::VARIABLE_REFERENCE, *name);
+      if (name) return std::make_unique<XPathNode>(XQueryNodeType::VARIABLE_REFERENCE, *name);
    }
    return nullptr;
 }
@@ -2697,7 +2697,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       return nullptr;
    }
 
-   auto element_node = std::make_unique<XPathNode>(XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR);
+   auto element_node = std::make_unique<XPathNode>(XQueryNodeType::DIRECT_ELEMENT_CONSTRUCTOR);
    XPathConstructorInfo info;
    info.is_direct = true;
    info.is_empty_element = false;
@@ -2786,7 +2786,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
 
    auto flush_text = [&]() {
       if (text_buffer.empty()) return;
-      auto text_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT, text_buffer);
+      auto text_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT, text_buffer);
       element_node->add_child(std::move(text_node));
       text_buffer.clear();
    };
@@ -2809,7 +2809,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
          flush_text();
          auto expr = parse_enclosed_expr();
          if (not expr) return nullptr;
-         auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+         auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
          content_node->add_child(std::move(expr));
          element_node->add_child(std::move(content_node));
          continue;
@@ -2917,7 +2917,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
 {
-   auto node = std::make_unique<XPathNode>(XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR);
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::COMPUTED_ELEMENT_CONSTRUCTOR);
    XPathConstructorInfo info;
    info.is_direct = false;
    info.is_empty_element = false;
@@ -2937,7 +2937,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
    auto content_expr = parse_enclosed_expr();
    if (not content_expr) return nullptr;
 
-   auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+   auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
    node->add_child(std::move(content_node));
 
@@ -2951,7 +2951,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_element_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
 {
-   auto node = std::make_unique<XPathNode>(XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR);
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR);
    XPathConstructorInfo info;
    info.is_direct = false;
    info.is_empty_element = false;
@@ -2971,7 +2971,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
    auto value_expr = parse_enclosed_expr();
    if (not value_expr) return nullptr;
 
-   auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+   auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(value_expr));
    node->add_child(std::move(content_node));
 
@@ -2985,11 +2985,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_attribute_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_text_constructor()
 {
-   auto node = std::make_unique<XPathNode>(XPathNodeType::TEXT_CONSTRUCTOR);
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::TEXT_CONSTRUCTOR);
    auto content_expr = parse_enclosed_expr();
    if (not content_expr) return nullptr;
 
-   auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+   auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
    node->add_child(std::move(content_node));
    return node;
@@ -3000,11 +3000,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_text_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_comment_constructor()
 {
-   auto node = std::make_unique<XPathNode>(XPathNodeType::COMMENT_CONSTRUCTOR);
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::COMMENT_CONSTRUCTOR);
    auto content_expr = parse_enclosed_expr();
    if (not content_expr) return nullptr;
 
-   auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+   auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
    node->add_child(std::move(content_node));
    return node;
@@ -3016,7 +3016,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_comment_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
 {
-   auto node = std::make_unique<XPathNode>(XPathNodeType::PI_CONSTRUCTOR);
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::PI_CONSTRUCTOR);
    XPathConstructorInfo info;
    info.is_direct = false;
    info.is_empty_element = false;
@@ -3046,7 +3046,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
    auto content_expr = parse_enclosed_expr();
    if (not content_expr) return nullptr;
 
-   auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+   auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
    node->add_child(std::move(content_node));
 
@@ -3060,11 +3060,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_document_constructor()
 {
-   auto node = std::make_unique<XPathNode>(XPathNodeType::DOCUMENT_CONSTRUCTOR);
+   auto node = std::make_unique<XPathNode>(XQueryNodeType::DOCUMENT_CONSTRUCTOR);
    auto content_expr = parse_enclosed_expr();
    if (not content_expr) return nullptr;
 
-   auto content_node = std::make_unique<XPathNode>(XPathNodeType::CONSTRUCTOR_CONTENT);
+   auto content_node = std::make_unique<XPathNode>(XQueryNodeType::CONSTRUCTOR_CONTENT);
    content_node->add_child(std::move(content_expr));
    node->add_child(std::move(content_node));
    return node;

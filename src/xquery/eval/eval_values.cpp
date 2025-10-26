@@ -12,7 +12,7 @@
 // All value evaluators consume comparison utilities from xpath_evaluator_detail.h and navigation
 // functions from xpath_evaluator_navigation.cpp to maintain clean separation of concerns.
 
-#include "../api/xpath_functions.h"
+#include "../api/xquery_functions.h"
 
 //********************************************************************************************************************
 // Determines whether a character qualifies as the first character of an XML NCName (letters A-Z, a-z, or
@@ -360,12 +360,12 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
    }
 
    const XPathNode *location = PathNode;
-   if (PathNode->type IS XPathNodeType::PATH) {
+   if (PathNode->type IS XQueryNodeType::PATH) {
       if (PathNode->child_count() IS 0) return XPathVal();
       location = PathNode->get_child(0);
    }
 
-   if ((not location) or (location->type != XPathNodeType::LOCATION_PATH)) {
+   if ((not location) or (location->type != XQueryNodeType::LOCATION_PATH)) {
       expression_unsupported = true;
       return XPathVal();
    }
@@ -380,19 +380,19 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
       auto *child = location->get_child(index);
       if (not child) continue;
 
-      if ((index IS 0) and (child->type IS XPathNodeType::ROOT)) {
+      if ((index IS 0) and (child->type IS XQueryNodeType::ROOT)) {
          has_root = true;
          root_descendant = child->value IS "//";
          continue;
       }
 
-      if (child->type IS XPathNodeType::STEP) steps.push_back(child);
+      if (child->type IS XQueryNodeType::STEP) steps.push_back(child);
    }
 
    if (root_descendant) {
-      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+      auto descendant_step = std::make_unique<XPathNode>(XQueryNodeType::STEP);
+      descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XQueryNodeType::NODE_TYPE_TEST, "node"));
       steps.insert(steps.begin(), descendant_step.get());
       synthetic_steps.push_back(std::move(descendant_step));
    }
@@ -419,10 +419,10 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
          auto *child = last_step->get_child(index);
          if (not child) continue;
 
-         if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-         else if ((not node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
-            (child->type IS XPathNodeType::WILDCARD) or
-            (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
+         if (child->type IS XQueryNodeType::AXIS_SPECIFIER) axis_node = child;
+         else if ((not node_test) and ((child->type IS XQueryNodeType::NAME_TEST) or
+            (child->type IS XQueryNodeType::WILDCARD) or
+            (child->type IS XQueryNodeType::NODE_TYPE_TEST))) node_test = child;
       }
 
       AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::CHILD;
@@ -472,10 +472,10 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
          auto *child = step->get_child(index);
          if (not child) continue;
 
-         if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-         else if ((not node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
-            (child->type IS XPathNodeType::WILDCARD) or
-            (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
+         if (child->type IS XQueryNodeType::AXIS_SPECIFIER) axis_node = child;
+         else if ((not node_test) and ((child->type IS XQueryNodeType::NAME_TEST) or
+            (child->type IS XQueryNodeType::WILDCARD) or
+            (child->type IS XQueryNodeType::NODE_TYPE_TEST))) node_test = child;
       }
 
       AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::CHILD;
@@ -484,8 +484,8 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
          bool accepts_attribute = false;
 
          if (not node_test) accepts_attribute = true;
-         else if (node_test->type IS XPathNodeType::WILDCARD) accepts_attribute = true;
-         else if (node_test->type IS XPathNodeType::NODE_TYPE_TEST) accepts_attribute = node_test->value IS "node";
+         else if (node_test->type IS XQueryNodeType::WILDCARD) accepts_attribute = true;
+         else if (node_test->type IS XQueryNodeType::NODE_TYPE_TEST) accepts_attribute = node_test->value IS "node";
 
          if (accepts_attribute) {
             std::vector<const XMLAttrib *> attribute_refs(node_results.size(), context.attribute_node);
@@ -502,7 +502,7 @@ XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNod
 
       for (size_t index = 0; index < attribute_step->child_count(); ++index) {
          auto *child = attribute_step->get_child(index);
-         if (child and (child->type IS XPathNodeType::PREDICATE)) attribute_predicates.push_back(child);
+         if (child and (child->type IS XQueryNodeType::PREDICATE)) attribute_predicates.push_back(child);
       }
 
       for (auto *candidate : node_results) {
@@ -614,7 +614,7 @@ XPathVal XPathEvaluator::evaluate_path_from_nodes(const NODES &InitialContext,
 
       for (size_t index = 0; index < AttributeStep->child_count(); ++index) {
          auto *child = AttributeStep->get_child(index);
-         if (child and (child->type IS XPathNodeType::PREDICATE)) attribute_predicates.push_back(child);
+         if (child and (child->type IS XQueryNodeType::PREDICATE)) attribute_predicates.push_back(child);
       }
 
       for (auto *candidate : node_results) {
@@ -1428,7 +1428,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
 {
    pf::Log log("XPath");
 
-   if ((not Node) or (Node->type != XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::DIRECT_ELEMENT_CONSTRUCTOR)) {
       record_error("Invalid direct constructor node encountered.", Node, true);
       return std::nullopt;
    }
@@ -1564,7 +1564,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
       const XPathNode *child = Node->get_child(index);
       if (not child) continue;
 
-      if (child->type IS XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR)
+      if (child->type IS XQueryNodeType::DIRECT_ELEMENT_CONSTRUCTOR)
       {
          auto nested = build_direct_element_node(child, CurrentPrefix, &element_scope, element.ID);
          if (not nested) return std::nullopt;
@@ -1572,7 +1572,7 @@ std::optional<XMLTag> XPathEvaluator::build_direct_element_node(const XPathNode 
          continue;
       }
 
-      if (child->type IS XPathNodeType::CONSTRUCTOR_CONTENT) {
+      if (child->type IS XQueryNodeType::CONSTRUCTOR_CONTENT) {
          if (not child->value.empty()) {
             auto text_value = prepare_constructor_text(child->value, true);
             if (not text_value.has_value()) continue;
@@ -1640,7 +1640,7 @@ XPathVal XPathEvaluator::evaluate_direct_element_constructor(const XPathNode *No
 
 XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::COMPUTED_ELEMENT_CONSTRUCTOR)) {
       record_error("Invalid computed element constructor node encountered.", Node, true);
       return XPathVal();
    }
@@ -1768,7 +1768,7 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
 XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR)) {
       record_error("Invalid computed attribute constructor node encountered.", Node, true);
       return XPathVal();
    }
@@ -1871,7 +1871,7 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
 XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::TEXT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::TEXT_CONSTRUCTOR)) {
       record_error("Invalid text constructor node encountered.", Node, true);
       return XPathVal();
    }
@@ -1908,7 +1908,7 @@ XPathVal XPathEvaluator::evaluate_text_constructor(const XPathNode *Node, uint32
 
 XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::COMMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::COMMENT_CONSTRUCTOR)) {
       record_error("Invalid comment constructor node encountered.", Node, true);
       return XPathVal();
    }
@@ -1955,7 +1955,7 @@ XPathVal XPathEvaluator::evaluate_comment_constructor(const XPathNode *Node, uin
 
 XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::PI_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::PI_CONSTRUCTOR)) {
       record_error("Invalid processing-instruction constructor encountered.", Node, true);
       return XPathVal();
    }
@@ -2020,7 +2020,7 @@ XPathVal XPathEvaluator::evaluate_pi_constructor(const XPathNode *Node, uint32_t
 
 XPathVal XPathEvaluator::evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((not Node) or (Node->type != XPathNodeType::DOCUMENT_CONSTRUCTOR)) {
+   if ((not Node) or (Node->type != XQueryNodeType::DOCUMENT_CONSTRUCTOR)) {
       record_error("Invalid document constructor node encountered.", Node, true);
       return XPathVal();
    }
@@ -2244,7 +2244,7 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
 
    const XPathNode *expression = Node;
 
-   if (Node->type IS XPathNodeType::EXPRESSION) {
+   if (Node->type IS XQueryNodeType::EXPRESSION) {
       if (Node->child_count() IS 0) {
          xml->Attrib.clear();
          return ERR::Search;
@@ -2280,7 +2280,7 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
 //********************************************************************************************************************
 
 XPathVal XPathEvaluator::evaluate_function_call(const XPathNode *FuncNode, uint32_t CurrentPrefix) {
-   if (not FuncNode or FuncNode->type != XPathNodeType::FUNCTION_CALL) {
+   if (not FuncNode or FuncNode->type != XQueryNodeType::FUNCTION_CALL) {
       return XPathVal();
    }
 

@@ -83,4 +83,4 @@ src/link/parasol.manifest
 src/link/resource.rc
 data/ssl/localhost.p12
 data/ssl/localhost.pem
-src/xpath/QT3_1_0/
+src/xquery/QT3_1_0/

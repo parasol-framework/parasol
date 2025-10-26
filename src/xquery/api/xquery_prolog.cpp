@@ -12,7 +12,7 @@
 
 #include <ranges>
 
-#include "xpath_errors.h"
+#include "xquery_errors.h"
 #include "../functions/accessor_support.h"
 #include "../../xml/uri_utils.h"
 
@@ -238,7 +238,7 @@ CompiledXQuery * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQ
       compiled = parser.parse(tokens);
 
       if ((compiled.prolog) and (compiled.prolog->is_library_module)) {
-         if (not compiled.expression) compiled.expression = std::make_unique<XPathNode>(XPathNodeType::EMPTY_SEQUENCE);
+         if (not compiled.expression) compiled.expression = std::make_unique<XPathNode>(XQueryNodeType::EMPTY_SEQUENCE);
       }
       else if (not compiled.expression) {
          Eval.record_error(std::format("Cannot compile module: {}", URI));

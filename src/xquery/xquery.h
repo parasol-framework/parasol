@@ -6,7 +6,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
-#include <parasol/modules/xpath.h>
+#include <parasol/modules/xquery.h>
 
 //*********************************************************************************************************************
 
@@ -306,7 +306,7 @@ struct XPathTypeswitchCaseInfo {
 };
 
 struct XPathNode {
-   XPathNodeType type;
+   XQueryNodeType type;
    std::string value;
    std::vector<std::unique_ptr<XPathNode>> children;
    std::optional<XPathConstructorInfo> constructor_info;
@@ -318,7 +318,7 @@ struct XPathNode {
    std::optional<XPathGroupKeyInfo> group_key_info;
    std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
 
-   XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
+   XPathNode(XQueryNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
    inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
    [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }

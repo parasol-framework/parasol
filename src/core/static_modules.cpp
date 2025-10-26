@@ -18,7 +18,7 @@ extern "C" ModHeader * register_scintilla_module();
 extern "C" ModHeader * register_svg_module();
 extern "C" ModHeader * register_vector_module();
 extern "C" ModHeader * register_xml_module();
-extern "C" ModHeader * register_xpath_module();
+extern "C" ModHeader * register_xquery_module();
 
 //********************************************************************************************************************
 // Register all static modules that were compiled into this build.
@@ -93,8 +93,8 @@ static void register_static_modules(void)
    glStaticModules["xml"] = register_xml_module();
    #endif
 
-   #ifdef INC_MOD_XPATH
-   glStaticModules["xpath"] = register_xpath_module();
+   #ifdef INC_MOD_XQUERY
+   glStaticModules["xquery"] = register_xquery_module();
    #endif
 }
 

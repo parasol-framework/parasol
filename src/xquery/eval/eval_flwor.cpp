@@ -379,13 +379,13 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          record_error("FLWOR expression contains an invalid clause.", Node, true);
          return XPathVal();
       }
-      else if ((child->type IS XPathNodeType::FOR_BINDING) or (child->type IS XPathNodeType::LET_BINDING)) {
+      else if ((child->type IS XQueryNodeType::FOR_BINDING) or (child->type IS XQueryNodeType::LET_BINDING)) {
          binding_nodes.push_back(child);
       }
-      else if (child->type IS XPathNodeType::WHERE_CLAUSE) where_clause = child;
-      else if (child->type IS XPathNodeType::GROUP_CLAUSE) group_clause = child;
-      else if (child->type IS XPathNodeType::ORDER_CLAUSE) order_clause = child;
-      else if (child->type IS XPathNodeType::COUNT_CLAUSE) count_clause = child;
+      else if (child->type IS XQueryNodeType::WHERE_CLAUSE) where_clause = child;
+      else if (child->type IS XQueryNodeType::GROUP_CLAUSE) group_clause = child;
+      else if (child->type IS XQueryNodeType::ORDER_CLAUSE) order_clause = child;
+      else if (child->type IS XQueryNodeType::COUNT_CLAUSE) count_clause = child;
       else {
          record_error("FLWOR expression contains an unsupported clause type.", child, true);
          return XPathVal();
@@ -411,7 +411,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    for (const XPathNode *binding_node : binding_nodes) {
       if (!binding_node) continue;
 
-      if (binding_node->type IS XPathNodeType::LET_BINDING) {
+      if (binding_node->type IS XQueryNodeType::LET_BINDING) {
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
             record_error("Let binding requires a variable name and expression.", binding_node, true);
             return XPathVal();
@@ -446,7 +446,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          continue;
       }
 
-      if (binding_node->type IS XPathNodeType::FOR_BINDING) {
+      if (binding_node->type IS XQueryNodeType::FOR_BINDING) {
          if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
             record_error("For binding requires a variable name and sequence.", binding_node, true);
             return XPathVal();

@@ -6,10 +6,10 @@ that is distributed with this package.  Please refer to it for further informati
 **********************************************************************************************************************
 
 -MODULE-
-XPath: Provides XPath 2.0 and XQuery 1.0+ support for the XML module.
+XQuery: Provides XPath 2.0 and XQuery 1.0+ support for the XML module.
 
-The XPath module provides comprehensive support for XPath 2.0 and XQuery languages, enabling powerful querying and
-navigation of XML documents.  It provides the @XQuery class as its primary interface, and operates in conjunction 
+The XQuery module provides comprehensive support for XPath 2.0 and XQuery languages, enabling powerful querying and
+navigation of XML documents.  It provides the @XQuery class as its primary interface, and operates in conjunction
 with the @XML class to provide a standards-compliant query engine with extensive functionality.
 
 -END-
@@ -24,7 +24,7 @@ with the @XML class to provide a standards-compliant query engine with extensive
 JUMPTABLE_CORE
 JUMPTABLE_REGEX
 
-#include "xpath_def.c"
+#include "xquery_def.cpp"
 
 static OBJECTPTR glContext = nullptr;
 static OBJECTPTR modRegex = nullptr;
@@ -74,14 +74,14 @@ static ERR MODExpunge(void)
    return ERR::Okay;
 }
 
-namespace xp {
+namespace xq {
 
 /*********************************************************************************************************************
 
 -FUNCTION-
-UnitTest: Private function for internal unit testing of the XPath module.
+UnitTest: Private function for internal unit testing of the XQuery module.
 
-Private function for internal unit testing of the XPath module.
+Private function for internal unit testing of the XQuery module.
 
 -INPUT-
 ptr Meta: Optional pointer meaningful to the test functions.
@@ -103,7 +103,7 @@ ERR UnitTest(APTR Meta)
 #endif
 }
 
-} // namespace xp
+} // namespace
 
 #include "xquery_class.cpp"
 
@@ -115,4 +115,4 @@ static STRUCTS glStructures = {
 //********************************************************************************************************************
 
 PARASOL_MOD(MODInit, nullptr, MODOpen, MODExpunge, MOD_IDL, &glStructures)
-extern "C" struct ModHeader * register_xpath_module() { return &ModHeader; }
+extern "C" struct ModHeader * register_xquery_module() { return &ModHeader; }
