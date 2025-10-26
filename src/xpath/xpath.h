@@ -371,10 +371,12 @@ class XPathTokeniser {
    void advance();
 };
 
+//********************************************************************************************************************
+
 struct XQueryProlog;
 struct XQueryModuleCache;
 
-struct XPathParseResult {
+struct CompiledXPath {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
@@ -382,13 +384,13 @@ struct XPathParseResult {
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
 
-   XPathParseResult() = default;
-   XPathParseResult(XPathParseResult &&) = default;
-   XPathParseResult &operator=(XPathParseResult &&) = default;
-   XPathParseResult(const XPathParseResult &) = delete;
-   XPathParseResult &operator=(const XPathParseResult &) = delete;
+   CompiledXPath() = default;
+   CompiledXPath(CompiledXPath &&) = default;
+   CompiledXPath &operator=(CompiledXPath &&) = default;
+   CompiledXPath(const CompiledXPath &) = delete;
+   CompiledXPath &operator=(const CompiledXPath &) = delete;
 
-   ~XPathParseResult() {
+   ~CompiledXPath() {
       for (auto &entry : XMLCache) {
          if (entry.second) FreeResource(entry.second);
       }
@@ -398,15 +400,19 @@ struct XPathParseResult {
 //********************************************************************************************************************
 // Utilised to cache imported XQuery modules (compiled query result).
 
+class extXQuery;
+class XPathEvaluator;
+
 struct XQueryModuleCache {
    // Referenced as a UID from xp::Compile() because it's a weak reference.
    // Used by fetch_or_load() primarily to determine the origin path of the XML data.
-   OBJECTID owner = 0;
-   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<XPathParseResult>> modules;
+   extXQuery *query = nullptr;
+   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<CompiledXPath>> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
+   std::string base_path;
 
-   XPathParseResult * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathErrorReporter &) const;
-   const XPathParseResult * find_module(std::string_view uri) const;
+   CompiledXPath * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathEvaluator &) const;
+   const CompiledXPath * find_module(std::string_view uri) const;
 };
 
 //********************************************************************************************************************
@@ -593,7 +599,7 @@ class XPathParser {
    public:
    XPathParser() : current_token(0) {}
 
-   XPathParseResult parse(const std::vector<XPathToken> &TokenList);
+   CompiledXPath parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
 
@@ -606,8 +612,6 @@ class XPathParser {
    XQueryProlog *active_prolog = nullptr;
 };
 
-extern "C" ERR load_regex(void);
-
 //*********************************************************************************************************************
 
 class extXQuery : public objXQuery {
@@ -615,36 +619,16 @@ public:
    FUNCTION Callback;
    std::string Statement;
    std::string ErrorMsg;
-   XPathParseResult ParseResult;
-   XPathVal Result;
-   std::string ResultString;
+   CompiledXPath ParseResult; // Result of parsing the query.
+   XPathVal Result; // Result of the last execution.
+   std::string ResultString; // Cached string representation of the result.
    std::string Path; // Base path for resolving relative URIs.
    extXML *XML; // During query execution, the context XML document.
    bool StaleBuild = true; // If true, the compiled query needs to be rebuilt.
 
-/* TODO: Variables formerly from the XML object
-
-   // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
-   ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
-
-   // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
-   // Managed by read_text_resource()
-   ankerl::unordered_dense::map<URI_STR, std::string> UnparsedTextCache;
-*/
-
    ~extXQuery() {
-/*
-      for (auto &entry : ModuleCache) {
-         if (entry.second) FreeResource(entry.second);
-      }
-
-      for (auto &entry : XMLCache) {
-         if (entry.second) FreeResource(entry.second);
-      }
-*/
    }
 };
-
 
 //********************************************************************************************************************
 // If an XQuery expression contains a prolog, it will be parsed into this structure and maintained in the XPathNode
@@ -864,7 +848,7 @@ enum class AxisType {
 
 class AxisEvaluator {
    private:
-   XPathParseResult *state;
+   CompiledXPath *state;
    extXML *xml;
    XPathArena & arena;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
@@ -931,7 +915,7 @@ class AxisEvaluator {
    XMLTag * find_parent(XMLTag *ReferenceNode);
 
    public:
-   explicit AxisEvaluator(XPathParseResult *State, extXML *XML, XPathArena &Arena) 
+   explicit AxisEvaluator(CompiledXPath *State, extXML *XML, XPathArena &Arena) 
       : state(State), xml(XML), arena(Arena) {}
 
    // Main evaluation method
@@ -953,7 +937,7 @@ class AxisEvaluator {
    size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
 };
 
-struct XPathParseResult;
+struct CompiledXPath;
 
 struct XMLAttrib;
 class CompiledXPath;
@@ -993,7 +977,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    extXML * xml;
    const XPathNode * query_root = nullptr;
-   XPathParseResult * parse_context = nullptr;
+   CompiledXPath * parse_context = nullptr;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
@@ -1031,6 +1015,10 @@ class XPathEvaluator : public XPathErrorReporter {
 
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
+   
+   // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
+
+   ankerl::unordered_dense::map<std::string, std::string> text_cache;
 
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    extXML * resolve_document_for_node(XMLTag *Node) const;
@@ -1103,7 +1091,7 @@ class XPathEvaluator : public XPathErrorReporter {
       XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:
-   XPathEvaluator(extXML *, const XPathNode *, XPathParseResult *);
+   XPathEvaluator(extXML *, const XPathNode *, CompiledXPath *);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -1247,3 +1235,5 @@ class VariableBindingGuard
 
 [[nodiscard]] inline XMLTag * XPathEvaluator::get_context_node() const { return context.context_node; };
 [[nodiscard]] inline std::shared_ptr<XQueryModuleCache> XPathContext::modules() { return eval->parse_context->module_cache; };
+
+extern "C" ERR load_regex(void);

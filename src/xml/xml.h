@@ -160,10 +160,6 @@ class extXML : public objXML {
    // then this lookup table returns the most recently assigned URI.
    ankerl::unordered_dense::map<PREFIX, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
-   // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
-   // Managed by read_text_resource()
-   ankerl::unordered_dense::map<URI_STR, std::string> UnparsedTextCache;
-
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    ~extXML() {
@@ -399,46 +395,6 @@ constexpr std::array<char, 256> to_lower_table = []() {
    }
 
    return output;
-}
-
-//*********************************************************************************************************************
-// Load (or retrieve from cache) a text resource.  Returns true if successful.
-// TODO: Support encodings other than UTF-8.
-// TODO: Support relative URIs based on the context document location.
-// TODO: Support loading files from http:// and other URI schemes (or implement in the File class).
-
-[[maybe_unused]] static bool read_text_resource(extXML *Owner, const std::string &URI, const std::optional<std::string> &Encoding,
-   std::string * &Result)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Loading text resource: %s", URI.c_str());
-
-   if (!Owner) return false;
-
-   if (Encoding.has_value()) {
-      std::string lowered = lowercase_copy(*Encoding);
-      if ((lowered != "utf-8") and (lowered != "utf8")) return false;
-   }
-
-   auto existing = Owner->UnparsedTextCache.find(URI);
-   if (existing != Owner->UnparsedTextCache.end()) {
-      Result = &existing->second;
-      return true;
-   }
-
-   // TODO: File class needs to support URI locations (http://, file:// etc).
-
-   objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
-   if (file.ok()) {
-      std::string buffer;
-      buffer.resize(file->get<size_t>(FID_Size));
-      file->read(buffer.data(), buffer.size());
-      Owner->UnparsedTextCache[URI] = std::move(normalise_newlines(buffer));
-      Result = &Owner->UnparsedTextCache[URI];
-      return true;
-   }
-   else return false;
 }
 
 using NODES = pf::vector<XMLTag *>;

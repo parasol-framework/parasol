@@ -151,7 +151,7 @@ static ERR build_query(extXQuery *Self)
    std::shared_ptr<XQueryModuleCache> module_cache = Self->ParseResult.module_cache;
    if (not module_cache) {
       module_cache = std::make_shared<XQueryModuleCache>();
-      module_cache->owner = Self->UID;
+      module_cache->query = Self;
       Self->ParseResult.module_cache = module_cache;
    }
 

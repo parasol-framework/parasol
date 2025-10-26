@@ -32,7 +32,6 @@ using XPathFunction = std::function<XPathVal(const std::vector<XPathVal> &, cons
 class XPathFunctionLibrary {
    private:
    ankerl::unordered_dense::map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
-   void register_core_functions();
    void register_function(std::string_view Name, XPathFunction Func);
    const XPathFunction * find_function(std::string_view Name) const;
 
