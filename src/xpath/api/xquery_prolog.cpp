@@ -10,13 +10,80 @@
 // dependency and namespace checks. Prolog lookups (functions, variables, prefixes) are optimised via
 // canonical keys such as the qname/arity signature.
 
-#include <algorithm>
 #include <ranges>
-#include <string_view>
 
 #include "xpath_errors.h"
 #include "../functions/accessor_support.h"
 #include "../../xml/uri_utils.h"
+
+//********************************************************************************************************************
+// File-scope helpers
+
+static std::string xp_normalise_cache_key(const std::string &Value)
+{
+   return xml::uri::normalise_uri_separators(Value);
+}
+
+static std::string xp_strip_file_scheme(const std::string &Value)
+{
+   if (not Value.rfind("file:", 0)) {
+      std::string stripped = Value.substr(5);
+      if (not stripped.rfind("//", 0)) stripped = stripped.substr(2);
+      return stripped;
+   }
+   return Value;
+}
+
+static bool xp_is_windows_drive_path(std::string_view Value)
+{
+   if (Value.size() < 3U) return false;
+   char letter = Value[0];
+   bool letter_is_alpha = ((letter >= 'A') and (letter <= 'Z')) or ((letter >= 'a') and (letter <= 'z'));
+   if (not letter_is_alpha) return false;
+   if (Value[1] IS ':') {
+      char slash = Value[2];
+      constexpr char backslash = '\\';
+      return (slash IS '/') or (slash IS backslash);
+   }
+   return false;
+}
+
+static std::string xp_resolve_hint_to_path(const std::string &Hint, const XQueryProlog &Prolog,
+   const std::optional<std::string> &BaseDir)
+{
+   std::string normalised = xp_normalise_cache_key(Hint);
+   if (normalised.empty()) return std::string();
+
+   if (xml::uri::is_absolute_uri(normalised)) {
+      if (not normalised.rfind("file:", 0)) {
+         return xp_normalise_cache_key(xp_strip_file_scheme(normalised));
+      }
+      // Treat Windows-style drive paths (e.g. "E:/...") as filesystem paths
+      if (xp_is_windows_drive_path(normalised)) {
+         return xp_normalise_cache_key(normalised);
+      }
+      return std::string();
+   }
+
+   if (not Prolog.static_base_uri.empty()) {
+      std::string resolved = xml::uri::resolve_relative_uri(normalised, Prolog.static_base_uri);
+      if (not resolved.rfind("file:", 0)) {
+         return xp_normalise_cache_key(xp_strip_file_scheme(resolved));
+      }
+      // Accept absolute Windows drive paths resolved from a non-URI base
+      if (xp_is_windows_drive_path(resolved)) {
+         return xp_normalise_cache_key(resolved);
+      }
+      if (not xml::uri::is_absolute_uri(resolved)) return xp_normalise_cache_key(resolved);
+   }
+
+   if (BaseDir) {
+      std::string combined = std::format("{}{}", *BaseDir, normalised);
+      return xp_normalise_cache_key(combined);
+   }
+
+   return normalised;
+}
 
 //********************************************************************************************************************
 // Builds a canonical identifier combining the QName and arity so functions can be stored in a flat map.
@@ -55,70 +122,9 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
    if (URI.empty()) return nullptr;
 
-   auto normalise_cache_key = [](const std::string &value) -> std::string {
-      return xml::uri::normalise_uri_separators(value);
-   };
-
-   auto strip_file_scheme = [](const std::string &value) -> std::string {
-      if (not value.rfind("file:", 0)) {
-         std::string stripped = value.substr(5);
-         if (not stripped.rfind("//", 0)) stripped = stripped.substr(2);
-         return stripped;
-      }
-      return value;
-   };
-
    auto base_dir = xpath::accessor::resolve_document_base_directory(Eval.xml);
 
-   auto is_windows_drive_path = [](std::string_view value) -> bool {
-      if (value.size() < 3U) return false;
-      char letter = value[0];
-      bool letter_is_alpha = ((letter >= 'A') and (letter <= 'Z')) or ((letter >= 'a') and (letter <= 'z'));
-      if (not letter_is_alpha) return false;
-      if (value[1] IS ':') {
-         char slash = value[2];
-         constexpr char backslash = '\\';
-         return (slash IS '/') or (slash IS backslash);
-      }
-      return false;
-   };
-
-   auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
-      std::string normalised = normalise_cache_key(hint);
-      if (normalised.empty()) return std::string();
-
-      if (xml::uri::is_absolute_uri(normalised)) {
-         if (not normalised.rfind("file:", 0)) {
-            return normalise_cache_key(strip_file_scheme(normalised));
-         }
-         // Treat Windows-style drive paths (e.g. "E:/...") as filesystem paths
-         if (is_windows_drive_path(normalised)) {
-            return normalise_cache_key(normalised);
-         }
-         return std::string();
-      }
-
-      if (not Prolog.static_base_uri.empty()) {
-         std::string resolved = xml::uri::resolve_relative_uri(normalised, Prolog.static_base_uri);
-         if (not resolved.rfind("file:", 0)) {
-            return normalise_cache_key(strip_file_scheme(resolved));
-         }
-         // Accept absolute Windows drive paths resolved from a non-URI base
-         if (is_windows_drive_path(resolved)) {
-            return normalise_cache_key(resolved);
-         }
-         if (not xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
-      }
-
-      if (base_dir) {
-         std::string combined = std::format("{}{}", *base_dir, normalised);
-         return normalise_cache_key(combined);
-      }
-
-      return normalised;
-   };
-
-   auto uri_key = normalise_cache_key(std::string(URI));
+   auto uri_key = xp_normalise_cache_key(std::string(URI));
    std::string original_uri(URI);
 
    // Check if already loaded
@@ -137,7 +143,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
    const XQueryModuleImport *import_decl = nullptr;
    for (const auto &imp : Prolog.module_imports) {
-      std::string normalised_namespace = normalise_cache_key(imp.target_namespace);
+      std::string normalised_namespace = xp_normalise_cache_key(imp.target_namespace);
       if ((normalised_namespace IS uri_key) or (imp.target_namespace IS original_uri)) {
          import_decl = &imp;
          break;
@@ -152,7 +158,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
    std::vector<std::string> location_candidates;
    if (import_decl) {
       for (const auto &hint : import_decl->location_hints) {
-         std::string candidate = resolve_hint_to_path(hint);
+         std::string candidate = xp_resolve_hint_to_path(hint, Prolog, base_dir);
          if (candidate.empty()) continue;
 
          if (std::ranges::any_of(location_candidates, [&](const std::string &existing_path) {
@@ -167,29 +173,23 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
    // Check document cache for pre-loaded modules
 
-   auto find_module = [&](const std::string &key) -> std::shared_ptr<CompiledXPath> {
-      auto cache_entry = modules.find(key);
-      if (cache_entry != modules.end()) return cache_entry->second;
-      else return nullptr;
-   };
-
-   if (auto cached = find_module(uri_key)) {
+   if (auto it = modules.find(uri_key); it != modules.end()) {
       // Mirror document-cached module into this cache for consistent lookups
-      modules[uri_key] = cached;
-      return cached.get();
+      modules[uri_key] = it->second;
+      return it->second.get();
    }
 
    if (original_uri != uri_key) {
-      if (auto cached = find_module(original_uri)) {
-         modules[uri_key] = cached;
-         return cached.get();
+      if (auto it = modules.find(original_uri); it != modules.end()) {
+         modules[uri_key] = it->second;
+         return it->second.get();
       }
    }
 
    for (const auto &candidate : location_candidates) {
-      if (auto cached = find_module(candidate)) {
-         modules[uri_key] = cached;
-         return cached.get();
+      if (auto it = modules.find(candidate); it != modules.end()) {
+         modules[uri_key] = it->second;
+         return it->second.get();
       }
    }
 
