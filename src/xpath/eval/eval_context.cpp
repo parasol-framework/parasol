@@ -18,13 +18,14 @@
 
 #include "eval_detail.h"
 #include "../../xml/schema/schema_types.h"
+#include <utility>
 
 namespace {
 
 class ContextGuard {
    private:
-   XPathEvaluator * evaluator;
-   bool active;
+   XPathEvaluator * evaluator{nullptr};
+   bool active{false};
 
    public:
    ContextGuard(XPathEvaluator &Evaluator, XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
@@ -32,21 +33,16 @@ class ContextGuard {
       evaluator->push_context(Node, Position, Size, Attribute);
    }
 
-   ContextGuard(ContextGuard &&Other) noexcept : evaluator(Other.evaluator), active(Other.active) {
-      Other.evaluator = nullptr;
-      Other.active = false;
-   }
+   ContextGuard(ContextGuard &&Other) noexcept
+      : evaluator(std::exchange(Other.evaluator, nullptr)), active(std::exchange(Other.active, false)) {}
 
    ContextGuard & operator=(ContextGuard &&Other) noexcept {
       if (this IS &Other) return *this;
 
       if (active and evaluator) evaluator->pop_context();
 
-      evaluator = Other.evaluator;
-      active = Other.active;
-
-      Other.evaluator = nullptr;
-      Other.active = false;
+      evaluator = std::exchange(Other.evaluator, nullptr);
+      active = std::exchange(Other.active, false);
 
       return *this;
    }
