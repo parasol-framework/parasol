@@ -539,7 +539,7 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
          next_match.node = candidate;
          next_match.attribute = match.attribute;
 
-         if (not next_match.node or !next_match.attribute) continue;
+         if (not next_match.node or not next_match.attribute) continue;
 
          if (IsLastStep) {
             ShouldTerminate = false;
