@@ -13,9 +13,11 @@ The XPath module provides comprehensive XPath 2.0 and XQuery language support fo
 - Expression compilation and optimisation
 - Thread-safe compiled expressions
 - Schema-aware type system integration
+- Type expressions (cast, castable, treat-as, instance-of, typeswitch)
+- XQuery module system with import/composition support
 - Namespace-aware query processing
 - Variable binding and parameterised queries
-- Node constructor expressions
+- Node constructor expressions (direct and computed)
 
 ## Module Architecture
 
@@ -23,35 +25,39 @@ The XPath module provides comprehensive XPath 2.0 and XQuery language support fo
 
 ```
 src/xpath/
-├── xpath.fdl                  # Interface definition (functions, structs, enums)
+├── xpath.fdl                  # Interface definition (XQuery class, enums)
 ├── xpath.cpp                  # Module initialisation and core functions
-├── xpath.h                    # Module header
+├── xpath.h                    # Module header with AST, parser, and prolog structures
 ├── xpath_def.c                # Generated C definitions
+├── xquery_class.cpp           # XQuery class implementation
+├── xquery_class_def.cpp       # Auto-generated XQuery class definitions
 ├── unit_tests.cpp             # C++ unit tests for internal components
-├── CMakeLists.txt             # Build configuration
+├── CMakeLists.txt             # Build configuration with 23 registered tests
 ├── AGENTS.md                  # AI agent guide for this module
 ├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
-├── QT3_1_0/                   # W3C XQuery Test Suite (optional)
+├── QT3_1_0/                   # W3C XQuery Test Suite (optional, extracted from zip)
 ├── api/                       # Public API implementations
-│   ├── xpath_arena.h              # Memory management for evaluation
-│   ├── xpath_axis.cpp/h           # XPath axis evaluation
+│   ├── xpath_axis.cpp             # XPath axis evaluation (13 standard axes)
+│   ├── xpath_errors.h             # Error code definitions
 │   ├── xpath_functions.cpp/h      # Function registry and dispatch
-│   └── xquery_prolog.cpp/h        # XQuery prolog management
+│   └── xquery_prolog.cpp          # XQuery prolog management and module loading
 ├── parse/                     # Expression parsing and tokenisation
-│   ├── xpath_parser.cpp/h         # XPath/XQuery expression parser
-│   ├── xpath_tokeniser.cpp/h      # Lexical analysis and tokenisation
-│   └── xpath_ast.h                # Abstract Syntax Tree definitions
+│   ├── xpath_parser.cpp           # XPath/XQuery expression parser (3,071 lines)
+│   └── xpath_tokeniser.cpp        # Lexical analysis and tokenisation (843 lines)
 ├── eval/                      # Expression evaluation engine
-│   ├── eval.cpp/h                 # Main evaluation engine
+│   ├── eval.cpp                   # Main evaluation entry points
 │   ├── eval_common.cpp            # Common evaluation utilities
-│   ├── eval_context.cpp           # Context management
+│   ├── eval_context.cpp           # Context and variable management
 │   ├── eval_detail.h              # Internal evaluation details
 │   ├── eval_expression.cpp        # Expression evaluation
 │   ├── eval_flwor.cpp             # FLWOR expression support
 │   ├── eval_navigation.cpp        # Node navigation
 │   ├── eval_predicates.cpp        # Predicate evaluation
-│   └── eval_values.cpp            # Value operations
+│   ├── eval_values.cpp            # Value operations
+│   └── checked_arith.h            # Arithmetic overflow checking utilities
 ├── functions/                 # Function implementations by category
+│   ├── function_library.cpp       # Function library initialization
+│   ├── accessor_support.cpp/h     # Accessor function utilities
 │   ├── func_accessors.cpp         # Accessor functions (base-uri, data, etc.)
 │   ├── func_booleans.cpp          # Boolean functions (not, true, false, etc.)
 │   ├── func_datetimes.cpp         # Date/time functions (current-date, etc.)
@@ -61,36 +67,69 @@ src/xpath/
 │   ├── func_numbers.cpp           # Numeric functions (sum, round, etc.)
 │   ├── func_qnames.cpp            # QName functions
 │   ├── func_sequences.cpp         # Sequence functions (distinct-values, etc.)
-│   ├── func_strings.cpp           # String functions (concat, substring, etc.)
-│   ├── function_library.cpp       # Function library initialization
-│   └── accessor_support.cpp/h     # Accessor function utilities
+│   └── func_strings.cpp           # String functions (concat, substring, etc.)
 └── tests/                     # Test infrastructure
-    ├── test_accessor.fluid        # Accessor function tests
-    ├── test_advanced.fluid        # Advanced XPath queries
-    ├── test_advanced_paths.fluid  # Advanced path expression tests
-    ├── test_axes.fluid            # XPath axes tests
-    ├── test_constructors.fluid    # Node constructor tests
-    ├── test_core.fluid            # Core XPath functionality tests
-    ├── test_datetime.fluid        # DateTime function tests
-    ├── test_documents.fluid       # Document function tests
-    ├── test_duration.fluid        # Duration type tests
-    ├── test_flwor.fluid           # FLWOR expression tests
-    ├── test_flwor_clauses.fluid   # Individual FLWOR clause tests
-    ├── test_func_ext.fluid        # Extended function library tests
-    ├── test_predicates.fluid      # Predicate evaluation tests
-    ├── test_prolog.fluid          # XQuery prolog tests
-    ├── test_qname.fluid           # QName operation tests
-    ├── test_reserved_words.fluid  # Reserved word handling tests
-    ├── test_sequences.fluid       # Sequence operation tests
-    ├── test_string_uri.fluid      # String and URI function tests
-    └── test_unit_tests.fluid      # Runs the module's internal unit tests
+    ├── test_accessor.fluid            # Accessor function tests
+    ├── test_advanced.fluid            # Advanced XPath queries
+    ├── test_advanced_paths.fluid      # Advanced path expression tests
+    ├── test_axes.fluid                # XPath axes tests
+    ├── test_constructors.fluid        # Node constructor tests
+    ├── test_core.fluid                # Core XPath functionality tests
+    ├── test_datetime.fluid            # DateTime function tests
+    ├── test_documents.fluid           # Document function tests
+    ├── test_duration.fluid            # Duration type tests
+    ├── test_flwor.fluid               # FLWOR expression tests
+    ├── test_flwor_clauses.fluid       # Individual FLWOR clause tests
+    ├── test_func_ext.fluid            # Extended function library tests
+    ├── test_module_loading.fluid      # XQuery module import/loading tests
+    ├── test_numbers.fluid             # Numeric function tests
+    ├── test_predicates.fluid          # Predicate evaluation tests
+    ├── test_prolog.fluid              # XQuery prolog tests
+    ├── test_qname.fluid               # QName operation tests
+    ├── test_reserved_words.fluid      # Reserved word handling tests
+    ├── test_sequence_cardinality.fluid # Sequence cardinality regression tests
+    ├── test_sequences.fluid           # Sequence operation tests
+    ├── test_string_uri.fluid          # String and URI function tests
+    ├── test_type_expr.fluid           # Type expression tests (cast, castable, etc.)
+    ├── test_unit_tests.fluid          # Runs the module's internal unit tests
+    └── modules/                       # XQuery module files for testing
+        ├── bad_namespace.xq               # Error case: bad namespace declaration
+        ├── circular_a.xq                  # Error case: circular module dependencies
+        ├── circular_b.xq                  # Error case: circular module dependencies
+        ├── composite.xq                   # Composite module usage
+        ├── main_module.xq                 # Module entry point
+        ├── math_utils.xq                  # Library module with math functions
+        ├── self_reference.xq              # Error case: self-referencing module
+        └── string_utils.xq                # Library module with string utilities
 ```
+
+### Module Architecture Notes
+
+**Important:** Parser and AST structures are consolidated in `xpath.h` rather than split across separate header files. This design choice improves compilation speed and maintains tight integration between parsing and evaluation components.
+
+The module uses precompiled headers and unity builds for optimised compilation performance. Build configuration enables 23 registered Flute tests covering all aspects of XPath and XQuery functionality.
 
 ### Dependencies
 
 - **unicode** module (PUBLIC) - For text encoding/decoding
 - **xml** module - For XML document structures and schema integration
 - **regex** module (dynamically loaded) - For pattern matching in XPath functions
+
+## XQuery Class
+
+The module provides an `XQuery` class for direct XQuery evaluation without requiring an XML document:
+
+**Include:** `<parasol/modules/xpath.h>`
+
+**Key Methods:**
+- `Evaluate(Expression, Result)` - Compile and evaluate XQuery expression, returning typed result
+- `Search(Expression, Callback)` - Compile and evaluate XQuery expression with node iteration callback
+
+This class is particularly useful for:
+- Standalone XQuery processing
+- Expression evaluation without XML context
+- Direct access to XQuery prolog and module system
+- Testing and validation of XQuery expressions
 
 ## Core Structures and Types
 
@@ -345,6 +384,77 @@ attribute price { $book/@price * 0.9 }
 text { 'Hello' }
 comment { 'This is a comment' }
 processing-instruction target { 'data' }
+```
+
+### Type Expressions
+
+XQuery provides comprehensive type system support for runtime type checking and conversion:
+
+**Cast Expression:**
+```xpath
+$value cast as xs:decimal
+"123" cast as xs:integer
+current-date() cast as xs:string
+```
+
+**Castable Expression:**
+```xpath
+$value castable as xs:decimal  (: returns true/false :)
+"abc" castable as xs:integer   (: returns false :)
+```
+
+**Treat As Expression:**
+```xpath
+$value treat as xs:string  (: raises error if not a string :)
+```
+
+**Instance Of Expression:**
+```xpath
+$value instance of xs:decimal
+$sequence instance of element()*
+```
+
+**Typeswitch Expression:**
+```xpath
+typeswitch($value)
+   case xs:integer return $value * 2
+   case xs:string return upper-case($value)
+   default return $value
+```
+
+**To Range Operator:**
+```xpath
+1 to 10                    (: sequence 1, 2, 3, ..., 10 :)
+for $i in 1 to 5 return $i (: iterate over range :)
+```
+
+### XQuery Module System
+
+XQuery supports modular programming through library module imports:
+
+**Module Declaration:**
+```xpath
+module namespace math = "http://example.com/math";
+declare function math:add($a, $b) { $a + $b };
+```
+
+**Module Import:**
+```xpath
+import module namespace math = "http://example.com/math" at "math_utils.xq";
+math:add(1, 2)
+```
+
+**Multiple Function Imports:**
+```xpath
+import module namespace str = "http://example.com/strings" at "string_utils.xq";
+import module namespace math = "http://example.com/math" at "math_utils.xq";
+str:uppercase(math:add(1, 2))
+```
+
+**Module Composition:**
+```xpath
+(: composite.xq can import and re-export multiple modules :)
+import module namespace comp = "http://example.com/composite" at "composite.xq";
 ```
 
 ## Function Library
@@ -622,7 +732,7 @@ XPath tests are located in the XPath module's test directory and exercise XPath 
 
 **XPath Integration Tests (`src/xpath/tests/`):**
 - `test_core.fluid` - Core XPath expressions and operators
-- `test_predicates.fluid` - Predicate evaluation
+- `test_predicates.fluid` - Predicate evaluation (comprehensive)
 - `test_axes.fluid` - All 13 XPath axes
 - `test_advanced.fluid` - Complex XPath queries
 - `test_advanced_paths.fluid` - Advanced path expressions
@@ -631,14 +741,28 @@ XPath tests are located in the XPath module's test directory and exercise XPath 
 - `test_func_ext.fluid` - Extended function library
 - `test_sequences.fluid` - Sequence operations
 - `test_string_uri.fluid` - String and URI functions
+- `test_numbers.fluid` - Numeric function tests
 - `test_duration.fluid` - Duration type operations
 - `test_datetime.fluid` - DateTime functions
 - `test_qname.fluid` - QName operations
 - `test_accessor.fluid` - Accessor functions
 - `test_constructors.fluid` - Node constructors
 - `test_documents.fluid` - Document functions
-- `test_prolog.fluid` - XQuery prolog functionality
+- `test_prolog.fluid` - XQuery prolog functionality (comprehensive)
 - `test_reserved_words.fluid` - Reserved word handling
+- `test_module_loading.fluid` - XQuery module import/loading tests
+- `test_type_expr.fluid` - Type expressions (cast, castable, treat-as, instance-of, typeswitch, to-range)
+- `test_sequence_cardinality.fluid` - Sequence cardinality regression tests
+
+**Test Modules (`src/xpath/tests/modules/`):**
+The `modules/` subdirectory contains XQuery library modules used for testing module loading functionality:
+- `math_utils.xq` - Library module with math functions
+- `string_utils.xq` - Library module with string utilities
+- `composite.xq` - Composite module that imports other modules
+- `main_module.xq` - Module entry point for testing
+- `bad_namespace.xq` - Error case: invalid namespace declaration
+- `circular_a.xq`, `circular_b.xq` - Error case: circular module dependencies
+- `self_reference.xq` - Error case: module importing itself
 
 ### Running XPath Tests
 
