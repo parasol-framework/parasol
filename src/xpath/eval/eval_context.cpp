@@ -373,7 +373,7 @@ static ERR advance_step_context(XPathEvaluator &Eval, const std::vector<XPathEva
 static ERR filter_step_matches_for_collect(XPathEvaluator &Eval, const std::vector<XPathEvaluator::AxisMatch> &ContextNodes,
    AxisType Axis, const XPathNode *NodeTest, const std::vector<const XPathNode *> &PredicateNodes, uint32_t CurrentPrefix,
    std::vector<XPathEvaluator::AxisMatch> &Out, std::vector<XPathEvaluator::AxisMatch> &AxisBuffer,
-   std::vector<XPathEvaluator::AxisMatch> &PredicateBuffer, bool Unsupported)
+   std::vector<XPathEvaluator::AxisMatch> &PredicateBuffer, bool &Unsupported)
 {
    for (auto &context_entry : ContextNodes) {
       Eval.expand_axis_candidates(context_entry, Axis, NodeTest, CurrentPrefix, AxisBuffer);
