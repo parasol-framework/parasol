@@ -1080,45 +1080,45 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
    // Use a switch for common node kinds for clarity and consistent early-returns
    switch (ExprNode->type) {
-      case XPathNodeType::EMPTY_SEQUENCE: {
+      case XQueryNodeType::EMPTY_SEQUENCE: {
          // Return an empty node-set to represent the empty sequence
          return XPathVal(pf::vector<XMLTag *>{});
       }
-      case XPathNodeType::NUMBER: {
+      case XQueryNodeType::NUMBER: {
          char *end_ptr = nullptr;
          double value = std::strtod(ExprNode->value.c_str(), &end_ptr);
          if ((end_ptr) and (*end_ptr IS '\0')) return XPathVal(value);
          return XPathVal(std::numeric_limits<double>::quiet_NaN());
       }
-      case XPathNodeType::LITERAL:
-      case XPathNodeType::STRING: {
+      case XQueryNodeType::LITERAL:
+      case XQueryNodeType::STRING: {
          return XPathVal(ExprNode->value);
       }
-      case XPathNodeType::DIRECT_ELEMENT_CONSTRUCTOR: {
+      case XQueryNodeType::DIRECT_ELEMENT_CONSTRUCTOR: {
          return evaluate_direct_element_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::COMPUTED_ELEMENT_CONSTRUCTOR: {
+      case XQueryNodeType::COMPUTED_ELEMENT_CONSTRUCTOR: {
          return evaluate_computed_element_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR: {
+      case XQueryNodeType::COMPUTED_ATTRIBUTE_CONSTRUCTOR: {
          return evaluate_computed_attribute_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::TEXT_CONSTRUCTOR: {
+      case XQueryNodeType::TEXT_CONSTRUCTOR: {
          return evaluate_text_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::COMMENT_CONSTRUCTOR: {
+      case XQueryNodeType::COMMENT_CONSTRUCTOR: {
          return evaluate_comment_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::PI_CONSTRUCTOR: {
+      case XQueryNodeType::PI_CONSTRUCTOR: {
          return evaluate_pi_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::DOCUMENT_CONSTRUCTOR: {
+      case XQueryNodeType::DOCUMENT_CONSTRUCTOR: {
          return evaluate_document_constructor(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::LOCATION_PATH: {
+      case XQueryNodeType::LOCATION_PATH: {
          return evaluate_path_expression_value(ExprNode, CurrentPrefix);
       }
-      case XPathNodeType::CAST_EXPRESSION: {
+      case XQueryNodeType::CAST_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {
             record_error("Cast expression requires an operand.", ExprNode, true);
             return XPathVal();
@@ -1218,7 +1218,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          coerced.set_schema_type(target_descriptor);
          return coerced;
       }
-      case XPathNodeType::TREAT_AS_EXPRESSION: {
+      case XQueryNodeType::TREAT_AS_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {
             record_error("Treat as expression requires an operand.", ExprNode, true);
             return XPathVal();
@@ -1426,7 +1426,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          operand_value.set_schema_type(target_descriptor);
          return operand_value;
       }
-      case XPathNodeType::INSTANCE_OF_EXPRESSION: {
+      case XQueryNodeType::INSTANCE_OF_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {
             record_error("Instance of expression requires an operand.", ExprNode, true);
             return XPathVal();
@@ -1451,7 +1451,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          if (not match_result.has_value()) return XPathVal();
          return XPathVal(*match_result);
       }
-      case XPathNodeType::CASTABLE_EXPRESSION: {
+      case XQueryNodeType::CASTABLE_EXPRESSION: {
          if (ExprNode->child_count() IS 0) {
             record_error("Castable expression requires an operand.", ExprNode, true);
             return XPathVal();
@@ -1507,7 +1507,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          bool castable_success = is_value_castable_to_type(operand_value, source_descriptor, target_descriptor, operand_lexical);
          return XPathVal(castable_success);
       }
-      case XPathNodeType::TYPESWITCH_EXPRESSION: {
+      case XQueryNodeType::TYPESWITCH_EXPRESSION: {
          if (ExprNode->child_count() < 2) {
             record_error("Typeswitch expression requires at least one clause.", ExprNode, true);
             return XPathVal();
@@ -1528,7 +1528,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             const XPathNode *clause_node = ExprNode->get_child(index);
             if (!clause_node) continue;
 
-            if (clause_node->type IS XPathNodeType::TYPESWITCH_CASE) {
+            if (clause_node->type IS XQueryNodeType::TYPESWITCH_CASE) {
                const auto *info = clause_node->get_typeswitch_case_info();
                if ((not info) or (not info->has_sequence_type())) {
                   record_error("Typeswitch case clause is missing its sequence type.", clause_node, true);
@@ -1566,7 +1566,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
                continue;
             }
 
-            if (clause_node->type IS XPathNodeType::TYPESWITCH_DEFAULT_CASE) {
+            if (clause_node->type IS XQueryNodeType::TYPESWITCH_DEFAULT_CASE) {
                default_clause = clause_node;
                continue;
             }
@@ -1601,7 +1601,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          if (expression_unsupported) return XPathVal();
          return default_value;
       }
-      case XPathNodeType::UNION: {
+      case XQueryNodeType::UNION: {
          std::vector<const XPathNode *> branches;
          branches.reserve(ExprNode->child_count());
          for (size_t index = 0; index < ExprNode->child_count(); ++index) {
@@ -1610,7 +1610,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          }
          return evaluate_union_value(branches, CurrentPrefix);
       }
-      case XPathNodeType::CONDITIONAL: {
+      case XQueryNodeType::CONDITIONAL: {
          if (ExprNode->child_count() < 3) {
             expression_unsupported = true;
             return XPathVal();
@@ -1635,7 +1635,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    // LET expressions share the same diagnostic surface as the parser.  Whenever a binding fails we populate
    // extXML::ErrorMsg so Fluid callers receive precise feedback rather than generic failure codes.
 
-   if (ExprNode->type IS XPathNodeType::LET_EXPRESSION) {
+   if (ExprNode->type IS XQueryNodeType::LET_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          record_error("LET expression requires at least one binding and a return clause.", ExprNode, true);
          return XPathVal();
@@ -1652,7 +1652,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
          const XPathNode *binding_node = ExprNode->get_child(index);
-         if ((not binding_node) or !(binding_node->type IS XPathNodeType::LET_BINDING)) {
+         if ((not binding_node) or !(binding_node->type IS XQueryNodeType::LET_BINDING)) {
             record_error("LET expression contains an invalid binding clause.", binding_node ? binding_node : ExprNode, true);
             return XPathVal();
          }
@@ -1688,11 +1688,11 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    // FLWOR evaluation mirrors that approach, capturing structural and runtime issues so test_xpath_flwor.fluid can assert
    // on human-readable error text while we continue to guard performance-sensitive paths.
 
-   if (ExprNode->type IS XPathNodeType::FLWOR_EXPRESSION) {
+   if (ExprNode->type IS XQueryNodeType::FLWOR_EXPRESSION) {
       return evaluate_flwor_pipeline(ExprNode, CurrentPrefix);
    }
 
-   if (ExprNode->type IS XPathNodeType::FOR_EXPRESSION) {
+   if (ExprNode->type IS XQueryNodeType::FOR_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
          return XPathVal();
@@ -1718,7 +1718,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
          const XPathNode *binding_node = ExprNode->get_child(index);
-         if (binding_node and (binding_node->type IS XPathNodeType::FOR_BINDING)) {
+         if (binding_node and (binding_node->type IS XQueryNodeType::FOR_BINDING)) {
             if ((binding_node->value.empty()) or (binding_node->child_count() IS 0)) {
                expression_unsupported = true;
                return XPathVal();
@@ -1777,7 +1777,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return result;
    }
 
-   if (ExprNode->type IS XPathNodeType::QUANTIFIED_EXPRESSION) {
+   if (ExprNode->type IS XQueryNodeType::QUANTIFIED_EXPRESSION) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
          return XPathVal();
@@ -1802,7 +1802,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
 
       for (size_t index = 0; index + 1 < ExprNode->child_count(); ++index) {
          const XPathNode *binding_node = ExprNode->get_child(index);
-         if ((not binding_node) or (binding_node->type != XPathNodeType::QUANTIFIED_BINDING)) {
+         if ((not binding_node) or (binding_node->type != XQueryNodeType::QUANTIFIED_BINDING)) {
             expression_unsupported = true;
             return XPathVal();
          }
@@ -1827,7 +1827,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal(quant_result);
    }
 
-   if (ExprNode->type IS XPathNodeType::FILTER) {
+   if (ExprNode->type IS XQueryNodeType::FILTER) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
          return XPathVal();
@@ -1912,14 +1912,14 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal(filtered_nodes, first_value, std::move(filtered_strings), std::move(filtered_attributes));
    }
 
-   if (ExprNode->type IS XPathNodeType::PATH) {
+   if (ExprNode->type IS XQueryNodeType::PATH) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
          return XPathVal();
       }
 
       auto *first_child = ExprNode->get_child(0);
-      if (first_child and (first_child->type IS XPathNodeType::LOCATION_PATH)) {
+      if (first_child and (first_child->type IS XQueryNodeType::LOCATION_PATH)) {
          return evaluate_path_expression_value(ExprNode, CurrentPrefix);
       }
 
@@ -1933,7 +1933,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       std::vector<const XPathNode *> steps;
       for (size_t index = 1; index < ExprNode->child_count(); ++index) {
          auto *child = ExprNode->get_child(index);
-         if (child and (child->type IS XPathNodeType::STEP)) steps.push_back(child);
+         if (child and (child->type IS XQueryNodeType::STEP)) steps.push_back(child);
       }
 
       if (steps.empty()) return base_value;
@@ -1950,10 +1950,10 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
             auto *child = last_step->get_child(index);
             if (not child) continue;
 
-            if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-            else if ((not node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
-                                       (child->type IS XPathNodeType::WILDCARD) or
-                                       (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
+            if (child->type IS XQueryNodeType::AXIS_SPECIFIER) axis_node = child;
+            else if ((not node_test) and ((child->type IS XQueryNodeType::NAME_TEST) or
+                                       (child->type IS XQueryNodeType::WILDCARD) or
+                                       (child->type IS XQueryNodeType::NODE_TYPE_TEST))) node_test = child;
          }
 
          AxisType axis = axis_node ? AxisEvaluator::parse_axis_name(axis_node->value) : AxisType::CHILD;
@@ -1967,13 +1967,13 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
          attribute_test, CurrentPrefix);
    }
 
-   if (ExprNode->type IS XPathNodeType::FUNCTION_CALL) {
+   if (ExprNode->type IS XQueryNodeType::FUNCTION_CALL) {
       auto value = evaluate_function_call(ExprNode, CurrentPrefix);
       if (expression_unsupported) return XPathVal();
       return value;
    }
 
-   if (ExprNode->type IS XPathNodeType::UNARY_OP) {
+   if (ExprNode->type IS XQueryNodeType::UNARY_OP) {
       if (ExprNode->child_count() IS 0) {
          expression_unsupported = true;
          return XPathVal();
@@ -1989,7 +1989,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
-   if (ExprNode->type IS XPathNodeType::BINARY_OP) {
+   if (ExprNode->type IS XQueryNodeType::BINARY_OP) {
       if (ExprNode->child_count() < 2) {
          expression_unsupported = true;
          return XPathVal();
@@ -2289,7 +2289,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    }
 
    // EXPRESSION nodes are wrappers - unwrap to the child node
-   if (ExprNode->type IS XPathNodeType::EXPRESSION) {
+   if (ExprNode->type IS XQueryNodeType::EXPRESSION) {
       if (ExprNode->child_count() > 0) {
          return evaluate_expression(ExprNode->get_child(0), CurrentPrefix);
       }
@@ -2297,7 +2297,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
-   if (ExprNode->type IS XPathNodeType::VARIABLE_REFERENCE) {
+   if (ExprNode->type IS XQueryNodeType::VARIABLE_REFERENCE) {
       XPathVal resolved_value;
       if (resolve_variable_value(ExprNode->value, CurrentPrefix, resolved_value, ExprNode)) {
          return resolved_value;

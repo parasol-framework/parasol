@@ -5,7 +5,7 @@
   <info>
     <name>XQuery</name>
     <type>class</type>
-    <module>XPath</module>
+    <module>XQuery</module>
     <comment>Provides an interface for XQuery evaluation and execution.</comment>
     <fileExtension>*.xqm|*.xq</fileExtension>
     <fileDescription>XQuery Module</fileDescription>

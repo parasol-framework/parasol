@@ -1,7 +1,6 @@
 -- XQuery module loading integration tests
 
    include 'xml'
-   mQry = mod.load('xpath')
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Basic module import and function call

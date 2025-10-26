@@ -1,10 +1,10 @@
-# XPath Module - AI Agent Guide
+# XQuery Module - AI Agent Guide
 
-This file provides comprehensive information about the Parasol XPath module for AI agents working with the codebase.
+This file provides comprehensive information about the Parasol XQuery module for AI agents working with the codebase.
 
 ## Overview
 
-The XPath module provides comprehensive XPath 2.0 and XQuery language support for querying and navigating XML documents. It operates in conjunction with the XML module to deliver a standards-compliant query engine with extensive functionality.
+The XQuery module provides comprehensive XPath 2.0 and XQuery language support for querying and navigating XML documents. It operates in conjunction with the XML module to deliver a standards-compliant query engine with extensive functionality.
 
 **Key Features:**
 - Full XPath 2.0 specification compliance
@@ -24,11 +24,11 @@ The XPath module provides comprehensive XPath 2.0 and XQuery language support fo
 ### Core Files Structure
 
 ```
-src/xpath/
-├── xpath.fdl                  # Interface definition (XQuery class, enums)
-├── xpath.cpp                  # Module initialisation and core functions
-├── xpath.h                    # Module header with AST, parser, and prolog structures
-├── xpath_def.c                # Generated C definitions
+src/xquery/
+├── xquery.fdl                  # Interface definition (XQuery class, enums)
+├── xquery.cpp                  # Module initialisation and core functions
+├── xquery.h                    # Module header with AST, parser, and prolog structures
+├── xquery_def.c                # Generated C definitions
 ├── xquery_class.cpp           # XQuery class implementation
 ├── xquery_class_def.cpp       # Auto-generated XQuery class definitions
 ├── unit_tests.cpp             # C++ unit tests for internal components
@@ -37,13 +37,13 @@ src/xpath/
 ├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
 ├── QT3_1_0/                   # W3C XQuery Test Suite (optional, extracted from zip)
 ├── api/                       # Public API implementations
-│   ├── xpath_axis.cpp             # XPath axis evaluation (13 standard axes)
-│   ├── xpath_errors.h             # Error code definitions
-│   ├── xpath_functions.cpp/h      # Function registry and dispatch
+│   ├── xquery_axis.cpp             # XQuery axis evaluation (13 standard axes)
+│   ├── xquery_errors.h             # Error code definitions
+│   ├── xquery_functions.cpp/h      # Function registry and dispatch
 │   └── xquery_prolog.cpp          # XQuery prolog management and module loading
 ├── parse/                     # Expression parsing and tokenisation
-│   ├── xpath_parser.cpp           # XPath/XQuery expression parser (3,071 lines)
-│   └── xpath_tokeniser.cpp        # Lexical analysis and tokenisation (843 lines)
+│   ├── xquery_parser.cpp           # XPath/XQuery expression parser (3,071 lines)
+│   └── xquery_tokeniser.cpp        # Lexical analysis and tokenisation (843 lines)
 ├── eval/                      # Expression evaluation engine
 │   ├── eval.cpp                   # Main evaluation entry points
 │   ├── eval_common.cpp            # Common evaluation utilities
@@ -70,11 +70,11 @@ src/xpath/
 │   └── func_strings.cpp           # String functions (concat, substring, etc.)
 └── tests/                     # Test infrastructure
     ├── test_accessor.fluid            # Accessor function tests
-    ├── test_advanced.fluid            # Advanced XPath queries
+    ├── test_advanced.fluid            # Advanced XQuery queries
     ├── test_advanced_paths.fluid      # Advanced path expression tests
-    ├── test_axes.fluid                # XPath axes tests
+    ├── test_axes.fluid                # XQuery axes tests
     ├── test_constructors.fluid        # Node constructor tests
-    ├── test_core.fluid                # Core XPath functionality tests
+    ├── test_core.fluid                # Core XQuery functionality tests
     ├── test_datetime.fluid            # DateTime function tests
     ├── test_documents.fluid           # Document function tests
     ├── test_duration.fluid            # Duration type tests
@@ -105,7 +105,7 @@ src/xpath/
 
 ### Module Architecture Notes
 
-**Important:** Parser and AST structures are consolidated in `xpath.h` rather than split across separate header files. This design choice improves compilation speed and maintains tight integration between parsing and evaluation components.
+**Important:** Parser and AST structures are consolidated in `xquery.h` rather than split across separate header files. This design choice improves compilation speed and maintains tight integration between parsing and evaluation components.
 
 The module uses precompiled headers and unity builds for optimised compilation performance. Build configuration enables 23 registered Flute tests covering all aspects of XPath and XQuery functionality.
 
@@ -113,13 +113,13 @@ The module uses precompiled headers and unity builds for optimised compilation p
 
 - **unicode** module (PUBLIC) - For text encoding/decoding
 - **xml** module - For XML document structures and schema integration
-- **regex** module (dynamically loaded) - For pattern matching in XPath functions
+- **regex** module (dynamically loaded) - For pattern matching in XQuery functions
 
 ## XQuery Class
 
 The module provides an `XQuery` class for direct XQuery evaluation without requiring an XML document:
 
-**Include:** `<parasol/modules/xpath.h>`
+**Include:** `<parasol/modules/xquery.h>`
 
 **Key Methods:**
 - `Evaluate(Expression, Result)` - Compile and evaluate XQuery expression, returning typed result
@@ -133,23 +133,9 @@ This class is particularly useful for:
 
 ## Core Structures and Types
 
-### Compiled Query Result
-
-Represents a compiled XPath/XQuery expression result, including the root AST and prolog/module metadata.
-
-**Include:** `<parasol/modules/xpath.h>`
-
-Use `xp::Compile()` to obtain an opaque `XPathParseResult*`. Pass this directly to `xp::Evaluate()` and `xp::Query()`. The evaluator reads the AST (`expression`) and prolog/module cache from the parse result.
-
-**Key Properties:**
-- Thread-safe and reusable across multiple XML documents
-- Managed as a resource (freed with `FreeResource()`)
-- Contains optimised internal representation
-- Supports complex XPath 2.0 and XQuery expressions
-
 ### XPathValue Structure
 
-Represents the result of XPath expression evaluation, supporting multiple value types.
+Represents the result of XQuery expression evaluation, supporting multiple value types.
 
 **Include:** `<parasol/modules/xml.h>` (shared type)
 
@@ -171,11 +157,11 @@ struct XPathValue {
 - `Time` - Time value
 - `DateTime` - Date and time value
 
-### XPathNodeType Enumeration
+### XQueryNodeType Enumeration
 
-Describes the type of nodes in the XPath Abstract Syntax Tree.
+Describes the type of nodes in the XQuery Abstract Syntax Tree.
 
-**Include:** `<parasol/modules/xpath.h>`
+**Include:** `<parasol/modules/xquery.h>`
 
 Key node types include:
 - `LOCATION_PATH`, `STEP`, `NODE_TEST`, `PREDICATE`, `ROOT`
@@ -183,66 +169,6 @@ Key node types include:
 - `FLWOR_EXPRESSION`, `WHERE_CLAUSE`, `ORDER_CLAUSE`
 - `FUNCTION_CALL`, `LITERAL`, `VARIABLE_REFERENCE`
 - Constructor types: `DIRECT_ELEMENT_CONSTRUCTOR`, `COMPUTED_ELEMENT_CONSTRUCTOR`, etc.
-
-## Core Functionality
-
-### Expression Compilation
-
-XPath and XQuery expressions must be compiled before evaluation. Compilation validates syntax, builds an optimised AST, and prepares the expression for execution.
-
-**Key Function:**
-- `xp::Compile(objXML *XML, CSTRING Query, XPathParseResult **Result)`
-
-**Compilation Process:**
-1. Tokenisation - Break expression into tokens
-2. Parsing - Build Abstract Syntax Tree
-3. Validation - Check syntax and structure
-4. Optimisation - Prepare for efficient evaluation
-
-**Error Handling:**
-- Detailed error messages stored in XML object's `ErrorMsg` field
-- Returns `ERR::Syntax` on compilation failure
-- Validates XPath 2.0 and XQuery syntax
-
-### Expression Evaluation
-
-Compiled expressions can be evaluated against XML documents to produce typed results.
-
-**Key Function:**
-- `xp::Evaluate(objXML *XML, XPathParseResult *Query, XPathValue **Result)`
-
-**Evaluation Modes:**
-- **Value Mode**: Returns complete typed result (XPathValue)
-- **Node Iteration Mode**: Uses `xp::Query()` with callbacks for streaming
-
-**Return Types:**
-- Node sets (collections of XMLTag pointers)
-- Strings (concatenated text content)
-- Numbers (double precision)
-- Booleans (true/false)
-- Date/Time values
-
-### Node Iteration with Callbacks
-
-For processing large result sets or when only node matching is needed, use the Query function with callbacks.
-
-**Key Function:**
-- `xp::Query(objXML *XML, XPathParseResult *Query, FUNCTION *Callback)`
-
-**Callback Pattern:**
-```cpp
-// C++ callback for each matching node
-ERR callback(objXML *XML, int TagID, CSTRING Attrib) {
-   // Process node...
-   return ERR::Okay;
-}
-```
-
-**Behavior:**
-- Invokes callback for each matching node
-- Returns `ERR::Search` if no matches found
-- Returns `ERR::Okay` if at least one match processed
-- Can be called with NULL callback to find first match only
 
 ## XPath 2.0 Language Support
 
@@ -305,32 +231,32 @@ Complex predicate expressions with full boolean logic:
 Full support for XQuery FLWOR (For, Let, Where, Order by, Return) expressions:
 
 **For Clause:**
-```xpath
+```xquery
 for $book in //book return $book/title
 ```
 
 **Let Clause:**
-```xpath
+```xquery
 let $total := sum(//book/@price) return $total
 ```
 
 **Where Clause:**
-```xpath
+```xquery
 for $book in //book where $book/@price < 20 return $book/title
 ```
 
 **Order By Clause:**
-```xpath
+```xquery
 for $book in //book order by $book/@price return $book
 ```
 
 **Return Clause:**
-```xpath
+```xquery
 for $x in 1 to 10 return $x * $x
 ```
 
 **Combined Example:**
-```xpath
+```xquery
 for $book in //book
 let $discount := $book/@price * 0.1
 where $book/@category = 'fiction'
@@ -341,21 +267,21 @@ return $book/title
 ### Additional XQuery Features
 
 **Group By Clause:**
-```xpath
+```xquery
 for $book in //book
 group by $category := $book/@category
 return $category
 ```
 
 **Count Clause:**
-```xpath
+```xquery
 for $book in //book
 count $index
 return concat($index, ': ', $book/title)
 ```
 
 **Quantified Expressions:**
-```xpath
+```xquery
 some $book in //book satisfies $book/@price < 10
 every $book in //book satisfies $book/@isbn
 ```
@@ -365,22 +291,22 @@ every $book in //book satisfies $book/@isbn
 XQuery supports both direct and computed constructors for creating new XML nodes:
 
 **Direct Element Constructor:**
-```xpath
+```xquery
 <result>{//book/title}</result>
 ```
 
 **Computed Element Constructor:**
-```xpath
+```xquery
 element book { attribute isbn {'123'}, 'Title' }
 ```
 
 **Attribute Constructor:**
-```xpath
+```xquery
 attribute price { $book/@price * 0.9 }
 ```
 
 **Text, Comment, and PI Constructors:**
-```xpath
+```xquery
 text { 'Hello' }
 comment { 'This is a comment' }
 processing-instruction target { 'data' }
@@ -391,31 +317,31 @@ processing-instruction target { 'data' }
 XQuery provides comprehensive type system support for runtime type checking and conversion:
 
 **Cast Expression:**
-```xpath
+```xquery
 $value cast as xs:decimal
 "123" cast as xs:integer
 current-date() cast as xs:string
 ```
 
 **Castable Expression:**
-```xpath
+```xquery
 $value castable as xs:decimal  (: returns true/false :)
 "abc" castable as xs:integer   (: returns false :)
 ```
 
 **Treat As Expression:**
-```xpath
+```xquery
 $value treat as xs:string  (: raises error if not a string :)
 ```
 
 **Instance Of Expression:**
-```xpath
+```xquery
 $value instance of xs:decimal
 $sequence instance of element()*
 ```
 
 **Typeswitch Expression:**
-```xpath
+```xquery
 typeswitch($value)
    case xs:integer return $value * 2
    case xs:string return upper-case($value)
@@ -423,7 +349,7 @@ typeswitch($value)
 ```
 
 **To Range Operator:**
-```xpath
+```xquery
 1 to 10                    (: sequence 1, 2, 3, ..., 10 :)
 for $i in 1 to 5 return $i (: iterate over range :)
 ```
@@ -433,37 +359,37 @@ for $i in 1 to 5 return $i (: iterate over range :)
 XQuery supports modular programming through library module imports:
 
 **Module Declaration:**
-```xpath
+```xquery
 module namespace math = "http://example.com/math";
 declare function math:add($a, $b) { $a + $b };
 ```
 
 **Module Import:**
-```xpath
+```xquery
 import module namespace math = "http://example.com/math" at "math_utils.xq";
 math:add(1, 2)
 ```
 
 **Multiple Function Imports:**
-```xpath
+```xquery
 import module namespace str = "http://example.com/strings" at "string_utils.xq";
 import module namespace math = "http://example.com/math" at "math_utils.xq";
 str:uppercase(math:add(1, 2))
 ```
 
 **Module Composition:**
-```xpath
+```xquery
 (: composite.xq can import and re-export multiple modules :)
 import module namespace comp = "http://example.com/composite" at "composite.xq";
 ```
 
 ## Function Library
 
-The XPath module provides an extensive function library organised by category.
+The XQuery module provides an extensive function library organised by category.
 
 ### Node Functions
 
-**Include:** `xpath_functions.h` (internal)
+**Include:** `xquery_functions.h` (internal)
 
 - `position()` - Current node position in context
 - `last()` - Size of context node set
@@ -629,7 +555,7 @@ The XPath module provides an extensive function library organised by category.
 
 ## Variable Binding
 
-The XPath module supports variable binding for parameterised queries.
+The XQuery module supports variable binding for parameterised queries.
 
 **Setting Variables (via XML class):**
 ```cpp
@@ -645,13 +571,13 @@ xml.mtSetVariable('category', 'fiction')
 ```
 
 **Using Variables in Expressions:**
-```xpath
+```xquery
 //book[@price < $threshold and @category = $category]
 ```
 
 **FLWOR Variables:**
 Variables defined in `for` and `let` clauses are automatically bound:
-```xpath
+```xquery
 for $book in //book
 let $discount := $book/@price * 0.1
 return $discount
@@ -659,7 +585,7 @@ return $discount
 
 ## Schema-Aware Type System
 
-When an XML document has a loaded schema, the XPath module can leverage schema type information for type-aware operations.
+When an XML document has a loaded schema, the XQuery module can leverage schema type information for type-aware operations.
 
 **Schema Integration:**
 - Type-aware comparisons
@@ -672,25 +598,25 @@ When an XML document has a loaded schema, the XPath module can leverage schema t
 // Load schema into XML object
 xml->loadSchema("schema.xsd");
 
-// XPath can now use schema types
+// XQuery can use schema types
 xp::Compile(xml, "//book[@price cast as xs:decimal > 10.0]", &query);
 ```
 
 ## Namespace Support
 
-The XPath module is fully namespace-aware and integrates with the XML module's namespace system.
+The XQuery module is fully namespace-aware and integrates with the XML module's namespace system.
 
 **Namespace Prefixes:**
 ```cpp
 // Register namespace prefix in XML object
 xml->registerNamespace("bk", "http://example.com/books");
 
-// Use in XPath
+// Use in XQuery
 xp::Compile(xml, "//bk:book/bk:title", &query);
 ```
 
 **Default Namespace:**
-```xpath
+```xquery
 // Access elements in default namespace
 //*[local-name()='book']
 ```
@@ -705,7 +631,7 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 
 ### Memory Management
 
-- **Arena Allocation**: XPath evaluation uses arena-based memory allocation
+- **Arena Allocation**: XQuery evaluation uses arena-based memory allocation
 - **Node Set Efficiency**: Node sets store pointers, not copies
 - **String Operations**: Pre-calculated sizes prevent reallocations
 
@@ -726,15 +652,15 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 
 ## Testing Framework
 
-### XPath Integration Tests
+### XQuery Integration Tests
 
-XPath tests are located in the XPath module's test directory and exercise XPath functionality through the XML class interface:
+XQuery tests are located in the XQuery module's test directory and exercise XQuery functionality through the XML class interface:
 
-**XPath Integration Tests (`src/xpath/tests/`):**
-- `test_core.fluid` - Core XPath expressions and operators
+**XQuery Integration Tests (`src/xquery/tests/`):**
+- `test_core.fluid` - Core XQuery expressions and operators
 - `test_predicates.fluid` - Predicate evaluation (comprehensive)
-- `test_axes.fluid` - All 13 XPath axes
-- `test_advanced.fluid` - Complex XPath queries
+- `test_axes.fluid` - All 13 XQuery axes
+- `test_advanced.fluid` - Complex XQuery queries
 - `test_advanced_paths.fluid` - Advanced path expressions
 - `test_flwor.fluid` - FLWOR expressions
 - `test_flwor_clauses.fluid` - Individual FLWOR clauses
@@ -754,7 +680,7 @@ XPath tests are located in the XPath module's test directory and exercise XPath 
 - `test_type_expr.fluid` - Type expressions (cast, castable, treat-as, instance-of, typeswitch, to-range)
 - `test_sequence_cardinality.fluid` - Sequence cardinality regression tests
 
-**Test Modules (`src/xpath/tests/modules/`):**
+**Test Modules (`src/xquery/tests/modules/`):**
 The `modules/` subdirectory contains XQuery library modules used for testing module loading functionality:
 - `math_utils.xq` - Library module with math functions
 - `string_utils.xq` - Library module with string utilities
@@ -764,33 +690,33 @@ The `modules/` subdirectory contains XQuery library modules used for testing mod
 - `circular_a.xq`, `circular_b.xq` - Error case: circular module dependencies
 - `self_reference.xq` - Error case: module importing itself
 
-### Running XPath Tests
+### Running XQuery Tests
 
 **Individual Test:**
 ```bash
-cd src/xpath/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xpath/tests/test_core.fluid --gfx-driver=headless --log-warning
+cd src/xquery/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xquery/tests/test_core.fluid --gfx-driver=headless --log-warning
 ```
 
-**All XPath Tests via CMake:**
+**All XQuery Tests via CMake:**
 ```bash
-ctest --build-config [BuildType] --test-dir build/agents -R xpath
+ctest --build-config [BuildType] --test-dir build/agents -R xquery
 ```
 
 ### C++ Unit Testing for Internal Components
 
-The XPath module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Fluid interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
+The XQuery module includes a compiled-in unit testing framework for testing internal components that are not easily accessible through the Fluid interface. This is particularly useful for debugging low-level functionality like XQuery prolog integration, parser internals, and data structure integrity.
 
 Unit tests will only be compiled in the module if ENABLE_UNIT_TESTS is enabled in the module's CMakeLists.txt file.
 
 **Unit Test Infrastructure:**
 
-The module exposes a `xp::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
-- **Implementation**: `src/xpath/unit_tests.cpp` - Contains all unit test suites
-- **Test Runner**: `src/xpath/tests/test_unit_tests.fluid` - Calls the unit test function
+The module exposes a `xq::UnitTest()` function that can be called to run compiled-in unit tests. This function is defined in:
+- **Implementation**: `src/xquery/unit_tests.cpp` - Contains all unit test suites
+- **Test Runner**: `src/xquery/tests/test_unit_tests.fluid` - Calls the unit test function
 
 **Creating Unit Tests:**
 
-To add new C++ unit tests for internal XPath components:
+To add new C++ unit tests for internal XQuery components:
 
 1. Add test functions to `unit_tests.cpp`
 2. Register the test suite in `UnitTest()`
@@ -829,7 +755,7 @@ static void test_prolog_api() {
 **When to Use C++ Unit Tests vs Fluid Tests:**
 
 - **C++ Unit Tests**: Internal APIs, data structures, parser internals, performance-critical code, debugging integration issues
-- **Fluid Tests**: End-to-end functionality, user-facing features, XPath expression evaluation, integration with XML module
+- **Fluid Tests**: End-to-end functionality, user-facing features, XQuery expression evaluation, integration with XML module
 
 This dual testing approach ensures comprehensive coverage at both the internal implementation level and the user-facing API level.
 
@@ -840,7 +766,7 @@ This dual testing approach ensures comprehensive coverage at both the internal i
 ```cpp
 // C++ example
 #include <parasol/modules/xml.h>
-#include <parasol/modules/xpath.h>
+#include <parasol/modules/xquery.h>
 
 if (auto xml = objXML::create { fl::Path("document.xml") }; xml.ok()) {
    XPathParseResult *query;
@@ -919,19 +845,19 @@ FreeResource(query);
 
 ### Common Error Conditions
 
-- `ERR::Syntax` - XPath expression syntax error
-- `ERR::Search` - XPath query matched no nodes (Query function only)
+- `ERR::Syntax` - XQuery expression syntax error
+- `ERR::Search` - XQuery query matched no nodes (Query function only)
 - `ERR::NoData` - XML document is empty
 - `ERR::NullArgs` - Required parameter is NULL
-- `ERR::NoSupport` - Unsupported XPath feature
+- `ERR::NoSupport` - Unsupported XQuery feature
 - `ERR::AllocMemory` - Memory allocation failure
 
 ### Best Practices
 
-- Always check return codes from XPath functions
+- Always check return codes from XQuery functions
 - Use `xml->ErrorMsg` field for detailed error diagnostics after compilation failures
 - Enable appropriate logging levels (`--log-warning` or `--log-api`)
-- Validate XPath expressions during development
+- Validate XQuery expressions during development
 - Handle `ERR::Search` appropriately (it indicates no matches, not a failure)
 
 ## Development Guidelines
@@ -940,17 +866,17 @@ FreeResource(query);
 
 **Module Target:**
 ```bash
-cmake --build build/agents --config [BuildType] --target xpath --parallel
+cmake --build build/agents --config [BuildType] --target xquery --parallel
 ```
 
 **Dependency Note:**
-The XPath module depends on the XML module for document structures and the schema system. Always build XML before XPath in dependency order.
+The XQuery module depends on the XML module for document structures and the schema system. Always build XML before XQuery in dependency order.
 
 ## Integration Points
 
 ### With XML Module
 
-The XPath module has a tight integration with the XML module:
+The XQuery module has a tight integration with the XML module:
 - Operates on `XMLTag` structures from XML documents
 - Uses XML namespace resolution
 - Leverages XML schema type system
@@ -966,7 +892,7 @@ The XPath module has a tight integration with the XML module:
 
 ### Custom Function Registration
 
-The XPath function library is extensible through the `XPathFunctionLibrary` class, allowing custom function registration for specialised processing needs.
+The XQuery function library is extensible through the `XPathFunctionLibrary` class, allowing custom function registration for specialised processing needs.
 
 ### Expression Caching
 
@@ -979,9 +905,9 @@ Use the `xp::Query()` function with callbacks for streaming evaluation of large 
 ## Related Documentation
 
 - **XML Module**: See `src/xml/AGENTS.md` for XML document handling
-- **XPath 2.0 Specification**: W3C XPath 2.0 Recommendation
+- **XQuery 2.0 Specification**: W3C XQuery 2.0 Recommendation
 - **XQuery Specification**: W3C XQuery 1.0 Recommendation
-- **API Reference**: See `docs/xml/modules/xpath.xml` for complete API documentation
+- **API Reference**: See `docs/xml/modules/xquery.xml` for complete API documentation
 
-This guide provides the essential information needed for AI agents to work effectively with the Parasol XPath module, covering architecture, language support, function library, and integration patterns.
+This guide provides the essential information needed for AI agents to work effectively with the Parasol XQuery module, covering architecture, language support, function library, and integration patterns.
 

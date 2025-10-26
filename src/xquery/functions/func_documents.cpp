@@ -80,7 +80,7 @@ static bool resolve_resource_location(const XPathContext &Context, const std::st
 // Note: For the time being, cached XML documents are considered read-only (modifying the tags would upset cached
 // tag references).
 
-static extXML * load_document(CompiledXPath *State, const std::string &URI)
+static extXML * load_document(CompiledXQuery *State, const std::string &URI)
 {
    auto existing = State->XMLCache.find(URI);
    if (existing != State->XMLCache.end()) return existing->second;

@@ -274,13 +274,13 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
    if (attribute_axis) {
       if (!Attribute) return false;
 
-      if (NodeTest->type IS XPathNodeType::NODE_TYPE_TEST) {
+      if (NodeTest->type IS XQueryNodeType::NODE_TYPE_TEST) {
          return NodeTest->value IS "node";
       }
 
-      if (NodeTest->type IS XPathNodeType::WILDCARD) return true;
+      if (NodeTest->type IS XQueryNodeType::WILDCARD) return true;
 
-      if (NodeTest->type IS XPathNodeType::NAME_TEST) {
+      if (NodeTest->type IS XQueryNodeType::NAME_TEST) {
          std::string_view test_name = NodeTest->value;
          if (test_name.empty()) return false;
 
@@ -328,7 +328,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
       return false;
    }
 
-   if (NodeTest->type IS XPathNodeType::NODE_TYPE_TEST) {
+   if (NodeTest->type IS XQueryNodeType::NODE_TYPE_TEST) {
       if (NodeTest->value IS "node") return true;
       if (!Candidate) return false;
 
@@ -345,7 +345,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
       return false;
    }
 
-   if (NodeTest->type IS XPathNodeType::PROCESSING_INSTRUCTION_TEST) {
+   if (NodeTest->type IS XQueryNodeType::PROCESSING_INSTRUCTION_TEST) {
       if (!Candidate) return false;
       if ((Candidate->Flags & XTF::INSTRUCTION) IS XTF::NIL) return false;
 
@@ -363,9 +363,9 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
 
    if (!Candidate) return false;
 
-   if (NodeTest->type IS XPathNodeType::WILDCARD) return Candidate->isTag();
+   if (NodeTest->type IS XQueryNodeType::WILDCARD) return Candidate->isTag();
 
-   if (NodeTest->type IS XPathNodeType::NAME_TEST) {
+   if (NodeTest->type IS XQueryNodeType::NAME_TEST) {
       std::string_view test_name = NodeTest->value;
       if (test_name.empty()) return false;
 

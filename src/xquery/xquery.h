@@ -6,188 +6,43 @@
 #include <memory>
 #include <optional>
 #include <utility>
-#include <parasol/modules/xpath.h>
+#include <parasol/modules/xquery.h>
 
 //*********************************************************************************************************************
 
-struct XPathNode;
-
-class XPathErrorReporter {
-   public:
-   virtual ~XPathErrorReporter() = default;
-   virtual void record_error(std::string_view Message, bool Force = false) = 0;
-   virtual void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) = 0;
+enum class BinaryOperationKind {
+   AND,
+   OR,
+   UNION,
+   INTERSECT,
+   EXCEPT,
+   COMMA,
+   EQ,
+   NE,
+   EQ_WORD,
+   NE_WORD,
+   LT,
+   LE,
+   GT,
+   GE,
+   ADD,
+   SUB,
+   MUL,
+   DIV,
+   MOD,
+   RANGE,
+   UNKNOWN
 };
-
-// Represents a user-defined decimal format declared in the prolog.
-
-struct DecimalFormat {
-   std::string name;
-   std::string decimal_separator = ".";
-   std::string grouping_separator = ",";
-   std::string infinity = "INF";
-   std::string minus_sign = "-";
-   std::string nan = "NaN";
-   std::string percent = "%";
-   std::string per_mille = "‰";
-   std::string zero_digit = "0";
-   std::string digit = "#";
-   std::string pattern_separator = ";";
-};
-
-// Represents a user-defined XQuery function declared in the prolog.
-
-struct XQueryFunction {
-   std::string qname;
-   std::vector<std::string> parameter_names;
-   std::vector<std::string> parameter_types;
-   std::optional<std::string> return_type;
-   std::unique_ptr<XPathNode> body;
-   bool is_external = false;
-
-   [[nodiscard]] std::string signature() const;
-};
-
-// Represents a user-defined XQuery variable declared in the prolog.
-
-struct XQueryVariable {
-   std::string qname;
-   std::unique_ptr<XPathNode> initializer;
-   bool is_external = false;
-};
-
-// Represents an XQuery module import declaration.
-
-struct XQueryModuleImport {
-   std::string target_namespace;
-   std::vector<std::string> location_hints;
-};
-
-struct XPathNode;
-
-struct XPathAttributeValuePart {
-   bool is_expression = false;
-   std::string text;
-};
-
-struct XPathConstructorAttribute {
-   std::string prefix;
-   std::string name;
-   std::string namespace_uri;
-   bool is_namespace_declaration = false;
-   std::vector<XPathAttributeValuePart> value_parts;
-   std::vector<std::unique_ptr<XPathNode>> expression_parts;
-
-   void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr) {
-      if (expression_parts.size() <= index) expression_parts.resize(index + 1);
-      expression_parts[index] = std::move(expr);
-   }
-
-   [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const {
-      return index < expression_parts.size() ? expression_parts[index].get() : nullptr;
-   }
-};
-
-struct XPathConstructorInfo {
-   std::string prefix, name, namespace_uri;
-   bool is_empty_element = false;
-   bool is_direct = false;
-   std::vector<XPathConstructorAttribute> attributes;
-};
-
-struct XPathOrderSpecOptions {
-   bool is_descending = false;
-   bool has_empty_mode = false;
-   bool empty_is_greatest = false;
-   std::string collation_uri;
-   [[nodiscard]] bool has_collation() const { return !collation_uri.empty(); }
-};
-
-struct XPathGroupKeyInfo {
-   std::string variable_name;
-   [[nodiscard]] bool has_variable() const { return !variable_name.empty(); }
-};
-
-struct XPathTypeswitchCaseInfo {
-   std::string variable_name;
-   std::string sequence_type;
-   bool is_default = false;
-
-   [[nodiscard]] bool has_variable() const { return !variable_name.empty(); }
-   [[nodiscard]] bool has_sequence_type() const { return !sequence_type.empty(); }
-   [[nodiscard]] bool is_default_case() const { return is_default; }
-};
-
-struct XPathNode {
-   XPathNodeType type;
-   std::string value;
-   std::vector<std::unique_ptr<XPathNode>> children;
-   std::optional<XPathConstructorInfo> constructor_info;
-   std::vector<XPathAttributeValuePart> attribute_value_parts;
-   bool attribute_value_has_expressions = false;
-   std::unique_ptr<XPathNode> name_expression;
-   bool order_clause_is_stable = false;
-   std::optional<XPathOrderSpecOptions> order_spec_options;
-   std::optional<XPathGroupKeyInfo> group_key_info;
-   std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
-
-   XPathNode(XPathNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
-
-   inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
-   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
-   [[nodiscard]] inline size_t child_count() const { return children.size(); }
-   inline void set_constructor_info(XPathConstructorInfo info) { constructor_info = std::move(info); }
-   [[nodiscard]] inline bool has_constructor_info() const { return constructor_info.has_value(); }
-   inline void set_name_expression(std::unique_ptr<XPathNode> expr) { name_expression = std::move(expr); }
-   [[nodiscard]] inline XPathNode * get_name_expression() const { return name_expression.get(); }
-   [[nodiscard]] inline bool has_name_expression() const { return name_expression != nullptr; }
-   inline void set_group_key_info(XPathGroupKeyInfo Info) { group_key_info = std::move(Info); }
-   [[nodiscard]] inline bool has_group_key_info() const { return group_key_info.has_value(); }
-   [[nodiscard]] inline const XPathGroupKeyInfo * get_group_key_info() const { return group_key_info ? &(*group_key_info) : nullptr; }
-
-   inline void set_typeswitch_case_info(XPathTypeswitchCaseInfo Info) { typeswitch_case_info = std::move(Info); }
-
-   [[nodiscard]] inline bool has_typeswitch_case_info() const { return typeswitch_case_info.has_value(); }
-
-   [[nodiscard]] inline const XPathTypeswitchCaseInfo * get_typeswitch_case_info() const { return typeswitch_case_info ? &(*typeswitch_case_info) : nullptr; }
-
-   void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
-      attribute_value_has_expressions = false;
-      for (const auto &part : parts) {
-         if (part.is_expression) {
-            attribute_value_has_expressions = true;
-            break;
-         }
-      }
-      attribute_value_parts = std::move(parts);
-   }
-
-
-   inline void set_order_spec_options(XPathOrderSpecOptions Options) {
-      order_spec_options = std::move(Options);
-   }
-
-   [[nodiscard]] inline bool has_order_spec_options() const {
-      return order_spec_options.has_value();
-   }
-
-   [[nodiscard]] inline const XPathOrderSpecOptions * get_order_spec_options() const {
-      return order_spec_options ? &(*order_spec_options) : nullptr;
-   }
-};
-
-//********************************************************************************************************************
-// XPath Tokenization Infrastructure
 
 enum class XPathTokenType {
    // Path operators
-   SLASH,              // /
-   DOUBLE_SLASH,       // //
+   SLASH,             // /
+   DOUBLE_SLASH,      // //
    DOT,               // .
    DOUBLE_DOT,        // ..
 
    // Identifiers and literals
-   IDENTIFIER,         // element names, function names
+   IDENTIFIER,        // element names, function names
    STRING,            // quoted strings
    NUMBER,            // numeric literals
    WILDCARD,          // *
@@ -305,7 +160,211 @@ enum class XPathTokenType {
    UNKNOWN
 };
 
+// XPath Axis Types
+
+enum class AxisType {
+   CHILD,
+   DESCENDANT,
+   PARENT,
+   ANCESTOR,
+   FOLLOWING_SIBLING,
+   PRECEDING_SIBLING,
+   FOLLOWING,
+   PRECEDING,
+   ATTRIBUTE,
+   NAMESPACE,
+   SELF,
+   DESCENDANT_OR_SELF,
+   ANCESTOR_OR_SELF
+};
+
+enum class SequenceCardinality {
+   ExactlyOne,
+   ZeroOrOne,
+   OneOrMore,
+   ZeroOrMore
+};
+
+enum class SequenceItemKind {
+   Atomic,
+   Element,
+   Attribute,
+   Text,
+   Node,
+   Item,
+   EmptySequence
+};
+
 //********************************************************************************************************************
+
+struct XPathNode;
+
+class XPathErrorReporter {
+   public:
+   virtual ~XPathErrorReporter() = default;
+   virtual void record_error(std::string_view Message, bool Force = false) = 0;
+   virtual void record_error(std::string_view Message, const XPathNode *Node, bool Force = false) = 0;
+};
+
+// Represents a user-defined decimal format declared in the prolog.
+
+struct DecimalFormat {
+   std::string name;
+   std::string decimal_separator = ".";
+   std::string grouping_separator = ",";
+   std::string infinity = "INF";
+   std::string minus_sign = "-";
+   std::string nan = "NaN";
+   std::string percent = "%";
+   std::string per_mille = "‰";
+   std::string zero_digit = "0";
+   std::string digit = "#";
+   std::string pattern_separator = ";";
+};
+
+// Represents a user-defined XQuery function declared in the prolog.
+
+struct XQueryFunction {
+   std::string qname;
+   std::vector<std::string> parameter_names;
+   std::vector<std::string> parameter_types;
+   std::optional<std::string> return_type;
+   std::unique_ptr<XPathNode> body;
+   bool is_external = false;
+
+   [[nodiscard]] std::string signature() const;
+};
+
+// Represents a user-defined XQuery variable declared in the prolog.
+
+struct XQueryVariable {
+   std::string qname;
+   std::unique_ptr<XPathNode> initializer;
+   bool is_external = false;
+};
+
+// Represents an XQuery module import declaration.
+
+struct XQueryModuleImport {
+   std::string target_namespace;
+   std::vector<std::string> location_hints;
+};
+
+struct XPathNode;
+
+struct XPathAttributeValuePart {
+   bool is_expression = false;
+   std::string text;
+};
+
+struct XPathConstructorAttribute {
+   std::string prefix;
+   std::string name;
+   std::string namespace_uri;
+   bool is_namespace_declaration = false;
+   std::vector<XPathAttributeValuePart> value_parts;
+   std::vector<std::unique_ptr<XPathNode>> expression_parts;
+
+   void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr) {
+      if (expression_parts.size() <= index) expression_parts.resize(index + 1);
+      expression_parts[index] = std::move(expr);
+   }
+
+   [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const {
+      return index < expression_parts.size() ? expression_parts[index].get() : nullptr;
+   }
+};
+
+struct XPathConstructorInfo {
+   std::string prefix, name, namespace_uri;
+   bool is_empty_element = false;
+   bool is_direct = false;
+   std::vector<XPathConstructorAttribute> attributes;
+};
+
+struct XPathOrderSpecOptions {
+   bool is_descending = false;
+   bool has_empty_mode = false;
+   bool empty_is_greatest = false;
+   std::string collation_uri;
+   [[nodiscard]] bool has_collation() const { return !collation_uri.empty(); }
+};
+
+struct XPathGroupKeyInfo {
+   std::string variable_name;
+   [[nodiscard]] bool has_variable() const { return !variable_name.empty(); }
+};
+
+struct XPathTypeswitchCaseInfo {
+   std::string variable_name;
+   std::string sequence_type;
+   bool is_default = false;
+
+   [[nodiscard]] bool has_variable() const { return !variable_name.empty(); }
+   [[nodiscard]] bool has_sequence_type() const { return !sequence_type.empty(); }
+   [[nodiscard]] bool is_default_case() const { return is_default; }
+};
+
+struct XPathNode {
+   XQueryNodeType type;
+   std::string value;
+   std::vector<std::unique_ptr<XPathNode>> children;
+   std::optional<XPathConstructorInfo> constructor_info;
+   std::vector<XPathAttributeValuePart> attribute_value_parts;
+   bool attribute_value_has_expressions = false;
+   std::unique_ptr<XPathNode> name_expression;
+   bool order_clause_is_stable = false;
+   std::optional<XPathOrderSpecOptions> order_spec_options;
+   std::optional<XPathGroupKeyInfo> group_key_info;
+   std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
+
+   XPathNode(XQueryNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
+
+   inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
+   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
+   [[nodiscard]] inline size_t child_count() const { return children.size(); }
+   inline void set_constructor_info(XPathConstructorInfo info) { constructor_info = std::move(info); }
+   [[nodiscard]] inline bool has_constructor_info() const { return constructor_info.has_value(); }
+   inline void set_name_expression(std::unique_ptr<XPathNode> expr) { name_expression = std::move(expr); }
+   [[nodiscard]] inline XPathNode * get_name_expression() const { return name_expression.get(); }
+   [[nodiscard]] inline bool has_name_expression() const { return name_expression != nullptr; }
+   inline void set_group_key_info(XPathGroupKeyInfo Info) { group_key_info = std::move(Info); }
+   [[nodiscard]] inline bool has_group_key_info() const { return group_key_info.has_value(); }
+   [[nodiscard]] inline const XPathGroupKeyInfo * get_group_key_info() const { return group_key_info ? &(*group_key_info) : nullptr; }
+
+   inline void set_typeswitch_case_info(XPathTypeswitchCaseInfo Info) { typeswitch_case_info = std::move(Info); }
+
+   [[nodiscard]] inline bool has_typeswitch_case_info() const { return typeswitch_case_info.has_value(); }
+
+   [[nodiscard]] inline const XPathTypeswitchCaseInfo * get_typeswitch_case_info() const { return typeswitch_case_info ? &(*typeswitch_case_info) : nullptr; }
+
+   void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
+      attribute_value_has_expressions = false;
+      for (const auto &part : parts) {
+         if (part.is_expression) {
+            attribute_value_has_expressions = true;
+            break;
+         }
+      }
+      attribute_value_parts = std::move(parts);
+   }
+
+
+   inline void set_order_spec_options(XPathOrderSpecOptions Options) {
+      order_spec_options = std::move(Options);
+   }
+
+   [[nodiscard]] inline bool has_order_spec_options() const {
+      return order_spec_options.has_value();
+   }
+
+   [[nodiscard]] inline const XPathOrderSpecOptions * get_order_spec_options() const {
+      return order_spec_options ? &(*order_spec_options) : nullptr;
+   }
+};
+
+//********************************************************************************************************************
+// XPath Tokenization Infrastructure
 
 struct XPathToken {
    XPathTokenType type;
@@ -376,7 +435,7 @@ class XPathTokeniser {
 struct XQueryProlog;
 struct XQueryModuleCache;
 
-struct CompiledXPath {
+struct CompiledXQuery {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
@@ -384,13 +443,13 @@ struct CompiledXPath {
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
 
-   CompiledXPath() = default;
-   CompiledXPath(CompiledXPath &&) = default;
-   CompiledXPath &operator=(CompiledXPath &&) = default;
-   CompiledXPath(const CompiledXPath &) = delete;
-   CompiledXPath &operator=(const CompiledXPath &) = delete;
+   CompiledXQuery() = default;
+   CompiledXQuery(CompiledXQuery &&) = default;
+   CompiledXQuery &operator=(CompiledXQuery &&) = default;
+   CompiledXQuery(const CompiledXQuery &) = delete;
+   CompiledXQuery &operator=(const CompiledXQuery &) = delete;
 
-   ~CompiledXPath() {
+   ~CompiledXQuery() {
       for (auto &entry : XMLCache) {
          if (entry.second) FreeResource(entry.second);
       }
@@ -407,12 +466,12 @@ struct XQueryModuleCache {
    // Referenced as a UID from xp::Compile() because it's a weak reference.
    // Used by fetch_or_load() primarily to determine the origin path of the XML data.
    extXQuery *query = nullptr;
-   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<CompiledXPath>> modules;
+   mutable ankerl::unordered_dense::map<std::string, std::shared_ptr<CompiledXQuery>> modules;
    mutable std::unordered_set<std::string> loading_in_progress;
    std::string base_path;
 
-   CompiledXPath * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathEvaluator &) const;
-   const CompiledXPath * find_module(std::string_view uri) const;
+   CompiledXQuery * fetch_or_load(std::string_view, const struct XQueryProlog &, XPathEvaluator &) const;
+   const CompiledXQuery * find_module(std::string_view uri) const;
 };
 
 //********************************************************************************************************************
@@ -599,7 +658,7 @@ class XPathParser {
    public:
    XPathParser() : current_token(0) {}
 
-   CompiledXPath parse(const std::vector<XPathToken> &TokenList);
+   CompiledXQuery parse(const std::vector<XPathToken> &TokenList);
 
    // Error handling
 
@@ -619,7 +678,7 @@ public:
    FUNCTION Callback;
    std::string Statement;
    std::string ErrorMsg;
-   CompiledXPath ParseResult; // Result of parsing the query.
+   CompiledXQuery ParseResult; // Result of parsing the query.
    XPathVal Result; // Result of the last execution.
    std::string ResultString; // Cached string representation of the result.
    std::string Path; // Base path for resolving relative URIs.
@@ -825,30 +884,11 @@ class XPathArena {
 };
 
 //********************************************************************************************************************
-// XPath Axis Types
-
-enum class AxisType {
-   CHILD,
-   DESCENDANT,
-   PARENT,
-   ANCESTOR,
-   FOLLOWING_SIBLING,
-   PRECEDING_SIBLING,
-   FOLLOWING,
-   PRECEDING,
-   ATTRIBUTE,
-   NAMESPACE,
-   SELF,
-   DESCENDANT_OR_SELF,
-   ANCESTOR_OR_SELF
-};
-
-//********************************************************************************************************************
 // Axis Evaluation Engine
 
 class AxisEvaluator {
    private:
-   CompiledXPath *state;
+   CompiledXQuery *state;
    extXML *xml;
    XPathArena & arena;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
@@ -915,7 +955,7 @@ class AxisEvaluator {
    XMLTag * find_parent(XMLTag *ReferenceNode);
 
    public:
-   explicit AxisEvaluator(CompiledXPath *State, extXML *XML, XPathArena &Arena) 
+   explicit AxisEvaluator(CompiledXQuery *State, extXML *XML, XPathArena &Arena) 
       : state(State), xml(XML), arena(Arena) {}
 
    // Main evaluation method
@@ -937,10 +977,8 @@ class AxisEvaluator {
    size_t estimate_result_size(AxisType Axis, XMLTag *ContextNode);
 };
 
-struct CompiledXPath;
-
 struct XMLAttrib;
-class CompiledXPath;
+class CompiledXQuery;
 class XPathContext;
 class XPathEvaluator;
 
@@ -977,7 +1015,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    extXML * xml;
    const XPathNode * query_root = nullptr;
-   CompiledXPath * parse_context = nullptr;
+   CompiledXQuery * parse_context = nullptr;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
@@ -1091,7 +1129,7 @@ class XPathEvaluator : public XPathErrorReporter {
       XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:
-   XPathEvaluator(extXML *, const XPathNode *, CompiledXPath *);
+   XPathEvaluator(extXML *, const XPathNode *, CompiledXQuery *);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);
@@ -1124,29 +1162,7 @@ class XPathEvaluator : public XPathErrorReporter {
    bool has_cursor_state() const { return !cursor_stack.empty(); }
 };
 
-enum class BinaryOperationKind {
-   AND,
-   OR,
-   UNION,
-   INTERSECT,
-   EXCEPT,
-   COMMA,
-   EQ,
-   NE,
-   EQ_WORD,
-   NE_WORD,
-   LT,
-   LE,
-   GT,
-   GE,
-   ADD,
-   SUB,
-   MUL,
-   DIV,
-   MOD,
-   RANGE,
-   UNKNOWN
-};
+//********************************************************************************************************************
 
 struct SequenceEntry {
    XMLTag * node = nullptr;
@@ -1167,23 +1183,6 @@ struct QuantifiedBindingDefinition {
 struct CastTargetInfo {
    std::string type_name;
    bool allows_empty = false;
-};
-
-enum class SequenceCardinality {
-   ExactlyOne,
-   ZeroOrOne,
-   OneOrMore,
-   ZeroOrMore
-};
-
-enum class SequenceItemKind {
-   Atomic,
-   Element,
-   Attribute,
-   Text,
-   Node,
-   Item,
-   EmptySequence
 };
 
 struct SequenceTypeInfo {

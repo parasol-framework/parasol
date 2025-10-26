@@ -23,7 +23,7 @@
 
 #include <parasol/main.h>
 #include <parasol/modules/xml.h>
-#include <parasol/modules/xpath.h>
+#include <parasol/modules/xquery.h>
 
 using NODES = pf::vector<XMLTag *>;
 

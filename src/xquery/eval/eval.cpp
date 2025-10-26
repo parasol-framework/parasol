@@ -17,14 +17,14 @@
 // independently of XML parsing.
 
 #include "eval_detail.h"
-#include "../api/xpath_functions.h"
+#include "../api/xquery_functions.h"
 #include "../../xml/schema/schema_types.h"
 
 //********************************************************************************************************************
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
-XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, CompiledXPath *ParseContext)
+XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, CompiledXQuery *ParseContext)
    : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(ParseContext, XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
@@ -51,7 +51,7 @@ void XPathEvaluator::initialise_query_context(const XPathNode *Root)
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
 
-   // Prefer explicit parse context (from CompiledXPath) if provided
+   // Prefer explicit parse context (from CompiledXQuery) if provided
 
    if (parse_context) {
       prolog = parse_context->prolog;
@@ -137,7 +137,7 @@ void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
 
-   pf::Log("XPath").msg("%.*s", (int)Message.size(), Message.data());
+   pf::Log("XPath").warning("%.*s", (int)Message.size(), Message.data());
 
    if (xml) {
       if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
@@ -245,7 +245,7 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
    initialise_query_context(&XPath);
 
    const XPathNode *node = &XPath;
-   if (node->type IS XPathNodeType::EXPRESSION) {
+   if (node->type IS XQueryNodeType::EXPRESSION) {
       if (node->child_count() > 0) node = node->get_child(0);
       else node = nullptr;
    }
