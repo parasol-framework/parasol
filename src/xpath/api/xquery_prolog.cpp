@@ -10,6 +10,10 @@
 // dependency and namespace checks. Prolog lookups (functions, variables, prefixes) are optimised via
 // canonical keys such as the qname/arity signature.
 
+#include <algorithm>
+#include <ranges>
+#include <string_view>
+
 #include "xpath_errors.h"
 #include "../functions/accessor_support.h"
 #include "../../xml/uri_utils.h"
@@ -66,6 +70,19 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
 
    auto base_dir = xpath::accessor::resolve_document_base_directory(Eval.xml);
 
+   auto is_windows_drive_path = [](std::string_view value) -> bool {
+      if (value.size() < 3U) return false;
+      char letter = value[0];
+      bool letter_is_alpha = ((letter >= 'A') and (letter <= 'Z')) or ((letter >= 'a') and (letter <= 'z'));
+      if (not letter_is_alpha) return false;
+      if (value[1] IS ':') {
+         char slash = value[2];
+         constexpr char backslash = (char)92;
+         return (slash IS '/') or (slash IS backslash);
+      }
+      return false;
+   };
+
    auto resolve_hint_to_path = [&](const std::string &hint) -> std::string {
       std::string normalised = normalise_cache_key(hint);
       if (normalised.empty()) return std::string();
@@ -75,9 +92,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
             return normalise_cache_key(strip_file_scheme(normalised));
          }
          // Treat Windows-style drive paths (e.g. "E:/...") as filesystem paths
-         if ((normalised.size() >= 3) and (((normalised[0] >= 'A') and (normalised[0] <= 'Z')) or
-             ((normalised[0] >= 'a') and (normalised[0] <= 'z'))) and (normalised[1] IS ':') and
-             ((normalised[2] IS '/') or (normalised[2] IS '\\'))) {
+         if (is_windows_drive_path(normalised)) {
             return normalise_cache_key(normalised);
          }
          return std::string();
@@ -89,9 +104,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
             return normalise_cache_key(strip_file_scheme(resolved));
          }
          // Accept absolute Windows drive paths resolved from a non-URI base
-         if ((resolved.size() >= 3) and (((resolved[0] >= 'A') and (resolved[0] <= 'Z')) or
-             ((resolved[0] >= 'a') and (resolved[0] <= 'z'))) and (resolved[1] IS ':') and
-             ((resolved[2] IS '/') or (resolved[2] IS '\\'))) {
+         if (is_windows_drive_path(resolved)) {
             return normalise_cache_key(resolved);
          }
          if (not xml::uri::is_absolute_uri(resolved)) return normalise_cache_key(resolved);
@@ -142,15 +155,13 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
          std::string candidate = resolve_hint_to_path(hint);
          if (candidate.empty()) continue;
 
-         bool duplicate = false;
-         for (const auto &existing_path : location_candidates) {
-            if (existing_path IS candidate) {
-               duplicate = true;
-               break;
-            }
+         if (std::ranges::any_of(location_candidates, [&](const std::string &existing_path) {
+            return existing_path IS candidate;
+         })) {
+            continue;
          }
 
-         if (not duplicate) location_candidates.push_back(candidate);
+         location_candidates.push_back(std::move(candidate));
       }
    }
 
