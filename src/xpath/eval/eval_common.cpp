@@ -196,7 +196,7 @@ int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightV
 int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XPathVal &RightValue,
    bool RightEmpty, const XPathOrderComparatorOptions &Options)
 {
-   const bool empties_greatest = Options.has_empty_mode and Options.empty_is_greatest;
+   const bool empties_greatest = Options.has_empty_mode ? Options.empty_is_greatest : false;
 
    if (LeftEmpty or RightEmpty) {
       if (LeftEmpty and RightEmpty) return 0;
