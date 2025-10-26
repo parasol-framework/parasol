@@ -98,7 +98,7 @@ struct ParseState {
 };
 
 using TAGS = objXML::TAGS;
-using CURSOR = objXML::CURSOR;
+using CURSOR = pf::vector<XMLTag>::iterator;
 
 //********************************************************************************************************************
 // Generic lookup templates with concepts
