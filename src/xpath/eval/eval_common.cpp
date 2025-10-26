@@ -16,6 +16,7 @@
 
 #include "eval_detail.h"
 #include "../../xml/schema/schema_types.h"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -32,11 +33,9 @@ bool is_space_character(char Ch) noexcept
 
 std::string_view trim_view(std::string_view Text)
 {
-   size_t start = 0;
-   while ((start < Text.size()) and is_space_character(Text[start])) start++;
-   size_t end = Text.size();
-   while ((end > start) and is_space_character(Text[end - 1])) end--;
-   return Text.substr(start, end - start);
+   while (!Text.empty() and is_space_character(Text.front())) Text.remove_prefix(1);
+   while (!Text.empty() and is_space_character(Text.back())) Text.remove_suffix(1);
+   return Text;
 }
 
 //********************************************************************************************************************
@@ -48,8 +47,7 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> schema_descriptor_for_value(c
    if (Value.schema_type_info) return Value.schema_type_info;
 
    auto &registry = xml::schema::registry();
-   auto type = Value.get_schema_type();
-   return registry.find_descriptor(type);
+   return registry.find_descriptor(Value.get_schema_type());
 }
 
 //********************************************************************************************************************
@@ -61,11 +59,10 @@ bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right)
    if ((Left.Type IS XPVT::NodeSet) or (Right.Type IS XPVT::NodeSet)) return false;
    if ((Left.Type IS XPVT::Boolean) or (Right.Type IS XPVT::Boolean)) return true;
 
-   auto left_descriptor = schema_descriptor_for_value(Left);
-   auto right_descriptor = schema_descriptor_for_value(Right);
-   if (!left_descriptor or !right_descriptor) return false;
-
-   return left_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean) and
+   const auto left_descriptor = schema_descriptor_for_value(Left);
+   const auto right_descriptor = schema_descriptor_for_value(Right);
+   return left_descriptor and right_descriptor and
+          left_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean) and
           right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathBoolean);
 }
 
@@ -75,11 +72,10 @@ bool should_compare_as_boolean(const XPathVal &Left, const XPathVal &Right)
 
 bool should_compare_as_numeric(const XPathVal &Left, const XPathVal &Right)
 {
-   auto left_descriptor = schema_descriptor_for_value(Left);
-   auto right_descriptor = schema_descriptor_for_value(Right);
-   if (!left_descriptor or !right_descriptor) return false;
-
-   return left_descriptor->can_coerce_to(xml::schema::SchemaType::XPathNumber) and
+   const auto left_descriptor = schema_descriptor_for_value(Left);
+   const auto right_descriptor = schema_descriptor_for_value(Right);
+   return left_descriptor and right_descriptor and
+          left_descriptor->can_coerce_to(xml::schema::SchemaType::XPathNumber) and
           right_descriptor->can_coerce_to(xml::schema::SchemaType::XPathNumber);
 }
 
@@ -95,7 +91,7 @@ bool numeric_equal(double Left, double Right)
 
    const double abs_left = std::fabs(Left);
    const double abs_right = std::fabs(Right);
-   const double larger = (abs_left > abs_right) ? abs_left : abs_right;
+   const double larger = std::max(abs_left, abs_right);
 
    if (larger <= 1.0) {
       return std::fabs(Left - Right) <= std::numeric_limits<double>::epsilon() * 16;
@@ -200,17 +196,14 @@ int xpath_compare_order_atomic(const XPathVal &LeftValue, const XPathVal &RightV
 int xpath_compare_order_keys(const XPathVal &LeftValue, bool LeftEmpty, const XPathVal &RightValue,
    bool RightEmpty, const XPathOrderComparatorOptions &Options)
 {
-   bool empties_greatest = false;
-   if (Options.has_empty_mode) empties_greatest = Options.empty_is_greatest;
+   const bool empties_greatest = Options.has_empty_mode ? Options.empty_is_greatest : false;
 
    if (LeftEmpty or RightEmpty) {
       if (LeftEmpty and RightEmpty) return 0;
-      if (LeftEmpty) return empties_greatest ? 1 : -1;
-      return empties_greatest ? -1 : 1;
+      return LeftEmpty ? (empties_greatest ? 1 : -1) : (empties_greatest ? -1 : 1);
    }
 
-   std::string collation;
-   if (Options.has_collation) collation = Options.collation_uri;
+   const std::string collation = Options.has_collation ? Options.collation_uri : std::string();
 
    int comparison = xpath_compare_order_atomic(LeftValue, RightValue, collation);
    if (Options.descending) comparison = -comparison;
