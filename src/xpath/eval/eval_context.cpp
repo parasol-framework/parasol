@@ -1,4 +1,3 @@
-//********************************************************************************************************************
 // XPath Evaluator Context Management
 //
 // This translation unit manages the XPath evaluation context stack and state for the evaluator.  The context
@@ -58,6 +57,102 @@ class ContextGuard {
 } // namespace
 
 //********************************************************************************************************************
+// Extracts STEP nodes; Detects leading ROOT and whether it was a descendant (//); Injects a synthetic 
+// descendant-or-self::node() step when needed.
+// 
+// Ownership for injected steps is tracked in OwnedSteps so that the raw pointers placed into Steps remain valid for 
+// the call site lifetime.
+
+static void normalise_location_path(const XPathNode *PathNode, std::vector<const XPathNode *> &Steps,
+   std::vector<std::unique_ptr<XPathNode>> &OwnedSteps, bool &HasRoot, bool &RootDescendant)
+{
+   Steps.clear();
+   OwnedSteps.clear();
+   HasRoot = false;
+   RootDescendant = false;
+
+   if (not PathNode) return;
+
+   for (size_t i = 0; i < PathNode->child_count(); ++i) {
+      auto child = PathNode->get_child(i);
+      if (not child) continue;
+
+      if ((i IS 0) and (child->type IS XPathNodeType::ROOT)) {
+         HasRoot = true;
+         RootDescendant = child->value IS "//";
+         continue;
+      }
+
+      if (child->type IS XPathNodeType::STEP) Steps.push_back(child);
+   }
+
+   if (RootDescendant) {
+      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
+      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
+      Steps.insert(Steps.begin(), descendant_step.get());
+      OwnedSteps.push_back(std::move(descendant_step));
+   }
+}
+
+//********************************************************************************************************************
+// Builds the initial context node set for a path evaluation. For absolute paths this is NULL; for relative paths it 
+// is the current context node (or NULL if the current context is undefined).
+
+static NODES build_initial_context(bool HasRoot, const XPathContext &ctx)
+{
+   NODES nodes;
+   if (HasRoot) {
+      nodes.push_back(nullptr);
+   }
+   else {
+      if (ctx.context_node) nodes.push_back(ctx.context_node);
+      else nodes.push_back(nullptr);
+   }
+   return nodes;
+}
+
+//********************************************************************************************************************
+// Parsed view of a STEP node.
+
+struct ParsedStep {
+   const XPathNode *axis_node = nullptr;
+   const XPathNode *node_test = nullptr;
+   std::vector<const XPathNode *> predicate_nodes;
+};
+
+static ParsedStep parse_step_node(const XPathNode *StepNode)
+{
+   ParsedStep out;
+   if ((not StepNode) or (StepNode->type != XPathNodeType::STEP)) return out;
+
+   out.predicate_nodes.reserve(StepNode->child_count());
+
+   for (size_t i = 0; i < StepNode->child_count(); ++i) {
+      auto child = StepNode->get_child(i);
+      if (not child) continue;
+
+      if (child->type IS XPathNodeType::AXIS_SPECIFIER) out.axis_node = child;
+      else if (child->type IS XPathNodeType::PREDICATE) out.predicate_nodes.push_back(child);
+      else if ((not out.node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
+                                     (child->type IS XPathNodeType::WILDCARD) or
+                                     (child->type IS XPathNodeType::NODE_TYPE_TEST))) {
+         out.node_test = child;
+      }
+   }
+
+   return out;
+}
+
+static std::vector<ParsedStep> parse_steps_vector(const std::vector<const XPathNode *> &Steps)
+{
+   std::vector<ParsedStep> parsed;
+   parsed.reserve(Steps.size());
+   for (auto *step : Steps) parsed.push_back(parse_step_node(step));
+   return parsed;
+}
+
+//********************************************************************************************************************
 // Save the current context and establish a new context with the provided node, position, size, and optional attribute.
 
 void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, const XMLAttrib *Attribute)
@@ -69,7 +164,7 @@ void XPathEvaluator::push_context(XMLTag *Node, size_t Position, size_t Size, co
    context.position = Position;
    context.size = Size;
    // Retain existing contextual XML, otherwise inherit from evaluator
-   if (!context.xml) context.xml = xml;
+   if (not context.xml) context.xml = xml;
 }
 
 //********************************************************************************************************************
@@ -95,7 +190,7 @@ void XPathEvaluator::pop_context()
 
 ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if (!Node) return ERR::Failed;
+   if (not Node) return ERR::Failed;
 
    switch (Node->type) {
       case XPathNodeType::LOCATION_PATH:
@@ -143,46 +238,18 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 {
    pf::Log log(__FUNCTION__);
 
-   if ((!PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return log.warning(ERR::Failed);
+   if ((not PathNode) or (PathNode->type != XPathNodeType::LOCATION_PATH)) return log.warning(ERR::Failed);
 
    std::vector<const XPathNode *> steps;
-   std::vector<std::unique_ptr<XPathNode>> synthetic_steps;
-
+   std::vector<std::unique_ptr<XPathNode>> owned_steps;
    bool has_root = false;
    bool root_descendant = false;
 
-   for (size_t i = 0; i < PathNode->child_count(); ++i) {
-      auto child = PathNode->get_child(i);
-      if (!child) continue;
-
-      if ((i IS 0) and (child->type IS XPathNodeType::ROOT)) {
-         has_root = true;
-         root_descendant = child->value IS "//";
-         continue;
-      }
-
-      if (child->type IS XPathNodeType::STEP) steps.push_back(child);
-   }
-
-   if (root_descendant) {
-      auto descendant_step = std::make_unique<XPathNode>(XPathNodeType::STEP);
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::AXIS_SPECIFIER, "descendant-or-self"));
-      descendant_step->add_child(std::make_unique<XPathNode>(XPathNodeType::NODE_TYPE_TEST, "node"));
-      steps.insert(steps.begin(), descendant_step.get());
-      synthetic_steps.push_back(std::move(descendant_step));
-   }
+   normalise_location_path(PathNode, steps, owned_steps, has_root, root_descendant);
 
    if (steps.empty()) return ERR::Search;
 
-   NODES initial_context;
-
-   if (has_root) {
-      initial_context.push_back(nullptr);
-   }
-   else {
-      if (context.context_node) initial_context.push_back(context.context_node);
-      else initial_context.push_back(nullptr);
-   }
+   auto initial_context = build_initial_context(has_root, context);
 
    bool matched = false;
    auto result = evaluate_step_sequence(initial_context, steps, 0, CurrentPrefix, matched);
@@ -199,7 +266,7 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
 
 ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix)
 {
-   if ((!Node) or (Node->type != XPathNodeType::UNION)) return ERR::Failed;
+   if ((not Node) or (Node->type != XPathNodeType::UNION)) return ERR::Failed;
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
@@ -214,12 +281,12 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
    for (size_t index = 0; index < Node->child_count(); ++index) {
       auto branch = Node->get_child(index);
-      if (!branch) continue;
+      if (not branch) continue;
 
       auto branch_signature = build_ast_signature(branch);
-      if (!branch_signature.empty()) {
+      if (not branch_signature.empty()) {
          auto insert_result = evaluated_branches.insert(branch_signature);
-         if (!insert_result.second) continue;
+         if (not insert_result.second) continue;
       }
 
       context = saved_context;
@@ -253,14 +320,12 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
 {
    pf::Log log(__FUNCTION__);
 
-   if (!StepNode) return log.warning(ERR::NullArgs);
+   if (not StepNode) return log.warning(ERR::NullArgs);
 
    std::vector<const XPathNode *> steps;
    steps.push_back(StepNode);
 
-   NODES context_nodes;
-   if (context.context_node) context_nodes.push_back(context.context_node);
-   else context_nodes.push_back(nullptr);
+   auto context_nodes = build_initial_context(false, context);
 
    bool matched = false;
    auto result = evaluate_step_sequence(context_nodes, steps, 0, CurrentPrefix, matched);
@@ -270,6 +335,75 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
       return matched ? ERR::Okay : ERR::Search; // At least one match == Okay, otherwise Search
    }
    else return result;
+}
+
+//********************************************************************************************************************
+// Advance one step for the step-sequencing evaluator by expanding axis candidates, applying predicates and either 
+// invoking callbacks (for last steps) or preparing the next context for subsequent steps.
+
+static ERR advance_step_context(XPathEvaluator &Eval, const std::vector<XPathEvaluator::AxisMatch> &CurrentContext, 
+   AxisType Axis, const XPathNode *NodeTest, const std::vector<const XPathNode *> &PredicateNodes,
+   bool IsLastStep, uint32_t CurrentPrefix, bool &Matched, std::vector<XPathEvaluator::AxisMatch> &NextContext,
+   std::vector<XPathEvaluator::AxisMatch> &AxisCandidates, std::vector<XPathEvaluator::AxisMatch> &PredicateBuffer,
+   bool ShouldTerminate)
+{
+   ShouldTerminate = false;
+   NextContext.clear();
+
+   for (auto &context_entry : CurrentContext) {
+      Eval.expand_axis_candidates(context_entry, Axis, NodeTest, CurrentPrefix, AxisCandidates);
+      if (AxisCandidates.empty()) continue;
+
+      auto predicate_error = Eval.apply_predicates_to_candidates(PredicateNodes, CurrentPrefix, AxisCandidates, PredicateBuffer);
+      if (predicate_error != ERR::Okay) return predicate_error;
+      if (AxisCandidates.empty()) continue;
+
+      auto step_error = Eval.process_step_matches(AxisCandidates, Axis, IsLastStep, Matched, NextContext, ShouldTerminate);
+      if (step_error != ERR::Okay) return step_error;
+      if (ShouldTerminate) return ERR::Okay;
+   }
+
+   return ERR::Okay;
+}
+
+//********************************************************************************************************************
+// Filters matches for collect_step_results (no callbacks) with special-case handling for foreign-document child-axis 
+// roots identical to the original implementation.
+
+static ERR filter_step_matches_for_collect(XPathEvaluator &Eval, const std::vector<XPathEvaluator::AxisMatch> &ContextNodes,
+   AxisType Axis, const XPathNode *NodeTest, const std::vector<const XPathNode *> &PredicateNodes, uint32_t CurrentPrefix,
+   std::vector<XPathEvaluator::AxisMatch> &Out, std::vector<XPathEvaluator::AxisMatch> &AxisBuffer,
+   std::vector<XPathEvaluator::AxisMatch> &PredicateBuffer, bool Unsupported)
+{
+   for (auto &context_entry : ContextNodes) {
+      Eval.expand_axis_candidates(context_entry, Axis, NodeTest, CurrentPrefix, AxisBuffer);
+
+      // Foreign-document child-axis fallback: include the context node itself if it is a root of a foreign 
+      // document and matches the node test.
+
+      if (AxisBuffer.empty()) {
+         if ((Axis IS AxisType::CHILD) and context_entry.node and (context_entry.node->ParentID IS 0) and
+             Eval.is_foreign_document_node(context_entry.node)) {
+            if (Eval.match_node_test(NodeTest, Axis, context_entry.node, context_entry.attribute, CurrentPrefix)) {
+               AxisBuffer.push_back(context_entry);
+            }
+         }
+      }
+
+      if (AxisBuffer.empty()) continue;
+
+      auto predicate_error = Eval.apply_predicates_to_candidates(PredicateNodes, CurrentPrefix, AxisBuffer, PredicateBuffer);
+      if (predicate_error != ERR::Okay) {
+         Unsupported = true;
+         return ERR::Failed;
+      }
+      if (AxisBuffer.empty()) continue;
+
+      // Append to the output in document order
+      Out.insert(Out.end(), AxisBuffer.begin(), AxisBuffer.end());
+   }
+
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -283,7 +417,7 @@ void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisT
    auto *context_node = ContextEntry.node;
    const XMLAttrib *context_attribute = ContextEntry.attribute;
 
-   if ((!context_attribute) and context_node and context.attribute_node and (context_node IS context.context_node)) {
+   if ((not context_attribute) and context_node and context.attribute_node and (context_node IS context.context_node)) {
       context_attribute = context.attribute_node;
    }
 
@@ -293,7 +427,7 @@ void XPathEvaluator::expand_axis_candidates(const AxisMatch &ContextEntry, AxisT
    }
 
    for (auto &match : axis_matches) {
-      if (!match_node_test(NodeTest, Axis, match.node, match.attribute, CurrentPrefix)) continue;
+      if (not match_node_test(NodeTest, Axis, match.node, match.attribute, CurrentPrefix)) continue;
       FilteredMatches.push_back(match);
    }
 }
@@ -405,7 +539,7 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
          next_match.node = candidate;
          next_match.attribute = match.attribute;
 
-         if (!next_match.node or !next_match.attribute) continue;
+         if (not next_match.node or !next_match.attribute) continue;
 
          if (IsLastStep) {
             ShouldTerminate = false;
@@ -423,7 +557,7 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
       }
 
       if (IsLastStep) {
-         if (!candidate) continue;
+         if (not candidate) continue;
 
          ShouldTerminate = false;
          auto callback_error = invoke_callback(candidate, nullptr, Matched, ShouldTerminate);
@@ -435,7 +569,7 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
          continue;
       }
 
-      if (!candidate) continue;
+      if (not candidate) continue;
 
       NextContext.push_back({ candidate, nullptr });
    }
@@ -450,6 +584,8 @@ ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std:
    size_t StepIndex, uint32_t CurrentPrefix, bool &Matched)
 {
    if (StepIndex >= Steps.size()) return Matched ? ERR::Okay : ERR::Search;
+
+   auto parsed_steps = parse_steps_vector(Steps);
 
    std::vector<AxisMatch> current_context;
    current_context.reserve(ContextNodes.size());
@@ -472,43 +608,18 @@ ERR XPathEvaluator::evaluate_step_sequence(const NODES &ContextNodes, const std:
       if (current_context.empty()) break;
 
       auto step_node = Steps[step_index];
-      if ((!step_node) or (step_node->type != XPathNodeType::STEP)) return ERR::Failed;
-
-      const XPathNode *axis_node = nullptr;
-      const XPathNode *node_test = nullptr;
-      std::vector<const XPathNode *> predicate_nodes;
-      predicate_nodes.reserve(step_node->child_count());
-
-      for (size_t i = 0; i < step_node->child_count(); ++i) {
-         auto child = step_node->get_child(i);
-         if (!child) continue;
-
-         if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-         else if (child->type IS XPathNodeType::PREDICATE) predicate_nodes.push_back(child);
-         else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or (child->type IS XPathNodeType::WILDCARD) or (child->type IS XPathNodeType::NODE_TYPE_TEST))) {
-            node_test = child;
-         }
-      }
-
+      if ((not step_node) or (step_node->type != XPathNodeType::STEP)) return ERR::Failed;
+      auto &parsed = parsed_steps[step_index];
       AxisType axis = AxisType::CHILD;
-      if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
+      if (parsed.axis_node) axis = AxisEvaluator::parse_axis_name(parsed.axis_node->value);
 
       bool is_last_step = (step_index + 1 >= Steps.size());
-      next_context.clear();
 
-      for (auto &context_entry : current_context) {
-         expand_axis_candidates(context_entry, axis, node_test, CurrentPrefix, axis_candidates);
-         if (axis_candidates.empty()) continue;
-
-         auto predicate_error = apply_predicates_to_candidates(predicate_nodes, CurrentPrefix, axis_candidates, predicate_buffer);
-         if (predicate_error != ERR::Okay) return predicate_error;
-         if (axis_candidates.empty()) continue;
-
-         bool should_terminate = false;
-         auto step_error = process_step_matches(axis_candidates, axis, is_last_step, Matched, next_context, should_terminate);
-         if (step_error != ERR::Okay) return step_error;
-         if (should_terminate) return ERR::Okay;
-      }
+      bool should_terminate = false;
+      auto step_error = advance_step_context(*this, current_context, axis, parsed.node_test, parsed.predicate_nodes,
+         is_last_step, CurrentPrefix, Matched, next_context, axis_candidates, predicate_buffer, should_terminate);
+      if (step_error != ERR::Okay) return step_error;
+      if (should_terminate) return ERR::Okay;
 
       current_context.swap(next_context);
    }
@@ -551,11 +662,11 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicat
    (void)CurrentPrefix;
 
    auto *candidate = context.context_node;
-   if (!candidate) return PredicateResult::NO_MATCH;
-   if ((!Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
+   if (not candidate) return PredicateResult::NO_MATCH;
+   if ((not Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
 
    const XPathNode *name_node = Expression->get_child(0);
-   if (!name_node) return PredicateResult::UNSUPPORTED;
+   if (not name_node) return PredicateResult::UNSUPPORTED;
 
    const std::string &attribute_name = name_node->value;
 
@@ -577,12 +688,12 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_exists_predicat
 XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
    auto *candidate = context.context_node;
-   if (!candidate) return PredicateResult::NO_MATCH;
-   if ((!Expression) or (Expression->child_count() < 2)) return PredicateResult::UNSUPPORTED;
+   if (not candidate) return PredicateResult::NO_MATCH;
+   if ((not Expression) or (Expression->child_count() < 2)) return PredicateResult::UNSUPPORTED;
 
    const XPathNode *name_node = Expression->get_child(0);
    const XPathNode *value_node = Expression->get_child(1);
-   if ((!name_node) or (!value_node)) return PredicateResult::UNSUPPORTED;
+   if ((not name_node) or (not value_node)) return PredicateResult::UNSUPPORTED;
 
    const std::string &attribute_name = name_node->value;
    std::string attribute_value;
@@ -613,7 +724,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
       else if (wildcard_name) name_matches = pf::wildcmp(attribute_name, attrib.Name);
       else name_matches = pf::iequals(attrib.Name, attribute_name);
 
-      if (!name_matches) continue;
+      if (not name_matches) continue;
 
       bool value_matches;
       if (wildcard_value) value_matches = pf::wildcmp(attribute_value, attrib.Value);
@@ -631,11 +742,11 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_attribute_equals_predicat
 XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(const XPathNode *Expression, uint32_t CurrentPrefix)
 {
    auto *candidate = context.context_node;
-   if (!candidate) return PredicateResult::NO_MATCH;
-   if ((!Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
+   if (not candidate) return PredicateResult::NO_MATCH;
+   if ((not Expression) or (Expression->child_count() IS 0)) return PredicateResult::UNSUPPORTED;
 
    const XPathNode *value_node = Expression->get_child(0);
-   if (!value_node) return PredicateResult::UNSUPPORTED;
+   if (not value_node) return PredicateResult::UNSUPPORTED;
 
    std::string expected;
    bool wildcard_value = false;
@@ -655,9 +766,9 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
       wildcard_value = expected.find('*') != std::string::npos;
    }
 
-   if (!candidate->Children.empty()) {
+   if (not candidate->Children.empty()) {
       auto &first_child = candidate->Children[0];
-      if ((!first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
+      if ((not first_child.Attribs.empty()) and (first_child.Attribs[0].isContent())) {
          const std::string &content = first_child.Attribs[0].Value;
          if (wildcard_value) {
             return pf::wildcmp(expected, content) ? PredicateResult::MATCH : PredicateResult::NO_MATCH;
@@ -673,18 +784,18 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
 // Evaluate a predicate expression, applying XPath predicate coercion rules.
 
 XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) {
-   if ((!PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
+   if ((not PredicateNode) or (PredicateNode->type != XPathNodeType::PREDICATE)) {
       return PredicateResult::UNSUPPORTED;
    }
 
    if (PredicateNode->child_count() IS 0) return PredicateResult::UNSUPPORTED;
 
    const XPathNode *expression = PredicateNode->get_child(0);
-   if (!expression) return PredicateResult::UNSUPPORTED;
+   if (not expression) return PredicateResult::UNSUPPORTED;
 
    if (expression->type IS XPathNodeType::BINARY_OP) {
       auto *candidate = context.context_node;
-      if (!candidate) return PredicateResult::NO_MATCH;
+      if (not candidate) return PredicateResult::NO_MATCH;
 
       auto dispatched = dispatch_predicate_operation(expression->value, expression, CurrentPrefix);
       if (dispatched != PredicateResult::UNSUPPORTED) return dispatched;
@@ -729,7 +840,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNo
 
 extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
 {
-   if ((!Node) or (!xml)) return nullptr;
+   if ((not Node) or (not xml)) return nullptr;
 
    auto &map = xml->getMap();
    auto base = map.find(Node->ID);
@@ -770,90 +881,39 @@ NODES XPathEvaluator::collect_step_results(const std::vector<AxisMatch> &Context
    }
 
    auto step_node = Steps[StepIndex];
-   if ((!step_node) or (step_node->type != XPathNodeType::STEP)) {
+   if ((not step_node) or (step_node->type != XPathNodeType::STEP)) {
       Unsupported = true;
       return results;
    }
 
-   const XPathNode *axis_node = nullptr;
-   const XPathNode *node_test = nullptr;
-   std::vector<const XPathNode *> predicate_nodes;
-
-   for (size_t index = 0; index < step_node->child_count(); ++index) {
-      auto *child = step_node->get_child(index);
-      if (!child) continue;
-
-      if (child->type IS XPathNodeType::AXIS_SPECIFIER) axis_node = child;
-      else if (child->type IS XPathNodeType::PREDICATE) predicate_nodes.push_back(child);
-      else if ((!node_test) and ((child->type IS XPathNodeType::NAME_TEST) or
-                                 (child->type IS XPathNodeType::WILDCARD) or
-                                 (child->type IS XPathNodeType::NODE_TYPE_TEST))) node_test = child;
-   }
-
+   auto parsed = parse_step_node(step_node);
    AxisType axis = AxisType::CHILD;
-   if (axis_node) axis = AxisEvaluator::parse_axis_name(axis_node->value);
+   if (parsed.axis_node) axis = AxisEvaluator::parse_axis_name(parsed.axis_node->value);
 
    bool is_last_step = (StepIndex + 1 >= Steps.size());
 
-   for (auto &context_entry : ContextNodes) {
-      auto axis_matches = dispatch_axis(axis, context_entry.node, context_entry.attribute);
+   std::vector<AxisMatch> filtered_all;
+   filtered_all.reserve(ContextNodes.size());
 
-      std::vector<AxisMatch> filtered;
-      filtered.reserve(axis_matches.size());
+   std::vector<AxisMatch> axis_buffer;
+   axis_buffer.reserve(ContextNodes.size());
+   std::vector<AxisMatch> predicate_buffer;
+   predicate_buffer.reserve(ContextNodes.size());
 
-      for (auto &match : axis_matches) {
-         if (!match_node_test(node_test, axis, match.node, match.attribute, CurrentPrefix)) continue;
-         filtered.push_back(match);
-      }
+   auto f_err = filter_step_matches_for_collect(*this, ContextNodes, axis, parsed.node_test, parsed.predicate_nodes,
+      CurrentPrefix, filtered_all, axis_buffer, predicate_buffer, Unsupported);
+   if (f_err != ERR::Okay) return {};
 
-      if (filtered.empty()) {
-         if ((axis IS AxisType::CHILD) and context_entry.node and (context_entry.node->ParentID IS 0) and
-             is_foreign_document_node(context_entry.node)) {
-            if (match_node_test(node_test, axis, context_entry.node, context_entry.attribute, CurrentPrefix)) {
-               filtered.push_back(context_entry);
-            }
-         }
-      }
+   if (filtered_all.empty()) return results;
 
-      if (filtered.empty()) continue;
-
-      for (auto *predicate_node : predicate_nodes) {
-         std::vector<AxisMatch> passed;
-         passed.reserve(filtered.size());
-
-         for (size_t index = 0; index < filtered.size(); ++index) {
-            auto &match = filtered[index];
-            ContextGuard context_guard(*this, match.node, index + 1, filtered.size(), match.attribute);
-            auto predicate_result = evaluate_predicate(predicate_node, CurrentPrefix);
-
-            if (predicate_result IS PredicateResult::UNSUPPORTED) {
-               Unsupported = true;
-               return {};
-            }
-
-            if (predicate_result IS PredicateResult::MATCH) passed.push_back(match);
-         }
-
-         filtered.swap(passed);
-
-         if (filtered.empty()) break;
-      }
-
-      if (filtered.empty()) continue;
-
-      if (is_last_step) {
-         for (auto &match : filtered) results.push_back(match.node);
-         continue;
-      }
-
-      std::vector<AxisMatch> next_context;
-      next_context.reserve(filtered.size());
-      for (auto &match : filtered) next_context.push_back(match);
-
-      auto child_results = collect_step_results(next_context, Steps, StepIndex + 1, CurrentPrefix, Unsupported);
-      if (Unsupported) return {};
-      results.insert(results.end(), child_results.begin(), child_results.end());
+   if (is_last_step) {
+      for (auto &match : filtered_all) results.push_back(match.node);
+      return results;
    }
+
+   auto child_results = collect_step_results(filtered_all, Steps, StepIndex + 1, CurrentPrefix, Unsupported);
+   if (Unsupported) return {};
+   results.insert(results.end(), child_results.begin(), child_results.end());
 
    return results;
 }
