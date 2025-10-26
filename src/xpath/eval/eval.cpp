@@ -24,20 +24,8 @@
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
-XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot) 
-   : xml(XML), query_root(QueryRoot), axis_evaluator(XML, arena)
-{
-   trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
-   context.eval = this;
-   context.xml = XML;
-   context.expression_unsupported = &expression_unsupported;
-   context.schema_registry = &xml::schema::registry();
-   context.variables = &variable_storage;
-   initialise_query_context(QueryRoot);
-}
-
-XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XPathParseResult *ParseContext)
-   : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(XML, arena)
+XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, XPathParseResult *ParseContext)
+   : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(ParseContext, XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
    context.eval = this;

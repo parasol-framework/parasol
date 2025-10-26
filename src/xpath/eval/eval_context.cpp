@@ -739,7 +739,7 @@ extXML * XPathEvaluator::resolve_document_for_node(XMLTag *Node) const
    auto base = map.find(Node->ID);
    if ((base != map.end()) and (base->second IS Node)) return xml;
 
-   for (auto &imp : xml->XMLCache) {
+   for (auto &imp : parse_context->XMLCache) {
       auto &imp_map = imp.second->getMap();
       auto imported = imp_map.find(Node->ID);
       if ((imported != imp_map.end()) and (imported->second IS Node)) return imp.second;

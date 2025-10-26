@@ -138,7 +138,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    if (Context.xml) {
       if (auto owner = locate_in_document(Context.xml)) return owner;
 
-      for (auto &entry : Context.xml->XMLCache) {
+      for (auto &entry : Context.eval->parse_context->XMLCache) {
          if (auto owner = locate_in_document(entry.second)) return owner;
       }
    }
@@ -235,7 +235,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
          return Context.xml;
       }
 
-      for (auto &it : Context.xml->XMLCache) {
+      for (auto &it : Context.eval->parse_context->XMLCache) {
          extXML *cached_xml = it.second;
          auto &cached_map = cached_xml->getMap();
          auto cit = cached_map.find(Node->ID);
@@ -330,7 +330,7 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
    // Perform a reverse lookup in the XML cache to find the document URI.
 
    if (Context.xml) {
-      for (auto &entry : Context.xml->XMLCache) {
+      for (auto &entry : Context.eval->parse_context->XMLCache) {
          if (entry.second IS document) {
             return xml::uri::normalise_uri_separators(entry.first); // TODO: Is normalisation needed here?
          }

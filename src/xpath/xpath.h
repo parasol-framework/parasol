@@ -378,8 +378,9 @@ struct XPathParseResult {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
-/*
-   ankerl::unordered_dense::map<std::string, class extXML *> XMLCache;
+
+   // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
+   ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
 
    XPathParseResult() = default;
    XPathParseResult(XPathParseResult &&) = default;
@@ -392,7 +393,6 @@ struct XPathParseResult {
          if (entry.second) FreeResource(entry.second);
       }
    }
-*/
 };
 
 //********************************************************************************************************************
@@ -864,7 +864,8 @@ enum class AxisType {
 
 class AxisEvaluator {
    private:
-   extXML * xml;
+   XPathParseResult *state;
+   extXML *xml;
    XPathArena & arena;
    std::vector<std::unique_ptr<XMLTag>> namespace_node_storage;
    bool id_cache_built = false;
@@ -930,7 +931,8 @@ class AxisEvaluator {
    XMLTag * find_parent(XMLTag *ReferenceNode);
 
    public:
-   explicit AxisEvaluator(extXML *XML, XPathArena &Arena) : xml(XML), arena(Arena) {}
+   explicit AxisEvaluator(XPathParseResult *State, extXML *XML, XPathArena &Arena) 
+      : state(State), xml(XML), arena(Arena) {}
 
    // Main evaluation method
    void evaluate_axis(AxisType Axis, XMLTag *ContextNode, NODES &Output);
@@ -963,7 +965,7 @@ class XPathEvaluator;
 // The context is pushed and popped as a stack frame during the evaluation process.
 
 struct XPathContext {
-   XPathEvaluator *eval = nullptr;
+   mutable XPathEvaluator *eval = nullptr;
    XMLTag *context_node = nullptr;
    const XMLAttrib * attribute_node = nullptr;
    size_t position = 1;
@@ -991,7 +993,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    extXML * xml;
    const XPathNode * query_root = nullptr;
-   const XPathParseResult * parse_context = nullptr;
+   XPathParseResult * parse_context = nullptr;
    XPathContext context;
    XPathArena arena;
    AxisEvaluator axis_evaluator;
@@ -1101,8 +1103,7 @@ class XPathEvaluator : public XPathErrorReporter {
       XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:
-   explicit XPathEvaluator(extXML *XML, const XPathNode *QueryRoot = nullptr);
-   XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, const XPathParseResult *ParseContext);
+   XPathEvaluator(extXML *, const XPathNode *, XPathParseResult *);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);

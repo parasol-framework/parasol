@@ -51,25 +51,20 @@ static bool resolve_resource_location(const XPathContext &Context, const std::st
 // Note: For the time being, cached XML documents are considered read-only (modifying the tags would upset cached
 // tag references).
 
-static extXML * load_document(extXML *Owner, const std::string &URI)
+static extXML * load_document(XPathParseResult *State, const std::string &URI)
 {
-   if (!Owner) return nullptr;
-
-   auto existing = Owner->XMLCache.find(URI);
-   if (existing != Owner->XMLCache.end()) return existing->second;
-
-   extXML *document;
+   auto existing = State->XMLCache.find(URI);
+   if (existing != State->XMLCache.end()) return existing->second;
 
    // TODO: Loading from URI's needs to be supported by the File class.
 
-   pf::SwitchContext ctx(Owner);
-   document = pf::Create<extXML>::global({ fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
+   auto document = pf::Create<extXML>::global({ fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
 
    if (!document) return nullptr;
    if (document->Tags.empty()) return nullptr;
 
    (void)document->getMap(); // Build ID map now
-   Owner->XMLCache[URI] = document;
+   State->XMLCache[URI] = document;
    return document;
 }
 
@@ -210,7 +205,6 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
-   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
@@ -218,7 +212,7 @@ XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, c
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
-   auto document = load_document(Context.xml, resolved);
+   auto document = load_document(Context.eval->parse_context, resolved);
    if (!document) return XPathVal(pf::vector<XMLTag *>());
 
    pf::vector<XMLTag *> nodes;
@@ -246,7 +240,7 @@ XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal
 
    if (is_string_uri(resolved)) return XPathVal(true);
 
-   if (Context.xml->XMLCache.find(resolved) != Context.xml->XMLCache.end()) return XPathVal(true);
+   if (Context.eval->parse_context->XMLCache.find(resolved) != Context.eval->parse_context->XMLCache.end()) return XPathVal(true);
 
    // TODO: Testing validity of URI's needs to be supported by the File class.
 
@@ -283,7 +277,7 @@ XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &
    pf::vector<XMLTag *> nodes;
 
    for (const auto &entry : entries) {
-      auto document = load_document(Context.xml, entry);
+      auto document = load_document(Context.eval->parse_context, entry);
       if (!document) continue;
 
       for (auto &tag : document->Tags) {
@@ -478,7 +472,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
    std::unordered_set<const XMLTag *> seen;
    collect_idref_matches(Context.xml, requested_ids, seen, results);
 
-   for (const auto &entry : Context.xml->XMLCache) {
+   for (const auto &entry : Context.eval->parse_context->XMLCache) {
       collect_idref_matches(entry.second, requested_ids, seen, results);
    }
 

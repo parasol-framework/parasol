@@ -157,8 +157,8 @@ XMLTag * AxisEvaluator::find_parent(XMLTag *ReferenceNode)
 
    if (auto *parent = resolve_in_document(xml)) return parent;
 
-   if (!xml->XMLCache.empty()) {
-      for (auto &entry : xml->XMLCache) {
+   if (!state->XMLCache.empty()) {
+      for (auto &entry : state->XMLCache) {
          auto *other_xml = entry.second;
          if (auto *parent = resolve_in_document(other_xml)) return parent;
       }

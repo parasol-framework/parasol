@@ -16,9 +16,6 @@
 #include "schema/schema_parser.h"
 #include <parasol/modules/xpath.h>
 
-// Forward declare to avoid heavy parser headers here
-struct XPathParseResult;
-
 #include <concepts>
 #include <ranges>
 #include <algorithm>
@@ -163,9 +160,6 @@ class extXML : public objXML {
    // then this lookup table returns the most recently assigned URI.
    ankerl::unordered_dense::map<PREFIX, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
-   // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
-   ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
-
    // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
    // Managed by read_text_resource()
    ankerl::unordered_dense::map<URI_STR, std::string> UnparsedTextCache;
@@ -173,9 +167,6 @@ class extXML : public objXML {
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    ~extXML() {
-      for (auto &entry : XMLCache) {
-         if (entry.second) FreeResource(entry.second);
-      }
    }
 
    [[nodiscard]] ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
