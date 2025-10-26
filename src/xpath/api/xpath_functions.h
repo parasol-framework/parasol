@@ -24,89 +24,6 @@
 #include "../../xml/xml.h"
 #include "../xpath.h"
 
-struct TransparentStringHash {
-   using is_transparent = void;
-
-   size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
-   size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
-   size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
-};
-
-struct TransparentStringEqual {
-   using is_transparent = void;
-
-   bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
-   bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
-   bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
-   bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
-   bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
-   bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
-   bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
-};
-
-//********************************************************************************************************************
-// XPath Evaluation Context
-
-namespace xml::schema {
-   class SchemaTypeRegistry;
-   SchemaTypeRegistry & registry();
-}
-
-struct XPathContext {
-   XMLTag * context_node = nullptr;
-   const XMLAttrib * attribute_node = nullptr;
-   size_t position = 1;
-   size_t size = 1;
-   ankerl::unordered_dense::map<std::string, XPathVal> * variables = nullptr;
-   extXML *xml = nullptr;
-   bool *expression_unsupported = nullptr;
-   xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
-   std::shared_ptr<XQueryProlog> prolog;
-   std::shared_ptr<XQueryModuleCache> module_cache;
-
-   XPathContext() = default;
-   XPathContext(XMLTag *Node, size_t cursor = 1, size_t Sz = 1, const XMLAttrib *Attribute = nullptr,
-                extXML *Document = nullptr, bool *UnsupportedFlag = nullptr,
-                xml::schema::SchemaTypeRegistry *Registry = nullptr,
-                ankerl::unordered_dense::map<std::string, XPathVal> *Variables = nullptr,
-                std::shared_ptr<XQueryProlog> Prolog = nullptr,
-                std::shared_ptr<XQueryModuleCache> ModuleCache = nullptr)
-      : context_node(Node), attribute_node(Attribute), position(cursor), size(Sz), variables(Variables),
-        xml(Document), expression_unsupported(UnsupportedFlag), schema_registry(Registry),
-        prolog(std::move(Prolog)), module_cache(std::move(ModuleCache)) {}
-};
-
-class VariableBindingGuard
-{
-   private:
-   XPathContext & context;
-   std::string variable_name;
-   std::optional<XPathVal> previous_value;
-   bool had_previous_value = false;
-
-   public:
-   VariableBindingGuard(XPathContext &Context, std::string Name, XPathVal Value)
-      : context(Context), variable_name(std::move(Name))
-   {
-      auto existing = context.variables->find(variable_name);
-      had_previous_value = (existing != context.variables->end());
-      if (had_previous_value) previous_value = existing->second;
-
-      (*context.variables)[variable_name] = std::move(Value);
-   }
-
-   ~VariableBindingGuard() {
-      if (had_previous_value) (*context.variables)[variable_name] = *previous_value;
-      else context.variables->erase(variable_name);
-   }
-
-   VariableBindingGuard(const VariableBindingGuard &) = delete;
-   VariableBindingGuard & operator=(const VariableBindingGuard &) = delete;
-
-   VariableBindingGuard(VariableBindingGuard &&) = default;
-   VariableBindingGuard & operator=(VariableBindingGuard &&) = default;
-};
-
 //********************************************************************************************************************
 // XPath Function Library
 
@@ -115,7 +32,6 @@ using XPathFunction = std::function<XPathVal(const std::vector<XPathVal> &, cons
 class XPathFunctionLibrary {
    private:
    ankerl::unordered_dense::map<std::string, XPathFunction, TransparentStringHash, TransparentStringEqual> functions;
-   void register_core_functions();
    void register_function(std::string_view Name, XPathFunction Func);
    const XPathFunction * find_function(std::string_view Name) const;
 

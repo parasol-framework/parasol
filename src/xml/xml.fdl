@@ -163,7 +163,6 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
     str SystemID     # System identifier for external DTD
     obj Source       # Alternative data source to specifying a `Path`
     int(XMF) Flags   # Optional user flags
-    int Start        # Starting cursor position (tag index) for some operations
     int Modified     # Modification timestamp
     error ParseError # Private
     int LineNo       # Private
@@ -171,7 +170,6 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
   nil,
   [[
    typedef pf::vector<XMLTag> TAGS;
-   typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
 
    template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XMLTag **Result) {
@@ -199,9 +197,9 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
   ]])
 
   struct("XPathValue", { type="XPathValue" }, [[
-  int(XPVT) Type         # Identifies the type of value stored
-  double    NumberValue  # Defined if the type is Number or Boolean
-  cpp(str)  StringValue  # Defined if the type is String
+    int(XPVT) Type         # Identifies the type of value stored
+    double    NumberValue  # Defined if the type is Number or Boolean
+    cpp(str)  StringValue  # Defined if the type is String
   ]],
   [[
    pf::vector<XMLTag *> node_set; // Defined if the type is NodeSet

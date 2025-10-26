@@ -1,23 +1,20 @@
 
-#include "xpath_parser.h"
 #include "../eval/eval_detail.h"
 #include <algorithm>
 #include <parasol/strings.hpp>
 #include <utility>
 #include "../../xml/uri_utils.h"
 
-static std::string_view keyword_from_token_type(XPathTokenType Type);
-
 //********************************************************************************************************************
-// Parses a list of XPath tokens and returns an XPathParseResult object containing:
+// Parses a list of XPath tokens and returns an CompiledXPath object containing:
 //   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
 //   - prolog: the parsed XQuery prolog
 //   - (optional) module cache and other metadata
 // Errors can be inspected via the error list.
 
-XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
+CompiledXPath XPathParser::parse(const std::vector<XPathToken> &TokenList)
 {
-   XPathParseResult result;
+   CompiledXPath result;
    result.prolog = std::make_shared<XQueryProlog>();
    active_prolog = result.prolog.get();
 
@@ -65,8 +62,7 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
       result.expression.reset();
       return result;
    }
-
-   if (has_errors()) {
+   else if (has_errors()) {
       result.expression.reset();
       return result;
    }
@@ -105,13 +101,11 @@ XPathParseResult XPathParser::parse(const std::vector<XPathToken> &TokenList)
       result.expression.reset();
       return result;
    }
-
-   if (has_errors() or (not expression)) {
+   else if (has_errors() or (not expression)) {
       result.expression.reset();
       return result;
    }
-
-   if (expression->type IS XPathNodeType::LOCATION_PATH) {
+   else if (expression->type IS XPathNodeType::LOCATION_PATH) {
       result.expression = std::move(expression);
       return result;
    }
@@ -168,7 +162,7 @@ bool XPathParser::is_function_call_ahead(size_t Index) const
 
 //********************************************************************************************************************
 
-static std::string_view keyword_from_token_type(XPathTokenType Type)
+extern std::string_view keyword_from_token_type(XPathTokenType Type)
 {
    switch (Type) {
       case XPathTokenType::AND:               return "and";
@@ -244,10 +238,8 @@ static std::string_view keyword_from_token_type(XPathTokenType Type)
 // contexts (element names, attribute names, function names, etc.). This provides a centralized source of truth
 // that automatically includes all keywords defined in keyword_from_token_type().
 
-bool XPathParser::is_keyword_acceptable_as_identifier(XPathTokenType Type) const
-{
-   return not keyword_from_token_type(Type).empty();
-}
+
+//********************************************************************************************************************
 
 bool XPathParser::check_literal_keyword(std::string_view Keyword) const
 {
@@ -261,12 +253,8 @@ bool XPathParser::check_literal_keyword(std::string_view Keyword) const
    return false;
 }
 
-bool XPathParser::consume_declaration_separator()
-{
-   bool consumed = false;
-   while (match(XPathTokenType::SEMICOLON)) consumed = true;
-   return consumed;
-}
+//********************************************************************************************************************
+// Parses a string literal value and returns it, or std::nullopt on error.
 
 std::optional<std::string> XPathParser::parse_string_literal_value()
 {
@@ -280,10 +268,7 @@ std::optional<std::string> XPathParser::parse_string_literal_value()
    return value;
 }
 
-std::optional<std::string> XPathParser::parse_uri_literal()
-{
-   return parse_string_literal_value();
-}
+//********************************************************************************************************************
 
 std::optional<std::string> XPathParser::parse_ncname()
 {
@@ -296,6 +281,8 @@ std::optional<std::string> XPathParser::parse_ncname()
    advance();
    return name;
 }
+
+//********************************************************************************************************************
 
 std::optional<std::string> XPathParser::parse_qname_string()
 {

@@ -116,7 +116,6 @@ static ERR XML_Clear(extXML *Self)
    Self->ParameterEntities.clear();
    Self->Notations.clear();
    Self->LineNo = 1;
-   Self->Start  = 0;
    Self->ParseError = ERR::Okay;
    Self->modified();
    return ERR::Okay;
@@ -216,7 +215,7 @@ static ERR XML_Evaluate(extXML *Self, struct xml::Evaluate *Args)
    if ((not Args) or (not Args->Statement)) return log.warning(ERR::NullArgs);
 
    log.branch("");
-   
+
    objXQuery *xq;
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->Statement);
@@ -358,7 +357,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
    if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
    if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
    if (Self->Tags.empty()) return ERR::NoData;
-   
+
    objXQuery *xq;
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->XPath);
@@ -2094,7 +2093,7 @@ static ERR GET_Statement(extXML *Self, STRING *Value)
 
    std::ostringstream buffer;
 
-   if (auto tag = Self->getTag(Self->Start)) {
+   if (auto tag = Self->getTag(0)) {
       CURSOR it;
       if (auto tags = Self->getInsert(tag, it)) {
          while (it != tags->end()) {
@@ -2396,7 +2395,6 @@ static const FieldArray clFields[] = {
    { "SystemID",     FDF_STRING|FDF_RW, nullptr, SET_SystemID },
    { "Source",       FDF_OBJECT|FDF_RI },
    { "Flags",        FDF_INTFLAGS|FDF_RW, nullptr, nullptr, &clXMLFlags },
-   { "Start",        FDF_INT|FDF_RW },
    { "Modified",     FDF_INT|FDF_R },
    { "ParseError",   FDF_INT|FD_PRIVATE|FDF_R },
    { "LineNo",       FDF_INT|FD_PRIVATE|FDF_R },

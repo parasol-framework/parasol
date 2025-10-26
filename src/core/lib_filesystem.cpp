@@ -128,9 +128,7 @@ public:
    CacheFileIndex() = default;
 
    CacheFileIndex(std::string_view Path, int64_t Timestamp, int64_t Size)
-      : path(Path), timestamp(Timestamp), size(Size)
-   {
-   }
+      : path(Path), timestamp(Timestamp), size(Size) { }
 
    friend bool operator==(const CacheFileIndex &, const CacheFileIndex &) = default;
 };
@@ -2773,5 +2771,3 @@ ERR delete_tree(std::string &Path, FUNCTION *Callback, FileFeedback *Feedback)
 #include "fs_folders.cpp"
 #include "fs_volumes.cpp"
 #include "fs_watch_path.cpp"
-
-

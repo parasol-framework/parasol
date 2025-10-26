@@ -16,9 +16,6 @@
 #include "schema/schema_parser.h"
 #include <parasol/modules/xpath.h>
 
-// Forward declare to avoid heavy parser headers here
-struct XPathParseResult;
-
 #include <concepts>
 #include <ranges>
 #include <algorithm>
@@ -101,7 +98,7 @@ struct ParseState {
 };
 
 using TAGS = objXML::TAGS;
-using CURSOR = objXML::CURSOR;
+using CURSOR = pf::vector<XMLTag>::iterator;
 
 //********************************************************************************************************************
 // Generic lookup templates with concepts
@@ -110,27 +107,24 @@ template<typename Key>
 concept MapKey = std::equality_comparable<Key> and std::default_initializable<Key>;
 
 template<MapKey Key, typename Value>
-[[nodiscard]] inline auto find_in_map(
-   const ankerl::unordered_dense::map<Key, Value>& Map,
-   const Key& SearchKey) noexcept -> const Value*
+[[nodiscard]] inline auto find_in_map(const ankerl::unordered_dense::map<Key, Value> &Map,
+   const Key& SearchKey) noexcept -> const Value *
 {
    auto it = Map.find(SearchKey);
    return (it != Map.end()) ? &it->second : nullptr;
 }
 
 template<MapKey Key, typename Value>
-[[nodiscard]] inline auto find_in_map(
-   ankerl::unordered_dense::map<Key, Value>& Map,
-   const Key& SearchKey) noexcept -> Value*
+[[nodiscard]] inline auto find_in_map(ankerl::unordered_dense::map<Key, Value> &Map,
+   const Key& SearchKey) noexcept -> Value *
 {
    auto it = Map.find(SearchKey);
    return (it != Map.end()) ? &it->second : nullptr;
 }
 
 template<typename Range, typename Pred>
-   requires std::ranges::input_range<Range> and
-            std::predicate<Pred, std::ranges::range_reference_t<Range>>
-[[nodiscard]] inline auto find_if_range(Range&& range, Pred pred)
+   requires std::ranges::input_range<Range> and std::predicate<Pred, std::ranges::range_reference_t<Range>>
+[[nodiscard]] inline auto find_if_range(Range &&range, Pred pred)
 {
    return std::ranges::find_if(std::forward<Range>(range), pred);
 }
@@ -166,26 +160,9 @@ class extXML : public objXML {
    // then this lookup table returns the most recently assigned URI.
    ankerl::unordered_dense::map<PREFIX, uint32_t> Prefixes; // hash(Prefix) -> hash(URI)
 
-   // XQuery cache for imported modules.  These resources are owned exclusively by the XML object.  Potentially,
-   // multiple compiled query results from xp::Compile() can reference a single module file that only needs to be stored once.  For that
-   // reason, ownership is maintained for the lifetime of the XML object so that we can simplify resource management.
-   // Managed by fetch_or_load_module()
-
-   ankerl::unordered_dense::map<URI_STR, std::shared_ptr<struct XPathParseResult>> ModuleCache; // Compiled from ModuleCache
-
-   // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
-   ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
-
-   // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
-   // Managed by read_text_resource()
-   ankerl::unordered_dense::map<URI_STR, std::string> UnparsedTextCache;
-
    extXML() : ReadOnly(false), StaleMap(true) { }
 
    ~extXML() {
-      for (auto &entry : XMLCache) {
-         if (entry.second) FreeResource(entry.second);
-      }
    }
 
    [[nodiscard]] ankerl::unordered_dense::map<int, XMLTag *> & getMap() {
@@ -418,46 +395,6 @@ constexpr std::array<char, 256> to_lower_table = []() {
    }
 
    return output;
-}
-
-//*********************************************************************************************************************
-// Load (or retrieve from cache) a text resource.  Returns true if successful.
-// TODO: Support encodings other than UTF-8.
-// TODO: Support relative URIs based on the context document location.
-// TODO: Support loading files from http:// and other URI schemes (or implement in the File class).
-
-[[maybe_unused]] static bool read_text_resource(extXML *Owner, const std::string &URI, const std::optional<std::string> &Encoding,
-   std::string * &Result)
-{
-   pf::Log log(__FUNCTION__);
-
-   log.branch("Loading text resource: %s", URI.c_str());
-
-   if (!Owner) return false;
-
-   if (Encoding.has_value()) {
-      std::string lowered = lowercase_copy(*Encoding);
-      if ((lowered != "utf-8") and (lowered != "utf8")) return false;
-   }
-
-   auto existing = Owner->UnparsedTextCache.find(URI);
-   if (existing != Owner->UnparsedTextCache.end()) {
-      Result = &existing->second;
-      return true;
-   }
-
-   // TODO: File class needs to support URI locations (http://, file:// etc).
-
-   objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
-   if (file.ok()) {
-      std::string buffer;
-      buffer.resize(file->get<size_t>(FID_Size));
-      file->read(buffer.data(), buffer.size());
-      Owner->UnparsedTextCache[URI] = std::move(normalise_newlines(buffer));
-      Result = &Owner->UnparsedTextCache[URI];
-      return true;
-   }
-   else return false;
 }
 
 using NODES = pf::vector<XMLTag *>;

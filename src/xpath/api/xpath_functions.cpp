@@ -14,18 +14,14 @@
 // namespace-aware functions or performance-focused helpers) without polluting the evaluator with
 // coercion details.
 
-#include <parasol/modules/xml.h>
-#include <parasol/strings.hpp>
 #include <parasol/modules/regex.h>
 
 #include "xpath_functions.h"
-#include "../../xml/xml.h"
 #include "../../xml/schema/type_checker.h"
 #include "../../xml/uri_utils.h"
 
 #include <chrono>
 #include <ctime>
-#include <format>
 
 #include "../../link/unicode.h"
 

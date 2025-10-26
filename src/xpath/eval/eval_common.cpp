@@ -18,7 +18,6 @@
 #include "../../xml/schema/schema_types.h"
 #include <cmath>
 #include <limits>
-#include <string_view>
 
 //********************************************************************************************************************
 // Determines if the specified character is whitespace (space, tab, newline, or carriage return).

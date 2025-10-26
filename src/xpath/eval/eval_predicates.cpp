@@ -10,12 +10,6 @@
 // The comparison routines consume shared utilities from xpath_evaluator_detail.h (numeric_equal, numeric_compare,
 // schema helpers) to ensure consistent behaviour across the XPath evaluation pipeline.
 
-#include "eval.h"
-#include "eval_detail.h"
-#include "../api/xpath_functions.h"
-#include "../../xml/schema/schema_types.h"
-#include "../../xml/xml.h"
-
 //********************************************************************************************************************
 // Extracts the string value from a node-set at the specified index, with special handling for overrides and attributes.
 

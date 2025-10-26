@@ -1,25 +1,40 @@
 //********************************************************************************************************************
 // XPath Document and Text Retrieval Functions
 
-#include <parasol/modules/xml.h>
-#include <parasol/modules/core.h>
-#include <parasol/strings.hpp>
-
-#include "../api/xpath_functions.h"
-#include "../../xml/xml.h"
 #include "accessor_support.h"
-
-#include <algorithm>
-#include <cctype>
-#include <cmath>
 #include <filesystem>
-#include <optional>
-#include <string_view>
-#include <unordered_set>
-
-namespace { // Anonymous namespace for internal linkage
 
 namespace fs = std::filesystem;
+
+//*********************************************************************************************************************
+// Load (or retrieve from cache) a text resource.  Returns true if successful.
+// TODO: Support Encoding parameters other than UTF-8 (converts the source to UTF-8).
+
+[[maybe_unused]] static bool read_text_resource(XPathEvaluator &Eval, const std::string &URI, const std::optional<std::string> &Encoding,
+   std::string * &Result)
+{
+   pf::Log log(__FUNCTION__);
+
+   log.branch("Loading: %s", URI.c_str());
+  
+   if (Encoding.has_value()) {
+      std::string lowered = lowercase_copy(*Encoding);
+      if ((lowered != "utf-8") and (lowered != "utf8")) return false;
+   }
+
+   // TODO: File class needs to support URI locations (http://, file:// etc).
+
+   objFile::create file { fl::Path(URI), fl::Flags(FL::READ) };
+   if (file.ok()) {
+      std::string buffer;
+      buffer.resize(file->get<size_t>(FID_Size));
+      file->read(buffer.data(), buffer.size());
+      Eval.text_cache[URI] = std::move(normalise_newlines(buffer));
+      Result = &Eval.text_cache[URI];
+      return true;
+   }
+   else return false;
+}
 
 //*********************************************************************************************************************
 // Get the directory of the current document, if available.
@@ -65,25 +80,20 @@ static bool resolve_resource_location(const XPathContext &Context, const std::st
 // Note: For the time being, cached XML documents are considered read-only (modifying the tags would upset cached
 // tag references).
 
-static extXML * load_document(extXML *Owner, const std::string &URI)
+static extXML * load_document(CompiledXPath *State, const std::string &URI)
 {
-   if (!Owner) return nullptr;
-
-   auto existing = Owner->XMLCache.find(URI);
-   if (existing != Owner->XMLCache.end()) return existing->second;
-
-   extXML *document;
+   auto existing = State->XMLCache.find(URI);
+   if (existing != State->XMLCache.end()) return existing->second;
 
    // TODO: Loading from URI's needs to be supported by the File class.
 
-   pf::SwitchContext ctx(Owner);
-   document = pf::Create<extXML>::global({ fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
+   auto document = pf::Create<extXML>::global({ fl::Path(URI), fl::Flags(XMF::WELL_FORMED | XMF::NAMESPACE_AWARE) });
 
    if (!document) return nullptr;
    if (document->Tags.empty()) return nullptr;
 
    (void)document->getMap(); // Build ID map now
-   Owner->XMLCache[URI] = document;
+   State->XMLCache[URI] = document;
    return document;
 }
 
@@ -189,8 +199,6 @@ static std::vector<std::string> enumerate_collection(const std::string &Director
    return entries;
 }
 
-} // namespace
-
 //*********************************************************************************************************************
 // XPath Document and Text Retrieval Functions
 // See https://www.w3.org/TR/xpath-functions-31/#docfunc for details
@@ -224,7 +232,6 @@ XPathVal XPathFunctionLibrary::function_root(const std::vector<XPathVal> &Args, 
 XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
-   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
@@ -232,7 +239,7 @@ XPathVal XPathFunctionLibrary::function_doc(const std::vector<XPathVal> &Args, c
    std::string resolved;
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
-   auto document = load_document(Context.xml, resolved);
+   auto document = load_document(Context.eval->parse_context, resolved);
    if (!document) return XPathVal(pf::vector<XMLTag *>());
 
    pf::vector<XMLTag *> nodes;
@@ -260,7 +267,7 @@ XPathVal XPathFunctionLibrary::function_doc_available(const std::vector<XPathVal
 
    if (is_string_uri(resolved)) return XPathVal(true);
 
-   if (Context.xml->XMLCache.find(resolved) != Context.xml->XMLCache.end()) return XPathVal(true);
+   if (Context.eval->parse_context->XMLCache.find(resolved) != Context.eval->parse_context->XMLCache.end()) return XPathVal(true);
 
    // TODO: Testing validity of URI's needs to be supported by the File class.
 
@@ -297,7 +304,7 @@ XPathVal XPathFunctionLibrary::function_collection(const std::vector<XPathVal> &
    pf::vector<XMLTag *> nodes;
 
    for (const auto &entry : entries) {
-      auto document = load_document(Context.xml, entry);
+      auto document = load_document(Context.eval->parse_context, entry);
       if (!document) continue;
 
       for (auto &tag : document->Tags) {
@@ -363,7 +370,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text(const std::vector<XPathVal
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(std::string());
 
    std::string *text;
-   if (!read_text_resource(Context.xml, resolved, encoding, text)) return XPathVal(std::string());
+   if (!read_text_resource(*Context.eval, resolved, encoding, text)) return XPathVal(std::string());
 
    return XPathVal(*text);
 }
@@ -375,7 +382,6 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
    const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(false);
-   if (!Context.xml) return XPathVal(false);
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(false);
@@ -390,7 +396,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_available(const std::vecto
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(false);
 
    std::string *text;
-   if (read_text_resource(Context.xml, resolved, encoding, text)) return XPathVal(true);
+   if (read_text_resource(*Context.eval, resolved, encoding, text)) return XPathVal(true);
    return XPathVal(false);
 }
 
@@ -401,7 +407,6 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    const XPathContext &Context)
 {
    if (Args.empty()) return XPathVal(pf::vector<XMLTag *>());
-   if (!Context.xml) return XPathVal(pf::vector<XMLTag *>());
 
    std::string uri = Args[0].to_string();
    if (uri.empty()) return XPathVal(pf::vector<XMLTag *>());
@@ -416,7 +421,7 @@ XPathVal XPathFunctionLibrary::function_unparsed_text_lines(const std::vector<XP
    if (!resolve_resource_location(Context, uri, resolved)) return XPathVal(pf::vector<XMLTag *>());
 
    std::string *text;
-   if (!read_text_resource(Context.xml, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
+   if (!read_text_resource(*Context.eval, resolved, encoding, text)) return XPathVal(pf::vector<XMLTag *>());
 
    std::vector<std::string> lines;
 
@@ -492,7 +497,7 @@ XPathVal XPathFunctionLibrary::function_idref(const std::vector<XPathVal> &Args,
    std::unordered_set<const XMLTag *> seen;
    collect_idref_matches(Context.xml, requested_ids, seen, results);
 
-   for (const auto &entry : Context.xml->XMLCache) {
+   for (const auto &entry : Context.eval->parse_context->XMLCache) {
       collect_idref_matches(entry.second, requested_ids, seen, results);
    }
 

@@ -305,7 +305,7 @@ static void test_prolog_in_xpath() {
       extXML xml;
       xml.Path = const_cast<char *>("file:///sample\\doc.xml");
 
-      XPathParseResult *compiled = nullptr;
+      CompiledXPath *compiled = nullptr;
       ERR error = ::xp::Compile(&xml, "1", (APTR *)&compiled);
       bool success = (error IS ERR::Okay) and (compiled not_eq nullptr);
       bool inherited = false;

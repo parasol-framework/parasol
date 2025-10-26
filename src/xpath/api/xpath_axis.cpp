@@ -14,8 +14,6 @@
 // XPath's ordering semantics.  Splitting these operations out keeps the evaluator readable and makes it easier to
 // extend axis support in the future (for example, by adding document order caches or debugging hooks).
 
-#include "xpath_axis.h"
-
 struct AxisNameMapping {
    AxisType Type;
    std::string_view Name;
@@ -159,8 +157,8 @@ XMLTag * AxisEvaluator::find_parent(XMLTag *ReferenceNode)
 
    if (auto *parent = resolve_in_document(xml)) return parent;
 
-   if (!xml->XMLCache.empty()) {
-      for (auto &entry : xml->XMLCache) {
+   if (!state->XMLCache.empty()) {
+      for (auto &entry : state->XMLCache) {
          auto *other_xml = entry.second;
          if (auto *parent = resolve_in_document(other_xml)) return parent;
       }

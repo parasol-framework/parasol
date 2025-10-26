@@ -217,13 +217,11 @@ class objXML : public Object {
    STRING    SystemID; // System identifier for external DTD
    OBJECTPTR Source;  // Set this field if the XML data is to be sourced from another object.
    XMF       Flags;   // Controls XML parsing behaviour and processing options.
-   int       Start;   // Set a starting cursor to affect the starting point for some XML operations.
    int       Modified; // A timestamp of when the XML data was last modified.
    ERR       ParseError; // Private
    int       LineNo;  // Private
    public:
    typedef pf::vector<XMLTag> TAGS;
-   typedef pf::vector<XMLTag>::iterator CURSOR;
    TAGS Tags;
 
    template <class T> inline ERR insertStatement(int Index, XMI Where, T Statement, XMLTag **Result) {
@@ -398,25 +396,25 @@ class objXML : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[12];
+      auto field = &this->Class->Dictionary[11];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setDocType(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[9];
+      auto field = &this->Class->Dictionary[8];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setPublic(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[17];
+      auto field = &this->Class->Dictionary[16];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setSystem(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[6];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
@@ -431,20 +429,15 @@ class objXML : public Object {
       return ERR::Okay;
    }
 
-   inline ERR setStart(const int Value) noexcept {
-      this->Start = Value;
-      return ERR::Okay;
-   }
-
    inline ERR setReadOnly(const int Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[18];
+      auto field = &this->Class->Dictionary[17];
       return field->WriteValue(target, field, FD_INT, &Value, 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[14];
+      auto field = &this->Class->Dictionary[13];
       return field->WriteValue(target, field, 0x08800320, to_cstring(Value), 1);
    }
 
