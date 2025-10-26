@@ -77,7 +77,7 @@ CompiledXPath * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQu
       if (not letter_is_alpha) return false;
       if (value[1] IS ':') {
          char slash = value[2];
-         constexpr char backslash = (char)92;
+         constexpr char backslash = '\\';
          return (slash IS '/') or (slash IS backslash);
       }
       return false;
