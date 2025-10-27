@@ -1,0 +1,82 @@
+function testCompoundAssignment()
+   local value = 5
+   value += 3
+   assert(value == 8, 'value += 3 should add to value')
+   value -= 2
+   assert(value == 6, 'value -= 2 should subtract from value')
+   value *= 4
+   assert(value == 24, 'value *= 4 should multiply value')
+   value /= 3
+   assert(value == 8, 'value /= 3 should divide value')
+   value %= 3
+   assert(value == 2, 'value %= 3 should keep remainder')
+
+   local text = 'hello'
+   text ..= ' world'
+   assert(text == 'hello world', 'text ..= should concatenate strings')
+
+   local store = { count = 10, list = { 3, 5, 7 } }
+   store.count -= 4
+   assert(store.count == 6, 'table field compound assignments should store results')
+   store.list[2] *= 2
+   assert(store.list[2] == 10, 'indexed table compound assignments should store results')
+end
+
+function testIncrement()
+   local counter = 0
+   counter++;
+   assert(counter == 1, 'counter++ should increment value once')
+   counter++;
+   assert(counter == 2, 'counter++ should allow repeated increments')
+
+   local object = { tally = 4 }
+   object.tally++;
+   assert(object.tally == 5, 'table field ++ should store incremented value')
+
+   local data = { 1, 2, 3 }
+   data[3]++;
+   assert(data[3] == 4, 'indexed ++ should store incremented value')
+end
+
+function testContinue()
+   local total = 0
+   local index = 0
+
+   while index < 6 do
+      index += 1
+      if index % 2 == 0 then
+         continue
+      end
+      total += index
+   end
+   assert(total == 9, 'continue should skip to next loop iteration')
+
+   local seen = {}
+   for i = 1, 5 do
+      if i == 3 then
+         continue
+      end
+      table.insert(seen, i)
+   end
+   assert(#seen == 4, 'continue should skip entries in numeric for loop')
+   assert(seen[3] == 4, 'continue should skip the value equal to 3')
+
+   local attempts = 0
+   local ready = false
+   repeat
+      attempts += 1
+      if attempts < 3 then
+         continue
+      end
+      ready = true
+   until ready
+   assert(attempts == 3, 'continue should jump to repeat condition without executing remainder')
+end
+
+return {
+   tests = {
+      'testCompoundAssignment',
+      'testIncrement',
+      'testContinue'
+   }
+}

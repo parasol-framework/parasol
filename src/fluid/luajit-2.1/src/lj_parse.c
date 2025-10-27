@@ -28,6 +28,8 @@
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
+#define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXED)
+
 /* -- Parser structures and definitions ----------------------------------- */
 
 /* Expression kinds. */
@@ -107,8 +109,10 @@ typedef struct FuncScope {
 #define FSCOPE_GOLA		0x04	/* Goto or label used in scope. */
 #define FSCOPE_UPVAL		0x08	/* Upvalue in scope. */
 #define FSCOPE_NOCLOSE		0x10	/* Do not close upvalues. */
+#define FSCOPE_CONTINUE	0x20	/* Continue used in scope. */
 
 #define NAME_BREAK		((GCstr *)(uintptr_t)1)
+#define NAME_CONTINUE	((GCstr *)(uintptr_t)2)
 
 /* Index into variable stack. */
 typedef uint16_t VarIndex;
@@ -1162,7 +1166,8 @@ static MSize gola_new(LexState *ls, GCstr *name, uint8_t info, BCPos pc)
       lj_lex_error(ls, 0, LJ_ERR_XLIMC, LJ_MAX_VSTACK);
     lj_mem_growvec(ls->L, ls->vstack, ls->sizevstack, LJ_MAX_VSTACK, VarInfo);
   }
-  lj_assertFS(name == NAME_BREAK || lj_tab_getstr(fs->kt, name) != NULL,
+  lj_assertFS(name == NAME_BREAK || name == NAME_CONTINUE ||
+	      lj_tab_getstr(fs->kt, name) != NULL,
 	      "unanchored label name");
   /* NOBARRIER: name is anchored in fs->kt and ls->vstack is not a GCobj. */
   setgcref(ls->vstack[vtop].name, obj2gco(name));
@@ -1216,7 +1221,8 @@ static void gola_resolve(LexState *ls, FuncScope *bl, MSize idx)
 	GCstr *name = strref(var_get(ls, ls->fs, vg->slot).name);
 	lj_assertLS((uintptr_t)name >= VARNAME__MAX, "expected goto name");
 	ls->linenumber = ls->fs->bcbase[vg->startpc].line;
-	lj_assertLS(strref(vg->name) != NAME_BREAK, "unexpected break");
+        lj_assertLS(strref(vg->name) != NAME_BREAK, "unexpected break");
+        lj_assertLS(strref(vg->name) != NAME_CONTINUE, "unexpected continue");
 	lj_lex_error(ls, 0, LJ_ERR_XGSCOPE,
 		     strdata(strref(vg->name)), strdata(name));
       }
@@ -1242,18 +1248,22 @@ static void gola_fixup(LexState *ls, FuncScope *bl)
 	    gola_patch(ls, vg, v);
 	  }
       } else if (gola_isgoto(v)) {
-	if (bl->prev) {  /* Propagate goto or break to outer scope. */
-	  bl->prev->flags |= name == NAME_BREAK ? FSCOPE_BREAK : FSCOPE_GOLA;
-	  v->slot = bl->nactvar;
-	  if ((bl->flags & FSCOPE_UPVAL))
-	    gola_close(ls, v);
-	} else {  /* No outer scope: undefined goto label or no loop. */
-	  ls->linenumber = ls->fs->bcbase[v->startpc].line;
-	  if (name == NAME_BREAK)
-	    lj_lex_error(ls, 0, LJ_ERR_XBREAK);
-	  else
-	    lj_lex_error(ls, 0, LJ_ERR_XLUNDEF, strdata(name));
-	}
+        if (bl->prev) {  /* Propagate goto or break to outer scope. */
+          bl->prev->flags |= name == NAME_BREAK ? FSCOPE_BREAK :
+                             (name == NAME_CONTINUE ? FSCOPE_CONTINUE :
+                              FSCOPE_GOLA);
+          v->slot = bl->nactvar;
+          if ((bl->flags & FSCOPE_UPVAL))
+            gola_close(ls, v);
+        } else {  /* No outer scope: undefined goto label or no loop. */
+          ls->linenumber = ls->fs->bcbase[v->startpc].line;
+          if (name == NAME_BREAK)
+            lj_lex_error(ls, 0, LJ_ERR_XBREAK);
+          else if (name == NAME_CONTINUE)
+            lj_lex_error(ls, 0, LJ_ERR_XCONTINUE);
+          else
+            lj_lex_error(ls, 0, LJ_ERR_XLUNDEF, strdata(name));
+        }
       }
     }
   }
@@ -1283,6 +1293,25 @@ static void fscope_begin(FuncState *fs, FuncScope *bl, int flags)
   lj_assertFS(fs->freereg == fs->nactvar, "bad regalloc");
 }
 
+static void fscope_loop_continue(FuncState *fs, BCPos pos)
+{
+  FuncScope *bl = fs->bl;
+  LexState *ls = fs->ls;
+
+  lj_assertFS((bl->flags & FSCOPE_LOOP), "continue outside loop scope");
+
+  if (!(bl->flags & FSCOPE_CONTINUE))
+    return;
+
+  bl->flags &= (uint8_t)~FSCOPE_CONTINUE;
+
+  {
+    MSize idx = gola_new(ls, NAME_CONTINUE, VSTACK_LABEL, pos);
+    ls->vtop = idx;
+    gola_resolve(ls, bl, idx);
+  }
+}
+
 /* End a scope. */
 static void fscope_end(FuncState *fs)
 {
@@ -1304,7 +1333,7 @@ static void fscope_end(FuncState *fs)
       return;
     }
   }
-  if ((bl->flags & FSCOPE_GOLA)) {
+  if ((bl->flags & (FSCOPE_GOLA|FSCOPE_CONTINUE))) {
     gola_fixup(ls, bl);
   }
 }
@@ -1948,6 +1977,8 @@ static void parse_args(LexState *ls, ExpDesc *e)
   fs->freereg = base+1;  /* Leave one result by default. */
 }
 
+static void inc_dec_op(LexState *ls, BinOpr op, ExpDesc *v, int isPost);
+
 /* Parse primary expression. */
 static void expr_primary(LexState *ls, ExpDesc *v)
 {
@@ -1978,6 +2009,9 @@ static void expr_primary(LexState *ls, ExpDesc *v)
       expr_str(ls, &key);
       bcemit_method(fs, v, &key);
       parse_args(ls, v);
+    } else if (ls->tok == TK_plusplus) {
+      lj_lex_next(ls);
+      inc_dec_op(ls, OPR_ADD, v, 1);
     } else if (ls->tok == '(' || ls->tok == TK_string || ls->tok == '{') {
       expr_tonextreg(fs, v);
       if (LJ_FR2) bcreg_reserve(fs, 1);
@@ -1986,6 +2020,41 @@ static void expr_primary(LexState *ls, ExpDesc *v)
       break;
     }
   }
+}
+
+static void inc_dec_op(LexState *ls, BinOpr op, ExpDesc *v, int isPost)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc lv, e1, e2;
+  BCReg indices;
+
+  if (!v)
+    v = &lv;
+  indices = fs->freereg;
+  expr_init(&e2, VKNUM, 0);
+  setintV(&e2.u.nval, 1);
+  if (isPost) {
+    checkcond(ls, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+    lv = *v;
+    e1 = *v;
+    if (v->k == VINDEXED)
+      bcreg_reserve(fs, 1);
+    expr_tonextreg(fs, v);
+    bcreg_reserve(fs, 1);
+    bcemit_arith(fs, op, &e1, &e2);
+    bcemit_store(fs, &lv, &e1);
+    fs->freereg--;
+    return;
+  }
+  expr_primary(ls, v);
+  checkcond(ls, vkisvar(v->k), LJ_ERR_XNOTASSIGNABLE);
+  e1 = *v;
+  if (v->k == VINDEXED)
+    bcreg_reserve(fs, fs->freereg - indices);
+  bcemit_arith(fs, op, &e1, &e2);
+  bcemit_store(fs, v, &e1);
+  if (v != &lv)
+    expr_tonextreg(fs, v);
 }
 
 /* Parse simple expression. */
@@ -2152,6 +2221,7 @@ static BCPos expr_cond(LexState *ls)
 typedef struct LHSVarList {
   ExpDesc v;			/* LHS variable. */
   struct LHSVarList *prev;	/* Link to previous LHS variable. */
+  struct LHSVarList *next;	/* Link to next LHS variable. */
 } LHSVarList;
 
 /* Eliminate write-after-read hazards for local variable assignment. */
@@ -2202,6 +2272,45 @@ static void assign_adjust(LexState *ls, BCReg nvars, BCReg nexps, ExpDesc *e)
     ls->fs->freereg -= nexps - nvars;  /* Drop leftover regs. */
 }
 
+static int assign_compound(LexState *ls, LHSVarList *lh, LexToken opType)
+{
+  FuncState *fs = ls->fs;
+  ExpDesc lhv, infix, rh;
+  int32_t nexps;
+  BinOpr op;
+
+  lhv = lh->v;
+
+  checkcond(ls, vkisvar(lh->v.k), LJ_ERR_XLEFTCOMPOUND);
+
+  switch (opType) {
+  case TK_cadd: op = OPR_ADD; break;
+  case TK_csub: op = OPR_SUB; break;
+  case TK_cmul: op = OPR_MUL; break;
+  case TK_cdiv: op = OPR_DIV; break;
+  case TK_cmod: op = OPR_MOD; break;
+  case TK_cconcat: op = OPR_CONCAT; break;
+  default:
+    lj_assertLS(0, "unknown compound operator");
+    return 0;
+  }
+  lj_lex_next(ls);
+
+  if (lh->v.k == VINDEXED)
+    bcreg_reserve(fs, 1);
+
+  expr_tonextreg(fs, &lh->v);
+
+  nexps = expr_list(ls, &rh);
+  checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+
+  infix = lh->v;
+  bcemit_binop_left(fs, op, &infix);
+  bcemit_binop(fs, op, &infix, &rh);
+  bcemit_store(fs, &lhv, &infix);
+  return 1;
+}
+
 /* Recursively parse assignment statement. */
 static void parse_assignment(LexState *ls, LHSVarList *lh, BCReg nvars)
 {
@@ -2210,6 +2319,7 @@ static void parse_assignment(LexState *ls, LHSVarList *lh, BCReg nvars)
   if (lex_opt(ls, ',')) {  /* Collect LHS list and recurse upwards. */
     LHSVarList vl;
     vl.prev = lh;
+    lh->next = &vl;
     expr_primary(ls, &vl.v);
     if (vl.v.k == VLOCAL)
       assign_hazard(ls, lh, &vl.v);
@@ -2247,8 +2357,15 @@ static void parse_call_assign(LexState *ls)
   expr_primary(ls, &vl.v);
   if (vl.v.k == VCALL) {  /* Function call statement. */
     setbc_b(bcptr(fs, &vl.v), 1);  /* No results. */
+  } else if (ls->tok >= TK_cadd && ls->tok <= TK_cmod) {
+    vl.prev = NULL;
+    vl.next = NULL;
+    assign_compound(ls, &vl, ls->tok);
+  } else if (ls->tok == ';') {
+    /* Compound increments handled in expr_primary. */
   } else {  /* Start of an assignment. */
     vl.prev = NULL;
+    vl.next = NULL;
     parse_assignment(ls, &vl, 1);
   }
 }
@@ -2359,6 +2476,13 @@ static void parse_return(LexState *ls)
   bcemit_INS(fs, ins);
 }
 
+/* Parse 'continue' statement. */
+static void parse_continue(LexState *ls)
+{
+  ls->fs->bl->flags |= FSCOPE_CONTINUE;
+  gola_new(ls, NAME_CONTINUE, VSTACK_GOTO, bcemit_jmp(ls->fs));
+}
+
 /* Parse 'break' statement. */
 static void parse_break(LexState *ls)
 {
@@ -2437,6 +2561,7 @@ static void parse_while(LexState *ls, BCLine line)
   parse_block(ls);
   jmp_patch(fs, bcemit_jmp(fs), start);
   lex_match(ls, TK_end, TK_while, line);
+  fscope_loop_continue(fs, start);
   fscope_end(fs);
   jmp_tohere(fs, condexit);
   jmp_patchins(fs, loop, fs->pc);
@@ -2447,7 +2572,7 @@ static void parse_repeat(LexState *ls, BCLine line)
 {
   FuncState *fs = ls->fs;
   BCPos loop = fs->lasttarget = fs->pc;
-  BCPos condexit;
+  BCPos condexit, iter;
   FuncScope bl1, bl2;
   fscope_begin(fs, &bl1, FSCOPE_LOOP);  /* Breakable loop scope. */
   fscope_begin(fs, &bl2, 0);  /* Inner scope. */
@@ -2455,6 +2580,7 @@ static void parse_repeat(LexState *ls, BCLine line)
   bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
   parse_chunk(ls);
   lex_match(ls, TK_until, TK_repeat, line);
+  iter = fs->pc;
   condexit = expr_cond(ls);  /* Parse condition (still inside inner scope). */
   if (!(bl2.flags & FSCOPE_UPVAL)) {  /* No upvalues? Just end inner scope. */
     fscope_end(fs);
@@ -2466,6 +2592,7 @@ static void parse_repeat(LexState *ls, BCLine line)
   }
   jmp_patch(fs, condexit, loop);  /* Jump backwards if !cond. */
   jmp_patchins(fs, loop, fs->pc);
+  fscope_loop_continue(fs, iter); /* continue statements jump to condexit. */
   fscope_end(fs);  /* End loop scope. */
 }
 
@@ -2505,6 +2632,7 @@ static void parse_for_num(LexState *ls, GCstr *varname, BCLine line)
   fs->bcbase[loopend].line = line;  /* Fix line for control ins. */
   jmp_patchins(fs, loopend, loop+1);
   jmp_patchins(fs, loop, fs->pc);
+  fscope_loop_continue(fs, loopend); /* continue statements jump to loopend. */
 }
 
 /* Try to predict whether the iterator is next() and specialize the bytecode.
@@ -2547,7 +2675,7 @@ static void parse_for_iter(LexState *ls, GCstr *indexname)
   BCReg nvars = 0;
   BCLine line;
   BCReg base = fs->freereg + 3;
-  BCPos loop, loopend, exprpc = fs->pc;
+  BCPos loop, loopend, iter, exprpc = fs->pc;
   FuncScope bl;
   int isnext;
   /* Hidden control variables. */
@@ -2574,11 +2702,12 @@ static void parse_for_iter(LexState *ls, GCstr *indexname)
   fscope_end(fs);
   /* Perform loop inversion. Loop control instructions are at the end. */
   jmp_patchins(fs, loop, fs->pc);
-  bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars-3+1, 2+1);
+  iter = bcemit_ABC(fs, isnext ? BC_ITERN : BC_ITERC, base, nvars-3+1, 2+1);
   loopend = bcemit_AJ(fs, BC_ITERL, base, NO_JMP);
   fs->bcbase[loopend-1].line = line;  /* Fix line for control ins. */
   fs->bcbase[loopend].line = line;
   jmp_patchins(fs, loopend, loop+1);
+  fscope_loop_continue(fs, iter); /* continue statements jump to iter. */
 }
 
 /* Parse 'for' statement. */
@@ -2669,6 +2798,10 @@ static int parse_stmt(LexState *ls)
   case TK_return:
     parse_return(ls);
     return 1;  /* Must be last. */
+  case TK_continue:
+    lj_lex_next(ls);
+    parse_continue(ls);
+    break;  /* Must be last in Lua 5.1. */
   case TK_break:
     lj_lex_next(ls);
     parse_break(ls);
