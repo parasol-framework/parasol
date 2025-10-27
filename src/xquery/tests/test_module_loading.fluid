@@ -195,7 +195,7 @@ function testNamespaceValidation()
       expected:test()
    ]], path=glScriptFolder })
 
-   local err = xq.acActivate(query)
+   local err = xq.acActivate()
    assert(err != ERR_Okay, 'Should detect namespace mismatch')
    local error_msg = string.lower(tostring(xq.errorMsg))
    assert(string.find(error_msg, 'namespace', 1, true) or string.find(error_msg, 'mismatch', 1, true),

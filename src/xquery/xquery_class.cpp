@@ -755,10 +755,12 @@ static ERR GET_Variables(extXQuery *Self, pf::vector<std::string> **Value)
 
       // Include variables declared in imported modules
       std::shared_ptr<XQueryModuleCache> mod_cache = Self->ParseResult.prolog->get_module_cache();
-      for (auto it = mod_cache->modules.begin(); it != mod_cache->modules.end(); ++it) {
-         if ((it->second) and (it->second->prolog)) {
-            for (auto var = it->second->prolog->variables.begin(); var != it->second->prolog->variables.end(); ++var) {
-               Self->ListVariables.push_back(var->first);
+      if (mod_cache) {
+         for (auto it = mod_cache->modules.begin(); it != mod_cache->modules.end(); ++it) {
+            if ((it->second) and (it->second->prolog)) {
+               for (auto var = it->second->prolog->variables.begin(); var != it->second->prolog->variables.end(); ++var) {
+                  Self->ListVariables.push_back(var->first);
+               }
             }
          }
       }
