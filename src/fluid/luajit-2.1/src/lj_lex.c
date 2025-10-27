@@ -321,6 +321,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       continue;
     case '-':
       lex_next(ls);
+      if (ls->c == '=') { lex_next(ls); return TK_csub; }
       if (ls->c != '-') return '-';
       lex_next(ls);
       if (ls->c == '[') {  /* Long comment "--[=*[...]=*]". */
@@ -348,13 +349,27 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
 	continue;
       }
       }
+    case '+':
+      lex_next(ls);
+      if (ls->c == '=') { lex_next(ls); return TK_cadd; }
+      if (ls->c == '+') { lex_next(ls); return TK_plusplus; }
+      return '+';
+    case '*':
+      lex_next(ls);
+      if (ls->c == '=') { lex_next(ls); return TK_cmul; }
+      return '*';
     case '/': // PARASOL PATCHED IN: Support for // style comments.
      lex_next(ls);
+     if (ls->c == '=') { lex_next(ls); return TK_cdiv; }
      if (ls->c == '/') {
        while (ls->c != '\n' && ls->c != LEX_EOF) lex_next(ls);
        continue;
      }
      else return '/';
+    case '%':
+      lex_next(ls);
+      if (ls->c == '=') { lex_next(ls); return TK_cmod; }
+      return '%';
     case '!': { // PARASOL PATCHED IN: Support for '!=' not equals
       lex_next(ls);
       if (ls->c != '=') return '!';
@@ -382,11 +397,12 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
     case '.':
       if (lex_savenext(ls) == '.') {
 	lex_next(ls);
-	if (ls->c == '.') {
-	  lex_next(ls);
-	  return TK_dots;   /* ... */
-	}
-	return TK_concat;   /* .. */
+        if (ls->c == '.') {
+          lex_next(ls);
+          return TK_dots;   /* ... */
+        }
+        if (ls->c == '=') { lex_next(ls); return TK_cconcat; }
+        return TK_concat;   /* .. */
       } else if (!lj_char_isdigit(ls->c)) {
 	return '.';
       } else {
