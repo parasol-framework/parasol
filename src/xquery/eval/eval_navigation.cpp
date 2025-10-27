@@ -46,9 +46,9 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
       case AxisType::CHILD: {
          if (attribute_context) break;
 
-         if (!ContextNode) {
+         if (not ContextNode) {
             for (auto &tag : xml->Tags) {
-               if (!tag.isTag()) continue;
+               if (not tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
             }
          }
@@ -63,9 +63,9 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
       case AxisType::DESCENDANT: {
          if (attribute_context) break;
 
-         if (!ContextNode) {
+         if (not ContextNode) {
             for (auto &tag : xml->Tags) {
-               if (!tag.isTag()) continue;
+               if (not tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
                auto &desc_buffer = arena.acquire_node_vector();
                axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
@@ -86,10 +86,10 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
             break;
          }
 
-         if (!ContextNode) {
+         if (not ContextNode) {
             matches.push_back({ nullptr, nullptr });
             for (auto &tag : xml->Tags) {
-               if (!tag.isTag()) continue;
+               if (not tag.isTag()) continue;
                matches.push_back({ &tag, nullptr });
                auto &desc_buffer = arena.acquire_node_vector();
                axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
@@ -231,6 +231,7 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
    return matches;
 }
 
+//********************************************************************************************************************
 // Matches a candidate node or attribute against a node test expression. Handles wildcards, name tests (including
 // namespace-aware matching with prefix resolution), node type tests (node(), text(), comment()), and processing
 // instruction tests. Supports both attribute and element matching based on the axis type, with full wildcard
@@ -241,7 +242,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
    bool attribute_axis = (Axis IS AxisType::ATTRIBUTE) or ((Axis IS AxisType::SELF) and (Attribute != nullptr));
 
    auto resolve_namespace = [&](std::string_view Prefix, XMLTag *Scope) -> std::optional<uint32_t> {
-      if (!xml) return std::nullopt;
+      if (not xml) return std::nullopt;
 
       std::string prefix_string(Prefix);
       uint32_t namespace_hash = 0;
@@ -258,7 +259,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
          }
       }
 
-      if (!prefix_string.empty()) {
+      if (not prefix_string.empty()) {
          auto it = xml->Prefixes.find(prefix_string);
          if (it != xml->Prefixes.end()) return it->second;
       }
@@ -266,18 +267,14 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
       return std::nullopt;
    };
 
-   if (!NodeTest) {
+   if (not NodeTest) {
       if (attribute_axis) return Attribute != nullptr;
       return Candidate != nullptr;
    }
 
    if (attribute_axis) {
-      if (!Attribute) return false;
-
-      if (NodeTest->type IS XQueryNodeType::NODE_TYPE_TEST) {
-         return NodeTest->value IS "node";
-      }
-
+      if (not Attribute) return false;
+      if (NodeTest->type IS XQueryNodeType::NODE_TYPE_TEST) return NodeTest->value IS "node";
       if (NodeTest->type IS XQueryNodeType::WILDCARD) return true;
 
       if (NodeTest->type IS XQueryNodeType::NAME_TEST) {
@@ -304,18 +301,18 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
 
          bool wildcard_local = expected_local.find('*') != std::string::npos;
          bool local_matches = wildcard_local ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
-         if (!local_matches) return false;
+         if (not local_matches) return false;
 
-         if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
-            bool wildcard_prefix = (!expected_prefix.empty()) and (expected_prefix IS "*");
+         if ((not xml) or ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL)) {
+            bool wildcard_prefix = (not expected_prefix.empty()) and (expected_prefix IS "*");
             if (wildcard_prefix) return true;
 
-            if (!expected_prefix.empty()) {
+            if (not expected_prefix.empty()) {
                auto expected_hash = resolve_namespace(expected_prefix, Candidate);
-               if (!expected_hash) return false;
+               if (not expected_hash) return false;
                if (candidate_prefix.empty()) return false;
                auto candidate_hash = resolve_namespace(candidate_prefix, Candidate);
-               if (!candidate_hash) return false;
+               if (not candidate_hash) return false;
                return *candidate_hash IS *expected_hash;
             }
 
@@ -330,10 +327,10 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
 
    if (NodeTest->type IS XQueryNodeType::NODE_TYPE_TEST) {
       if (NodeTest->value IS "node") return true;
-      if (!Candidate) return false;
+      if (not Candidate) return false;
 
       if (NodeTest->value IS "text") {
-         if (!Candidate->isContent()) return false;
+         if (not Candidate->isContent()) return false;
          return ((Candidate->Flags & (XTF::COMMENT | XTF::INSTRUCTION | XTF::NOTATION)) IS XTF::NIL);
       }
 
@@ -346,22 +343,22 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
    }
 
    if (NodeTest->type IS XQueryNodeType::PROCESSING_INSTRUCTION_TEST) {
-      if (!Candidate) return false;
+      if (not Candidate) return false;
       if ((Candidate->Flags & XTF::INSTRUCTION) IS XTF::NIL) return false;
 
       if (NodeTest->value.empty()) return true;
 
       std::string_view candidate_name;
-      if (!Candidate->Attribs.empty()) candidate_name = Candidate->Attribs[0].Name;
+      if (not Candidate->Attribs.empty()) candidate_name = Candidate->Attribs[0].Name;
 
-      if (!candidate_name.empty() and (candidate_name.front() IS '?')) candidate_name.remove_prefix(1);
+      if (not candidate_name.empty() and (candidate_name.front() IS '?')) candidate_name.remove_prefix(1);
       if (candidate_name.empty()) return false;
 
       std::string candidate_target(candidate_name);
       return pf::iequals(candidate_target, NodeTest->value);
    }
 
-   if (!Candidate) return false;
+   if (not Candidate) return false;
 
    if (NodeTest->type IS XQueryNodeType::WILDCARD) return Candidate->isTag();
 
@@ -371,7 +368,7 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
 
       std::string_view candidate_name = Candidate->name();
 
-      if ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL) {
+      if ((not xml) or ((xml->Flags & XMF::NAMESPACE_AWARE) != XMF::NIL)) {
          std::string_view expected_prefix;
          std::string_view expected_local = test_name;
 
@@ -390,14 +387,14 @@ bool XPathEvaluator::match_node_test(const XPathNode *NodeTest, AxisType Axis, X
 
          bool wildcard_local = expected_local.find('*') != std::string::npos;
          bool name_matches = wildcard_local ? pf::wildcmp(expected_local, candidate_local) : pf::iequals(expected_local, candidate_local);
-         if (!name_matches) return false;
+         if (not name_matches) return false;
 
-         if (!expected_prefix.empty()) {
+         if (not expected_prefix.empty()) {
             bool wildcard_prefix = expected_prefix IS "*";
             if (wildcard_prefix) return Candidate->isTag();
 
             auto expected_hash = resolve_namespace(expected_prefix, Candidate);
-            if (!expected_hash) return false;
+            if (not expected_hash) return false;
             return Candidate->NamespaceID IS *expected_hash;
          }
 

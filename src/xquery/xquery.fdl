@@ -1,8 +1,8 @@
 --$FLUID:Include
 
-module({ name="XQuery", src="xquery.cpp", copyright="Paul Manias © 2025", version=1.0, timestamp=20240611 }, function()
-  c_include("<parasol/modules/xml.h>")
-  cpp_include("<functional>", "<optional>", "<sstream>", "<parasol/strings.hpp>")
+module({ name='XQuery', src='xquery.cpp', copyright='Paul Manias © 2025', version=1.0, timestamp=20240611 }, function()
+  c_include('<parasol/modules/xml.h>')
+  cpp_include('<functional>', '<optional>', '<sstream>', '<parasol/strings.hpp>')
 
 enum('XQueryNodeType', { type='int', start=0 },
    -- Location path components
@@ -73,15 +73,32 @@ enum('XQueryNodeType', { type='int', start=0 },
    'TYPESWITCH_EXPRESSION',
    'TYPESWITCH_CASE',
    'TYPESWITCH_DEFAULT_CASE')
+   
+  flags('XQF', { comment='Flags indicating the features of a compiled XQuery expression.' },
+    'XPATH: The expression is an XPath location string.',
+    'HAS_PROLOG: The XQuery declares a prolog.',
+    'LIBRARY_MODULE: Prolog declares a module namespace (library module).',
+    'MODULE_IMPORTS: One or more module imports are declared.',
+    'DEFAULT_FUNCTION_NS: Default function namespace declared.',
+    'DEFAULT_ELEMENT_NS: Default element namespace declared.',
+    'BASE_URI_DECLARED: Static base URI declared.',
+    'DEFAULT_COLLATION_DECLARED: Default collation declared.',
+    'BOUNDARY_PRESERVE: Boundary-space preserve mode.',
+    'CONSTRUCTION_PRESERVE: Construction preserve mode.',
+    'ORDERING_UNORDERED: Ordering mode is unordered.',
+    'HAS_WILDCARD_TESTS: Wildcard name tests present.'
+  )
 
-  methods("xquery", "XQ", {
-    { id=1, name="Evaluate" },
-    { id=2, name="Search" }
+  methods('xquery', 'XQ', {
+    { id=1, name='Evaluate' },
+    { id=2, name='Search' }
   })
 
-  class("XQuery", { src="xquery_class.cpp", output="xquery_class_def.cpp" }, [[
+  class('XQuery', { 
+    src='xquery_class.cpp', output='xquery_class_def.cpp', references={ 'XQF' }, 
+    comment='Provides an interface for XQuery evaluation and execution.' }, [[
   ]])
 
-  functionNames("xq",
-     "UnitTest")
+  functionNames('xq',
+     'UnitTest')
 end)

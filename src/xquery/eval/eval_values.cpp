@@ -266,7 +266,7 @@ std::optional<XPathVal> XPathEvaluator::resolve_user_defined_function(std::strin
    }
 
    (void)module_cache->fetch_or_load(module_uri, *prolog, *this);
-   
+
    auto module_info = module_cache->find_module(module_uri);
    if (!module_info) {
       auto message = std::format("Module '{}' could not be loaded for function '{}'.", module_uri, canonical_name);
@@ -1679,9 +1679,9 @@ XPathVal XPathEvaluator::evaluate_computed_element_constructor(const XPathNode *
 
    auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t> {
       if (Prefix.empty()) return uint32_t{0};
-      if (not xml) return std::nullopt;
+      if (not xml) [[unlikely]] return std::nullopt;
       if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
-      if (not context.context_node) return std::nullopt;
+      if (not context.context_node) [[unlikely]] return std::nullopt;
 
       uint32_t resolved_hash = 0;
       if (xml->resolvePrefix(Prefix, context.context_node->ID, resolved_hash) IS ERR::Okay) return resolved_hash;
@@ -1810,9 +1810,9 @@ XPathVal XPathEvaluator::evaluate_computed_attribute_constructor(const XPathNode
 
    auto resolve_prefix_in_context = [&](std::string_view Prefix) -> std::optional<uint32_t> {
       if (Prefix.empty()) return uint32_t{0};
-      if (not xml) return std::nullopt;
+      if (not xml) [[unlikely]] return std::nullopt;
       if (Prefix.compare("xml") IS 0) return register_constructor_namespace("http://www.w3.org/XML/1998/namespace");
-      if (not context.context_node) return std::nullopt;
+      if (not context.context_node) [[unlikely]] return std::nullopt;
 
       uint32_t resolved_hash = 0;
       if (xml->resolvePrefix(Prefix, context.context_node->ID, resolved_hash) IS ERR::Okay) return resolved_hash;

@@ -23,7 +23,7 @@ function testVariableUpdate()
    local xml = obj.new("xml", {
       statement = '<root><item name="first">Hello</item><item name="second">World</item></root>'
    })
-   
+
    local xq = obj.new('xquery', { statement= '//item[@name=$myvar]' })
    assert(xq.acSetKey('myvar', 'first') == ERR_Okay, "Failed to set variable: " .. mSys.GetErrorMsg(err))
    assert(xq.acSetKey('myvar', 'second') == ERR_Okay, "Failed to update variable: " .. mSys.GetErrorMsg(err))
@@ -53,7 +53,7 @@ function testVariableRemoval()
    local xml = obj.new("xml", {
       statement = '<root><item name="first">Hello</item><item name="second">World</item></root>'
    })
-   
+
    local xq = obj.new('xquery', { statement= '//item[@name=$myvar]' })
    assert(xq.acSetKey('myvar', 'first') == ERR_Okay, "Failed to set variable")
    assert(xq.mtEvaluate(xml) == ERR_Okay, "Variable should work before removal")
@@ -73,7 +73,7 @@ function testMultipleVariables()
    local xml = obj.new("xml", {
       statement = '<root><item type="book" name="first">Hello</item><item type="magazine" name="second">World</item></root>'
    })
-   
+
    local xq = obj.new('xquery', { statement= '//item[@name=$namevar and @type=$typevar]' })
 
    -- Set multiple variables

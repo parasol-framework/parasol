@@ -57,10 +57,10 @@ class ContextGuard {
 } // namespace
 
 //********************************************************************************************************************
-// Extracts STEP nodes; Detects leading ROOT and whether it was a descendant (//); Injects a synthetic 
+// Extracts STEP nodes; Detects leading ROOT and whether it was a descendant (//); Injects a synthetic
 // descendant-or-self::node() step when needed.
-// 
-// Ownership for injected steps is tracked in OwnedSteps so that the raw pointers placed into Steps remain valid for 
+//
+// Ownership for injected steps is tracked in OwnedSteps so that the raw pointers placed into Steps remain valid for
 // the call site lifetime.
 
 static void normalise_location_path(const XPathNode *PathNode, std::vector<const XPathNode *> &Steps,
@@ -96,7 +96,7 @@ static void normalise_location_path(const XPathNode *PathNode, std::vector<const
 }
 
 //********************************************************************************************************************
-// Builds the initial context node set for a path evaluation. For absolute paths this is NULL; for relative paths it 
+// Builds the initial context node set for a path evaluation. For absolute paths this is NULL; for relative paths it
 // is the current context node (or NULL if the current context is undefined).
 
 static NODES build_initial_context(bool HasRoot, const XPathContext &ctx)
@@ -340,10 +340,10 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
 }
 
 //********************************************************************************************************************
-// Advance one step for the step-sequencing evaluator by expanding axis candidates, applying predicates and either 
+// Advance one step for the step-sequencing evaluator by expanding axis candidates, applying predicates and either
 // invoking callbacks (for last steps) or preparing the next context for subsequent steps.
 
-static ERR advance_step_context(XPathEvaluator &Eval, const std::vector<XPathEvaluator::AxisMatch> &CurrentContext, 
+static ERR advance_step_context(XPathEvaluator &Eval, const std::vector<XPathEvaluator::AxisMatch> &CurrentContext,
    AxisType Axis, const XPathNode *NodeTest, const std::vector<const XPathNode *> &PredicateNodes,
    bool IsLastStep, uint32_t CurrentPrefix, bool &Matched, std::vector<XPathEvaluator::AxisMatch> &NextContext,
    std::vector<XPathEvaluator::AxisMatch> &AxisCandidates, std::vector<XPathEvaluator::AxisMatch> &PredicateBuffer,
@@ -369,7 +369,7 @@ static ERR advance_step_context(XPathEvaluator &Eval, const std::vector<XPathEva
 }
 
 //********************************************************************************************************************
-// Filters matches for collect_step_results (no callbacks) with special-case handling for foreign-document child-axis 
+// Filters matches for collect_step_results (no callbacks) with special-case handling for foreign-document child-axis
 // roots identical to the original implementation.
 
 static ERR filter_step_matches_for_collect(XPathEvaluator &Eval, const std::vector<XPathEvaluator::AxisMatch> &ContextNodes,
@@ -380,7 +380,7 @@ static ERR filter_step_matches_for_collect(XPathEvaluator &Eval, const std::vect
    for (auto &context_entry : ContextNodes) {
       Eval.expand_axis_candidates(context_entry, Axis, NodeTest, CurrentPrefix, AxisBuffer);
 
-      // Foreign-document child-axis fallback: include the context node itself if it is a root of a foreign 
+      // Foreign-document child-axis fallback: include the context node itself if it is a root of a foreign
       // document and matches the node test.
 
       if (AxisBuffer.empty()) {
@@ -781,7 +781,7 @@ XPathEvaluator::PredicateResult XPathEvaluator::handle_content_equals_predicate(
 //********************************************************************************************************************
 // Evaluate a predicate expression, applying XPath predicate coercion rules.
 
-XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix) 
+XPathEvaluator::PredicateResult XPathEvaluator::evaluate_predicate(const XPathNode *PredicateNode, uint32_t CurrentPrefix)
 {
    if ((not PredicateNode) or (PredicateNode->type != XQueryNodeType::PREDICATE)) {
       return PredicateResult::UNSUPPORTED;

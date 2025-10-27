@@ -8,7 +8,7 @@ that is distributed with this package.  Please refer to it for further informati
 -CLASS-
 XQuery: Provides an interface for XQuery evaluation and execution.
 
-The XQuery class provides comprehensive support for executing XPath 2.0 and XQuery expressions, enabling navigation 
+The XQuery class provides comprehensive support for executing XPath 2.0 and XQuery expressions, enabling navigation
 of XML documents.  It operates in conjunction with the @XML class to provide a standards-compliant query
 engine with extensive functionality.
 
@@ -57,7 +57,7 @@ object will be locked for the duration of the query.
 
 <header>Evaluation Modes</>
 
-There are two distinct methods for query evaluation.  Value evaluation returns typed results (&XPathValue)
+There are two distinct methods for query evaluation.  Value evaluation returns typed results (XPathValue)
 that can represent node sets, strings, numbers, booleans, dates, or sequences.  Node iteration invokes a callback
 function for each matching node, enabling streaming processing of large result sets.
 
@@ -94,15 +94,15 @@ an escape character in attribute strings.
 -END-
 
 TODO:
-
-* Use GetKey() and SetKey() for defining variables in the query context.
+* An InspectFunction() method would allow the function signature and list of parameter names to be returned.
 * Add support for custom functions via a new method, e.g., RegisterFunction().
 * Add DeclareNamespace(Prefix, URI) method to define namespaces for use in queries.
-* Provide ListVariables() and ListFunctions() methods to enumerate available variables and functions in the compiled query.
-* Allow modules to be preloaded - this would mean loading the module as a separate XQuery and adding it via a new method.
-  Alternatively we could provide a callback that is invoked when an import is encountered to allow the host application to supply
-  the XQuery module.
-* Could define an ExpectedResult field that defines an XPathValueType and throws an error if the result does not match.
+* Allow modules to be preloaded.  There are many ways this could be achieved, e.g.
+  - Load the module as a separate XQuery and link it via a new method.
+  - Provide a callback that is invoked when an import is encountered, this allows the the host application to supply
+    the XQuery module.
+  - Create a global cache of loaded modules that is shared by all XQuery instances.  A single LoadModule(URI) function
+    would manage it.  Probably the best option.
 
 *********************************************************************************************************************/
 
@@ -111,6 +111,8 @@ static ERR build_query(extXQuery *Self)
    pf::Log log;
 
    Self->StaleBuild = false;
+   Self->ListVariables.clear();
+   Self->ListFunctions.clear();
 
    if (Self->Statement.empty()) {
       Self->ErrorMsg = "Statement field undefined";
@@ -160,16 +162,55 @@ static ERR build_query(extXQuery *Self)
    return ERR::Okay;
 }
 
+//********************************************************************************************************************
+// Convert an expanded QName (e.g., Q{uri}local) to lexical form (e.g., prefix:local or local).
+
+static std::string to_lexical_name(const XQueryProlog &prolog, const std::string &qname) 
+{
+   if ((qname.size() > 2) and (qname[0] IS 'Q') and (qname[1] IS '{')) {
+      size_t closing = qname.find('}');
+      if (closing IS std::string::npos) return qname;
+      std::string uri = qname.substr(2, closing - 2);
+      std::string local = qname.substr(closing + 1);
+
+      // Prefer explicit module prefix if it matches
+      if (prolog.module_namespace_uri.has_value()) {
+         if (std::string_view(*prolog.module_namespace_uri) IS std::string_view(uri)) {
+            if (prolog.module_namespace_prefix.has_value()) {
+               return std::format("{}:{}", *prolog.module_namespace_prefix, local);
+            }
+         }
+      }
+
+      // Fall back to any declared prefix bound to the URI
+      for (const auto &ns : prolog.declared_namespace_uris) {
+         if (std::string_view(ns.second) IS std::string_view(uri)) {
+            return std::format("{}:{}", ns.first, local);
+         }
+      }
+
+      // If default function namespace matches, return local name only
+      if (prolog.default_function_namespace_uri.has_value()) {
+         if (std::string_view(*prolog.default_function_namespace_uri) IS std::string_view(uri)) {
+            return local;
+         }
+      }
+
+      return qname; // Leave expanded form if no mapping available
+   }
+   return qname; // Already in lexical form (e.g., prefix:local or local)
+};
+
 /*********************************************************************************************************************
 
 -ACTION-
 Activate: Run an XQuery expression.
 
-Use Activate to run a compiled XQuery expression without an XML document reference.  The result of the evaluation is 
-returned in the #Result field as !XPathValue, which can represent various types of data including node sets, strings, 
+Use Activate to run a compiled XQuery expression without an XML document reference.  The result of the evaluation is
+returned in the #Result field as XPathValue, which can represent various types of data including node sets, strings,
 numbers, or booleans.  On error, the #ErrorMsg field will contain a descriptive message.
 
-Use @Evaluate or @Search for expressions expecting an XML document context.
+Use #Evaluate() or #Search() for expressions expecting an XML document context.
 
 -ERRORS-
 Okay
@@ -201,15 +242,16 @@ static ERR XQUERY_Activate(extXQuery *Self)
 -ACTION-
 Clear: Clears all XQuery results and returns the object to its pre-compiled state.
 
-Use Clear() to remove the resources consumed by the XQuery while still retaining it for future use.
-
-The #Statement field value will be retained.
+Use Clear() to remove the resources consumed by the XQuery and reset its state.  The #Statement and #Path field 
+values are retained, allowing the object to be seamlessly re-activated at any time.
 
 *********************************************************************************************************************/
 
 static ERR XQUERY_Clear(extXQuery *Self)
 {
    Self->ErrorMsg.clear();
+   Self->ListVariables.clear();
+   Self->ListFunctions.clear();
    Self->ParseResult = CompiledXQuery();
    Self->ResultString.clear();
    Self->Result = XPathVal();
@@ -223,7 +265,7 @@ static ERR XQUERY_Clear(extXQuery *Self)
 Evaluate: Run an XQuery expression against an XML document.
 
 Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned
-in the #Result field as !XPathValue, which can represent various types of data including node sets, strings, numbers,
+in the #Result field as XPathValue, which can represent various types of data including node sets, strings, numbers,
 or booleans.
 
 -INPUT-
@@ -252,7 +294,7 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
-   
+
    if (xml) {
       pf::ScopedObjectLock lock(xml);
 
@@ -288,9 +330,17 @@ GetKey: Read XQuery variable values.
 
 static ERR XQUERY_GetKey(extXQuery *Self, struct acGetKey *Args)
 {
-   if (not Args) return ERR::NullArgs;
+   if ((not Args) or (not Args->Value) or (not Args->Key)) return ERR::NullArgs;
+   if (Args->Size < 2) return ERR::Args;
 
-   return ERR::NoSupport;
+   if (auto it = Self->Variables.find(Args->Key); it != Self->Variables.end()) {
+      pf::strcopy(it->second.c_str(), Args->Value, Args->Size);
+      return ERR::Okay;
+   }
+   else {
+      Args->Value[0] = 0;
+      return ERR::UnsupportedField;
+   }
 }
 
 /*********************************************************************************************************************
@@ -322,7 +372,7 @@ static ERR XQUERY_NewPlacement(extXQuery *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-Reset: Synonym for @Clear().
+Reset: Synonym for #Clear().
 -END-
 *********************************************************************************************************************/
 
@@ -376,7 +426,7 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
    if (xml) {
       pf::ScopedObjectLock lock(xml);
-      
+
       if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
 
       if ((Args->Callback) and (Args->Callback->defined())) Self->Callback = *Args->Callback;
@@ -427,7 +477,7 @@ static ERR XQUERY_SetKey(extXQuery *Self, struct acSetKey *Args)
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
 
    log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
-   
+
    if (Args->Value) {
       Self->Variables[Args->Key] = Args->Value;
    }
@@ -452,6 +502,63 @@ static ERR GET_ErrorMsg(extXQuery *Self, CSTRING *Value)
 {
    if (not Self->ErrorMsg.empty()) { *Value = Self->ErrorMsg.c_str(); return ERR::Okay; }
    else return ERR::NoData;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+FeatureFlags: Flags indicating the features of a compiled XQuery expression.
+
+*********************************************************************************************************************/
+
+static ERR GET_FeatureFlags(extXQuery *Self, XQF &Value)
+{
+   if (not Self->initialised()) return ERR::NotInitialised;
+
+   Value = Self->ParseResult.feature_flags();
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
+Functions: Returns an allocated list of all declared XQuery functions.
+
+Provides a list of all XQuery functions that have been defined by the user or during evaluation of the XQuery 
+expression (via the `declare` keyword).
+
+Example: For `declare function math:cube($x) { }` the name `math:cube` would appear in the list.
+
+Duplicate function names are not removed.
+
+*********************************************************************************************************************/
+
+static ERR GET_Functions(extXQuery *Self, pf::vector<std::string> **Value)
+{
+   if (not Self->initialised()) return ERR::NotInitialised;
+
+   if ((Self->ListFunctions.empty()) and (Self->ParseResult.prolog)) {
+      // Include functions declared in the main query prolog
+      for (const auto &entry : Self->ParseResult.prolog->functions) {
+         const auto &fn = entry.second;
+         Self->ListFunctions.push_back(to_lexical_name(*Self->ParseResult.prolog, fn.qname));
+      }
+
+      // Include functions declared in imported modules
+      std::shared_ptr<XQueryModuleCache> mod_cache = Self->ParseResult.prolog->get_module_cache();
+      if (mod_cache) {
+         for (auto it = mod_cache->modules.begin(); it != mod_cache->modules.end(); ++it) {
+            if ((it->second) and (it->second->prolog)) {
+               for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
+                  Self->ListFunctions.push_back(to_lexical_name(*it->second->prolog, fn->second.qname));
+               }
+            }
+         }
+      }
+   }
+
+   *Value = &Self->ListFunctions;
+   return ERR::Okay;
 }
 
 /*********************************************************************************************************************
@@ -551,11 +658,33 @@ static ERR GET_ResultString(extXQuery *Self, CSTRING *Value)
 /*********************************************************************************************************************
 
 -FIELD-
+ResultType: Returns the value type of the most recently executed query.
+Prefix: XPVT
+
+If an XQuery expression returns a #Result, the type can be retrieved from this field.
+
+*********************************************************************************************************************/
+
+static ERR GET_ResultType(extXQuery *Self, XPVT &Value)
+{
+   if (Self->Result.is_empty()) { // An empty result isn't considered an error.
+      Value = XPVT::NIL;
+      return ERR::Okay;
+   }
+   else {
+      Value = Self->Result.Type;
+      return ERR::Okay;
+   }
+}
+
+/*********************************************************************************************************************
+
+-FIELD-
 Statement: XQuery data is processed through this field.
 
 Set the Statement field with an XPath or XQuery expression for compilation.
 
-If this field is set after initialisation then @Clear() will be applied to the object first.  The expression will
+If this field is set after initialisation then #Clear() will be applied to the object first.  The expression will
 be compiled on the next execution attempt.
 
 If the statement is an XQuery expression with base-uri references, the #Path field should be set to establish
@@ -592,18 +721,70 @@ static ERR SET_Statement(extXQuery *Self, CSTRING Value)
    }
 }
 
+/*********************************************************************************************************************
+
+-FIELD-
+Variables: Returns an allocated list of all defined XQuery variables.
+
+Provides a list of all XQuery variables that have been defined using the #SetKey() action, or during evaluation of
+the XQuery expression (via the `declare` keyword).
+
+Example: For `declare variable $math:pi := 3.14159;` the variable name `math:pi` would appear in the list.
+
+Duplicate variable names are not removed.
+
+*********************************************************************************************************************/
+
+static ERR GET_Variables(extXQuery *Self, pf::vector<std::string> **Value)
+{
+   if (not Self->initialised()) return ERR::NotInitialised;
+
+   if (Self->ListVariables.empty()) {
+      for (const auto &var : Self->Variables) {
+         Self->ListVariables.push_back(var.first);
+      }
+   }
+
+   // Scan imported modules for additional variables
+
+   if (Self->ParseResult.prolog) {
+      // Include variables declared in the main query prolog
+      for (auto var = Self->ParseResult.prolog->variables.begin(); var != Self->ParseResult.prolog->variables.end(); ++var) {
+         Self->ListVariables.push_back(var->first);
+      }
+
+      // Include variables declared in imported modules
+      std::shared_ptr<XQueryModuleCache> mod_cache = Self->ParseResult.prolog->get_module_cache();
+      if (mod_cache) {
+         for (auto it = mod_cache->modules.begin(); it != mod_cache->modules.end(); ++it) {
+            if ((it->second) and (it->second->prolog)) {
+               for (auto var = it->second->prolog->variables.begin(); var != it->second->prolog->variables.end(); ++var) {
+                  Self->ListVariables.push_back(var->first);
+               }
+            }
+         }
+      }
+   }
+
+   *Value = &Self->ListVariables;
+   return ERR::Okay;
+}
+
 //********************************************************************************************************************
 
 #include "xquery_class_def.cpp"
 
 static const FieldArray clFields[] = {
    // Virtual fields
-   //{ "Callback",     FDF_FUNCTIONPTR|FDF_RW,   GET_Callback, SET_Callback },
    { "ErrorMsg",     FDF_STRING|FDF_R,         GET_ErrorMsg },
+   { "FeatureFlags", FDF_INTFLAGS|FDF_R,       GET_FeatureFlags, nullptr, &clXQueryXQF },
    { "Path",         FDF_STRING|FDF_RW,        GET_Path, SET_Path },
    { "Result",       FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
    { "ResultString", FDF_STRING|FDF_R,         GET_ResultString },
+   { "ResultType",   FDF_INT|FDF_R,            GET_ResultType },
    { "Statement",    FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
+   { "Functions",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Functions },
+   { "Variables",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Variables },
    END_FIELD
 };
 

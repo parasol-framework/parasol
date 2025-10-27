@@ -3,7 +3,7 @@
 //********************************************************************************************************************
 // Constructs the function library and registers all core XPath functions.
 
-XPathFunctionLibrary::XPathFunctionLibrary() 
+XPathFunctionLibrary::XPathFunctionLibrary()
 {
    // Node Set Functions
    register_function("last", function_last); // XP1.0
@@ -172,7 +172,7 @@ const XPathFunctionLibrary & XPathFunctionLibrary::instance()
 // Checks whether a function with the given name is registered in the library. Returns true if found; false
 // otherwise.
 
-bool XPathFunctionLibrary::has_function(std::string_view Name) const 
+bool XPathFunctionLibrary::has_function(std::string_view Name) const
 {
    return find_function(Name) != nullptr;
 }
@@ -182,7 +182,7 @@ bool XPathFunctionLibrary::has_function(std::string_view Name) const
 // appends an error message if the function is not found.
 
 XPathVal XPathFunctionLibrary::call_function(std::string_view Name, const std::vector<XPathVal> &Args,
-   const XPathContext &Context) const 
+   const XPathContext &Context) const
 {
    if (const auto *function_ptr = find_function(Name)) {
       return (*function_ptr)(Args, Context);
@@ -202,7 +202,7 @@ XPathVal XPathFunctionLibrary::call_function(std::string_view Name, const std::v
 // Registers a function implementation in the library map under the given name. Replaces any existing function
 // with the same name.
 
-void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func) 
+void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunction Func)
 {
    functions.insert_or_assign(std::string(Name), std::move(Func));
 }
@@ -210,7 +210,7 @@ void XPathFunctionLibrary::register_function(std::string_view Name, XPathFunctio
 //********************************************************************************************************************
 // Looks up a function by name and returns a pointer to its implementation if found; nullptr otherwise.
 
-const XPathFunction * XPathFunctionLibrary::find_function(std::string_view Name) const 
+const XPathFunction * XPathFunctionLibrary::find_function(std::string_view Name) const
 {
    auto iter = functions.find(Name);
    if (iter != functions.end()) return &iter->second;
@@ -221,7 +221,7 @@ const XPathFunction * XPathFunctionLibrary::find_function(std::string_view Name)
 // Estimates the buffer size needed for concatenating the string representations of all arguments. Uses type-based
 // heuristics (e.g., 32 bytes for numbers, 5 for "false") for conservative overestimation.
 
-size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &Args) 
+size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &Args)
 {
    size_t total = 0;
    for (const auto &arg : Args) {
@@ -252,7 +252,7 @@ size_t XPathFunctionLibrary::estimate_concat_size(const std::vector<XPathVal> &A
 //********************************************************************************************************************
 // Estimates the output size for normalize-space operation, returning input length as worst case (no collapsing).
 
-size_t XPathFunctionLibrary::estimate_normalize_space_size(const std::string &Input) 
+size_t XPathFunctionLibrary::estimate_normalize_space_size(const std::string &Input)
 {
    // Worst case: no whitespace collapsing needed
    return Input.length();
@@ -261,7 +261,7 @@ size_t XPathFunctionLibrary::estimate_normalize_space_size(const std::string &In
 //********************************************************************************************************************
 // Estimates the output size for translate operation, returning source length as worst case (no characters removed).
 
-size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, const std::string &From) 
+size_t XPathFunctionLibrary::estimate_translate_size(const std::string &Source, const std::string &From)
 {
    // Best case: no characters removed, worst case: same size as source
    return Source.length();

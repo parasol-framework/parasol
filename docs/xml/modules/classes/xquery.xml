@@ -40,7 +40,7 @@
 <header>Expression Compilation</header>
 <p>XPath and XQuery expressions are compiled into an optimised internal representation for efficient reuse.  Expressions can be run in their own thread, with the result available in <fl>Result</fl> and <fl>ResultString</fl> on completion, but the targeted XML object will be locked for the duration of the query.</p>
 <header>Evaluation Modes</header>
-<p>There are two distinct methods for query evaluation.  Value evaluation returns typed results (&amp;XPathValue) that can represent node sets, strings, numbers, booleans, dates, or sequences.  Node iteration invokes a callback function for each matching node, enabling streaming processing of large result sets.</p>
+<p>There are two distinct methods for query evaluation.  Value evaluation returns typed results (XPathValue) that can represent node sets, strings, numbers, booleans, dates, or sequences.  Node iteration invokes a callback function for each matching node, enabling streaming processing of large result sets.</p>
 <header>Usage Patterns</header>
 <p>Compiling and evaluating queries:</p>
 <pre>objXQuery::create query { statement=&quot;/bookstore/book[@price &lt; 10]/title&quot; };
@@ -78,8 +78,8 @@ an escape character in attribute strings.
       <comment>Run an XQuery expression.</comment>
       <prototype>ERR acActivate(*Object)</prototype>
       <description>
-<p>Use Activate to run a compiled XQuery expression without an XML document reference.  The result of the evaluation is returned in the <fl>Result</fl> field as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
-<p>Use @Evaluate or @Search for expressions expecting an XML document context.</p>
+<p>Use Activate to run a compiled XQuery expression without an XML document reference.  The result of the evaluation is returned in the <fl>Result</fl> field as XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.  On error, the <fl>ErrorMsg</fl> field will contain a descriptive message.</p>
+<p>Use <method>Evaluate</method> or <method>Search</method> for expressions expecting an XML document context.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -89,10 +89,10 @@ an escape character in attribute strings.
 
     <action>
       <name>Clear</name>
-      <comment>Completely clears all XQuery data and resets the object to its initial state.</comment>
+      <comment>Clears all XQuery results and returns the object to its pre-compiled state.</comment>
       <prototype>ERR acClear(*Object)</prototype>
       <description>
-<p>Use Clear() to remove the resources consumed by the XQuery while still retaining it for future use.</p>
+<p>Use Clear() to remove the resources consumed by the XQuery and reset its state.  The <fl>Statement</fl> and <fl>Path</fl> field values are retained, allowing the object to be seamlessly re-activated at any time.</p>
       </description>
     </action>
 
@@ -112,7 +112,7 @@ an escape character in attribute strings.
       <comment>Compiles the XQuery statement.</comment>
       <prototype>ERR InitObject(*Object)</prototype>
       <description>
-<p>Initialisation converts a valid XQuery expression string into a compiled form that can be executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and are treated as read-only for thread-safety.</p>
+<p>Initialisation will compile the XQuery <fl>Statement</fl> string into a compiled form that can be executed.</p>
 <p>If parsing fails, the object will not be initialised and an error message will be defined in the <fl>ErrorMsg</fl> field.</p>
 <p>Note: This function can hang temporarily if the expression references network URIs.  Consider calling it from a separate thread to avoid blocking in such cases.</p>
       </description>
@@ -120,7 +120,7 @@ an escape character in attribute strings.
 
     <action>
       <name>Reset</name>
-      <comment>Clears the information held in an XQuery object.</comment>
+      <comment>Synonym for <action>Clear</action>.</comment>
       <prototype>ERR acRefresh(*Object)</prototype>
     </action>
 
@@ -152,7 +152,7 @@ an escape character in attribute strings.
         <param type="objXML *" name="XML">Targeted XML document to query.  Can be NULL for XQuery expressions that do not require a context.</param>
       </input>
       <description>
-<p>Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned in the <fl>Result</fl> field as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
+<p>Use Evaluate to run a compiled XQuery expression against an XML document.  The result of the evaluation is returned in the <fl>Result</fl> field as XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>
@@ -197,6 +197,25 @@ an escape character in attribute strings.
     </field>
 
     <field>
+      <name>FeatureFlags</name>
+      <comment>Flags indicating the features of a compiled XQuery expression.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+    </field>
+
+    <field>
+      <name>Functions</name>
+      <comment>Returns an allocated list of all declared XQuery functions.</comment>
+      <access read="G">Get</access>
+      <type>pf::vector&lt;std::string&gt;</type>
+      <description>
+<p>Provides a list of all XQuery functions that have been defined by the user or during evaluation of the XQuery expression (via the <code>declare</code> keyword).</p>
+<p>Example: For <code>declare function math:cube($x) { }</code> the name <code>math:cube</code> would appear in the list.</p>
+<p>Duplicate function names are not removed.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Path</name>
       <comment>Base path for resolving relative references.</comment>
       <access read="G" write="S">Get/Set</access>
@@ -229,14 +248,36 @@ an escape character in attribute strings.
     </field>
 
     <field>
+      <name>ResultType</name>
+      <comment>Returns the value type of the most recently executed query.</comment>
+      <access read="G">Get</access>
+      <type>INT</type>
+      <description>
+<p>If an XQuery expression returns a <fl>Result</fl>, the type can be retrieved from this field.</p>
+      </description>
+    </field>
+
+    <field>
       <name>Statement</name>
       <comment>XQuery data is processed through this field.</comment>
       <access read="G" write="S">Get/Set</access>
       <type>STRING</type>
       <description>
 <p>Set the Statement field with an XPath or XQuery expression for compilation.</p>
-<p>If this field is set after initialisation then @Clear() will be applied to the object first.  The expression will be compiled on the next execution attempt.</p>
+<p>If this field is set after initialisation then <action>Clear</action> will be applied to the object first.  The expression will be compiled on the next execution attempt.</p>
 <p>If the statement is an XQuery expression with base-uri references, the <fl>Path</fl> field should be set to establish the base path for relative references.</p>
+      </description>
+    </field>
+
+    <field>
+      <name>Variables</name>
+      <comment>Returns an allocated list of all defined XQuery variables.</comment>
+      <access read="G">Get</access>
+      <type>pf::vector&lt;std::string&gt;</type>
+      <description>
+<p>Provides a list of all XQuery variables that have been defined using the <action>SetKey</action> action, or during evaluation of the XQuery expression (via the <code>declare</code> keyword).</p>
+<p>Example: For <code>declare variable $math:pi := 3.14159;</code> the variable name <code>math:pi</code> would appear in the list.</p>
+<p>Duplicate variable names are not removed.</p>
       </description>
     </field>
 

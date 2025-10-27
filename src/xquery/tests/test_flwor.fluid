@@ -2,29 +2,28 @@
 
    include 'xml'
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Basic LET expressions should evaluate arithmetic results
 
 function testLetSimpleArithmetic()
-   local xml = obj.new("xml", { statement = '<root/>' })
-   local err, temp_result = xml.mtEvaluate('let $price := 10.99 return $price * 1.1')
-   local result = tonumber(temp_result)
+   local xq = obj.new('xquery', { statement = 'let $price := 10.99 return $price * 1.1' })
+   local err = xq.acActivate()
+   local result = tonumber(xq.resultString)
    assert(result and math.abs(result - 12.089) < 0.0001,
       'Let expression should scale numeric values, got ' .. tostring(result))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Multiple bindings should be available inside the return clause
 
 function testLetMultipleBindings()
-   local xml = obj.new("xml", { statement = '<root/>' })
-   local err, temp_result = xml.mtEvaluate('let $a := 5, $b := 10 return $a + $b')
-   local result = tonumber(temp_result)
-   assert(result and math.abs(result - 15.0) < 0.0001,
-      'Let expression should expose all bound variables, got ' .. tostring(result))
+   local xq = obj.new('xquery', { statement = 'let $a := 5, $b := 10 return $a + $b' })
+   local err = xq.acActivate()
+   local result = tonumber(xq.resultString)
+   assert(result and math.abs(result - 15.0) < 0.0001, 'Let expression should expose all bound variables, got ' .. tostring(xq.resultString))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- LET expressions can combine node lookups with arithmetic
 
 function testLetDocumentComputation()
@@ -37,11 +36,10 @@ function testLetDocumentComputation()
 
    local err, temp_result = xml.mtEvaluate('let $tax := 0.08 return number(/catalog/book[@price > 20][1]/@price) * (1 + $tax)')
    local result = tonumber(temp_result)
-   assert(result and math.abs(result - 27.0) < 0.0001,
-      'Let expression should compute taxed pricing, got ' .. tostring(result))
+   assert(result and math.abs(result - 27.0) < 0.0001, 'Let expression should compute taxed pricing, got ' .. tostring(result))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Invalid LET syntax should report descriptive parser errors
 
 function testLetSyntaxErrors()
@@ -60,7 +58,7 @@ function testLetSyntaxErrors()
       'Error message should reference missing binding expression, got ' .. message2)
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- FLWOR return expressions can now yield atomic values (wrapped as node-sets with string values)
 
 function testFlworNonNodeReturnError()
@@ -80,7 +78,7 @@ function testFlworNonNodeReturnError()
       'FLWOR result should contain discounted prices, got ' .. tostring(result))
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
 -- Repeated FLWOR evaluations should remain stable and performant
 
 function testFlworRepeatedEvaluationConsistency()
@@ -109,7 +107,8 @@ function testFlworRepeatedEvaluationConsistency()
    end
 end
 
------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------
+
 return {
    tests = {
       'testLetSimpleArithmetic', 'testLetMultipleBindings', 'testLetDocumentComputation',
