@@ -521,7 +521,6 @@ void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, NODES &Output)
       auto *p = find_parent(Node);
       return p ? p->Children.size() : 0;
    }());
-   if (auto *parent = find_parent(Node)) preceding_siblings.reserve(parent->Children.size());
    evaluate_preceding_sibling_axis(Node, preceding_siblings);
    for (auto *sibling : preceding_siblings) {
       collect_subtree_reverse(sibling, Output);
