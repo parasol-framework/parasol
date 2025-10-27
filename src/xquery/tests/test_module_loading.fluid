@@ -22,7 +22,7 @@ function testBasicModuleImport()
    ]]
    
    local xq = obj.new('xquery', { statement = query, path=glScriptFolder })
-   local err = xq.acActivate(query)
+   local err = xq.acActivate()
    assert(err == ERR_Okay, 'Module import compilation failed: ' .. tostring(xq.errorMsg))
    assert(tonumber(xq.resultString) == 25, 'Should compute 5^2 = 25, got ' .. tostring(xq.resultString))
 end
