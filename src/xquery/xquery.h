@@ -7,6 +7,9 @@
 #include <optional>
 #include <utility>
 #include <parasol/modules/xquery.h>
+#include <array>
+#include <unordered_set>
+#include <unordered_map>
 
 //*********************************************************************************************************************
 
@@ -236,20 +239,43 @@ struct XQueryFunction {
    [[nodiscard]] const std::string & signature() const;
 };
 
+//********************************************************************************************************************
+// String interning pool for common identifiers (QNames, namespace URIs, etc.).
+
+class StringInterner {
+   private:
+   std::unordered_set<std::string> pool;
+   mutable std::mutex mutex;
+
+   public:
+   std::string_view intern(std::string_view str) {
+      std::lock_guard<std::mutex> lock(mutex);
+      auto it = pool.find(std::string(str));
+      if (it != pool.end()) return *it;
+      auto [it2, inserted] = pool.emplace(std::string(str));
+      return *it2;
+   }
+};
+
+inline StringInterner & global_string_pool() {
+   static StringInterner pool;
+   return pool;
+}
+
 // Structured key for function lookup: avoids string concatenation of "qname/arity"
 struct FunctionKey {
-   std::string qname;  // canonical QName (expanded or lexical as used by prolog)
+   std::string_view qname;  // canonical QName (expanded or lexical as used by prolog), interned
    size_t arity = 0;
 
    [[nodiscard]] bool operator==(const FunctionKey &Other) const noexcept {
-      return (std::string_view(qname) IS std::string_view(Other.qname)) and (arity IS Other.arity);
+      return (qname IS Other.qname) and (arity IS Other.arity);
    }
 };
 
 struct FunctionKeyHash {
    using is_transparent = void;
    [[nodiscard]] size_t operator()(const FunctionKey &Key) const noexcept {
-      size_t h1 = std::hash<std::string_view>{}(std::string_view(Key.qname));
+      size_t h1 = std::hash<std::string_view>{}(Key.qname);
       size_t h2 = std::hash<size_t>{}(Key.arity);
       return h1 ^ (h2 << 1);
    }
@@ -582,7 +608,7 @@ class XPathParser {
    std::optional<std::string> parse_qname_string();
    std::optional<std::string> parse_ncname();
    std::optional<std::string> parse_string_literal_value();
-   
+
    XQF feature_flags();
 
    inline std::optional<std::string> parse_uri_literal() {
@@ -810,7 +836,7 @@ struct XQueryProlog {
    std::weak_ptr<XQueryModuleCache> module_cache;
 };
 
- 
+
 
 namespace xml::schema {
    class SchemaTypeRegistry;
@@ -872,44 +898,67 @@ class XPathArena {
       }
    };
 
-   struct NodeVectorPool {
-      std::vector<std::unique_ptr<NODES>> storage;
-      std::vector<NODES *> free_list;
+   struct TieredNodeVectorPool {
+      static constexpr size_t size_classes = 5;
+      static constexpr size_t tier_limits[size_classes] = { 16, 64, 256, 1024, 4096 };
 
-      NODES & acquire() {
-         if (!free_list.empty()) {
-            auto *vector = free_list.back();
-            free_list.pop_back();
-            vector->clear();
-            return *vector;
+      std::array<std::vector<std::unique_ptr<NODES>>, size_classes> storage{};
+      std::array<std::vector<NODES *>, size_classes> free_lists{};
+      ankerl::unordered_dense::map<NODES *, size_t> allocated_tier;
+
+      [[nodiscard]] static size_t select_tier(size_t size) {
+         for (size_t i = 0; i < size_classes; ++i) if (size <= tier_limits[i]) return i;
+         return size_classes - 1;
+      }
+
+      NODES & acquire() { return acquire(0); }
+
+      NODES & acquire(size_t reserve_hint) {
+         size_t tier = select_tier(reserve_hint > 0 ? reserve_hint : 1);
+
+         // Prefer exact tier, then larger tiers
+         for (size_t t = tier; t < size_classes; ++t) {
+            auto &list = free_lists[t];
+            if (!list.empty()) {
+               auto *vec = list.back();
+               list.pop_back();
+               vec->clear();
+               // Track location for proper release
+               allocated_tier[vec] = t;
+               return *vec;
+            }
          }
 
-         storage.push_back(std::make_unique<NODES>());
-         auto &vector = *storage.back();
-         vector.clear();
-         return vector;
+         // Allocate new in preferred tier
+         auto &bucket = storage[tier];
+         bucket.push_back(std::make_unique<NODES>());
+         auto &vec = *bucket.back();
+         vec.clear();
+         allocated_tier[&vec] = tier;
+         return vec;
       }
 
-      // Acquire with a reserve hint to reduce reallocations on first growth (pf::vector has no public reserve)
-      NODES & acquire(size_t /*reserve_hint*/) {
-         return acquire();
-      }
-
-      void release(NODES &vector) {
-         vector.clear();
-         free_list.push_back(&vector);
+      void release(NODES &vec) {
+         vec.clear();
+         size_t tier = 0;
+         auto it = allocated_tier.find(&vec);
+         if (it != allocated_tier.end()) tier = it->second;
+         free_lists[tier].push_back(&vec);
       }
 
       void reset() {
-         free_list.clear();
-         for (auto &entry : storage) {
-            entry->clear();
-            free_list.push_back(entry.get());
+         for (size_t t = 0; t < size_classes; ++t) {
+            free_lists[t].clear();
+            for (auto &entry : storage[t]) {
+               entry->clear();
+               free_lists[t].push_back(entry.get());
+               allocated_tier[entry.get()] = t;
+            }
          }
       }
    };
 
-   NodeVectorPool node_vectors;
+   TieredNodeVectorPool node_vectors;
    TieredVectorPool<const XMLAttrib *> attribute_vectors;
    TieredVectorPool<std::string> string_vectors;
 
@@ -954,9 +1003,9 @@ class AxisEvaluator {
       bool Cached = false;
    };
 
-   std::unordered_map<XMLTag *, NODES *> ancestor_path_cache;
+   ankerl::unordered_dense::map<XMLTag *, NODES *> ancestor_path_cache;
    std::vector<std::unique_ptr<NODES>> ancestor_path_storage;
-   std::unordered_map<uint64_t, bool> document_order_cache;
+   ankerl::unordered_dense::map<uint64_t, bool> document_order_cache;
 
    // Optimized namespace handling data structures
    struct NamespaceDeclaration {
@@ -1087,7 +1136,7 @@ class XPathEvaluator : public XPathErrorReporter {
    // constructors inherit and override prefixes correctly.
    struct ConstructorNamespaceScope {
       const ConstructorNamespaceScope * parent = nullptr;
-      std::unordered_map<std::string, uint32_t> prefix_bindings;
+      ankerl::unordered_dense::map<std::string, uint32_t> prefix_bindings;
       std::optional<uint32_t> default_namespace;
    };
 

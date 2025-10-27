@@ -207,7 +207,7 @@ end
 -- Content and Structure Benchmarks
 
 function benchmarkContentExtraction()
-   local err, content = glXML.mtEvaluate('count(//product)')('string(//product[@id="prod-1"])')
+   local content = glXML.mtEvaluate('string(//product[@id="prod-1"])')
    assert(content, "Content extraction failed")
 end
 
@@ -249,6 +249,105 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
+function benchmarkFlworSimpleFor()
+   local err, val = glXML.mtEvaluate([[for $p in //product return $p/@id]])
+   assert(err == ERR_Okay, 'FLWOR simple for failed')
+end
+
+function benchmarkFlworOrderBy()
+   local err, val = glXML.mtEvaluate([[for $p in //product order by number($p/@price) return $p]])
+   assert(err == ERR_Okay, 'FLWOR order by failed')
+end
+
+function benchmarkFlworGroupBy()
+   local err, val = glXML.mtEvaluate([[for $p in //category/products/product group by $c := ../@name return $c]])
+   assert(err == ERR_Okay, 'FLWOR group by failed')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function benchmarkPrologManyFunctions()
+   local prolog = [[
+      declare function local:f0() { 0 };
+      declare function local:f1() { 1 };
+      declare function local:f2() { 2 };
+      declare function local:f3() { 3 };
+      declare function local:f4() { 4 };
+      declare function local:f5() { 5 };
+      declare function local:f6() { 6 };
+      declare function local:f7() { 7 };
+      declare function local:f8() { 8 };
+      declare function local:f9() { 9 };
+   ]]
+   local err, val = glXML.mtEvaluate(prolog .. 'local:f7()')
+   assert(err == ERR_Okay, 'Prolog many functions failed')
+end
+
+function benchmarkPrologArityLookup()
+   local prolog = [[
+      declare function local:sum($a as xs:integer) as xs:integer { $a };
+      declare function local:sum($a as xs:integer, $b as xs:integer) as xs:integer { $a + $b };
+      declare function local:sum($a as xs:integer, $b as xs:integer, $c as xs:integer) as xs:integer { $a + $b + $c };
+   ]]
+   local err, val = glXML.mtEvaluate(prolog .. 'local:sum(1,2,3)')
+   assert(err == ERR_Okay, 'Prolog arity lookup failed')
+end
+
+function benchmarkPrologQNameNormalization()
+   local prolog = [[
+      declare default function namespace "http://example.com/test";
+      declare function local:noop() { () };
+   ]]
+   local err, val = glXML.mtEvaluate(prolog .. 'local:noop()')
+   assert(err == ERR_Okay, 'Prolog QName normalization failed')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function benchmarkTokenLongArithmetic()
+   local expr = '('
+   for i = 1, 200 do
+      if i > 1 then expr = expr .. ' + ' end
+      expr = expr .. tostring(i)
+   end
+   expr = expr .. ')'
+   local err, val = glXML.mtEvaluate(expr)
+   assert(err == ERR_Okay, 'Token long arithmetic failed')
+end
+
+function benchmarkTokenNestedFunctions()
+   local expr = 'upper-case(lower-case(translate("TheQuickBrownFoxJumpsOverTheLazyDog", "aeiou", "12345")))'
+   local err, val = glXML.mtEvaluate(expr)
+   assert(err == ERR_Okay, 'Token nested functions failed')
+end
+
+function benchmarkTokenLongPath()
+   local parts = {}
+   for i = 1, 60 do table.insert(parts, 'catalog') end
+   local path = '/' .. table.concat(parts, '/')
+   local err, val = glXML.mtEvaluate(path)
+   assert(err == ERR_Okay, 'Token long path failed')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+function benchmarkAxisDescendantDeep()
+   local err, id = glXML.mtFindTag('descendant-or-self::node()')
+   assert(err == ERR_Okay, 'Axis descendant-or-self failed')
+end
+
+function benchmarkAxisFollowing()
+   local err, id = glXML.mtFindTag('/catalog/categories/category[1]/following::node()')
+   assert(err == ERR_Okay, 'Axis following failed')
+end
+
+function benchmarkAxisPreceding()
+   local err, id = glXML.mtFindTag('/catalog/categories/category[last()]/preceding::node()')
+   assert(err == ERR_Okay, 'Axis preceding failed')
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
 local glContent
 
 function benchmarkParsing()
@@ -269,6 +368,7 @@ end
    local dataFile = glPath .. 'benchmark_data.xml'
 
    glXML = obj.new("xml", { path = dataFile })
+   glQuery = obj.new('xquery', { })
 
    local err = processing.task().set('Priority', 20)  -- Highest priority
 
@@ -327,6 +427,34 @@ end
    print('=== 8. Parsing Tests ===')
    benchmarkTest('Parse XML File', benchmarkParsing, 600)
 
+   print('')
+   print('=== 9. XQuery FLWOR Benchmarks ===')
+
+   benchmarkTest('FLWOR Simple For', benchmarkFlworSimpleFor, 4000)
+   benchmarkTest('FLWOR Order By', benchmarkFlworOrderBy, 2000)
+   benchmarkTest('FLWOR Group By', benchmarkFlworGroupBy, 2000)
+
+   print('')
+   print('=== 10. Prolog / Function Lookup Benchmarks ===')
+
+   benchmarkTest('Prolog Many Functions', benchmarkPrologManyFunctions, 1400)
+   benchmarkTest('Prolog Arity Lookup', benchmarkPrologArityLookup, 1600)
+   benchmarkTest('Prolog QName Normalise', benchmarkPrologQNameNormalization, 1600)
+
+   print('')
+   print('=== 11. Tokeniser / Parse Benchmarks ===')
+
+   benchmarkTest('Token Long Arithmetic', benchmarkTokenLongArithmetic, 2000)
+   benchmarkTest('Token Nested Functions', benchmarkTokenNestedFunctions, 6000)
+   benchmarkTest('Token Long Path', benchmarkTokenLongPath, 2000)
+
+   print('')
+   print('=== 12. Axis Stress Tests ===')
+
+   benchmarkTest('Axis Descendant Deep', benchmarkAxisDescendantDeep, 2000)
+   benchmarkTest('Axis Following', benchmarkAxisFollowing, 2000)
+   benchmarkTest('Axis Preceding', benchmarkAxisPreceding, 2000)
+
    -- Print summary
    print('')
    print('=== Benchmark Results Summary ===')
@@ -364,10 +492,8 @@ end
    local avgPerTest = grandTotalTime / #sortedResults
    local fastestAvgPerTest = fastestGrandTotal / #sortedResults
 
-   print(string.format('Grand total benchmark time: %8.3fs (average per test: %6.3fms)',
-      grandTotalSeconds, avgPerTest))
-   print(string.format('Fastest-only grand total:   %dus (average fastest: %dus)',
-      fastestGrandTotalUS, fastestAvgPerTest))
+   print(string.format('Grand total benchmark time: %8.3fs (average per test: %6.3fms)', grandTotalSeconds, avgPerTest))
+   print(string.format('Fastest-only grand total:   %dus (average fastest: %dus)', fastestGrandTotalUS, fastestAvgPerTest))
 
    print('')
    print('Failed tests:')

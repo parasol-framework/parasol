@@ -31,8 +31,31 @@ inline size_t combine_group_hash(size_t Seed, size_t Value)
    return Seed;
 }
 
+// Indexed tuple schema maps variable names to stable IDs
+struct TupleSchema {
+   ankerl::unordered_dense::map<std::string, size_t> variable_indices;
+   std::vector<std::string> variable_names;
+
+   size_t register_variable(const std::string &name) {
+      auto it = variable_indices.find(name);
+      if (it != variable_indices.end()) return it->second;
+      size_t id = variable_names.size();
+      variable_indices.emplace(name, id);
+      variable_names.push_back(name);
+      return id;
+   }
+
+   size_t get_index(const std::string &name) const {
+      auto it = variable_indices.find(name);
+      return it != variable_indices.end() ? it->second : size_t(-1);
+   }
+
+   size_t size() const { return variable_names.size(); }
+};
+
 struct FlworTuple {
-   std::unordered_map<std::string, XPathVal> bindings;
+   std::vector<XPathVal> bindings;           // Indexed by TupleSchema
+   std::vector<uint8_t> binding_set;         // Flags for presence
    XMLTag *context_node = nullptr;
    const XMLAttrib *context_attribute = nullptr;
    size_t context_position = 1;
@@ -40,19 +63,36 @@ struct FlworTuple {
    std::vector<XPathVal> order_keys;
    std::vector<bool> order_key_empty;
    size_t original_index = 0;
+
+   inline void set_binding(size_t var_id, XPathVal value) {
+      if (var_id == size_t(-1)) return;
+      if (var_id >= bindings.size()) {
+         bindings.resize(var_id + 1);
+         binding_set.resize(var_id + 1, 0);
+      }
+      bindings[var_id] = std::move(value);
+      binding_set[var_id] = 1;
+   }
+
+   [[nodiscard]] inline bool has_binding(size_t var_id) const {
+      return (var_id < binding_set.size()) and (binding_set[var_id] != 0);
+   }
 };
 
 struct TupleScope {
    XPathEvaluator & evaluator;
    XPathContext & context_ref;
    std::vector<VariableBindingGuard> guards;
+   const TupleSchema & schema;
 
-   TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const FlworTuple &Tuple)
-      : evaluator(Evaluator), context_ref(ContextRef)
+   TupleScope(XPathEvaluator &Evaluator, XPathContext &ContextRef, const TupleSchema &Schema, const FlworTuple &Tuple)
+      : evaluator(Evaluator), context_ref(ContextRef), schema(Schema)
    {
       evaluator.push_context(Tuple.context_node, Tuple.context_position, Tuple.context_size, Tuple.context_attribute);
-      guards.reserve(Tuple.bindings.size());
-      for (const auto &entry : Tuple.bindings) guards.emplace_back(context_ref, entry.first, entry.second);
+      guards.reserve(schema.size());
+      for (size_t var_id = 0; var_id < schema.size(); ++var_id) {
+         if (Tuple.has_binding(var_id)) guards.emplace_back(context_ref, schema.variable_names[var_id], Tuple.bindings[var_id]);
+      }
    }
 
    ~TupleScope() {
@@ -250,26 +290,21 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return value.to_string();
    };
 
-   auto describe_tuple_bindings = [&](const FlworTuple &tuple) -> std::string {
-      if (tuple.bindings.empty()) return std::string();
+   auto describe_tuple_bindings = [&](const TupleSchema &schema, const FlworTuple &tuple) -> std::string {
+      if (schema.size() IS 0) return std::string();
 
       std::vector<std::string> entries;
-      entries.reserve(tuple.bindings.size());
+      entries.reserve(schema.size());
 
-      for (const auto &entry : tuple.bindings) {
-         entries.push_back(std::format("{}={}", entry.first, describe_value_for_trace(entry.second)));
+      for (size_t var_id = 0; var_id < schema.size(); ++var_id) {
+         if (!tuple.has_binding(var_id)) continue;
+         entries.push_back(std::format("{}={}", schema.variable_names[var_id], describe_value_for_trace(tuple.bindings[var_id])));
       }
-
-      std::sort(entries.begin(), entries.end());
 
       if (entries.empty()) return std::string();
-
+      std::sort(entries.begin(), entries.end());
       std::string summary = entries[0];
-      for (size_t index = 1; index < entries.size(); ++index) {
-         summary.append(", ");
-         summary.append(entries[index]);
-      }
-
+      for (size_t index = 1; index < entries.size(); ++index) { summary.append(", "); summary.append(entries[index]); }
       return summary;
    };
 
@@ -346,18 +381,21 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       append_binding_value(target, source);
    };
 
-   auto merge_binding_maps = [&](FlworTuple &target_tuple, const FlworTuple &source_tuple) {
-      for (const auto &entry : source_tuple.bindings) {
-         const std::string &variable_name = entry.first;
-         const XPathVal &source_value = entry.second;
-
-         auto existing = target_tuple.bindings.find(variable_name);
-         if (existing == target_tuple.bindings.end()) {
-            target_tuple.bindings[variable_name] = source_value;
-            continue;
+   auto merge_binding_vectors = [&](FlworTuple &target_tuple, const FlworTuple &source_tuple) {
+      size_t max_size = source_tuple.bindings.size();
+      if (max_size > target_tuple.bindings.size()) {
+         target_tuple.bindings.resize(max_size);
+         target_tuple.binding_set.resize(max_size, 0);
+      }
+      for (size_t var_id = 0; var_id < max_size; ++var_id) {
+         if (!source_tuple.has_binding(var_id)) continue;
+         if (!target_tuple.has_binding(var_id)) {
+            target_tuple.bindings[var_id] = source_tuple.bindings[var_id];
+            target_tuple.binding_set[var_id] = 1;
          }
-
-         merge_binding_values(existing->second, source_value);
+         else {
+            merge_binding_values(target_tuple.bindings[var_id], source_tuple.bindings[var_id]);
+         }
       }
 
       if (target_tuple.original_index > source_tuple.original_index) {
@@ -397,6 +435,10 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       return XPathVal();
    }
 
+   TupleSchema schema;
+   // Pre-register variables from FOR/LET bindings
+   for (const auto *bn : binding_nodes) if (bn && !bn->value.empty()) schema.register_variable(bn->value);
+
    std::vector<FlworTuple> tuples;
    tuples.reserve(8);
 
@@ -427,7 +469,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          next_tuples.reserve(tuples.size());
 
          for (const auto &tuple : tuples) {
-            TupleScope scope(*this, context, tuple);
+            TupleScope scope(*this, context, schema, tuple);
             XPathVal bound_value = evaluate_expression(binding_expr, CurrentPrefix);
             if (expression_unsupported) {
                record_error("Let binding expression could not be evaluated.", binding_expr);
@@ -435,7 +477,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             }
 
             FlworTuple updated_tuple = tuple;
-            updated_tuple.bindings[binding_node->value] = std::move(bound_value);
+            size_t var_id = schema.register_variable(binding_node->value);
+            updated_tuple.set_binding(var_id, std::move(bound_value));
             next_tuples.push_back(std::move(updated_tuple));
          }
 
@@ -462,7 +505,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          next_tuples.reserve(tuples.size());
 
          for (const auto &tuple : tuples) {
-            TupleScope scope(*this, context, tuple);
+            TupleScope scope(*this, context, schema, tuple);
             XPathVal sequence_value = evaluate_expression(sequence_expr, CurrentPrefix);
             if (expression_unsupported) {
                record_error("For binding sequence could not be evaluated.", sequence_expr);
@@ -502,8 +545,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
                else if (item_node) item_string = XPathVal::node_string_value(item_node);
 
                XPathVal bound_value = xpath_nodeset_singleton(item_node, item_attribute, item_string);
-
-               next_tuple.bindings[binding_node->value] = std::move(bound_value);
+               size_t var_id = schema.register_variable(binding_node->value);
+               next_tuple.set_binding(var_id, std::move(bound_value));
                next_tuple.context_node = item_node;
                next_tuple.context_attribute = item_attribute;
                next_tuple.context_position = item_index + 1;
@@ -545,7 +588,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
       filtered.reserve(tuples.size());
 
       for (const auto &tuple : tuples) {
-         TupleScope scope(*this, context, tuple);
+         TupleScope scope(*this, context, schema, tuple);
          XPathVal predicate_value = evaluate_expression(predicate_node, CurrentPrefix);
          if (expression_unsupported) {
             record_error("Where clause expression could not be evaluated.", predicate_node);
@@ -572,7 +615,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          return XPathVal();
       }
 
-      std::unordered_map<GroupKey, size_t, GroupKeyHasher, GroupKeyEqual> group_lookup;
+      ankerl::unordered_dense::map<GroupKey, size_t, GroupKeyHasher, GroupKeyEqual> group_lookup;
       group_lookup.reserve(tuples.size());
       std::vector<FlworTuple> grouped;
       grouped.reserve(tuples.size());
@@ -588,10 +631,10 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          key.values.reserve(group_clause->child_count());
 
          std::string tuple_binding_summary;
-         if (tracing_flwor) tuple_binding_summary = describe_tuple_bindings(tuple);
+         if (tracing_flwor) tuple_binding_summary = describe_tuple_bindings(schema, tuple);
 
          {
-            TupleScope scope(*this, context, tuple);
+            TupleScope scope(*this, context, schema, tuple);
             for (int key_index = 0; key_index < int(group_clause->child_count()); ++key_index) {
                const XPathNode *key_node = group_clause->get_child(key_index);
                if (!key_node) {
@@ -636,7 +679,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
                if (!key_node) continue;
                const auto *info = key_node->get_group_key_info();
                if ((info) and info->has_variable()) {
-                  grouped_tuple.bindings[info->variable_name] = key.values[key_index];
+                  size_t var_id = schema.register_variable(info->variable_name);
+                  grouped_tuple.set_binding(var_id, key.values[key_index]);
                }
             }
 
@@ -658,19 +702,20 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          }
 
          FlworTuple &existing_group = grouped[lookup->second];
-         merge_binding_maps(existing_group, tuple);
+         merge_binding_vectors(existing_group, tuple);
 
          for (size_t key_index = 0; key_index < group_clause->child_count(); ++key_index) {
             const XPathNode *key_node = group_clause->get_child(key_index);
             if (!key_node) continue;
             const auto *info = key_node->get_group_key_info();
             if ((info) and info->has_variable()) {
-               existing_group.bindings[info->variable_name] = key.values[key_index];
+               size_t var_id = schema.register_variable(info->variable_name);
+               existing_group.set_binding(var_id, key.values[key_index]);
             }
          }
 
          if (tracing_flwor) {
-            std::string merged_summary = describe_tuple_bindings(existing_group);
+            std::string merged_summary = describe_tuple_bindings(schema, existing_group);
             trace_detail("FLWOR group merge tuple[%zu] into group %zu, keys: %s", tuple_index, lookup->second,
                key_summary.c_str());
             if (!merged_summary.empty()) {
@@ -771,7 +816,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          tuple.order_key_empty.reserve(order_specs.size());
 
          if (tracing_flwor) {
-            std::string binding_summary = describe_tuple_bindings(tuple);
+            std::string binding_summary = describe_tuple_bindings(schema, tuple);
             if (binding_summary.empty()) {
                trace_detail("FLWOR order tuple[%zu] original=%zu has no bindings", tuple_index, tuple.original_index);
             }
@@ -781,7 +826,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             }
          }
 
-         TupleScope scope(*this, context, tuple);
+         TupleScope scope(*this, context, schema, tuple);
          for (size_t spec_index = 0; spec_index < order_specs.size(); ++spec_index) {
             const auto &spec = order_specs[spec_index];
             const XPathNode *spec_expr = spec.node ? spec.node->get_child(0) : nullptr;
@@ -872,7 +917,8 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
 
       for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
          XPathVal counter(double(tuple_index + 1));
-         tuples[tuple_index].bindings[count_clause->value] = std::move(counter);
+         size_t var_id = schema.register_variable(count_clause->value);
+         tuples[tuple_index].set_binding(var_id, std::move(counter));
 
          if (tracing_flwor) {
             trace_verbose("FLWOR count tuple[%zu] original=%zu -> %zu", tuple_index,
@@ -895,7 +941,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
    for (size_t tuple_index = 0; tuple_index < tuples.size(); ++tuple_index) {
       const auto &tuple = tuples[tuple_index];
       if (tracing_flwor) {
-         std::string binding_summary = describe_tuple_bindings(tuple);
+         std::string binding_summary = describe_tuple_bindings(schema, tuple);
          if (binding_summary.empty()) {
             trace_detail("FLWOR return tuple[%zu] original=%zu context=%zu/%zu evaluating", tuple_index,
                tuple.original_index, tuple.context_position, tuple.context_size);
@@ -906,7 +952,7 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
          }
       }
 
-      TupleScope scope(*this, context, tuple);
+      TupleScope scope(*this, context, schema, tuple);
       XPathVal iteration_value = evaluate_expression(return_node, CurrentPrefix);
 
       if (expression_unsupported) {
