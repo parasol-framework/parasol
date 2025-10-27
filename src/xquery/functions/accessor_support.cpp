@@ -298,7 +298,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
       current = parent;
    }
 
-   std::optional<std::string> base = resolve_document_base_directory(document->Path);
+   std::optional<std::string> base = resolve_document_base_directory((document and document->Path) ? document->Path : std::string_view{});
 
    for (auto iterator = chain.rbegin(); iterator != chain.rend(); ++iterator) {
       if (base.has_value()) base = xml::uri::resolve_relative_uri(*iterator, *base);
