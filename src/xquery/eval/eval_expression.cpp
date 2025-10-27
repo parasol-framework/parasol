@@ -1638,7 +1638,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
-      if (not return_node) {
+      if (not return_node) [[unlikely]] {
          record_error("LET expression is missing its return clause.", ExprNode, true);
          return XPathVal();
       }
@@ -1684,18 +1684,18 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    // FLWOR evaluation mirrors that approach, capturing structural and runtime issues so test_xpath_flwor.fluid can assert
    // on human-readable error text while we continue to guard performance-sensitive paths.
 
-   if (ExprNode->type IS XQueryNodeType::FLWOR_EXPRESSION) {
+   if (ExprNode->type IS XQueryNodeType::FLWOR_EXPRESSION) [[likely]] {
       return evaluate_flwor_pipeline(ExprNode, CurrentPrefix);
    }
 
-   if (ExprNode->type IS XQueryNodeType::FOR_EXPRESSION) {
-      if (ExprNode->child_count() < 2) {
+   if (ExprNode->type IS XQueryNodeType::FOR_EXPRESSION) [[likely]] {
+      if (ExprNode->child_count() < 2) [[unlikely]] {
          expression_unsupported = true;
          return XPathVal();
       }
 
       const XPathNode *return_node = ExprNode->get_child(ExprNode->child_count() - 1);
-      if (not return_node) {
+      if (not return_node) [[unlikely]] {
          expression_unsupported = true;
          return XPathVal();
       }
@@ -1969,8 +1969,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return value;
    }
 
-   if (ExprNode->type IS XQueryNodeType::UNARY_OP) {
-      if (ExprNode->child_count() IS 0) {
+   if (ExprNode->type IS XQueryNodeType::UNARY_OP) [[likely]] {
+      if (ExprNode->child_count() IS 0) [[unlikely]] {
          expression_unsupported = true;
          return XPathVal();
       }
@@ -1985,8 +1985,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       return XPathVal();
    }
 
-   if (ExprNode->type IS XQueryNodeType::BINARY_OP) {
-      if (ExprNode->child_count() < 2) {
+   if (ExprNode->type IS XQueryNodeType::BINARY_OP) [[likely]] {
+      if (ExprNode->child_count() < 2) [[unlikely]] {
          expression_unsupported = true;
          return XPathVal();
       }

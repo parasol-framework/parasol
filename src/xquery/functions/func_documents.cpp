@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
    pf::Log log(__FUNCTION__);
 
    log.branch("Loading: %s", URI.c_str());
-  
+
    if (Encoding.has_value()) {
       std::string lowered = lowercase_copy(*Encoding);
       if ((lowered != "utf-8") and (lowered != "utf8")) return false;

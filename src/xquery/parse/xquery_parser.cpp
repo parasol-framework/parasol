@@ -5,6 +5,47 @@
 #include <utility>
 #include "../../xml/uri_utils.h"
 
+// Helper to compute feature flags from the parsed prolog and AST
+
+XQF CompiledXQuery::feature_flags() const
+{
+   XQF flags = XQF::NIL;
+   
+   if (auto p = prolog.get(); p) { // Prolog-derived flags
+      bool has_any_prolog_decl = false;
+      if (not p->declared_namespaces.empty()) has_any_prolog_decl = true;
+      if (not p->variables.empty()) has_any_prolog_decl = true;
+      if (not p->functions.empty()) has_any_prolog_decl = true;
+      if (not p->module_imports.empty()) { has_any_prolog_decl = true; flags |= XQF::MODULE_IMPORTS; }
+      if (p->module_namespace_uri.has_value() or p->module_namespace_prefix.has_value()) has_any_prolog_decl = true;
+      if (p->static_base_uri_declared or (not p->static_base_uri.empty())) { has_any_prolog_decl = true; flags |= XQF::BASE_URI_DECLARED; }
+      if (p->default_collation_declared or (not p->default_collation.empty())) { has_any_prolog_decl = true; flags |= XQF::DEFAULT_COLLATION_DECLARED; }
+      if (p->default_function_namespace.has_value() or p->default_function_namespace_uri.has_value()) { has_any_prolog_decl = true; flags |= XQF::DEFAULT_FUNCTION_NS; }
+      if (p->default_element_namespace.has_value() or p->default_element_namespace_uri.has_value()) { has_any_prolog_decl = true; flags |= XQF::DEFAULT_ELEMENT_NS; }
+      if (p->boundary_space_declared and (p->boundary_space IS XQueryProlog::BoundarySpace::Preserve)) flags |= XQF::BOUNDARY_PRESERVE;
+      if (p->construction_declared and (p->construction_mode IS XQueryProlog::ConstructionMode::Preserve)) flags |= XQF::CONSTRUCTION_PRESERVE;
+      if (p->ordering_declared and (p->ordering_mode IS XQueryProlog::OrderingMode::Unordered)) flags |= XQF::ORDERING_UNORDERED;
+
+      if (has_any_prolog_decl) flags |= XQF::HAS_PROLOG;
+      if (p->is_library_module) flags |= XQF::LIBRARY_MODULE;
+   }
+
+   // AST-derived flags
+   auto scan_ast = [&](auto &&self, const XPathNode *node) -> void {
+      if (not node) return;
+      if (node->type IS XQueryNodeType::WILDCARD) flags |= XQF::HAS_WILDCARD_TESTS;
+      for (const auto &child : node->children) self(self, child.get());
+   };
+
+   if (expression) {
+      // Mark simple XPath location paths
+      if (expression->type IS XQueryNodeType::LOCATION_PATH) flags |= XQF::XPATH;
+      scan_ast(scan_ast, expression.get());
+   }
+
+   return flags;
+};
+
 //********************************************************************************************************************
 // Parses a list of XPath tokens and returns an CompiledXQuery object containing:
 //   - expression: the root node of the parse tree (AST) if parsing succeeds, or nullptr if parsing fails
@@ -113,10 +154,10 @@ CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
    if (expression->type IS XQueryNodeType::PATH) {
       if (expression->child_count() IS 1) {
          auto child = std::move(expression->children[0]);
-         if (child and (child->type IS XQueryNodeType::LOCATION_PATH)) {
-            result.expression = std::move(child);
-            return result;
-         }
+          if (child and (child->type IS XQueryNodeType::LOCATION_PATH)) {
+             result.expression = std::move(child);
+             return result;
+          }
       }
    }
 

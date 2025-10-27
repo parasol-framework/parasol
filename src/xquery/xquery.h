@@ -216,7 +216,7 @@ struct DecimalFormat {
    std::string minus_sign = "-";
    std::string nan = "NaN";
    std::string percent = "%";
-   std::string per_mille = "‰";
+   std::string per_mille = "\xE2\x80\xB0"; // UTF-8 encoding of â€° (per-mille)
    std::string zero_digit = "0";
    std::string digit = "#";
    std::string pattern_separator = ";";
@@ -231,8 +231,9 @@ struct XQueryFunction {
    std::optional<std::string> return_type;
    std::unique_ptr<XPathNode> body;
    bool is_external = false;
+   mutable std::string cached_signature;
 
-   [[nodiscard]] std::string signature() const;
+   [[nodiscard]] const std::string & signature() const;
 };
 
 // Represents a user-defined XQuery variable declared in the prolog.
@@ -455,6 +456,8 @@ struct CompiledXQuery {
          if (entry.second) FreeResource(entry.second);
       }
    }
+
+   XQF feature_flags() const;
 };
 
 //********************************************************************************************************************
@@ -558,6 +561,8 @@ class XPathParser {
    std::optional<std::string> parse_qname_string();
    std::optional<std::string> parse_ncname();
    std::optional<std::string> parse_string_literal_value();
+   
+   XQF feature_flags();
 
    inline std::optional<std::string> parse_uri_literal() {
       return parse_string_literal_value();
@@ -682,6 +687,8 @@ public:
    std::string ErrorMsg;
    CompiledXQuery ParseResult; // Result of parsing the query.
    XPathVal Result; // Result of the last execution.
+   pf::vector<std::string> ListVariables; // List of variable names.
+   pf::vector<std::string> ListFunctions; // List of function names.
    std::string ResultString; // Cached string representation of the result.
    std::string Path; // Base path for resolving relative URIs.
    extXML *XML; // During query execution, the context XML document.
@@ -764,21 +771,21 @@ struct XQueryProlog {
 struct TransparentStringHash {
    using is_transparent = void;
 
-   size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
-   size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
-   size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
+   [[nodiscard]] size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
+   [[nodiscard]] size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
+   [[nodiscard]] size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
 };
 
 struct TransparentStringEqual {
    using is_transparent = void;
 
-   bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
-   bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
-   bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
-   bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
-   bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
-   bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
-   bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
+   [[nodiscard]] bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   [[nodiscard]] bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   [[nodiscard]] bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
 };
 
 namespace xml::schema {
@@ -957,7 +964,7 @@ class AxisEvaluator {
    XMLTag * find_parent(XMLTag *ReferenceNode);
 
    public:
-   explicit AxisEvaluator(CompiledXQuery *State, extXML *XML, XPathArena &Arena) 
+   explicit AxisEvaluator(CompiledXQuery *State, extXML *XML, XPathArena &Arena)
       : state(State), xml(XML), arena(Arena) {}
 
    // Main evaluation method
@@ -1000,7 +1007,7 @@ struct XPathContext {
    xml::schema::SchemaTypeRegistry * schema_registry = nullptr;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
-      
+
    [[nodiscard]] inline std::shared_ptr<XQueryModuleCache> modules();
 
    XPathContext() = default;
@@ -1056,7 +1063,7 @@ class XPathEvaluator : public XPathErrorReporter {
 
    std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
-   
+
    // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
 
    ankerl::unordered_dense::map<std::string, std::string> text_cache;

@@ -80,6 +80,26 @@ enum class XQueryNodeType : int {
    TYPESWITCH_DEFAULT_CASE = 53,
 };
 
+// Flags indicating the features of a compiled XQuery expression.
+
+enum class XQF : uint32_t {
+   NIL = 0,
+   XPATH = 0x00000001,
+   HAS_PROLOG = 0x00000002,
+   LIBRARY_MODULE = 0x00000004,
+   MODULE_IMPORTS = 0x00000008,
+   DEFAULT_FUNCTION_NS = 0x00000010,
+   DEFAULT_ELEMENT_NS = 0x00000020,
+   BASE_URI_DECLARED = 0x00000040,
+   DEFAULT_COLLATION_DECLARED = 0x00000080,
+   BOUNDARY_PRESERVE = 0x00000100,
+   CONSTRUCTION_PRESERVE = 0x00000200,
+   ORDERING_UNORDERED = 0x00000400,
+   HAS_WILDCARD_TESTS = 0x00000800,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(XQF)
+
 // XQuery class definition
 
 #define VER_XQUERY (1.000000)
@@ -128,13 +148,13 @@ class objXQuery : public Object {
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[6];
+      auto field = &this->Class->Dictionary[9];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
-      auto field = &this->Class->Dictionary[7];
+      auto field = &this->Class->Dictionary[10];
       return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 

@@ -104,10 +104,14 @@ XQueryProlog::XQueryProlog()
 
 //********************************************************************************************************************
 // Returns the canonical signature text used to register the function in the prolog lookup table.
+// The signature is cached on first access to avoid repeated string allocations.
 
-std::string XQueryFunction::signature() const
+const std::string & XQueryFunction::signature() const
 {
-   return build_function_signature(qname, parameter_names.size());
+   if (cached_signature.empty()) {
+      cached_signature = build_function_signature(qname, parameter_names.size());
+   }
+   return cached_signature;
 }
 
 //********************************************************************************************************************

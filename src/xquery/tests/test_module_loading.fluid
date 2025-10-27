@@ -7,7 +7,7 @@
 
 function testBasicModuleImport()
    -- Initial verification of module file existence and that it is compilable
-   
+
    local mod_content = file.readAll(glScriptFolder .. '/modules/math_utils.xq')
    assert(mod_content, 'Module file not found: modules/math_utils.xq')
    local compiled_mod = obj.new('xquery', { statement = mod_content })
@@ -20,7 +20,7 @@ function testBasicModuleImport()
 
       math:square(5)
    ]]
-   
+
    local xq = obj.new('xquery', { statement = query, path=glScriptFolder })
    local err = xq.acActivate()
    assert(err == ERR_Okay, 'Module import compilation failed: ' .. tostring(xq.errorMsg))
@@ -61,6 +61,26 @@ function testModuleVariables()
    assert(err == ERR_Okay, 'Module variable access failed: ' .. tostring(xq.errorMsg))
    local pi_value = tonumber(xq.resultString)
    assert(pi_value and math.abs(pi_value - 3.14159) < 0.00001, 'Should return pi value 3.14159, got ' .. pi_value)
+
+   local vars = xq.variables
+   assert(vars, "Expected module variables to be accessible")
+   local math_pi_seen = false
+   for k,v in pairs(vars) do
+      if (v == 'math:pi') then math_pi_seen = true end
+   end
+   assert(math_pi_seen, "Module variable 'math:pi' not found in variables list")
+
+   local list = xq.functions
+   assert(list, "Expected module functions to be accessible")
+   local math_count = 0
+   for k,v in pairs(list) do
+      if (string.sub(v, 1, 5) == 'math:') then math_count = math_count + 1 end
+   end
+   assert(math_count >= 2, "Module variable 'math:pi' not found in variables list")
+
+   -- Verify feature flags include ModuleImports
+   
+   assert(string.find(xq.get("$featureFlags"), 'ModuleImports', 1, true), "Expected feature flags to include ModuleImports")
 end
 
 -----------------------------------------------------------------------------------------------------------------------

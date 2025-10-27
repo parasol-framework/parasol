@@ -9,6 +9,16 @@ function testUserDefinedFunction()
    local xq = obj.new('xquery', { statement = 'declare function local:square($x) { $x * $x }; local:square(5)' })
    assert(xq.acActivate() == ERR_Okay, 'Query execution failed: ' .. tostring(xq.errorMsg))
    assert(tonumber(xq.resultString) == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(xq.resultString))
+
+   local list = xq.functions
+   assert(list, "Expected module functions to be accessible")
+   local func_seen = false
+   for k,v in pairs(list) do
+      print(k, '=', v)
+      if (v == 'local:square') then func_seen = true end
+   end
+   assert(func_seen, "Module function 'local:square' not found in function list")
+
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -979,7 +989,7 @@ end
 -- Decimal format with invalid property should be handled
 
 function testDecimalFormatInvalidProperty()
-   local ex = catch(function() 
+   local ex = catch(function()
       obj.new('xquery', { statement = 'declare decimal-format local:df invalid-prop = "x"; "ok"' })
    end)
    assert(ex, 'Invalid decimal format property should fail to compile.')
