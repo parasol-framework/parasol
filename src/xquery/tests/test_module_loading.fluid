@@ -213,7 +213,7 @@ function testLibraryModuleValidation()
       main:test()
    ]], path=glScriptFolder })
 
-   local err = xq.acActivate(query)
+   local err = xq.acActivate()
    assert(err != ERR_Okay, 'Should reject non-library module')
    local error_msg = string.lower(tostring(xq.errorMsg))
    assert(string.find(error_msg, 'library', 1, true),
