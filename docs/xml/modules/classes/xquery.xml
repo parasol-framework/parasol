@@ -164,10 +164,18 @@ an escape character in attribute strings.
     <method>
       <name>RegisterFunction</name>
       <comment>Register a custom XQuery function.</comment>
-      <prototype>ERR xq::RegisterFunction(OBJECTPTR Object)</prototype>
+      <prototype>ERR xq::RegisterFunction(OBJECTPTR Object, CSTRING FunctionName, FUNCTION * Callback)</prototype>
+      <input>
+        <param type="CSTRING" name="FunctionName">The name of the function to register (e.g., "custom-function").</param>
+        <param type="FUNCTION *" name="Callback">The callback function to register for FunctionName.</param>
+      </input>
       <description>
 <p>Use RegisterFunction to define a custom function that can be invoked within XQuery expressions.  The function will be associated with the specified name and can be called like any standard XQuery function.</p>
       </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
     </method>
 
     <method>

@@ -380,8 +380,14 @@ Use RegisterFunction to define a custom function that can be invoked within XQue
 will be associated with the specified name and can be called like any standard XQuery function.
 
 -INPUT-
-cpp(str) FunctionName: The name of the function to register (e.g., "my:custom-function").
+cstr FunctionName: The name of the function to register (e.g., "custom-function").
 ptr(func) Callback: The callback function to register for FunctionName.
+
+-ERRORS-
+Okay
+NullArgs
+
+-END-
 
 *********************************************************************************************************************/
 
