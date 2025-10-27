@@ -427,9 +427,14 @@ static ERR XQUERY_SetKey(extXQuery *Self, struct acSetKey *Args)
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
 
    log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
-
-   //if (Args->Value) Self->Variables[Args->Key] = Args->Value;
-   //else Self->Variables.erase(Args->Key);
+   
+   if (Args->Value) {
+      Self->Variables[Args->Key] = Args->Value;
+   }
+   else {
+      // Remove variable if Value is null
+      Self->Variables.erase(Args->Key);
+   }
 
    return ERR::Okay;
 }

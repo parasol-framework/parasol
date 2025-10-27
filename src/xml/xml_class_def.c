@@ -42,7 +42,6 @@ FDEF maRegisterNamespace[] = { { "URI", FD_STR }, { "Result", FD_INT|FD_UNSIGNED
 FDEF maGetNamespaceURI[] = { { "NamespaceID", FD_INT|FD_UNSIGNED }, { "Result", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maSetTagNamespace[] = { { "TagID", FD_INT }, { "NamespaceID", FD_INT }, { 0, 0 } };
 FDEF maResolvePrefix[] = { { "Prefix", FD_STR }, { "TagID", FD_INT }, { "Result", FD_INT|FD_UNSIGNED|FD_RESULT }, { 0, 0 } };
-FDEF maSetVariable[] = { { "Key", FD_STR }, { "Value", FD_STR }, { 0, 0 } };
 FDEF maGetEntity[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maGetNotation[] = { { "Name", FD_STR }, { "Value", FD_STR|FD_RESULT }, { 0, 0 } };
 FDEF maLoadSchema[] = { { "Path", FD_STR }, { 0, 0 } };
@@ -68,10 +67,9 @@ static const struct MethodEntry clXMLMethods[] = {
    { AC(-18), (APTR)XML_GetNamespaceURI, "GetNamespaceURI", maGetNamespaceURI, sizeof(struct xml::GetNamespaceURI) },
    { AC(-19), (APTR)XML_SetTagNamespace, "SetTagNamespace", maSetTagNamespace, sizeof(struct xml::SetTagNamespace) },
    { AC(-20), (APTR)XML_ResolvePrefix, "ResolvePrefix", maResolvePrefix, sizeof(struct xml::ResolvePrefix) },
-   { AC(-21), (APTR)XML_SetVariable, "SetVariable", maSetVariable, sizeof(struct xml::SetVariable) },
-   { AC(-22), (APTR)XML_GetEntity, "GetEntity", maGetEntity, sizeof(struct xml::GetEntity) },
-   { AC(-23), (APTR)XML_GetNotation, "GetNotation", maGetNotation, sizeof(struct xml::GetNotation) },
-   { AC(-24), (APTR)XML_LoadSchema, "LoadSchema", maLoadSchema, sizeof(struct xml::LoadSchema) },
+   { AC(-21), (APTR)XML_GetEntity, "GetEntity", maGetEntity, sizeof(struct xml::GetEntity) },
+   { AC(-22), (APTR)XML_GetNotation, "GetNotation", maGetNotation, sizeof(struct xml::GetNotation) },
+   { AC(-23), (APTR)XML_LoadSchema, "LoadSchema", maLoadSchema, sizeof(struct xml::LoadSchema) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

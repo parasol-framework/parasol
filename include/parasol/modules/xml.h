@@ -197,10 +197,9 @@ struct RegisterNamespace { CSTRING URI; uint32_t Result; static const AC id = AC
 struct GetNamespaceURI { uint32_t NamespaceID; CSTRING Result; static const AC id = AC(-18); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct SetTagNamespace { int TagID; int NamespaceID; static const AC id = AC(-19); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct ResolvePrefix { CSTRING Prefix; int TagID; uint32_t Result; static const AC id = AC(-20); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct SetVariable { CSTRING Key; CSTRING Value; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct LoadSchema { CSTRING Path; static const AC id = AC(-24); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetEntity { CSTRING Name; CSTRING Value; static const AC id = AC(-21); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct GetNotation { CSTRING Name; CSTRING Value; static const AC id = AC(-22); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct LoadSchema { CSTRING Path; static const AC id = AC(-23); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -371,25 +370,21 @@ class objXML : public Object {
       if (Result) *Result = args.Result;
       return(error);
    }
-   inline ERR setVariable(CSTRING Key, CSTRING Value) noexcept {
-      struct xml::SetVariable args = { Key, Value };
-      return(Action(AC(-21), this, &args));
-   }
    inline ERR getEntity(CSTRING Name, CSTRING * Value) noexcept {
       struct xml::GetEntity args = { Name, (CSTRING)0 };
-      ERR error = Action(AC(-22), this, &args);
+      ERR error = Action(AC(-21), this, &args);
       if (Value) *Value = args.Value;
       return(error);
    }
    inline ERR getNotation(CSTRING Name, CSTRING * Value) noexcept {
       struct xml::GetNotation args = { Name, (CSTRING)0 };
-      ERR error = Action(AC(-23), this, &args);
+      ERR error = Action(AC(-22), this, &args);
       if (Value) *Value = args.Value;
       return(error);
    }
    inline ERR loadSchema(CSTRING Path) noexcept {
       struct xml::LoadSchema args = { Path };
-      return(Action(AC(-24), this, &args));
+      return(Action(AC(-23), this, &args));
    }
 
    // Customised field setting

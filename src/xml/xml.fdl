@@ -150,10 +150,9 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
     { id=18, name="GetNamespaceURI" },
     { id=19, name="SetTagNamespace" },
     { id=20, name="ResolvePrefix" },
-    { id=21, name="SetVariable" },
-    { id=22, name="GetEntity" },
-    { id=23, name="GetNotation" },
-    { id=24, name="LoadSchema" }
+    { id=21, name="GetEntity" },
+    { id=22, name="GetNotation" },
+    { id=23, name="LoadSchema" }
   })
 
   class("XML", { src="xml_class.cpp", output="xml_class_def.c" }, [[

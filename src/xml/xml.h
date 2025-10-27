@@ -147,7 +147,6 @@ class extXML : public objXML {
    FUNCTION Callback;
 
    std::shared_ptr<xml::schema::SchemaContext> SchemaContext;
-   ankerl::unordered_dense::map<std::string, std::string> Variables; // XPath variable references
    ankerl::unordered_dense::map<std::string, std::string> Entities; // For general entities
    ankerl::unordered_dense::map<std::string, std::string> ParameterEntities; // For parameter entities
    ankerl::unordered_dense::map<std::string, std::string> Notations; // For notation declarations
