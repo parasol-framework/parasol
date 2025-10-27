@@ -2221,7 +2221,6 @@ static BCPos expr_cond(LexState *ls)
 typedef struct LHSVarList {
   ExpDesc v;			/* LHS variable. */
   struct LHSVarList *prev;	/* Link to previous LHS variable. */
-  struct LHSVarList *next;	/* Link to next LHS variable. */
 } LHSVarList;
 
 /* Eliminate write-after-read hazards for local variable assignment. */
