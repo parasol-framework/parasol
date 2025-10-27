@@ -161,18 +161,56 @@ static ERR build_query(extXQuery *Self)
 }
 
 /*********************************************************************************************************************
+
 -ACTION-
-Clear: Completely clears all XQuery data and resets the object to its initial state.
+Activate: Run an XQuery expression.
+
+Use Activate to run a compiled XQuery expression without an XML document reference.  The result of the evaluation is 
+returned in the #Result field as !XPathValue, which can represent various types of data including node sets, strings, 
+numbers, or booleans.  On error, the #ErrorMsg field will contain a descriptive message.
+
+Use @Evaluate or @Search for expressions expecting an XML document context.
+
+-ERRORS-
+Okay
+Syntax
+
+*********************************************************************************************************************/
+
+static ERR XQUERY_Activate(extXQuery *Self)
+{
+   pf::Log log;
+
+   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
+   while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
+   log.branch("Expression: %.*s, BasePath: %s", len, Self->Statement.c_str(), Self->Path.c_str());
+
+   if (Self->StaleBuild) {
+      if (auto err = build_query(Self); err != ERR::Okay) return err;
+   }
+
+   Self->XML = nullptr;
+   XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
+   auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+   Self->ErrorMsg = Self->ParseResult.error_msg;
+   return err;
+}
+
+/*********************************************************************************************************************
+
+-ACTION-
+Clear: Clears all XQuery results and returns the object to its pre-compiled state.
 
 Use Clear() to remove the resources consumed by the XQuery while still retaining it for future use.
+
+The #Statement field value will be retained.
 
 *********************************************************************************************************************/
 
 static ERR XQUERY_Clear(extXQuery *Self)
 {
    Self->ErrorMsg.clear();
-   Self->ParseResult.prolog.reset();
-   Self->ParseResult.expression.reset();
+   Self->ParseResult = CompiledXQuery();
    Self->ResultString.clear();
    Self->Result = XPathVal();
    Self->StaleBuild = true;
@@ -204,9 +242,9 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 
    if (not Args) return log.warning(ERR::NullArgs);
 
-   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 60);
+   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
-   log.branch("Expression: %.*s", len, Self->Statement.c_str());
+   log.branch("Expression: %.*s, BasePath: %s", len, Self->Statement.c_str(), Self->Path.c_str());
 
    if (Self->StaleBuild) {
       if (auto err = build_query(Self); err != ERR::Okay) return err;
@@ -215,21 +253,21 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
    
-   Self->ErrorMsg.clear();
-
    if (xml) {
       pf::ScopedObjectLock lock(xml);
 
+      if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
+
       xml->Attrib.clear();
-      XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
+      XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
-      if (err != ERR::Okay) log.warning("%s", Self->ErrorMsg.c_str());
+      Self->ErrorMsg = Self->ParseResult.error_msg;
       return err;
    }
    else {
-      XPathEvaluator eval(nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
+      XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
-      if (err != ERR::Okay) log.warning("%s", Self->ErrorMsg.c_str());
+      Self->ErrorMsg = Self->ParseResult.error_msg;
       return err;
    }
 }
@@ -256,13 +294,11 @@ static ERR XQUERY_GetKey(extXQuery *Self, struct acGetKey *Args)
 }
 
 /*********************************************************************************************************************
+
 -ACTION-
 Init: Compiles the XQuery statement.
 
-Initialisation converts a valid XQuery expression string into a compiled form that can be
-executed against an XML document.  The resulting compiled expression can be reused multiple times for efficiency
-and must be freed using FreeResource when no longer needed.  They are re-usable between different XML documents and
-are treated as read-only for thread-safety.
+Initialisation will compile the XQuery #Statement string into a compiled form that can be executed.
 
 If parsing fails, the object will not be initialised and an error message will be defined in the #ErrorMsg field.
 
@@ -286,7 +322,8 @@ static ERR XQUERY_NewPlacement(extXQuery *Self)
 
 /*********************************************************************************************************************
 -ACTION-
-Reset: Clears the information held in an XQuery object.
+Reset: Synonym for @Clear().
+-END-
 *********************************************************************************************************************/
 
 static ERR XQUERY_Reset(extXQuery *Self)
@@ -326,9 +363,9 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
    if (not Args) return log.warning(ERR::NullArgs);
 
-   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 60);
+   int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
-   log.branch("Expression: %.*s; Callback: %c", len, Self->Statement.c_str(), Args->Callback ? (Args->Callback->Type != CALL::NIL ? 'Y' : 'N') : 'N');
+   log.branch("Expression: %.*s; Callback: %c, BasePath: %s", len, Self->Statement.c_str(), Args->Callback ? (Args->Callback->Type != CALL::NIL ? 'Y' : 'N') : 'N', Self->Path.c_str());
 
    if (Self->StaleBuild) {
       if (auto err = build_query(Self); err != ERR::Okay) return err;
@@ -336,11 +373,11 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
    auto xml = (extXML *)Args->XML;
    Self->XML = xml;
-   Self->ErrorMsg.clear();
-   if (xml) xml->ErrorMsg.clear();
 
    if (xml) {
       pf::ScopedObjectLock lock(xml);
+      
+      if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
 
       if ((Args->Callback) and (Args->Callback->defined())) Self->Callback = *Args->Callback;
       else Self->Callback.Type = CALL::NIL;
@@ -351,14 +388,16 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
       xml->Attrib.clear();
 
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
-      XPathEvaluator eval(xml, Self->ParseResult.expression.get(), &Self->ParseResult);
+      XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto error = eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
-      if (not xml->ErrorMsg.empty()) Self->ErrorMsg = xml->ErrorMsg;
+      Self->ErrorMsg = Self->ParseResult.error_msg;
       return error;
    }
    else {
-      XPathEvaluator eval(nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
-      return eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
+      XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
+      auto error = eval.find_tag(*Self->ParseResult.expression.get(), 0); // Returns ERR:Search if no match
+      Self->ErrorMsg = Self->ParseResult.error_msg;
+      return error;
    }
 }
 
@@ -388,9 +427,14 @@ static ERR XQUERY_SetKey(extXQuery *Self, struct acSetKey *Args)
    if ((not Args) or (not Args->Key)) return log.warning(ERR::NullArgs);
 
    log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
-
-   //if (Args->Value) Self->Variables[Args->Key] = Args->Value;
-   //else Self->Variables.erase(Args->Key);
+   
+   if (Args->Value) {
+      Self->Variables[Args->Key] = Args->Value;
+   }
+   else {
+      // Remove variable if Value is null
+      Self->Variables.erase(Args->Key);
+   }
 
    return ERR::Okay;
 }

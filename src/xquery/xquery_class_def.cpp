@@ -10,6 +10,7 @@ static const struct MethodEntry clXQueryMethods[] = {
 };
 
 static const struct ActionArray clXQueryActions[] = {
+   { AC::Activate, XQUERY_Activate },
    { AC::Clear, XQUERY_Clear },
    { AC::Free, XQUERY_Free },
    { AC::GetKey, XQUERY_GetKey },

@@ -24,10 +24,11 @@
 // Constructs the evaluator with a reference to the XML document. Initialises the axis evaluator, configures
 // trace settings from log depth, and prepares the evaluation context with schema registry and variable storage.
 
-XPathEvaluator::XPathEvaluator(extXML *XML, const XPathNode *QueryRoot, CompiledXQuery *ParseContext)
+XPathEvaluator::XPathEvaluator(extXQuery *Query, extXML *XML, const XPathNode *QueryRoot, CompiledXQuery *ParseContext)
    : xml(XML), query_root(QueryRoot), parse_context(ParseContext), axis_evaluator(ParseContext, XML, arena)
 {
    trace_xpath_enabled = GetResource(RES::LOG_DEPTH) >= 8;
+   query = Query;
    context.eval = this;
    context.xml = XML;
    context.expression_unsupported = &expression_unsupported;
@@ -83,6 +84,7 @@ bool XPathEvaluator::prolog_has_boundary_space_preserve() const
    return prolog->boundary_space IS XQueryProlog::BoundarySpace::Preserve;
 }
 
+//********************************************************************************************************************
 // Determines whether construction mode should preserve boundary whitespace during node creation.
 
 bool XPathEvaluator::prolog_construction_preserve() const
@@ -94,6 +96,7 @@ bool XPathEvaluator::prolog_construction_preserve() const
    return prolog->construction_mode IS XQueryProlog::ConstructionMode::Preserve;
 }
 
+//********************************************************************************************************************
 // Reports whether the prolog enforces ordered results for sequence operations.
 
 bool XPathEvaluator::prolog_ordering_is_ordered() const
@@ -103,6 +106,7 @@ bool XPathEvaluator::prolog_ordering_is_ordered() const
    return prolog->ordering_mode IS XQueryProlog::OrderingMode::Ordered;
 }
 
+//********************************************************************************************************************
 // Indicates whether empty sequences should compare as greatest according to the prolog settings.
 
 bool XPathEvaluator::prolog_empty_is_greatest() const
@@ -130,18 +134,14 @@ std::string XPathEvaluator::build_ast_signature(const XPathNode *Node) const
 
 //********************************************************************************************************************
 // Records an error for the XML object & sets the expression_unsupported flag.
-// Setting Force will override existing XML ErrorMsg.
+// Setting Force will override existing error_msg.
 // Additionally, if a Node is provided, a detailed stack trace is logged.
 
 void XPathEvaluator::record_error(std::string_view Message, bool Force)
 {
    expression_unsupported = true;
-
    pf::Log("XPath").warning("%.*s", (int)Message.size(), Message.data());
-
-   if (xml) {
-      if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
-   }
+   if (Force or parse_context->error_msg.empty()) parse_context->error_msg.assign(Message);
 }
 
 void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Node, bool Force)
@@ -157,9 +157,7 @@ void XPathEvaluator::record_error(std::string_view Message, const XPathNode *Nod
 
    log.branch("%.*s %s [Stack detail follows]", (int)Message.size(), Message.data(), signature.c_str());
 
-   if (xml) {
-      if (Force or xml->ErrorMsg.empty()) xml->ErrorMsg.assign(Message);
-   }
+   if (Force or parse_context->error_msg.empty()) parse_context->error_msg.assign(Message);
 
    // Dump evaluator context stack from outermost to innermost.
    // Frames in context_stack are prior contexts; current context is appended last.
@@ -253,7 +251,7 @@ ERR XPathEvaluator::evaluate_xpath_expression(const XPathNode &XPath, XPathVal *
    *Result = std::move(evaluate_expression(node, CurrentPrefix));
 
    if (expression_unsupported) {
-      if (xml and xml->ErrorMsg.empty()) xml->ErrorMsg = "Unsupported XPath expression.";
+      if (parse_context->error_msg.empty()) parse_context->error_msg = "Unsupported XPath expression.";
       return ERR::Syntax;
    }
    else return ERR::Okay;

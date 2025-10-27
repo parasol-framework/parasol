@@ -74,6 +74,20 @@ an escape character in attribute strings.
 
   <actions>
     <action>
+      <name>Activate</name>
+      <comment>Run an XQuery expression.</comment>
+      <prototype>ERR acActivate(*Object)</prototype>
+      <description>
+<p>Use Activate to run a compiled XQuery expression without an XML document reference.  The result of the evaluation is returned in the <fl>Result</fl> field as !XPathValue, which can represent various types of data including node sets, strings, numbers, or booleans.</p>
+<p>Use @Evaluate or @Search for expressions expecting an XML document context.</p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="Syntax">Invalid syntax detected.</error>
+      </result>
+    </action>
+
+    <action>
       <name>Clear</name>
       <comment>Completely clears all XQuery data and resets the object to its initial state.</comment>
       <prototype>ERR acClear(*Object)</prototype>

@@ -36,32 +36,28 @@ namespace xpath::accessor {
 
    if (boundary IS std::string::npos) return std::nullopt;
 
-   std::string folder(candidate.substr(0U, boundary + 1U));
+   std::string folder(candidate.substr(0, boundary + 1));
    return xml::uri::normalise_uri_separators(std::move(folder));
 }
 
 //********************************************************************************************************************
 
-std::optional<std::string> resolve_document_base_directory(extXML *Document)
+std::optional<std::string> resolve_document_base_directory(std::string_view BasePath)
 {
-   if (!Document) return std::nullopt;
-
-   if (Document->Path) {
-      std::string candidate(Document->Path);
+   if (not BasePath.empty()) {
+      std::string candidate;
       std::string resolved;
-
-      if (ResolvePath(candidate, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) candidate = std::move(resolved);
-
+      if (ResolvePath(BasePath, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) candidate = std::move(resolved);
+      else candidate = BasePath;
       if (auto folder = trim_to_base_directory(candidate)) return folder;
-
-      if (auto fallback = trim_to_base_directory(std::string(Document->Path))) return fallback;
+      if (auto fallback = trim_to_base_directory(std::string(BasePath))) return fallback;
    }
 
    if (objTask *task = CurrentTask()) {
       CSTRING task_path = nullptr;
       if ((task->get(FID_Path, task_path) IS ERR::Okay) and task_path) {
          std::string working(task_path);
-         if (!working.empty()) {
+         if (not working.empty()) {
             char last = working.back();
             if ((last != '/') and (last != '\\')) working.push_back('/');
             return xml::uri::normalise_uri_separators(std::move(working));
@@ -70,13 +66,6 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    }
 
    return std::nullopt;
-}
-
-//********************************************************************************************************************
-
-[[nodiscard]] static std::optional<std::string> document_path(extXML *Document)
-{
-   return resolve_document_base_directory(Document);
 }
 
 //********************************************************************************************************************
@@ -97,7 +86,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    auto &map = Document->getMap();
    for (auto &entry : map) {
       XMLTag *candidate = entry.second;
-      if (!candidate) continue;
+      if (not candidate) continue;
 
       for (auto &attrib : candidate->Attribs) {
          const XMLAttrib *attrib_ptr = &attrib;
@@ -113,7 +102,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
 
 [[nodiscard]] static XMLTag * resolve_attribute_scope(const XPathContext &Context, XMLTag *NodeHint, const XMLAttrib *Attribute, extXML *&Document)
 {
-   if (!Attribute) return NodeHint;
+   if (not Attribute) return NodeHint;
 
    if (NodeHint) {
       for (auto &attrib : NodeHint->Attribs) {
@@ -123,7 +112,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    }
 
    auto locate_in_document = [&](extXML *Candidate) -> XMLTag * {
-      if (!Candidate) return nullptr;
+      if (not Candidate) return nullptr;
       if (XMLTag *owner = find_attribute_owner(Candidate, Attribute); owner) {
          Document = Candidate;
          return owner;
@@ -162,7 +151,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    lookup = context.elements.find(local);
    if (lookup != context.elements.end()) return lookup->second;
 
-   if (!context.target_namespace_prefix.empty()) {
+   if (not context.target_namespace_prefix.empty()) {
       std::string qualified = std::format("{}:{}", context.target_namespace_prefix, local);
       lookup = context.elements.find(qualified);
       if (lookup != context.elements.end()) return lookup->second;
@@ -188,7 +177,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
       if (iter != types.end()) return iter->second;
    }
 
-   if (!Context.schema_registry) return nullptr;
+   if (not Context.schema_registry) return nullptr;
 
    if (auto descriptor = Context.schema_registry->find_descriptor(TypeName)) return descriptor;
 
@@ -209,7 +198,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    std::string prefix(name.substr(0, colon));
    std::string local(name.substr(colon + 1));
 
-   if (!pf::iequals(local, "nil")) return false;
+   if (not pf::iequals(local, "nil")) return false;
 
    if (pf::iequals(prefix, "xml")) return false;
    if (pf::iequals(prefix, "xmlns")) return false;
@@ -226,7 +215,7 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
 
 [[nodiscard]] extXML * locate_node_document(const XPathContext &Context, XMLTag *Node)
 {
-   if (!Node) return nullptr;
+   if (not Node) return nullptr;
 
    if (Context.xml) {
       auto &map = Context.xml->getMap();
@@ -264,20 +253,26 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
       }
    }
 
-   if (!Node) {
-      auto base = document_path(document ? document : Context.xml);
+   if (not Node) {
+      std::string_view path;
+      if ((document) and (document->Path)) path = document->Path;
+      else if ((Context.xml) and (Context.xml->Path)) path = Context.xml->Path;
+      auto base = resolve_document_base_directory(path);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
       return std::nullopt;
    }
 
-   if (!document) {
+   if (not document) {
       extXML *owner_origin = locate_node_document(Context, Node);
       if (owner_origin) document = owner_origin;
       else document = Context.xml;
    }
 
    if ((Node->ParentID IS 0) and (!AttributeNode)) { // Root-level node with no attribute
-      auto base = document_path(document ? document : Context.xml);
+      std::string_view path;
+      if ((document) and (document->Path)) path = document->Path;
+      else if ((Context.xml) and (Context.xml->Path)) path = Context.xml->Path;
+      auto base = resolve_document_base_directory(path);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
    }
 
@@ -293,17 +288,17 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
 
       for (size_t index = 1; index < current->Attribs.size(); ++index) {
          const XMLAttrib &attrib = current->Attribs[index];
-         if (!attribute_is_xml_base(attrib)) continue;
+         if (not attribute_is_xml_base(attrib)) continue;
          if (skip_current_xml_base) continue;
          chain.push_back(attrib.Value);
       }
 
       XMLTag *parent = parent_for_node(document, current);
-      if (!parent) break;
+      if (not parent) break;
       current = parent;
    }
 
-   std::optional<std::string> base = document_path(document);
+   std::optional<std::string> base = resolve_document_base_directory((document and document->Path) ? document->Path : std::string_view{});
 
    for (auto iterator = chain.rbegin(); iterator != chain.rend(); ++iterator) {
       if (base.has_value()) base = xml::uri::resolve_relative_uri(*iterator, *base);
@@ -319,10 +314,10 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
 
 std::optional<std::string> resolve_document_uri(const XPathContext &Context, XMLTag *Node)
 {
-   if (!Node) return std::nullopt;
+   if (not Node) return std::nullopt;
 
    extXML *document = locate_node_document(Context, Node);
-   if (!document) return std::nullopt;
+   if (not document) return std::nullopt;
    if (document->Path and document->Path[0]) {
       return xml::uri::normalise_uri_separators(std::string(document->Path));
    }
@@ -346,8 +341,8 @@ std::optional<std::string> resolve_document_uri(const XPathContext &Context, XML
 std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPathContext &Context, XMLTag *Node,
    const XMLAttrib *AttributeNode)
 {
-   if (!Context.schema_registry) return nullptr;
-   if (!Node) return nullptr;
+   if (not Context.schema_registry) return nullptr;
+   if (not Node) return nullptr;
    if (AttributeNode) return nullptr;
    if (Node->Attribs.empty()) return nullptr;
    if (Node->Attribs[0].Name.empty()) return nullptr;
@@ -357,11 +352,11 @@ std::shared_ptr<xml::schema::SchemaTypeDescriptor> infer_schema_type(const XPath
    if ((!document) or (!document->SchemaContext)) return nullptr;
 
    auto descriptor = find_element_descriptor(document, Node->Attribs[0].Name);
-   if (!descriptor) return nullptr;
+   if (not descriptor) return nullptr;
 
    if (descriptor->type) return descriptor->type;
 
-   if (!descriptor->type_name.empty()) {
+   if (not descriptor->type_name.empty()) {
       if (auto resolved = resolve_type_descriptor(Context, document, descriptor->type_name)) return resolved;
    }
 
@@ -381,7 +376,7 @@ bool is_element_explicitly_nilled(const XPathContext &Context, XMLTag *Node)
 
    for (size_t index = 1; index < Node->Attribs.size(); ++index) {
       const XMLAttrib &attrib = Node->Attribs[index];
-      if (!attribute_matches_nil(attrib, Node, document)) continue;
+      if (not attribute_matches_nil(attrib, Node, document)) continue;
 
       auto parsed = parse_schema_boolean(attrib.Value);
       if (parsed.has_value()) return parsed.value();

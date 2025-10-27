@@ -122,7 +122,7 @@ CompiledXQuery * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQ
 
    if (URI.empty()) return nullptr;
 
-   auto base_dir = xpath::accessor::resolve_document_base_directory(Eval.xml);
+   auto base_dir = xpath::accessor::resolve_document_base_directory(Eval.query->Path);
 
    auto uri_key = xp_normalise_cache_key(std::string(URI));
    std::string original_uri(URI);

@@ -1841,46 +1841,6 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 }
 
 /*********************************************************************************************************************
--METHOD-
-SetVariable: Stores a variable that can be referenced in XPath expressions.
-
-This method allows you to store key-value pairs that can be referenced in XPath expressions using the variable syntax
-`$variableName`.  Variables are stored as strings and are made available during XPath evaluation.
-
--INPUT-
-cstr Key: The name of the variable (case sensitive).
-cstr Value: The string value to store.
-
--ERRORS-
-Okay:
-NullArgs: The `Key` parameter was not specified.
-ReadOnly: The XML object is read-only.
--END-
-
-*********************************************************************************************************************/
-
-static ERR XML_SetVariable(extXML *Self, struct xml::SetVariable *Args)
-{
-   pf::Log log;
-
-   if (not Args) return log.warning(ERR::NullArgs);
-   if (not Args->Key) return log.warning(ERR::NullArgs);
-   if (Self->ReadOnly) return log.warning(ERR::ReadOnly);
-
-   log.trace("Setting variable '%s' = '%s'", Args->Key, Args->Value ? Args->Value : "");
-
-   if (Args->Value) {
-      Self->Variables[Args->Key] = Args->Value;
-   }
-   else {
-      // Remove variable if Value is null
-      Self->Variables.erase(Args->Key);
-   }
-
-   return ERR::Okay;
-}
-
-/*********************************************************************************************************************
 
 -FIELD-
 DocType: Root element name from DOCTYPE declaration

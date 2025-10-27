@@ -693,12 +693,9 @@ bool XPathEvaluator::resolve_variable_value(std::string_view QName, uint32_t Cur
       }
    }
 
-   if (xml) {
-      auto xml_variable = xml->Variables.find(name);
-      if (xml_variable != xml->Variables.end()) {
-         OutValue = XPathVal(xml_variable->second);
-         return true;
-      }
+   if (auto var = query->Variables.find(name); var != query->Variables.end()) {
+      OutValue = XPathVal(var->second);
+      return true;
    }
 
    auto prolog = context.prolog;
@@ -1054,8 +1051,7 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
       auto value_schema = Value.get_schema_type();
       auto value_descriptor = registry.find_descriptor(value_schema);
 
-      auto is_boolean_schema = [](xml::schema::SchemaType Type) noexcept
-      {
+      auto is_boolean_schema = [](xml::schema::SchemaType Type) noexcept {
          return (Type IS xml::schema::SchemaType::XPathBoolean) or (Type IS xml::schema::SchemaType::XSBoolean);
       };
 

@@ -101,6 +101,7 @@ class objXQuery : public Object {
 
    // Action stubs
 
+   inline ERR activate() noexcept { return Action(AC::Activate, this, nullptr); }
    inline ERR clear() noexcept { return Action(AC::Clear, this, nullptr); }
    inline ERR getKey(CSTRING Key, STRING Value, int Size) noexcept {
       struct acGetKey args = { Key, Value, Size };
