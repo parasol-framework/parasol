@@ -146,7 +146,7 @@ function testModuleCaching()
       math:cube(2)
    ]]
 
-   local err = xq.acActivate(query2)
+   local err = xq.acActivate()
    assert(err == ERR_Okay, 'Cached module use failed: ' .. tostring(xq.errorMsg))
    assert(tonumber(xq.resultString) == 8, 'Second query should return 8, got ' .. tostring(xq.resultString))
 end
