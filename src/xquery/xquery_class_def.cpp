@@ -22,6 +22,7 @@ FDEF maSearch[] = { { "XML", FD_OBJECTPTR }, { "Callback", FD_FUNCTIONPTR }, { 0
 static const struct MethodEntry clXQueryMethods[] = {
    { AC(-1), (APTR)XQUERY_Evaluate, "Evaluate", maEvaluate, sizeof(struct xq::Evaluate) },
    { AC(-2), (APTR)XQUERY_Search, "Search", maSearch, sizeof(struct xq::Search) },
+   { AC(-3), (APTR)XQUERY_RegisterFunction, "RegisterFunction", 0, 0 },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

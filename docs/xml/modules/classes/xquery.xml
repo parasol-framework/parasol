@@ -162,6 +162,15 @@ an escape character in attribute strings.
     </method>
 
     <method>
+      <name>RegisterFunction</name>
+      <comment>Register a custom XQuery function.</comment>
+      <prototype>ERR xq::RegisterFunction(OBJECTPTR Object)</prototype>
+      <description>
+<p>Use RegisterFunction to define a custom function that can be invoked within XQuery expressions.  The function will be associated with the specified name and can be called like any standard XQuery function.</p>
+      </description>
+    </method>
+
+    <method>
       <name>Search</name>
       <comment>For node-based queries, calls a function for each matching node.</comment>
       <prototype>ERR xq::Search(OBJECTPTR Object, objXML * XML, FUNCTION * Callback)</prototype>
