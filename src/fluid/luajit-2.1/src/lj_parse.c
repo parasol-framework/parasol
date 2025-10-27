@@ -2361,7 +2361,7 @@ static void parse_call_assign(LexState *ls)
     vl.next = NULL;
     assign_compound(ls, &vl, ls->tok);
   } else if (ls->tok == ';') {
-    /* Compound increments handled in expr_primary. */
+    /* Postfix increment (++) handled in expr_primary. */
   } else {  /* Start of an assignment. */
     vl.prev = NULL;
     vl.next = NULL;
