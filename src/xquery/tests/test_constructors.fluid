@@ -22,17 +22,19 @@ end
 -- Direct constructors should preserve literal whitespace inside element content
 
 function testDirectConstructorWhitespace()
-   local xml = obj.new("xml", { statement = '<root/>' })
+   local xq = obj.new('xquery', { statement = 'string(<a>hello world</a>)' })
+   local err = xq.acActivate()
 
-   local err, singleSpace = xml.mtEvaluate('string(<a>hello world</a>)')
-   assert(singleSpace == 'hello world', 'Direct constructor should preserve single spaces, got ' .. nz(singleSpace, 'NIL'))
+   assert(xq.resultString == 'hello world', 'Direct constructor should preserve single spaces, got ' .. tostring(xq.resultString))
 
-   local err, leading = xml.mtEvaluate('string(<a>  padded  </a>)')
-   assert(leading == '  padded  ', 'Direct constructor should retain leading and trailing spaces, got ' .. nz(leading, 'NIL'))
+   xq.statement = 'string(<a>  padded  </a>)'
+   xq.acActivate()
+   assert(xq.resultString == '  padded  ', 'Direct constructor should retain leading and trailing spaces, got ' .. tostring(xq.resultString))
 
-   local err, multiline = xml.mtEvaluate([[string(<a>line 1
-   line 2</a>)]])
-   assert(multiline == "line 1\n   line 2", 'Direct constructor should keep newline indentation, got ' .. nz(multiline, 'NIL'))
+   xq.statement = [[string(<a>line 1
+   line 2</a>)]]
+   xq.acActivate()
+   assert(xq.resultString == "line 1\n   line 2", 'Direct constructor should keep newline indentation, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -77,43 +79,50 @@ end
 -- Document constructors should wrap sequences into a standalone document node
 
 function testDocumentConstructor()
-   local xml = obj.new("xml", { statement = '<root/>' })
+   local xq = obj.new('xquery', { statement = 'count((document { <a/>, <b/> })/node())' })
+   local err = xq.acActivate()
 
-   local err, temp_childCount = xml.mtEvaluate('count((document { <a/>, <b/> })/node())')
-   local childCount = tonumber(temp_childCount)
+   local childCount = tonumber(xq.resultString)
    assert(childCount == 2, 'Document constructor should expose two child nodes, got ' .. tostring(childCount))
 
-   local err, firstName = xml.mtEvaluate('name(((document { <root/> })/node())[1])')
-   assert(firstName == 'root', 'Document constructor should retain child element names, got ' .. nz(firstName, 'NIL'))
+   xq.statement = 'name(((document { <root/> })/node())[1])'
+   local err = xq.acActivate()
+   assert(xq.resultString == 'root', 'Document constructor should retain child element names, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Attribute and sequence content should merge correctly inside constructors
 
 function testConstructorAttributeSequences()
-   local xml = obj.new("xml", { statement = '<root/>' })
+   local xq = obj.new('xquery', { statement = 'count(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@*)' })
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
 
-   local err, temp_mergedCount = xml.mtEvaluate('count(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@*)')
-   local mergedCount = tonumber(temp_mergedCount)
+   local mergedCount = tonumber(xq.resultString)
    assert(mergedCount == 2, 'Element constructor should merge attribute sequences into the result, got ' .. tostring(mergedCount))
 
-   local err, mergedAttr = xml.mtEvaluate('string(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@second)')
-   assert(mergedAttr == '2', 'Element constructor should preserve attribute values from sequences, got ' .. nz(mergedAttr, 'NIL'))
+   xq.statement = 'string(element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/@second)'
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
+   assert(xq.resultString == '2', 'Element constructor should preserve attribute values from sequences, got ' .. tostring(xq.resultString))
 
-   local err, firstChild = xml.mtEvaluate('name((element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/node())[1])')
-   assert(firstChild == 'child', 'Element constructor should retain subsequent child nodes after attributes, got ' .. nz(firstChild, 'NIL'))
+   xq.statement = 'name((element wrapper { (attribute first { "1" }, attribute second { "2" }), element child { "value" } }/node())[1])'
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
+   assert(xq.resultString == 'child', 'Element constructor should retain subsequent child nodes after attributes, got ' .. tostring(xq.resultString))
 
-   local err, dynamicAttr = xml.mtEvaluate('string((let $attrs := (attribute id { "main" }, attribute role { "admin" }) return element wrapper { $attrs, text { "ready" } })/@role)')
-   assert(dynamicAttr == 'admin', 'Element constructor should append dynamic attribute sequences before content, got ' .. nz(dynamicAttr, 'NIL'))
+   xq.statement = 'string((let $attrs := (attribute id { "main" }, attribute role { "admin" }) return element wrapper { $attrs, text { "ready" } })/@role)'
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
+   assert(xq.resultString == 'admin', 'Element constructor should append dynamic attribute sequences before content, got ' .. tostring(xq.resultString))
 
-   local err, firstText = xml.mtEvaluate('string((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[1])')
-   assert(firstText == 'ready', 'Element constructor should keep constructed text content before atomic values, got ' .. nz(firstText, 'NIL'))
+   xq.statement = 'string((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[1])'
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
+   assert(xq.resultString == 'ready', 'Element constructor should keep constructed text content before atomic values, got ' .. tostring(xq.resultString))
 
-   local err, secondText = xml.mtEvaluate('string((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[2])')
-   assert(secondText == '!', 'Element constructor should append atomic values as subsequent text nodes, got ' .. nz(secondText, 'NIL'))
+   xq.statement = 'string((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[2])'
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
+   assert(xq.resultString == '!', 'Element constructor should append atomic values as subsequent text nodes, got ' .. tostring(xq.resultString))
 
-   local err, combinedText = xml.mtEvaluate('concat((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[1], (let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[2])')
-   assert(combinedText == 'ready!', 'Element constructor should preserve text node ordering when combined explicitly, got ' .. nz(combinedText, 'NIL'))
+   xq.statement = 'concat((let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[1], (let $attrs := (attribute id { "main" }) return element wrapper { $attrs, text { "ready" }, "!" })/text()[2])'
+   assert(xq.acActivate() == ERR_Okay, 'XQuery execution failed.')
+   assert(xq.resultString == 'ready!', 'Element constructor should preserve text node ordering when combined explicitly, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------

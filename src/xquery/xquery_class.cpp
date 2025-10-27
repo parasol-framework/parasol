@@ -95,10 +95,10 @@ an escape character in attribute strings.
 
 TODO:
 
-* Use GetKey() and SetKey() for defining variables in the query context.
+* Support GetKey() for variables in the query context.
+* Provide ListVariables() and ListFunctions() methods to enumerate available variables and functions in the compiled query.
 * Add support for custom functions via a new method, e.g., RegisterFunction().
 * Add DeclareNamespace(Prefix, URI) method to define namespaces for use in queries.
-* Provide ListVariables() and ListFunctions() methods to enumerate available variables and functions in the compiled query.
 * Allow modules to be preloaded - this would mean loading the module as a separate XQuery and adding it via a new method.
   Alternatively we could provide a callback that is invoked when an import is encountered to allow the host application to supply
   the XQuery module.
