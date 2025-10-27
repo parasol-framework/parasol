@@ -652,7 +652,6 @@ AxisEvaluator::AncestorPathView AxisEvaluator::build_ancestor_path(XMLTag *Node)
    else storage = &arena.acquire_node_vector(10);
 
    storage->clear();
-   storage->reserve(10);
 
    XMLTag *current = Node;
    while (current) {
