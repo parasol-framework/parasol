@@ -2277,6 +2277,7 @@ static int assign_compound(LexState *ls, LHSVarList *lh, LexToken opType)
   ExpDesc lhv, infix, rh;
   int32_t nexps;
   BinOpr op;
+  BCReg freg_base;
 
   lhv = lh->v;
 
@@ -2295,18 +2296,59 @@ static int assign_compound(LexState *ls, LHSVarList *lh, LexToken opType)
   }
   lj_lex_next(ls);
 
-  if (lh->v.k == VINDEXED)
+  /* Preserve table base/index across RHS evaluation by duplicating them
+  ** to the top of the stack and discharging using the duplicates. This retains
+  ** the original registers for the final store and maintains LIFO free order. */
+  freg_base = fs->freereg;
+  if (lh->v.k == VINDEXED) {
+    BCReg new_base, new_idx;
+    uint32_t orig_aux = lhv.u.s.aux;  /* Keep originals for the store. */
+
+    /* Duplicate base to a fresh register. */
+    new_base = fs->freereg;
+    bcemit_AD(fs, BC_MOV, new_base, lhv.u.s.info);
     bcreg_reserve(fs, 1);
 
-  expr_tonextreg(fs, &lh->v);
+    /* If index is a register (0..BCMAX_C), duplicate it, too. */
+    if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C) {
+      new_idx = fs->freereg;
+      bcemit_AD(fs, BC_MOV, new_idx, (BCReg)orig_aux);
+      bcreg_reserve(fs, 1);
+      /* Discharge using the duplicates; keep lhv pointing to originals. */
+      lh->v.u.s.info = new_base;
+      lh->v.u.s.aux = new_idx;
+    } else {
+      /* For string/byte keys, only the base needs duplicating. */
+      lh->v.u.s.info = new_base;
+      /* aux remains an encoded constant. */
+    }
+  }
 
-  nexps = expr_list(ls, &rh);
-  checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
-
-  infix = lh->v;
-  bcemit_binop_left(fs, op, &infix);
+  /* For concatenation, fix left operand placement before parsing RHS to
+  ** maintain BC_CAT stack adjacency and LIFO freeing semantics. */
+  if (op == OPR_CONCAT) {
+    infix = lh->v;
+    bcemit_binop_left(fs, op, &infix);
+    nexps = expr_list(ls, &rh);
+    checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+  } else {
+    /* Load current LHS value to a register for the infix operation. */
+    expr_tonextreg(fs, &lh->v);
+    nexps = expr_list(ls, &rh);
+    checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
+    infix = lh->v;
+    bcemit_binop_left(fs, op, &infix);
+  }
   bcemit_binop(fs, op, &infix, &rh);
   bcemit_store(fs, &lhv, &infix);
+  /* Drop any RHS temporaries and release original base/index in LIFO order. */
+  fs->freereg = freg_base;
+  if (lhv.k == VINDEXED) {
+    uint32_t orig_aux = lhv.u.s.aux;
+    if ((int32_t)orig_aux >= 0 && orig_aux <= BCMAX_C)
+      bcreg_free(fs, (BCReg)orig_aux);
+    bcreg_free(fs, (BCReg)lhv.u.s.info);
+  }
   return 1;
 }
 
@@ -2318,7 +2360,6 @@ static void parse_assignment(LexState *ls, LHSVarList *lh, BCReg nvars)
   if (lex_opt(ls, ',')) {  /* Collect LHS list and recurse upwards. */
     LHSVarList vl;
     vl.prev = lh;
-    lh->next = &vl;
     expr_primary(ls, &vl.v);
     if (vl.v.k == VLOCAL)
       assign_hazard(ls, lh, &vl.v);
@@ -2358,13 +2399,11 @@ static void parse_call_assign(LexState *ls)
     setbc_b(bcptr(fs, &vl.v), 1);  /* No results. */
   } else if (ls->tok >= TK_cadd && ls->tok <= TK_cmod) {
     vl.prev = NULL;
-    vl.next = NULL;
     assign_compound(ls, &vl, ls->tok);
   } else if (ls->tok == ';') {
     /* Postfix increment (++) handled in expr_primary. */
   } else {  /* Start of an assignment. */
     vl.prev = NULL;
-    vl.next = NULL;
     parse_assignment(ls, &vl, 1);
   }
 }
@@ -2876,4 +2915,3 @@ GCproto *lj_parse(LexState *ls)
   lj_assertL(pt->sizeuv == 0, "toplevel proto has upvalues");
   return pt;
 }
-

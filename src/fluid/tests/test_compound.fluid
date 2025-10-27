@@ -73,10 +73,122 @@ function testContinue()
    assert(attempts == 3, 'continue should jump to repeat condition without executing remainder')
 end
 
+function testIndexedWithFunctionRHS()
+   local t = { 1, 2, 3 }
+   local i = 2
+   local function add_three(x)
+      return x + 3
+   end
+   t[i] += add_three(4)
+   assert(t[2] == 9, 'indexed += with function RHS should preserve base/index registers')
+end
+
+function testFieldWithFunctionRHS()
+   local store = { count = 5 }
+   local function delta()
+      local z = 2
+      return z * 4
+   end
+   store.count -= delta()
+   assert(store.count == -3, 'field -= with function RHS should store correct result')
+end
+
+function testConcatWithFunctionRHS()
+   local text = 'a'
+   local function tail()
+      local x = 'b'
+      return x .. 'c'
+   end
+   text ..= tail()
+   assert(text == 'abc', '..= should concatenate with function result')
+end
+
+function testRegisterIndexPreservedAcrossRHS()
+   local t = { 10, 20, 30 }
+   local i = 1
+   local u = { 3, 4, 5 }
+   t[i] += u[i + 1] + u[3]
+   assert(t[1] == 19, 'indexed += should handle RHS table lookups without corrupting index')
+end
+
+function testNestedIndexPreservation()
+   local u = { { x = 1 }, { x = 2 } }
+   local i = 2
+   local function f()
+      return 5
+   end
+   u[i].x += f()
+   assert(u[2].x == 7, 'nested indexed field += should preserve inner base/index registers')
+end
+
+function testByteAndStringKeyVariants()
+   local o = { a = 1, b = 'x' }
+   o['a'] *= 2
+   assert(o.a == 2, "byte/string key compound ops should use correct TSET variant (TSETS/TSETB)")
+   o['b'] ..= 'y'
+   assert(o.b == 'xy', 'string key ..= should store concatenated value')
+   local t = {}
+   t[5] = 3
+   t[5] += 4
+   assert(t[5] == 7, 'byte index += should work for numeric constant keys')
+end
+
+function testSelfReferentialReadOnRHS()
+   local t = { 6, 0 }
+   local i = 1
+   t[i] += t[i]
+   assert(t[1] == 12, 'indexed += with same element on RHS should double the value')
+end
+
+function testMultipleReturnOnlyFirstUsed()
+   local function multi()
+      return 7, 9
+   end
+   local x = 1
+   x += multi()
+   assert(x == 8, '+= should use only first return value from function')
+
+   local function s2()
+      return 'w', 'ignored'
+   end
+   local s = 'q'
+   s ..= s2()
+   assert(s == 'qw', '..= should use only first return value from function')
+end
+
+function testIndexRegisterReusedByRHS()
+   local t = { 1, 2, 3 }
+   local i = 2
+   local function f(a, b)
+      return a + b
+   end
+   t[i] *= f(i, t[1])
+   assert(t[2] == 6, 'indexed *= RHS using index register should keep index intact')
+end
+
+function testBaseReusedByRHS()
+   local t = { 3, 4 }
+   local function get_from_same(tbl)
+      return tbl[1] + tbl[2]
+   end
+   t[1] += get_from_same(t)
+   assert(t[1] == 10, 'indexed += RHS reading from same table should use original base for store')
+end
+
 return {
    tests = {
       'testCompoundAssignment',
       'testIncrement',
-      'testContinue'
+      'testContinue',
+      'testIndexedWithFunctionRHS',
+      'testFieldWithFunctionRHS',
+      'testConcatWithFunctionRHS',
+      'testRegisterIndexPreservedAcrossRHS',
+      'testNestedIndexPreservation',
+      'testByteAndStringKeyVariants',
+      'testSelfReferentialReadOnRHS',
+      'testMultipleReturnOnlyFirstUsed',
+      'testIndexRegisterReusedByRHS',
+      'testBaseReusedByRHS'
    }
 }
