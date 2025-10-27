@@ -421,7 +421,7 @@ bool XQueryProlog::declare_module_import(XQueryModuleImport import_decl, std::st
 
    // Check for duplicate module imports (XQST0047)
    for (const auto &existing : module_imports) {
-      const std::string &existing_key = existing.normalised_target_namespace.empty()
+      std::string existing_key = existing.normalised_target_namespace.empty()
          ? xml::uri::normalise_uri_separators(existing.target_namespace)
          : existing.normalised_target_namespace;
       if (existing_key IS namespace_key) {
