@@ -94,8 +94,6 @@ an escape character in attribute strings.
 -END-
 
 TODO:
-
-* Support GetKey() for variables in the query context.
 * Provide ListVariables() and ListFunctions() methods to enumerate available variables and functions in the compiled query.
 * Add support for custom functions via a new method, e.g., RegisterFunction().
 * Add DeclareNamespace(Prefix, URI) method to define namespaces for use in queries.
@@ -288,9 +286,17 @@ GetKey: Read XQuery variable values.
 
 static ERR XQUERY_GetKey(extXQuery *Self, struct acGetKey *Args)
 {
-   if (not Args) return ERR::NullArgs;
+   if ((not Args) or (not Args->Value) or (not Args->Key)) return ERR::NullArgs;
+   if (Args->Size < 2) return ERR::Args;
 
-   return ERR::NoSupport;
+   if (auto it = Self->Variables.find(Args->Key); it != Self->Variables.end()) {
+      pf::strcopy(it->second.c_str(), Args->Value, Args->Size);
+      return ERR::Okay;
+   }
+   else {
+      Args->Value[0] = 0;
+      return ERR::UnsupportedField;
+   }
 }
 
 /*********************************************************************************************************************
