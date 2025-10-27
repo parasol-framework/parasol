@@ -6,13 +6,9 @@
 -- User-defined functions declared in the prolog should execute during evaluation
 
 function testUserDefinedFunction()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err, result = xml.mtEvaluate('declare function local:square($x) { $x * $x }; local:square(5)')
-   assert(tonumber(result) == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(result))
-   assert(xml.errorMsg == nil or xml.errorMsg == '', 'User-defined function should not record an error message, got ' .. tostring(xml.errorMsg))
+   local xq = obj.new('xquery', { statement = 'declare function local:square($x) { $x * $x }; local:square(5)' })
+   assert(xq.acActivate() == ERR_Okay, 'Query execution failed: ' .. tostring(xq.errorMsg))
+   assert(tonumber(xq.resultString) == 25, 'Prolog-defined function should return the squared result, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -34,12 +30,9 @@ end
 -- Boundary-space preservation should retain lexical whitespace in direct element constructors
 
 function testBoundarySpacePreservation()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err, value = xml.mtEvaluate('declare boundary-space preserve; string(<a>  padded  </a>)')
-   assert(value == '  padded  ', 'Boundary-space preserve should retain surrounding whitespace, got ' .. tostring(value))
+   local xq = obj.new('xquery', { statement = 'declare boundary-space preserve; string(<a>  padded  </a>)' })
+   local err = xq.acActivate()
+   assert(xq.resultString == '  padded  ', 'Boundary-space preserve should retain surrounding whitespace, got ' .. tostring(xq.resultString))
 end
 
 function testBoundarySpacePreserveComputedText()
@@ -940,84 +933,56 @@ end
 -- Invalid copy-namespaces values should report an error
 
 function testInvalidCopyNamespacesValue()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err = xml.mtEvaluate('declare copy-namespaces invalid, inherit; "test"')
-   assert(xml.errorMsg and xml.errorMsg != '',
-      'Invalid copy-namespaces value should report an error')
+   local ex = catch(function() -- Compilation failure expected
+      obj.new('xquery', { statement = 'declare copy-namespaces invalid, inherit; "test"' })
+   end)
+   assert(ex, 'Invalid copy-namespaces value should report an error')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Accessing undeclared variable should report an error
 
 function testUndeclaredVariableAccess()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err = xml.mtEvaluate('$undeclared')
-   local message = tostring(xml.errorMsg)
-   -- Current implementation reports "Unsupported XPath expression" for undeclared variables
-   assert(message:find('undeclared') or message:find('not found') or message:find('unknown') or message:find('Undeclared') or message:find('Unsupported'),
-      'Accessing undeclared variable should report an error, got ' .. message)
+   local xq = obj.new('xquery', { statement = '$undeclared' })
+   assert(xq.acActivate() != ERR_Okay, 'Accessing undeclared variable should report an error, got ' .. xq.errorMsg)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Calling undeclared function should report an error
 
 function testUndeclaredFunctionCall()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err = xml.mtEvaluate('local:undeclared(42)')
-   local message = tostring(xml.errorMsg)
-   assert(message:find('Unknown function') or message:find('not found') or message:find('undeclared'),
-      'Calling undeclared function should report an error, got ' .. message)
+   local xq = obj.new('xquery', { statement = 'local:undeclared(42)' })
+   assert(xq.acActivate() != ERR_Okay, 'Accessing undeclared function should report an error, got ' .. xq.errorMsg)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Function with invalid QName (missing prefix binding) should report an error
 
 function testFunctionInvalidQName()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err = xml.mtEvaluate('declare function unbound:func($x) { $x }; unbound:func(1)')
-   -- This may succeed if the parser accepts unbound prefixes, or may fail
+   -- This may succeed if the parser accepts unbound prefixes, or may fail.
    -- The important thing is it shouldn't crash
-   assert(true, 'Function with unbound prefix should be handled gracefully')
+   local xq = obj.new('xquery', { statement = 'declare function unbound:func($x) { $x }; unbound:func(1)' })
+   xq.acActivate()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Variable with invalid QName (missing prefix binding) should report an error
 
 function testVariableInvalidQName()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   local err = xml.mtEvaluate('declare variable $unbound:var := 5; $unbound:var')
    -- This may succeed if the parser accepts unbound prefixes, or may fail
    -- The important thing is it shouldn't crash
-   assert(true, 'Variable with unbound prefix should be handled gracefully')
+   local xq = obj.new('xquery', { statement = 'declare variable $unbound:var := 5; $unbound:var' })
+   xq.acActivate()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Decimal format with invalid property should be handled
 
 function testDecimalFormatInvalidProperty()
-   local xml = obj.new('xml', {
-      statement = '<root/>'
-   })
-
-   -- Test that invalid decimal format properties don't cause crashes
-   local err, result = xml.mtEvaluate('declare decimal-format local:df invalid-prop = "x"; "ok"')
-   -- Parser should either accept or reject gracefully
-   assert(true, 'Invalid decimal format property should be handled gracefully')
+   local ex = catch(function() 
+      obj.new('xquery', { statement = 'declare decimal-format local:df invalid-prop = "x"; "ok"' })
+   end)
+   assert(ex, 'Invalid decimal format property should fail to compile.')
 end
 
 -----------------------------------------------------------------------------------------------------------------------

@@ -439,6 +439,7 @@ struct CompiledXQuery {
    std::unique_ptr<XPathNode> expression;
    std::shared_ptr<XQueryProlog> prolog;
    std::shared_ptr<XQueryModuleCache> module_cache;
+   std::string error_msg;
 
    // Cache for loaded XML documents, e.g. via the doc() function in XQuery.
    ankerl::unordered_dense::map<URI_STR, extXML *> XMLCache;
@@ -1013,7 +1014,8 @@ class XPathEvaluator : public XPathErrorReporter {
       UNSUPPORTED
    };
 
-   extXML * xml;
+   extXQuery *query;
+   extXML *xml;
    const XPathNode * query_root = nullptr;
    CompiledXQuery * parse_context = nullptr;
    XPathContext context;
@@ -1129,7 +1131,8 @@ class XPathEvaluator : public XPathErrorReporter {
       XPathVal &OutValue, const XPathNode *ReferenceNode);
 
    public:
-   XPathEvaluator(extXML *, const XPathNode *, CompiledXQuery *);
+   // Constructor
+   XPathEvaluator(extXQuery *, extXML *, const XPathNode *, CompiledXQuery *);
 
    ERR evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix);
    ERR evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix);

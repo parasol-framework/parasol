@@ -36,25 +36,21 @@ namespace xpath::accessor {
 
    if (boundary IS std::string::npos) return std::nullopt;
 
-   std::string folder(candidate.substr(0U, boundary + 1U));
+   std::string folder(candidate.substr(0, boundary + 1));
    return xml::uri::normalise_uri_separators(std::move(folder));
 }
 
 //********************************************************************************************************************
 
-std::optional<std::string> resolve_document_base_directory(extXML *Document)
+std::optional<std::string> resolve_document_base_directory(std::string_view BasePath)
 {
-   if (!Document) return std::nullopt;
-
-   if (Document->Path) {
-      std::string candidate(Document->Path);
+   if (not BasePath.empty()) {
+      std::string candidate;
       std::string resolved;
-
-      if (ResolvePath(candidate, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) candidate = std::move(resolved);
-
+      if (ResolvePath(BasePath, RSF::NO_FILE_CHECK, &resolved) IS ERR::Okay) candidate = std::move(resolved);
+      else candidate = BasePath;
       if (auto folder = trim_to_base_directory(candidate)) return folder;
-
-      if (auto fallback = trim_to_base_directory(std::string(Document->Path))) return fallback;
+      if (auto fallback = trim_to_base_directory(std::string(BasePath))) return fallback;
    }
 
    if (objTask *task = CurrentTask()) {
@@ -70,13 +66,6 @@ std::optional<std::string> resolve_document_base_directory(extXML *Document)
    }
 
    return std::nullopt;
-}
-
-//********************************************************************************************************************
-
-[[nodiscard]] static std::optional<std::string> document_path(extXML *Document)
-{
-   return resolve_document_base_directory(Document);
 }
 
 //********************************************************************************************************************
@@ -265,7 +254,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
    }
 
    if (!Node) {
-      auto base = document_path(document ? document : Context.xml);
+      auto base = resolve_document_base_directory(document ? document->Path : Context.xml->Path);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
       return std::nullopt;
    }
@@ -277,7 +266,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
    }
 
    if ((Node->ParentID IS 0) and (!AttributeNode)) { // Root-level node with no attribute
-      auto base = document_path(document ? document : Context.xml);
+      auto base = resolve_document_base_directory(document ? document->Path : Context.xml->Path);
       if (base.has_value()) return xml::uri::normalise_uri_separators(*base);
    }
 
@@ -303,7 +292,7 @@ std::optional<std::string> build_base_uri_chain(const XPathContext &Context, XML
       current = parent;
    }
 
-   std::optional<std::string> base = document_path(document);
+   std::optional<std::string> base = resolve_document_base_directory(document->Path);
 
    for (auto iterator = chain.rbegin(); iterator != chain.rend(); ++iterator) {
       if (base.has_value()) base = xml::uri::resolve_relative_uri(*iterator, *base);

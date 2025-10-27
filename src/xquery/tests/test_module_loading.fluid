@@ -6,15 +6,10 @@
 -- Basic module import and function call
 
 function testBasicModuleImport()
-   local xml = obj.new('xml', { statement = '<root/>', path=glScriptFolder })
-
    -- Initial verification of module file existence and that it is compilable
-
+   
    local mod_content = file.readAll(glScriptFolder .. '/modules/math_utils.xq')
    assert(mod_content, 'Module file not found: modules/math_utils.xq')
-
-   -- Prove the module is compilable on its own
-
    local compiled_mod = obj.new('xquery', { statement = mod_content })
 
    -- Test the ability to import the module and run it
@@ -25,10 +20,11 @@ function testBasicModuleImport()
 
       math:square(5)
    ]]
-
-   local err, result = xml.mtEvaluate(query)
-   assert(err == ERR_Okay, 'Module import compilation failed: ' .. tostring(xml.errorMsg))
-   assert(tonumber(result) == 25, 'Should compute 5^2 = 25, got ' .. tostring(result))
+   
+   local xq = obj.new('xquery', { statement = query, path=glScriptFolder })
+   local err = xq.acActivate(query)
+   assert(err == ERR_Okay, 'Module import compilation failed: ' .. tostring(xq.errorMsg))
+   assert(tonumber(xq.resultString) == 25, 'Should compute 5^2 = 25, got ' .. tostring(xq.resultString))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
