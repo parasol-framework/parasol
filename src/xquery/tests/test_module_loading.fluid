@@ -101,7 +101,7 @@ function testMultipleModuleImports()
       (math:square(4), str:uppercase("hello"))
    ]]
 
-   local err = xq.acActivate(query)
+   local err = xq.acActivate()
    assert(err == ERR_Okay, 'Multiple module imports failed: ' .. tostring(xq.errorMsg))
    local result = tostring(xq.resultString)
    assert(string.find(result, '16', 1, true) and string.find(result, 'HELLO', 1, true),
