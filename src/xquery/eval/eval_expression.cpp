@@ -20,7 +20,7 @@ static CastTargetInfo parse_cast_target_literal(std::string_view Literal)
 
    std::string_view trimmed = Literal.substr(start, end - start);
 
-   if ((!trimmed.empty()) and (trimmed.back() IS '?')) {
+   if (trimmed.ends_with('?')) {
       info.allows_empty = true;
       trimmed.remove_suffix(1);
       while ((!trimmed.empty()) and is_space_character(trimmed.back())) trimmed.remove_suffix(1);
@@ -379,7 +379,7 @@ static bool is_value_castable_to_type(const XPathVal &Value,
 static std::string canonicalise_variable_qname(std::string_view Candidate,
    const XQueryProlog &SourceProlog, const extXML *Document)
 {
-   if ((Candidate.size() > 2) and (Candidate[0] IS 'Q') and (Candidate[1] IS '{')) {
+   if (Candidate.starts_with("Q{")) {
       return std::string(Candidate);
    }
 
@@ -1631,8 +1631,8 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    // LET expressions share the same diagnostic surface as the parser.  Whenever a binding fails we populate
    // extXML::ErrorMsg so Fluid callers receive precise feedback rather than generic failure codes.
 
-   if (ExprNode->type IS XQueryNodeType::LET_EXPRESSION) {
-      if (ExprNode->child_count() < 2) {
+   if (ExprNode->type IS XQueryNodeType::LET_EXPRESSION) [[likely]] {
+      if (ExprNode->child_count() < 2) [[unlikely]] {
          record_error("LET expression requires at least one binding and a return clause.", ExprNode, true);
          return XPathVal();
       }

@@ -477,6 +477,10 @@ XPathVal XPathEvaluator::evaluate_flwor_pipeline(const XPathNode *Node, uint32_t
             size_t sequence_size = sequence_value.node_set.size();
             if (sequence_size IS 0) continue;
 
+            // Pre-size the output expansion for this tuple to avoid repeated reallocations
+            size_t required = next_tuples.size() + sequence_size;
+            if (required > next_tuples.capacity()) next_tuples.reserve(required);
+
             bool use_override = sequence_value.node_set_string_override.has_value() and
                sequence_value.node_set_string_values.empty();
 

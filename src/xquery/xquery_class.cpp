@@ -96,7 +96,6 @@ an escape character in attribute strings.
 TODO:
 * An InspectFunction() method would allow the function signature and list of parameter names to be returned.
 * Add support for custom functions via a new method, e.g., RegisterFunction().
-* Add DeclareNamespace(Prefix, URI) method to define namespaces for use in queries.
 * Allow modules to be preloaded.  There are many ways this could be achieved, e.g.
   - Load the module as a separate XQuery and link it via a new method.
   - Provide a callback that is invoked when an import is encountered, this allows the the host application to supply
