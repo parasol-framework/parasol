@@ -86,11 +86,11 @@ static std::string xp_resolve_hint_to_path(const std::string &Hint, const XQuery
 }
 
 //********************************************************************************************************************
-// Structured function key construction helper
+// Structured function key construction helper (interns QName)
 [[nodiscard]] inline FunctionKey make_function_key(std::string_view QName, size_t Arity)
 {
    FunctionKey key;
-   key.qname = std::string(QName);
+   key.qname = global_string_pool().intern(QName);
    key.arity = Arity;
    return key;
 }
@@ -405,7 +405,7 @@ bool XQueryProlog::declare_variable(std::string_view qname, XQueryVariable varia
 bool XQueryProlog::declare_function(XQueryFunction function)
 {
    FunctionKey key;
-   key.qname = function.qname;
+   key.qname = global_string_pool().intern(function.qname);
    key.arity = function.parameter_names.size();
    auto inserted = functions.emplace(std::move(key), std::move(function));
    if (not inserted.second) return false;

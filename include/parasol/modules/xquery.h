@@ -18,6 +18,8 @@
 #include <parasol/strings.hpp>
 #endif
 
+#include <string_view>
+#include <vector>
 #endif
 
 class objXQuery;
@@ -109,6 +111,7 @@ DEFINE_ENUM_FLAG_OPERATORS(XQF)
 namespace xq {
 struct Evaluate { objXML * XML; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Search { objXML * XML; FUNCTION * Callback; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct RegisterFunction { CSTRING FunctionName; FUNCTION * Callback; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -143,6 +146,10 @@ class objXQuery : public Object {
       struct xq::Search args = { XML, &Callback };
       return(Action(AC(-2), this, &args));
    }
+   inline ERR registerFunction(CSTRING FunctionName, FUNCTION Callback) noexcept {
+      struct xq::RegisterFunction args = { FunctionName, &Callback };
+      return(Action(AC(-3), this, &args));
+   }
 
    // Customised field setting
 
@@ -160,6 +167,11 @@ class objXQuery : public Object {
 
 };
 
+namespace xq {
+
+using XQueryFunction = ERR (*)(objXQuery *Query, std::string_view FunctionName, const std::vector<XPathValue> &Input, XPathValue &Result, APTR Meta);
+
+} // namespace xq
 #ifdef PARASOL_STATIC
 #define JUMPTABLE_XQUERY [[maybe_unused]] static struct XQueryBase *XQueryBase = nullptr;
 #else

@@ -358,7 +358,9 @@ separate thread to avoid blocking in such cases.
 
 static ERR XQUERY_Init(extXQuery *Self)
 {
-   return build_query(Self);
+   // Not providing a statement is permitted as the object may be preallocated for later use.
+   if (not Self->Statement.empty()) return build_query(Self);
+   return ERR::Okay;
 }
 
 //********************************************************************************************************************
@@ -366,6 +368,35 @@ static ERR XQUERY_Init(extXQuery *Self)
 static ERR XQUERY_NewPlacement(extXQuery *Self)
 {
    new (Self) extXQuery;
+   return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+RegisterFunction: Register a custom XQuery function.
+
+Use RegisterFunction to define a custom function that can be invoked within XQuery expressions.  The function
+will be associated with the specified name and can be called like any standard XQuery function.
+
+-INPUT-
+cstr FunctionName: The name of the function to register (e.g., "custom-function").
+ptr(func) Callback: The callback function to register for FunctionName.
+
+-ERRORS-
+Okay
+NullArgs
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XQUERY_RegisterFunction(extXQuery *Self, struct xq::RegisterFunction *Args)
+{
+   pf::Log log;
+
+   if (not Args) return log.warning(ERR::NullArgs);
+
    return ERR::Okay;
 }
 

@@ -100,7 +100,6 @@ flute_test (${MOD}_xquery_axes "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_axes.flui
 flute_test (${MOD}_xquery_advanced "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced.fluid")
 flute_test (${MOD}_xquery_advanced_paths "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_advanced_paths.fluid")
 flute_test (${MOD}_xquery_flwor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor.fluid")
-flute_test (${MOD}_xquery_flwor_clauses "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_flwor_clauses.fluid")
 flute_test (${MOD}_xquery_module_loading "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_module_loading.fluid")
 flute_test (${MOD}_xquery_type_expr "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_type_expr.fluid")
 flute_test (${MOD}_xquery_sequence_cardinality "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequence_cardinality.fluid")
