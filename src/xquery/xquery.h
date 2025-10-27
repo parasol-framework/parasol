@@ -236,6 +236,25 @@ struct XQueryFunction {
    [[nodiscard]] const std::string & signature() const;
 };
 
+// Structured key for function lookup: avoids string concatenation of "qname/arity"
+struct FunctionKey {
+   std::string qname;  // canonical QName (expanded or lexical as used by prolog)
+   size_t arity = 0;
+
+   [[nodiscard]] bool operator==(const FunctionKey &Other) const noexcept {
+      return (std::string_view(qname) IS std::string_view(Other.qname)) and (arity IS Other.arity);
+   }
+};
+
+struct FunctionKeyHash {
+   using is_transparent = void;
+   [[nodiscard]] size_t operator()(const FunctionKey &Key) const noexcept {
+      size_t h1 = std::hash<std::string_view>{}(std::string_view(Key.qname));
+      size_t h2 = std::hash<size_t>{}(Key.arity);
+      return h1 ^ (h2 << 1);
+   }
+};
+
 // Represents a user-defined XQuery variable declared in the prolog.
 
 struct XQueryVariable {
@@ -248,6 +267,8 @@ struct XQueryVariable {
 
 struct XQueryModuleImport {
    std::string target_namespace;
+   // Pre-normalised key for fast lookups and duplicate detection
+   std::string normalised_target_namespace;
    std::vector<std::string> location_hints;
 };
 
@@ -698,6 +719,27 @@ public:
    }
 };
 
+// Transparent string hash/equality functors for heterogeneous lookup on ankerl maps
+struct TransparentStringHash {
+   using is_transparent = void;
+
+   [[nodiscard]] size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
+   [[nodiscard]] size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
+   [[nodiscard]] size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
+};
+
+struct TransparentStringEqual {
+   using is_transparent = void;
+
+   [[nodiscard]] bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
+   [[nodiscard]] bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   [[nodiscard]] bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+   [[nodiscard]] bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
+   [[nodiscard]] bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
+};
+
 //********************************************************************************************************************
 // If an XQuery expression contains a prolog, it will be parsed into this structure and maintained in the XPathNode
 // prolog field.
@@ -722,10 +764,10 @@ struct XQueryProlog {
    enum class OrderingMode { Ordered, Unordered } ordering_mode = OrderingMode::Ordered;
    enum class EmptyOrder { Greatest, Least } empty_order = EmptyOrder::Greatest;
 
-   ankerl::unordered_dense::map<std::string, uint32_t> declared_namespaces;
-   ankerl::unordered_dense::map<std::string, std::string> declared_namespace_uris;
-   ankerl::unordered_dense::map<std::string, XQueryVariable> variables;
-   ankerl::unordered_dense::map<std::string, XQueryFunction> functions;
+   ankerl::unordered_dense::map<std::string, uint32_t, TransparentStringHash, TransparentStringEqual> declared_namespaces;
+   ankerl::unordered_dense::map<std::string, std::string, TransparentStringHash, TransparentStringEqual> declared_namespace_uris;
+   ankerl::unordered_dense::map<std::string, XQueryVariable, TransparentStringHash, TransparentStringEqual> variables;
+   ankerl::unordered_dense::map<FunctionKey, XQueryFunction, FunctionKeyHash> functions;
    ankerl::unordered_dense::map<std::string, DecimalFormat> decimal_formats;
    ankerl::unordered_dense::map<std::string, std::string> options;
 
@@ -768,25 +810,7 @@ struct XQueryProlog {
    std::weak_ptr<XQueryModuleCache> module_cache;
 };
 
-struct TransparentStringHash {
-   using is_transparent = void;
-
-   [[nodiscard]] size_t operator()(std::string_view Value) const noexcept { return std::hash<std::string_view>{}(Value); }
-   [[nodiscard]] size_t operator()(const std::string &Value) const noexcept { return operator()(std::string_view(Value)); }
-   [[nodiscard]] size_t operator()(const char *Value) const noexcept { return operator()(std::string_view(Value)); }
-};
-
-struct TransparentStringEqual {
-   using is_transparent = void;
-
-   [[nodiscard]] bool operator()(std::string_view Lhs, std::string_view Rhs) const noexcept { return Lhs IS Rhs; }
-   [[nodiscard]] bool operator()(const std::string &Lhs, const std::string &Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
-   [[nodiscard]] bool operator()(const char *Lhs, const char *Rhs) const noexcept { return std::string_view(Lhs) IS std::string_view(Rhs); }
-   [[nodiscard]] bool operator()(const std::string &Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
-   [[nodiscard]] bool operator()(std::string_view Lhs, const std::string &Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
-   [[nodiscard]] bool operator()(const char *Lhs, std::string_view Rhs) const noexcept { return std::string_view(Lhs) IS Rhs; }
-   [[nodiscard]] bool operator()(std::string_view Lhs, const char *Rhs) const noexcept { return Lhs IS std::string_view(Rhs); }
-};
+ 
 
 namespace xml::schema {
    class SchemaTypeRegistry;
@@ -796,45 +820,58 @@ namespace xml::schema {
 class XPathArena {
    private:
    template<typename T>
-   struct VectorPool {
-      // Supplies cleared std::vector instances for XPath evaluation and reuses
-      // them to avoid repeated heap allocations during query processing.
-      std::vector<std::unique_ptr<std::vector<T>>> storage;
-      std::vector<std::vector<T> *> free_list;
+   struct TieredVectorPool {
+      static constexpr size_t size_classes = 5;
+      static constexpr size_t tier_limits[size_classes] = { 16, 64, 256, 1024, 4096 };
 
-      // Fetches an available vector from the free list, or allocates a new
-      // one, ensuring the container is reset before handing it to the caller.
-      std::vector<T> & acquire() {
-         if (!free_list.empty()) {
-            auto *vector = free_list.back();
-            free_list.pop_back();
-            vector->clear();
-            return *vector;
+      std::array<std::vector<std::unique_ptr<std::vector<T>>>, size_classes> storage{};
+      std::array<std::vector<std::vector<T>*>, size_classes> free_lists{};
+
+      [[nodiscard]] static size_t select_tier(size_t size) {
+         for (size_t i = 0; i < size_classes; ++i) if (size <= tier_limits[i]) return i;
+         return size_classes - 1;
+      }
+
+      std::vector<T> & acquire() { return acquire(0); }
+
+      std::vector<T> & acquire(size_t reserve_hint) {
+         size_t tier = select_tier(reserve_hint > 0 ? reserve_hint : 1);
+         for (size_t t = tier; t < size_classes; ++t) {
+            auto &list = free_lists[t];
+            if (!list.empty()) {
+               auto *vec = list.back();
+               list.pop_back();
+               vec->clear();
+               if (reserve_hint > 0 and vec->capacity() < reserve_hint) vec->reserve(reserve_hint);
+               return *vec;
+            }
          }
-
-         storage.push_back(std::make_unique<std::vector<T>>());
-         auto &vector = *storage.back();
-         vector.clear();
-         return vector;
+         auto &bucket = storage[tier];
+         bucket.push_back(std::make_unique<std::vector<T>>());
+         auto &vec = *bucket.back();
+         vec.clear();
+         if (reserve_hint > 0) vec.reserve(reserve_hint);
+         return vec;
       }
 
-      void release(std::vector<T> &vector) {
-         vector.clear();
-         free_list.push_back(&vector);
+      void release(std::vector<T> &vec) {
+         vec.clear();
+         size_t cap = vec.capacity();
+         size_t tier = select_tier(cap > 0 ? cap : 1);
+         free_lists[tier].push_back(&vec);
       }
 
-      // Clears the pool state while retaining allocated storage, preparing the
-      // vectors for reuse without incurring new allocations.
       void reset() {
-         free_list.clear();
-         for (auto &entry : storage) {
-            entry->clear();
-            free_list.push_back(entry.get());
+         for (size_t t = 0; t < size_classes; ++t) {
+            free_lists[t].clear();
+            for (auto &entry : storage[t]) {
+               entry->clear();
+               free_lists[t].push_back(entry.get());
+            }
          }
       }
    };
 
-   // Specialized pool for XMLTag * that uses pf::vector
    struct NodeVectorPool {
       std::vector<std::unique_ptr<NODES>> storage;
       std::vector<NODES *> free_list;
@@ -853,6 +890,11 @@ class XPathArena {
          return vector;
       }
 
+      // Acquire with a reserve hint to reduce reallocations on first growth (pf::vector has no public reserve)
+      NODES & acquire(size_t /*reserve_hint*/) {
+         return acquire();
+      }
+
       void release(NODES &vector) {
          vector.clear();
          free_list.push_back(&vector);
@@ -868,8 +910,8 @@ class XPathArena {
    };
 
    NodeVectorPool node_vectors;
-   VectorPool<const XMLAttrib *> attribute_vectors;
-   VectorPool<std::string> string_vectors;
+   TieredVectorPool<const XMLAttrib *> attribute_vectors;
+   TieredVectorPool<std::string> string_vectors;
 
    public:
    XPathArena() = default;
@@ -877,12 +919,15 @@ class XPathArena {
    XPathArena & operator=(const XPathArena &) = delete;
 
    NODES & acquire_node_vector() { return node_vectors.acquire(); }
+   NODES & acquire_node_vector(size_t reserve_hint) { return node_vectors.acquire(reserve_hint); }
    void release_node_vector(NODES &Vector) { node_vectors.release(Vector); }
 
    std::vector<const XMLAttrib *> & acquire_attribute_vector() { return attribute_vectors.acquire(); }
+   std::vector<const XMLAttrib *> & acquire_attribute_vector(size_t reserve_hint) { return attribute_vectors.acquire(reserve_hint); }
    void release_attribute_vector(std::vector<const XMLAttrib *> &Vector) { attribute_vectors.release(Vector); }
 
    std::vector<std::string> & acquire_string_vector() { return string_vectors.acquire(); }
+   std::vector<std::string> & acquire_string_vector(size_t reserve_hint) { return string_vectors.acquire(reserve_hint); }
    void release_string_vector(std::vector<std::string> &Vector) { string_vectors.release(Vector); }
 
    void reset() {

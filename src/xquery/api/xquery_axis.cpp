@@ -47,6 +47,10 @@ constexpr static std::array reverse_axes {
 
 void AxisEvaluator::evaluate_axis(AxisType Axis, XMLTag *ContextNode, NODES &Output) {
    Output.clear();
+   if (ContextNode) {
+      size_t hint = estimate_result_size(Axis, ContextNode);
+      if (hint > 0) Output.reserve(hint);
+   }
 
    switch (Axis) {
       case AxisType::CHILD:
@@ -240,8 +244,7 @@ void AxisEvaluator::evaluate_descendant_axis(XMLTag *Node, NODES &Output)
    size_t estimated_size = Node->Children.size() * 4;
    Output.reserve(estimated_size);
 
-   auto &stack = arena.acquire_node_vector();
-   stack.reserve(Node->Children.size());
+   auto &stack = arena.acquire_node_vector(Node->Children.size());
 
    for (auto &child : Node->Children) {
       auto *child_ptr = &child;
@@ -349,7 +352,8 @@ void AxisEvaluator::evaluate_following_axis(XMLTag *Node, NODES &Output)
    Output.clear();
    if (!Node) return;
 
-   auto &siblings = arena.acquire_node_vector();
+   auto *parent_for_hint = find_parent(Node);
+   auto &siblings = arena.acquire_node_vector(parent_for_hint ? parent_for_hint->Children.size() : 0);
    evaluate_following_sibling_axis(Node, siblings);
 
    for (auto *sibling : siblings) {
@@ -366,7 +370,7 @@ void AxisEvaluator::evaluate_following_axis(XMLTag *Node, NODES &Output)
    arena.release_node_vector(siblings);
 
    if (auto *parent = find_parent(Node)) {
-      auto &parent_following = arena.acquire_node_vector();
+      auto &parent_following = arena.acquire_node_vector(estimate_result_size(AxisType::FOLLOWING, parent));
       evaluate_following_axis(parent, parent_following);
       Output.insert(Output.end(), parent_following.begin(), parent_following.end());
       arena.release_node_vector(parent_following);
@@ -513,7 +517,11 @@ void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, NODES &Output)
    Output.clear();
    if (!Node) return;
 
-   auto &preceding_siblings = arena.acquire_node_vector();
+   auto &preceding_siblings = arena.acquire_node_vector([&]() -> size_t {
+      auto *p = find_parent(Node);
+      return p ? p->Children.size() : 0;
+   }());
+   if (auto *parent = find_parent(Node)) preceding_siblings.reserve(parent->Children.size());
    evaluate_preceding_sibling_axis(Node, preceding_siblings);
    for (auto *sibling : preceding_siblings) {
       collect_subtree_reverse(sibling, Output);
@@ -521,7 +529,7 @@ void AxisEvaluator::evaluate_preceding_axis(XMLTag *Node, NODES &Output)
    arena.release_node_vector(preceding_siblings);
 
    if (auto *parent = find_parent(Node)) {
-      auto &parent_preceding = arena.acquire_node_vector();
+      auto &parent_preceding = arena.acquire_node_vector(estimate_result_size(AxisType::PRECEDING, parent));
       evaluate_preceding_axis(parent, parent_preceding);
       Output.insert(Output.end(), parent_preceding.begin(), parent_preceding.end());
       arena.release_node_vector(parent_preceding);
@@ -580,7 +588,7 @@ void AxisEvaluator::evaluate_descendant_or_self_axis(XMLTag *Node, NODES &Output
 
    Output.push_back(Node);
 
-   auto &descendants = arena.acquire_node_vector();
+   auto &descendants = arena.acquire_node_vector(Node->Children.size() * 4);
    evaluate_descendant_axis(Node, descendants);
    Output.insert(Output.end(), descendants.begin(), descendants.end());
    arena.release_node_vector(descendants);
@@ -641,9 +649,10 @@ AxisEvaluator::AncestorPathView AxisEvaluator::build_ancestor_path(XMLTag *Node)
       ancestor_path_storage.push_back(std::make_unique<NODES>());
       storage = ancestor_path_storage.back().get();
    }
-   else storage = &arena.acquire_node_vector();
+   else storage = &arena.acquire_node_vector(10);
 
    storage->clear();
+   storage->reserve(10);
 
    XMLTag *current = Node;
    while (current) {

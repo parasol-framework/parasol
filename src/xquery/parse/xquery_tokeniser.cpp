@@ -654,8 +654,14 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
    position++;
 
    std::vector<XPathAttributeValuePart> parts;
+   parts.reserve(4);
    std::string current_literal;
    std::string current_expression;
+   // Heuristic pre-sizing to reduce reallocations in typical short attributes
+   size_t remaining = (length > position) ? (length - position) : 0;
+   size_t hint = remaining > 128 ? 128 : remaining;
+   if (hint > 0) current_literal.reserve(hint);
+   current_expression.reserve(32);
    bool in_expression = false;
    int brace_depth = 0;
 
@@ -741,10 +747,9 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
    }
 
    if (in_expression) {
-      std::string recovery;
-      recovery += '{';
-      recovery += current_expression;
-      current_literal += recovery;
+      // Avoid a temporary string; append unmatched expression marker directly
+      current_literal += '{';
+      current_literal += current_expression;
       current_expression.clear();
    }
 

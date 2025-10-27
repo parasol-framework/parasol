@@ -86,11 +86,13 @@ static std::string xp_resolve_hint_to_path(const std::string &Hint, const XQuery
 }
 
 //********************************************************************************************************************
-// Builds a canonical identifier combining the QName and arity so functions can be stored in a flat map.
-
-[[nodiscard]] inline std::string build_function_signature(std::string_view QName, size_t Arity)
+// Structured function key construction helper
+[[nodiscard]] inline FunctionKey make_function_key(std::string_view QName, size_t Arity)
 {
-   return std::format("{}/{}", QName, Arity);
+   FunctionKey key;
+   key.qname = std::string(QName);
+   key.arity = Arity;
+   return key;
 }
 
 //********************************************************************************************************************
@@ -109,7 +111,7 @@ XQueryProlog::XQueryProlog()
 const std::string & XQueryFunction::signature() const
 {
    if (cached_signature.empty()) {
-      cached_signature = build_function_signature(qname, parameter_names.size());
+      cached_signature = std::format("{}/{}", qname, parameter_names.size());
    }
    return cached_signature;
 }
@@ -292,7 +294,10 @@ CompiledXQuery * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQ
 
    // Eagerly resolve transitive imports to detect cycles and propagate base URIs
    for (const auto &imp : module_prolog->module_imports) {
-      if (not fetch_or_load(imp.target_namespace, *module_prolog, Eval)) {
+      std::string_view dep_uri = imp.normalised_target_namespace.empty()
+         ? std::string_view(imp.target_namespace)
+         : std::string_view(imp.normalised_target_namespace);
+      if (not fetch_or_load(dep_uri, *module_prolog, Eval)) {
          // Do not cache partially loaded module on failure
          return nullptr;
       }
@@ -327,8 +332,7 @@ const CompiledXQuery * XQueryModuleCache::find_module(std::string_view uri) cons
 
 const XQueryFunction * XQueryProlog::find_function(std::string_view qname, size_t arity) const
 {
-   auto signature = build_function_signature(qname, arity);
-   auto entry = functions.find(signature);
+   auto entry = functions.find(make_function_key(qname, arity));
    if (entry != functions.end()) return &entry->second;
    return nullptr;
 }
@@ -338,7 +342,7 @@ const XQueryFunction * XQueryProlog::find_function(std::string_view qname, size_
 
 const XQueryVariable * XQueryProlog::find_variable(std::string_view qname) const
 {
-   auto entry = variables.find(std::string(qname));
+   auto entry = variables.find(qname);
    if (entry != variables.end()) return &entry->second;
    return nullptr;
 }
@@ -348,7 +352,7 @@ const XQueryVariable * XQueryProlog::find_variable(std::string_view qname) const
 
 uint32_t XQueryProlog::resolve_prefix(std::string_view prefix, const extXML *document) const
 {
-   auto mapping = declared_namespaces.find(std::string(prefix));
+   auto mapping = declared_namespaces.find(prefix);
    if (mapping != declared_namespaces.end()) return mapping->second;
 
    if (prefix.empty()) {
@@ -400,8 +404,10 @@ bool XQueryProlog::declare_variable(std::string_view qname, XQueryVariable varia
 
 bool XQueryProlog::declare_function(XQueryFunction function)
 {
-   auto signature = function.signature();
-   auto inserted = functions.emplace(std::move(signature), std::move(function));
+   FunctionKey key;
+   key.qname = function.qname;
+   key.arity = function.parameter_names.size();
+   auto inserted = functions.emplace(std::move(key), std::move(function));
    if (not inserted.second) return false;
    return true;
 }
@@ -415,7 +421,9 @@ bool XQueryProlog::declare_module_import(XQueryModuleImport import_decl, std::st
 
    // Check for duplicate module imports (XQST0047)
    for (const auto &existing : module_imports) {
-      std::string existing_key = xml::uri::normalise_uri_separators(existing.target_namespace);
+      const std::string &existing_key = existing.normalised_target_namespace.empty()
+         ? xml::uri::normalise_uri_separators(existing.target_namespace)
+         : existing.normalised_target_namespace;
       if (existing_key IS namespace_key) {
          if (error_message) {
             *error_message = xquery::errors::duplicate_module_import(namespace_key);
@@ -424,6 +432,7 @@ bool XQueryProlog::declare_module_import(XQueryModuleImport import_decl, std::st
       }
    }
 
+   import_decl.normalised_target_namespace = namespace_key;
    module_imports.push_back(std::move(import_decl));
    return true;
 }
