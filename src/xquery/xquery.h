@@ -1150,12 +1150,6 @@ class XPathEvaluator : public XPathErrorReporter {
 
    using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
 
-   struct CursorState {
-      pf::vector<XMLTag> * tags;
-      size_t index;
-   };
-
-   std::vector<CursorState> cursor_stack;
    std::vector<XPathContext> context_stack;
 
    // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
@@ -1259,12 +1253,6 @@ class XPathEvaluator : public XPathErrorReporter {
    void pop_context();
 
    [[nodiscard]] inline XMLTag * get_context_node() const;
-
-   // Stack management for deep traversal
-   void push_cursor_state();
-   void pop_cursor_state();
-
-   bool has_cursor_state() const { return !cursor_stack.empty(); }
 };
 
 //********************************************************************************************************************

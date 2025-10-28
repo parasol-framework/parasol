@@ -5,9 +5,7 @@
 // in which XPath expressions are evaluated.
 //
 // Key responsibilities:
-//   - Context stack push/pop operations for nested expression evaluation
-//   - Cursor state management for preserving and restoring document position
-//   - Integration with the legacy cursor-based XML API
+//   - Context stack push/pop operations for nested expression 
 //   - Variable binding and scope management for FLWOR expressions
 //
 // The context management system allows the evaluator to properly handle location paths with predicates,
@@ -233,7 +231,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 }
 
 //********************************************************************************************************************
-// Execute a full location path expression, managing implicit root handling and cursor updates.
+// Execute a full location path expression, managing implicit root handling.
 // Returns ERR::Search if no matches were found.
 
 ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix)
@@ -272,7 +270,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
-   auto saved_cursor_stack = cursor_stack;
    bool saved_expression_unsupported = expression_unsupported;
 
    auto last_error = ERR::Search;
@@ -292,7 +289,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
       expression_unsupported = saved_expression_unsupported;
 
       auto result = evaluate_ast(branch, CurrentPrefix);
@@ -306,7 +302,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
    context = saved_context;
    context_stack = saved_context_stack;
-   cursor_stack = saved_cursor_stack;
    expression_unsupported = saved_expression_unsupported;
 
    return last_error;
