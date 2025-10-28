@@ -85,7 +85,7 @@ if exist buildvm.exe.manifest^
 @del host\buildvm_arch.h 2>nul
 @echo.
 @echo === Successfully generated LuaJIT headers for Windows/%LJARCH% ===
-exit 0
+exit /b 0
 
 :BAD
 @echo.
