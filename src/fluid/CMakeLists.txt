@@ -47,15 +47,20 @@ if (MSVC)
 
    set (LUAJIT_VM_OBJ "${LUAJIT_SRC}/lj_vm.obj")
 
+   # Expand glob patterns for dependencies
+   file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
+   file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.c")
+   file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
+
    # Generate headers and VM object file using buildvm
    add_custom_command(
       OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ}
       COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild_codegen.bat"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       DEPENDS
-         "${LUAJIT_SRC}/lj_*.c"
-         "${LUAJIT_SRC}/lib_*.c"
-         "${LUAJIT_SRC}/lj_*.h"
+         ${LUAJIT_DEP_LJ_C}
+         ${LUAJIT_DEP_LIB_C}
+         ${LUAJIT_DEP_LJ_H}
       COMMENT "Generating LuaJIT headers and VM object"
       VERBATIM
    )
