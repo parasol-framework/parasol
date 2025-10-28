@@ -896,7 +896,7 @@ static ERR txt_to_xml(extXML *Self, TAGS &Tags, std::string_view Text)
    // Extract the tag information.  This loop will extract the top-level tags.  The parse_tag() function is recursive
    // to extract the child tags.
 
-   log.branch("Parsing %" PRId64 " bytes...", Text.size());
+   log.msg(VLF::BRANCH|VLF::DETAIL, "Parsing %" PRId64 " bytes...", Text.size());
 
    // Estimate tag count and reserve space (heuristic: 1 tag per 100 characters)
    Tags.reserve(std::max(size_t(Text.size() / 100), size_t(16)));

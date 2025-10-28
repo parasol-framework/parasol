@@ -220,6 +220,12 @@ glConstants = { }
 glConstantOptions = { }
 glActiveRefs = { } -- For cType()
 
+function verbose(String)
+   if glFeedback == 'verbose' then
+      print(String)
+   end
+end
+
 function output(String)
    if nz(String) then
       if (String:sub(-1) == '\n') then
@@ -2184,8 +2190,8 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
       func.input = { }
       for line, content in ipairs(Def.input:split("\n")) do
          local comment = content:match("^.-:%s-(.+)$")
-         if nz(comment) then 
-            content = content:match("^(.-):%s-.+$") 
+         if nz(comment) then
+            content = content:match("^(.-):%s-.+$")
          elseif nz(content) then
             error('No comment found for function parameter in ' .. Name .. '()')
          end
