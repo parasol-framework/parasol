@@ -1,3 +1,5 @@
+-- Flute tests for the compound operators
+
 function testCompoundAssignment()
    local value = 5
    value += 3

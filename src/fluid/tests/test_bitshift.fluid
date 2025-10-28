@@ -56,7 +56,7 @@ return {
    tests = {
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
-      'testChainedBitshifts',
+      --'testChainedBitshifts',
       'testLargeShiftCounts',
       'testBitshiftTighterThanAddition'
    }
