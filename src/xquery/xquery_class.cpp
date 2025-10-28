@@ -462,8 +462,6 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
       if ((Args->Callback) and (Args->Callback->defined())) Self->Callback = *Args->Callback;
       else Self->Callback.Type = CALL::NIL;
 
-      xml->Callback = Self->Callback; // TODO: TEMPORARY
-
       // TODO: Can these fields be moved to extXQuery?
       xml->Attrib.clear();
 
