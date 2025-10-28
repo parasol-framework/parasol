@@ -1629,113 +1629,12 @@ struct OpenInfo {
 #define FD_PTR64 0
 #endif
 
-// Field flags for classes.  These are intended to simplify field definitions, e.g. using FDF_BYTEARRAY combines
-// FD_ARRAY with FD_BYTE.  DO NOT use these for function definitions, they are not intended to be compatible.
-
-// Sizes/Types
-
-#define FT_POINTER  FD_POINTER
-#define FT_FLOAT    FD_FLOAT
-#define FT_INT      FD_INT
-#define FT_DOUBLE   FD_DOUBLE
-#define FT_INT64    FD_INT64
-#define FT_STRING   (FD_POINTER|FD_STRING)
-#define FT_UNLISTED FD_UNLISTED
-#define FT_UNIT     FD_UNIT
-
-// Class field definitions.  See core.h for all FD definitions.
-
-#define FDF_BYTE       FD_BYTE
-#define FDF_WORD       FD_WORD     // Field is word sized (16-bit)
-#define FDF_INT        FD_INT      // Field is int sized (32-bit)
-#define FDF_DOUBLE     FD_DOUBLE   // Field is double floating point sized (64-bit)
-#define FDF_INT64      FD_INT64    // Field is large sized (64-bit)
-#define FDF_POINTER    FD_POINTER  // Field is an address pointer (typically 32-bit)
-#define FDF_ARRAY      FD_ARRAY    // Field is a pointer to an array
-#define FDF_CPP        FD_CPP      // Field is a C++ type variant
-#define FDF_PTR        FD_POINTER
-#define FDF_UNIT       FD_UNIT
-#define FDF_SYNONYM    FD_SYNONYM
-
-#define FDF_UNSIGNED    FD_UNSIGNED
-#define FDF_FUNCTION    FD_FUNCTION           // sizeof(FUNCTION) - use FDF_FUNCTIONPTR for sizeof(APTR)
-#define FDF_FUNCTIONPTR (FD_FUNCTION|FD_POINTER)
-#define FDF_STRUCT      FD_STRUCT
-#define FDF_RESOURCE    FD_RESOURCE
-#define FDF_OBJECT      (FD_POINTER|FD_OBJECT)   // Field refers to another object
-#define FDF_OBJECTID    (FD_INT|FD_OBJECT)      // Field refers to another object by ID
-#define FDF_LOCAL       (FD_POINTER|FD_LOCAL)    // Field refers to a local object
-#define FDF_STRING      (FD_POINTER|FD_STRING)   // Field points to a string.  NB: Ideally want to remove the FD_POINTER as it should be redundant
-#define FDF_STR         FDF_STRING
-#define FDF_SCALED      FD_SCALED
-#define FDF_FLAGS       FD_FLAGS                // Field contains flags
-#define FDF_ALLOC       FD_ALLOC                // Field is a dynamic allocation - either a memory block or object
-#define FDF_LOOKUP      FD_LOOKUP               // Lookup names for values in this field
-#define FDF_READ        FD_READ                 // Field is readable
-#define FDF_WRITE       FD_WRITE                // Field is writeable
-#define FDF_INIT        FD_INIT                 // Field can only be written prior to Init()
-#define FDF_SYSTEM      FD_SYSTEM
-#define FDF_ERROR       (FD_INT|FD_ERROR)
-#define FDF_RGB         (FD_RGB|FD_BYTE|FD_ARRAY)
-#define FDF_R           FD_READ
-#define FDF_W           FD_WRITE
-#define FDF_RW          (FD_READ|FD_WRITE)
-#define FDF_RI          (FD_READ|FD_INIT)
-#define FDF_I           FD_INIT
-#define FDF_VIRTUAL     FD_VIRTUAL
-#define FDF_INTFLAGS    (FDF_INT|FDF_FLAGS)
-#define FDF_FIELDTYPES  (FD_INT|FD_DOUBLE|FD_INT64|FD_POINTER|FD_UNIT|FD_BYTE|FD_ARRAY|FD_FUNCTION)
-
-// These constants have to match the FD* constants << 32
-
-#define TDOUBLE   0x8000000000000000LL
-#define TINT      0x4000000000000000LL
-#define TUNIT     0x2000000000000000LL
-#define TFLOAT    0x1000000000000000LL // NB: Floats are upscaled to doubles when passed as v-args.
-#define TPTR      0x0800000000000000LL
-#define TINT64    0x0400000000000000LL
-#define TFUNCTION 0x0200000000000000LL
-#define TSTR      0x0080000000000000LL
-#define TARRAY    0x0000100000000000LL
-#define TSCALE    0x0020000000000000LL
-#define TAGEND    0LL
-#define TAGDIVERT -1LL
-#define TSTRING   TSTR
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
 //********************************************************************************************************************
-// FieldValue is used to simplify the initialisation of new objects.
 
 namespace pf {
-
-struct FieldValue {
-   uint32_t FieldID;
-   int Type;
-   union {
-      CSTRING String;
-      APTR    Pointer;
-      CPTR    CPointer;
-      double  Double;
-      SCALE   Percent;
-      int64_t Int64;
-      int     Int;
-   };
-
-   //std::string not included as not compatible with constexpr
-   constexpr FieldValue(uint32_t pFID, CSTRING pValue)  : FieldID(pFID), Type(FD_STRING), String(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int pValue)      : FieldID(pFID), Type(FD_INT), Int(pValue) { };
-   constexpr FieldValue(uint32_t pFID, int64_t pValue)  : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
-   constexpr FieldValue(uint32_t pFID, size_t pValue)   : FieldID(pFID), Type(FD_INT64), Int64(pValue) { };
-   constexpr FieldValue(uint32_t pFID, double pValue)   : FieldID(pFID), Type(FD_DOUBLE), Double(pValue) { };
-   constexpr FieldValue(uint32_t pFID, SCALE pValue)    : FieldID(pFID), Type(FD_DOUBLE|FD_SCALED), Percent(pValue) { };
-   constexpr FieldValue(uint32_t pFID, const FUNCTION &pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(&pValue) { };
-   constexpr FieldValue(uint32_t pFID, const FUNCTION *pValue) : FieldID(pFID), Type(FDF_FUNCTIONPTR), CPointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, APTR pValue)     : FieldID(pFID), Type(FD_POINTER), Pointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, CPTR pValue)     : FieldID(pFID), Type(FD_POINTER), CPointer(pValue) { };
-   constexpr FieldValue(uint32_t pFID, CPTR pValue, int pCustom) : FieldID(pFID), Type(pCustom), CPointer(pValue) { };
-};
-
 
 class FloatRect {
    public:
@@ -1753,39 +1652,6 @@ class FloatRect {
 
 #include <string.h> // memset()
 #include <stdlib.h> // strtol(), strtod()
-
-namespace dmf { // Helper functions for DMF flags
-inline bool has(DMF Value, DMF Flags) { return (Value & Flags) != DMF::NIL; }
-
-inline bool hasX(DMF Value) { return (Value & DMF::FIXED_X) != DMF::NIL; }
-inline bool hasY(DMF Value) { return (Value & DMF::FIXED_Y) != DMF::NIL; }
-inline bool hasWidth(DMF Value) { return (Value & DMF::FIXED_WIDTH) != DMF::NIL; }
-inline bool hasHeight(DMF Value) { return (Value & DMF::FIXED_HEIGHT) != DMF::NIL; }
-inline bool hasXOffset(DMF Value) { return (Value & DMF::FIXED_X_OFFSET) != DMF::NIL; }
-inline bool hasYOffset(DMF Value) { return (Value & DMF::FIXED_Y_OFFSET) != DMF::NIL; }
-inline bool hasRadiusX(DMF Value) { return (Value & DMF::FIXED_RADIUS_X) != DMF::NIL; }
-inline bool hasRadiusY(DMF Value) { return (Value & DMF::FIXED_RADIUS_Y) != DMF::NIL; }
-inline bool hasScaledX(DMF Value) { return (Value & DMF::SCALED_X) != DMF::NIL; }
-inline bool hasScaledY(DMF Value) { return (Value & DMF::SCALED_Y) != DMF::NIL; }
-inline bool hasScaledWidth(DMF Value) { return (Value & DMF::SCALED_WIDTH) != DMF::NIL; }
-inline bool hasScaledHeight(DMF Value) { return (Value & DMF::SCALED_HEIGHT) != DMF::NIL; }
-inline bool hasScaledXOffset(DMF Value) { return (Value & DMF::SCALED_X_OFFSET) != DMF::NIL; }
-inline bool hasScaledYOffset(DMF Value) { return (Value & DMF::SCALED_Y_OFFSET) != DMF::NIL; }
-inline bool hasScaledCenterX(DMF Value) { return (Value & DMF::SCALED_CENTER_X) != DMF::NIL; }
-inline bool hasScaledCenterY(DMF Value) { return (Value & DMF::SCALED_CENTER_Y) != DMF::NIL; }
-inline bool hasScaledRadiusX(DMF Value) { return (Value & DMF::SCALED_RADIUS_X) != DMF::NIL; }
-inline bool hasScaledRadiusY(DMF Value) { return (Value & DMF::SCALED_RADIUS_Y) != DMF::NIL; }
-
-inline bool hasAnyHorizontalPosition(DMF Value) { return (Value & (DMF::FIXED_X|DMF::SCALED_X|DMF::FIXED_X_OFFSET|DMF::SCALED_X_OFFSET)) != DMF::NIL; }
-inline bool hasAnyVerticalPosition(DMF Value) { return (Value & (DMF::FIXED_Y|DMF::SCALED_Y|DMF::FIXED_Y_OFFSET|DMF::SCALED_Y_OFFSET)) != DMF::NIL; }
-inline bool hasAnyScaledRadius(DMF Value) { return (Value & (DMF::SCALED_RADIUS_X|DMF::SCALED_RADIUS_Y)) != DMF::NIL; }
-inline bool hasAnyX(DMF Value) { return (Value & (DMF::SCALED_X|DMF::FIXED_X)) != DMF::NIL; }
-inline bool hasAnyY(DMF Value) { return (Value & (DMF::SCALED_Y|DMF::FIXED_Y)) != DMF::NIL; }
-inline bool hasAnyWidth(DMF Value) { return (Value & (DMF::SCALED_WIDTH|DMF::FIXED_WIDTH)) != DMF::NIL; }
-inline bool hasAnyHeight(DMF Value) { return (Value & (DMF::SCALED_HEIGHT|DMF::FIXED_HEIGHT)) != DMF::NIL; }
-inline bool hasAnyXOffset(DMF Value) { return (Value & (DMF::SCALED_X_OFFSET|DMF::FIXED_X_OFFSET)) != DMF::NIL; }
-inline bool hasAnyYOffset(DMF Value) { return (Value & (DMF::SCALED_Y_OFFSET|DMF::FIXED_Y_OFFSET)) != DMF::NIL; }
-}
 
 
 struct ObjectSignal {
@@ -2349,9 +2215,6 @@ extern "C" void SetResourceMgr(APTR Address, struct ResourceManager *Manager);
 
 
 //********************************************************************************************************************
-
-#define END_FIELD FieldArray(nullptr, 0)
-#define FDEF static const struct FunctionField
 
 template <class T> inline MEMORYID GetMemoryID(T &&A) {
    return ((MEMORYID *)A)[-2];
