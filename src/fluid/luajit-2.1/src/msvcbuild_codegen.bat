@@ -1,6 +1,9 @@
 @rem Script to generate LuaJIT build tools and headers with MSVC.
 @rem This only builds the code generation tools (minilua, buildvm) and generates headers.
 @rem The actual library compilation is handled by CMake for proper dependency tracking.
+@rem
+@rem Usage: msvcbuild_codegen.bat [output_directory]
+@rem   If output_directory is specified, generated files go there (default: current dir)
 
 @if not defined INCLUDE goto :FAIL
 
@@ -18,6 +21,14 @@
 @set DASM=%DASMDIR%\dynasm.lua
 @set DASC=vm_x64.dasc
 @set ALL_LIB=lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
+
+@rem Set output directory (default to current directory if not specified)
+@if "%~1"=="" (
+   set "OUTDIR=."
+) else (
+   set "OUTDIR=%~1"
+   if not exist "%OUTDIR%" mkdir "%OUTDIR%"
+)
 
 @rem Build minilua only if it doesn't exist (bootstrap tool for code generation)
 if not exist minilua.exe goto :BUILD_MINILUA
@@ -66,25 +77,25 @@ if exist buildvm.exe.manifest^
 :BUILDVM_DONE
 
 @rem Generate VM object and headers
-.\buildvm.exe -m peobj -o lj_vm.obj
+.\buildvm.exe -m peobj -o "%OUTDIR%\lj_vm.obj"
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m bcdef -o lj_bcdef.h %ALL_LIB%
+.\buildvm.exe -m bcdef -o "%OUTDIR%\lj_bcdef.h" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m ffdef -o lj_ffdef.h %ALL_LIB%
+.\buildvm.exe -m ffdef -o "%OUTDIR%\lj_ffdef.h" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m libdef -o lj_libdef.h %ALL_LIB%
+.\buildvm.exe -m libdef -o "%OUTDIR%\lj_libdef.h" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m recdef -o lj_recdef.h %ALL_LIB%
+.\buildvm.exe -m recdef -o "%OUTDIR%\lj_recdef.h" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m vmdef -o jit\vmdef.lua %ALL_LIB%
+.\buildvm.exe -m vmdef -o "%OUTDIR%\vmdef.lua" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m folddef -o lj_folddef.h lj_opt_fold.c
+.\buildvm.exe -m folddef -o "%OUTDIR%\lj_folddef.h" lj_opt_fold.c
 @if errorlevel 1 goto :BAD
 
 @rem Clean up temporary build artifacts (keep minilua.exe and buildvm.exe for incremental builds)
 @del host\buildvm_arch.h 2>nul
 @echo.
-@echo === Successfully generated LuaJIT headers for Windows/%LJARCH% ===
+@echo === Successfully generated LuaJIT headers for Windows/%LJARCH% in %OUTDIR% ===
 exit /b 0
 
 :BAD

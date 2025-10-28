@@ -186,12 +186,24 @@ endif
 #   LDFLAGS  HOST_LDFLAGS  TARGET_LDFLAGS  TARGET_SHLDFLAGS
 #   LIBS     HOST_LIBS     TARGET_LIBS
 #   CROSS    HOST_SYS      TARGET_SYS      TARGET_FLAGS
+#   TARGET_GENDIR  (directory for generated headers, defaults to current dir)
 #
 # Cross-compilation examples:
 #   make HOST_CC="gcc -m32" CROSS=i586-mingw32msvc- TARGET_SYS=Windows
 #   make HOST_CC="gcc -m32" CROSS=powerpc-linux-gnu-
 
-ASOPTIONS= $(CCOPT) $(CCWARN) $(XCFLAGS) $(CFLAGS)
+# Directory for generated headers (can be overridden from command line)
+TARGET_GENDIR?= .
+export TARGET_GENDIR
+
+# Add TARGET_GENDIR to include path if it's not the current directory
+ifneq ($(TARGET_GENDIR),.)
+  GENDIR_INC= -I$(TARGET_GENDIR)
+else
+  GENDIR_INC=
+endif
+
+ASOPTIONS= $(CCOPT) $(CCWARN) $(XCFLAGS) $(CFLAGS) $(GENDIR_INC)
 CCOPTIONS= $(CCDEBUG) $(ASOPTIONS)
 LDOPTIONS= $(CCDEBUG) $(LDFLAGS)
 
@@ -614,7 +626,7 @@ E= @echo
 default all:	$(TARGET_T)
 
 amalg:
-	$(MAKE) all "LJCORE_O=ljamalg.o"
+	$(MAKE) all "LJCORE_O=ljamalg.o" "TARGET_GENDIR=$(TARGET_GENDIR)"
 
 clean:
 	$(HOST_RM) $(ALL_RM)
@@ -663,27 +675,33 @@ $(LJVM_BOUT): $(BUILDVM_T)
 
 lj_bcdef.h: $(BUILDVM_T) $(LJLIB_C)
 	$(E) "BUILDVM   $@"
-	$(Q)$(BUILDVM_X) -m bcdef -o $@ $(LJLIB_C)
+	@mkdir -p $(TARGET_GENDIR)
+	$(Q)$(BUILDVM_X) -m bcdef -o $(TARGET_GENDIR)/$@ $(LJLIB_C)
 
 lj_ffdef.h: $(BUILDVM_T) $(LJLIB_C)
 	$(E) "BUILDVM   $@"
-	$(Q)$(BUILDVM_X) -m ffdef -o $@ $(LJLIB_C)
+	@mkdir -p $(TARGET_GENDIR)
+	$(Q)$(BUILDVM_X) -m ffdef -o $(TARGET_GENDIR)/$@ $(LJLIB_C)
 
 lj_libdef.h: $(BUILDVM_T) $(LJLIB_C)
 	$(E) "BUILDVM   $@"
-	$(Q)$(BUILDVM_X) -m libdef -o $@ $(LJLIB_C)
+	@mkdir -p $(TARGET_GENDIR)
+	$(Q)$(BUILDVM_X) -m libdef -o $(TARGET_GENDIR)/$@ $(LJLIB_C)
 
 lj_recdef.h: $(BUILDVM_T) $(LJLIB_C)
 	$(E) "BUILDVM   $@"
-	$(Q)$(BUILDVM_X) -m recdef -o $@ $(LJLIB_C)
+	@mkdir -p $(TARGET_GENDIR)
+	$(Q)$(BUILDVM_X) -m recdef -o $(TARGET_GENDIR)/$@ $(LJLIB_C)
 
 $(LIB_VMDEF): $(BUILDVM_T) $(LJLIB_C)
 	$(E) "BUILDVM   $@"
-	$(Q)$(BUILDVM_X) -m vmdef -o $(LIB_VMDEFP) $(LJLIB_C)
+	@mkdir -p $(TARGET_GENDIR)
+	$(Q)$(BUILDVM_X) -m vmdef -o $(TARGET_GENDIR)/$(LIB_VMDEFP) $(LJLIB_C)
 
 lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c
 	$(E) "BUILDVM   $@"
-	$(Q)$(BUILDVM_X) -m folddef -o $@ lj_opt_fold.c
+	@mkdir -p $(TARGET_GENDIR)
+	$(Q)$(BUILDVM_X) -m folddef -o $(TARGET_GENDIR)/$@ lj_opt_fold.c
 
 ##############################################################################
 # Object file rules.
