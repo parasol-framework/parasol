@@ -49,7 +49,7 @@ if (MSVC)
    )
 
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
-   set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/vmdef.lua")
+   set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 
    # Expand glob patterns for dependencies (only source headers, not generated ones)
    file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")

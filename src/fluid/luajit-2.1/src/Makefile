@@ -695,7 +695,7 @@ lj_recdef.h: $(BUILDVM_T) $(LJLIB_C)
 
 $(LIB_VMDEF): $(BUILDVM_T) $(LJLIB_C)
 	$(E) "BUILDVM   $@"
-	@mkdir -p $(TARGET_GENDIR)
+	@mkdir -p $(TARGET_GENDIR)/jit
 	$(Q)$(BUILDVM_X) -m vmdef -o $(TARGET_GENDIR)/$(LIB_VMDEFP) $(LJLIB_C)
 
 lj_folddef.h: $(BUILDVM_T) lj_opt_fold.c

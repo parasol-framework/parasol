@@ -28,6 +28,7 @@
 ) else (
    set "OUTDIR=%~1"
    if not exist "%OUTDIR%" mkdir "%OUTDIR%"
+   if not exist "%OUTDIR%\jit" mkdir "%OUTDIR%\jit"
 )
 
 @rem Build minilua only if it doesn't exist (bootstrap tool for code generation)
@@ -87,7 +88,7 @@ if exist buildvm.exe.manifest^
 @if errorlevel 1 goto :BAD
 .\buildvm.exe -m recdef -o "%OUTDIR%\lj_recdef.h" %ALL_LIB%
 @if errorlevel 1 goto :BAD
-.\buildvm.exe -m vmdef -o "%OUTDIR%\vmdef.lua" %ALL_LIB%
+.\buildvm.exe -m vmdef -o "%OUTDIR%\jit\vmdef.lua" %ALL_LIB%
 @if errorlevel 1 goto :BAD
 .\buildvm.exe -m folddef -o "%OUTDIR%\lj_folddef.h" lj_opt_fold.c
 @if errorlevel 1 goto :BAD
