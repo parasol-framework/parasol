@@ -37,6 +37,7 @@ inline bool is_ncname_char(char Ch)
    return Ch IS '.';
 }
 
+//********************************************************************************************************************
 // Determines if the supplied string adheres to the NCName production so constructor names can be validated without
 // deferring to the XML runtime.
 
@@ -351,6 +352,7 @@ XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Fu
 }
 
 //********************************************************************************************************************
+// Evaluates a path expression node and returns the resulting node set as an XPathVal.
 
 XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix)
 {
@@ -1102,20 +1104,20 @@ std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const Constru
    std::string_view Prefix) const
 {
    std::string prefix_key(Prefix);
-   const ConstructorNamespaceScope *cursor = &Scope;
+   const ConstructorNamespaceScope *ns_scope = &Scope;
 
    if (prefix_key.empty()) {
-      while (cursor) {
-         if (cursor->default_namespace.has_value()) return cursor->default_namespace;
-         cursor = cursor->parent;
+      while (ns_scope) {
+         if (ns_scope->default_namespace.has_value()) return ns_scope->default_namespace;
+         ns_scope = ns_scope->parent;
       }
       return uint32_t{0};
    }
 
-   while (cursor) {
-      auto iter = cursor->prefix_bindings.find(prefix_key);
-      if (iter != cursor->prefix_bindings.end()) return iter->second;
-      cursor = cursor->parent;
+   while (ns_scope) {
+      auto iter = ns_scope->prefix_bindings.find(prefix_key);
+      if (iter != ns_scope->prefix_bindings.end()) return iter->second;
+      ns_scope = ns_scope->parent;
    }
 
    return std::nullopt;

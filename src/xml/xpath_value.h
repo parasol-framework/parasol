@@ -52,10 +52,8 @@ class XPathVal : public XPathValue
    explicit XPathVal(std::string value) : XPathValue(XPVT::String) { StringValue = std::move(value); }
    explicit XPathVal(XPVT ValueType, std::string value) : XPathValue(ValueType) { StringValue = std::move(value); }
 
-   explicit XPathVal(const pf::vector<XMLTag *> &Nodes,
-                       std::optional<std::string> NodeSetString = std::nullopt,
-                       std::vector<std::string> NodeSetStrings = {},
-                       std::vector<const XMLAttrib *> NodeSetAttributes = {})
+   explicit XPathVal(const pf::vector<XMLTag *> &Nodes, std::optional<std::string> NodeSetString = std::nullopt,
+      std::vector<std::string> NodeSetStrings = {}, std::vector<const XMLAttrib *> NodeSetAttributes = {})
       : XPathValue(Nodes, NodeSetString, NodeSetStrings, NodeSetAttributes) {}
 
    // Methods
@@ -77,8 +75,6 @@ class XPathVal : public XPathValue
 
 std::string format_xpath_number(double Value);
 std::optional<bool> parse_schema_boolean(std::string_view);
-XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *>,
-   std::vector<const XMLAttrib *> Attributes = {},
-   std::vector<std::string> Strings = {},
-   std::optional<std::string> Override = std::nullopt);
+XPathVal xpath_nodeset_from_components(pf::vector<XMLTag *>, std::vector<const XMLAttrib *> Attributes = {},
+   std::vector<std::string> Strings = {}, std::optional<std::string> Override = std::nullopt);
 XPathVal xpath_nodeset_singleton(XMLTag *, const XMLAttrib *, std::string);

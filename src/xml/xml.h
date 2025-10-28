@@ -122,13 +122,6 @@ template<MapKey Key, typename Value>
    return (it != Map.end()) ? &it->second : nullptr;
 }
 
-template<typename Range, typename Pred>
-   requires std::ranges::input_range<Range> and std::predicate<Pred, std::ranges::range_reference_t<Range>>
-[[nodiscard]] inline auto find_if_range(Range &&range, Pred pred)
-{
-   return std::ranges::find_if(std::forward<Range>(range), pred);
-}
-
 //********************************************************************************************************************
 
 using URI_STR = std::string;
@@ -140,11 +133,8 @@ class extXML : public objXML {
    ankerl::unordered_dense::map<int, std::string> BaseURIMap;
    std::string ErrorMsg;    // The most recent error message for an activity, e.g. XPath parsing error
    std::string Statement;
-   std::string Attrib;
    bool   ReadOnly;
    bool   StaleMap;         // True if map requires a rebuild
-
-   FUNCTION Callback;
 
    std::shared_ptr<xml::schema::SchemaContext> SchemaContext;
    ankerl::unordered_dense::map<std::string, std::string> Entities; // For general entities
