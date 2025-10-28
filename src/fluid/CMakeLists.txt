@@ -47,10 +47,19 @@ if (MSVC)
 
    set (LUAJIT_VM_OBJ "${LUAJIT_SRC}/lj_vm.obj")
 
-   # Expand glob patterns for dependencies
+   # Expand glob patterns for dependencies (exclude generated headers to avoid circular deps)
    file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
    file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.c")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
+
+   # Remove generated headers from dependency list to avoid circular dependency
+   list(REMOVE_ITEM LUAJIT_DEP_LJ_H
+      "${LUAJIT_SRC}/lj_bcdef.h"
+      "${LUAJIT_SRC}/lj_ffdef.h"
+      "${LUAJIT_SRC}/lj_libdef.h"
+      "${LUAJIT_SRC}/lj_recdef.h"
+      "${LUAJIT_SRC}/lj_folddef.h"
+   )
 
    # Generate headers and VM object file using buildvm
    add_custom_command(
