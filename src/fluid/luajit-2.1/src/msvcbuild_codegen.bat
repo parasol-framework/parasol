@@ -1,12 +1,6 @@
-@rem Script to build LuaJIT with MSVC.
-@rem Copyright (C) 2005-2022 Mike Pall. See Copyright Notice in luajit.h
-@rem
-@rem Open a "Visual Studio Command Prompt" (either x86 or x64).
-@rem Then cd to this directory and run this script. Use the following
-@rem options (in order), if needed. The default is a dynamic release build.
-@rem
-@rem   nogc64   disable LJ_GC64 mode for x64
-@rem   debug    emit debug symbols
+@rem Script to generate LuaJIT build tools and headers with MSVC.
+@rem This only builds the code generation tools (minilua, buildvm) and generates headers.
+@rem The actual library compilation is handled by CMake for proper dependency tracking.
 
 @if not defined INCLUDE goto :FAIL
 
@@ -18,28 +12,27 @@
 @if not defined LJLINK_ARGS set "LJLINK_ARGS=/nologo"
 
 @setlocal
-@rem Add more debug flags here, e.g. DEBUGCFLAGS=/DLUA_USE_APICHECK
-@set DEBUGCFLAGS=
 @set LJCOMPILE=cl /nologo /c /O2 /W3 /DLUAJIT_ENABLE_LUA52COMPAT /D_CRT_SECURE_NO_DEPRECATE /D_CRT_STDIO_INLINE=__declspec(dllexport)__inline
 @set LJMT=mt /nologo
-@set LJLIB=lib /nologo /nodefaultlib
 @set DASMDIR=..\dynasm
 @set DASM=%DASMDIR%\dynasm.lua
 @set DASC=vm_x64.dasc
-@set LJLIBNAME=lua51.lib
-@set BUILDTYPE=release
 @set ALL_LIB=lib_base.c lib_math.c lib_bit.c lib_string.c lib_table.c lib_io.c lib_os.c lib_package.c lib_debug.c lib_jit.c lib_ffi.c lib_buffer.c
 
-@rem Incremental builds are enabled. Comment out the line below to disable.
-@rem if exist %LJLIBNAME% exit 0
-
+@rem Build minilua only if it doesn't exist (bootstrap tool for code generation)
+if not exist minilua.exe goto :BUILD_MINILUA
+goto :MINILUA_DONE
+:BUILD_MINILUA
 %LJCOMPILE% host\minilua.c
 @if errorlevel 1 goto :BAD
 "%LJLINK%" %LJLINK_ARGS% /out:minilua.exe minilua.obj
 @if errorlevel 1 goto :BAD
 if exist minilua.exe.manifest^
   %LJMT% -manifest minilua.exe.manifest -outputresource:minilua.exe
+@del minilua.obj *.manifest 2>nul
+:MINILUA_DONE
 
+@rem Detect architecture
 @set DASMFLAGS=-D WIN -D JIT -D FFI -D P64
 @set LJARCH=x64
 @.\minilua.exe
@@ -54,16 +47,25 @@ if exist minilua.exe.manifest^
 @set DASC=vm_x86.dasc
 @set LJCOMPILE=%LJCOMPILE% /DLUAJIT_DISABLE_GC64
 :GC64
+
+@rem Generate buildvm_arch.h (always regenerate as it depends on DASC selection)
 .\minilua.exe %DASM% -LN %DASMFLAGS% -o host\buildvm_arch.h %DASC%
 @if errorlevel 1 goto :BAD
 
+@rem Build buildvm only if it doesn't exist
+if not exist buildvm.exe goto :BUILD_BUILDVM
+goto :BUILDVM_DONE
+:BUILD_BUILDVM
 %LJCOMPILE% /I "." /I %DASMDIR% host\buildvm*.c
 @if errorlevel 1 goto :BAD
 "%LJLINK%" %LJLINK_ARGS% /out:buildvm.exe buildvm*.obj
 @if errorlevel 1 goto :BAD
 if exist buildvm.exe.manifest^
   %LJMT% -manifest buildvm.exe.manifest -outputresource:buildvm.exe
+@del buildvm*.obj *.manifest 2>nul
+:BUILDVM_DONE
 
+@rem Generate VM object and headers
 .\buildvm.exe -m peobj -o lj_vm.obj
 @if errorlevel 1 goto :BAD
 .\buildvm.exe -m bcdef -o lj_bcdef.h %ALL_LIB%
@@ -79,33 +81,17 @@ if exist buildvm.exe.manifest^
 .\buildvm.exe -m folddef -o lj_folddef.h lj_opt_fold.c
 @if errorlevel 1 goto :BAD
 
-@if "%1" neq "debug" goto :NODEBUG
-@shift
-@set BUILDTYPE=debug
-@set LJCOMPILE=%LJCOMPILE% /Zi %DEBUGCFLAGS%
-@set LJLINK=%LJLINK% /opt:ref /opt:icf /incremental:no
-:NODEBUG
-@set LJLINK=%LJLINK% /%BUILDTYPE%
-%LJCOMPILE% lj_*.c lib_*.c
-@if errorlevel 1 goto :BAD
-%LJLIB% /OUT:%LJLIBNAME% lj_*.obj lib_*.obj
-@if errorlevel 1 goto :BAD
-
-%LJCOMPILE% luajit.c
-@if errorlevel 1 goto :BAD
-
-@del *.obj *.manifest minilua.exe buildvm.exe
-@del host\buildvm_arch.h
-@del lj_bcdef.h lj_ffdef.h lj_libdef.h lj_recdef.h lj_folddef.h
+@rem Clean up temporary build artifacts (keep minilua.exe and buildvm.exe for incremental builds)
+@del host\buildvm_arch.h 2>nul
 @echo.
-@echo === Successfully built LuaJIT for Windows/%LJARCH% ===
+@echo === Successfully generated LuaJIT headers for Windows/%LJARCH% ===
 exit 0
 
 :BAD
 @echo.
 @echo *******************************************************
 @echo *** Build FAILED -- Please check the error messages ***
-@echo *******************************************************
+@echo *******************************************************
 @goto :END
 :FAIL
 @echo You must open a "Visual Studio Command Prompt" to run this script
