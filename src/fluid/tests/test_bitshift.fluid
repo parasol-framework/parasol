@@ -1,0 +1,36 @@
+-- Comprehensive tests for bitshift operators
+
+function testBinaryBitwiseBasics()
+   assert((1 << 3) == bit.lshift(1, 3), '<< should map to bit.lshift')
+   assert((8 >> 1) == bit.rshift(8, 1), '>> should map to bit.rshift (logical)')
+   assert((-8 >> 1) == bit.rshift(-8, 1), '>> should use logical shift via bit.rshift')
+end
+
+function testBitwisePrecedenceAndGrouping()
+   -- Ensure shifts bind tighter than addition
+   assert(1 + 1 << 3 == (1 + (1 << 3)), '<< should bind tighter than +')
+   assert(10 - 2 >> 1 == (10 - (2 >> 1)), '>> should bind tighter than -')
+end
+
+function testLargeShiftCounts()
+   -- bitop masks shift counts (implementation-defined), test through bit.* expectations
+   assert((1 << 40) == bit.lshift(1, 40), '<< follows bit.lshift for large counts')
+   assert((1 >> 40) == bit.rshift(1, 40), '>> follows bit.rshift for large counts')
+end
+
+function testBitshiftTighterThanAddition()
+   local value = 1 + 1 << 3
+   assert(value == 1 + (1 << 3), '<< should bind tighter than addition (expect 9)')
+   local valueRight = 8 >> 1 + 1
+   local expect = bit.rshift(8, 1 + 1)
+   assert(valueRight == expect, '>> should bind tighter than addition on the right-hand side, got ' .. string.format('0x%.2x expected 0x%.2x',valueRight, expect))
+end
+
+return {
+   tests = {
+      'testBinaryBitwiseBasics',
+      'testBitwisePrecedenceAndGrouping',
+      'testLargeShiftCounts',
+      'testBitshiftTighterThanAddition'
+   }
+}
