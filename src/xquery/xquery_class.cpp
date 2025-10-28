@@ -299,7 +299,6 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 
       if (Self->Path.empty() and (xml->Path)) Self->Path = xml->Path;
 
-      xml->Attrib.clear();
       XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);
       auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
       Self->ErrorMsg = Self->ParseResult.error_msg;
@@ -461,9 +460,6 @@ static ERR XQUERY_Search(extXQuery *Self, struct xq::Search *Args)
 
       if ((Args->Callback) and (Args->Callback->defined())) Self->Callback = *Args->Callback;
       else Self->Callback.Type = CALL::NIL;
-
-      // TODO: Can these fields be moved to extXQuery?
-      xml->Attrib.clear();
 
       (void)xml->getMap(); // Ensure the tag ID and ParentID values are defined
       XPathEvaluator eval(Self, xml, Self->ParseResult.expression.get(), &Self->ParseResult);

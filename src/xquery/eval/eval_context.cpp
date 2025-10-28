@@ -273,7 +273,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
    auto saved_context = context;
    auto saved_context_stack = context_stack;
    auto saved_cursor_stack = cursor_stack;
-   auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
    auto last_error = ERR::Search;
@@ -294,7 +293,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
       context = saved_context;
       context_stack = saved_context_stack;
       cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
       auto result = evaluate_ast(branch, CurrentPrefix);
@@ -309,7 +307,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
    context = saved_context;
    context_stack = saved_context_stack;
    cursor_stack = saved_cursor_stack;
-   xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
    return last_error;
@@ -497,29 +494,26 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
 
    Matched = true;
 
-   if (Attribute) xml->Attrib = Attribute->Name;
-   else xml->Attrib.clear();
-
    if (not query->Callback.defined()) {
       ShouldTerminate = true;
       return ERR::Okay;
    }
 
-   ERR callback_error = ERR::Okay;
    if (query->Callback.isC()) {
       auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))query->Callback.Routine;
-      callback_error = routine(xml, Node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), query->Callback.Meta);
+      return routine(xml, Node->ID, Attribute ? Attribute->Name.c_str() : nullptr, query->Callback.Meta);
    }
    else if (query->Callback.isScript()) {
+      ERR callback_error = ERR::Okay;
       if (sc::Call(query->Callback, std::to_array<ScriptArg>({
          { "XML",  xml, FD_OBJECTPTR },
          { "Tag",  Node->ID },
-         { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+         { "Attrib", Attribute ? Attribute->Name.c_str() : nullptr }
       }), callback_error) != ERR::Okay) return ERR::Terminate;
+
+      return callback_error;
    }
    else return ERR::InvalidValue;
-
-   return callback_error;
 }
 
 //********************************************************************************************************************

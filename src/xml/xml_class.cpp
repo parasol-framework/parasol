@@ -64,6 +64,7 @@ validation instead.
 static ERR save_matching_tag(extXML *Self, int TagID, CSTRING Attrib, int *TagResult)
 {
    *TagResult = TagID;
+   if (Attrib) Self->Attrib = Attrib; // TODO: Should be stored in a 'meta structure' with the TagID
    return ERR::Terminate; // We only want the first match
 }
 
