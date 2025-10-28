@@ -32,22 +32,75 @@ ExternalProject_Add(libffi-3.3
 # LuaJIT library custom build
 
 if (MSVC)
+   # LuaJIT build for MSVC - separated into code generation and library compilation
+   # Code generation creates headers and lj_vm.obj via custom batch script
+   # Library compilation is handled by CMake for proper incremental builds
+
+   set (LUAJIT_GENERATED_HEADERS
+      "${LUAJIT_SRC}/lj_bcdef.h"
+      "${LUAJIT_SRC}/lj_ffdef.h"
+      "${LUAJIT_SRC}/lj_libdef.h"
+      "${LUAJIT_SRC}/lj_recdef.h"
+      "${LUAJIT_SRC}/lj_folddef.h"
+      "${LUAJIT_SRC}/jit/vmdef.lua"
+   )
+
+   set (LUAJIT_VM_OBJ "${LUAJIT_SRC}/lj_vm.obj")
+
+   # Expand glob patterns for dependencies
+   file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
+   file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.c")
+   file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
+
+   # Generate headers and VM object file using buildvm
+   add_custom_command(
+      OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ}
+      COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild_codegen.bat"
+      WORKING_DIRECTORY "${LUAJIT_SRC}"
+      DEPENDS
+         ${LUAJIT_DEP_LJ_C}
+         ${LUAJIT_DEP_LIB_C}
+         ${LUAJIT_DEP_LJ_H}
+      COMMENT "Generating LuaJIT headers and VM object"
+      VERBATIM
+   )
+
+   add_custom_target(luajit_codegen
+      DEPENDS ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ}
+   )
+
+   # Collect all LuaJIT source files
+   file(GLOB LUAJIT_CORE_SOURCES "${LUAJIT_SRC}/lj_*.c")
+   file(GLOB LUAJIT_LIB_SOURCES "${LUAJIT_SRC}/lib_*.c")
+
+   # Create LuaJIT static library
+   add_library(luajit_lib STATIC
+      ${LUAJIT_CORE_SOURCES}
+      ${LUAJIT_LIB_SOURCES}
+      ${LUAJIT_VM_OBJ}
+   )
+
+   add_dependencies(luajit_lib luajit_codegen)
+
+   set_target_properties(luajit_lib PROPERTIES
+      OUTPUT_NAME "lua51"
+      ARCHIVE_OUTPUT_DIRECTORY "${LUAJIT_SRC}"
+      ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${LUAJIT_SRC}"
+      ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${LUAJIT_SRC}"
+      ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${LUAJIT_SRC}"
+      ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${LUAJIT_SRC}"
+   )
+   target_compile_definitions(luajit_lib PRIVATE LUAJIT_ENABLE_LUA52COMPAT _CRT_SECURE_NO_DEPRECATE)
+
+   target_include_directories(luajit_lib PRIVATE "${LUAJIT_SRC}")
+
+   # Disable specific warnings from LuaJIT
+   target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287)
+
    set (LUAJIT_LINK "${LUAJIT_SRC}/lua51.lib")
 
-   # NOTE: Binaries are built amongst the source files when building with MSVC
-   # Use full path to MSVC linker to avoid conflicts with Git's link.exe
-
-   ExternalProject_Add(
-      luajit
-      SOURCE_DIR ${LUAJIT_SRC}
-      CONFIGURE_COMMAND ""
-      BUILD_IN_SOURCE TRUE
-      BUILD_ALWAYS TRUE
-      BUILD_COMMAND ${LUAJIT_SRC}/msvcbuild.bat static
-      BUILD_BYPRODUCTS ${LUAJIT_LINK}
-      INSTALL_COMMAND ""
-      UPDATE_COMMAND ""
-      COMMENT "Compiling LuaJIT library")
+   # Create an alias for backward compatibility
+   add_custom_target(luajit DEPENDS luajit_lib)
 else ()
    ExternalProject_Add(
       luajit
@@ -71,6 +124,10 @@ add_library (${MOD})
 set_module_defaults (${MOD} "Fl")
 
 add_dependencies (${MOD} libffi-3.3 luajit)
+
+if (BUILD_DEFS)
+   add_dependencies (${MOD} ${MOD}_hashes)
+endif ()
 
 set (FLUID_SOURCES
    "${MOD}.cpp"
@@ -120,4 +177,4 @@ flute_test(fluid_strings "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_strings.fluid")
 flute_test(fluid_math "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_math.fluid")
 flute_test(fluid_array "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_array.fluid")
 flute_test(fluid_compound "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_compound.fluid")
-flute_test(fluid_bitwise "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bitshift.fluid")
+flute_test(fluid_bitshift "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bitshift.fluid")
