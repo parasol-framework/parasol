@@ -931,10 +931,14 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
     if (LJ_FR2) bcreg_reserve(fs, 1);
     {
       BCReg base = callee.u.s.info;
+      /* Reserve exact slots for two args and place them explicitly. */
+      bcreg_reserve(fs, 2);
+      BCReg arg1 = base + 1 + LJ_FR2;
+      BCReg arg2 = arg1 + 1;
       expr_toval(fs, e1);
       expr_toval(fs, e2);
-      expr_tonextreg(fs, e1);
-      expr_tonextreg(fs, e2);
+      expr_toreg(fs, e1, arg1);
+      expr_toreg(fs, e2, arg2);
       e1->k = VCALL;
       e1->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
       e1->u.s.aux = base;
@@ -2207,7 +2211,15 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
   synlevel_begin(ls);
   expr_unop(ls, v);
   op = token2binop(ls->tok);
-  while (op != OPR_NOBINOPR && priority[op].left > limit) {
+  while (op != OPR_NOBINOPR) {
+    uint8_t lpri = priority[op].left;
+    /* Special-case: when parsing the RHS of a shift (limit set to
+    ** the shift right-priority), do not consume another shift here.
+    ** This enforces left-associativity for chained shifts while still
+    ** allowing lower-precedence additions on the RHS to bind tighter. */
+    if (limit == priority[OPR_SHL].right && (op == OPR_SHL || op == OPR_SHR))
+      lpri = 0;
+    if (!(lpri > limit)) break;
     ExpDesc v2;
     BinOpr nextop;
     lj_lex_next(ls);

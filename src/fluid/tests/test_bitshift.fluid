@@ -12,6 +12,32 @@ function testBitwisePrecedenceAndGrouping()
    assert(10 - 2 >> 1 == (10 - (2 >> 1)), '>> should bind tighter than -')
 end
 
+function testChainedBitshifts()
+   -- Left-associative: (a << b) << c
+   local a, b, c = 1, 2, 3
+   local expected = bit.lshift(bit.lshift(a, b), c)
+
+   local progressive = a << b
+   progressive = progressive << c
+   assert(progressive == expected, 'progressive check failed, got ' .. string.format('0x%.2x, expected 0x%.2x', progressive, expected))
+   
+   local mul_chain = (a << b) * 8
+   assert(mul_chain == expected, 'mul_chain << should be left-associative, got ' .. string.format('0x%.2x, expected 0x%.2x', mul_chain, expected))
+
+   local chained = a << b << c
+   local chained_enc = (a << b) << c
+   assert(chained == chained_enc, '"a << b << c" and "(a << b) << c" should be equivalent, got ' .. string.format('0x%.2x <> 0x%.2x', chained, chained_enc))
+   assert(chained == expected, 'chained << should be left-associative, got ' .. string.format('0x%.2x, expected 0x%.2x', chained, expected))
+
+   -- Mixed with right shift: (x >> y) >> z
+   local x, y, z = 64, 2, 3
+   local chainedRight = x >> y >> z
+   assert(chainedRight == bit.rshift(bit.rshift(x, y), z), 'chained >> should be left-associative')
+
+   local mixed = 1 << 4 >> 1
+   assert(mixed == bit.rshift(bit.lshift(1, 4), 1), 'mixed << >> chain should evaluate left-to-right')
+end
+
 function testLargeShiftCounts()
    -- bitop masks shift counts (implementation-defined), test through bit.* expectations
    assert((1 << 40) == bit.lshift(1, 40), '<< follows bit.lshift for large counts')
@@ -30,6 +56,7 @@ return {
    tests = {
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
+      'testChainedBitshifts',
       'testLargeShiftCounts',
       'testBitshiftTighterThanAddition'
    }
