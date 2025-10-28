@@ -125,6 +125,10 @@ set_module_defaults (${MOD} "Fl")
 
 add_dependencies (${MOD} libffi-3.3 luajit)
 
+if (BUILD_DEFS)
+   add_dependencies (${MOD} ${MOD}_hashes)
+endif ()
+
 set (FLUID_SOURCES
    "${MOD}.cpp"
    "fluid_module.cpp"
