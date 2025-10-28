@@ -61,30 +61,32 @@ validation instead.
 
 // Use in search() calls to report the first matching tag.  Expects an int reference in the Meta parameter.
 
-static ERR save_matching_tag(extXML *Self, int TagID, CSTRING Attrib, int *TagResult)
+struct matching_tag_opt {
+   int tag_id = 0;
+   std::string attrib;
+   FUNCTION *callback = nullptr;
+};
+
+static ERR save_matching_tag(extXML *Self, int TagID, CSTRING Attrib, matching_tag_opt &Result)
 {
-   *TagResult = TagID;
+   Result.tag_id = TagID;
+   if (Attrib) Result.attrib.assign(Attrib);
    return ERR::Terminate; // We only want the first match
 }
 
 //********************************************************************************************************************
 
-struct find_all_tags_opt {
-   int TagID = 0;
-   FUNCTION *Callback = nullptr;
-};
-
-static ERR find_all_tags(extXML *Self, int TagID, CSTRING Attrib, find_all_tags_opt *Options)
+static ERR find_all_tags(extXML *Self, int TagID, CSTRING Attrib, matching_tag_opt &Options)
 {
-   if (not Options->TagID) Options->TagID = TagID; // Store the first matching tag ID
+   if (not Options.tag_id) Options.tag_id = TagID; // Store the first matching tag ID
 
    ERR callback_error = ERR::Okay;
-   if (Options->Callback->isC()) {
-      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))Options->Callback->Routine;
-      callback_error = routine(Self, TagID, Attrib, Options->Callback->Meta);
+   if (Options.callback->isC()) {
+      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))Options.callback->Routine;
+      callback_error = routine(Self, TagID, Attrib, Options.callback->Meta);
    }
-   else if (Options->Callback->isScript()) {
-      if (sc::Call(*Options->Callback, std::to_array<ScriptArg>({
+   else if (Options.callback->isScript()) {
+      if (sc::Call(*Options.callback, std::to_array<ScriptArg>({
          { "XML",  Self, FD_OBJECTPTR },
          { "Tag",  TagID },
          { "Attrib", Attrib }
@@ -277,11 +279,11 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->XPath);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         int tag_id = 0;
-         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         matching_tag_opt opt;
+         auto callback = C_FUNCTION(save_matching_tag, &opt);
          if (error = xq->search(Self, callback); error IS ERR::Terminate) {
-            if (tag_id) {
-               auto tag = Self->getTag(tag_id);
+            if (opt.tag_id) {
+               auto tag = Self->getTag(opt.tag_id);
                auto new_tags = TAGS(tag, tag + 1);
                Self->Tags = std::move(new_tags);
                Self->modified();
@@ -365,16 +367,16 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
       if (auto error = xq->init(); error IS ERR::Okay) {
          // TODO: Should verify that the compiled expression is an XPath and not an XQuery
 
-         find_all_tags_opt opt;
+         matching_tag_opt opt;
 
          FUNCTION callback;
          if ((Args->Callback) and (Args->Callback->defined())) {
-            opt.Callback = Args->Callback;
+            opt.callback = Args->Callback;
             callback = C_FUNCTION(find_all_tags, &opt);
             error = xq->search((objXML *)Self, callback);
          }
          else {
-            callback = C_FUNCTION(save_matching_tag, &opt.TagID);
+            callback = C_FUNCTION(save_matching_tag, &opt);
             error = xq->search((objXML *)Self, callback);
             if (error IS ERR::Terminate) error = ERR::Okay; // Terminate means a match was accepted
             else if (error IS ERR::Okay) error = ERR::Search; // Nothing found
@@ -383,8 +385,8 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
          if (error IS ERR::Okay) {
             FreeResource(xq);
 
-            if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", opt.TagID, Self->Attrib.c_str());
-            Args->Result = opt.TagID;
+            if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Found tag %d, Attrib: %s", opt.tag_id, opt.attrib.c_str());
+            Args->Result = opt.tag_id;
             return ERR::Okay;
          }
          else {
@@ -974,10 +976,10 @@ ERR XML_InsertXPath(extXML *Self, struct xml::InsertXPath *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->XPath);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         int tag_id = 0;
-         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         matching_tag_opt opt;
+         auto callback = C_FUNCTION(save_matching_tag, &opt);
          if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
-            xml::InsertXML insert { .Index = tag_id, .Where = Args->Where, .XML = Args->XML };
+            xml::InsertXML insert { .Index = opt.tag_id, .Where = Args->Where, .XML = Args->XML };
             if (error = XML_InsertXML(Self, &insert); error IS ERR::Okay) {
                Args->Result = insert.Result;
             }
@@ -1265,15 +1267,15 @@ static ERR XML_RemoveXPath(extXML *Self, struct xml::RemoveXPath *Args)
       xq->set(FID_Statement, Args->XPath);
       if (auto error = xq->init(); error IS ERR::Okay) {
          while (limit > 0) {
-            int tag_id = 0;
-            auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+            matching_tag_opt opt;
+            auto callback = C_FUNCTION(save_matching_tag, &opt);
             if (xq->search((objXML *)Self, callback) != ERR::Terminate) break;
-            auto tag = Self->getTag(tag_id);
+            auto tag = Self->getTag(opt.tag_id);
             if (!tag) break; // Sanity check
 
-            if (not Self->Attrib.empty()) { // Remove an attribute
+            if (not opt.attrib.empty()) { // Remove an attribute
                auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
-                  return pf::iequals(Self->Attrib, a.Name);
+                  return pf::iequals(opt.attrib, a.Name);
                });
                if (it != tag->Attribs.end()) tag->Attribs.erase(it);
             }
@@ -1573,22 +1575,22 @@ static ERR XML_SetKey(extXML *Self, struct acSetKey *Args)
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
       xq->set(FID_Statement, Args->Key);
       if (auto error = xq->init(); error IS ERR::Okay) {
-         int tag_id = 0;
-         auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+         matching_tag_opt opt;
+         auto callback = C_FUNCTION(save_matching_tag, &opt);
          if (error = xq->search((objXML *)Self, callback); error IS ERR::Terminate) {
-            auto tag = Self->getTag(tag_id);
-            if (!tag) {
+            auto tag = Self->getTag(opt.tag_id);
+            if (not tag) {
                FreeResource(xq);
                return log.warning(ERR::SanityCheckFailed);
             }
 
-            if (not Self->Attrib.empty()) { // Updating or adding an attribute
+            if (not opt.attrib.empty()) { // Updating or adding an attribute
                auto it = std::ranges::find_if(tag->Attribs, [&](const auto& a) {
-                  return pf::iequals(Self->Attrib, a.Name);
+                  return pf::iequals(opt.attrib, a.Name);
                });
 
                if (it != tag->Attribs.end()) it->Value = Args->Value; // Modify existing
-               else tag->Attribs.emplace_back(std::string(Self->Attrib), std::string(Args->Value)); // Add new
+               else tag->Attribs.emplace_back(std::string(opt.attrib), std::string(Args->Value)); // Add new
                Self->Modified++;
             }
             else if (not tag->Children.empty()) { // Update existing content
@@ -1711,8 +1713,8 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
       if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
          xq->set(FID_Statement, Args->XPath);
          if (auto error = xq->init(); error IS ERR::Okay) {
-            int tag_id = 0;
-            auto callback = C_FUNCTION(save_matching_tag, &tag_id);
+            matching_tag_opt opt;
+            auto callback = C_FUNCTION(save_matching_tag, &opt.tag_id);
             if (error = xq->search((objXML *)Self, callback); error != ERR::Terminate) {
                CSTRING str;
                if (xq->get(FID_ErrorMsg, str) IS ERR::Okay) Self->ErrorMsg = str;
@@ -1722,7 +1724,7 @@ static ERR XML_Sort(extXML *Self, struct xml::Sort *Args)
 
             FreeResource(xq);
 
-            branch = &Self->Map[tag_id]->Children;
+            branch = &Self->Map[opt.tag_id]->Children;
          }
          else {
             CSTRING str;

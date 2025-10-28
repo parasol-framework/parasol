@@ -37,6 +37,7 @@ inline bool is_ncname_char(char Ch)
    return Ch IS '.';
 }
 
+//********************************************************************************************************************
 // Determines if the supplied string adheres to the NCName production so constructor names can be validated without
 // deferring to the XML runtime.
 
@@ -351,6 +352,7 @@ XPathVal XPathEvaluator::evaluate_user_defined_function(const XQueryFunction &Fu
 }
 
 //********************************************************************************************************************
+// Evaluates a path expression node and returns the resulting node set as an XPathVal.
 
 XPathVal XPathEvaluator::evaluate_path_expression_value(const XPathNode *PathNode, uint32_t CurrentPrefix)
 {
@@ -706,8 +708,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
-   auto saved_cursor_stack = cursor_stack;
-   auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
    std::unordered_set<NodeIdentity, NodeIdentityHash, NodeIdentityEqual> seen_entries;
@@ -729,16 +729,12 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
 
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
       auto branch_value = evaluate_expression(branch, CurrentPrefix);
       if (expression_unsupported) {
          context = saved_context;
          context_stack = saved_context_stack;
-         cursor_stack = saved_cursor_stack;
-         xml->Attrib = saved_attrib;
          expression_unsupported = true;
          return XPathVal();
       }
@@ -746,8 +742,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
       if (branch_value.Type != XPVT::NodeSet) {
          context = saved_context;
          context_stack = saved_context_stack;
-         cursor_stack = saved_cursor_stack;
-         xml->Attrib = saved_attrib;
          expression_unsupported = true;
          return XPathVal();
       }
@@ -801,8 +795,6 @@ XPathVal XPathEvaluator::evaluate_union_value(const std::vector<const XPathNode 
 
    context         = saved_context;
    context_stack   = saved_context_stack;
-   cursor_stack    = saved_cursor_stack;
-   xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
    if (combined_nodes.empty()) return XPathVal(NODES());
@@ -843,15 +835,11 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
-   auto saved_cursor_stack = cursor_stack;
-   auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
    auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathVal> {
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
       auto value = evaluate_expression(Operand, CurrentPrefix);
@@ -869,8 +857,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    if (not left_value_opt.has_value()) {
       context         = saved_context;
       context_stack   = saved_context_stack;
-      cursor_stack    = saved_cursor_stack;
-      xml->Attrib     = saved_attrib;
       return XPathVal();
    }
 
@@ -878,8 +864,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
    if (not right_value_opt.has_value()) {
       context         = saved_context;
       context_stack   = saved_context_stack;
-      cursor_stack    = saved_cursor_stack;
-      xml->Attrib     = saved_attrib;
       return XPathVal();
    }
 
@@ -952,8 +936,6 @@ XPathVal XPathEvaluator::evaluate_intersect_value(const XPathNode *Left, const X
 
    context = saved_context;
    context_stack   = saved_context_stack;
-   cursor_stack    = saved_cursor_stack;
-   xml->Attrib     = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
    if (combined_nodes.empty()) return XPathVal(NODES());
@@ -994,15 +976,11 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 
    auto saved_context       = context;
    auto saved_context_stack = context_stack;
-   auto saved_cursor_stack  = cursor_stack;
-   auto saved_attrib        = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
    auto evaluate_operand = [&](const XPathNode *Operand) -> std::optional<XPathVal> {
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
       auto value = evaluate_expression(Operand, CurrentPrefix);
@@ -1020,8 +998,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    if (not left_value_opt.has_value()) {
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       return XPathVal();
    }
 
@@ -1029,8 +1005,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
    if (not right_value_opt.has_value()) {
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       return XPathVal();
    }
 
@@ -1103,8 +1077,6 @@ XPathVal XPathEvaluator::evaluate_except_value(const XPathNode *Left, const XPat
 
    context = saved_context;
    context_stack = saved_context_stack;
-   cursor_stack = saved_cursor_stack;
-   xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
    if (combined_nodes.empty()) return XPathVal(NODES());
@@ -1132,20 +1104,20 @@ std::optional<uint32_t> XPathEvaluator::resolve_constructor_prefix(const Constru
    std::string_view Prefix) const
 {
    std::string prefix_key(Prefix);
-   const ConstructorNamespaceScope *cursor = &Scope;
+   const ConstructorNamespaceScope *ns_scope = &Scope;
 
    if (prefix_key.empty()) {
-      while (cursor) {
-         if (cursor->default_namespace.has_value()) return cursor->default_namespace;
-         cursor = cursor->parent;
+      while (ns_scope) {
+         if (ns_scope->default_namespace.has_value()) return ns_scope->default_namespace;
+         ns_scope = ns_scope->parent;
       }
       return uint32_t{0};
    }
 
-   while (cursor) {
-      auto iter = cursor->prefix_bindings.find(prefix_key);
-      if (iter != cursor->prefix_bindings.end()) return iter->second;
-      cursor = cursor->parent;
+   while (ns_scope) {
+      auto iter = ns_scope->prefix_bindings.find(prefix_key);
+      if (iter != ns_scope->prefix_bindings.end()) return iter->second;
+      ns_scope = ns_scope->parent;
    }
 
    return std::nullopt;
@@ -2137,10 +2109,7 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       }
    }
 
-   if (entries.empty()) {
-      xml->Attrib.clear();
-      return ERR::Search;
-   }
+   if (entries.empty()) return ERR::Search;
 
    bool preserve_order = Value.preserve_node_order or (not prolog_ordering_is_ordered());
 
@@ -2231,7 +2200,6 @@ ERR XPathEvaluator::process_expression_node_set(const XPathVal &Value)
       if (should_terminate) return ERR::Okay;
    }
 
-   xml->Attrib.clear();
    if (matched) return ERR::Okay;
    return ERR::Search;
 }
@@ -2245,11 +2213,7 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
    const XPathNode *expression = Node;
 
    if (Node->type IS XQueryNodeType::EXPRESSION) {
-      if (Node->child_count() IS 0) {
-         xml->Attrib.clear();
-         return ERR::Search;
-      }
-
+      if (Node->child_count() IS 0) return ERR::Search;
       expression = Node->get_child(0);
    }
 
@@ -2270,7 +2234,6 @@ ERR XPathEvaluator::evaluate_top_level_expression(const XPathNode *Node, uint32_
       case XPVT::Date:
       case XPVT::Time:
       case XPVT::DateTime:
-         xml->Attrib = value.to_string();
          return ERR::Okay;
    }
 

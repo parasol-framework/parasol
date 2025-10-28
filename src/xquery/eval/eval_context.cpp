@@ -5,9 +5,7 @@
 // in which XPath expressions are evaluated.
 //
 // Key responsibilities:
-//   - Context stack push/pop operations for nested expression evaluation
-//   - Cursor state management for preserving and restoring document position
-//   - Integration with the legacy cursor-based XML API
+//   - Context stack push/pop operations for nested expression 
 //   - Variable binding and scope management for FLWOR expressions
 //
 // The context management system allows the evaluator to properly handle location paths with predicates,
@@ -233,7 +231,7 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
 }
 
 //********************************************************************************************************************
-// Execute a full location path expression, managing implicit root handling and cursor updates.
+// Execute a full location path expression, managing implicit root handling.
 // Returns ERR::Search if no matches were found.
 
 ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t CurrentPrefix)
@@ -257,7 +255,7 @@ ERR XPathEvaluator::evaluate_location_path(const XPathNode *PathNode, uint32_t C
    auto result = evaluate_step_sequence(initial_context, steps, 0, CurrentPrefix, matched);
 
    if ((result IS ERR::Okay) or (result IS ERR::Search)) {
-      if (xml->Callback.defined()) return ERR::Okay; // Search (not found) is not relevant with a callback
+      if (query->Callback.defined()) return ERR::Okay; // Search (not found) is not relevant with a callback
       return matched ? ERR::Okay : ERR::Search; // At least one match == Okay, otherwise Search
    }
    else return result;
@@ -272,8 +270,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
    auto saved_context = context;
    auto saved_context_stack = context_stack;
-   auto saved_cursor_stack = cursor_stack;
-   auto saved_attrib = xml->Attrib;
    bool saved_expression_unsupported = expression_unsupported;
 
    auto last_error = ERR::Search;
@@ -293,8 +289,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
       context = saved_context;
       context_stack = saved_context_stack;
-      cursor_stack = saved_cursor_stack;
-      xml->Attrib = saved_attrib;
       expression_unsupported = saved_expression_unsupported;
 
       auto result = evaluate_ast(branch, CurrentPrefix);
@@ -308,8 +302,6 @@ ERR XPathEvaluator::evaluate_union(const XPathNode *Node, uint32_t CurrentPrefix
 
    context = saved_context;
    context_stack = saved_context_stack;
-   cursor_stack = saved_cursor_stack;
-   xml->Attrib = saved_attrib;
    expression_unsupported = saved_expression_unsupported;
 
    return last_error;
@@ -333,7 +325,7 @@ ERR XPathEvaluator::evaluate_step_ast(const XPathNode *StepNode, uint32_t Curren
    auto result = evaluate_step_sequence(context_nodes, steps, 0, CurrentPrefix, matched);
 
    if ((result IS ERR::Okay) or (result IS ERR::Search)) {
-      if (xml->Callback.defined()) return ERR::Okay; // Search (not found) is not relevant with a callback
+      if (query->Callback.defined()) return ERR::Okay; // Search (not found) is not relevant with a callback
       return matched ? ERR::Okay : ERR::Search; // At least one match == Okay, otherwise Search
    }
    else return result;
@@ -497,29 +489,26 @@ ERR XPathEvaluator::invoke_callback(XMLTag *Node, const XMLAttrib *Attribute, bo
 
    Matched = true;
 
-   if (Attribute) xml->Attrib = Attribute->Name;
-   else xml->Attrib.clear();
-
-   if (not xml->Callback.defined()) {
+   if (not query->Callback.defined()) {
       ShouldTerminate = true;
       return ERR::Okay;
    }
 
-   ERR callback_error = ERR::Okay;
-   if (xml->Callback.isC()) {
-      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))xml->Callback.Routine;
-      callback_error = routine(xml, Node->ID, xml->Attrib.empty() ? nullptr : xml->Attrib.c_str(), xml->Callback.Meta);
+   if (query->Callback.isC()) {
+      auto routine = (ERR (*)(extXML *, int, CSTRING, APTR))query->Callback.Routine;
+      return routine(xml, Node->ID, Attribute ? Attribute->Name.c_str() : nullptr, query->Callback.Meta);
    }
-   else if (xml->Callback.isScript()) {
-      if (sc::Call(xml->Callback, std::to_array<ScriptArg>({
+   else if (query->Callback.isScript()) {
+      ERR callback_error = ERR::Okay;
+      if (sc::Call(query->Callback, std::to_array<ScriptArg>({
          { "XML",  xml, FD_OBJECTPTR },
          { "Tag",  Node->ID },
-         { "Attrib", xml->Attrib.empty() ? CSTRING(nullptr) : xml->Attrib.c_str() }
+         { "Attrib", Attribute ? Attribute->Name.c_str() : nullptr }
       }), callback_error) != ERR::Okay) return ERR::Terminate;
+
+      return callback_error;
    }
    else return ERR::InvalidValue;
-
-   return callback_error;
 }
 
 //********************************************************************************************************************
