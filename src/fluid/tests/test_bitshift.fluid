@@ -18,10 +18,19 @@ function testLargeShiftCounts()
    assert((1 >> 40) == bit.rshift(1, 40), '>> follows bit.rshift for large counts')
 end
 
+function testBitshiftTighterThanAddition()
+   local value = 1 + 1 << 3
+   assert(value == 1 + (1 << 3), '<< should bind tighter than addition (expect 9)')
+   local valueRight = 8 >> 1 + 1
+   local expect = bit.rshift(8, 1 + 1)
+   assert(valueRight == expect, '>> should bind tighter than addition on the right-hand side, got ' .. string.format('0x%.2x expected 0x%.2x',valueRight, expect))
+end
+
 return {
    tests = {
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
-      'testLargeShiftCounts'
+      'testLargeShiftCounts',
+      'testBitshiftTighterThanAddition'
    }
 }

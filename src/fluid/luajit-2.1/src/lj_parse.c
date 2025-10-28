@@ -918,39 +918,23 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
     *e1 = *e2;
   } else if (op == OPR_SHL || op == OPR_SHR) {
     /* Desugar bitwise ops to bit.<fname>(lhs, rhs). */
-    const char *fname = (op == OPR_SHL)  ? "lshift" : "rshift";
-    ExpDesc tbl;
-    BCReg obj, func;
-    /* Load global 'bit' into a register. */
-    expr_init(&tbl, VGLOBAL, 0);
-    tbl.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
-    obj = expr_toanyreg(fs, &tbl);
-    /* Resolve function = bit[fname] into new register 'func'. */
-    func = fs->freereg;
+    const char *fname = (op == OPR_SHL) ? "lshift" : "rshift";
+    ExpDesc callee, key;
+    expr_init(&callee, VGLOBAL, 0);
+    callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+    expr_toanyreg(fs, &callee);
+    expr_init(&key, VKSTR, 0);
+    key.u.sval = lj_parse_keepstr(fs->ls, fname, (MSize)6);
+    expr_index(fs, &callee, &key);
+    expr_toval(fs, &callee);
+    expr_tonextreg(fs, &callee);
+    if (LJ_FR2) bcreg_reserve(fs, 1);
     {
-      /* Compute string constant index for fname. */
-      GCstr *sfn = lj_parse_keepstr(fs->ls, fname,
-         (MSize)((fname[1] == 'o' && fname[0] == 'b') ? 3 : (fname[0] == 'b' ? 4 : 6)));
-      BCReg idx = const_gc(fs, obj2gco(sfn), LJ_TSTR);
-      if (idx <= BCMAX_C) {
-        bcreg_reserve(fs, 1+LJ_FR2);
-        bcemit_ABC(fs, BC_TGETS, func, obj, idx);
-      } else {
-        bcreg_reserve(fs, 2+LJ_FR2);
-        bcemit_AD(fs, BC_KSTR, func+1+LJ_FR2, idx);
-        bcemit_ABC(fs, BC_TGETV, func, obj, func+1+LJ_FR2);
-        fs->freereg--;  /* Drop temp key reg. */
-      }
-    }
-    {
-      /* Use func register directly as call base. */
-      BCReg base = func;
-      /* Force operands to values (no pending jumps) and place contiguously. */
+      BCReg base = callee.u.s.info;
       expr_toval(fs, e1);
       expr_toval(fs, e2);
       expr_tonextreg(fs, e1);
       expr_tonextreg(fs, e2);
-      /* Emit CALL with one result and two arguments. */
       e1->k = VCALL;
       e1->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
       e1->u.s.aux = base;
@@ -2188,7 +2172,7 @@ static const struct {
   {10,9}, {5,4},			/* POW CONCAT (right associative) */
   {3,3}, {3,3},				/* EQ NE */
   {3,3}, {3,3}, {3,3}, {3,3},		/* LT GE GT LE */
-  {6,6}, {6,6},	/* SHL SHR (chosen precedence) */
+  {7,5}, {7,5},				/* SHL SHR */
   {2,2}, {1,1}				/* AND OR */
 };
 
@@ -2444,15 +2428,15 @@ static void parse_call_assign(LexState *ls)
   expr_primary(ls, &vl.v);
   if (vl.v.k == VCALL) {  /* Function call statement. */
     setbc_b(bcptr(fs, &vl.v), 1);  /* No results. */
-  } 
+  }
   else if (ls->tok == TK_cadd || ls->tok == TK_csub || ls->tok == TK_cmul ||
              ls->tok == TK_cdiv || ls->tok == TK_cmod || ls->tok == TK_cconcat) {
     vl.prev = NULL;
     assign_compound(ls, &vl, ls->tok);
-  } 
+  }
   else if (ls->tok == ';') {
     /* Postfix increment (++) handled in expr_primary. */
-  } 
+  }
   else {  /* Start of an assignment. */
     vl.prev = NULL;
     parse_assignment(ls, &vl, 1);
