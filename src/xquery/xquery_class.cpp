@@ -94,8 +94,10 @@ an escape character in attribute strings.
 -END-
 
 TODO:
-* An InspectFunction() method would allow the function signature and list of parameter names to be returned.
 * Add support for custom functions via a new method, e.g., RegisterFunction().
+* An InspectFunction() method would allow the function signature and list of parameter names to be returned
+    InspectFunction(STRING FunctionName, INT ResultFlags, STRING Result).
+    Suggest returning a serialised XML document describing the function as speed isn't a concern here.
 * Allow modules to be preloaded.  There are many ways this could be achieved, e.g.
   - Load the module as a separate XQuery and link it via a new method.
   - Provide a callback that is invoked when an import is encountered, this allows the the host application to supply
@@ -164,7 +166,7 @@ static ERR build_query(extXQuery *Self)
 //********************************************************************************************************************
 // Convert an expanded QName (e.g., Q{uri}local) to lexical form (e.g., prefix:local or local).
 
-static std::string to_lexical_name(const XQueryProlog &prolog, const std::string &qname) 
+static std::string to_lexical_name(const XQueryProlog &prolog, const std::string &qname)
 {
    if ((qname.size() > 2) and (qname[0] IS 'Q') and (qname[1] IS '{')) {
       size_t closing = qname.find('}');
@@ -241,7 +243,7 @@ static ERR XQUERY_Activate(extXQuery *Self)
 -ACTION-
 Clear: Clears all XQuery results and returns the object to its pre-compiled state.
 
-Use Clear() to remove the resources consumed by the XQuery and reset its state.  The #Statement and #Path field 
+Use Clear() to remove the resources consumed by the XQuery and reset its state.  The #Statement and #Path field
 values are retained, allowing the object to be seamlessly re-activated at any time.
 
 *********************************************************************************************************************/
@@ -548,7 +550,7 @@ static ERR GET_FeatureFlags(extXQuery *Self, XQF &Value)
 -FIELD-
 Functions: Returns an allocated list of all declared XQuery functions.
 
-Provides a list of all XQuery functions that have been defined by the user or during evaluation of the XQuery 
+Provides a list of all XQuery functions that have been defined by the user or during evaluation of the XQuery
 expression (via the `declare` keyword).
 
 Example: For `declare function math:cube($x) { }` the name `math:cube` would appear in the list.

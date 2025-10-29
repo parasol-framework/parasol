@@ -288,7 +288,8 @@ static int check_xing(objSound *Self, const uint8_t *Frame)
    len -= int64_t(prv->PaddingEnd * prv->info.channels) * sizeof(int16_t);
    Self->setLength(len);
 
-   log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PF64 ", Padding: %d/%d", prv->TotalFrames, prv->TotalSamples, seconds_len, (long long)len, prv->PaddingStart, prv->PaddingEnd);
+   log.msg("Info header detected.  Total Frames: %d, Samples: %d, Track Time: %.2fs, Byte Length: %" PRId64 ", Padding: %d/%d", 
+      prv->TotalFrames, prv->TotalSamples, seconds_len, int64_t(len), prv->PaddingStart, prv->PaddingEnd);
 
    return 1;
 }

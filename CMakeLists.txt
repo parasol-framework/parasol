@@ -51,6 +51,7 @@ endif()
 project (Parasol VERSION 2024.2.27 LANGUAGES C CXX)
 
 cmake_policy (SET CMP0082 NEW) # Process install commands in the order that they appear
+cmake_policy(SET CMP0177 NEW) # Normalise install destination paths (converts slashes etc)
 
 # To switch on a custom option use -D, e.g. -DPARASOL_VLOG=ON
 

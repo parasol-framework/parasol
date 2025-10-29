@@ -137,6 +137,8 @@ ERR writeval_default(OBJECTPTR Object, Field *Field, int flags, CPTR Data, int E
 static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Source, int Elements)
 {
    pf::Log log("WriteField");
+   
+   if (not Field->writeable()) return ERR::NoFieldAccess;
 
    // Direct writing to field arrays without a SET function is only supported for the RGB type.  The client should
    // define a SET function for all other cases.
