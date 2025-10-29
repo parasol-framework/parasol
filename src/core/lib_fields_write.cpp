@@ -159,7 +159,7 @@ static ERR writeval_array(OBJECTPTR Object, Field *Field, int SrcType, CPTR Sour
       return ERR::Okay;
    }
 
-   log.warning("Field array '%s' is poorly defined.", Field->Name);
+   log.warning("Field array '%s.%s' needs a SET function.", Object->className(), Field->Name);
    return ERR::SanityCheckFailed;
 }
 
@@ -551,6 +551,8 @@ static ERR setval_large(OBJECTPTR Object, Field *Field, int Flags, CPTR Data, in
 void optimise_write_field(Field &Field)
 {
    pf::Log log(__FUNCTION__);
+
+   if (!Field.writeable()) return;
 
    if (Field.Flags & FD_FLAGS)       Field.WriteValue = writeval_flags;
    else if (Field.Flags & FD_LOOKUP) Field.WriteValue = writeval_lookup;

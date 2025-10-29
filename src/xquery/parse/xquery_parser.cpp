@@ -10,7 +10,7 @@
 XQF CompiledXQuery::feature_flags() const
 {
    XQF flags = XQF::NIL;
-   
+
    if (auto p = prolog.get(); p) { // Prolog-derived flags
       bool has_any_prolog_decl = false;
       if (not p->declared_namespaces.empty()) has_any_prolog_decl = true;
@@ -908,11 +908,9 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
          return false;
       }
    }
-   else {
-      if (prolog.decimal_formats.contains(format_name)) {
-         report_error("Duplicate decimal-format declaration");
-         return false;
-      }
+   else if (prolog.decimal_formats.contains(format_name)) {
+      report_error("Duplicate decimal-format declaration");
+      return false;
    }
 
    bool saw_property = false;
@@ -928,7 +926,6 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
       auto value = parse_string_literal_value();
       if (not value) return false;
 
-      // TODO: Could use hashed strings to make this faster
       if (property IS "decimal-separator") format.decimal_separator = *value;
       else if (property IS "grouping-separator") format.grouping_separator = *value;
       else if (property IS "infinity") format.infinity = *value;

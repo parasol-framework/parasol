@@ -131,7 +131,7 @@ Fusce auctor metus egestas commodo laoreet. Morbi sed venenatis augue. Maecenas 
          lFonts[font.name].order  = index
          lFonts[font.name].name   = font.name
          lFonts[font.name].alias  = font.alias
-         lFonts[font.name].styles = string.split(font.styles, ',')
+         if (font.styles) then lFonts[font.name].styles = string.split(font.styles, ',') end
          lFonts[font.name].sizes  = font.points
          lFonts[font.name].hidden = font.hidden
          if nz(font.scalable) then

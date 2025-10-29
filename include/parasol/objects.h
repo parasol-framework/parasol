@@ -933,6 +933,7 @@ inline void ScopedObjectAccess::release() {
    }
 }
 
+//********************************************************************************************************************
 // Action and Notification Structures
 
 struct acClipboard     { static const AC id = AC::Clipboard; CLIPMODE Mode; };
