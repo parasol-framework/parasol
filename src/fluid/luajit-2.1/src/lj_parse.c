@@ -28,6 +28,8 @@
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
+#define VCALL_SINGLE_RESULT_FLAG 0x80000000u
+
 #define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXED)
 
 /* -- Parser structures and definitions ----------------------------------- */
@@ -465,7 +467,12 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
     }
     bcreg_free(fs, e->u.s.info);
   } else if (e->k == VCALL) {
-    e->u.s.info = e->u.s.aux;
+    uint32_t aux = e->u.s.aux;
+    if (aux & VCALL_SINGLE_RESULT_FLAG) {
+      aux &= ~VCALL_SINGLE_RESULT_FLAG;
+      e->u.s.aux = aux;
+    }
+    e->u.s.info = aux;
     e->k = VNONRELOC;
     return;
   } else if (e->k == VLOCAL) {
@@ -901,7 +908,57 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
   }
 }
 
+/* Emit a bitshift call, reusing base register for chaining */
+
+static void bcemit_shift_call_at_base(FuncState *fs, BinOpr op, ExpDesc *lhs, ExpDesc *rhs, BCReg base)
+{
+   const char *fname = (op == OPR_SHL) ? "lshift" : "rshift";
+   ExpDesc callee, key;
+   BCReg arg1 = base + 1 + LJ_FR2;
+   BCReg arg2 = arg1 + 1;
+
+   /* IMPORTANT: Move arguments to their positions BEFORE loading the function.
+   ** This ensures that if lhs points to base (from a previous result),
+   ** we move it to arg1 before overwriting base with the new function. 
+   */
+   expr_toval(fs, lhs);
+   expr_toval(fs, rhs);
+   expr_toreg(fs, lhs, arg1);
+   expr_toreg(fs, rhs, arg2);
+
+   /* Now load bit.lshift/bit.rshift into the base register */
+   expr_init(&callee, VGLOBAL, 0);
+   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   expr_toanyreg(fs, &callee);
+   expr_init(&key, VKSTR, 0);
+   key.u.sval = lj_parse_keepstr(fs->ls, fname, (MSize)6);
+   expr_index(fs, &callee, &key);
+   expr_toval(fs, &callee);
+   expr_toreg(fs, &callee, base);
+
+   /* Emit CALL instruction */
+   fs->freereg = arg2 + 1;  /* Ensure freereg covers all arguments */
+   lhs->k = VCALL;
+   lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+   lhs->u.s.aux = base | VCALL_SINGLE_RESULT_FLAG;
+   fs->freereg = base + 1;
+
+   expr_discharge(fs, lhs);
+   lj_assertFS(lhs->k == VNONRELOC && lhs->u.s.info == base, "bit shift result not in base register");
+}
+
+static void bcemit_shift_call(FuncState *fs, BinOpr op, ExpDesc *lhs, ExpDesc *rhs)
+{
+   /* Allocate a base register for the call */
+   BCReg base = fs->freereg;
+   bcreg_reserve(fs, 1);  /* Reserve for callee */
+   if (LJ_FR2) bcreg_reserve(fs, 1);
+   bcreg_reserve(fs, 2);  /* Reserve for arguments */
+   bcemit_shift_call_at_base(fs, op, lhs, rhs, base);
+}
+
 /* Emit binary operator. */
+
 static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
 {
   if (op <= OPR_POW) {
@@ -917,33 +974,7 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
     jmp_append(fs, &e2->t, e1->t);
     *e1 = *e2;
   } else if (op == OPR_SHL || op == OPR_SHR) {
-    /* Desugar bitwise ops to bit.<fname>(lhs, rhs). */
-    const char *fname = (op == OPR_SHL) ? "lshift" : "rshift";
-    ExpDesc callee, key;
-    expr_init(&callee, VGLOBAL, 0);
-    callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
-    expr_toanyreg(fs, &callee);
-    expr_init(&key, VKSTR, 0);
-    key.u.sval = lj_parse_keepstr(fs->ls, fname, (MSize)6);
-    expr_index(fs, &callee, &key);
-    expr_toval(fs, &callee);
-    expr_tonextreg(fs, &callee);
-    if (LJ_FR2) bcreg_reserve(fs, 1);
-    {
-      BCReg base = callee.u.s.info;
-      /* Reserve exact slots for two args and place them explicitly. */
-      bcreg_reserve(fs, 2);
-      BCReg arg1 = base + 1 + LJ_FR2;
-      BCReg arg2 = arg1 + 1;
-      expr_toval(fs, e1);
-      expr_toval(fs, e2);
-      expr_toreg(fs, e1, arg1);
-      expr_toreg(fs, e2, arg2);
-      e1->k = VCALL;
-      e1->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
-      e1->u.s.aux = base;
-      fs->freereg = base+1;
-    }
+    bcemit_shift_call(fs, op, e1, e2);
   } else if (op == OPR_CONCAT) {
     expr_toval(fs, e2);
     if (e2->k == VRELOCABLE && bc_op(*bcptr(fs, e2)) == BC_CAT) {
@@ -968,6 +999,7 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
 }
 
 /* Emit unary operator. */
+
 static void bcemit_unop(FuncState *fs, BCOp op, ExpDesc *e)
 {
   if (op == BC_NOT) {
@@ -2185,6 +2217,44 @@ static const struct {
 /* Forward declaration. */
 static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit);
 
+static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
+{
+   FuncState *fs = ls->fs;
+   ExpDesc rhs;
+   BinOpr nextop;
+   BCReg base_reg;
+
+   /* Parse RHS and check if another shift follows */
+   nextop = expr_binop(ls, &rhs, priority[op].right);
+
+   /* Allocate a base register for the entire chain */
+   base_reg = fs->freereg;
+   bcreg_reserve(fs, 1);  /* Reserve for callee */
+   if (LJ_FR2) bcreg_reserve(fs, 1);
+   bcreg_reserve(fs, 2);  /* Reserve for arguments */
+
+   /* Emit first shift using the allocated base */
+   bcemit_shift_call_at_base(fs, op, lhs, &rhs, base_reg);
+
+   /* Continue with chained shifts, reusing the same base register */
+   while (nextop == OPR_SHL || nextop == OPR_SHR) {
+      BinOpr follow = nextop;
+      lj_lex_next(ls);
+
+      /* Ensure lhs points to the base register (where the previous result is) */
+      lhs->k = VNONRELOC;
+      lhs->u.s.info = base_reg;
+
+      /* Parse the next RHS */
+      nextop = expr_binop(ls, &rhs, priority[follow].right);
+
+      /* Emit shift reusing the same base register */
+      bcemit_shift_call_at_base(fs, follow, lhs, &rhs, base_reg);
+   }
+
+   return nextop;
+}
+
 /* Parse unary expression. */
 static void expr_unop(LexState *ls, ExpDesc *v)
 {
@@ -2217,14 +2287,19 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     ** the shift right-priority), do not consume another shift here.
     ** This enforces left-associativity for chained shifts while still
     ** allowing lower-precedence additions on the RHS to bind tighter. */
-    if (limit == priority[OPR_SHL].right && (op == OPR_SHL || op == OPR_SHR))
+    if (limit == priority[OPR_SHL].right &&
+        (op == OPR_SHL || op == OPR_SHR))
       lpri = 0;
     if (!(lpri > limit)) break;
-    ExpDesc v2;
-    BinOpr nextop;
     lj_lex_next(ls);
     bcemit_binop_left(ls->fs, op, v);
+    if (op == OPR_SHL || op == OPR_SHR) {
+      op = expr_shift_chain(ls, v, op);
+      continue;
+    }
     /* Parse binary expression with higher priority. */
+    ExpDesc v2;
+    BinOpr nextop;
     nextop = expr_binop(ls, &v2, priority[op].right);
     bcemit_binop(ls->fs, op, v, &v2);
     op = nextop;
@@ -2295,6 +2370,11 @@ static void assign_adjust(LexState *ls, BCReg nvars, BCReg nexps, ExpDesc *e)
 {
   FuncState *fs = ls->fs;
   int32_t extra = (int32_t)nvars - (int32_t)nexps;
+  if (e->k == VCALL && (e->u.s.aux & VCALL_SINGLE_RESULT_FLAG)) {
+    e->u.s.aux &= ~VCALL_SINGLE_RESULT_FLAG;
+    e->u.s.info = e->u.s.aux;
+    e->k = VNONRELOC;
+  }
   if (e->k == VCALL) {
     extra++;  /* Compensate for the VCALL itself. */
     if (extra < 0) extra = 0;
