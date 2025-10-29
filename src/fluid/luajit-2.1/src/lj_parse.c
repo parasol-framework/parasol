@@ -27,7 +27,6 @@
 #include "lj_parse.h"
 #include "lj_vm.h"
 #include "lj_vmevent.h"
-#include <iso646.h>
 
 #define VCALL_SINGLE_RESULT_FLAG 0x80000000u
 
@@ -2288,13 +2287,13 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     ** the shift right-priority), do not consume another shift here.
     ** This enforces left-associativity for chained shifts while still
     ** allowing lower-precedence additions on the RHS to bind tighter. */
-    if (limit == priority[OPR_SHL].right and
-        (op == OPR_SHL or op == OPR_SHR))
+    if (limit == priority[OPR_SHL].right &&
+        (op == OPR_SHL || op == OPR_SHR))
       lpri = 0;
     if (!(lpri > limit)) break;
     lj_lex_next(ls);
     bcemit_binop_left(ls->fs, op, v);
-    if (op == OPR_SHL or op == OPR_SHR) {
+    if (op == OPR_SHL || op == OPR_SHR) {
       op = expr_shift_chain(ls, v, op);
       continue;
     }
