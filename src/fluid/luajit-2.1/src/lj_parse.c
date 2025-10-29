@@ -2238,7 +2238,7 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
    bcemit_shift_call_at_base(fs, op, lhs, &rhs, base_reg);
 
    /* Continue with chained shifts, reusing the same base register */
-   while (nextop == OPR_SHL || nextop == OPR_SHR) {
+   while (nextop == OPR_SHL or nextop == OPR_SHR) {
       BinOpr follow = nextop;
       lj_lex_next(ls);
 
