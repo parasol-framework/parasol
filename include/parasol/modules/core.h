@@ -8,6 +8,8 @@
 
 #include <stdarg.h>
 #include <inttypes.h>
+#include <string.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 #include <list>
@@ -1620,15 +1622,11 @@ struct OpenInfo {
    ERR     Error;           // OPF::ERROR
 };
 
-// Flags for defining fields, methods, actions and functions.  CLASSDEF's can only be used in field definitions for
-// classes.  FUNCDEF's can only be used in argument definitions for methods, actions and functions.
-
 #ifdef _LP64
 #define FD_PTR64 FD_POINTER
 #else
 #define FD_PTR64 0
 #endif
-
 
 #define nextutf8(str) if (*(str)) for (++(str); (*(str) & 0xc0) IS 0x80; (str)++);
 
@@ -1649,9 +1647,6 @@ class FloatRect {
 };
 
 }
-
-#include <string.h> // memset()
-#include <stdlib.h> // strtol(), strtod()
 
 
 struct ObjectSignal {
