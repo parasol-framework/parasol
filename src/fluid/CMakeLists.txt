@@ -36,41 +36,36 @@ if (MSVC)
    # Code generation creates headers and lj_vm.obj via custom batch script
    # Library compilation is handled by CMake for proper incremental builds
 
+   # Define build directory for generated files (avoids polluting source tree)
+   set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
+   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
+
    set (LUAJIT_GENERATED_HEADERS
-      "${LUAJIT_SRC}/lj_bcdef.h"
-      "${LUAJIT_SRC}/lj_ffdef.h"
-      "${LUAJIT_SRC}/lj_libdef.h"
-      "${LUAJIT_SRC}/lj_recdef.h"
-      "${LUAJIT_SRC}/lj_folddef.h"
-      "${LUAJIT_SRC}/jit/vmdef.lua"
+      "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
+      "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
+      "${LUAJIT_BUILD_DIR}/lj_libdef.h"
+      "${LUAJIT_BUILD_DIR}/lj_recdef.h"
+      "${LUAJIT_BUILD_DIR}/lj_folddef.h"
    )
 
-   set (LUAJIT_VM_OBJ "${LUAJIT_SRC}/lj_vm.obj")
+   set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
+   set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 
-   # Expand glob patterns for dependencies (exclude generated headers to avoid circular deps)
+   # Expand glob patterns for dependencies (only source headers, not generated ones)
    file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
    file(GLOB LUAJIT_DEP_LIB_C "${LUAJIT_SRC}/lib_*.c")
    file(GLOB LUAJIT_DEP_LJ_H "${LUAJIT_SRC}/lj_*.h")
 
-   # Remove generated headers from dependency list to avoid circular dependency
-   list(REMOVE_ITEM LUAJIT_DEP_LJ_H
-      "${LUAJIT_SRC}/lj_bcdef.h"
-      "${LUAJIT_SRC}/lj_ffdef.h"
-      "${LUAJIT_SRC}/lj_libdef.h"
-      "${LUAJIT_SRC}/lj_recdef.h"
-      "${LUAJIT_SRC}/lj_folddef.h"
-   )
-
-   # Generate headers and VM object file using buildvm
+   # Generate headers and VM object file directly to build directory
    add_custom_command(
-      OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ}
-      COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild_codegen.bat"
+      OUTPUT ${LUAJIT_GENERATED_HEADERS} ${LUAJIT_VM_OBJ} ${LUAJIT_VMDEF_LUA}
+      COMMAND cmd /c "${LUAJIT_SRC}/msvcbuild_codegen.bat" "${LUAJIT_BUILD_DIR}"
       WORKING_DIRECTORY "${LUAJIT_SRC}"
       DEPENDS
          ${LUAJIT_DEP_LJ_C}
          ${LUAJIT_DEP_LIB_C}
          ${LUAJIT_DEP_LJ_H}
-      COMMENT "Generating LuaJIT headers and VM object"
+      COMMENT "Generating LuaJIT headers and VM object in build directory"
       VERBATIM
    )
 
@@ -101,7 +96,10 @@ if (MSVC)
    )
    target_compile_definitions(luajit_lib PRIVATE LUAJIT_ENABLE_LUA52COMPAT _CRT_SECURE_NO_DEPRECATE)
 
-   target_include_directories(luajit_lib PRIVATE "${LUAJIT_SRC}")
+   target_include_directories(luajit_lib PRIVATE
+      "${LUAJIT_SRC}"
+      "${LUAJIT_BUILD_DIR}"  # Include generated headers from build dir
+   )
 
    # Disable specific warnings from LuaJIT
    target_compile_options(luajit_lib PRIVATE /wd4244 /wd5287)
@@ -111,13 +109,18 @@ if (MSVC)
    # Create an alias for backward compatibility
    add_custom_target(luajit DEPENDS luajit_lib)
 else ()
+   # Non-MSVC build (Linux, MinGW, etc.)
+   # Define build directory for generated files (avoids polluting source tree)
+   set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
+   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
+
    ExternalProject_Add(
       luajit
       SOURCE_DIR ${LUAJIT_SRC}
       CONFIGURE_COMMAND ""
       BUILD_ALWAYS TRUE
-      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1"
-      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX="
+      BUILD_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src" && "${CMAKE_MAKE_PROGRAM}" "amalg" "CFLAGS=-fPIC ${CFLAGS}" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}"
+      INSTALL_COMMAND cd "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1" && "${CMAKE_MAKE_PROGRAM}" "install" "DESTDIR=${CMAKE_BINARY_DIR}/luajit-2.1" "PREFIX=" "TARGET_GENDIR=${LUAJIT_BUILD_DIR}"
       BUILD_BYPRODUCTS "${CMAKE_BINARY_DIR}/luajit-2.1/lib/libluajit-5.1.a"
       # Specifying the WORKING_DIRECTORY triggers a bug in GitHub's auto-build as of 2024-11 (and we don't really need it in order to build)
       #WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1"

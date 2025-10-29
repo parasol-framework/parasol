@@ -118,18 +118,7 @@ install: $(INSTALL_DEP)
 	$(MKDIR) $(INSTALL_DIRS)
 	cd src && $(INSTALL_X) $(FILE_T) $(INSTALL_T)
 	cd src && test -f $(FILE_A) && $(INSTALL_F) $(FILE_A) $(INSTALL_STATIC) || :
-	$(RM) $(INSTALL_DYN) $(INSTALL_SHORT1) $(INSTALL_SHORT2)
-	cd src && test -f $(FILE_SO) && \
-	  $(INSTALL_X) $(FILE_SO) $(INSTALL_DYN) && \
-	  ( $(LDCONFIG) $(INSTALL_LIB) || : ) && \
-	  $(SYMLINK) $(INSTALL_SONAME) $(INSTALL_SHORT1) && \
-	  $(SYMLINK) $(INSTALL_SONAME) $(INSTALL_SHORT2) || :
-	cd etc && $(INSTALL_F) $(FILE_MAN) $(INSTALL_MAN)
-	cd etc && $(SED_PC) $(FILE_PC) > $(FILE_PC).tmp && \
-	  $(INSTALL_F) $(FILE_PC).tmp $(INSTALL_PC) && \
-	  $(RM) $(FILE_PC).tmp
-	cd src && $(INSTALL_F) $(FILES_INC) $(INSTALL_INC)
-	cd src/jit && $(INSTALL_F) $(FILES_JITLIB) $(INSTALL_JITLIB)
+	
 	@echo "==== Successfully installed LuaJIT $(VERSION) to $(PREFIX) ===="
 	@echo ""
 	@echo "Note: the development releases deliberately do NOT install a symlink for luajit"
