@@ -48,8 +48,23 @@ function testBitshiftTighterThanAddition()
    assert(valueRight == expect, '>> should bind tighter than addition on the right-hand side, got ' .. string.format('0x%.2x expected 0x%.2x',valueRight, expect))
 end
 
+local function returns6_3()
+   return 6, 3
+end
+
+function testMultiReturn()
+   local cmp = bit.lshift(1, 6)
+   local x = 1 << 6
+   assert(x == cmp, 'lshift literal failed: ' .. x .. ' vs ' .. cmp)
+   local x2 = 1 << returns6_3()
+   assert(x2 == cmp, 'lshift multi-return failed: ' .. x2 .. ' vs ' .. cmp)
+   x = 64 >> returns6_3()
+   assert(x == bit.rshift(64, 6), 'rshift multi-return failed: ' .. x .. ' vs ' .. bit.rshift(64, 6))
+end
+
 return {
    tests = {
+      'testMultiReturn',
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
       'testChainedBitshifts',

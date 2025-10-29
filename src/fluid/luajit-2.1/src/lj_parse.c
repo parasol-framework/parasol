@@ -157,8 +157,7 @@ typedef enum BinOpr {
   OPR_CONCAT,
   OPR_NE, OPR_EQ,
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
-  /* Bitwise operators. */
-  OPR_SHL, OPR_SHR,
+  OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
   OPR_AND, OPR_OR,
   OPR_NOBINOPR
 } BinOpr;
@@ -176,6 +175,22 @@ LJ_STATIC_ASSERT((int)BC_MODVV-(int)BC_ADDVV == (int)OPR_MOD-(int)OPR_ADD);
 #else
 #define lj_assertFS(c, ...)	((void)fs)
 #endif
+
+/* Priorities for each binary operator. ORDER OPR. */
+
+static const struct {
+  uint8_t left;		/* Left priority. */
+  uint8_t right;	/* Right priority. */
+  const char* name;	/* Name for bitlib function (if applicable). */
+  uint8_t name_len;	/* Cached name length for bitlib lookups. */
+} priority[] = {
+  {6,6,NULL,0}, {6,6,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0},	/* ADD SUB MUL DIV MOD */
+  {10,9,NULL,0}, {5,4,NULL,0},					/* POW CONCAT (right associative) */
+  {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
+  {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
+  {5,5,"band",4}, {4,4,"bor",3}, {4,4,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (chosen precedence) */
+  {2,2,NULL,0}, {1,1,NULL,0}					/* AND OR */
+};
 
 /* -- Error handling ------------------------------------------------------ */
 
@@ -908,11 +923,10 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
   }
 }
 
-/* Emit a bitshift call, reusing base register for chaining */
+/* Emit a bitop call, reusing base register for chaining */
 
-static void bcemit_shift_call_at_base(FuncState *fs, BinOpr op, ExpDesc *lhs, ExpDesc *rhs, BCReg base)
+static void bcemit_shift_call_at_base(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *lhs, ExpDesc *rhs, BCReg base)
 {
-   const char *fname = (op == OPR_SHL) ? "lshift" : "rshift";
    ExpDesc callee, key;
    BCReg arg1 = base + 1 + LJ_FR2;
    BCReg arg2 = arg1 + 1;
@@ -926,12 +940,12 @@ static void bcemit_shift_call_at_base(FuncState *fs, BinOpr op, ExpDesc *lhs, Ex
    expr_toreg(fs, lhs, arg1);
    expr_toreg(fs, rhs, arg2);
 
-   /* Now load bit.lshift/bit.rshift into the base register */
+   /* Now load bit.[lshift|rshift|...] into the base register */
    expr_init(&callee, VGLOBAL, 0);
    callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
    expr_toanyreg(fs, &callee);
    expr_init(&key, VKSTR, 0);
-   key.u.sval = lj_parse_keepstr(fs->ls, fname, (MSize)6);
+   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -944,17 +958,18 @@ static void bcemit_shift_call_at_base(FuncState *fs, BinOpr op, ExpDesc *lhs, Ex
    fs->freereg = base + 1;
 
    expr_discharge(fs, lhs);
-   lj_assertFS(lhs->k == VNONRELOC && lhs->u.s.info == base, "bit shift result not in base register");
+   lj_assertFS(lhs->k == VNONRELOC && lhs->u.s.info == base, "bitwise result not in base register");
 }
 
-static void bcemit_shift_call(FuncState *fs, BinOpr op, ExpDesc *lhs, ExpDesc *rhs)
+static void bcemit_bit_call(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *lhs, ExpDesc *rhs)
 {
    /* Allocate a base register for the call */
    BCReg base = fs->freereg;
    bcreg_reserve(fs, 1);  /* Reserve for callee */
    if (LJ_FR2) bcreg_reserve(fs, 1);
    bcreg_reserve(fs, 2);  /* Reserve for arguments */
-   bcemit_shift_call_at_base(fs, op, lhs, rhs, base);
+   lj_assertFS(fname != NULL, "bitlib name missing for bitwise operator");
+   bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
 }
 
 /* Emit binary operator. */
@@ -963,19 +978,23 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
 {
   if (op <= OPR_POW) {
     bcemit_arith(fs, op, e1, e2);
-  } else if (op == OPR_AND) {
+  }
+  else if (op == OPR_AND) {
     lj_assertFS(e1->t == NO_JMP, "jump list not closed");
     expr_discharge(fs, e2);
     jmp_append(fs, &e2->f, e1->f);
     *e1 = *e2;
-  } else if (op == OPR_OR) {
+  }
+  else if (op == OPR_OR) {
     lj_assertFS(e1->f == NO_JMP, "jump list not closed");
     expr_discharge(fs, e2);
     jmp_append(fs, &e2->t, e1->t);
     *e1 = *e2;
-  } else if (op == OPR_SHL || op == OPR_SHR) {
-    bcemit_shift_call(fs, op, e1, e2);
-  } else if (op == OPR_CONCAT) {
+  }
+  else if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BOR) || (op == OPR_BXOR)) {
+    bcemit_bit_call(fs, priority[op].name, (MSize)priority[op].name_len, e1, e2);
+  }
+  else if (op == OPR_CONCAT) {
     expr_toval(fs, e2);
     if (e2->k == VRELOCABLE && bc_op(*bcptr(fs, e2)) == BC_CAT) {
       lj_assertFS(e1->u.s.info == bc_b(*bcptr(fs, e2))-1,
@@ -2191,6 +2210,9 @@ static BinOpr token2binop(LexToken tok)
   case TK_le:	return OPR_LE;
   case '>':	return OPR_GT;
   case TK_ge:	return OPR_GE;
+  case '&':	return OPR_BAND;
+  case '|':	return OPR_BOR;
+  case '~':	return OPR_BXOR;  /* Binary XOR; unary handled separately. */
   case TK_shl: return OPR_SHL;
   case TK_shr: return OPR_SHR;
   case TK_and:	return OPR_AND;
@@ -2198,19 +2220,6 @@ static BinOpr token2binop(LexToken tok)
   default:	return OPR_NOBINOPR;
   }
 }
-
-/* Priorities for each binary operator. ORDER OPR. */
-static const struct {
-  uint8_t left;		/* Left priority. */
-  uint8_t right;	/* Right priority. */
-} priority[] = {
-  {6,6}, {6,6}, {7,7}, {7,7}, {7,7},	/* ADD SUB MUL DIV MOD */
-  {10,9}, {5,4},			/* POW CONCAT (right associative) */
-  {3,3}, {3,3},				/* EQ NE */
-  {3,3}, {3,3}, {3,3}, {3,3},		/* LT GE GT LE */
-  {7,5}, {7,5},				/* SHL SHR */
-  {2,2}, {1,1}				/* AND OR */
-};
 
 #define UNARY_PRIORITY		8  /* Priority for unary operators. */
 
@@ -2234,10 +2243,10 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
    bcreg_reserve(fs, 2);  /* Reserve for arguments */
 
    /* Emit first shift using the allocated base */
-   bcemit_shift_call_at_base(fs, op, lhs, &rhs, base_reg);
+   bcemit_shift_call_at_base(fs, priority[op].name, (MSize)priority[op].name_len, lhs, &rhs, base_reg);
 
    /* Continue with chained shifts, reusing the same base register */
-   while (nextop == OPR_SHL || nextop == OPR_SHR) {
+   while (nextop == OPR_SHL || nextop == OPR_SHR || nextop == OPR_BAND || nextop == OPR_BXOR || nextop == OPR_BOR) {
       BinOpr follow = nextop;
       lj_lex_next(ls);
 
@@ -2249,7 +2258,7 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
       nextop = expr_binop(ls, &rhs, priority[follow].right);
 
       /* Emit shift reusing the same base register */
-      bcemit_shift_call_at_base(fs, follow, lhs, &rhs, base_reg);
+      bcemit_shift_call_at_base(fs, priority[follow].name, (MSize)priority[follow].name_len, lhs, &rhs, base_reg);
    }
 
    return nextop;
@@ -2263,6 +2272,44 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     op = BC_NOT;
   } else if (ls->tok == '-') {
     op = BC_UNM;
+/* TODO: Not ready for implementation yet
+  } else if (ls->tok == '~') {
+    // Unary bitwise not: desugar to bit.bnot(x).
+    FuncState *fs = ls->fs;
+    ExpDesc arg, tbl;
+    lj_lex_next(ls);
+    expr_binop(ls, &arg, UNARY_PRIORITY);
+    // Load global 'bit' into a register. 
+    expr_init(&tbl, VGLOBAL, 0);
+    tbl.u.sval = lj_parse_keepstr(ls, "bit", 3);
+    {
+      BCReg obj = expr_toanyreg(fs, &tbl);
+      BCReg func = fs->freereg;
+      BCReg idx = const_gc(fs, obj2gco(lj_parse_keepstr(ls, "bnot", 4)), LJ_TSTR);
+      if (idx <= BCMAX_C) {
+        bcreg_reserve(fs, 1+LJ_FR2);
+        bcemit_ABC(fs, BC_TGETS, func, obj, idx);
+      } else {
+        bcreg_reserve(fs, 2+LJ_FR2);
+        bcemit_AD(fs, BC_KSTR, func+1+LJ_FR2, idx);
+        bcemit_ABC(fs, BC_TGETV, func, obj, func+1+LJ_FR2);
+        fs->freereg--;
+      }
+      {
+        // Use func register directly as call base. 
+        BCReg base = func;
+        // Force operand to a value to avoid pending jumps. 
+        expr_toval(fs, &arg);
+        expr_tonextreg(fs, &arg);
+        // Emit CALL with standard calling convention. 
+        v->k = VCALL;
+        v->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+        v->u.s.aux = base;
+        fs->freereg = base+1;
+      }
+    }
+    return;
+*/
   } else if (ls->tok == '#') {
     op = BC_LEN;
   } else {
@@ -2286,18 +2333,23 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     /* Special-case: when parsing the RHS of a shift (limit set to
     ** the shift right-priority), do not consume another shift here.
     ** This enforces left-associativity for chained shifts while still
-    ** allowing lower-precedence additions on the RHS to bind tighter. */
-    if (limit == priority[OPR_SHL].right &&
-        (op == OPR_SHL || op == OPR_SHR))
-      lpri = 0;
+    ** allowing lower-precedence additions on the RHS to bind tighter. 
+    */
+
+    if ((limit == priority[OPR_SHL].right) && (op == OPR_SHL || op == OPR_SHR || op == OPR_BAND || op == OPR_BXOR || op == OPR_BOR)) lpri = 0;
+
     if (!(lpri > limit)) break;
+
     lj_lex_next(ls);
     bcemit_binop_left(ls->fs, op, v);
-    if (op == OPR_SHL || op == OPR_SHR) {
+
+    if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BXOR) || (op == OPR_BOR)) {
       op = expr_shift_chain(ls, v, op);
       continue;
     }
+
     /* Parse binary expression with higher priority. */
+
     ExpDesc v2;
     BinOpr nextop;
     nextop = expr_binop(ls, &v2, priority[op].right);
@@ -2455,7 +2507,7 @@ static int assign_compound(LexState *ls, LHSVarList *lh, LexToken opType)
     checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
   } else {
     /* For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous. */
-    if (!(op == OPR_SHL || op == OPR_SHR))
+    if (!(op == OPR_BAND || op == OPR_BOR || op == OPR_BXOR || op == OPR_SHL || op == OPR_SHR))
       expr_tonextreg(fs, &lh->v);
     nexps = expr_list(ls, &rh);
     checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);

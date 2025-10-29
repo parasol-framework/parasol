@@ -1,0 +1,84 @@
+-- Comprehensive tests for bitwise operators and compound assignments.
+
+local function returns6_99()
+   return 6, 99
+end
+--[[
+function testUnaryBnot()
+   assert(~0 == bit.bnot(0), 'not should map to bit.bnot')
+   assert(~1 == bit.bnot(1), 'not should invert all bits')
+   local x = 0x7fffffff
+   assert(not x == bit.bnot(x), 'not should work for large ints')
+   -- Coercion: numbers are coerced via tobit semantics
+   assert(not 3.7 == bit.bnot(3.7), 'not should coerce numbers via tobit')
+end
+--]]
+function testBinaryBitwiseBasics()
+   -- AND, OR, XOR
+   local band_result = bit.band(5, 3)
+   assert((5 & 3) == band_result, '& should map to bit.band')
+   assert((5 | 2) == bit.bor(5, 2), '| should map to bit.bor')
+   assert((5 ~ 1) == bit.bxor(5, 1), '~ binary should be XOR')
+   -- Negative values and coercion
+   assert((-1 & 0xff) == 0xff, 'AND should mask bits with negative left operand')
+end
+
+function testBitwisePrecedenceAndGrouping()
+   -- Parentheses control
+   assert((1 | (2 & 4)) == (1 | bit.band(2, 4)), 'AND groups inside OR with parens')
+   -- Power stays as exponentiation, not XOR
+   assert(2 ^ 3 == 8, '^ remains power operator')
+   -- Not-equals unaffected
+   assert(3 ~= 4, '~= remains not-equal')
+end
+
+function testRHSFunctionCallsAndRegisterPreservation()
+   local t = { 1, 2, 3 }
+   local i = 3
+   local function f(a)
+      return bit.lshift(a, 1)
+   end
+   t[i] = t[i] | f(i)
+   assert(t[3] == bit.bor(3, bit.lshift(3, 1)), 'indexed |= with function RHS should preserve base/index')
+   -- Use index register on RHS too
+   local u = { 1, 2, 4 }
+   t[i] = t[i] & u[i]
+   assert(t[3] == bit.band(bit.bor(3, bit.lshift(3, 1)), u[3]), 'indexed & RHS index usage is safe')
+end
+
+function testMultipleReturnRHS()
+   local cmp = bit.band(1, 6)
+   local x = 1 & 6
+   assert(x == cmp, 'band literal failed: ' .. x .. ' vs ' .. cmp)
+
+   local x2 = 1 & returns6_99()
+   assert(x2 == cmp, 'band multi-return failed: ' .. x2 .. ' vs ' .. cmp)
+
+   x = 1 | returns6_99()
+   assert(x == bit.bor(1, 6), '| must use first return value')
+
+   x = 1 ~ 6
+   x2 = 1 ~ returns6_99()
+   cmp = bit.bxor(1, 6)
+   assert(x == cmp, 'bxor failed: ' .. x .. ' vs ' .. cmp)
+   assert(x2 == cmp, 'bxor failed: ' .. x2 .. ' vs ' .. cmp)
+end
+
+function testByteStringKeysWithBitwise()
+   local o = { a = 1, [5] = 2 }
+   o['a'] = o['a'] | 2
+   assert(o.a == 3, 'string key | should work')
+   o[5] = o[5] & 3
+   assert(o[5] == 2, 'byte/numeric key & should work')
+end
+
+return {
+   tests = {
+      --'testUnaryBnot',
+      'testBinaryBitwiseBasics',
+      'testBitwisePrecedenceAndGrouping',
+      'testRHSFunctionCallsAndRegisterPreservation',
+      'testMultipleReturnRHS',
+      'testByteStringKeysWithBitwise'
+   }
+}

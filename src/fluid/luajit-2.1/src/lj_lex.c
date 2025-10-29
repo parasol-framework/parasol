@@ -381,12 +381,12 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
     case '<':
       lex_next(ls);
       if (ls->c == '=') { lex_next(ls); return TK_le; }
-      else if (ls->c == '<') { lex_next(ls); return TK_shl; }
+      else if (ls->c == '<') { lex_next(ls); return TK_shl; } // PARASOL PATCHED IN: Support for '<<' operator
       else return '<';
     case '>':
       lex_next(ls);
       if (ls->c == '=') { lex_next(ls); return TK_ge; }
-      else if (ls->c == '>') { lex_next(ls); return TK_shr; }
+      else if (ls->c == '>') { lex_next(ls); return TK_shr; }// PARASOL PATCHED IN: Support for '>>' operator
       else return '>';
     case '~':
       lex_next(ls);
@@ -400,7 +400,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
       return TK_string;
     case '.':
       if (lex_savenext(ls) == '.') {
-	lex_next(ls);
+        lex_next(ls);
         if (ls->c == '.') {
           lex_next(ls);
           return TK_dots;   /* ... */
@@ -408,7 +408,7 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
         if (ls->c == '=') { lex_next(ls); return TK_cconcat; }
         return TK_concat;   /* .. */
       } else if (!lj_char_isdigit(ls->c)) {
-	return '.';
+        return '.';
       } else {
 	lex_number(ls, tv);
 	return TK_number;
