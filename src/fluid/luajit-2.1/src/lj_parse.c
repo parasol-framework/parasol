@@ -186,7 +186,7 @@ static const struct {
   {10,9,NULL,0}, {5,4,NULL,0},					/* POW CONCAT (right associative) */
   {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
   {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
-  {5,5,"band",4}, {4,4,"bor",3}, {4,4,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (chosen precedence) */
+  {5,5,"band",4}, {3,3,"bor",3}, {4,4,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
   {2,2,NULL,0}, {1,1,NULL,0}					/* AND OR */
 };
 
@@ -2370,7 +2370,9 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit);
 ** Parameters:
 **   ls  - Lexer state
 **   lhs - Left-hand side expression (updated with each operation's result)
-**   op  - The current shift/bitwise operator (OPR_SHL, OPR_SHR, OPR_BAND, OPR_BOR, OPR_BXOR)
+**   op  - The current shift/bitwise operator (OPR_SHL, OPR_SHR, OPR_BAND, OPR_BXOR, OPR_BOR)
+**        Note: Operators are only chained if they have matching precedence levels,
+**        implementing C-style precedence (BAND > BXOR > BOR)
 **
 ** Returns:
 **   The next binary operator token (if any) that was not consumed by this chain
@@ -2397,9 +2399,12 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
    bcemit_shift_call_at_base(fs, priority[op].name, (MSize)priority[op].name_len, lhs, &rhs, base_reg);
 
    /* Continue processing chained operators at the same precedence level.
-   ** Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4` */
+   ** Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4`
+   ** C-style precedence is enforced by checking that operators have matching precedence before chaining */
    while (nextop == OPR_SHL || nextop == OPR_SHR || nextop == OPR_BAND || nextop == OPR_BXOR || nextop == OPR_BOR) {
       BinOpr follow = nextop;
+      /* Only chain operators with matching left precedence (same precedence level) */
+      if (priority[follow].left != priority[op].left) break;
       lj_lex_next(ls);  /* Consume the operator token */
 
       /* Update lhs to point to base_reg where the previous result is stored.
