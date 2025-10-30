@@ -96,7 +96,7 @@ enum('XQueryNodeType', { type='int', start=0 },
     'RETURN_TYPE: Include function return type in the inspection result.',
     'USER_DEFINED: Include user-defined status in the inspection result.',
     'SIGNATURE: Include function signature in the inspection result.',
-    'ALL: Include all available information in the inspection result'
+    { ALL = "BODY|NAME|PARAMETERS|RETURN_TYPE|USER_DEFINED|SIGNATURE" }
   )
 
   methods('xquery', 'XQ', {
