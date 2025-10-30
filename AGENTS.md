@@ -17,7 +17,7 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 **Build and install:**
 - Build: `cmake --build build/agents --config [BuildType] --parallel`
 - Install: `cmake --build build/agents --config [BuildType] --parallel && cmake --install build/agents`
-- To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.
+- To build an individual module, append `--target [module]` to the build command, e.g. `--target network`.  In static builds, use `--target [module] parasol_cmd` to ensure that the parasol executable is rebuilt to include the changes.
 
 **Testing:**
 - **ALWAYS** install your latest build before running `ctest`.
