@@ -1034,7 +1034,7 @@ static void bcemit_unary_bit_call(FuncState *fs, const char *fname, MSize fname_
 
    /* Discharge result to register. */
    expr_discharge(fs, arg);
-   lj_assertFS(arg->k == VNONRELOC and arg->u.s.info == base, "bitwise result not in base register");
+   lj_assertFS(arg->k == VNONRELOC && arg->u.s.info == base, "bitwise result not in base register");
 }
 
 /* Emit binary operator. */
