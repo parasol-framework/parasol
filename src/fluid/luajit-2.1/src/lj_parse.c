@@ -2385,13 +2385,27 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
    nextop = expr_binop(ls, &rhs, priority[op].right);
 
 
-   /* Prefer to reuse the RHS register as the call base when it's the top-most
-   ** temporary. This keeps the stack compact across chained operations and
-   ** avoids leaking intermediate values as extra results. */
-   if (rhs.k == VNONRELOC && rhs.u.s.info >= fs->nactvar &&
-       rhs.u.s.info + 1 == fs->freereg) {
+   /* Choose the base register for the bit operation call.
+   **
+   ** To avoid orphaning intermediate results (which become extra return values),
+   ** we prioritize reusing registers that are already at the top of the stack:
+   **
+   ** 1. If LHS is at the top (lhs->u.s.info + 1 == fs->freereg), reuse it.
+   **    This happens when chaining across precedence levels: e.g., after "1 & 2"
+   **    completes in reg N and freereg becomes N+1, then "| 4" finds LHS at the top.
+   ** 2. Otherwise, if RHS is at the top, reuse it for compactness.
+   ** 3. Otherwise, allocate a fresh register.
+   */
+   if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
+       lhs->u.s.info + 1 == fs->freereg) {
+      /* LHS result from previous operation is at the top - reuse it to avoid orphaning */
+      base_reg = lhs->u.s.info;
+   } else if (rhs.k == VNONRELOC && rhs.u.s.info >= fs->nactvar &&
+              rhs.u.s.info + 1 == fs->freereg) {
+      /* RHS is at the top - reuse it */
       base_reg = rhs.u.s.info;
    } else {
+      /* Allocate a fresh register */
       base_reg = fs->freereg;
    }
 

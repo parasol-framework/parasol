@@ -29,6 +29,10 @@ function testChainedOperators()
    local single_value, second_value = 1 | 2 | 4
    assert(single_value, 'Expected value, got ' .. tostring(single_value))
    assert(second_value == nil, 'Unexpected second value, got ' .. tostring(second_value))
+
+   local single_value, second_value = 1 & 2 | 4
+   assert(single_value, 'Expected value, got ' .. tostring(single_value))
+   assert(second_value == nil, 'Unexpected second value, got ' .. tostring(second_value))
 end
 
 function testBitwisePrecedenceAndGrouping()
