@@ -95,9 +95,6 @@ an escape character in attribute strings.
 
 TODO:
 * Add support for custom functions via a new method, e.g., RegisterFunction().
-* An InspectFunction() method would allow the function signature and list of parameter names to be returned
-    InspectFunction(STRING FunctionName, INT ResultFlags, STRING Result).
-    Suggest returning a serialised XML document describing the function as speed isn't a concern here.
 * Allow modules to be preloaded.  There are many ways this could be achieved, e.g.
   - Load the module as a separate XQuery and link it via a new method.
   - Provide a callback that is invoked when an import is encountered, this allows the the host application to supply
@@ -106,6 +103,28 @@ TODO:
     would manage it.  Probably the best option.
 
 *********************************************************************************************************************/
+
+static std::string xml_escape(const std::string &str)
+{
+   std::string escaped;
+   bool needs_escaping = false;
+   for (char c : str) {
+      if (CSTRING esc = xml_escape_table[static_cast<unsigned char>(c)]) {
+         if (not needs_escaping) {
+            escaped.reserve(str.size() + (str.size()>>4));
+            escaped = str.substr(0, &c - str.data());
+            needs_escaping = true;
+         }
+         escaped += esc;
+      } 
+      else if (needs_escaping) escaped += c;
+   }
+
+   if (needs_escaping) return escaped;
+   else return str;
+}
+
+//********************************************************************************************************************
 
 static ERR build_query(extXQuery *Self)
 {
@@ -362,6 +381,131 @@ static ERR XQUERY_Init(extXQuery *Self)
    // Not providing a statement is permitted as the object may be preallocated for later use.
    if (not Self->Statement.empty()) return build_query(Self);
    return ERR::Okay;
+}
+
+/*********************************************************************************************************************
+
+-METHOD-
+InspectFunctions: Returns information about compiled XQuery functions.
+
+Use InspectFunctions to retrieve metadata about user-defined or standard XQuery functions available in the
+compiled XQuery object.  The function name can include wildcards to match multiple functions.
+
+```
+<function>
+  <name>function-name</name>
+  <parameters>
+    <parameter>
+      <name>param1</name>
+      <type>type1</type>
+    </parameter>
+    ...
+  </parameters>
+  <returnType>type</returnType>
+  <userDefined>true|false</userDefined>
+  <signature>function-signature</signature>
+  <body>... serialized function body AST ...</body>
+</function>
+ ```
+
+-INPUT-
+cstr Name: The name of the function or functions to inspect (supports wildcards).
+int(XIF) ResultFlags: Bitmask controlling the returned information.
+ptr(cpp(str)) Result: Receives a serialised XML document describing the function(s).
+
+-ERRORS-
+Okay
+NullArgs
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions *Args)
+{
+   pf::Log log;
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   if (Self->StaleBuild) {
+      if (auto err = build_query(Self); err != ERR::Okay) return err;
+   }
+
+   std::ostringstream result;
+   
+   // Extract function information based on ResultFlags
+   auto process_function = [&](const XQueryFunction &fn) {
+      result << "<function>";
+      if ((Args->ResultFlags & XIF::NAME) != XIF::NIL) {
+         
+         auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
+         result << std::format("<name>{}</name>", xml_escape(fname));
+      }
+
+      if ((Args->ResultFlags & XIF::PARAMETERS) != XIF::NIL) {
+         result << "<parameters>";
+         for (size_t i = 0; i < fn.parameter_types.size(); ++i) {
+            result << "<parameter>";
+            result << std::format("<name>{}</name>", xml_escape(fn.parameter_names[i]));
+            result << std::format("<type>{}</type>", xml_escape(fn.parameter_types[i]));
+            result << "</parameter>";
+         }
+         result << "</parameters>";
+      }
+
+      if ((Args->ResultFlags & XIF::RETURN_TYPE) != XIF::NIL) {
+         result << std::format("<returnType>{}</returnType>", fn.return_type ? xml_escape(*fn.return_type) : "item()*");
+      }
+
+      if ((Args->ResultFlags & XIF::USER_DEFINED) != XIF::NIL) {
+         result << std::format("<userDefined>{}</userDefined>", fn.is_external ? "false" : "true");
+      }
+
+      if ((Args->ResultFlags & XIF::SIGNATURE) != XIF::NIL) {
+         result << std::format("<signature>{}</signature>", xml_escape(fn.signature()));
+      }
+
+      if ((Args->ResultFlags & XIF::BODY) != XIF::NIL) {
+         if (fn.body) {
+            std::string body;
+            XPathEvaluator eval(Self, Self->XML, fn.body.get(), &Self->ParseResult);
+            body = xml_escape(eval.build_ast_signature(fn.body.get()));
+            result << "<body>" << body << "</body>";
+         }
+      }
+      result << "</function>";
+   };
+
+   if (Self->ParseResult.prolog) {
+      for (const auto &entry : Self->ParseResult.prolog->functions) {
+         const auto &fn = entry.second;
+         auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
+         if (pf::wildcmp(Args->Name, fname)) {
+            
+         }
+      }
+
+      // Include functions declared in imported modules
+      std::shared_ptr<XQueryModuleCache> mod_cache = Self->ParseResult.prolog->get_module_cache();
+      if (mod_cache) {
+         for (auto it = mod_cache->modules.begin(); it != mod_cache->modules.end(); ++it) {
+            if ((it->second) and (it->second->prolog)) {
+               for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
+                  auto fname = to_lexical_name(*Self->ParseResult.prolog, fn->second.qname);
+                  if (pf::wildcmp(Args->Name, fname)) {
+            
+                  }
+               }
+            }
+         }
+      }
+
+      if (not result.tellp()) return log.warning(ERR::Search);
+
+      Args->Result[0] = result.str();
+
+      return ERR::Okay;
+   }
+   else return log.warning(ERR::Search);
 }
 
 //********************************************************************************************************************

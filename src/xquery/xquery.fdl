@@ -89,10 +89,21 @@ enum('XQueryNodeType', { type='int', start=0 },
     'HAS_WILDCARD_TESTS: Wildcard name tests present.'
   )
 
+  flags('XIF', { comment='Result flags for InspectFunctions().' },
+    'BODY: Include function body in the inspection result.',
+    'NAME: Include function name in the inspection result.',
+    'PARAMETERS: Include function parameters in the inspection result.',
+    'RETURN_TYPE: Include function return type in the inspection result.',
+    'USER_DEFINED: Include user-defined status in the inspection result.',
+    'SIGNATURE: Include function signature in the inspection result.',
+    'ALL: Include all available information in the inspection result'
+  )
+
   methods('xquery', 'XQ', {
     { id=1, name='Evaluate' },
     { id=2, name='Search' },
-    { id=3, name='RegisterFunction' }
+    { id=3, name='RegisterFunction' },
+    { id=4, name='InspectFunctions' }
   })
 
   class('XQuery', { 

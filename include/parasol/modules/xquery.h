@@ -102,6 +102,21 @@ enum class XQF : uint32_t {
 
 DEFINE_ENUM_FLAG_OPERATORS(XQF)
 
+// Result flags for InspectFunctions().
+
+enum class XIF : uint32_t {
+   NIL = 0,
+   BODY = 0x00000001,
+   NAME = 0x00000002,
+   PARAMETERS = 0x00000004,
+   RETURN_TYPE = 0x00000008,
+   USER_DEFINED = 0x00000010,
+   SIGNATURE = 0x00000020,
+   ALL = 0x00000040,
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(XIF)
+
 // XQuery class definition
 
 #define VER_XQUERY (1.000000)
@@ -112,6 +127,7 @@ namespace xq {
 struct Evaluate { objXML * XML; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Search { objXML * XML; FUNCTION * Callback; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RegisterFunction { CSTRING FunctionName; FUNCTION * Callback; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InspectFunctions { CSTRING Name; XIF ResultFlags; std::string * Result; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -150,19 +166,23 @@ class objXQuery : public Object {
       struct xq::RegisterFunction args = { FunctionName, &Callback };
       return(Action(AC(-3), this, &args));
    }
+   inline ERR inspectFunctions(CSTRING Name, XIF ResultFlags, std::string * Result) noexcept {
+      struct xq::InspectFunctions args = { Name, ResultFlags, Result };
+      return(Action(AC(-4), this, &args));
+   }
 
    // Customised field setting
 
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x142607104, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x142607104, to_cstring(Value), 1);
    }
 
 };
