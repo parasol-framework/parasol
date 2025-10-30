@@ -2384,9 +2384,18 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
    ** another shift/bitop at the same level due to left-associativity logic in expr_binop(). */
    nextop = expr_binop(ls, &rhs, priority[op].right);
 
-   /* Allocate a base register that will be reused for all operations in this chain.
-   ** Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2). */
-   base_reg = fs->freereg;
+
+   /* Prefer to reuse the RHS register as the call base when it's the top-most
+   ** temporary. This keeps the stack compact across chained operations and
+   ** avoids leaking intermediate values as extra results. */
+   if (rhs.k == VNONRELOC && rhs.u.s.info >= fs->nactvar &&
+       rhs.u.s.info + 1 == fs->freereg) {
+      base_reg = rhs.u.s.info;
+   } else {
+      base_reg = fs->freereg;
+   }
+
+   /* Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2). */
    bcreg_reserve(fs, 1);  /* Reserve for callee */
    if (LJ_FR2) bcreg_reserve(fs, 1);  /* Reserve for frame link on x64 */
    bcreg_reserve(fs, 2);  /* Reserve for arguments */
@@ -2459,7 +2468,9 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     ** allowing lower-precedence additions on the RHS to bind tighter.
     */
 
-    if (limit == priority[OPR_SHL].right && (op == OPR_SHL || op == OPR_SHR))
+    if (limit == priority[op].right &&
+        (op == OPR_SHL || op == OPR_SHR ||
+         op == OPR_BOR || op == OPR_BXOR || op == OPR_BAND))
       lpri = 0;
 
     if (!(lpri > limit)) break;
