@@ -69,6 +69,20 @@ function testCStylePrecedenceComplex()
    assert(result6 == expected6, 'Shift should bind tighter than AND: 5 & 1 << 1 should be 5 & (1 << 1)')
 end
 
+function testShiftBitwiseBinding()
+   local result1 = 1 << 2 & 3
+   local expected1 = bit.band(bit.lshift(1, 2), 3)  -- (1 << 2) & 3 = 4 & 3 = 0
+   assert(result1 == expected1, 'Shift should bind tighter than AND: 1 << 2 & 3 should be (1 << 2) & 3')
+
+   local result2 = 1 << 1 | 2
+   local expected2 = bit.bor(bit.lshift(1, 1), 2)  -- (1 << 1) | 2 = 2 | 2 = 2
+   assert(result2 == expected2, 'Shift should bind tighter than OR: 1 << 1 | 2 should be (1 << 1) | 2')
+
+   local result3 = 1 << 2 ~ 3
+   local expected3 = bit.bxor(bit.lshift(1, 2), 3)  -- (1 << 2) ~ 3 = 4 ~ 3 = 7
+   assert(result3 == expected3, 'Shift should bind tighter than XOR: 1 << 2 ~ 3 should be (1 << 2) ~ 3')
+end
+
 function testRHSFunctionCallsAndRegisterPreservation()
    local t = { 1, 2, 3 }
    local i = 3
@@ -119,6 +133,7 @@ return {
       'testCStylePrecedence',
       'testCStylePrecedenceAND',
       'testCStylePrecedenceComplex',
+      'testShiftBitwiseBinding',
       'testRHSFunctionCallsAndRegisterPreservation',
       --'testMultipleReturnRHS',
       'testByteStringKeysWithBitwise'

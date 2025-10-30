@@ -186,7 +186,7 @@ static const struct {
   {10,9,NULL,0}, {5,4,NULL,0},					/* POW CONCAT (right associative) */
   {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
   {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
-  {5,5,"band",4}, {3,3,"bor",3}, {4,4,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
+  {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
   {2,2,NULL,0}, {1,1,NULL,0}					/* AND OR */
 };
 
@@ -956,11 +956,7 @@ static void bcemit_shift_call_at_base(FuncState *fs, const char *fname, MSize fn
    BCReg arg1 = base + 1 + LJ_FR2;  /* First argument register (after frame link if present) */
    BCReg arg2 = arg1 + 1;            /* Second argument register */
 
-   /* Check if RHS is a VCALL before any operations that might discharge it.
-   ** VCALL expressions (k=13) represent function calls that can return multiple values.
-   ** We need to detect this early because expr_toval() and expr_tonextreg() will discharge
-   ** the VCALL to a single value, losing the multi-return information. */
-   int rhs_is_vcall = (rhs->k == VCALL);
+   /* Normalise both operands into registers before loading the callee. */
    expr_toval(fs, lhs);
    expr_toval(fs, rhs);
    expr_toreg(fs, lhs, arg1);
@@ -2463,7 +2459,8 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     ** allowing lower-precedence additions on the RHS to bind tighter.
     */
 
-    if ((limit == priority[OPR_SHL].right) && (op == OPR_SHL || op == OPR_SHR)) lpri = 0;
+    if (limit == priority[OPR_SHL].right && (op == OPR_SHL || op == OPR_SHR))
+      lpri = 0;
 
     if (!(lpri > limit)) break;
 

@@ -381,12 +381,12 @@ static LexToken lex_scan(LexState *ls, TValue *tv)
     case '<':
       lex_next(ls);
       if (ls->c == '=') { lex_next(ls); return TK_le; }
-      else if (ls->c == '<') { lex_next(ls); return TK_shl; } // PARASOL PATCHED IN: Support for '<<' operator
+      else if (ls->c == '<') { lex_next(ls); return TK_shl; }  // PARASOL PATCHED IN: Support for '<<' operator
       else return '<';
     case '>':
       lex_next(ls);
       if (ls->c == '=') { lex_next(ls); return TK_ge; }
-      else if (ls->c == '>') { lex_next(ls); return TK_shr; } // PARASOL PATCHED IN: Support for '>>' operator
+      else if (ls->c == '>') { lex_next(ls); return TK_shr; }  // PARASOL PATCHED IN: Support for '>>' operator
       else return '>';
     case '~':
       lex_next(ls);
