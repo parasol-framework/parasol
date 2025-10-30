@@ -962,8 +962,7 @@ static void serialise_xml(XMLTag &Tag, std::ostringstream &Buffer, XMF Flags)
             const auto &str = Tag.Attribs[0].Value;
             size_t last_pos = 0;
             for (size_t j = 0; j < str.size(); ++j) {
-               auto escape = xml_escape_table[uint8_t(str[j])];
-               if (escape) {
+               if (auto escape = xml_escape_table[uint8_t(str[j])]; escape) {
                   if (j > last_pos) Buffer.write(str.data() + last_pos, j - last_pos);
                   Buffer << escape;
                   last_pos = j + 1;

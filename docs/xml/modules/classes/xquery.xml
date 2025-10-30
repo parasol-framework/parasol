@@ -162,6 +162,41 @@ an escape character in attribute strings.
     </method>
 
     <method>
+      <name>InspectFunctions</name>
+      <comment>Returns information about compiled XQuery functions.</comment>
+      <prototype>ERR xq::InspectFunctions(OBJECTPTR Object, CSTRING Name, XIF ResultFlags, std::string * Result)</prototype>
+      <input>
+        <param type="CSTRING" name="Name">The name of the function or functions to inspect (supports wildcards).</param>
+        <param type="XIF" name="ResultFlags" lookup="XIF">Bitmask controlling the returned information.</param>
+        <param type="std::string *" name="Result">Receives a serialised XML document describing the function(s).</param>
+      </input>
+      <description>
+<p>Use InspectFunctions to retrieve metadata about user-defined or standard XQuery functions available in the compiled XQuery object.  The function name can include wildcards to match multiple functions.</p>
+<p>
+<code/><code/>
+<function>
+  <name>function-name</name>
+  <parameters>
+    <parameter>
+      <name>param1</name>
+      <type>type1</type>
+    </parameter>
+    ...
+  </parameters>
+  <returnType>type</returnType>
+  <userDefined>true|false</userDefined>
+  <signature>function-signature</signature>
+  <body>... serialized function body AST ...</body>
+</function>
+<p/><code/></p>
+      </description>
+      <result>
+        <error code="Okay">Operation successful.</error>
+        <error code="NullArgs">Function call missing argument value(s)</error>
+      </result>
+    </method>
+
+    <method>
       <name>RegisterFunction</name>
       <comment>Register a custom XQuery function.</comment>
       <prototype>ERR xq::RegisterFunction(OBJECTPTR Object, CSTRING FunctionName, FUNCTION * Callback)</prototype>
@@ -299,6 +334,18 @@ an escape character in attribute strings.
     </field>
 
   </fields>
+  <types>
+    <constants lookup="XIF" comment="Result flags for InspectFunctions().">
+      <const name="ALL">Include all available information in the inspection result</const>
+      <const name="BODY">Include function body in the inspection result.</const>
+      <const name="NAME">Include function name in the inspection result.</const>
+      <const name="PARAMETERS">Include function parameters in the inspection result.</const>
+      <const name="RETURN_TYPE">Include function return type in the inspection result.</const>
+      <const name="SIGNATURE">Include function signature in the inspection result.</const>
+      <const name="USER_DEFINED">Include user-defined status in the inspection result.</const>
+    </constants>
+
+  </types>
   <structs>
   </structs>
 </book>
