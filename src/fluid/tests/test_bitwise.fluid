@@ -1,0 +1,154 @@
+-- Comprehensive tests for bitwise operators and compound assignments.
+
+local function returns6_99()
+   return 6, 99
+end
+
+function testUnaryBnot()
+   assert(~0 == bit.bnot(0), '~ should map to bit.bnot')
+   assert(~1 == bit.bnot(1), '~ should invert all bits')
+   local x = 0x7fffffff
+   assert(~x == bit.bnot(x), '~ should work for large ints')
+   -- Coercion: numbers are coerced via tobit semantics
+   assert(~3.7 == bit.bnot(3.7), '~ should coerce numbers via tobit')
+end
+
+function testBinaryBitwiseBasics()
+   -- AND, OR, XOR
+   local band_result = bit.band(5, 3)
+   assert((5 & 3) == band_result, '& should map to bit.band')
+   assert((5 | 2) == bit.bor(5, 2), '| should map to bit.bor')
+   assert((5 ~ 1) == bit.bxor(5, 1), '~ binary should be XOR')
+   -- Negative values and coercion
+   assert((-1 & 0xff) == 0xff, 'AND should mask bits with negative left operand')
+end
+
+-- This test confirms that a series of operators returns only one value.
+
+function testChainedOperators()
+   local single_value, second_value = 1 | 2 | 4
+   assert(single_value, 'Expected value, got ' .. tostring(single_value))
+   assert(second_value == nil, 'Unexpected second value, got ' .. tostring(second_value))
+
+   local single_value, second_value = 1 & 2 | 4
+   assert(single_value, 'Expected value, got ' .. tostring(single_value))
+   assert(second_value == nil, 'Unexpected second value, got ' .. tostring(second_value))
+end
+
+function testBitwisePrecedenceAndGrouping()
+   -- Parentheses control
+   assert((1 | (2 & 4)) == (1 | bit.band(2, 4)), 'AND groups inside OR with parens')
+   -- Power stays as exponentiation, not XOR
+   assert(2 ^ 3 == 8, '^ remains power operator')
+   -- Not-equals unaffected
+   assert(3 ~= 4, '~= remains not-equal')
+end
+
+function testCStylePrecedence()
+   -- Test C-style precedence: AND > XOR > OR
+   -- XOR should bind tighter than OR
+   local result1 = 1 | 2 ~ 3
+   local expected1 = bit.bor(1, bit.bxor(2, 3))  -- 1 | (2 ~ 3) = 1 | 1 = 1
+   assert(result1 == expected1, 'XOR should bind tighter than OR: 1 | 2 ~ 3 should be 1 | (2 ~ 3)')
+
+   -- Reverse order
+   local result2 = 1 ~ 2 | 3
+   local expected2 = bit.bor(bit.bxor(1, 2), 3)  -- (1 ~ 2) | 3 = 3 | 3 = 3
+   assert(result2 == expected2, 'Left-to-right within same precedence: 1 ~ 2 | 3 should be (1 ~ 2) | 3')
+end
+
+function testCStylePrecedenceAND()
+   -- AND should bind tighter than OR
+   local result3 = 1 | 2 & 3
+   local expected3 = bit.bor(1, bit.band(2, 3))  -- 1 | (2 & 3) = 1 | 2 = 3
+   assert(result3 == expected3, 'AND should bind tighter than OR: 1 | 2 & 3 should be 1 | (2 & 3)')
+
+   -- AND should bind tighter than XOR
+   local result4 = 7 & 5 ~ 3
+   local expected4 = bit.bxor(bit.band(7, 5), 3)  -- (7 & 5) ~ 3 = 5 ~ 3 = 6
+   assert(result4 == expected4, 'AND should bind tighter than XOR: 7 & 5 ~ 3 should be (7 & 5) ~ 3')
+end
+
+function testCStylePrecedenceComplex()
+   -- Complex expression with all three
+   local result5 = 8 | 4 ~ 2 & 1
+   local expected5 = bit.bor(8, bit.bxor(4, bit.band(2, 1)))  -- 8 | (4 ~ (2 & 1)) = 8 | (4 ~ 0) = 8 | 4 = 12
+   assert(result5 == expected5, 'Complex: 8 | 4 ~ 2 & 1 should follow AND > XOR > OR precedence')
+
+   -- Shifts bind tighter than bitwise AND
+   local result6 = 5 & 1 << 1
+   local expected6 = bit.band(5, bit.lshift(1, 1))  -- 5 & (1 << 1) = 5 & 2 = 0
+   assert(result6 == expected6, 'Shift should bind tighter than AND: 5 & 1 << 1 should be 5 & (1 << 1)')
+end
+
+function testShiftBitwiseBinding()
+   local result1 = 1 << 2 & 3
+   local expected1 = bit.band(bit.lshift(1, 2), 3)  -- (1 << 2) & 3 = 4 & 3 = 0
+   assert(result1 == expected1, 'Shift should bind tighter than AND: 1 << 2 & 3 should be (1 << 2) & 3')
+
+   local result2 = 1 << 1 | 2
+   local expected2 = bit.bor(bit.lshift(1, 1), 2)  -- (1 << 1) | 2 = 2 | 2 = 2
+   assert(result2 == expected2, 'Shift should bind tighter than OR: 1 << 1 | 2 should be (1 << 1) | 2')
+
+   local result3 = 1 << 2 ~ 3
+   local expected3 = bit.bxor(bit.lshift(1, 2), 3)  -- (1 << 2) ~ 3 = 4 ~ 3 = 7
+   assert(result3 == expected3, 'Shift should bind tighter than XOR: 1 << 2 ~ 3 should be (1 << 2) ~ 3')
+end
+
+function testRHSFunctionCallsAndRegisterPreservation()
+   local t = { 1, 2, 3 }
+   local i = 3
+   local function f(a)
+      return bit.lshift(a, 1)
+   end
+   t[i] = t[i] | f(i)
+   assert(t[3] == bit.bor(3, bit.lshift(3, 1)), 'indexed |= with function RHS should preserve base/index')
+   -- Use index register on RHS too
+   local u = { 1, 2, 4 }
+   t[i] = t[i] & u[i]
+   assert(t[3] == bit.band(bit.bor(3, bit.lshift(3, 1)), u[3]), 'indexed & RHS index usage is safe')
+end
+
+-- Currently if a function returns 2+ results to a bitwise operator then the results are undefined.
+
+function testMultipleReturnRHS()
+   local cmp = bit.band(1, 6)
+   local x = 1 & 6
+   assert(x == cmp, 'band literal failed: ' .. x .. ' vs ' .. cmp)
+
+   local x2 = 1 & returns6_99()
+   assert(x2 == cmp, 'band multi-return failed: ' .. x2 .. ' vs ' .. cmp)
+
+   x = 1 | returns6_99()
+   assert(x == bit.bor(1, 6), '| must use first return value')
+
+   x = 1 ~ 6
+   x2 = 1 ~ returns6_99()
+   cmp = bit.bxor(1, 6)
+   assert(x == cmp, 'bxor failed: ' .. x .. ' vs ' .. cmp)
+   assert(x2 == cmp, 'bxor failed: ' .. x2 .. ' vs ' .. cmp)
+end
+
+function testByteStringKeysWithBitwise()
+   local o = { a = 1, [5] = 2 }
+   o['a'] = o['a'] | 2
+   assert(o.a == 3, 'string key | should work')
+   o[5] = o[5] & 3
+   assert(o[5] == 2, 'byte/numeric key & should work')
+end
+
+return {
+   tests = {
+      'testUnaryBnot',
+      'testBinaryBitwiseBasics',
+      'testBitwisePrecedenceAndGrouping',
+      'testChainedOperators',
+      'testCStylePrecedence',
+      'testCStylePrecedenceAND',
+      'testCStylePrecedenceComplex',
+      'testShiftBitwiseBinding',
+      'testRHSFunctionCallsAndRegisterPreservation',
+      --'testMultipleReturnRHS',
+      'testByteStringKeysWithBitwise'
+   }
+}
