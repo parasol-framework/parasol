@@ -9,9 +9,9 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 ### Essential Build Commands
 
 **Configure build:**
-- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
-- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=install/agents-debug -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
-- Fast Build: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=install/agents -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
+- Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
+- Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
+- Fast Build: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
 - Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
@@ -41,9 +41,9 @@ Key build options (use with `-D` flag):
 When working in ephemeral cloud environments:
 
 - If using GCC or MinGW, prefer to use the FastBuild configuration `-DCMAKE_BUILD_TYPE=FastBuild` (note FastBuild is not available for MSVC).
-- Prefer the pre-created build tree at `build/agents` and install tree at `install/agents` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
+- Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=[BuildType] ...` rather than deleting the entire build tree.
-- If `parasol` is not already installed in `install/agents` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
+- If `parasol` is not already installed in `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
 - If configuring a build, disabling unnecessary modules like Audio and Graphics features (if they are not relevant) will speed up compilation.  If *certain* that the environment is cloud-based, you can consider including the following with your CMake build configuration: `-DDISABLE_AUDIO=ON -DDISABLE_X11=ON -DDISABLE_DISPLAY=ON -DDISABLE_FONT=ON`
 
 ## Architecture Overview
@@ -122,22 +122,22 @@ Tests are written in Fluid and executed with the Flute test runner:
 
 **For Windows (relative paths avoid path separator issues):**
 ```bash
-cd src/network/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test_bind_address.fluid --gfx-driver=headless
+cd src/network/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/network/tests/test_bind_address.fluid --gfx-driver=headless
 ```
 
 **For Linux:**
 ```bash
-cd "path/to/module/directory" && ../install/agents/parasol /path/to/tools/flute.fluid file=/absolute/path/to/test.fluid --gfx-driver=headless
+cd "path/to/module/directory" && ../build/agents-install/parasol /path/to/tools/flute.fluid file=/absolute/path/to/test.fluid --gfx-driver=headless
 ```
 
 **Example - Running SVG tests:**
 ```bash
-cd "src/svg/tests" && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test_svg.fluid --gfx-driver=headless
+cd "src/svg/tests" && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=/full/path/to/src/svg/tests/test_svg.fluid --gfx-driver=headless
 ```
 
 **Key Requirements for Flute Tests:**
 - Must `cd` to the directory containing the test file
-- **Windows:** Use relative paths for executables (e.g., `../../../install/agents/parasol.exe`) to avoid Windows path separator issues in Bash
+- **Windows:** Use relative paths for executables (e.g., `../../../build/agents-install/parasol.exe`) to avoid Windows path separator issues in Bash
 - **Linux:** Use absolute paths for executables
 - Use absolute path for the test file parameter (`file=...`) - this works cross-platform
 - This ensures proper variable initialization (e.g., `glSVGFolder` for SVG tests)
