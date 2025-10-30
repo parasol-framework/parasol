@@ -998,6 +998,45 @@ static void bcemit_bit_call(FuncState *fs, const char *fname, MSize fname_len, E
    bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
 }
 
+/* Emit unary bit library call (e.g., bit.bnot). */
+static void bcemit_unary_bit_call(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *arg)
+{
+   ExpDesc callee, key;
+   BCReg base = fs->freereg;
+   BCReg arg_reg = base + 1 + LJ_FR2;
+
+   bcreg_reserve(fs, 1);  /* Reserve for callee */
+   if (LJ_FR2) bcreg_reserve(fs, 1);  /* Reserve for frame link on x64 */
+
+   /* Place argument in register. */
+   expr_toval(fs, arg);
+   expr_toreg(fs, arg, arg_reg);
+
+   /* Ensure freereg accounts for argument register so it's not clobbered. */
+   if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
+
+   /* Load bit.fname into base register. */
+   expr_init(&callee, VGLOBAL, 0);
+   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   expr_toanyreg(fs, &callee);
+   expr_init(&key, VKSTR, 0);
+   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
+   expr_index(fs, &callee, &key);
+   expr_toval(fs, &callee);
+   expr_toreg(fs, &callee, base);
+
+   /* Emit CALL instruction. */
+   fs->freereg = arg_reg + 1;
+   arg->k = VCALL;
+   arg->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+   arg->u.s.aux = base;
+   fs->freereg = base + 1;
+
+   /* Discharge result to register. */
+   expr_discharge(fs, arg);
+   lj_assertFS(arg->k == VNONRELOC and arg->u.s.info == base, "bitwise result not in base register");
+}
+
 /* Emit binary operator. */
 
 static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
@@ -2387,44 +2426,12 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     op = BC_NOT;
   } else if (ls->tok == '-') {
     op = BC_UNM;
-/* TODO: Not ready for implementation yet
   } else if (ls->tok == '~') {
-    // Unary bitwise not: desugar to bit.bnot(x).
-    FuncState *fs = ls->fs;
-    ExpDesc arg, tbl;
+    /* Unary bitwise not: desugar to bit.bnot(x). */
     lj_lex_next(ls);
-    expr_binop(ls, &arg, UNARY_PRIORITY);
-    // Load global 'bit' into a register.
-    expr_init(&tbl, VGLOBAL, 0);
-    tbl.u.sval = lj_parse_keepstr(ls, "bit", 3);
-    {
-      BCReg obj = expr_toanyreg(fs, &tbl);
-      BCReg func = fs->freereg;
-      BCReg idx = const_gc(fs, obj2gco(lj_parse_keepstr(ls, "bnot", 4)), LJ_TSTR);
-      if (idx <= BCMAX_C) {
-        bcreg_reserve(fs, 1+LJ_FR2);
-        bcemit_ABC(fs, BC_TGETS, func, obj, idx);
-      } else {
-        bcreg_reserve(fs, 2+LJ_FR2);
-        bcemit_AD(fs, BC_KSTR, func+1+LJ_FR2, idx);
-        bcemit_ABC(fs, BC_TGETV, func, obj, func+1+LJ_FR2);
-        fs->freereg--;
-      }
-      {
-        // Use func register directly as call base.
-        BCReg base = func;
-        // Force operand to a value to avoid pending jumps.
-        expr_toval(fs, &arg);
-        expr_tonextreg(fs, &arg);
-        // Emit CALL with standard calling convention.
-        v->k = VCALL;
-        v->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
-        v->u.s.aux = base;
-        fs->freereg = base+1;
-      }
-    }
+    expr_binop(ls, v, UNARY_PRIORITY);
+    bcemit_unary_bit_call(ls->fs, "bnot", 4, v);
     return;
-*/
   } else if (ls->tok == '#') {
     op = BC_LEN;
   } else {

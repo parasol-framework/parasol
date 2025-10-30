@@ -3,16 +3,16 @@
 local function returns6_99()
    return 6, 99
 end
---[[
+
 function testUnaryBnot()
-   assert(~0 == bit.bnot(0), 'not should map to bit.bnot')
-   assert(~1 == bit.bnot(1), 'not should invert all bits')
+   assert(~0 == bit.bnot(0), '~ should map to bit.bnot')
+   assert(~1 == bit.bnot(1), '~ should invert all bits')
    local x = 0x7fffffff
-   assert(not x == bit.bnot(x), 'not should work for large ints')
+   assert(~x == bit.bnot(x), '~ should work for large ints')
    -- Coercion: numbers are coerced via tobit semantics
-   assert(not 3.7 == bit.bnot(3.7), 'not should coerce numbers via tobit')
+   assert(~3.7 == bit.bnot(3.7), '~ should coerce numbers via tobit')
 end
---]]
+
 function testBinaryBitwiseBasics()
    -- AND, OR, XOR
    local band_result = bit.band(5, 3)
@@ -76,7 +76,7 @@ end
 
 return {
    tests = {
-      --'testUnaryBnot',
+      'testUnaryBnot',
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
       'testRHSFunctionCallsAndRegisterPreservation',
