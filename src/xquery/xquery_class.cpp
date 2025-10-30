@@ -391,6 +391,11 @@ InspectFunctions: Returns information about compiled XQuery functions.
 Use InspectFunctions to retrieve metadata about user-defined or standard XQuery functions available in the
 compiled XQuery object.  The function name can include wildcards to match multiple functions.
 
+The ResultFlags parameter controls which pieces of information are included in the output XML document.  If
+not flags are specified, all available information will be returned.
+
+The structure of the returned XML document is as follows, with each matching function returned in series:
+
 ```
 <function>
   <name>function-name</name>
@@ -432,16 +437,19 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
 
    std::ostringstream result;
    
+   auto flags = Args->ResultFlags;
+   if (flags == XIF::NIL) flags = XIF::ALL;
+
    // Extract function information based on ResultFlags
    auto process_function = [&](const XQueryFunction &fn) {
       result << "<function>";
-      if ((Args->ResultFlags & XIF::NAME) != XIF::NIL) {
+      if ((flags & XIF::NAME) != XIF::NIL) {
          
          auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
          result << std::format("<name>{}</name>", xml_escape(fname));
       }
 
-      if ((Args->ResultFlags & XIF::PARAMETERS) != XIF::NIL) {
+      if ((flags & XIF::PARAMETERS) != XIF::NIL) {
          result << "<parameters>";
          for (size_t i = 0; i < fn.parameter_types.size(); ++i) {
             result << "<parameter>";
@@ -452,19 +460,19 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
          result << "</parameters>";
       }
 
-      if ((Args->ResultFlags & XIF::RETURN_TYPE) != XIF::NIL) {
+      if ((flags & XIF::RETURN_TYPE) != XIF::NIL) {
          result << std::format("<returnType>{}</returnType>", fn.return_type ? xml_escape(*fn.return_type) : "item()*");
       }
 
-      if ((Args->ResultFlags & XIF::USER_DEFINED) != XIF::NIL) {
+      if ((flags & XIF::USER_DEFINED) != XIF::NIL) {
          result << std::format("<userDefined>{}</userDefined>", fn.is_external ? "false" : "true");
       }
 
-      if ((Args->ResultFlags & XIF::SIGNATURE) != XIF::NIL) {
+      if ((flags & XIF::SIGNATURE) != XIF::NIL) {
          result << std::format("<signature>{}</signature>", xml_escape(fn.signature()));
       }
 
-      if ((Args->ResultFlags & XIF::BODY) != XIF::NIL) {
+      if ((flags & XIF::BODY) != XIF::NIL) {
          if (fn.body) {
             std::string body;
             XPathEvaluator eval(Self, Self->XML, fn.body.get(), &Self->ParseResult);
