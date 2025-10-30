@@ -960,13 +960,14 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
 static void bcemit_shift_call_at_base(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *lhs, ExpDesc *rhs, BCReg base)
 {
    ExpDesc callee, key;
-   BCReg arg1 = base + 1 + LJ_FR2;
-   BCReg arg2 = arg1 + 1;
+   BCReg arg1 = base + 1 + LJ_FR2;  /* First argument register (after frame link if present) */
+   BCReg arg2 = arg1 + 1;            /* Second argument register */
 
-   /* IMPORTANT: Move arguments to their positions BEFORE loading the function.
-   ** This ensures that if lhs points to base (from a previous result),
-   ** we move it to arg1 before overwriting base with the new function. 
-   */
+   /* Check if RHS is a VCALL before any operations that might discharge it.
+   ** VCALL expressions (k=13) represent function calls that can return multiple values.
+   ** We need to detect this early because expr_toval() and expr_tonextreg() will discharge
+   ** the VCALL to a single value, losing the multi-return information. */
+   int rhs_is_vcall = (rhs->k == VCALL);
    expr_toval(fs, lhs);
    expr_toval(fs, rhs);
    expr_toreg(fs, lhs, arg1);
