@@ -43,26 +43,30 @@ function testCStylePrecedence()
    local result2 = 1 ~ 2 | 3
    local expected2 = bit.bor(bit.bxor(1, 2), 3)  -- (1 ~ 2) | 3 = 3 | 3 = 3
    assert(result2 == expected2, 'Left-to-right within same precedence: 1 ~ 2 | 3 should be (1 ~ 2) | 3')
+end
 
+function testCStylePrecedenceAND()
    -- AND should bind tighter than OR
    local result3 = 1 | 2 & 3
    local expected3 = bit.bor(1, bit.band(2, 3))  -- 1 | (2 & 3) = 1 | 2 = 3
-   if result3 ~= expected3 then
-      print('DEBUG: 1 | 2 & 3 = ' .. result3 .. ', expected ' .. expected3)
-      print('       2 & 3 = ' .. bit.band(2, 3))
-      print('       1 | 2 = ' .. bit.bor(1, 2))
-   end
    assert(result3 == expected3, 'AND should bind tighter than OR: 1 | 2 & 3 should be 1 | (2 & 3)')
 
    -- AND should bind tighter than XOR
    local result4 = 7 & 5 ~ 3
    local expected4 = bit.bxor(bit.band(7, 5), 3)  -- (7 & 5) ~ 3 = 5 ~ 3 = 6
    assert(result4 == expected4, 'AND should bind tighter than XOR: 7 & 5 ~ 3 should be (7 & 5) ~ 3')
+end
 
+function testCStylePrecedenceComplex()
    -- Complex expression with all three
    local result5 = 8 | 4 ~ 2 & 1
    local expected5 = bit.bor(8, bit.bxor(4, bit.band(2, 1)))  -- 8 | (4 ~ (2 & 1)) = 8 | (4 ~ 0) = 8 | 4 = 12
    assert(result5 == expected5, 'Complex: 8 | 4 ~ 2 & 1 should follow AND > XOR > OR precedence')
+
+   -- Shifts bind tighter than bitwise AND
+   local result6 = 5 & 1 << 1
+   local expected6 = bit.band(5, bit.lshift(1, 1))  -- 5 & (1 << 1) = 5 & 2 = 0
+   assert(result6 == expected6, 'Shift should bind tighter than AND: 5 & 1 << 1 should be 5 & (1 << 1)')
 end
 
 function testRHSFunctionCallsAndRegisterPreservation()
@@ -113,6 +117,8 @@ return {
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
       'testCStylePrecedence',
+      'testCStylePrecedenceAND',
+      'testCStylePrecedenceComplex',
       'testRHSFunctionCallsAndRegisterPreservation',
       --'testMultipleReturnRHS',
       'testByteStringKeysWithBitwise'
