@@ -28,8 +28,6 @@
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
-#define VCALL_SINGLE_RESULT_FLAG 0x80000000u
-
 #define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXED)
 
 /* -- Parser structures and definitions ----------------------------------- */
@@ -482,12 +480,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
     }
     bcreg_free(fs, e->u.s.info);
   } else if (e->k == VCALL) {
-    uint32_t aux = e->u.s.aux;
-    if (aux & VCALL_SINGLE_RESULT_FLAG) {
-      aux &= ~VCALL_SINGLE_RESULT_FLAG;
-      e->u.s.aux = aux;
-    }
-    e->u.s.info = aux;
+    e->u.s.info = e->u.s.aux;
     e->k = VNONRELOC;
     return;
   } else if (e->k == VLOCAL) {
@@ -987,7 +980,7 @@ static void bcemit_shift_call_at_base(FuncState *fs, const char *fname, MSize fn
    fs->freereg = arg2 + 1;  /* Ensure freereg covers all arguments */
    lhs->k = VCALL;
    lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
-   lhs->u.s.aux = base | VCALL_SINGLE_RESULT_FLAG;
+   lhs->u.s.aux = base;
    fs->freereg = base + 1;
 
    expr_discharge(fs, lhs);
@@ -2401,7 +2394,7 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     ExpDesc arg, tbl;
     lj_lex_next(ls);
     expr_binop(ls, &arg, UNARY_PRIORITY);
-    // Load global 'bit' into a register. 
+    // Load global 'bit' into a register.
     expr_init(&tbl, VGLOBAL, 0);
     tbl.u.sval = lj_parse_keepstr(ls, "bit", 3);
     {
@@ -2418,12 +2411,12 @@ static void expr_unop(LexState *ls, ExpDesc *v)
         fs->freereg--;
       }
       {
-        // Use func register directly as call base. 
+        // Use func register directly as call base.
         BCReg base = func;
-        // Force operand to a value to avoid pending jumps. 
+        // Force operand to a value to avoid pending jumps.
         expr_toval(fs, &arg);
         expr_tonextreg(fs, &arg);
-        // Emit CALL with standard calling convention. 
+        // Emit CALL with standard calling convention.
         v->k = VCALL;
         v->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
         v->u.s.aux = base;
@@ -2455,7 +2448,7 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     /* Special-case: when parsing the RHS of a shift (limit set to
     ** the shift right-priority), do not consume another shift here.
     ** This enforces left-associativity for chained shifts while still
-    ** allowing lower-precedence additions on the RHS to bind tighter. 
+    ** allowing lower-precedence additions on the RHS to bind tighter.
     */
 
     if ((limit == priority[OPR_SHL].right) && (op == OPR_SHL || op == OPR_SHR || op == OPR_BAND || op == OPR_BXOR || op == OPR_BOR)) lpri = 0;
@@ -2544,11 +2537,6 @@ static void assign_adjust(LexState *ls, BCReg nvars, BCReg nexps, ExpDesc *e)
 {
   FuncState *fs = ls->fs;
   int32_t extra = (int32_t)nvars - (int32_t)nexps;
-  if (e->k == VCALL && (e->u.s.aux & VCALL_SINGLE_RESULT_FLAG)) {
-    e->u.s.aux &= ~VCALL_SINGLE_RESULT_FLAG;
-    e->u.s.info = e->u.s.aux;
-    e->k = VNONRELOC;
-  }
   if (e->k == VCALL) {
     extra++;  /* Compensate for the VCALL itself. */
     if (extra < 0) extra = 0;
