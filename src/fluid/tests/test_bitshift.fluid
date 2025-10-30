@@ -53,8 +53,13 @@ local function returns6_3()
 end
 
 function testMultiReturn()
+   -- Confirm that primitive operators work with multi-return functions
+   local x = 1 + returns6_3()
+   assert(x == 7, 'addition with multi-return should use first value, got ' .. x)
+
+   -- Now test bitshift operators
    local cmp = bit.lshift(1, 6)
-   local x = 1 << 6
+   x = 1 << 6
    assert(x == cmp, 'lshift literal failed: ' .. x .. ' vs ' .. cmp)
    local x2 = 1 << returns6_3()
    assert(x2 == cmp, 'lshift multi-return failed: ' .. x2 .. ' vs ' .. cmp)
