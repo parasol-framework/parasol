@@ -23,6 +23,14 @@ function testBinaryBitwiseBasics()
    assert((-1 & 0xff) == 0xff, 'AND should mask bits with negative left operand')
 end
 
+-- This test confirms that a series of operators returns only one value.
+
+function testChainedOperators()
+   local single_value, second_value = 1 | 2 | 4
+   assert(single_value, 'Expected value, got ' .. tostring(single_value))
+   assert(second_value == nil, 'Unexpected second value, got ' .. tostring(second_value))
+end
+
 function testBitwisePrecedenceAndGrouping()
    -- Parentheses control
    assert((1 | (2 & 4)) == (1 | bit.band(2, 4)), 'AND groups inside OR with parens')
@@ -130,6 +138,7 @@ return {
       'testUnaryBnot',
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
+      'testChainedOperators',
       'testCStylePrecedence',
       'testCStylePrecedenceAND',
       'testCStylePrecedenceComplex',

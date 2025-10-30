@@ -28,6 +28,7 @@ function testChainedBitshifts()
    -- Mixed with right shift: (x >> y) >> z
    local x, y, z = 64, 2, 3
    local chained_right = x >> y >> z
+   assert(tostring(x >> y >> z) == '2', 'Chained series did not evaluate to a single value')
    assert(chained_right == bit.rshift(bit.rshift(x, y), z), 'chained >> should be left-associative')
 
    local mixed = 1 << 4 >> 1
