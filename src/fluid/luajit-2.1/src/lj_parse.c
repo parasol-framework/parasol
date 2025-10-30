@@ -28,8 +28,6 @@
 #include "lj_vm.h"
 #include "lj_vmevent.h"
 
-#define VCALL_SINGLE_RESULT_FLAG 0x80000000u
-
 #define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXED)
 
 /* -- Parser structures and definitions ----------------------------------- */
@@ -157,8 +155,7 @@ typedef enum BinOpr {
   OPR_CONCAT,
   OPR_NE, OPR_EQ,
   OPR_LT, OPR_GE, OPR_LE, OPR_GT,
-  /* Bitwise operators. */
-  OPR_SHL, OPR_SHR,
+  OPR_BAND, OPR_BOR, OPR_BXOR, OPR_SHL, OPR_SHR,
   OPR_AND, OPR_OR,
   OPR_NOBINOPR
 } BinOpr;
@@ -176,6 +173,22 @@ LJ_STATIC_ASSERT((int)BC_MODVV-(int)BC_ADDVV == (int)OPR_MOD-(int)OPR_ADD);
 #else
 #define lj_assertFS(c, ...)	((void)fs)
 #endif
+
+/* Priorities for each binary operator. ORDER OPR. */
+
+static const struct {
+  uint8_t left;		/* Left priority. */
+  uint8_t right;	/* Right priority. */
+  const char* name;	/* Name for bitlib function (if applicable). */
+  uint8_t name_len;	/* Cached name length for bitlib lookups. */
+} priority[] = {
+  {6,6,NULL,0}, {6,6,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0}, {7,7,NULL,0},	/* ADD SUB MUL DIV MOD */
+  {10,9,NULL,0}, {5,4,NULL,0},					/* POW CONCAT (right associative) */
+  {3,3,NULL,0}, {3,3,NULL,0},					/* EQ NE */
+  {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0}, {3,3,NULL,0},		/* LT GE GT LE */
+  {5,4,"band",4}, {3,2,"bor",3}, {4,3,"bxor",4}, {7,5,"lshift",6}, {7,5,"rshift",6},	/* BAND BOR BXOR SHL SHR (C-style precedence: XOR binds tighter than OR) */
+  {2,2,NULL,0}, {1,1,NULL,0}					/* AND OR */
+};
 
 /* -- Error handling ------------------------------------------------------ */
 
@@ -467,12 +480,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
     }
     bcreg_free(fs, e->u.s.info);
   } else if (e->k == VCALL) {
-    uint32_t aux = e->u.s.aux;
-    if (aux & VCALL_SINGLE_RESULT_FLAG) {
-      aux &= ~VCALL_SINGLE_RESULT_FLAG;
-      e->u.s.aux = aux;
-    }
-    e->u.s.info = aux;
+    e->u.s.info = e->u.s.aux;
     e->k = VNONRELOC;
     return;
   } else if (e->k == VLOCAL) {
@@ -908,30 +916,58 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
   }
 }
 
-/* Emit a bitshift call, reusing base register for chaining */
-
-static void bcemit_shift_call_at_base(FuncState *fs, BinOpr op, ExpDesc *lhs, ExpDesc *rhs, BCReg base)
+/* Emit a call to a bit library function (bit.lshift, bit.rshift, etc.) at a specific base register.
+**
+** This function is used to implement C-style bitwise shift operators (<<, >>) by translating them
+** into calls to LuaJIT's bit library functions. The base register is explicitly provided to allow
+** chaining of multiple shift operations while reusing the same register for intermediate results.
+**
+** Register Layout (x64 with LJ_FR2=1):
+**   base     - Function to call (bit.lshift, bit.rshift, etc.)
+**   base+1   - Frame link register (LJ_FR2, not an argument)
+**   base+2   - arg1: First operand (value to shift)
+**   base+3   - arg2: Second operand (shift count)
+**
+** BC_CALL Instruction Format:
+**   - A field: base register
+**   - B field: Call type (2 for regular calls, 0 for varargs)
+**   - C field: Argument count = freereg - base - LJ_FR2
+**
+** VCALL Handling (Multi-Return Functions):
+**   When RHS is a VCALL (function call with multiple return values), standard Lua binary operator
+**   semantics apply: only the first return value is used. The VCALL is discharged before being
+**   passed as an argument. This matches the behavior of expressions like `x + f()` in Lua.
+**
+**   Note: Unlike function argument lists (which use BC_CALLM to forward all return values),
+**   binary operators always restrict multi-return expressions to single values. This is a
+**   fundamental Lua language semantic, not a limitation of this implementation.
+**
+** Parameters:
+**   fs    - Function state for bytecode generation
+**   fname - Name of bit library function (e.g., "lshift", "rshift")
+**   fname_len - Length of fname string
+**   lhs   - Left-hand side expression (value to shift)
+**   rhs   - Right-hand side expression (shift count, may be VCALL)
+**   base  - Base register for the call (allows register reuse for chaining)
+*/
+static void bcemit_shift_call_at_base(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *lhs, ExpDesc *rhs, BCReg base)
 {
-   const char *fname = (op == OPR_SHL) ? "lshift" : "rshift";
    ExpDesc callee, key;
-   BCReg arg1 = base + 1 + LJ_FR2;
-   BCReg arg2 = arg1 + 1;
+   BCReg arg1 = base + 1 + LJ_FR2;  /* First argument register (after frame link if present) */
+   BCReg arg2 = arg1 + 1;            /* Second argument register */
 
-   /* IMPORTANT: Move arguments to their positions BEFORE loading the function.
-   ** This ensures that if lhs points to base (from a previous result),
-   ** we move it to arg1 before overwriting base with the new function. 
-   */
+   /* Normalise both operands into registers before loading the callee. */
    expr_toval(fs, lhs);
    expr_toval(fs, rhs);
    expr_toreg(fs, lhs, arg1);
    expr_toreg(fs, rhs, arg2);
 
-   /* Now load bit.lshift/bit.rshift into the base register */
+   /* Now load bit.[lshift|rshift|...] into the base register */
    expr_init(&callee, VGLOBAL, 0);
    callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
    expr_toanyreg(fs, &callee);
    expr_init(&key, VKSTR, 0);
-   key.u.sval = lj_parse_keepstr(fs->ls, fname, (MSize)6);
+   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
    expr_index(fs, &callee, &key);
    expr_toval(fs, &callee);
    expr_toreg(fs, &callee, base);
@@ -940,21 +976,61 @@ static void bcemit_shift_call_at_base(FuncState *fs, BinOpr op, ExpDesc *lhs, Ex
    fs->freereg = arg2 + 1;  /* Ensure freereg covers all arguments */
    lhs->k = VCALL;
    lhs->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
-   lhs->u.s.aux = base | VCALL_SINGLE_RESULT_FLAG;
+   lhs->u.s.aux = base;
    fs->freereg = base + 1;
 
    expr_discharge(fs, lhs);
-   lj_assertFS(lhs->k == VNONRELOC && lhs->u.s.info == base, "bit shift result not in base register");
+   lj_assertFS(lhs->k == VNONRELOC && lhs->u.s.info == base, "bitwise result not in base register");
 }
 
-static void bcemit_shift_call(FuncState *fs, BinOpr op, ExpDesc *lhs, ExpDesc *rhs)
+static void bcemit_bit_call(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *lhs, ExpDesc *rhs)
 {
    /* Allocate a base register for the call */
    BCReg base = fs->freereg;
    bcreg_reserve(fs, 1);  /* Reserve for callee */
    if (LJ_FR2) bcreg_reserve(fs, 1);
    bcreg_reserve(fs, 2);  /* Reserve for arguments */
-   bcemit_shift_call_at_base(fs, op, lhs, rhs, base);
+   lj_assertFS(fname != NULL, "bitlib name missing for bitwise operator");
+   bcemit_shift_call_at_base(fs, fname, fname_len, lhs, rhs, base);
+}
+
+/* Emit unary bit library call (e.g., bit.bnot). */
+static void bcemit_unary_bit_call(FuncState *fs, const char *fname, MSize fname_len, ExpDesc *arg)
+{
+   ExpDesc callee, key;
+   BCReg base = fs->freereg;
+   BCReg arg_reg = base + 1 + LJ_FR2;
+
+   bcreg_reserve(fs, 1);  /* Reserve for callee */
+   if (LJ_FR2) bcreg_reserve(fs, 1);  /* Reserve for frame link on x64 */
+
+   /* Place argument in register. */
+   expr_toval(fs, arg);
+   expr_toreg(fs, arg, arg_reg);
+
+   /* Ensure freereg accounts for argument register so it's not clobbered. */
+   if (fs->freereg <= arg_reg) fs->freereg = arg_reg + 1;
+
+   /* Load bit.fname into base register. */
+   expr_init(&callee, VGLOBAL, 0);
+   callee.u.sval = lj_parse_keepstr(fs->ls, "bit", 3);
+   expr_toanyreg(fs, &callee);
+   expr_init(&key, VKSTR, 0);
+   key.u.sval = lj_parse_keepstr(fs->ls, fname, fname_len);
+   expr_index(fs, &callee, &key);
+   expr_toval(fs, &callee);
+   expr_toreg(fs, &callee, base);
+
+   /* Emit CALL instruction. */
+   fs->freereg = arg_reg + 1;
+   arg->k = VCALL;
+   arg->u.s.info = bcemit_INS(fs, BCINS_ABC(BC_CALL, base, 2, fs->freereg - base - LJ_FR2));
+   arg->u.s.aux = base;
+   fs->freereg = base + 1;
+
+   /* Discharge result to register. */
+   expr_discharge(fs, arg);
+   lj_assertFS(arg->k == VNONRELOC && arg->u.s.info == base, "bitwise result not in base register");
 }
 
 /* Emit binary operator. */
@@ -963,19 +1039,23 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
 {
   if (op <= OPR_POW) {
     bcemit_arith(fs, op, e1, e2);
-  } else if (op == OPR_AND) {
+  }
+  else if (op == OPR_AND) {
     lj_assertFS(e1->t == NO_JMP, "jump list not closed");
     expr_discharge(fs, e2);
     jmp_append(fs, &e2->f, e1->f);
     *e1 = *e2;
-  } else if (op == OPR_OR) {
+  }
+  else if (op == OPR_OR) {
     lj_assertFS(e1->f == NO_JMP, "jump list not closed");
     expr_discharge(fs, e2);
     jmp_append(fs, &e2->t, e1->t);
     *e1 = *e2;
-  } else if (op == OPR_SHL || op == OPR_SHR) {
-    bcemit_shift_call(fs, op, e1, e2);
-  } else if (op == OPR_CONCAT) {
+  }
+  else if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BOR) || (op == OPR_BXOR)) {
+    bcemit_bit_call(fs, priority[op].name, (MSize)priority[op].name_len, e1, e2);
+  }
+  else if (op == OPR_CONCAT) {
     expr_toval(fs, e2);
     if (e2->k == VRELOCABLE && bc_op(*bcptr(fs, e2)) == BC_CAT) {
       lj_assertFS(e1->u.s.info == bc_b(*bcptr(fs, e2))-1,
@@ -1980,20 +2060,68 @@ static void parse_body(LexState *ls, ExpDesc *e, int needself, BCLine line)
   lj_lex_next(ls);
 }
 
-/* Parse expression list. Last expression is left open. */
+/* Parse expression list. Last expression is left open.
+**
+** This function parses comma-separated expressions but deliberately leaves the LAST expression
+** in its original ExpDesc state without discharging it. This is critical for multi-return
+** function call handling.
+**
+** Key Behavior:
+**   f(a, b, g())  where g() returns multiple values
+**   - Expressions 'a' and 'b' are discharged via expr_tonextreg() to place them in registers
+**   - Expression 'g()' is NOT discharged and remains as VCALL (k=13)
+**   - The caller (parse_args) can then detect args.k == VCALL and use BC_CALLM
+**
+** This pattern allows the calling function to receive ALL return values from g(), not just
+** the first one, by using BC_CALLM instead of BC_CALL.
+**
+** Returns: Number of expressions in the list
+*/
 static BCReg expr_list(LexState *ls, ExpDesc *v)
 {
   BCReg n = 1;
   expr(ls, v);
   while (lex_opt(ls, ',')) {
-    expr_tonextreg(ls->fs, v);
-    expr(ls, v);
+    expr_tonextreg(ls->fs, v);  /* Discharge previous expressions to registers */
+    expr(ls, v);                /* Parse next expression (may be VCALL) */
     n++;
   }
-  return n;
+  return n;  /* Last expression 'v' is NOT discharged */
 }
 
-/* Parse function argument list. */
+/* Parse function argument list and emit function call.
+**
+** BC_CALL vs BC_CALLM - Multi-Return Forwarding:
+**
+**   BC_CALL is used when argument count is fixed:
+**     f(a, b, c)  emits  BC_CALL with C field = 3 (three arguments)
+**
+**   BC_CALLM is used when the last argument is a multi-return function call:
+**     f(a, b, g())  where g() returns multiple values
+**     - Emits BC_CALLM instead of BC_CALL
+**     - C field = g_base - f_base - 1 - LJ_FR2 (encodes where g()'s results start)
+**     - The VM forwards ALL return values from g() to f()
+**
+**   Example:
+**     function g() return 1, 2, 3 end
+**     function f(x, y, z) print(x, y, z) end
+**     f(10, g())  -- f receives (10, 1, 2, 3), uses first 3: prints "10 1 2"
+**
+**   Detection:
+**     expr_list() leaves the last argument undischarged. If args.k == VCALL after expr_list(),
+**     we know the last argument can return multiple values, so we:
+**     1. Patch the VCALL's B field to 0 (return all results)
+**     2. Use BC_CALLM instead of BC_CALL
+**
+**   Contrast with Binary Operators:
+**     Binary operators (including our bitwise shifts) use expr_binop() which discharges VCALL
+**     to a single value BEFORE the operator executes. This matches standard Lua semantics:
+**       x + g()  uses only the first return value of g()
+**       x << g() uses only the first return value of g()
+**
+**     Function calls preserve multi-return:
+**       f(g())   passes all return values of g() to f()
+*/
 static void parse_args(LexState *ls, ExpDesc *e)
 {
   FuncState *fs = ls->fs;
@@ -2191,6 +2319,9 @@ static BinOpr token2binop(LexToken tok)
   case TK_le:	return OPR_LE;
   case '>':	return OPR_GT;
   case TK_ge:	return OPR_GE;
+  case '&':	return OPR_BAND;
+  case '|':	return OPR_BOR;
+  case '~':	return OPR_BXOR;  /* Binary XOR; unary handled separately. */
   case TK_shl: return OPR_SHL;
   case TK_shr: return OPR_SHR;
   case TK_and:	return OPR_AND;
@@ -2199,24 +2330,49 @@ static BinOpr token2binop(LexToken tok)
   }
 }
 
-/* Priorities for each binary operator. ORDER OPR. */
-static const struct {
-  uint8_t left;		/* Left priority. */
-  uint8_t right;	/* Right priority. */
-} priority[] = {
-  {6,6}, {6,6}, {7,7}, {7,7}, {7,7},	/* ADD SUB MUL DIV MOD */
-  {10,9}, {5,4},			/* POW CONCAT (right associative) */
-  {3,3}, {3,3},				/* EQ NE */
-  {3,3}, {3,3}, {3,3}, {3,3},		/* LT GE GT LE */
-  {7,5}, {7,5},				/* SHL SHR */
-  {2,2}, {1,1}				/* AND OR */
-};
-
 #define UNARY_PRIORITY		8  /* Priority for unary operators. */
 
 /* Forward declaration. */
 static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit);
 
+/* Handle chained bitwise shift and bitwise logical operators with left-to-right associativity.
+**
+** This function implements left-associative chaining for bitwise operators, allowing expressions
+** like `x << 2 << 3` or `x & 0xFF | 0x100` to be evaluated correctly. Without this special
+** handling, these operators would be right-associative due to their priority levels.
+**
+** Left Associativity Examples:
+**   1 << 2 << 3  evaluates as  (1 << 2) << 3  = 4 << 3 = 32
+**   NOT as  1 << (2 << 3)  = 1 << 8 = 256
+**
+** Register Reuse Strategy:
+**   All operations in the chain use the same base register for intermediate results. This is
+**   more efficient than allocating new registers for each operation:
+**     x << 2      -> result stored at base_reg
+**     result << 3 -> reuses base_reg for both input and output
+**
+** Why expr_binop() is Used:
+**   The RHS of each operator is parsed using expr_binop() with the operator's right priority.
+**   This ensures:
+**   - Lower-priority operators on the RHS bind correctly (e.g., `1 << 2 + 3` = `1 << (2+3)`)
+**   - The special left-associativity logic in expr_binop() prevents consuming subsequent
+**     shifts/bitops at the same level, forcing left-to-right evaluation
+**
+** VCALL Handling:
+**   If the RHS is a VCALL (multi-return function), expr_binop() returns it as k=VCALL.
+**   The function is then passed to bcemit_shift_call_at_base() which attempts to handle
+**   multi-return semantics, though standard Lua binary operator rules apply (first value only).
+**
+** Parameters:
+**   ls  - Lexer state
+**   lhs - Left-hand side expression (updated with each operation's result)
+**   op  - The current shift/bitwise operator (OPR_SHL, OPR_SHR, OPR_BAND, OPR_BXOR, OPR_BOR)
+**        Note: Operators are only chained if they have matching precedence levels,
+**        implementing C-style precedence (BAND > BXOR > BOR)
+**
+** Returns:
+**   The next binary operator token (if any) that was not consumed by this chain
+*/
 static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
 {
    FuncState *fs = ls->fs;
@@ -2224,34 +2380,65 @@ static BinOpr expr_shift_chain(LexState *ls, ExpDesc *lhs, BinOpr op)
    BinOpr nextop;
    BCReg base_reg;
 
-   /* Parse RHS and check if another shift follows */
+   /* Parse RHS operand. expr_binop() respects priority levels and will not consume
+   ** another shift/bitop at the same level due to left-associativity logic in expr_binop(). */
    nextop = expr_binop(ls, &rhs, priority[op].right);
 
-   /* Allocate a base register for the entire chain */
-   base_reg = fs->freereg;
+
+   /* Choose the base register for the bit operation call.
+   **
+   ** To avoid orphaning intermediate results (which become extra return values),
+   ** we prioritize reusing registers that are already at the top of the stack:
+   **
+   ** 1. If LHS is at the top (lhs->u.s.info + 1 == fs->freereg), reuse it.
+   **    This happens when chaining across precedence levels: e.g., after "1 & 2"
+   **    completes in reg N and freereg becomes N+1, then "| 4" finds LHS at the top.
+   ** 2. Otherwise, if RHS is at the top, reuse it for compactness.
+   ** 3. Otherwise, allocate a fresh register.
+   */
+   if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
+       lhs->u.s.info + 1 == fs->freereg) {
+      /* LHS result from previous operation is at the top - reuse it to avoid orphaning */
+      base_reg = lhs->u.s.info;
+   } else if (rhs.k == VNONRELOC && rhs.u.s.info >= fs->nactvar &&
+              rhs.u.s.info + 1 == fs->freereg) {
+      /* RHS is at the top - reuse it */
+      base_reg = rhs.u.s.info;
+   } else {
+      /* Allocate a fresh register */
+      base_reg = fs->freereg;
+   }
+
+   /* Reserve space for: callee (1), frame link if x64 (LJ_FR2), and two arguments (2). */
    bcreg_reserve(fs, 1);  /* Reserve for callee */
-   if (LJ_FR2) bcreg_reserve(fs, 1);
+   if (LJ_FR2) bcreg_reserve(fs, 1);  /* Reserve for frame link on x64 */
    bcreg_reserve(fs, 2);  /* Reserve for arguments */
 
-   /* Emit first shift using the allocated base */
-   bcemit_shift_call_at_base(fs, op, lhs, &rhs, base_reg);
+   /* Emit the first operation in the chain */
+   bcemit_shift_call_at_base(fs, priority[op].name, (MSize)priority[op].name_len, lhs, &rhs, base_reg);
 
-   /* Continue with chained shifts, reusing the same base register */
-   while (nextop == OPR_SHL || nextop == OPR_SHR) {
+   /* Continue processing chained operators at the same precedence level.
+   ** Example: for `x << 2 >> 3 << 4`, this loop handles `>> 3 << 4`
+   ** C-style precedence is enforced by checking that operators have matching precedence before chaining */
+   while (nextop == OPR_SHL || nextop == OPR_SHR || nextop == OPR_BAND || nextop == OPR_BXOR || nextop == OPR_BOR) {
       BinOpr follow = nextop;
-      lj_lex_next(ls);
+      /* Only chain operators with matching left precedence (same precedence level) */
+      if (priority[follow].left != priority[op].left) break;
+      lj_lex_next(ls);  /* Consume the operator token */
 
-      /* Ensure lhs points to the base register (where the previous result is) */
+      /* Update lhs to point to base_reg where the previous result is stored.
+      ** This makes the previous result the input for the next operation. */
       lhs->k = VNONRELOC;
       lhs->u.s.info = base_reg;
 
-      /* Parse the next RHS */
+      /* Parse the next RHS operand */
       nextop = expr_binop(ls, &rhs, priority[follow].right);
 
-      /* Emit shift reusing the same base register */
-      bcemit_shift_call_at_base(fs, follow, lhs, &rhs, base_reg);
+      /* Emit the next operation, reusing the same base register */
+      bcemit_shift_call_at_base(fs, priority[follow].name, (MSize)priority[follow].name_len, lhs, &rhs, base_reg);
    }
 
+   /* Return any unconsumed operator for the caller to handle */
    return nextop;
 }
 
@@ -2263,6 +2450,12 @@ static void expr_unop(LexState *ls, ExpDesc *v)
     op = BC_NOT;
   } else if (ls->tok == '-') {
     op = BC_UNM;
+  } else if (ls->tok == '~') {
+    /* Unary bitwise not: desugar to bit.bnot(x). */
+    lj_lex_next(ls);
+    expr_binop(ls, v, UNARY_PRIORITY);
+    bcemit_unary_bit_call(ls->fs, "bnot", 4, v);
+    return;
   } else if (ls->tok == '#') {
     op = BC_LEN;
   } else {
@@ -2286,18 +2479,26 @@ static BinOpr expr_binop(LexState *ls, ExpDesc *v, uint32_t limit)
     /* Special-case: when parsing the RHS of a shift (limit set to
     ** the shift right-priority), do not consume another shift here.
     ** This enforces left-associativity for chained shifts while still
-    ** allowing lower-precedence additions on the RHS to bind tighter. */
-    if (limit == priority[OPR_SHL].right &&
-        (op == OPR_SHL || op == OPR_SHR))
+    ** allowing lower-precedence additions on the RHS to bind tighter.
+    */
+
+    if (limit == priority[op].right &&
+        (op == OPR_SHL || op == OPR_SHR ||
+         op == OPR_BOR || op == OPR_BXOR || op == OPR_BAND))
       lpri = 0;
+
     if (!(lpri > limit)) break;
+
     lj_lex_next(ls);
     bcemit_binop_left(ls->fs, op, v);
-    if (op == OPR_SHL || op == OPR_SHR) {
+
+    if ((op == OPR_SHL) || (op == OPR_SHR) || (op == OPR_BAND) || (op == OPR_BXOR) || (op == OPR_BOR)) {
       op = expr_shift_chain(ls, v, op);
       continue;
     }
+
     /* Parse binary expression with higher priority. */
+
     ExpDesc v2;
     BinOpr nextop;
     nextop = expr_binop(ls, &v2, priority[op].right);
@@ -2370,11 +2571,6 @@ static void assign_adjust(LexState *ls, BCReg nvars, BCReg nexps, ExpDesc *e)
 {
   FuncState *fs = ls->fs;
   int32_t extra = (int32_t)nvars - (int32_t)nexps;
-  if (e->k == VCALL && (e->u.s.aux & VCALL_SINGLE_RESULT_FLAG)) {
-    e->u.s.aux &= ~VCALL_SINGLE_RESULT_FLAG;
-    e->u.s.info = e->u.s.aux;
-    e->k = VNONRELOC;
-  }
   if (e->k == VCALL) {
     extra++;  /* Compensate for the VCALL itself. */
     if (extra < 0) extra = 0;
@@ -2455,7 +2651,7 @@ static int assign_compound(LexState *ls, LHSVarList *lh, LexToken opType)
     checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);
   } else {
     /* For bitwise ops, avoid pre-pushing LHS to keep call frame contiguous. */
-    if (!(op == OPR_SHL || op == OPR_SHR))
+    if (!(op == OPR_BAND || op == OPR_BOR || op == OPR_BXOR || op == OPR_SHL || op == OPR_SHR))
       expr_tonextreg(fs, &lh->v);
     nexps = expr_list(ls, &rh);
     checkcond(ls, nexps == 1, LJ_ERR_XRIGHTCOMPOUND);

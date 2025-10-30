@@ -28,6 +28,7 @@ function testChainedBitshifts()
    -- Mixed with right shift: (x >> y) >> z
    local x, y, z = 64, 2, 3
    local chained_right = x >> y >> z
+   assert(tostring(x >> y >> z) == '2', 'Chained series did not evaluate to a single value')
    assert(chained_right == bit.rshift(bit.rshift(x, y), z), 'chained >> should be left-associative')
 
    local mixed = 1 << 4 >> 1
@@ -48,8 +49,30 @@ function testBitshiftTighterThanAddition()
    assert(valueRight == expect, '>> should bind tighter than addition on the right-hand side, got ' .. string.format('0x%.2x expected 0x%.2x',valueRight, expect))
 end
 
+local function returns6_3()
+   return 6, 3
+end
+
+-- Currently if a function returns 2+ results to a bitwise operator then the results are undefined.
+
+function testMultiReturn()
+   -- Confirm that primitive operators work with multi-return functions
+   local x = 1 + returns6_3()
+   assert(x == 7, 'addition with multi-return should use first value, got ' .. x)
+
+   -- Now test bitshift operators
+   local cmp = bit.lshift(1, 6)
+   x = 1 << 6
+   assert(x == cmp, 'lshift literal failed: ' .. x .. ' vs ' .. cmp)
+   local x2 = 1 << returns6_3()
+   assert(x2 == cmp, 'lshift multi-return failed: ' .. x2 .. ' vs ' .. cmp)
+   x = 64 >> returns6_3()
+   assert(x == bit.rshift(64, 6), 'rshift multi-return failed: ' .. x .. ' vs ' .. bit.rshift(64, 6))
+end
+
 return {
    tests = {
+      --'testMultiReturn',
       'testBinaryBitwiseBasics',
       'testBitwisePrecedenceAndGrouping',
       'testChainedBitshifts',

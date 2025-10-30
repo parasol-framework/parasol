@@ -81,6 +81,41 @@ before diving into changes.
 - This pattern ensures chained operations don't expose multi-value semantics
   to the assignment machinery.
 
+### Preventing Orphaned Registers in Chained Operations
+When implementing operators that can chain across precedence boundaries (e.g.,
+operators with C-style precedence), be careful to avoid orphaning intermediate
+results on the register stack, which manifests as expressions returning multiple
+values instead of one.
+
+**The Problem Pattern:**
+1. First operation completes, stores result in register N, sets `freereg = N+1`
+2. Control returns to the expression parser to handle the next operator
+3. Parser allocates a NEW base register (often `freereg`) for the next operation
+4. Register N is left orphaned on the stack, becoming an extra return value
+
+**The Solution:**
+Before allocating a base register for an operation, check if the LHS operand
+(which may be the previous operation's result) is already at the top of the
+stack. The check pattern is:
+```c
+if (lhs->k == VNONRELOC && lhs->u.s.info >= fs->nactvar &&
+    lhs->u.s.info + 1 == fs->freereg) {
+   // LHS is at the top - reuse its register to avoid orphaning
+   base_reg = lhs->u.s.info;
+}
+```
+
+This commonly occurs when chaining across precedence levels where the parser
+returns control between operations rather than handling the entire chain in
+one function call.
+
+**Debugging Orphaned Registers:**
+- Symptom: Expressions return multiple values when they should return one
+- Use printf debugging to trace `lhs->k`, `lhs->u.s.info`, `freereg`, and
+  `nactvar` through operation sequences
+- Check that `fs->freereg` is correctly adjusted after each operation completes
+- Verify that base register reuse logic considers all stack-top scenarios
+
 ## Miscellaneous Gotchas
 - Check that any new compile-time constants or flags (e.g. `#define`s) do
   not collide with upstream naming; we will eventually rebase to newer
