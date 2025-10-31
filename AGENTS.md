@@ -88,9 +88,17 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 - The Fluid object interface is case sensitive.  Object fields are accessed as lower snake-case names, e.g. `netlookup.hostName`
 - Fluid scripts are executed with the `parasol` executable, which has a dependency on the project being built and installed.
 
+#### Fluid Features Additional to Lua
+
+- Equal operators: `is`
+- Compound operators: `+=`, `-=`, `*=`, `/=`, `%=` on numeric values
+- `..=` for string concatenation
+- Postfix operators: `++`
+- C-style bitwise operators: `&`, `|`, `~`, `<<`, `>>`
+
 #### Fluid Script Execution Model
 
-**CRITICAL: Fluid scripts execute top-to-bottom with NO entry point function**
+- Fluid scripts execute top-to-bottom with NO entry point function
 - Always study existing `.fluid` files (like `tools/docgen.fluid`, `examples/*.fluid`) to understand patterns
 - API documentation in `docs/xml/modules` and `docs/xml/modules/classes` can be utilised to understand class and module interfaces in detail.
 
