@@ -1,7 +1,5 @@
 -- Extended documentation parsing functionality; included by idl-c
 
-   require 'common'
-
 ----------------------------------------------------------------------------------------------------------------------
 
 function ignoreAction(actionID)
@@ -26,6 +24,8 @@ function setAction(Action, Options)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
+
+loadActions()
 
 setAction('Activate', {
    comment   = 'Performs the native action of the object.',
@@ -362,9 +362,9 @@ function saveDocuments()
 
    if (glClasses != nil) then
       for className, cl in pairs(glClasses) do
-         verbose('Processing documentation for class ' .. nz(className,'NIL'))
+         verbose('Processing documentation for class ' .. tostring(className))
 
-         if (cl.meta) then
+         if cl.meta then
             local status, err = pcall(function()
                local out = docClass(cl)
                out = out .. docTypes(cl.references)
@@ -516,7 +516,7 @@ function substituteReferences(String, Class)
    -- Substitute struct insertion requests
 
    String = String:gsub('!([A-Z]%w*)([,\n%s])', function(Lookup, Whitespace)
-      if (glStructures[Lookup]) then
+      if glStructures[Lookup] then
          if (glStructures[Lookup].restrict == 'c') then return Lookup .. Whitespace end
 
          if Class then Class.references['STRUCT:' .. Lookup] = 1 end

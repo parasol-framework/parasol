@@ -104,7 +104,7 @@ function module(Options, Function)
          local name
          name, glModule.comment, glModule.description = mod_desc:match('\n(%w+):%s+(.-)\n\n(.+)')
          if not name then
-            error('The -MODULE- header for ' .. nz(glModule.name,'NIL') .. ' is incorrectly defined.')
+            error('The -MODULE- header for ' .. tostring(glModule.name) .. ' is incorrectly defined.')
          elseif (name:lower() != glModule.name:lower()) then
             error("The name specified in the -MODULE- header '" .. name .. "' does not match the name specified in the module() call '" .. glModule.name .. "'")
          end
@@ -152,7 +152,7 @@ end
 --  )
 
 function flags(Prefix, Options, ...)
-   verbose('Processing ' .. nz(Prefix,'NIL') .. ' flags.')
+   verbose('Processing ' .. tostring(Prefix) .. ' flags.')
    if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
@@ -316,7 +316,7 @@ end
 -- FDL function
 
 function const(Prefix, Options, ...)
-   verbose('Processing ' .. nz(Prefix,'NIL') .. ' constants.')
+   verbose('Processing ' .. tostring(Prefix) .. ' constants.')
    if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
@@ -399,7 +399,7 @@ end
 -- FDL function
 
 function enum(Prefix, Options, ...)
-   verbose('Processing ' .. nz(Prefix,'NIL') .. ' enum.')
+   verbose('Processing ' .. tostring(Prefix) .. ' enum.')
    if (glCustomTypes[Prefix]) then print('WARN: A "' .. Prefix .. '" constant already exists.') end
 
    Options = checkOptions(Options)
@@ -534,7 +534,7 @@ end
 -- FDL function
 
 function struct(Name, Options, Def, Append)
-   verbose('Processing struct ' .. nz(Name,'NIL'))
+   verbose('Processing struct ' .. tostring(Name))
 
    local prevStruct = glCurrentStructure
    glCurrentStructure = Name
@@ -659,7 +659,7 @@ end
 -- Refer to outputClassHeader() for output of the class structure.
 
 function class(Name, Options, Spec, Private, Custom)
-   verbose('Processing class ' .. nz(Name,'NIL'))
+   verbose('Processing class ' .. tostring(Name))
 
    Options = checkOptions(Options)
 
@@ -999,7 +999,7 @@ end
 -- Register methods for a class.  This must be declared prior to the corresponding class() function call.
 
 function methods(ClassName, Prefix, Methods)
-   verbose('Processing methods for class ' .. nz(ClassName,'NIL'))
+   verbose('Processing methods for class ' .. tostring(ClassName))
 
    local class = registerClass(ClassName)
    class.methodPrefix = Prefix
