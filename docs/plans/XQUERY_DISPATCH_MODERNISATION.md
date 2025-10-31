@@ -24,9 +24,9 @@ The refactoring follows a **pragmatic hybrid approach** that:
 ## Progress Checklist
 
 - [ ] Phase 1: Centralised Dispatch Table
-  - [ ] Step 1.1: Create Handler Type Alias
-  - [ ] Step 1.2: Declare Handler Methods
-  - [ ] Step 1.3: Create Dispatch Table
+  - [x] Step 1.1: Create Handler Type Alias
+  - [x] Step 1.2: Declare Handler Methods
+  - [x] Step 1.3: Create Dispatch Table *(initial table added with high-impact node types; remaining entries will be populated as handlers are extracted)*
   - [ ] Step 1.4: Refactor evaluate_expression() to Use Dispatch Table
   - [ ] Step 1.5: Extract Inline Handlers
   - [ ] Step 1.6: Testing Strategy for Phase 1
