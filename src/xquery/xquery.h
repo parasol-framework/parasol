@@ -1107,6 +1107,8 @@ struct XPathContext {
    XPathContext() = default;
 };
 
+struct SequenceTypeInfo;
+
 class XPathEvaluator : public XPathErrorReporter {
    public:
 
@@ -1149,6 +1151,9 @@ class XPathEvaluator : public XPathErrorReporter {
    };
 
    using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
+
+   // Handler for a specific XQuery node type evaluation
+   using NodeEvaluationHandler = XPathVal (XPathEvaluator::*)(const XPathNode *, uint32_t);
 
    std::vector<XPathContext> context_stack;
 
@@ -1199,6 +1204,30 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   // Expression node type handlers
+   XPathVal handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_number(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_literal(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_cast_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_treat_as_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_instance_of_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_castable_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_typeswitch_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_union_node(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_conditional(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_let_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_for_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_quantified_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_filter(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_path(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_unary_op(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_binary_op(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_expression_wrapper(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_variable_reference(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   std::optional<bool> matches_sequence_type(const XPathVal &Value, const SequenceTypeInfo &SequenceInfo,
+      const XPathNode *ContextNode);
 
    void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
       const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches);
