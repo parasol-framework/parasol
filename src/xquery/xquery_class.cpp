@@ -392,7 +392,7 @@ Use InspectFunctions to retrieve metadata about user-defined or standard XQuery 
 compiled XQuery object.  The function name can include wildcards to match multiple functions.
 
 The ResultFlags parameter controls which pieces of information are included in the output XML document.  If
-not flags are specified, all available information will be returned.
+no flags are specified, all available information is returned.
 
 The structure of the returned XML document is as follows, with each matching function returned in series:
 
