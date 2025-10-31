@@ -91,7 +91,8 @@ Parasol uses Interface Definition Language (IDL) files with `.fdl` extension to 
 
 #### Fluid Features Additional to Lua
 
-- Equal operators: `is`
+- `is` equivalent to `==`
+- `continue` statement in loops
 - Compound operators: `+=`, `-=`, `*=`, `/=`, `%=` on numeric values
 - `..=` for string concatenation
 - Postfix operators: `++`
