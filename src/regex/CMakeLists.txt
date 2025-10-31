@@ -19,7 +19,11 @@ target_sources (${MOD} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/${MOD}.cpp")
 
 add_executable (test_regex_match "tests/test_match.cpp")
 target_link_libraries (test_regex_match PRIVATE ${INIT_LINK})
-set_target_properties (test_regex_match PROPERTIES CXX_STANDARD 20 LINK_FLAGS_RELEASE "-s")
+set_target_properties (test_regex_match PROPERTIES CXX_STANDARD 20)
+
+if (NOT MSVC)
+   target_link_options (test_regex_match PRIVATE $<$<CONFIG:Release>:-s>)
+endif ()
 
 flute_test (regex_captures "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_captures.fluid")
 flute_test (regex_basics "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_basics.fluid")
