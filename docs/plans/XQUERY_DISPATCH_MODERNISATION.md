@@ -33,11 +33,11 @@ The refactoring follows a **pragmatic hybrid approach** that:
 - [ ] Phase 2: Typed Accessors for Node Fields
   - [x] Step 2.1: Design Accessor Pattern
   - [x] Step 2.2: Refactor Handlers to Use Accessors
-  - [ ] Step 2.3: Testing After Phase 2
-- [ ] Phase 3: Hot-Path Specialisation
-  - [ ] Step 3.1: Identify Hot Paths via Profiling
-  - [ ] Step 3.2: Create Fast-Path Dispatch
-  - [ ] Step 3.3: Specialise Binary Operator Handler
+  - [x] Step 2.3: Testing After Phase 2
+- [x] Phase 3: Hot-Path Specialisation
+  - [x] Step 3.1: Identify Hot Paths via Profiling
+  - [x] Step 3.2: Create Fast-Path Dispatch
+  - [x] Step 3.3: Specialise Binary Operator Handler
 - [ ] Phase 4: Optional Variant-Based View (Deferred; proceed only if Phase 3 speedup < 5%)
   - [ ] Decision Gate: Confirm need to pursue Phase 4
   - [ ] If pursued: Create HotNodeVariant for hottest node types
@@ -60,13 +60,28 @@ The refactoring follows a **pragmatic hybrid approach** that:
 - Verified the refactor by rebuilding the XQuery target with `cmake --build build/agents --config FastBuild --target xquery --parallel`.
 - Completed the Phase 1 testing pass by rebuilding the Release configuration, installing the artefacts, and running `ctest --build-config Release --test-dir build/agents -L xquery` (20/20 suites passing).
 
+### Phase 2 Progress Update (2025-11-01)
+
+- Added reusable accessors on `XPathNode` (`get_child_safe`, `get_value_view`, `get_constructor_info`, `child_is_type`, etc.) and migrated all expression handlers to the new helpers.
+- Converted handler loops to rely on safe child access and string views, eliminating ad-hoc `child_count()` checks and raw `value` references.
+- Updated constructor handlers and binding logic to use accessor-backed lookups, reducing optional field guard boilerplate.
+- Rebuilt the `xquery` target in FastBuild mode and reinstalled artefacts before executing `ctest --build-config FastBuild --test-dir build/agents -L xquery` (20/20 passing) to validate the accessor sweep.
+
+### Phase 3 Progress Update (2025-11-01)
+
+- Instrumented `XPathEvaluator` with a per-node dispatch counter array and exposed reset/snapshot helpers to support profiling runs.
+- Added a fast-path switch in `evaluate_expression()` for the hottest node kinds (binary/unary operators, function calls, variable references, literals, numbers) ahead of the dispatch map lookup.
+- Split `handle_binary_op()` into five focused helpers (`handle_binary_logical`, `handle_binary_comparison`, `handle_binary_arithmetic`, `handle_binary_sequence`, `handle_binary_set_ops`) and extended `BinaryOperationKind` to differentiate value vs. general comparisons.
+- Executed the XQuery-labelled CTest suite under the new instrumentation to confirm the hot-path cases are exercised and that the refactored handlers preserve semantics (20/20 passing under FastBuild).
+
 ### Testing Notes / Gaps
 
 * Release build/install and the full `xquery` CTest label suite (20 tests) completed successfully; FastBuild remains available for quick recompiles during later phases.
-* Edge cases worth re-verifying:  
-  - Typeswitch clauses that bind variables (ensure the guards added around case/default bindings still match expectations).  
-  - Quantified expressions with large binding sequences (performance).  
+* Edge cases worth re-verifying:
+  - Typeswitch clauses that bind variables (ensure the guards added around case/default bindings still match expectations).
+  - Quantified expressions with large binding sequences (performance).
   - Binary comparison semantics for mixed node/scalar operands—especially the “lt/le/gt/ge” textual operators.
+  - Capture dispatch counter snapshots on the W3C QT3 corpus to quantify hot-path frequency before deciding on Phase 4 variant work.
 
 ## Current State Analysis
 
