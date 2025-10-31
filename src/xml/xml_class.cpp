@@ -2013,14 +2013,6 @@ static ERR SET_Source(extXML *Self, OBJECTPTR Value)
 /*********************************************************************************************************************
 
 -FIELD-
-Start: Set a starting cursor to affect the starting point for some XML operations.
-
-When using any XML function that creates an XML string (e.g. SaveToObject), the XML object will include the entire XML
-tree by default.  Defining the Start value will restrict processing to a specific tag and its children.
-
-The Start field currently affects the #SaveToObject() action and the #Statement field.
-
--FIELD-
 Statement: XML data is processed through this field.
 
 Set the Statement field to parse an XML formatted data string through the object.  If this field is set after
@@ -2029,8 +2021,7 @@ initialisation then the XML object will clear any existing data first.
 Be aware that setting this field with an invalid statement will result in an empty XML object.
 
 Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the
-statement unless a predefined starting position is set by the #Start field.  The string result is an allocation that
-must be freed.
+statement.  The string result is an allocation that must be freed.
 
 If the statement is an XQuery expression with base-uri references, the #Path field should be set to establish
 the base path for relative references.
