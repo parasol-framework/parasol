@@ -362,7 +362,7 @@ function saveDocuments()
 
    if (glClasses != nil) then
       for className, cl in pairs(glClasses) do
-         if (glFeedback == 'verbose') then print('Processing documentation for class ' .. nz(className,'NIL')) end
+         verbose('Processing documentation for class ' .. nz(className,'NIL'))
 
          if (cl.meta) then
             local status, err = pcall(function()
@@ -1063,10 +1063,10 @@ function docStructures(References)
    for _, struct in ipairs(sortedStructs) do
       if nz(struct.restrict) then
          -- Don't output restricted structures.
-         --if (glFeedback == 'verbose') then print(struct.name .. ' is restricted.') end
+         --verbose(struct.name .. ' is restricted.')
       elseif References and (References['STRUCT:' .. struct.name] == nil) then
          -- Don't output unreferenced structures.
-         --if (glFeedback == 'verbose') then print(struct.name .. ' is unreferenced.') end
+         --verbose(struct.name .. ' is unreferenced.')
       else
          local comment = ''
          local typeName = ''

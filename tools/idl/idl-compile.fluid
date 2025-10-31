@@ -7,30 +7,13 @@
 -- Example: parasol sdk:scripts/idl-fluid.fluid src=sdk:core/modules/core/core.fdl
 
    require 'common'
+   require './include/utils'
 
    glSelf = obj.find('self')
    glPath = glSelf.workingPath
 
-----------------------------------------------------------------------------------------------------------------------
-
 glOutput = { }
-
-function output(String)
-   table.insert(glOutput, nz(String, ''))
-end
-
-----------------------------------------------------------------------------------------------------------------------
-
-function checkOptions(Options)
-   if (type(Options) != 'table') then
-      if (type(Options) != 'nil') then
-         error("Invalid option type '" .. type(Options) .. "', expected table.")
-      else
-         return { }
-      end
-   end
-   return Options
-end
+glHeader = { }
 
 ----------------------------------------------------------------------------------------------------------------------
 
@@ -41,7 +24,6 @@ function functionNames(Prefix, ...) end
 function methods(ClassName, Prefix, Methods) end
 function c_insert(Raw) end
 function privateNames(List) end
-function priority(Value) end
 
 ----------------------------------------------------------------------------------------------------------------------
 -- FDL function
@@ -75,7 +57,7 @@ function flags(Prefix, Options, ...)
 
    if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
    if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing flags ' .. Prefix) end
+   verbose('Processing flags ' .. Prefix)
 
    local list = { }
    local f = 0
@@ -131,7 +113,7 @@ function enum(Prefix, Options, ...)
 
    if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
    if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing enum ' .. Prefix) end
+   verbose('Processing enum ' .. Prefix)
 
    local list = { }
    local inc = nz(Options.start, 0)
@@ -163,7 +145,7 @@ function const(Prefix, Options, ...)
 
    if (nz(Options.restrict)) or (glRestrict) then return end -- Restricted definitions are never exported
    if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing constants ' .. Prefix) end
+   verbose('Processing constants ' .. Prefix)
 
    local list = { }
    for k, const_def in ipairs({...}) do
@@ -465,7 +447,7 @@ function struct(Name, Options, Def, Append)
    Options = checkOptions(Options)
    if nz(Options.restrict) or (glRestrict) then return end -- Restricted structures are never exported
    if nz(Options.module) and (Options.module:lower() != glModuleName:lower()) then return end
-   if (glFeedback == 'verbose') then print('Processing structure ' .. Name) end
+   verbose('Processing structure ' .. Name)
    local struct = {
       name    = Name,
       version = Options.version,
