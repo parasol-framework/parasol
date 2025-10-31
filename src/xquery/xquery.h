@@ -401,7 +401,7 @@ struct XPathNode {
    }
 
    [[nodiscard]] inline bool has_attribute_value_parts() const { return not attribute_value_parts.empty(); }
-   [[nodiscard]] inline std::string_view get_value_view() const { return std::string_view(value); }
+   [[nodiscard]] inline std::string_view get_value_view() const { return value; }
 
 
    inline void set_order_spec_options(XPathOrderSpecOptions Options) {
