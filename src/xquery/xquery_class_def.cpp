@@ -16,6 +16,17 @@ static const struct FieldDef clXQueryXQF[] = {
    { nullptr, 0 }
 };
 
+static const struct FieldDef clXQueryXPVT[] = {
+   { "Nodeset", 0x00000000 },
+   { "Boolean", 0x00000001 },
+   { "Number", 0x00000002 },
+   { "String", 0x00000003 },
+   { "Date", 0x00000004 },
+   { "Time", 0x00000005 },
+   { "Datetime", 0x00000006 },
+   { nullptr, 0 }
+};
+
 FDEF maEvaluate[] = { { "XML", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maSearch[] = { { "XML", FD_OBJECTPTR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maRegisterFunction[] = { { "FunctionName", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
