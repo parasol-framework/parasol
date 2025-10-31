@@ -26,6 +26,16 @@
       <const name="USER_DEFINED">Include user-defined status in the inspection result.</const>
     </constants>
 
+    <constants lookup="XPVT" comment="Type descriptors for XPathValue">
+      <const name="Boolean"/>
+      <const name="Date"/>
+      <const name="DateTime"/>
+      <const name="NodeSet"/>
+      <const name="Number"/>
+      <const name="String"/>
+      <const name="Time"/>
+    </constants>
+
     <constants lookup="XQF" comment="Flags indicating the features of a compiled XQuery expression.">
       <const name="BASE_URI_DECLARED">Static base URI declared.</const>
       <const name="BOUNDARY_PRESERVE">Boundary-space preserve mode.</const>
