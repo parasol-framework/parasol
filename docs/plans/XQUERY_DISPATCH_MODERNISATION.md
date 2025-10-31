@@ -23,16 +23,16 @@ The refactoring follows a **pragmatic hybrid approach** that:
 
 ## Progress Checklist
 
-- [ ] Phase 1: Centralised Dispatch Table
+- [x] Phase 1: Centralised Dispatch Table
   - [x] Step 1.1: Create Handler Type Alias
   - [x] Step 1.2: Declare Handler Methods
   - [x] Step 1.3: Create Dispatch Table *(initial table added with high-impact node types; remaining entries will be populated as handlers are extracted)*
-  - [ ] Step 1.4: Refactor evaluate_expression() to Use Dispatch Table
-  - [ ] Step 1.5: Extract Inline Handlers
-  - [ ] Step 1.6: Testing Strategy for Phase 1
+  - [x] Step 1.4: Refactor evaluate_expression() to Use Dispatch Table
+  - [x] Step 1.5: Extract Inline Handlers
+  - [x] Step 1.6: Testing Strategy for Phase 1
 - [ ] Phase 2: Typed Accessors for Node Fields
-  - [ ] Step 2.1: Design Accessor Pattern
-  - [ ] Step 2.2: Refactor Handlers to Use Accessors
+  - [x] Step 2.1: Design Accessor Pattern
+  - [x] Step 2.2: Refactor Handlers to Use Accessors
   - [ ] Step 2.3: Testing After Phase 2
 - [ ] Phase 3: Hot-Path Specialisation
   - [ ] Step 3.1: Identify Hot Paths via Profiling
@@ -52,6 +52,21 @@ The refactoring follows a **pragmatic hybrid approach** that:
   - [ ] Step 5.4: Update Optimisation Plan
 
 ---
+
+### Phase 1 Progress Update (2025-10-31)
+
+- `evaluate_expression()` now dispatches exclusively via the `NODE_HANDLERS` map, logging a trace entry when encountering an unsupported node type instead of falling back to the legacy switch/if chain.
+- Extracted dedicated handlers for every previously inline expression (type checks, quantified/filter/path nodes, and the binary operator suite), reusing the existing helper utilities (`evaluate_quantified_binding_recursive`, `compare_xpath_relational`, `evaluate_predicate`, constructor evaluators).
+- Verified the refactor by rebuilding the XQuery target with `cmake --build build/agents --config FastBuild --target xquery --parallel`.
+- Completed the Phase 1 testing pass by rebuilding the Release configuration, installing the artefacts, and running `ctest --build-config Release --test-dir build/agents -L xquery` (20/20 suites passing).
+
+### Testing Notes / Gaps
+
+* Release build/install and the full `xquery` CTest label suite (20 tests) completed successfully; FastBuild remains available for quick recompiles during later phases.
+* Edge cases worth re-verifying:  
+  - Typeswitch clauses that bind variables (ensure the guards added around case/default bindings still match expectations).  
+  - Quantified expressions with large binding sequences (performance).  
+  - Binary comparison semantics for mixed node/scalar operands—especially the “lt/le/gt/ge” textual operators.
 
 ## Current State Analysis
 
@@ -449,6 +464,7 @@ if (const auto *info = Node->get_constructor_info()) {
 - Verify no semantic changes
 - Check compiler warnings for unused accessor methods
 - Benchmark selected handlers to confirm no performance regression
+- ✅ Built `xquery` target with FastBuild configuration to validate compilation; full regression suite still pending.
 
 ---
 

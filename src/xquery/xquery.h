@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <string_view>
 #include <parasol/modules/xquery.h>
 #include <array>
 #include <unordered_set>
@@ -369,10 +370,12 @@ struct XPathNode {
    XPathNode(XQueryNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
    inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
-   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
+   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return get_child_safe(index); }
+   [[nodiscard]] inline XPathNode * get_child_safe(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
    [[nodiscard]] inline size_t child_count() const { return children.size(); }
    inline void set_constructor_info(XPathConstructorInfo info) { constructor_info = std::move(info); }
    [[nodiscard]] inline bool has_constructor_info() const { return constructor_info.has_value(); }
+   [[nodiscard]] inline const XPathConstructorInfo * get_constructor_info() const { return constructor_info ? &(*constructor_info) : nullptr; }
    inline void set_name_expression(std::unique_ptr<XPathNode> expr) { name_expression = std::move(expr); }
    [[nodiscard]] inline XPathNode * get_name_expression() const { return name_expression.get(); }
    [[nodiscard]] inline bool has_name_expression() const { return name_expression != nullptr; }
@@ -397,6 +400,9 @@ struct XPathNode {
       attribute_value_parts = std::move(parts);
    }
 
+   [[nodiscard]] inline bool has_attribute_value_parts() const { return not attribute_value_parts.empty(); }
+   [[nodiscard]] inline std::string_view get_value_view() const { return value; }
+
 
    inline void set_order_spec_options(XPathOrderSpecOptions Options) {
       order_spec_options = std::move(Options);
@@ -408,6 +414,11 @@ struct XPathNode {
 
    [[nodiscard]] inline const XPathOrderSpecOptions * get_order_spec_options() const {
       return order_spec_options ? &(*order_spec_options) : nullptr;
+   }
+
+   [[nodiscard]] inline bool child_is_type(size_t index, XQueryNodeType Type) const {
+      const XPathNode *child = get_child_safe(index);
+      return child and (child->type IS Type);
    }
 };
 
