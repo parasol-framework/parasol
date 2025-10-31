@@ -2233,8 +2233,8 @@ XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t Current
    if (expression_unsupported) return XPathVal();
 
    auto operation = Node->get_value_view();
-   if (operation IS std::string_view("-")) return XPathVal(-operand.to_number());
-   if (operation IS std::string_view("not")) return XPathVal(not operand.to_boolean());
+   if (operation IS "-") return XPathVal(-operand.to_number());
+   if (operation IS "not") return XPathVal(not operand.to_boolean());
 
    expression_unsupported = true;
    return XPathVal();
