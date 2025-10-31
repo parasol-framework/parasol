@@ -21,14 +21,18 @@ enum class BinaryOperationKind {
    INTERSECT,
    EXCEPT,
    COMMA,
-   EQ,
-   NE,
-   EQ_WORD,
-   NE_WORD,
-   LT,
-   LE,
-   GT,
-   GE,
+   GENERAL_EQ,
+   GENERAL_NE,
+   GENERAL_LT,
+   GENERAL_LE,
+   GENERAL_GT,
+   GENERAL_GE,
+   VALUE_EQ,
+   VALUE_NE,
+   VALUE_LT,
+   VALUE_LE,
+   VALUE_GT,
+   VALUE_GE,
    ADD,
    SUB,
    MUL,
@@ -1171,6 +1175,11 @@ class XPathEvaluator : public XPathErrorReporter {
    // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
 
    ankerl::unordered_dense::map<std::string, std::string> text_cache;
+   std::array<uint64_t, 64> node_dispatch_counters{};
+
+   void reset_dispatch_metrics();
+   [[nodiscard]] const std::array<uint64_t, 64> &dispatch_metrics() const;
+   void record_dispatch_node(XQueryNodeType Type);
 
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    extXML * resolve_document_for_node(XMLTag *Node) const;
@@ -1234,6 +1243,16 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal handle_path(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_unary_op(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_binary_op(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_binary_logical(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_comparison(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_arithmetic(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_sequence(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_set_ops(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
    XPathVal handle_expression_wrapper(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_variable_reference(const XPathNode *Node, uint32_t CurrentPrefix);
 
