@@ -1,0 +1,12 @@
+-- Unit tests for IDL types and parsing (TBA)
+
+   include 'core'
+   include 'xml'
+
+   require 'common'
+   require './include/utils'
+   require './include/types'
+
+   glSelf = obj.find('self')
+   glPath = glSelf.workingPath
+

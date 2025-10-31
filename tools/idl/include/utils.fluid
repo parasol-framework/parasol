@@ -1,0 +1,59 @@
+-- Universal utility functions
+
+----------------------------------------------------------------------------------------------------------------------
+-- Print a message to stdout if verbose mode is enabled
+
+function verbose(String)
+   if glFeedback == 'verbose' then
+      print(String)
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Add a line to the output. If the string ends with a newline character, preserve it, otherwise trim trailing spaces.
+
+function output(String)
+   if nz(String) then
+      if (String:sub(-1) == '\n') then
+         table.insert(glOutput, String)
+      else
+         table.insert(glOutput, String:rtrim())
+      end
+   else
+      table.insert(glOutput,'')
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Verify that the Options parameter is a table or nil, otherwise throw an error.
+
+function checkOptions(Options)
+   if (type(Options) != 'table') then
+      if (type(Options) != 'nil') then
+         error('Invalid option type "' .. type(Options) .. '", expected table.')
+      else
+         return { }
+      end
+   end
+   return Options
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Add a line to the header with high priority. If Input is a function, execute it and add its output lines to the 
+-- header.
+
+function priority(Input)
+   if (type(Input) == 'function') then
+      local saveOutput = glOutput
+      glOutput = { }
+      Input()
+      for k,v in ipairs(glOutput) do
+         table.insert(glHeader, v)
+      end
+      glOutput = saveOutput
+   elseif (type(Input) == 'string') and nz(Input) then
+      table.insert(glHeader, Input:rtrim())
+   else
+      table.insert(glHeader,'')
+   end
+end
