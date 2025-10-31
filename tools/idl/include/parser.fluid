@@ -99,7 +99,23 @@ function parseField(class, extract)
       end
       f.description = description
    elseif (class.meta != nil) then
-      print("Field '" .. class.name .. "." .. nz(name,'NIL') .. "' is not defined in the FDL or compiled class spec.")
+      print("Field '" .. class.name .. "." .. tostring(name) .. "' is not defined in the FDL or compiled class spec.")
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a parameter string such as "int width: The width of the image"
+
+function parseParameterString(Parameter)
+   local param = { }
+   param.comment = Parameter:match('^.+:%s-(.+)$')
+   if nz(param.comment) then Parameter = Parameter:match('^(.+):%s-.+$') end
+   param.type, param.name = Parameter:match('^%s*(.+)%s+([^%s]+)%s-$')
+   if (param.type != nil) then
+      param.type = param.type:trim()
+      param.name = param.name:trim()
+      param.comment = param.comment:trim()
+      return param   
    end
 end
 
@@ -132,7 +148,7 @@ function parseMethod(class, extract)
       method = class.lookupMethods[name]
       if (method == nil) then error("Method '" .. name .. "' is not registered in the FDL.") end
    else
-      error("Methods need to be pre-defined for class '" .. nz(class.name,"NIL") .. "' with methods()")
+      error("Methods need to be pre-defined for class '" .. tostring(class.name) .. "' with methods()")
    end
 
    method.params = { }
@@ -165,14 +181,8 @@ function parseMethod(class, extract)
 
    if nz(input) then
       for line, content in ipairs(input:split('\n')) do
-         local param = { }
-         param.comment = content:match('^.+:%s-(.+)$')
-         if nz(param.comment) then content = content:match('^(.+):%s-.+$') end
-         param.type, param.name = content:match('^%s*(.+)%s+([^%s]+)%s-$')
-         if (param.type != nil) then
-            param.type = param.type:trim()
-            param.name = param.name:trim()
-            param.comment = param.comment:trim()
+         local param = parseParameterString(content)
+         if param then
             cType(param, name)
             table.insert(method.params, param)
          elseif nz(content:trim()) then
@@ -215,7 +225,7 @@ function parseClassFields(class, ClientSpec)
                f.flags  = def.flags
                f.access = nz(def.access, def.access)
                f.private = nz(f.private, def.private)
-               if (f.type == nil) then f.type = nz(def.type,'NIL') end
+               if (f.type == nil) then f.type = tostring(def.type) end
             else
                def.virtual = true
                def.fullType = glTypes.void -- Dummy
@@ -263,7 +273,7 @@ function parseClassFields(class, ClientSpec)
             cdef = cdef .. outputLookup(class.name .. f.name, f.ref.list)
          end
 
-         if not nz(f.fullType) then error('The fullType is not defined for field ' .. nz(f.name,'NIL')) end
+         if not nz(f.fullType) then error('The fullType is not defined for field ' .. tostring(f.name)) end
 
          fdef = fdef .. "   { \"" .. f.name .. "\", " .. f.fullType.fd .. ", 0, nullptr, nullptr },\n"
       end

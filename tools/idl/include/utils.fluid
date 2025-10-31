@@ -39,7 +39,7 @@ function checkOptions(Options)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
--- Add a line to the header with high priority. If Input is a function, execute it and add its output lines to the 
+-- Add a line to the header with high priority. If Input is a function, execute it and add its output lines to the
 -- header.
 
 function priority(Input)
@@ -56,4 +56,179 @@ function priority(Input)
    else
       table.insert(glHeader,'')
    end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Convert a string such as 'SHOW_IMAGES' to 'ShowImages'
+
+function shortName(Name)
+   local result = ""
+   for _, n in ipairs(Name:split("_")) do
+      if (n=="XY") or (n=="SSL") or (n=="HTML") or (n=="CDATA") or (n=="2D") or (n =="3D") or (n=="DGA") or
+         (n=="DPMS") or (n=="GTF") or (n=="SRGB") or (n=="RGB") or (n=="HSV") or (n=="CX") or (n=="CY") or
+         (n=="FX") or (n=="FY") then
+         result = result .. n
+      else
+         local cap, word = n:match("^(.)(.+)$")
+         if (cap == nil) or (word == nil) then
+            result = result .. n:upper()
+         else
+            result = result .. cap:upper() .. word:lower()
+         end
+      end
+   end
+   return result
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Scan Class.fields for a specific FieldName.
+
+function findClassField(Class, FieldName)
+   if (Class.fields != nil) then
+      for _, f in ipairs(Class.fields) do
+         if (f.name == FieldName) then
+            return f
+         end
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Use to ensure strict XML compliance, like
+--
+-- From: <something>content</>
+-- To:   <something>content</something>
+
+function cleanXMLString(str, caller)
+   if nz(str) then
+      if (str:find('[<>]')) then
+         str = '<ROOT>' .. str .. '</ROOT>'
+
+         if cleanXMLString_xml == nil then
+            cleanXMLString_xml, err = obj.new('xml', { statement=str, flags=XMF_INCLUDE_WHITESPACE })
+         end
+
+         if (cleanXMLString_xml != nil) then
+            cleanXMLString_xml.statement = str
+            local err, clean_str = cleanXMLString_xml.mtSerialise(0, XMF_INCLUDE_SIBLINGS)
+            if (clean_str) then str = clean_str:match('<ROOT>(.-)</ROOT>'):trim() end
+         else
+            error('Failed to parse XML for ' .. nz(caller, 'undefined') .. '.')
+         end
+      end
+   else
+      str = ''
+   end
+   return str
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Register a class by name and return its table. If the class already exists, return the existing table.
+
+function registerClass(Name)
+   if not nz(Name) then error('No Name provided to registerClass()') end
+   if (glClasses == nil) then glClasses = { } end
+   if (glClasses[Name:lower()] == nil) then
+      glClasses[Name:lower()] = { name=Name:cap() }
+   end
+   return glClasses[Name:lower()]
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Extract information from a compiled class' field definition.
+
+function getMetaFieldDefinition(Field)
+   local fl = {
+      name  = Field.name,
+      flags = Field.flags
+   }
+
+   getFieldType(fl, Field.flags, Field.name, Field.arg)
+   fl.docType = fl.doc_type
+
+   if (bit.band(Field.flags, FD_SYNONYM) != 0) then
+      fl.synonym = true
+   end
+
+   if nz(Field.getField) then
+      fl.read = 'Get'
+      fl.get = Field.getField
+   elseif bit.band(Field.flags, FD_READ) != 0 then
+      fl.read = 'Read'
+   end
+
+   if nz(Field.setField) then
+      fl.write = 'Set'
+      fl.set = Field.setField
+   elseif bit.band(Field.flags, FD_WRITE) != 0 then
+      fl.write = 'Write'
+   elseif bit.band(Field.flags, FD_INIT) != 0 then
+      fl.write = 'Init'
+   end
+
+   if (nz(fl.read) and nz(fl.write)) then
+      fl.access = fl.read .. '/' .. fl.write
+   elseif nz(fl.read) then
+      fl.access = fl.read
+   elseif nz(fl.write) then
+      fl.access = fl.write
+   else
+      fl.access = 'Private'
+   end
+
+   if (bit.band(Field.flags, FD_SYSTEM) != 0) then
+      fl.access = 'Private'
+      fl.private = true
+   end
+
+   return fl
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Build a list of all available action names and their parameters.
+
+function loadActions()
+   if glActions then return end
+   verbose("Loading core actions...")
+   glActions = { }
+   for id, actions in ipairs(mSys.ActionList()) do
+      if nz(actions) and nz(actions.name) then
+         glActions[actions.name] = { name=actions.name, input=actions.args, hash=actions.hash, id=id-1 }
+      end
+   end
+end
+
+----------------------------------------------------------------------------------------------------------------------
+-- Resolve the location of the Parasol SDK and create an 'sdk:' volume.
+
+function resolveSDKPath(Path)
+   local sdk_path
+   local err = ERR_Failed
+   local search_list = { }
+   if not Path then
+      local search_path = 'CMakeLists.txt'
+      local limit = 5
+      while (err != ERR_Okay) and (limit > 0) do
+         table.insert(search_list, search_path)
+         err, sdk_path = mSys.ResolvePath(search_path)
+         search_path = '../' .. search_path
+         limit = limit - 1
+      end
+   else
+      table.insert(search_list, Path .. '/CMakeLists.txt')
+      err, sdk_path = mSys.ResolvePath(Path .. '/CMakeLists.txt')
+   end
+
+   if (err == ERR_Okay) then
+      sdk_path = sdk_path:match("(.+)CMakeLists%.txt")
+   else
+      local msg = ''
+      for _, path in ipairs(search_list) do
+         msg = msg .. path .. '\n'
+      end
+      print('Unable to find CMakeLists.txt after searching the following paths:\n' .. msg)
+      error('A path to the Parasol SDK could not be determined.')
+   end
+
+   mSys.SetVolume('sdk', sdk_path)
 end
