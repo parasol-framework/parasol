@@ -112,7 +112,7 @@ enum class XIF : uint32_t {
    RETURN_TYPE = 0x00000008,
    USER_DEFINED = 0x00000010,
    SIGNATURE = 0x00000020,
-   ALL = 0x00000040,
+   ALL = 0x0000003f,
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(XIF)
@@ -176,13 +176,13 @@ class objXQuery : public Object {
    template <class T> inline ERR setPath(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[9];
-      return field->WriteValue(target, field, 0x142607104, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
    template <class T> inline ERR setStatement(T && Value) noexcept {
       auto target = this;
       auto field = &this->Class->Dictionary[10];
-      return field->WriteValue(target, field, 0x142607104, to_cstring(Value), 1);
+      return field->WriteValue(target, field, 0x08800300, to_cstring(Value), 1);
    }
 
 };
