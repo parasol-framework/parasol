@@ -962,7 +962,7 @@ static const FieldArray clFields[] = {
    { "Path",         FDF_STRING|FDF_RW,        GET_Path, SET_Path },
    { "Result",       FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
    { "ResultString", FDF_STRING|FDF_R,         GET_ResultString },
-   { "ResultType",   FDF_INT|FDF_R,            GET_ResultType, nullptr, &clXQueryXPVT },
+   { "ResultType",   FDF_INT|FDF_LOOKUP|FDF_R, GET_ResultType, nullptr, &clXQueryXPVT },
    { "Statement",    FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
    { "Functions",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Functions },
    { "Variables",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Variables },
