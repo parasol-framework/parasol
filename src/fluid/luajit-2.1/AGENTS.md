@@ -27,7 +27,7 @@ before diving into changes.
   regress hosted scripts.
 - For quick manual checks, launch `parasol.exe` from `install/agents/` with
   `--no-crash-handler --gfx-driver=headless` so failures return exit codes.
-- **Critical**: For static builds, after modifying LuaJIT C sources, you must 
+- **Critical**: For static builds, after modifying LuaJIT C sources, you must
   rebuild BOTH the fluid module AND parasol_cmd, then reinstall:
   ```bash
   cmake --build build/agents --config Release --parallel

@@ -68,14 +68,13 @@
             <ul class="btn-toggle-nav list-unstyled pb-1">
             <li class="api-ref"><a class="rounded" href="Fluid-Reference-Manual.html">Fluid Reference Manual</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-Common-API.html">Common API</a></li>
-            <li class="api-ref"><a class="rounded" href="Fluid-FileSearch-API.html">FileSearch API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-GUI-API.html">GUI API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-HTTPServer-API.html">HTTPServer API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-IO-API.html">I/O API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-JSON-API.html">JSON API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-URL-API.html">URL API</a></li>
             <li class="api-ref"><a class="rounded" href="Fluid-VFX-API.html">VFX API</a></li>
-            <li class="api-ref"><a class="rounded" href="Widgets.html">Widgets</a></li>
+            <li class="api-ref"><a class="rounded" href="Fluid-Widgets.html">Widgets</a></li>
            </ul>
          </div></li>
 
@@ -271,11 +270,17 @@
 <ul>
 <li><a href="#removed-features">Removed Features</a></li>
 <li><a href="#bitwise-operations">Bitwise Operations</a></li>
+<li><a href="#bitshift-operators">Bitshift Operators</a></li>
 <li><a href="#comments">Comments</a></li>
 <li><a href="#script-parameters">Script Parameters</a></li>
 <li><a href="#non-zero-value-detection">Non-Zero Value Detection</a></li>
+<li><a href="#compound-assignment-operators">Compound Assignment Operators</a></li>
+<li><a href="#concatenation-assignment">Concatenation Assignment</a></li>
+<li><a href="#postfix-increment">Postfix Increment</a></li>
+<li><a href="#continue-statement">Continue Statement</a></li>
+<li><a href="#alternate-not-equal-operator">Alternate Not-Equal Operator</a></li>
+<li><a href="#evaluation-semantics">Evaluation Semantics</a></li>
 </ul></li>
-<li><a href="#string-api-additions">String API Additions</a></li>
 <li><a href="#script-management">Script Management</a>
 <ul>
 <li><a href="#include">include</a></li>
@@ -360,12 +365,55 @@
 <h3 id="removed-features">Removed Features</h3>
 <p>The Package, IO and OS libraries normally found in Lua are removed as they duplicate features already found in Parasol&#39;s Script, File and Time classes. The introspective debug library is also removed for the purpose of reducing size.</p>
 <h3 id="bitwise-operations">Bitwise Operations</h3>
-<p>Bitwise operations are supported via the <a href="https://bitop.luajit.org/api.html">bitop API</a>.</p>
+<p>Fluid supports C-style bitwise operators on 32-bit integers:</p>
+<ul>
+<li><code>~x</code> bitwise NOT</li>
+<li><code>a &amp; b</code> bitwise AND</li>
+<li><code>a | b</code> bitwise OR</li>
+</ul>
+<p>Semantics:</p>
+<ul>
+<li>Operands are coerced to 32-bit integers using LuaJIT’s <code>tobit</code> rules, identical to the <code>bit.*</code> library.</li>
+<li>Results follow two’s-complement 32-bit integer behaviour.</li>
+</ul>
+<p>Unsupported forms:</p>
+<ul>
+<li>Compound assignment variants are not supported: <code>&amp;=</code>, <code>|=</code>, <code>~=</code> (bitwise) do not exist.
+<ul>
+<li>Use <code>x = x &amp; y</code> and <code>x = x | y</code>.</li>
+</ul></li>
+</ul>
+<p>Examples:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Bitwise NOT, shifts left by 2</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="va">result</span> <span class="op">=</span> <span class="op">~</span><span class="va">a</span> <span class="op">&lt;&lt;</span> <span class="dv">2</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Bitwise AND, then shifts right logical by 1</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="va">result</span> <span class="op">=</span> <span class="op">(</span><span class="va">a</span> <span class="op">&amp;</span> <span class="va">b</span><span class="op">)</span> <span class="op">&gt;&gt;</span> <span class="dv">1</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- Masks out the lower 8 bits</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="va">result</span> <span class="op">=</span> <span class="va">a</span> <span class="op">&amp;</span> <span class="dv">0xFF</span></span></code></pre></div>
+<h3 id="bitshift-operators">Bitshift Operators</h3>
+<p>Fluid adds infix bitshift operators for convenience:</p>
+<ul>
+<li><code>&lt;&lt;</code> left shift</li>
+<li><code>&gt;&gt;</code> right shift</li>
+</ul>
+<p>Precedence and associativity:</p>
+<ul>
+<li>Shifts bind tighter than addition and subtraction, e.g. <code>1 + 1 &lt;&lt; 3</code> evaluates as <code>1 + (1 &lt;&lt; 3)</code> producing <code>9</code>.</li>
+<li>The right-hand side of a shift is parsed as a full expression. For example, <code>8 &gt;&gt; 1 + 1</code> produces <code>2</code>.</li>
+<li>Shifts are left-associative when chained: <code>x &lt;&lt; y &lt;&lt; z</code> parses as <code>(x &lt;&lt; y) &lt;&lt; z</code>.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>These operators operate on 32-bit integers following LuaJIT’s <code>bit.*</code> semantics. Numeric operands are coerced using <code>tobit</code> rules.</li>
+<li>Compound shift-assignment forms (<code>&lt;&lt;=</code>, <code>&gt;&gt;=</code>) are not currently supported; use <code>x = x &lt;&lt; n</code>.</li>
+</ul>
 <h3 id="comments">Comments</h3>
 <p>Single-line C++ style comments are supported in addition to Lua&#39;s commenting standard. For example:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">//</span> <span class="va">This</span> <span class="va">is</span> <span class="va">a</span> <span class="cn">C</span><span class="er">++</span> <span class="va">style</span><span class="op">,</span> <span class="va">single</span> <span class="va">line</span> <span class="va">comment</span><span class="op">.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">--[[ This is a Lua comment --]]</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="op">//</span> <span class="va">This</span> <span class="va">is</span> <span class="va">a</span> <span class="cn">C</span><span class="er">++</span> <span class="va">style</span><span class="op">,</span> <span class="va">single</span> <span class="va">line</span> <span class="va">comment</span><span class="op">.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">--[[ This is a Lua comment --]]</span></span></code></pre></div>
 <h3 id="script-parameters">Script Parameters</h3>
 <p>Arguments passed to the Fluid script can be accessed via the <code>arg()</code> function. In the following example either &#39;width&#39; is returned or <code>1024</code> otherwise:</p>
 <p><code>width = arg(&#39;width&#39;, 1024)</code></p>
@@ -374,28 +422,72 @@
 <p>A non-zero value detection function, <code>nz()</code>, is included to simplify the handling of nil and zero values (such as a zero length string). Using <code>nz()</code> simplifies program flow where variables must have a value, for example:</p>
 <p><code>myvalue = nz(var.shoppinglist, &#39;Empty Basket&#39;)</code></p>
 <p>The first parameter is checked if it is empty. If so, the function&#39;s second parameter is returned if provided. Otherwise a value of <code>true</code> is returned.</p>
-<h2 id="string-api-additions">String API Additions</h2>
-<h3 id="stringalloc">string.alloc()</h3>
-<p><code>string.alloc(Size)</code></p>
-<p>Return a string of <code>Size</code> bytes that is uninitialised. Useful for creating buffers that can be passed to Parasol functions.</p>
-<h3 id="stringtrim">string.trim()</h3>
-<p><code>str:trim()</code></p>
-<p>Trims whitespace from the left and right sides of a string.</p>
-<h3 id="stringrtrim">string.rtrim()</h3>
-<p><code>str:rtrim()</code></p>
-<p>Trims whitespace from the right side of a string.</p>
-<h3 id="stringsplit">string.split()</h3>
-<p><code>str:split([Sep])</code></p>
-<p>Split a string using <code>Sep</code> to identify the space between each word. If <code>Sep</code> is not specified, it defaults to all whitespace characters. Multiple characters can be specified in <code>Sep</code> if required.</p>
-<h3 id="stringstartswith">string.startsWith()</h3>
-<p><code>str:startsWith(Cmp)</code></p>
-<p>Returns <code>true</code> if the string starts with <code>Cmp</code>.</p>
-<h3 id="stringendswith">string.endsWith()</h3>
-<p><code>str:endsWith(Cmp)</code></p>
-<p>Returns <code>true</code> if the string ends with <code>Cmp</code>.</p>
-<h3 id="stringjoin">string.join()</h3>
-<p><code>str:join({ Values }, Sep)</code></p>
-<p>Join all <code>Values</code> into a single returned string, separated by <code>Sep</code>.</p>
+<h3 id="compound-assignment-operators">Compound Assignment Operators</h3>
+<p>Fluid adds C-style compound assignment operators for convenience:</p>
+<ul>
+<li><code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>%=</code> on numeric values</li>
+<li><code>..=</code> for string concatenation</li>
+</ul>
+<p>RHS behaviour:</p>
+<ul>
+<li>The right-hand side is evaluated exactly once.</li>
+<li>If the RHS is a function call or vararg, only the first return value is used (consistent with Lua expression rules outside of list contexts).</li>
+</ul>
+<p>Errors and types:</p>
+<ul>
+<li>Using a non-assignable left-hand side (e.g. a constant or a function call result) is an error.</li>
+<li>Arithmetic compound operators follow LuaJIT’s numeric coercion rules. <code>..=</code> follows Lua’s concatenation rules (numbers are coerced to strings as needed).</li>
+</ul>
+<h3 id="concatenation-assignment">Concatenation Assignment</h3>
+<p>The <code>..=</code> operator appends to an existing string:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">s</span> <span class="op">=</span> <span class="st">&#39;a&#39;</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="va">s</span> <span class="op">.</span><span class="er">.=</span> <span class="st">&#39;bc&#39;</span>        <span class="co">-- s == &#39;abc&#39;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="va">s</span> <span class="op">.</span><span class="er">.=</span> <span class="fu">tostring</span><span class="op">(</span><span class="dv">1</span><span class="op">)</span> <span class="co">-- s == &#39;abc1&#39;</span></span></code></pre></div>
+<p>Semantics mirror <code>s = s .. rhs</code>. The left-hand side is evaluated once and the RHS uses only its first return value.</p>
+<h3 id="postfix-increment">Postfix Increment</h3>
+<p>Fluid supports a postfix increment operator for convenience:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="va">counter</span><span class="er">++</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="va">obj</span><span class="op">.</span><span class="va">field</span><span class="er">++</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="va">t</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="er">++</span></span></code></pre></div>
+<p>Notes:</p>
+<ul>
+<li>Postfix only; there is no prefix form.</li>
+<li>The operator mutates the target by adding 1. Use only on assignable values (locals, upvalues, globals, fields, indexed elements).</li>
+<li>Intended for statement use. The value of the <code>x++</code> expression itself is unspecified and should not be relied upon in expressions.</li>
+</ul>
+<h3 id="continue-statement">Continue Statement</h3>
+<p>Fluid adds a <code>continue</code> statement for all loop forms:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="va">i</span> <span class="op">=</span> <span class="dv">1</span><span class="op">,</span> <span class="dv">10</span> <span class="cf">do</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="va">i</span> <span class="op">%</span> <span class="dv">2</span> <span class="op">==</span> <span class="dv">0</span> <span class="cf">then</span> <span class="va">continue</span> <span class="cf">end</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- odd numbers only</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> <span class="va">cond</span> <span class="cf">do</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> skip<span class="op">()</span> <span class="cf">then</span> <span class="va">continue</span> <span class="cf">end</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  work<span class="op">()</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="cf">repeat</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> <span class="kw">not</span> ready<span class="op">()</span> <span class="cf">then</span> <span class="va">continue</span> <span class="cf">end</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="cf">until</span> <span class="va">done</span></span></code></pre></div>
+<p><code>continue</code> skips the remainder of the current loop body and advances to the next iteration. In <code>repeat … until</code>, it jumps to the condition check.</p>
+<h3 id="alternate-not-equal-operator">Alternate Not-Equal Operator</h3>
+<p>In addition to Lua’s standard <code>~=</code> operator, Fluid accepts <code>!=</code> as a not-equal synonym. Both forms are supported, but code style in this repository prefers <code>!=</code>.</p>
+<h3 id="evaluation-semantics">Evaluation Semantics</h3>
+<p>Compound assignments guarantee a single evaluation of the left-hand side, including table bases and indices. Examples:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Base and index are each evaluated exactly once.</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="va">t</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="er">+=</span> f<span class="op">()</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="va">obj</span><span class="op">[</span><span class="va">key</span><span class="op">]</span> <span class="op">.</span><span class="er">.=</span> g<span class="op">()</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- Equivalent to:</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- local _b, _k = t, i</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co">-- _b[_k] = _b[_k] + f()</span></span></code></pre></div>
+<p>Implications:</p>
+<ul>
+<li>Side effects in <code>t</code>, <code>i</code> or <code>key</code> expressions occur once.</li>
+<li>Temporary registers used by RHS expressions (function calls, nested lookups) do not corrupt the target of the final store.</li>
+<li>For concatenation, the left value is stabilised before RHS evaluation to ensure correct concatenation behaviour even when RHS allocates temporaries.</li>
+</ul>
 <hr>
 <h2 id="script-management">Script Management</h2>
 <h3 id="include">include</h3>
@@ -405,8 +497,8 @@
 <h3 id="require">require</h3>
 <p>The <code>require</code> statement will load a Fluid language file from the <code>scripts:</code> volume and then executes it. It differs from <code>loadFile()</code> in that the script will be registered so as to prevent multiple executions, and the volume restriction improves security.</p>
 <p>The chosen library may return a table as an interface - a practice we recommend as it allows the client to define the namespace and avoid conflicts with program variables. E.g.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">mylib</span> <span class="op">=</span> <span class="fu">require</span><span class="op">(</span><span class="st">&#39;mylibrary&#39;</span><span class="op">)</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="va">mylib</span><span class="op">.</span>doSomething<span class="op">()</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">mylib</span> <span class="op">=</span> <span class="fu">require</span> <span class="st">&#39;mylibrary&#39;</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="va">mylib</span><span class="op">.</span>doSomething<span class="op">()</span></span></code></pre></div>
 <p>If you&#39;re building a complex application and need to include a custom library file, this can be achieved with the <code>./</code> prefix. Standard path rules still apply, e.g. <code>./lib/customlib</code> would be valid, <code>./../../h4cklib!3</code> is not.</p>
 <h3 id="loadfile">loadFile()</h3>
 <p>Use <code>loadFile()</code> to load, parse and execute a Fluid script. This feature is useful for re-using code, or breaking a large project into multiple script files. Example:</p>
@@ -422,7 +514,7 @@
 <h4 id="check">check()</h4>
 <p><code>check()</code> is the equivalent of an <code>assert()</code> for <code>ERR</code> codes. Any non-safe error code passed to this function will raise an exception that includes a readable message matching the <code>ERR</code> code.</p>
 <p>Incoming parameters are returned without modification, allowing check() to operate seamlessly in function call chains. Example:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">err</span><span class="op">,</span> <span class="va">bytes_read</span> <span class="op">=</span> check<span class="op">(</span><span class="va">file</span><span class="op">.</span>acRead<span class="op">(</span><span class="va">file</span><span class="op">,</span> <span class="va">buffer</span><span class="op">))</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">err</span><span class="op">,</span> <span class="va">bytes_read</span> <span class="op">=</span> check<span class="op">(</span><span class="va">file</span><span class="op">.</span>acRead<span class="op">(</span><span class="va">file</span><span class="op">,</span> <span class="va">buffer</span><span class="op">))</span></span></code></pre></div>
 <p>The following <code>ERR</code> codes will not raise an exception: <code>Okay</code>, <code>False</code>, <code>LimitedSuccess</code>, <code>Cancelled</code>, <code>NothingDone</code>, <code>Continue</code>, <code>Skip</code>, <code>Retry</code>, <code>DirEmpty</code></p>
 <h4 id="raise">raise()</h4>
 <p><code>raise()</code> will raise an exception immediately from an <code>ERR</code> code; for example <code>raise(ERR_Failed)</code>. Unlike <code>check()</code>, all codes have coverage, including minor codes. The error code will also be propagated to the Script object&#39;s <code>Error</code> field if called from a C/C++ program.</p>
@@ -513,9 +605,9 @@ end</code></pre>
 <p>While type conversion is convenient, we recommend using the correct type whenever possible as this will ensure that your calls are being made efficiently.</p>
 <h3 id="buffer-handling">Buffer Handling</h3>
 <p>When calling functions that copy results to a user-supplied buffer, pass an array interface. The following example illustrates reading content from a file into an array buffer:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="va">buffer</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="va">file</span><span class="op">.</span><span class="va">size</span><span class="op">,</span> <span class="st">&#39;byte&#39;</span><span class="op">)</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="va">err</span><span class="op">,</span> <span class="va">result</span> <span class="op">=</span> <span class="va">file</span><span class="op">.</span>acRead<span class="op">(</span><span class="va">buffer</span><span class="op">)</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="fu">tostring</span><span class="op">(</span><span class="va">buffer</span><span class="op">))</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="va">buffer</span> <span class="op">=</span> <span class="va">array</span><span class="op">.</span>new<span class="op">(</span><span class="va">file</span><span class="op">.</span><span class="va">size</span><span class="op">,</span> <span class="st">&#39;byte&#39;</span><span class="op">)</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="va">err</span><span class="op">,</span> <span class="va">result</span> <span class="op">=</span> <span class="va">file</span><span class="op">.</span>acRead<span class="op">(</span><span class="va">buffer</span><span class="op">)</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="fu">tostring</span><span class="op">(</span><span class="va">buffer</span><span class="op">))</span></span></code></pre></div>
 <p>Notice that the <code>acRead()</code> call hasn&#39;t been given its second parameter (the amount of data to read). This is possible because Fluid knows the size of the buffer and will use it for the second parameter if not already defined.</p>
 <h3 id="multiple-result-values">Multiple Result Values</h3>
 <p>Some functions may return multiple result values. Here is an example of a module function that returns two results:</p>
@@ -530,10 +622,10 @@ end</code></pre>
 <p>The object interface provides the necessary functionality to create and manage objects. It allows you to read and manipulate object fields, call methods and actions, manage subscriptions and connect to existing named objects.</p>
 <h3 id="object-creation">Object Creation</h3>
 <p>To create a new object, use the object interface&#39;s <code>new()</code> method with the name of the class that will be instantiated. Here&#39;s an example that creates an object, sets necessary field values and initialises it:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;file&#39;</span><span class="op">)</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">.</span><span class="va">path</span>  <span class="op">=</span> <span class="st">&#39;readme.md&#39;</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">.</span><span class="va">flags</span> <span class="op">=</span> <span class="st">&#39;!READ&#39;</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="va">err</span> <span class="op">=</span> <span class="va">file</span><span class="op">.</span>init<span class="op">()</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;file&#39;</span><span class="op">)</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">.</span><span class="va">path</span>  <span class="op">=</span> <span class="st">&#39;readme.md&#39;</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span><span class="op">.</span><span class="va">flags</span> <span class="op">=</span> <span class="st">&#39;!READ&#39;</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="va">err</span> <span class="op">=</span> <span class="va">file</span><span class="op">.</span>init<span class="op">()</span></span></code></pre></div>
 <p>The first result from <code>new()</code> is the created object&#39;s interface and the second result is an <code>ERR</code> code if creation fails. Take note that an object must always be initialised before any real interaction occurs (anything beyond setting field values).</p>
 <p>The above example can be simplified by providing a field list immediately after the class name:</p>
 <p><code>file = obj.new(&#39;File&#39;, { path=&#39;readme.md&#39;, flags=&#39;!READ&#39; } )</code></p>
@@ -553,8 +645,8 @@ viewport.new(&#39;VectorRectangle&#39;, { x=0, y=0, width=&#39;100%&#39;, height
 <p>You can get a list of the children that have been attached to an object by calling the <code>children()</code> method. It returns an array of UID&#39;s that can be converted to interfaces with <code>obj.find()</code>. The <code>children()</code> method also supports a class filter in the first parameter, e.g. <code>thing.children(&#39;VectorRectangle&#39;)</code> would return a list of all rectangles.</p>
 <h3 id="accessing-objects">Accessing Objects</h3>
 <p>It is possible to access the interface of an existing object by searching for its name (if given one on initialisation) or UID:</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="va">window</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>find<span class="op">(</span><span class="st">&#39;my_window&#39;</span><span class="op">)</span></span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="va">winsurface</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>find<span class="op">(</span><span class="va">window</span><span class="op">.</span><span class="va">surface</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="va">window</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>find<span class="op">(</span><span class="st">&#39;my_window&#39;</span><span class="op">)</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="va">winsurface</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>find<span class="op">(</span><span class="va">window</span><span class="op">.</span><span class="va">surface</span><span class="op">)</span></span></code></pre></div>
 <p>If failure occurs, <code>nil</code> is returned by the <code>find()</code> method. If multiple objects exist with the same name, the most recently created object is returned first.</p>
 <h4 id="objlock">obj:lock()</h4>
 <p>If an object is being shared in a threaded program, locking may be necessary to prevent data corruption. This can be achieved by calling <code>lock()</code> and passing a function that will gain an exclusive lock on the object. The lock will remain until the function returns.</p>
@@ -563,9 +655,9 @@ viewport.new(&#39;VectorRectangle&#39;, { x=0, y=0, width=&#39;100%&#39;, height
 end)</code></pre>
 <h3 id="garbage-collection">Garbage Collection</h3>
 <p>The Lua garbage collector will automatically terminate an object once all references to that object are released or the script is terminated. If an object has a single reference, you can manually terminate it by setting the reference to nil, for example:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;File&#39;</span><span class="op">)</span></span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="kw">nil</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;File&#39;</span><span class="op">)</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="va">file</span> <span class="op">=</span> <span class="kw">nil</span></span></code></pre></div>
 <h4 id="objectdetach">object.detach()</h4>
 <p>Sometimes you may need to create an object that remains after the script has executed and is not removed by falling out of scope. Calling <code>detach()</code> will unlink the object from the garbage collector.</p>
 <h4 id="objectfree">object.free()</h4>
@@ -573,7 +665,7 @@ end)</code></pre>
 <p>Calling <code>free()</code> is not recommended in general usage - it is preferable to set object references to <code>nil</code> and either wait for garbage collection or call <code>collectgarbage()</code>.</p>
 <h3 id="action-and-method-calls">Action and Method Calls</h3>
 <p>After successfully initialising an object interface, interaction with it is possible through actions, methods and fields. The following example illustrates how we could change the size of the VectorRectangle we created earlier:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="va">rect</span><span class="op">.</span>acRedimension<span class="op">(</span><span class="dv">20</span><span class="op">,</span> <span class="dv">20</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="va">rect</span><span class="op">.</span>acRedimension<span class="op">(</span><span class="dv">20</span><span class="op">,</span> <span class="dv">20</span><span class="op">,</span> <span class="dv">0</span><span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="dv">0</span><span class="op">)</span></span></code></pre></div>
 <p>Action calls are identified by their <code>ac</code> prefix. Method calls are prefixed by <code>mt</code>. Field references can be directly accessed without a prefix. The naming scheme for methods, actions and fields is case insensitive.</p>
 <p>For information about the actions and methods supported by an object class, refer to its published API documentation on our website.</p>
 <h3 id="field-interface">Field Interface</h3>
@@ -581,8 +673,8 @@ end)</code></pre>
 <p><code>item = view.get(&#39;item(10)&#39;)</code></p>
 <h4 id="objectgetkey-objectsetkey">object.getKey(), object.setKey()</h4>
 <p>Some classes support key-value pairs in cases where custom string names need to be associated with an object. The <code>getKey()</code> and <code>setKey()</code> methods are provided to manage these fields. For example:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="va">surface</span><span class="op">.</span>setKey<span class="op">(</span><span class="st">&#39;Title&#39;</span><span class="op">,</span> <span class="st">&#39;My Window&#39;</span><span class="op">)</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="va">title</span> <span class="op">=</span> <span class="va">surface</span><span class="op">.</span>getKey<span class="op">(</span><span class="st">&#39;Title&#39;</span><span class="op">,</span> <span class="st">&#39;UNDEFINED&#39;</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="va">surface</span><span class="op">.</span>setKey<span class="op">(</span><span class="st">&#39;Title&#39;</span><span class="op">,</span> <span class="st">&#39;My Window&#39;</span><span class="op">)</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="va">title</span> <span class="op">=</span> <span class="va">surface</span><span class="op">.</span>getKey<span class="op">(</span><span class="st">&#39;Title&#39;</span><span class="op">,</span> <span class="st">&#39;UNDEFINED&#39;</span><span class="op">)</span></span></code></pre></div>
 <h4 id="object_state">object._state()</h4>
 <p>The <code>_state()</code> method is a special accessor that attaches a Lua table to the object and returns it. This allows you to store custom data with the object that is seperate to its definition. The table will be removed when the object is destroyed.</p>
 <h3 id="bit-fields">Bit Fields</h3>
@@ -597,13 +689,13 @@ end)</code></pre>
 <h2 id="action--method-subscriptions">Action &amp; Method Subscriptions</h2>
 <p>Parasol allows clients to monitor the calls made to an object by subscribing to its actions and methods. One commonly used strategy involves subscribing to the <code>free()</code> action of an object so that the client is notified of object termination.</p>
 <p>Subscription is enabled via the <code>subscribe()</code> method. The following example illustrates the creation of an HTTP object that performs a download and calls <code>my_function()</code> on completion of the download process. Note that <code>Args</code> is a table that contains named arguments for the action that was subscribed to. The <code>CustomRef</code> is an optional value that will be passed to the subscriber.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> my_function<span class="op">(</span><span class="cn">UID</span><span class="op">,</span> <span class="va">Args</span><span class="op">,</span> <span class="va">CustomRef</span><span class="op">)</span></span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Download complete.&#39;</span><span class="op">)</span></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="va">http</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;http&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="op">...</span> <span class="op">}</span> <span class="op">)</span></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="va">http</span><span class="op">.</span>acActivate<span class="op">()</span></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="va">handle</span> <span class="op">=</span> <span class="va">http</span><span class="op">.</span>subscribe<span class="op">(</span><span class="st">&#39;deactivate&#39;</span><span class="op">,</span> <span class="va">my_function</span><span class="op">,</span> <span class="va">customref</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> my_function<span class="op">(</span><span class="cn">UID</span><span class="op">,</span> <span class="va">Args</span><span class="op">,</span> <span class="va">CustomRef</span><span class="op">)</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Download complete.&#39;</span><span class="op">)</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="va">http</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;http&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="op">...</span> <span class="op">}</span> <span class="op">)</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="va">http</span><span class="op">.</span>acActivate<span class="op">()</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="va">handle</span> <span class="op">=</span> <span class="va">http</span><span class="op">.</span>subscribe<span class="op">(</span><span class="st">&#39;deactivate&#39;</span><span class="op">,</span> <span class="va">my_function</span><span class="op">,</span> <span class="va">customref</span><span class="op">)</span></span></code></pre></div>
 <p>To unsubscribe from an action, call <code>unsubscribe()</code> with the action/method name. Doing so will allow the garbage collector to remove associated resources that are no longer required.</p>
 <hr>
 <h2 id="processing-interface">Processing Interface</h2>
@@ -613,27 +705,27 @@ end)</code></pre>
 <p><code>sleep()</code> can also return early if a <code>Timeout</code> in seconds is specified in the first parameter. Waking on signal can be disabled by setting the second parameter to <code>false</code>.</p>
 <h3 id="signals">Signals</h3>
 <p>If a Fluid script is utilising threads, synchronisation can be an important issue that requires careful management. The processing interface makes it possible to put the main thread to sleep and wake it once a series of signals has been triggered. In the following working example, we create a basic thread that prints a message and then signals two XML objects in order to wake the main thread. This might be plausible if we were asking the thread to process XML data for instance:</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> testSignals<span class="op">()</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">signal_a</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;xml&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="va">flags</span><span class="op">=</span><span class="st">&#39;NEW&#39;</span> <span class="op">})</span></span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">signal_b</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;xml&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="va">flags</span><span class="op">=</span><span class="st">&#39;NEW&#39;</span> <span class="op">})</span></span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Note that the thread code is parsed as a string and can&#39;t see any variables without a call to obj.find().</span></span>
-<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- The termination handler on the other hand has access to signal the objects directly.</span></span>
-<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">thread</span><span class="op">.</span>script<span class="op">(</span><span class="vs">[[</span></span>
-<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="vs">      msg(&#39;Thread is now in session.&#39;)</span></span>
-<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="vs">   ]]</span><span class="op">,</span></span>
-<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>   <span class="kw">function</span><span class="op">()</span></span>
-<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>      msg<span class="op">(</span><span class="st">&#39;Thread has been executed.&#39;</span><span class="op">)</span></span>
-<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>      <span class="va">signal_a</span><span class="op">.</span>acSignal<span class="op">()</span></span>
-<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>      <span class="va">signal_b</span><span class="op">.</span>acSignal<span class="op">()</span></span>
-<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span><span class="op">)</span></span>
-<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">proc</span> <span class="op">=</span> <span class="va">processing</span><span class="op">.</span>new<span class="op">({</span> <span class="va">timeout</span><span class="op">=</span><span class="dv">1.0</span><span class="op">,</span> <span class="va">signals</span> <span class="op">=</span> <span class="op">{</span> <span class="va">signal_a</span><span class="op">,</span> <span class="va">signal_b</span> <span class="op">}</span> <span class="op">})</span></span>
-<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a>   msg<span class="op">(</span><span class="st">&#39;Sleeping....&#39;</span><span class="op">)</span></span>
-<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">err</span> <span class="op">=</span> <span class="va">proc</span><span class="op">.</span>sleep<span class="op">()</span></span>
-<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>   <span class="fu">assert</span><span class="op">(</span><span class="va">err</span> <span class="op">==</span> <span class="va">ERR_Okay</span><span class="op">,</span> <span class="st">&quot;Unexpected error: &quot;</span> <span class="op">..</span> <span class="va">mSys</span><span class="op">.</span>GetErrorMsg<span class="op">(</span><span class="va">err</span><span class="op">))</span></span>
-<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">function</span> testSignals<span class="op">()</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">signal_a</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;xml&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="va">flags</span><span class="op">=</span><span class="st">&#39;NEW&#39;</span> <span class="op">})</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">signal_b</span> <span class="op">=</span> <span class="va">obj</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;xml&#39;</span><span class="op">,</span> <span class="op">{</span> <span class="va">flags</span><span class="op">=</span><span class="st">&#39;NEW&#39;</span> <span class="op">})</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- Note that the thread code is parsed as a string and can&#39;t see any variables without a call to obj.find().</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>   <span class="co">-- The termination handler on the other hand has access to signal the objects directly.</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">thread</span><span class="op">.</span>script<span class="op">(</span><span class="vs">[[</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a><span class="vs">      msg(&#39;Thread is now in session.&#39;)</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="vs">   ]]</span><span class="op">,</span></span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>   <span class="kw">function</span><span class="op">()</span></span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>      msg<span class="op">(</span><span class="st">&#39;Thread has been executed.&#39;</span><span class="op">)</span></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>      <span class="va">signal_a</span><span class="op">.</span>acSignal<span class="op">()</span></span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>      <span class="va">signal_b</span><span class="op">.</span>acSignal<span class="op">()</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>   <span class="kw">end</span><span class="op">)</span></span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">proc</span> <span class="op">=</span> <span class="va">processing</span><span class="op">.</span>new<span class="op">({</span> <span class="va">timeout</span><span class="op">=</span><span class="dv">1.0</span><span class="op">,</span> <span class="va">signals</span> <span class="op">=</span> <span class="op">{</span> <span class="va">signal_a</span><span class="op">,</span> <span class="va">signal_b</span> <span class="op">}</span> <span class="op">})</span></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>   msg<span class="op">(</span><span class="st">&#39;Sleeping....&#39;</span><span class="op">)</span></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>   <span class="kw">local</span> <span class="va">err</span> <span class="op">=</span> <span class="va">proc</span><span class="op">.</span>sleep<span class="op">()</span></span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a>   <span class="fu">assert</span><span class="op">(</span><span class="va">err</span> <span class="op">==</span> <span class="va">ERR_Okay</span><span class="op">,</span> <span class="st">&quot;Unexpected error: &quot;</span> <span class="op">..</span> <span class="va">mSys</span><span class="op">.</span>GetErrorMsg<span class="op">(</span><span class="va">err</span><span class="op">))</span></span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p>Notice that we called <code>processing.new()</code> to create a dedicated interface for signal management. The two objects that will be signalled are passed in via the <code>signals</code> field. When the thread completes, it calls <code>acSignal()</code> on the objects to change their signal state. It is necessary for both objects to change state in order to wake the main thread.</p>
 <h3 id="signal">signal()</h3>
 <p>If no signal objects are listed in a call to <code>processing.new()</code>, it is possible to manually call the <code>signal()</code> method to wake the sleeping thread instead. This simple technique is sometimes used in passive event systems, e.g. the user clicking a mouse button could result in a <code>signal()</code> call that wakes the main thread.</p>
@@ -644,15 +736,15 @@ end)</code></pre>
 <p>The <code>task()</code> function returns a Fluid object that references the current task:</p>
 <p><code>local currentTask = processing.task()</code></p>
 <p>This function provides access to the task object representing your script&#39;s execution context. The returned object can be used to modify task properties such as process priority, which is useful for applications requiring consistent performance:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">task</span> <span class="op">=</span> <span class="va">processing</span><span class="op">.</span>task<span class="op">()</span></span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">task</span> <span class="cf">then</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">task</span><span class="op">.</span>set<span class="op">(</span><span class="st">&#39;Priority&#39;</span><span class="op">,</span> <span class="dv">15</span><span class="op">)</span>  <span class="co">-- Set high priority for time-critical operations</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">task</span> <span class="op">=</span> <span class="va">processing</span><span class="op">.</span>task<span class="op">()</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">task</span> <span class="cf">then</span></span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">task</span><span class="op">.</span>set<span class="op">(</span><span class="st">&#39;Priority&#39;</span><span class="op">,</span> <span class="dv">15</span><span class="op">)</span>  <span class="co">-- Set high priority for time-critical operations</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <h3 id="delayedcall">delayedCall()</h3>
 <p>Use <code>delayedCall()</code> to call a function on the next message processing cycle inside <code>processing.sleep()</code>. This is useful in situations where calling a function is necessary, but to do so immediately would cause logistical issues with the order of execution.</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="va">processing</span><span class="op">.</span>delayedCall<span class="op">(</span><span class="kw">function</span></span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;This message is appearing after being delayed.&#39;</span><span class="op">)</span></span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="va">processing</span><span class="op">.</span>delayedCall<span class="op">(</span><span class="kw">function</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;This message is appearing after being delayed.&#39;</span><span class="op">)</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span></code></pre></div>
 <hr>
 <h2 id="math-interface">Math Interface</h2>
 <h3 id="mathround">math.round()</h3>
@@ -661,7 +753,7 @@ end)</code></pre>
 <hr>
 <h2 id="strings-interface">Strings Interface</h2>
 <p>The Lua strings interface is extended with a number of useful functions that are commonly required in programming. The following functions are included:</p>
-<h3 id="stringalloc-1">string.alloc()</h3>
+<h3 id="stringalloc">string.alloc()</h3>
 <p><code>str = string.alloc(Size)</code></p>
 <p>Create a string of a given size in bytes. This feature is intended for creating sized data buffers that can be passed to Parasol interfaces.</p>
 <h3 id="stringcap">string.cap()</h3>
@@ -676,22 +768,22 @@ end)</code></pre>
 <h3 id="stringhash">string.hash()</h3>
 <p><code>hash = str:hash([CaseSensitive])</code></p>
 <p>Return a hash value for the string. The <code>CaseSensitive</code> parameter is optional and defaults to <code>false</code>.</p>
-<h3 id="stringjoin-1">string.join()</h3>
+<h3 id="stringjoin">string.join()</h3>
 <p><code>str:join(Table, Separator)</code></p>
 <p>Join the contents of <code>Table</code> into a single string, using <code>Separator</code> between each item. If <code>Separator</code> is not specified, the items are joined consecutively.</p>
-<h3 id="stringtrim-1">string.trim()</h3>
+<h3 id="stringtrim">string.trim()</h3>
 <p><code>str:trim()</code></p>
 <p>Trims whitespace from the left and right sides of a string.</p>
-<h3 id="stringrtrim-1">string.rtrim()</h3>
+<h3 id="stringrtrim">string.rtrim()</h3>
 <p><code>str:rtrim()</code></p>
 <p>Trims whitespace from the right side of a string.</p>
-<h3 id="stringsplit-1">string.split()</h3>
+<h3 id="stringsplit">string.split()</h3>
 <p><code>str:split([Pattern])</code></p>
 <p>Split a string using <code>Pattern</code> to identify each valid word. If Pattern is not specified, it defaults to <code>%s</code>.</p>
-<h3 id="stringstartswith-1">string.startsWith()</h3>
+<h3 id="stringstartswith">string.startsWith()</h3>
 <p><code>str:startsWith(Cmp)</code></p>
 <p>Returns <code>true</code> if the string starts with <code>Cmp</code>.</p>
-<h3 id="stringendswith-1">string.endsWith()</h3>
+<h3 id="stringendswith">string.endsWith()</h3>
 <p><code>str:endsWith(Cmp)</code></p>
 <p>Returns <code>true</code> if the string ends with <code>Cmp</code>.</p>
 <hr>
@@ -740,17 +832,17 @@ processing.sleep()</code></pre>
 <p>To get the total number of fields in the structure, use <code>#</code>, e.g. <code>#xmltag</code>.</p>
 <h3 id="custom-structures">Custom Structures</h3>
 <p>The <code>MAKESTRUCT()</code> function is used to build structure definitions. A structure definition is a single string that defines all fields in a structure, matched in the order in which they appear in the structure. Consider the following C structure:</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="va">struct</span> XMLTag <span class="op">{</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="va">Index</span><span class="op">;</span></span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="cn">ID</span><span class="op">;</span></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Child</span><span class="op">;</span></span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Prev</span><span class="op">;</span></span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Next</span><span class="op">;</span></span>
-<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APTR</span>   <span class="va">Private</span><span class="op">;</span></span>
-<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLAttrib</span> <span class="op">*</span><span class="va">Attrib</span><span class="op">;</span></span>
-<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>   <span class="va">int16_t</span>  <span class="va">TotalAttrib</span><span class="op">;</span></span>
-<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">uint16_t</span> <span class="va">Nest</span><span class="op">;</span></span>
-<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="va">struct</span> XMLTag <span class="op">{</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="va">Index</span><span class="op">;</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">int</span>    <span class="cn">ID</span><span class="op">;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Child</span><span class="op">;</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Prev</span><span class="op">;</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLTag</span> <span class="op">*</span><span class="va">Next</span><span class="op">;</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>   <span class="cn">APTR</span>   <span class="va">Private</span><span class="op">;</span></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>   <span class="va">XMLAttrib</span> <span class="op">*</span><span class="va">Attrib</span><span class="op">;</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>   <span class="va">int16_t</span>  <span class="va">TotalAttrib</span><span class="op">;</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>   <span class="va">uint16_t</span> <span class="va">Nest</span><span class="op">;</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a><span class="op">};</span></span></code></pre></div>
 <p>To define this structure in Fluid we would use the following code:</p>
 <p><code>MAKESTRUCT(&#39;XMLTag&#39;, &#39;lIndex,lID,pChild,pPrev:XMLTag,pNext:XMLTag,pPrivate,pAttrib,wTotalAttrib,uwNest&#39;)</code></p>
 <p>Notice that each field name is defined using the same order and names as identified in the structure. Each name is prefixed with a lower-case character that indicates the field type. Using the correct field types is the most crucial part of the structure definition and each must be chosen from the following table:</p>
@@ -813,11 +905,11 @@ processing.sleep()</code></pre>
 <p>To create a compiled regex object, use the <code>new()</code> method with the following prototype:</p>
 <p><code>myregex = regex.new(Pattern, [Flags])</code></p>
 <p>The <code>Pattern</code> is a string containing the regular expression pattern to compile. The optional <code>Flags</code> parameter can be used to modify regex behavior using the flag constants described below.</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Simple pattern</span></span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">digits</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d+&#39;</span><span class="op">)</span></span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Case insensitive pattern</span></span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">email</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">ICASE</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Simple pattern</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">digits</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d+&#39;</span><span class="op">)</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Case insensitive pattern</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">email</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">ICASE</span><span class="op">)</span></span></code></pre></div>
 <p>If the provided pattern is invalid, an error will be raised. For this reason it is advisable to use <code>catch()</code> when creating regex objects that use untested patterns, e.g. from user input.</p>
 <h3 id="flag-constants">Flag Constants</h3>
 <h4 id="compilation-flags">Compilation Flags</h4>
@@ -894,51 +986,51 @@ processing.sleep()</code></pre>
 </tbody>
 </table>
 <p>Example usage:</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">w+&#39;</span><span class="op">)</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Replace only the first word</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">result</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;hello world&#39;</span><span class="op">,</span> <span class="st">&#39;goodbye&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">REPLACE_FIRST_ONLY</span><span class="op">)</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;goodbye world&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">w+&#39;</span><span class="op">)</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="co">-- Replace only the first word</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">result</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;hello world&#39;</span><span class="op">,</span> <span class="st">&#39;goodbye&#39;</span><span class="op">,</span> <span class="va">regex</span><span class="op">.</span><span class="cn">REPLACE_FIRST_ONLY</span><span class="op">)</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;goodbye world&#39;</span></span></code></pre></div>
 <h3 id="pattern-testing">Pattern Testing</h3>
 <p>Use the <code>test()</code> method to perform boolean pattern matching:</p>
 <p><code>result = myregex.test(text, [flags])</code></p>
 <p>This returns <code>true</code> if the pattern matches anywhere in the text, <code>false</code> otherwise.</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{4}&#39;</span><span class="op">)</span></span>
-<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">phoneRegex</span><span class="op">.</span>test<span class="op">(</span><span class="va">userInput</span><span class="op">)</span> <span class="cf">then</span></span>
-<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Valid phone number format&#39;</span><span class="op">)</span></span>
-<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb30"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{3}-</span><span class="sc">\\</span><span class="st">d{4}&#39;</span><span class="op">)</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">phoneRegex</span><span class="op">.</span>test<span class="op">(</span><span class="va">userInput</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Valid phone number format&#39;</span><span class="op">)</span></span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <h3 id="pattern-matching-with-capture-groups">Pattern Matching with Capture Groups</h3>
 <p>Use the <code>match()</code> method to perform a whole-string match and return capture groups:</p>
 <p><code>matches = myregex.match(text, [flags])</code></p>
 <p>Returns a table containing the full match and any capture groups, or <code>nil</code> if no match is found. Array indices start at 1 (full match), with capture groups at indices 2, 3, etc.</p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">urlRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(https?)://([^/]+)(.*)&#39;</span><span class="op">)</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">matches</span> <span class="op">=</span> <span class="va">urlRegex</span><span class="op">.</span>match<span class="op">(</span><span class="st">&#39;https://example.com/path&#39;</span><span class="op">)</span></span>
-<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[1] = &#39;https://example.com/path&#39; (full match)</span></span>
-<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[2] = &#39;https&#39; (first capture group)</span></span>
-<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[3] = &#39;example.com&#39; (second capture group)</span></span>
-<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[4] = &#39;/path&#39; (third capture group)</span></span></code></pre></div>
+<div class="sourceCode" id="cb31"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">urlRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(https?)://([^/]+)(.*)&#39;</span><span class="op">)</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">matches</span> <span class="op">=</span> <span class="va">urlRegex</span><span class="op">.</span>match<span class="op">(</span><span class="st">&#39;https://example.com/path&#39;</span><span class="op">)</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[1] = &#39;https://example.com/path&#39; (full match)</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[2] = &#39;https&#39; (first capture group)</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[3] = &#39;example.com&#39; (second capture group)</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="co">-- matches[4] = &#39;/path&#39; (third capture group)</span></span></code></pre></div>
 <h3 id="global-matching">Global Matching</h3>
 <p>Use the <code>search()</code> method to find all matches in the text:</p>
 <p><code>allMatches = myregex.search(text, [flags])</code></p>
 <p>Returns a table where each element is a match table (as returned by <code>match()</code>), or <code>nil</code> if no matches are found.</p>
-<div class="sourceCode" id="cb27"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">w+)&#39;</span><span class="op">)</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">allWords</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>search<span class="op">(</span><span class="st">&#39;hello world test&#39;</span><span class="op">)</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[1][1] = &#39;hello&#39;, allWords[1][2] = &#39;hello&#39;</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[2][1] = &#39;world&#39;, allWords[2][2] = &#39;world&#39;</span></span>
-<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[3][1] = &#39;test&#39;, allWords[3][2] = &#39;test&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">wordRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">w+)&#39;</span><span class="op">)</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">allWords</span> <span class="op">=</span> <span class="va">wordRegex</span><span class="op">.</span>search<span class="op">(</span><span class="st">&#39;hello world test&#39;</span><span class="op">)</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[1][1] = &#39;hello&#39;, allWords[1][2] = &#39;hello&#39;</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[2][1] = &#39;world&#39;, allWords[2][2] = &#39;world&#39;</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="co">-- allWords[3][1] = &#39;test&#39;, allWords[3][2] = &#39;test&#39;</span></span></code></pre></div>
 <h3 id="string-replacement">String Replacement</h3>
 <p>Use the <code>replace()</code> method to replace all occurrences of a pattern:</p>
 <p><code>result = myregex.replace(text, replacement, [flags])</code></p>
 <p>Replacement strings support backreferences using <code>$1</code>, <code>$2</code>, etc., to reference capture groups.</p>
-<div class="sourceCode" id="cb28"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{4})&#39;</span><span class="op">)</span></span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">formatted</span> <span class="op">=</span> <span class="va">phoneRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;555-123-4567&#39;</span><span class="op">,</span> <span class="st">&#39;($1) $2-$3&#39;</span><span class="op">)</span></span>
-<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;(555) 123-4567&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb33"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">phoneRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{3})-(</span><span class="sc">\\</span><span class="st">d{4})&#39;</span><span class="op">)</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">formatted</span> <span class="op">=</span> <span class="va">phoneRegex</span><span class="op">.</span>replace<span class="op">(</span><span class="st">&#39;555-123-4567&#39;</span><span class="op">,</span> <span class="st">&#39;($1) $2-$3&#39;</span><span class="op">)</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- Result: &#39;(555) 123-4567&#39;</span></span></code></pre></div>
 <h3 id="pattern-based-splitting">Pattern-Based Splitting</h3>
 <p>Use the <code>split()</code> method to split text using the regex pattern as a delimiter:</p>
 <p><code>parts = myregex.split(text, [flags])</code></p>
 <p>Returns a table containing the split parts (empty strings are excluded).</p>
-<div class="sourceCode" id="cb29"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">csvRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">s*,</span><span class="sc">\\</span><span class="st">s*&#39;</span><span class="op">)</span></span>
-<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">fields</span> <span class="op">=</span> <span class="va">csvRegex</span><span class="op">.</span>split<span class="op">(</span><span class="st">&#39;apple, banana,  cherry&#39;</span><span class="op">)</span></span>
-<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- fields[1] = &#39;apple&#39;, fields[2] = &#39;banana&#39;, fields[3] = &#39;cherry&#39;</span></span></code></pre></div>
+<div class="sourceCode" id="cb34"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">csvRegex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">s*,</span><span class="sc">\\</span><span class="st">s*&#39;</span><span class="op">)</span></span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">fields</span> <span class="op">=</span> <span class="va">csvRegex</span><span class="op">.</span>split<span class="op">(</span><span class="st">&#39;apple, banana,  cherry&#39;</span><span class="op">)</span></span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="co">-- fields[1] = &#39;apple&#39;, fields[2] = &#39;banana&#39;, fields[3] = &#39;cherry&#39;</span></span></code></pre></div>
 <h3 id="regex-properties">Regex Properties</h3>
 <p>Compiled regex objects provide the following read-only properties:</p>
 <ul>
@@ -946,26 +1038,26 @@ processing.sleep()</code></pre>
 <li><code>flags</code>: The compilation flags used</li>
 <li><code>error</code>: Error message if compilation failed (only available in internal error states)</li>
 </ul>
-<div class="sourceCode" id="cb30"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">myregex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d+&#39;</span><span class="op">)</span></span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="st">&#39;Pattern: &#39;</span> <span class="op">..</span> <span class="va">myregex</span><span class="op">.</span><span class="va">pattern</span><span class="op">)</span></span>
-<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="st">&#39;Flags: &#39;</span> <span class="op">..</span> <span class="va">myregex</span><span class="op">.</span><span class="va">flags</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb35"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">myregex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;</span><span class="sc">\\</span><span class="st">d+&#39;</span><span class="op">)</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="st">&#39;Pattern: &#39;</span> <span class="op">..</span> <span class="va">myregex</span><span class="op">.</span><span class="va">pattern</span><span class="op">)</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span><span class="op">(</span><span class="st">&#39;Flags: &#39;</span> <span class="op">..</span> <span class="va">myregex</span><span class="op">.</span><span class="va">flags</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Note</strong>: Invalid regex patterns will raise an error during construction. Use <code>catch()</code> or <code>pcall()</code> to handle potential compilation errors:</p>
-<div class="sourceCode" id="cb31"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">myregex</span></span>
-<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">err</span> <span class="op">=</span> catch<span class="op">(</span><span class="kw">function</span><span class="op">()</span></span>
-<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">myregex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[invalid&#39;</span><span class="op">)</span></span>
-<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span>
-<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">err</span> <span class="cf">then</span></span>
-<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Regex compilation failed: &#39;</span> <span class="op">..</span> <span class="va">err</span><span class="op">.</span><span class="va">message</span><span class="op">)</span></span>
-<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb36"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">myregex</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">err</span> <span class="op">=</span> catch<span class="op">(</span><span class="kw">function</span><span class="op">()</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>   <span class="va">myregex</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;[invalid&#39;</span><span class="op">)</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span><span class="op">)</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="va">err</span> <span class="cf">then</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>   <span class="fu">print</span><span class="op">(</span><span class="st">&#39;Regex compilation failed: &#39;</span> <span class="op">..</span> <span class="va">err</span><span class="op">.</span><span class="va">message</span><span class="op">)</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <h3 id="performance-considerations">Performance Considerations</h3>
 <p>Regex objects are compiled once and can be reused many times, making them significantly more efficient than traditional string matching for complex patterns. Store frequently used regex objects in variables rather than recreating them:</p>
-<div class="sourceCode" id="cb32"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Efficient: compile once, use many times</span></span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span></span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">email</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">emailList</span><span class="op">)</span> <span class="cf">do</span></span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">emailValidator</span><span class="op">.</span>test<span class="op">(</span><span class="va">email</span><span class="op">)</span> <span class="cf">then</span></span>
-<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>      processEmail<span class="op">(</span><span class="va">email</span><span class="op">)</span></span>
-<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
-<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="sourceCode lua"><code class="sourceCode lua"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co">-- Efficient: compile once, use many times</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="kw">local</span> <span class="va">emailValidator</span> <span class="op">=</span> <span class="va">regex</span><span class="op">.</span>new<span class="op">(</span><span class="st">&#39;^[</span><span class="sc">\\</span><span class="st">w._%+-]+@[</span><span class="sc">\\</span><span class="st">w.-]+</span><span class="sc">\\</span><span class="st">.[A-Za-z]{2,}$&#39;</span><span class="op">)</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> <span class="cn">_</span><span class="op">,</span> <span class="va">email</span> <span class="kw">in</span> <span class="fu">ipairs</span><span class="op">(</span><span class="va">emailList</span><span class="op">)</span> <span class="cf">do</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>   <span class="cf">if</span> <span class="va">emailValidator</span><span class="op">.</span>test<span class="op">(</span><span class="va">email</span><span class="op">)</span> <span class="cf">then</span></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a>      processEmail<span class="op">(</span><span class="va">email</span><span class="op">)</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>   <span class="cf">end</span></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a><span class="cf">end</span></span></code></pre></div>
 <hr>
 <h2 id="array-interface">Array Interface</h2>
 <p>The array interface is used to manage the arrays that are returned by object fields, actions, methods and certain functions. Although Lua includes native support for arrays, their functionality is particular to the Lua environment. Arrays for use within the Parasol API must use the interface that we provide.</p>

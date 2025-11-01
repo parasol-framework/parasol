@@ -95,9 +95,6 @@ an escape character in attribute strings.
 
 TODO:
 * Add support for custom functions via a new method, e.g., RegisterFunction().
-* An InspectFunction() method would allow the function signature and list of parameter names to be returned
-    InspectFunction(STRING FunctionName, INT ResultFlags, STRING Result).
-    Suggest returning a serialised XML document describing the function as speed isn't a concern here.
 * Allow modules to be preloaded.  There are many ways this could be achieved, e.g.
   - Load the module as a separate XQuery and link it via a new method.
   - Provide a callback that is invoked when an import is encountered, this allows the the host application to supply
@@ -106,6 +103,28 @@ TODO:
     would manage it.  Probably the best option.
 
 *********************************************************************************************************************/
+
+static std::string xml_escape(const std::string &str)
+{
+   std::string escaped;
+   bool needs_escaping = false;
+   for (char c : str) {
+      if (CSTRING esc = xml_escape_table[static_cast<unsigned char>(c)]) {
+         if (not needs_escaping) {
+            escaped.reserve(str.size() + (str.size()>>4));
+            escaped = str.substr(0, &c - str.data());
+            needs_escaping = true;
+         }
+         escaped += esc;
+      }
+      else if (needs_escaping) escaped += c;
+   }
+
+   if (needs_escaping) return escaped;
+   else return str;
+}
+
+//********************************************************************************************************************
 
 static ERR build_query(extXQuery *Self)
 {
@@ -364,6 +383,145 @@ static ERR XQUERY_Init(extXQuery *Self)
    return ERR::Okay;
 }
 
+/*********************************************************************************************************************
+
+-METHOD-
+InspectFunctions: Returns information about compiled XQuery functions.
+
+Use InspectFunctions to retrieve metadata about user-defined or standard XQuery functions available in the
+compiled XQuery object.  The function name can include wildcards to match multiple functions.
+
+The ResultFlags parameter controls which pieces of information are included in the output XML document.  If
+no flags are specified, all available information is returned.
+
+The structure of the returned XML document is as follows, with each matching function returned in series:
+
+```
+&lt;function&gt;
+  &lt;name&gt;function-name&lt;/name&gt;
+  &lt;parameters&gt;
+    &lt;parameter&gt;
+      &lt;name&gt;param1&lt;/name&gt;
+      &lt;type&gt;type1&lt;/type&gt;
+    &lt;/parameter&gt;
+    ...
+  &lt;/parameters&gt;
+  &lt;returnType&gt;type&lt;/returnType&gt;
+  &lt;userDefined&gt;true|false&lt;/userDefined&gt;
+  &lt;signature&gt;function-signature&lt;/signature&gt;
+  &lt;ast&gt;... serialized function body AST ...&lt;/ast&gt;
+&lt;/function&gt;
+ ```
+
+-INPUT-
+cstr Name: The name of the function or functions to inspect (supports wildcards).
+int(XIF) ResultFlags: Bitmask controlling the returned information.
+&!cstr Result: Receives a serialised XML document describing the function(s).
+
+-ERRORS-
+Okay
+NullArgs
+
+-END-
+
+*********************************************************************************************************************/
+
+static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions *Args)
+{
+   pf::Log log;
+   if (not Args) return log.warning(ERR::NullArgs);
+
+   if (Self->StaleBuild) {
+      if (auto err = build_query(Self); err != ERR::Okay) return err;
+   }
+
+   std::ostringstream stream;
+
+   auto flags = Args->ResultFlags;
+   if (flags == XIF::NIL) flags = XIF::ALL;
+
+   // Extract function information based on ResultFlags
+   auto process_function = [&](const XQueryFunction &fn) {
+      if (stream.tellp()) stream << '\n';
+
+      stream << "<function>";
+      if ((flags & XIF::NAME) != XIF::NIL) {
+         auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
+         stream << std::format("<name>{}</name>", xml_escape(fname));
+      }
+
+      if ((flags & XIF::PARAMETERS) != XIF::NIL) {
+         stream << "<parameters>";
+         size_t parameter_count = fn.parameter_names.size();
+         for (size_t i = 0; i < parameter_count; ++i) {
+            stream << "<parameter>";
+            stream << std::format("<name>${}</name>", xml_escape(fn.parameter_names[i]));
+            bool has_type = (i < fn.parameter_types.size()) and (not fn.parameter_types[i].empty());
+            if (has_type) {
+               stream << std::format("<type>{}</type>", xml_escape(fn.parameter_types[i]));
+            }
+            stream << "</parameter>";
+         }
+         stream << "</parameters>";
+      }
+
+      if ((flags & XIF::RETURN_TYPE) != XIF::NIL) {
+         stream << std::format("<returnType>{}</returnType>", fn.return_type ? xml_escape(*fn.return_type) : "item()*");
+      }
+
+      if ((flags & XIF::USER_DEFINED) != XIF::NIL) {
+         stream << std::format("<userDefined>{}</userDefined>", fn.is_external ? "false" : "true");
+      }
+
+      if ((flags & XIF::SIGNATURE) != XIF::NIL) {
+         stream << std::format("<signature>{}</signature>", xml_escape(fn.signature()));
+      }
+
+      if ((flags & XIF::AST) != XIF::NIL) {
+         if (fn.body) {
+            std::string body;
+            XPathEvaluator eval(Self, Self->XML, fn.body.get(), &Self->ParseResult);
+            body = xml_escape(eval.build_ast_signature(fn.body.get()));
+            stream << "<ast>" << body << "</ast>";
+         }
+      }
+      stream << "</function>";
+   };
+
+   if (Self->ParseResult.prolog) {
+      for (const auto &entry : Self->ParseResult.prolog->functions) {
+         const auto &fn = entry.second;
+         auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
+         if (pf::wildcmp(Args->Name, fname)) {
+            process_function(fn);
+         }
+      }
+
+      // Include functions declared in imported modules
+      std::shared_ptr<XQueryModuleCache> mod_cache = Self->ParseResult.prolog->get_module_cache();
+      if (mod_cache) {
+         for (auto it = mod_cache->modules.begin(); it != mod_cache->modules.end(); ++it) {
+            if ((it->second) and (it->second->prolog)) {
+               for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
+                  auto fname = to_lexical_name(*Self->ParseResult.prolog, fn->second.qname);
+                  if (pf::wildcmp(Args->Name, fname)) {
+                     process_function(fn->second);
+                  }
+               }
+            }
+         }
+      }
+
+      if (not stream.tellp()) return log.warning(ERR::Search);
+
+      std::string result = stream.str();
+      Args->Result = pf::strclone(result.c_str());
+
+      return ERR::Okay;
+   }
+   else return log.warning(ERR::Search);
+}
+
 //********************************************************************************************************************
 
 static ERR XQUERY_NewPlacement(extXQuery *Self)
@@ -425,7 +583,7 @@ the position of the node.
 
 Note that valid function execution can return `ERR:Search` if zero matches are found.
 
-The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use 
+The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use
 `function(XML, TagID, Attrib)`
 
 -INPUT-
@@ -810,7 +968,7 @@ static const FieldArray clFields[] = {
    { "Path",         FDF_STRING|FDF_RW,        GET_Path, SET_Path },
    { "Result",       FDF_PTR|FDF_STRUCT|FDF_R, GET_Result, nullptr, "XPathValue" },
    { "ResultString", FDF_STRING|FDF_R,         GET_ResultString },
-   { "ResultType",   FDF_INT|FDF_R,            GET_ResultType },
+   { "ResultType",   FDF_INT|FDF_LOOKUP|FDF_R, GET_ResultType, nullptr, &clXQueryXPVT },
    { "Statement",    FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
    { "Functions",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Functions },
    { "Variables",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Variables },

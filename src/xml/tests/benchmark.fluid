@@ -306,7 +306,7 @@ end
 
 function benchmarkTokenLongArithmetic()
    local expr = '('
-   for i = 1, 200 do
+   for i = 1, 50 do
       if i > 1 then expr = expr .. ' + ' end
       expr = expr .. tostring(i)
    end

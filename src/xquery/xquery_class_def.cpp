@@ -16,14 +16,27 @@ static const struct FieldDef clXQueryXQF[] = {
    { nullptr, 0 }
 };
 
+static const struct FieldDef clXQueryXPVT[] = {
+   { "Nodeset", 0x00000000 },
+   { "Boolean", 0x00000001 },
+   { "Number", 0x00000002 },
+   { "String", 0x00000003 },
+   { "Date", 0x00000004 },
+   { "Time", 0x00000005 },
+   { "Datetime", 0x00000006 },
+   { nullptr, 0 }
+};
+
 FDEF maEvaluate[] = { { "XML", FD_OBJECTPTR }, { 0, 0 } };
 FDEF maSearch[] = { { "XML", FD_OBJECTPTR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
 FDEF maRegisterFunction[] = { { "FunctionName", FD_STR }, { "Callback", FD_FUNCTIONPTR }, { 0, 0 } };
+FDEF maInspectFunctions[] = { { "Name", FD_STR }, { "ResultFlags", FD_INT }, { "Result", FD_STR|FD_ALLOC|FD_RESULT }, { 0, 0 } };
 
 static const struct MethodEntry clXQueryMethods[] = {
    { AC(-1), (APTR)XQUERY_Evaluate, "Evaluate", maEvaluate, sizeof(struct xq::Evaluate) },
    { AC(-2), (APTR)XQUERY_Search, "Search", maSearch, sizeof(struct xq::Search) },
    { AC(-3), (APTR)XQUERY_RegisterFunction, "RegisterFunction", maRegisterFunction, sizeof(struct xq::RegisterFunction) },
+   { AC(-4), (APTR)XQUERY_InspectFunctions, "InspectFunctions", maInspectFunctions, sizeof(struct xq::InspectFunctions) },
    { AC::NIL, 0, 0, 0, 0 }
 };
 

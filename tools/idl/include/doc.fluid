@@ -403,6 +403,7 @@ function extractParagraph(Input, Caller, References)
    -- Eliminate any initial leading whitespace from preformatted sections.
 
    Input = Input:gsub('<pre>[%c%s]*(.-)</pre>', '<pre>%1</pre>')
+   Input = Input:gsub('```(.-)```', '<pre>%1</pre>')
    Input = Input:gsub('`(.-)`', '<code>%1</code>')
 
    -- Wrap each line inside a <p> tag and take into account lines that start with XML tags such as <pre> or otherwise

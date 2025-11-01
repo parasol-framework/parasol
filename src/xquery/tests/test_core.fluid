@@ -21,7 +21,7 @@ function testBasicXPath()
    local err, tag = xml.mtGetTag(tag_id)
    assert(err == ERR_Okay, "Failed to get target tag " .. tostring(tag_id))
    assert(tag.children[1].attribs[1].value == "Found", "Target content incorrect")
-   
+
    -- Simple deep evaluation
    tag_id = nil
    xq.statement = '//root'
