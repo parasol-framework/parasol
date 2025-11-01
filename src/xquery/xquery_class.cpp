@@ -116,7 +116,7 @@ static std::string xml_escape(const std::string &str)
             needs_escaping = true;
          }
          escaped += esc;
-      } 
+      }
       else if (needs_escaping) escaped += c;
    }
 
