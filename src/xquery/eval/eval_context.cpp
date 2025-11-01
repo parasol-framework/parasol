@@ -195,7 +195,8 @@ ERR XPathEvaluator::evaluate_ast(const XPathNode *Node, uint32_t CurrentPrefix)
    // NOTE: This switch targets top-level AST categories (path traversal versus expression bodies).
    //       The handlers funnel into specialised evaluation entry points rather than the
    //       expression dispatcher, so it intentionally remains separate from the central
-   //       NODE_HANDLERS map introduced in LR-3 Phase 1.
+   //       NODE_HANDLERS map.
+   
    switch (Node->type) {
       case XQueryNodeType::LOCATION_PATH:
          return evaluate_location_path(Node, CurrentPrefix);

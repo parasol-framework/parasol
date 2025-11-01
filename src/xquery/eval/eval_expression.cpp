@@ -1078,6 +1078,7 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
 // - XQuery spec section 3.3.1.
 // - Called from: evaluate_expression().
 // - May recursively call: n/a.
+
 XPathVal XPathEvaluator::handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    (void)Node;
@@ -1111,6 +1112,7 @@ XPathVal XPathEvaluator::handle_empty_sequence(const XPathNode *Node, uint32_t C
 // - XQuery spec section 3.1.7.
 // - Called from: evaluate_expression().
 // - May recursively call: n/a.
+
 XPathVal XPathEvaluator::handle_number(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    (void)CurrentPrefix;
@@ -1145,6 +1147,7 @@ XPathVal XPathEvaluator::handle_number(const XPathNode *Node, uint32_t CurrentPr
 // - XQuery spec section 3.1.1.
 // - Called from: evaluate_expression().
 // - May recursively call: n/a.
+
 XPathVal XPathEvaluator::handle_literal(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    (void)CurrentPrefix;
@@ -1178,6 +1181,7 @@ XPathVal XPathEvaluator::handle_literal(const XPathNode *Node, uint32_t CurrentP
 // - XQuery spec section 3.12.1.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for the operand node.
+
 XPathVal XPathEvaluator::handle_cast_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -1306,6 +1310,7 @@ XPathVal XPathEvaluator::handle_cast_expression(const XPathNode *Node, uint32_t 
 // - XQuery spec section 3.8.3.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for child nodes.
+
 XPathVal XPathEvaluator::handle_conditional(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 3) {
@@ -1355,6 +1360,7 @@ XPathVal XPathEvaluator::handle_conditional(const XPathNode *Node, uint32_t Curr
 // - XQuery spec section 3.12.4.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for the operand.
+
 XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -1587,6 +1593,7 @@ XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint3
 // - XQuery spec section 3.12.5.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for the operand.
+
 XPathVal XPathEvaluator::handle_instance_of_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -1640,6 +1647,7 @@ XPathVal XPathEvaluator::handle_instance_of_expression(const XPathNode *Node, ui
 // - XQuery spec section 3.12.2.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for the operand.
+
 XPathVal XPathEvaluator::handle_castable_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -1725,6 +1733,7 @@ XPathVal XPathEvaluator::handle_castable_expression(const XPathNode *Node, uint3
 // - XQuery spec section 3.12.3.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for branch bodies.
+
 XPathVal XPathEvaluator::handle_typeswitch_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 2) {
@@ -1883,6 +1892,7 @@ XPathVal XPathEvaluator::handle_union_node(const XPathNode *Node, uint32_t Curre
 // - XQuery spec section 3.8.4.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for bindings and return body.
+
 XPathVal XPathEvaluator::handle_let_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 2) {
@@ -1960,6 +1970,7 @@ XPathVal XPathEvaluator::handle_let_expression(const XPathNode *Node, uint32_t C
 // - XQuery spec section 3.8.4.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for bindings and return clause.
+
 XPathVal XPathEvaluator::handle_for_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 2) {
@@ -2062,6 +2073,7 @@ XPathVal XPathEvaluator::handle_for_expression(const XPathNode *Node, uint32_t C
 // - XQuery spec section 3.13.4.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for binding sources and predicate.
+
 XPathVal XPathEvaluator::handle_quantified_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 2) {
@@ -2145,6 +2157,7 @@ XPathVal XPathEvaluator::handle_quantified_expression(const XPathNode *Node, uin
 // - XQuery spec section 3.3.1.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for input and predicate.
+
 XPathVal XPathEvaluator::handle_filter(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -2263,6 +2276,7 @@ XPathVal XPathEvaluator::handle_filter(const XPathNode *Node, uint32_t CurrentPr
 // - XQuery spec section 3.3.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for intermediate steps.
+
 XPathVal XPathEvaluator::handle_path(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -2344,6 +2358,7 @@ XPathVal XPathEvaluator::handle_path(const XPathNode *Node, uint32_t CurrentPref
 // - XQuery spec sections 3.3.1, 3.4, 3.5, 3.6.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for operand nodes.
+
 XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 2) {
@@ -2424,6 +2439,7 @@ XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t Curren
 // - XQuery spec section 3.5.1.
 // - Called from: handle_binary_op().
 // - May recursively call: evaluate_expression() for operand nodes.
+
 XPathVal XPathEvaluator::handle_binary_logical(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2472,6 +2488,7 @@ XPathVal XPathEvaluator::handle_binary_logical(const XPathNode *Node, const XPat
 // - XQuery spec section 3.3.1.
 // - Called from: handle_binary_op().
 // - May recursively call: evaluate_expression() for operands.
+
 XPathVal XPathEvaluator::handle_binary_set_ops(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2517,6 +2534,7 @@ XPathVal XPathEvaluator::handle_binary_set_ops(const XPathNode *Node, const XPat
 // - XQuery spec section 3.3.1.
 // - Called from: handle_binary_op().
 // - May recursively call: evaluate_expression() for operands.
+
 XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2689,6 +2707,7 @@ XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPa
 // - XQuery spec section 3.4.
 // - Called from: handle_binary_op().
 // - May recursively call: evaluate_expression() for operands.
+
 XPathVal XPathEvaluator::handle_binary_arithmetic(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2751,6 +2770,7 @@ XPathVal XPathEvaluator::handle_binary_arithmetic(const XPathNode *Node, const X
 // - XQuery spec section 3.5.
 // - Called from: handle_binary_op().
 // - May recursively call: evaluate_expression() for operands.
+
 XPathVal XPathEvaluator::handle_binary_comparison(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2834,8 +2854,6 @@ XPathVal XPathEvaluator::handle_binary_comparison(const XPathNode *Node, const X
    }
 }
 
-
-
 //********************************************************************************************************************
 // Evaluates a UNARY_OP node and returns the computed value.
 //
@@ -2861,6 +2879,7 @@ XPathVal XPathEvaluator::handle_binary_comparison(const XPathNode *Node, const X
 // - XQuery spec section 3.4.1.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for the operand.
+
 XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -2910,6 +2929,7 @@ XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t Current
 // - XQuery spec section 3.3.1.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for the child node.
+
 XPathVal XPathEvaluator::handle_expression_wrapper(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (auto *child = Node->get_child_safe(0)) return evaluate_expression(child, CurrentPrefix);
@@ -2943,6 +2963,7 @@ XPathVal XPathEvaluator::handle_expression_wrapper(const XPathNode *Node, uint32
 // - XQuery spec section 2.1.1.
 // - Called from: evaluate_expression().
 // - May recursively call: evaluate_expression() for deferred initialisers.
+
 XPathVal XPathEvaluator::handle_variable_reference(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    XPathVal resolved_value;
@@ -3085,5 +3106,3 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    expression_unsupported = true;
    return XPathVal();
 }
-
-
