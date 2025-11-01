@@ -464,7 +464,7 @@ end
    -- Sort results by name
    local sortedResults = {}
    for testName, result in pairs(benchmarkResults) do
-      if result ~= -1 then
+      if result != -1 then
          table.insert(sortedResults, {
             name = testName,
             avgTime = result.avgTime,

@@ -79,6 +79,18 @@ function testDescendantAxisAttributeAccess()
 end
 
 -----------------------------------------------------------------------------------------------------------------------
+
+function testSimpleDeep()
+   local xml = obj.new("xml", {
+      statement = '<root category="library"><branch name="east"><shelf code="A"><book id="1">Intro</book></shelf></branch><branch name="west"><shelf code="B"><book id="2">Advanced</book></shelf></branch></root>'
+   })
+
+   local err, root = xml.mtEvaluate('//root')
+   assert(err == ERR_Okay, 'Evaluating //root failed: ' .. mSys.GetErrorMsg(err))
+   assert(root == 'IntroAdvanced', 'Got root content of: ' .. tostring(root))
+end
+
+-----------------------------------------------------------------------------------------------------------------------
 -- Conditional expressions should select the correct branch
 
 function testConditionalIfExpression()
@@ -296,6 +308,6 @@ return {
       'testDeeplyNestedPathTraversal', 'testSequentialPredicateEvaluation', 'testRelativeCurrentNodeTraversal',
       'testMissingPathError', 'testDescendantAxisAttributeAccess', 'testConditionalIfExpression', 'testForExpressionNodeAggregation',
       'testQuantifiedExpressions', 'testForExpressionMultipleBindings', 'testFlworForLetCombination', 'testFlworLetForCombination', 'testSequenceSetOperators',
-      'testSetOperatorKeywordNameTests'
+      'testSetOperatorKeywordNameTests', 'testSimpleDeep'
    }
 }

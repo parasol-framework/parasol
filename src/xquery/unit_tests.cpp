@@ -2,9 +2,8 @@
 // This file contains compiled-in unit tests for the XPath module, primarily for debugging prolog integration.
 // Unit tests need to be enabled in the CMakeLists.txt file and then launched from test_unit_tests.fluid
 
+#include <parasol/modules/xquery.h>
 #include "xquery.h"
-#include "api/xquery_prolog.h"
-#include "parse/xpath_tokeniser.h"
 #include "../xml/xml.h"
 
 #include <iostream>
@@ -302,26 +301,20 @@ static void test_prolog_in_xpath() {
 
    // Test 4: Base URI inheritance during compilation
    {
-      extXML xml;
-      xml.Path = const_cast<char *>("file:///sample\\doc.xml");
+      auto xq = extXQuery::create { };
+      if (xq.ok()) {
+         auto &compiled = ((extXQuery *)xq)->ParseResult;
+         bool inherited = false;
 
-      CompiledXPath *compiled = nullptr;
-      ERR error = ::xp::Compile(&xml, "1", (APTR *)&compiled);
-      bool success = (error IS ERR::Okay) and (compiled not_eq nullptr);
-      bool inherited = false;
-
-      if (success)
-      {
          auto prolog_ptr = compiled->prolog;
-         if (prolog_ptr)
-         {
+         if (prolog_ptr) {
             inherited = prolog_ptr->static_base_uri IS std::string("file:///sample/doc.xml");
          }
          FreeResource(compiled);
-      }
 
-      test_assert(success and inherited, "Prolog base URI inheritance",
-         "Compiled prolog should inherit and normalise document base URI");
+         test_assert(success and inherited, "Prolog base URI inheritance",
+            "Compiled prolog should inherit and normalise document base URI");
+      }
    }
 }
 

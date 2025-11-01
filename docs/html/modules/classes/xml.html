@@ -98,19 +98,12 @@
 <p>If set post-initialisation, all currently loaded data will be cleared and the source object will be parsed automatically.</p>
       
 </div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#fl-Start" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Start"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
-                           
-                          <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct write access"></i></td><th class="col-md-1">Start</th><td class="col-md-1"><span class="text-nowrap">INT</span></td><td>Set a starting cursor to affect the starting point for some XML operations.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Start" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
-<p>When using any XML function that creates an XML string (e.g. SaveToObject), the XML object will include the entire XML tree by default.  Defining the Start value will restrict processing to a specific tag and its children.</p>
-<p>The Start field currently affects the <a data-bs-toggle="tooltip" title="Saves XML data to a storage object (e.g. File)." href="#ta-SaveToObject">SaveToObject()</a> action and the <a data-bs-toggle="tooltip" title="XML data is processed through this field." href="#tf-Statement">Statement</a> field.</p>
-      
-</div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#fl-Statement" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Statement"><i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional read access"></i>
                            
                           <i class="bi bi-check-circle text-success" data-bs-toggle="tooltip" title="Functional write access"></i></td><th class="col-md-1">Statement</th><td class="col-md-1"><span class="text-nowrap">STRING</span></td><td>XML data is processed through this field.</td></tr><tr><td colspan="4" class="hiddenRow"><div id="fl-Statement" class="accordion-body collapse"><div class="doc-content" style="margin:20px">
 <p>Set the Statement field to parse an XML formatted data string through the object.  If this field is set after initialisation then the XML object will clear any existing data first.</p>
 <p>Be aware that setting this field with an invalid statement will result in an empty XML object.</p>
-<p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the <a data-bs-toggle="tooltip" title="Set a starting cursor to affect the starting point for some XML operations." href="#tf-Start">Start</a> field.  The string result is an allocation that must be freed.</p>
+<p>Reading the Statement field will return a serialised string of XML data.  By default all tags will be included in the statement unless a predefined starting position is set by the #Start field.  The string result is an allocation that must be freed.</p>
 <p>If the statement is an XQuery expression with base-uri references, the <a data-bs-toggle="tooltip" title="Set this field if the XML document originates from a file source." href="#tf-Path">Path</a> field should be set to establish the base path for relative references.</p>
       
 </div></div></td></tr>
@@ -431,15 +424,6 @@ local err = xml.acDataFeed(nil, DATA_XML, 'First element')
 <div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>The namespace was successfully assigned to the tag.</td></tr>
 <tr><th class="col-md-1">NotFound</th><td>The specified tag was not found.</td></tr>
 <tr><th class="col-md-1">NullArgs</th><td>Required arguments were not specified correctly.</td></tr>
-</tbody></table></div></div></td></tr>
-<tr data-bs-toggle="collapse" data-bs-target="#tmx-SetVariable" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">SetVariable</th><td id="tm-SetVariable">Stores a variable that can be referenced in XPath expressions.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-SetVariable" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::SetVariable(OBJECTPTR Object, CSTRING Key, CSTRING Value)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>Key</td><td>The name of the variable (case sensitive).</td></tr>
-<tr><td>Value</td><td>The string value to store.</td></tr>
-</tbody></table></div></div><div class="docs-content" style="margin:1em .5em 1em .5em;">
-<p>This method allows you to store key-value pairs that can be referenced in XPath expressions using the variable syntax <code>$variableName</code>.  Variables are stored as strings and are made available during XPath evaluation.</p>
-      
-<div class="sub-header">Error Codes</div><table class="table table-sm borderless"><tbody><tr><th class="col-md-1">Okay</th><td>Operation successful.</td></tr>
-<tr><th class="col-md-1">ReadOnly</th><td>The XML object is read-only.</td></tr>
-<tr><th class="col-md-1">NullArgs</th><td>The <code>Key</code> parameter was not specified.</td></tr>
 </tbody></table></div></div></td></tr>
 <tr data-bs-toggle="collapse" data-bs-target="#tmx-Sort" role="button" style="scroll-margin:3em;"><th class="col-md-1 text-primary">Sort</th><td id="tm-Sort">Sorts XML tags to your specifications.</td></tr><tr><td colspan="2" class="hiddenRow"><div id="tmx-Sort" class="accordion-body collapse"><div class="card" style="border-radius: 0;"><div class="card-header action-header" style="border-radius: 0;"><samp>ERR xml::Sort(OBJECTPTR Object, CSTRING XPath, CSTRING Sort, XSF Flags)</samp></div><div class="card-body" style="padding:0px"><table class="table"><thead><tr><th class="col-md-1">Parameter</th><th>Description</th></tr></thead><tbody><tr><td>XPath</td><td>Sort everything under the specified tag, or <code>NULL</code> to sort the entire top level.</td></tr>
 <tr><td>Sort</td><td>Pointer to a sorting instruction string.</td></tr>
