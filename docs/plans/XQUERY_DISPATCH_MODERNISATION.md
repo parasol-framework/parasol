@@ -1402,17 +1402,46 @@ These are baseline performance metrics measured before LR-3 implementation. Use 
 **Build**: Release, PARASOL_STATIC=ON
 **Date**: 2025-10-27
 
-| Query Type | Expression | Iterations | Avg Time (µs) | Std Dev |
-|------------|-----------|-----------|---------------|---------|
-| Arithmetic (hot) | `1 + 2 * 3` | 10000 | 0.83 | 0.05 |
-| Variable (hot) | `$x * $x` | 10000 | 1.21 | 0.08 |
-| Unary negation | `-5` | 10000 | 0.92 | 0.06 |
-| Binary comparison | `5 > 3` | 10000 | 1.15 | 0.07 |
-| Function call | `string-length("test")` | 5000 | 3.45 | 0.21 |
-| Path expression | `//item` | 1000 | 15.32 | 1.10 |
-| FLWOR simple | `for $i in (1,2,3) return $i * 2` | 1000 | 8.67 | 0.52 |
-| Cast expression | `(5.5 cast as xs:integer)` | 1000 | 4.21 | 0.30 |
-| Typeswitch | `typeswitch($x) case xs:integer...` | 500 | 12.88 | 0.95 |
+ 1. Attribute Matching        18us/iter (54ms total, 15us fastest, 3000 iters)
+ 2. Attribute Scanning        5476us/iter (1642ms total, 5123us fastest, 300 iters)
+ 3. Axes Traversal            158us/iter (94ms total, 131us fastest, 600 iters)
+ 4. Axis Descendant Deep      29us/iter (58ms total, 21us fastest, 2000 iters)
+ 5. Axis Following            45us/iter (90ms total, 31us fastest, 2000 iters)
+ 6. Axis Preceding            44us/iter (88ms total, 31us fastest, 2000 iters)
+ 7. Basic Navigation          26us/iter (78ms total, 21us fastest, 3000 iters)
+ 8. Boolean Logic             124us/iter (149ms total, 99us fastest, 1200 iters)
+ 9. Complex Expressions       263us/iter (158ms total, 225us fastest, 600 iters)
+10. Complex Predicates        276us/iter (165ms total, 233us fastest, 600 iters)
+11. Conditional Counting      168us/iter (151ms total, 140us fastest, 900 iters)
+12. Content Extraction        117us/iter (176ms total, 99us fastest, 1500 iters)
+13. Deep Scanning             350us/iter (105ms total, 315us fastest, 300 iters)
+14. FLWOR Group By            523us/iter (1047ms total, 437us fastest, 2000 iters)
+15. FLWOR Order By            518us/iter (1036ms total, 452us fastest, 2000 iters)
+16. FLWOR Simple For          296us/iter (1187ms total, 259us fastest, 4000 iters)
+17. Function Predicates       82us/iter (49ms total, 66us fastest, 600 iters)
+18. Indexed vs Predicate Access 193us/iter (290ms total, 159us fastest, 1500 iters)
+19. Large Deep Scan           4485us/iter (672ms total, 4245us fastest, 150 iters)
+20. Mixed Content Traversal   1007us/iter (604ms total, 906us fastest, 600 iters)
+21. Nested Functions          164us/iter (98ms total, 135us fastest, 600 iters)
+22. Numeric Comparisons       107us/iter (160ms total, 94us fastest, 1500 iters)
+23. Numeric Functions         256us/iter (230ms total, 221us fastest, 900 iters)
+24. Parse XML File            955us/iter (573ms total, 867us fastest, 600 iters)
+25. Position Functions        168us/iter (151ms total, 147us fastest, 900 iters)
+26. Prolog Arity Lookup       52us/iter (83ms total, 39us fastest, 1600 iters)
+27. Prolog Many Functions     58us/iter (81ms total, 48us fastest, 1400 iters)
+28. Prolog QName Normalise    17us/iter (27ms total, 13us fastest, 1600 iters)
+29. Simple vs Complex Paths   87us/iter (131ms total, 66us fastest, 1500 iters)
+30. String Functions          149us/iter (134ms total, 128us fastest, 900 iters)
+31. String Manipulation       234us/iter (211ms total, 208us fastest, 900 iters)
+32. Text Node Access          202us/iter (182ms total, 171us fastest, 900 iters)
+33. Token Long Arithmetic     75us/iter (151ms total, 64us fastest, 2000 iters)
+34. Token Long Path           67us/iter (135ms total, 52us fastest, 2000 iters)
+35. Token Nested Functions    21us/iter (131ms total, 15us fastest, 6000 iters)
+36. Union Operations          586us/iter (176ms total, 467us fastest, 300 iters)
+37. Wildcard Matching         456us/iter (684ms total, 325us fastest, 1500 iters)
+
+Grand total benchmark time:   11.251s (average per test: 304078.135ms)
+Fastest-only grand total:   16068us (average fastest: 434us)
 
 **Target improvements after Phase 3**:
 - Arithmetic: < 0.80 µs (5% faster)
