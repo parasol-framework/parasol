@@ -425,6 +425,9 @@ the position of the node.
 
 Note that valid function execution can return `ERR:Search` if zero matches are found.
 
+The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use 
+`function(XML, TagID, Attrib)`
+
 -INPUT-
 obj(XML) XML: Target XML document to search.
 ptr(func) Callback: Optional callback function to invoke for each matching node.

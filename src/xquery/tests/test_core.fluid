@@ -11,12 +11,29 @@ function testBasicXPath()
    })
 
    -- Test absolute path
-   local err, targetId = xml.mtSearch('/root/level1/level2/target')
+   local tag_id
+   local xq = obj.new('xquery', { statement = '/root/level1/level2/target' })
+   local err = xq.mtSearch(xml, function(XML, TagID)
+      tag_id = TagID
+   end)
    assert(err == ERR_Okay, "Failed to find target with absolute path: " .. mSys.GetErrorMsg(err))
 
-   local err, tag = xml.mtGetTag(targetId)
-   assert(err == ERR_Okay, "Failed to get target tag")
+   local err, tag = xml.mtGetTag(tag_id)
+   assert(err == ERR_Okay, "Failed to get target tag " .. tostring(tag_id))
    assert(tag.children[1].attribs[1].value == "Found", "Target content incorrect")
+   
+   -- Simple deep evaluation
+   tag_id = nil
+   xq.statement = '//root'
+   local err = xq.mtEvaluate(xml)
+   assert(err == ERR_Okay, "Failed to evaluate //root: " .. mSys.GetErrorMsg(err))
+   assert(xq.resultString == 'Found', 'Target content incorrect')
+
+   -- Simple deep search
+   local count = 0
+   xq.statement = '//root'
+   local err = xq.mtSearch(xml, function(XML, TagID) count += 1 end)
+   assert(err == ERR_Okay and count > 0, "Failed to find //root, count " .. count .. ", error: " .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
