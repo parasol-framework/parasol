@@ -61,11 +61,11 @@ function testInvalidParameters()
    assert(err == ERR_NotFound, "Should return NotFound for invalid tag ID")
 
    -- Test nil XPath
-   local err, result = xml.mtFindTag(nil)
+   local err, result = xml.mtSearch(nil)
    assert(err == ERR_NullArgs, "Should return NullArgs for nil XPath")
 
    -- Test empty XPath
-   local err, result = xml.mtFindTag("")
+   local err, result = xml.mtSearch("")
    assert(err != ERR_Okay, "Should fail for empty XPath")
 end
 
@@ -102,7 +102,7 @@ function testNamespaceHandling()
    -- Namespaces should be preserved as part of tag/attribute names
    assert(xml.tags, "Namespace XML should parse")
 
-   local err, nsId = xml.mtFindTag('/root/ns:child')
+   local err, nsId = xml.mtSearch('/root/ns:child')
    if err == ERR_Okay then
       local err, value = xml.mtGetAttrib(nsId, 'ns:attr')
       assert(err == ERR_Okay and value == "value", "Namespace attribute not preserved")
@@ -136,12 +136,12 @@ function testConcurrentAccess()
 
    -- Multiple FindTag operations should work safely
    local count1 = 0
-   local err1, result1 = xml.mtFindTag('/root/item', function(XML, TagID, Attrib)
+   local err1, result1 = xml.mtSearch('/root/item', function(XML, TagID, Attrib)
       count1 = count1 + 1
    end)
 
    local count2 = 0
-   local err2, result2 = xml.mtFindTag('//item', function(XML, TagID, Attrib)
+   local err2, result2 = xml.mtSearch('//item', function(XML, TagID, Attrib)
       count2 = count2 + 1
    end)
 
@@ -169,12 +169,12 @@ function testXPathEdgeCases()
    })
 
    -- Test escaping special XPath characters in attribute values
-   local err, id = xml.mtFindTag('/root/item[@name="test[1]"]')
+   local err, id = xml.mtSearch('/root/item[@name="test[1]"]')
    -- This may or may not work depending on XPath implementation
 
    -- Test very long XPath expressions
    local longPath = '/root' .. string.rep('/item', 50)
-   local err, result = xml.mtFindTag(longPath)
+   local err, result = xml.mtSearch(longPath)
    assert(err == ERR_Search, "Should fail gracefully for invalid long paths")
 end
 
@@ -224,7 +224,7 @@ function testDeepNesting()
       deepPath = deepPath .. '/level' .. i
    end
 
-   local err, deepId = xml.mtFindTag(deepPath)
+   local err, deepId = xml.mtSearch(deepPath)
    assert(err == ERR_Okay, "Deep XPath should succeed")
 end
 

@@ -40,7 +40,7 @@ function testInsertXMLSiblings()
       statement = '<root><child1/><child2/><child3/></root>'
    })
 
-   local err, child2Id = xml.mtFindTag("/root/child2")
+   local err, child2Id = xml.mtSearch("/root/child2")
 
    -- Insert before child2
    local err, prevId = xml.mtInsertXML(child2Id, XMI_PREV, '<before/>')
@@ -175,8 +175,8 @@ function testMoveTags()
       statement = '<root><source1/><source2/><dest><existing/></dest></root>'
    })
 
-   local err, source1Id = xml.mtFindTag("/root/source1")
-   local err, destId = xml.mtFindTag("/root/dest")
+   local err, source1Id = xml.mtSearch("/root/source1")
+   local err, destId = xml.mtSearch("/root/dest")
 
    -- Move source1 as child of dest
    local err = xml.mtMoveTags(source1Id, 1, destId, XMI_CHILD)
@@ -198,8 +198,8 @@ function testMoveTagsChildEnd()
       statement = '<root><source/><dest><child1/><child2/></dest></root>'
    })
 
-   local err, sourceId = xml.mtFindTag("/root/source")
-   local err, destId = xml.mtFindTag("/root/dest")
+   local err, sourceId = xml.mtSearch("/root/source")
+   local err, destId = xml.mtSearch("/root/dest")
 
    -- Move source as last child of dest
    local err = xml.mtMoveTags(sourceId, 1, destId, XMI_CHILD_END)
@@ -219,8 +219,8 @@ function testMoveTagsPrev()
       statement = '<root><source/><target/><other/></root>'
    })
 
-   local err, sourceId = xml.mtFindTag("/root/source")
-   local err, targetId = xml.mtFindTag("/root/target")
+   local err, sourceId = xml.mtSearch("/root/source")
+   local err, targetId = xml.mtSearch("/root/target")
 
    -- Move source before target
    local err = xml.mtMoveTags(sourceId, 1, targetId, XMI_PREV)
@@ -240,8 +240,8 @@ function testMoveTagsNext()
       statement = '<root><other/><target/><source/></root>'
    })
 
-   local err, sourceId = xml.mtFindTag("/root/source")
-   local err, targetId = xml.mtFindTag("/root/target")
+   local err, sourceId = xml.mtSearch("/root/source")
+   local err, targetId = xml.mtSearch("/root/target")
 
    -- Move source after target
    local err = xml.mtMoveTags(sourceId, 1, targetId, XMI_NEXT)
@@ -261,8 +261,8 @@ function testMoveMultipleTags()
       statement = '<root><source1/><source2/><source3/><dest><existing/></dest></root>'
    })
 
-   local err, source1Id = xml.mtFindTag("/root/source1")
-   local err, destId = xml.mtFindTag("/root/dest")
+   local err, source1Id = xml.mtSearch("/root/source1")
+   local err, destId = xml.mtSearch("/root/dest")
 
    -- Move 3 consecutive tags starting from source1 as children of dest
    local err = xml.mtMoveTags(source1Id, 3, destId, XMI_CHILD)
@@ -293,7 +293,7 @@ function testInsertXPath()
    assert(err == ERR_Okay, "Failed to insert via XPath: " .. mSys.GetErrorMsg(err))
 
    -- Verify insertion
-   local err, targetId = xml.mtFindTag('/root/section[@name="target"]')
+   local err, targetId = xml.mtSearch('/root/section[@name="target"]')
    assert(err == ERR_Okay, "Failed to find target section")
 
    local err, targetTag = xml.mtGetTag(targetId)
