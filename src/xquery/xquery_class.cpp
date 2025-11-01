@@ -116,7 +116,7 @@ static std::string xml_escape(const std::string &str)
             needs_escaping = true;
          }
          escaped += esc;
-      } 
+      }
       else if (needs_escaping) escaped += c;
    }
 
@@ -436,7 +436,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
    }
 
    std::ostringstream result;
-   
+
    auto flags = Args->ResultFlags;
    if (flags == XIF::NIL) flags = XIF::ALL;
 
@@ -444,7 +444,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
    auto process_function = [&](const XQueryFunction &fn) {
       result << "<function>";
       if ((flags & XIF::NAME) != XIF::NIL) {
-         
+
          auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
          result << std::format("<name>{}</name>", xml_escape(fname));
       }
@@ -488,7 +488,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
          const auto &fn = entry.second;
          auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
          if (pf::wildcmp(Args->Name, fname)) {
-            
+
          }
       }
 
@@ -500,7 +500,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
                for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
                   auto fname = to_lexical_name(*Self->ParseResult.prolog, fn->second.qname);
                   if (pf::wildcmp(Args->Name, fname)) {
-            
+
                   }
                }
             }
@@ -576,6 +576,9 @@ If no callback is provided, the search stops after the first match and the @XML 
 the position of the node.
 
 Note that valid function execution can return `ERR:Search` if zero matches are found.
+
+The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use
+`function(XML, TagID, Attrib)`
 
 -INPUT-
 obj(XML) XML: Target XML document to search.

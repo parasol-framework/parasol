@@ -26,7 +26,7 @@ end
 
 function testIncrement()
    local counter = 0
-   counter++;
+   counter++
    assert(counter == 1, 'counter++ should increment value once')
    counter++;
    assert(counter == 2, 'counter++ should allow repeated increments')

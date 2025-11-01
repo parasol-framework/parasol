@@ -317,16 +317,16 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 /*********************************************************************************************************************
 
 -METHOD-
-FindTag: Searches for XML elements using XPath expressions with optional callback processing.
+Search: Searches for XML elements using XPath and XQuery expressions with optional callback processing.
 
-The FindTag method provides the primary mechanism for locating XML elements within the document structure using
-XPath 2.0 compatible expressions.  The method supports both single-result queries and comprehensive tree traversal
+The Search method provides the primary mechanism for locating XML elements within the document structure using
+XPath and XQuery expressions.  The method supports both single-result queries and comprehensive tree traversal
 with callback-based processing for complex operations.
 
-When no callback function is provided, FindTag returns the first matching element and terminates the search
+When no callback function is provided, Search returns the first matching element and terminates the search
 immediately.  This is optimal for simple queries where only the first occurrence is required.
 
-When a callback function is specified, FindTag continues searching through the entire document structure, calling the
+When a callback function is specified, Search continues searching through the entire document structure, calling the
 provided function for each matching element.  This enables comprehensive processing of all matching elements in a
 single traversal.
 
@@ -338,35 +338,33 @@ All other error codes are ignored to maintain search robustness.
 Note: If an error occurs, check the #ErrorMsg field for a custom error message containing further details.
 
 -INPUT-
-cstr XPath: A valid XPath expression string conforming to XPath 2.0 syntax with Parasol extensions.  Must not be NULL or empty.
+cstr Expression: A valid XQuery expression.
 ptr(func) Callback: Optional pointer to a callback function for processing multiple matches.
 &int Result: UID of the first matching tag.  Only valid when Callback is undefined.
 
 -ERRORS-
 Okay: A matching tag was found (or callback processing completed successfully).
-NullArgs: The XPath parameter was NULL or the Result parameter was NULL when no callback was provided.
+NullArgs: The Expression was NULL or the Result parameter was NULL when no callback was provided.
 NoData: The XML document contains no data to search.
-Search: No matching tag could be found for the specified XPath expression.
+Search: No matching tag could be found for the specified expression.
 
 *********************************************************************************************************************/
 
-static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
+static ERR XML_Search(extXML *Self, struct xml::Search *Args)
 {
    pf::Log log;
 
    Self->ErrorMsg.clear();
 
-   if ((not Args) or (not Args->XPath)) return ERR::NullArgs;
-   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("XPath: %s", Args->XPath);
+   if ((not Args) or (not Args->Expression)) return ERR::NullArgs;
+   if ((Self->Flags & XMF::LOG_ALL) != XMF::NIL) log.msg("Expression: %s", Args->Expression);
    if (Self->Tags.empty()) return ERR::NoData;
 
    objXQuery *xq;
    if (NewObject(CLASSID::XQUERY, NF::NIL, (OBJECTPTR *)&xq) IS ERR::Okay) {
-      xq->set(FID_Statement, Args->XPath);
+      xq->set(FID_Statement, Args->Expression);
 
       if (auto error = xq->init(); error IS ERR::Okay) {
-         // TODO: Should verify that the compiled expression is an XPath and not an XQuery
-
          matching_tag_opt opt;
 
          FUNCTION callback;
@@ -450,7 +448,7 @@ modified.  Callers should not attempt to modify or free the returned string.  Fo
 content should be copied to application-managed memory.
 
 -INPUT-
-int Index: The unique identifier of the XML tag to search.  This must correspond to a valid tag ID as returned by methods such as #FindTag().
+int Index: The unique identifier of the XML tag to search.  This must correspond to a valid tag ID as returned by methods such as #Search().
 cstr Attrib: The name of the attribute to retrieve (case insensitive).  If NULL or empty, the element's tag name is returned instead.
 &cstr Value: Pointer to a string pointer that will receive the attribute value.  Set to NULL if the specified attribute does not exist.
 

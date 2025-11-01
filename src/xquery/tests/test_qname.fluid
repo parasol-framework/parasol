@@ -14,25 +14,25 @@ function testQNameConstruction()
          .. '</root>'
    })
 
-   local errQName, qnameNode = xml.mtFindTag('/root[QName("http://example.com/ns", "ex:item") = "Q{http://example.com/ns}ex:item"]')
+   local errQName, qnameNode = xml.mtSearch('/root[QName("http://example.com/ns", "ex:item") = "Q{http://example.com/ns}ex:item"]')
    assert(errQName == ERR_Okay and qnameNode != nil, 'QName() should produce canonical QName strings with explicit prefixes')
 
-   local errResolve, resolveNode = xml.mtFindTag('/root/ex:item[resolve-QName("ex:item", .) = "Q{http://example.com/ns}ex:item"]')
+   local errResolve, resolveNode = xml.mtSearch('/root/ex:item[resolve-QName("ex:item", .) = "Q{http://example.com/ns}ex:item"]')
    assert(errResolve == ERR_Okay and resolveNode != nil, 'resolve-QName() should map prefixes using the supplied element context')
 
-   local errPrefix, prefixNode = xml.mtFindTag('/root/ex:item[prefix-from-QName(resolve-QName("ex:item", .)) = "ex"]')
+   local errPrefix, prefixNode = xml.mtSearch('/root/ex:item[prefix-from-QName(resolve-QName("ex:item", .)) = "ex"]')
    assert(errPrefix == ERR_Okay and prefixNode != nil, 'prefix-from-QName() should expose the lexical prefix of resolved QNames')
 
-   local errLocal, localNode = xml.mtFindTag('/root/ex:item[local-name-from-QName(resolve-QName("ex:item", .)) = "item"]')
+   local errLocal, localNode = xml.mtSearch('/root/ex:item[local-name-from-QName(resolve-QName("ex:item", .)) = "item"]')
    assert(errLocal == ERR_Okay and localNode != nil, 'local-name-from-QName() should extract the NCName component from resolved QNames')
 
-   local errNamespace, namespaceNode = xml.mtFindTag('/root/ex:item[namespace-uri-from-QName(resolve-QName("ex:item", .)) = "http://example.com/ns"]')
+   local errNamespace, namespaceNode = xml.mtSearch('/root/ex:item[namespace-uri-from-QName(resolve-QName("ex:item", .)) = "http://example.com/ns"]')
    assert(errNamespace == ERR_Okay and namespaceNode != nil, 'namespace-uri-from-QName() should reveal the namespace bound to prefixed QNames')
 
-   local errDefaultPrefix, defaultPrefixNode = xml.mtFindTag('/root/plain[not(exists(prefix-from-QName(resolve-QName("plain", .))))]')
+   local errDefaultPrefix, defaultPrefixNode = xml.mtSearch('/root/plain[not(exists(prefix-from-QName(resolve-QName("plain", .))))]')
    assert(errDefaultPrefix == ERR_Okay and defaultPrefixNode != nil, 'Unprefixed QNames should report no lexical prefix')
 
-   local errDefaultNamespace, defaultNamespaceNode = xml.mtFindTag('/root/plain[namespace-uri-from-QName(resolve-QName("plain", .)) = "http://example.com/default"]')
+   local errDefaultNamespace, defaultNamespaceNode = xml.mtSearch('/root/plain[namespace-uri-from-QName(resolve-QName("plain", .)) = "http://example.com/default"]')
    assert(errDefaultNamespace == ERR_Okay and defaultNamespaceNode != nil, 'Default namespaces should apply to unprefixed QNames')
 end
 
@@ -48,13 +48,13 @@ function testNamespaceUtilities()
          .. '</root>'
    })
 
-   local errPrefixLookup, prefixLookupNode = xml.mtFindTag('/root/ex:item[namespace-uri-for-prefix("ex", .) = "http://example.com/ns"]')
+   local errPrefixLookup, prefixLookupNode = xml.mtSearch('/root/ex:item[namespace-uri-for-prefix("ex", .) = "http://example.com/ns"]')
    assert(errPrefixLookup == ERR_Okay and prefixLookupNode != nil, 'namespace-uri-for-prefix() should resolve declared prefixes within scope')
 
-   local errDefaultLookup, defaultLookupNode = xml.mtFindTag('/root/plain[namespace-uri-for-prefix("", .) = "http://example.com/default"]')
+   local errDefaultLookup, defaultLookupNode = xml.mtSearch('/root/plain[namespace-uri-for-prefix("", .) = "http://example.com/default"]')
    assert(errDefaultLookup == ERR_Okay and defaultLookupNode != nil, 'namespace-uri-for-prefix() should reveal the default namespace when requested')
 
-   local errScope, scopeNode = xml.mtFindTag('/root/ex:item["ex" = in-scope-prefixes(.) and "dup" = in-scope-prefixes(.) and "xml" = in-scope-prefixes(.)]')
+   local errScope, scopeNode = xml.mtSearch('/root/ex:item["ex" = in-scope-prefixes(.) and "dup" = in-scope-prefixes(.) and "xml" = in-scope-prefixes(.)]')
    assert(errScope == ERR_Okay and scopeNode != nil, 'in-scope-prefixes() should enumerate declared prefixes and the implicit xml prefix')
 end
 

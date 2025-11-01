@@ -81,18 +81,18 @@ end
 -- Basic XPath Navigation Benchmarks
 
 function benchmarkBasicNavigation()
-   local err, id = glXML.mtFindTag('/catalog/categories/category[1]/products/product[1]')
+   local err, id = glXML.mtSearch('/catalog/categories/category[1]/products/product[1]')
    assert(err == ERR_Okay, "Basic navigation failed")
 end
 
 function benchmarkAttributeMatching()
-   local err, id = glXML.mtFindTag('/catalog/categories/category[@name="electronics"]')
+   local err, id = glXML.mtSearch('/catalog/categories/category[@name="electronics"]')
    assert(err == ERR_Okay, "Attribute matching failed")
 end
 
 function benchmarkDeepScanning()
    local count = 0
-   local err, id = glXML.mtFindTag('//product[@price>500]', function(XML, TagID, Attrib)
+   local err, id = glXML.mtSearch('//product[@price>500]', function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Deep scanning failed")
@@ -100,7 +100,7 @@ end
 
 function benchmarkWildcardMatching()
    local count = 0
-   local err, id = glXML.mtFindTag('/catalog/categories/*', function(XML, TagID, Attrib)
+   local err, id = glXML.mtSearch('/catalog/categories/*', function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Wildcard matching failed")
@@ -110,22 +110,22 @@ end
 -- Complex Predicate Benchmarks
 
 function benchmarkNumericComparisons()
-   local err, id = glXML.mtFindTag('//product[@price>=100 and @price<=1000]')
+   local err, id = glXML.mtSearch('//product[@price>=100 and @price<=1000]')
    assert(err == ERR_Okay, "Numeric comparisons failed")
 end
 
 function benchmarkFunctionPredicates()
-   local err, id = glXML.mtFindTag('/catalog/categories/category[count(products/product)>10]')
+   local err, id = glXML.mtSearch('/catalog/categories/category[count(products/product)>10]')
    assert(err == ERR_Okay, "Function predicates failed")
 end
 
 function benchmarkStringFunctions()
-   local err, id = glXML.mtFindTag('//product[contains(@name,"Pro")]')
+   local err, id = glXML.mtSearch('//product[contains(@name,"Pro")]')
    assert(err == ERR_Okay, "String function failed")
 end
 
 function benchmarkPositionFunctions()
-   local err, id = glXML.mtFindTag('//category/products/product[position()=last()]')
+   local err, id = glXML.mtSearch('//category/products/product[position()=last()]')
    assert(err == ERR_Okay, "Position function failed")
 end
 
@@ -133,25 +133,25 @@ end
 -- Advanced XPath Features Benchmarks
 
 function benchmarkAxesTraversal()
-   local err, id = glXML.mtFindTag('//product[@id="prod-1"]/ancestor::category[@name]')
+   local err, id = glXML.mtSearch('//product[@id="prod-1"]/ancestor::category[@name]')
    assert(err == ERR_Okay, "Axes traversal failed")
 end
 
 function benchmarkUnionOperations()
    local count = 0
-   local err, id = glXML.mtFindTag('//category[@name="electronics"] | //category[@name="clothing"]', function(XML, TagID, Attrib)
+   local err, id = glXML.mtSearch('//category[@name="electronics"] | //category[@name="clothing"]', function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Union operations failed")
 end
 
 function benchmarkComplexPredicates()
-   local err, id = glXML.mtFindTag('//product[@price>100 and @instock="true" and contains(@name,"Ultra")]')
+   local err, id = glXML.mtSearch('//product[@price>100 and @instock="true" and contains(@name,"Ultra")]')
    assert(err == ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
 end
 
 function benchmarkNestedFunctions()
-   local err, id = glXML.mtFindTag('//category[string-length(@name)>5 and count(products/product)>=3]')
+   local err, id = glXML.mtSearch('//category[string-length(@name)>5 and count(products/product)>=3]')
    assert(err == ERR_Okay, "Nested functions failed")
 end
 
@@ -160,7 +160,7 @@ end
 
 function benchmarkLargeDeepScan()
    local count = 0
-   local err, id = glXML.mtFindTag('//product', function(XML, TagID, Attrib)
+   local err, id = glXML.mtSearch('//product', function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Large deep scan failed")
@@ -168,7 +168,7 @@ end
 
 function benchmarkAttributeScanning()
    local count = 0
-   local err, id = glXML.mtFindTag('//@price', function(XML, TagID, Attrib)
+   local err, id = glXML.mtSearch('//@price', function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Attribute scanning failed")
@@ -184,22 +184,22 @@ end
 -- XPath Function Library Benchmarks
 
 function benchmarkStringManipulation()
-   local err, id = glXML.mtFindTag('//product[starts-with(@name,"Ultra") and substring(@name,1,5)="Ultra"]')
+   local err, id = glXML.mtSearch('//product[starts-with(@name,"Ultra") and substring(@name,1,5)="Ultra"]')
    assert(err == ERR_Okay, "String manipulation failed")
 end
 
 function benchmarkNumericFunctions()
-   local err, id = glXML.mtFindTag('//product[floor(@price div 100) = 12]')
+   local err, id = glXML.mtSearch('//product[floor(@price div 100) = 12]')
    assert(err == ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
 end
 
 function benchmarkBooleanLogic()
-   local err, id = glXML.mtFindTag('//product[@instock="true" and not(@discontinued="true")]')
+   local err, id = glXML.mtSearch('//product[@instock="true" and not(@discontinued="true")]')
    assert(err == ERR_Okay, "Boolean logic failed")
 end
 
 function benchmarkComplexExpressions()
-   local err, id = glXML.mtFindTag('//product[@price * 0.5 > 70 and position() mod 2 = 0]')
+   local err, id = glXML.mtSearch('//product[@price * 0.5 > 70 and position() mod 2 = 0]')
    assert(err == ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
 end
 
@@ -212,13 +212,13 @@ function benchmarkContentExtraction()
 end
 
 function benchmarkTextNodeAccess()
-   local err, id = glXML.mtFindTag('//product/description[text()="High-performance device"]')
+   local err, id = glXML.mtSearch('//product/description[text()="High-performance device"]')
    assert(err == ERR_Okay, "Text node access failed")
 end
 
 function benchmarkMixedContentTraversal()
    local count = 0
-   local err, id = glXML.mtFindTag('//category[products/product and @name]', function(XML, TagID, Attrib)
+   local err, id = glXML.mtSearch('//category[products/product and @name]', function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Mixed content traversal failed")
@@ -229,21 +229,21 @@ end
 
 function benchmarkSimpleVsComplexPaths()
    -- Simple path
-   local err1, id1 = glXML.mtFindTag('/catalog/categories/category[1]')
+   local err1, id1 = glXML.mtSearch('/catalog/categories/category[1]')
    assert(err1 == ERR_Okay, "Simple path failed")
 
    -- Complex equivalent path
-   local err2, id2 = glXML.mtFindTag('/catalog/descendant::categories/child::category[position()=1]')
+   local err2, id2 = glXML.mtSearch('/catalog/descendant::categories/child::category[position()=1]')
    assert(err2 == ERR_Okay, "Complex path failed")
 end
 
 function benchmarkIndexedVsPredicateAccess()
    -- Indexed access
-   local err1, id1 = glXML.mtFindTag('//product[5]')
+   local err1, id1 = glXML.mtSearch('//product[5]')
    assert(err1 == ERR_Okay, "Indexed access failed")
 
    -- Predicate equivalent
-   local err2, id2 = glXML.mtFindTag('//product[position()=5]')
+   local err2, id2 = glXML.mtSearch('//product[position()=5]')
    assert(err2 == ERR_Okay, "Predicate access failed")
 end
 
@@ -332,17 +332,17 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function benchmarkAxisDescendantDeep()
-   local err, id = glXML.mtFindTag('descendant-or-self::node()')
+   local err, id = glXML.mtSearch('descendant-or-self::node()')
    assert(err == ERR_Okay, 'Axis descendant-or-self failed')
 end
 
 function benchmarkAxisFollowing()
-   local err, id = glXML.mtFindTag('/catalog/categories/category[1]/following::node()')
+   local err, id = glXML.mtSearch('/catalog/categories/category[1]/following::node()')
    assert(err == ERR_Okay, 'Axis following failed')
 end
 
 function benchmarkAxisPreceding()
-   local err, id = glXML.mtFindTag('/catalog/categories/category[last()]/preceding::node()')
+   local err, id = glXML.mtSearch('/catalog/categories/category[last()]/preceding::node()')
    assert(err == ERR_Okay, 'Axis preceding failed')
 end
 
@@ -464,7 +464,7 @@ end
    -- Sort results by name
    local sortedResults = {}
    for testName, result in pairs(benchmarkResults) do
-      if result ~= -1 then
+      if result != -1 then
          table.insert(sortedResults, {
             name = testName,
             avgTime = result.avgTime,
