@@ -7,7 +7,6 @@ idl_gen ("hashes.fdl" NAME ${MOD}_hashes OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/has
 idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.h" FILES "${MOD}.cpp")
 
 set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
-#link_directories (${LUAJIT_SRC})
 
 # We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
