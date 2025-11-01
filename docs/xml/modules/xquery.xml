@@ -17,8 +17,8 @@
 
   <types>
     <constants lookup="XIF" comment="Result flags for InspectFunctions().">
-      <const name="ALL">Synonym for <code>BODY | NAME | PARAMETERS | RETURN_TYPE | USER_DEFINED | SIGNATURE</code></const>
-      <const name="BODY">Include function body in the inspection result.</const>
+      <const name="ALL">Synonym for <code>AST | NAME | PARAMETERS | RETURN_TYPE | USER_DEFINED | SIGNATURE</code></const>
+      <const name="AST">Include the compiled function body in the inspection result.</const>
       <const name="NAME">Include function name in the inspection result.</const>
       <const name="PARAMETERS">Include function parameters in the inspection result.</const>
       <const name="RETURN_TYPE">Include function return type in the inspection result.</const>

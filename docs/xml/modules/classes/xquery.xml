@@ -164,11 +164,11 @@ an escape character in attribute strings.
     <method>
       <name>InspectFunctions</name>
       <comment>Returns information about compiled XQuery functions.</comment>
-      <prototype>ERR xq::InspectFunctions(OBJECTPTR Object, CSTRING Name, XIF ResultFlags, std::string * Result)</prototype>
+      <prototype>ERR xq::InspectFunctions(OBJECTPTR Object, CSTRING Name, XIF ResultFlags, CSTRING * Result)</prototype>
       <input>
         <param type="CSTRING" name="Name">The name of the function or functions to inspect (supports wildcards).</param>
         <param type="XIF" name="ResultFlags" lookup="XIF">Bitmask controlling the returned information.</param>
-        <param type="std::string *" name="Result">Receives a serialised XML document describing the function(s).</param>
+        <param type="CSTRING *" name="Result">Receives a serialised XML document describing the function(s).</param>
       </input>
       <description>
 <p>Use InspectFunctions to retrieve metadata about user-defined or standard XQuery functions available in the compiled XQuery object.  The function name can include wildcards to match multiple functions.</p>
@@ -227,6 +227,7 @@ an escape character in attribute strings.
 <p>Use the Search method to scan an XML document for tags or attributes that match a compiled XQuery expression. For every matching node, a user-defined callback function is invoked, allowing custom processing of each result.</p>
 <p>If no callback is provided, the search stops after the first match and the <class name="XML">XML</class> object's cursor markers will reflect the position of the node.</p>
 <p>Note that valid function execution can return <code>ERR:Search</code> if zero matches are found.</p>
+<p>The C++ prototype for Callback is <code>ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)</code>.  For Fluid, use <code>function(XML, TagID, Attrib)</code></p>
       </description>
       <result>
         <error code="Okay">At least one matching node was found and processed.</error>
@@ -338,8 +339,8 @@ an escape character in attribute strings.
   </fields>
   <types>
     <constants lookup="XIF" comment="Result flags for InspectFunctions().">
-      <const name="ALL">Synonym for <code>BODY | NAME | PARAMETERS | RETURN_TYPE | USER_DEFINED | SIGNATURE</code></const>
-      <const name="BODY">Include function body in the inspection result.</const>
+      <const name="ALL">Synonym for <code>AST | NAME | PARAMETERS | RETURN_TYPE | USER_DEFINED | SIGNATURE</code></const>
+      <const name="AST">Include the compiled function body in the inspection result.</const>
       <const name="NAME">Include function name in the inspection result.</const>
       <const name="PARAMETERS">Include function parameters in the inspection result.</const>
       <const name="RETURN_TYPE">Include function return type in the inspection result.</const>

@@ -1167,7 +1167,7 @@ This method is capable of deleting multiple tags if the `Total` parameter is set
 consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is
 exhausted. This is useful for mass delete operations.
 
-This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.
+Note: Removing tags will destabilise all cached address pointers that have been acquired from the XML object.
 
 -INPUT-
 int Index: Reference to the tag that will be removed.

@@ -86,11 +86,11 @@ flags('XQF', { comment='Flags indicating the features of a compiled XQuery expre
 )
 
 flags('XIF', { comment='Result flags for InspectFunctions().' },
-  'BODY: Include function body in the inspection result.',
+  'AST: Include the compiled function body in the inspection result.',
   'NAME: Include function name in the inspection result.',
   'PARAMETERS: Include function parameters in the inspection result.',
   'RETURN_TYPE: Include function return type in the inspection result.',
   'USER_DEFINED: Include user-defined status in the inspection result.',
   'SIGNATURE: Include function signature in the inspection result.',
-  { ALL = "BODY|NAME|PARAMETERS|RETURN_TYPE|USER_DEFINED|SIGNATURE" }
+  { ALL = "AST|NAME|PARAMETERS|RETURN_TYPE|USER_DEFINED|SIGNATURE" }
 )

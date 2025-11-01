@@ -106,7 +106,7 @@ DEFINE_ENUM_FLAG_OPERATORS(XQF)
 
 enum class XIF : uint32_t {
    NIL = 0,
-   BODY = 0x00000001,
+   AST = 0x00000001,
    NAME = 0x00000002,
    PARAMETERS = 0x00000004,
    RETURN_TYPE = 0x00000008,
@@ -127,7 +127,7 @@ namespace xq {
 struct Evaluate { objXML * XML; static const AC id = AC(-1); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct Search { objXML * XML; FUNCTION * Callback; static const AC id = AC(-2); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 struct RegisterFunction { CSTRING FunctionName; FUNCTION * Callback; static const AC id = AC(-3); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
-struct InspectFunctions { CSTRING Name; XIF ResultFlags; std::string * Result; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
+struct InspectFunctions { CSTRING Name; XIF ResultFlags; CSTRING Result; static const AC id = AC(-4); ERR call(OBJECTPTR Object) { return Action(id, Object, this); } };
 
 } // namespace
 
@@ -166,9 +166,11 @@ class objXQuery : public Object {
       struct xq::RegisterFunction args = { FunctionName, &Callback };
       return(Action(AC(-3), this, &args));
    }
-   inline ERR inspectFunctions(CSTRING Name, XIF ResultFlags, std::string * Result) noexcept {
-      struct xq::InspectFunctions args = { Name, ResultFlags, Result };
-      return(Action(AC(-4), this, &args));
+   inline ERR inspectFunctions(CSTRING Name, XIF ResultFlags, CSTRING * Result) noexcept {
+      struct xq::InspectFunctions args = { Name, ResultFlags, (CSTRING)0 };
+      ERR error = Action(AC(-4), this, &args);
+      if (Result) *Result = args.Result;
+      return(error);
    }
 
    // Customised field setting

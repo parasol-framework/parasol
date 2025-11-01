@@ -416,7 +416,7 @@ The structure of the returned XML document is as follows, with each matching fun
 -INPUT-
 cstr Name: The name of the function or functions to inspect (supports wildcards).
 int(XIF) ResultFlags: Bitmask controlling the returned information.
-ptr(cpp(str)) Result: Receives a serialised XML document describing the function(s).
+&!cstr Result: Receives a serialised XML document describing the function(s).
 
 -ERRORS-
 Okay
@@ -435,52 +435,57 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
       if (auto err = build_query(Self); err != ERR::Okay) return err;
    }
 
-   std::ostringstream result;
+   std::ostringstream stream;
    
    auto flags = Args->ResultFlags;
    if (flags == XIF::NIL) flags = XIF::ALL;
 
    // Extract function information based on ResultFlags
    auto process_function = [&](const XQueryFunction &fn) {
-      result << "<function>";
+      if (stream.tellp()) stream << '\n';
+
+      stream << "<function>";
       if ((flags & XIF::NAME) != XIF::NIL) {
-         
          auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
-         result << std::format("<name>{}</name>", xml_escape(fname));
+         stream << std::format("<name>{}</name>", xml_escape(fname));
       }
 
       if ((flags & XIF::PARAMETERS) != XIF::NIL) {
-         result << "<parameters>";
-         for (size_t i = 0; i < fn.parameter_types.size(); ++i) {
-            result << "<parameter>";
-            result << std::format("<name>{}</name>", xml_escape(fn.parameter_names[i]));
-            result << std::format("<type>{}</type>", xml_escape(fn.parameter_types[i]));
-            result << "</parameter>";
+         stream << "<parameters>";
+         size_t parameter_count = fn.parameter_names.size();
+         for (size_t i = 0; i < parameter_count; ++i) {
+            stream << "<parameter>";
+            stream << std::format("<name>${}</name>", xml_escape(fn.parameter_names[i]));
+            bool has_type = (i < fn.parameter_types.size()) and (not fn.parameter_types[i].empty());
+            if (has_type) {
+               stream << std::format("<type>{}</type>", xml_escape(fn.parameter_types[i]));
+            }
+            stream << "</parameter>";
          }
-         result << "</parameters>";
+         stream << "</parameters>";
       }
 
       if ((flags & XIF::RETURN_TYPE) != XIF::NIL) {
-         result << std::format("<returnType>{}</returnType>", fn.return_type ? xml_escape(*fn.return_type) : "item()*");
+         stream << std::format("<returnType>{}</returnType>", fn.return_type ? xml_escape(*fn.return_type) : "item()*");
       }
 
       if ((flags & XIF::USER_DEFINED) != XIF::NIL) {
-         result << std::format("<userDefined>{}</userDefined>", fn.is_external ? "false" : "true");
+         stream << std::format("<userDefined>{}</userDefined>", fn.is_external ? "false" : "true");
       }
 
       if ((flags & XIF::SIGNATURE) != XIF::NIL) {
-         result << std::format("<signature>{}</signature>", xml_escape(fn.signature()));
+         stream << std::format("<signature>{}</signature>", xml_escape(fn.signature()));
       }
 
-      if ((flags & XIF::BODY) != XIF::NIL) {
+      if ((flags & XIF::AST) != XIF::NIL) {
          if (fn.body) {
             std::string body;
             XPathEvaluator eval(Self, Self->XML, fn.body.get(), &Self->ParseResult);
             body = xml_escape(eval.build_ast_signature(fn.body.get()));
-            result << "<body>" << body << "</body>";
+            stream << "<ast>" << body << "</ast>";
          }
       }
-      result << "</function>";
+      stream << "</function>";
    };
 
    if (Self->ParseResult.prolog) {
@@ -488,7 +493,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
          const auto &fn = entry.second;
          auto fname = to_lexical_name(*Self->ParseResult.prolog, fn.qname);
          if (pf::wildcmp(Args->Name, fname)) {
-            
+            process_function(fn);
          }
       }
 
@@ -500,16 +505,17 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
                for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
                   auto fname = to_lexical_name(*Self->ParseResult.prolog, fn->second.qname);
                   if (pf::wildcmp(Args->Name, fname)) {
-            
+                     process_function(fn->second);   
                   }
                }
             }
          }
       }
 
-      if (not result.tellp()) return log.warning(ERR::Search);
+      if (not stream.tellp()) return log.warning(ERR::Search);
 
-      Args->Result[0] = result.str();
+      std::string result = stream.str();
+      Args->Result = pf::strclone(result.c_str());
 
       return ERR::Okay;
    }
