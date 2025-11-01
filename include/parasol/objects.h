@@ -668,10 +668,10 @@ struct Object { // Must be 64-bit aligned
       return result;
    };
 
-   template <class T> T get(FIELD FieldID) requires std::is_same_v<T, DMF> {
-      DMF result(DMF::NIL);
+   template <class T> T get(FIELD FieldID) requires std::is_enum_v<T> {
+      std::underlying_type_t<T> result;
       get(FieldID, result);
-      return result;
+      return T(result);
    };
 
    // Fetch an array field.  Result is a direct pointer to the data, do not free it.  Elements is set to the number of elements

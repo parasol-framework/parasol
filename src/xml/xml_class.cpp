@@ -320,7 +320,7 @@ static ERR XML_Filter(extXML *Self, struct xml::Filter *Args)
 FindTag: Searches for XML elements using XPath expressions with optional callback processing.
 
 The FindTag method provides the primary mechanism for locating XML elements within the document structure using
-XPath 2.0 compatible expressions.  The method supports both single-result queries and comprehensive tree traversal
+XPath 2.0 expressions.  The method supports both single-result queries and comprehensive tree traversal
 with callback-based processing for complex operations.
 
 When no callback function is provided, FindTag returns the first matching element and terminates the search
@@ -338,7 +338,7 @@ All other error codes are ignored to maintain search robustness.
 Note: If an error occurs, check the #ErrorMsg field for a custom error message containing further details.
 
 -INPUT-
-cstr XPath: A valid XPath expression string conforming to XPath 2.0 syntax with Parasol extensions.  Must not be NULL or empty.
+cstr XPath: A valid XPath 2.0 expression.
 ptr(func) Callback: Optional pointer to a callback function for processing multiple matches.
 &int Result: UID of the first matching tag.  Only valid when Callback is undefined.
 
@@ -365,7 +365,13 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
       xq->set(FID_Statement, Args->XPath);
 
       if (auto error = xq->init(); error IS ERR::Okay) {
-         // TODO: Should verify that the compiled expression is an XPath and not an XQuery
+         // Searching is designed for XPath expressions only
+         auto ff = xq->get<XQF>(FID_FeatureFlags);
+         if ((ff & XQF::XPATH) IS XQF::NIL) {
+            FreeResource(xq);
+            Self->ErrorMsg = "Expression is not a valid XPath";
+            return ERR::InvalidValue;
+         }
 
          matching_tag_opt opt;
 
