@@ -669,7 +669,7 @@ struct Object { // Must be 64-bit aligned
    };
 
    template <class T> T get(FIELD FieldID) requires std::is_enum_v<T> {
-      std::underlying_type_t<T> result;
+      std::underlying_type_t<T> result{};
       get(FieldID, result);
       return T(result);
    };
