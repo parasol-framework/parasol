@@ -5,7 +5,7 @@
 // in which XPath expressions are evaluated.
 //
 // Key responsibilities:
-//   - Context stack push/pop operations for nested expression 
+//   - Context stack push/pop operations for nested expression
 //   - Variable binding and scope management for FLWOR expressions
 //
 // The context management system allows the evaluator to properly handle location paths with predicates,

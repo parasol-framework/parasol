@@ -79,7 +79,7 @@ function testModuleVariables()
    assert(math_count >= 2, "Module variable 'math:pi' not found in variables list")
 
    -- Verify feature flags include ModuleImports
-   
+
    assert(string.find(xq.get("$featureFlags"), 'ModuleImports', 1, true), "Expected feature flags to include ModuleImports")
 end
 

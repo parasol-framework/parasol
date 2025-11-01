@@ -69,7 +69,7 @@ enum('XQueryNodeType', { type='int', start=0 },
   'TYPESWITCH_CASE',
   'TYPESWITCH_DEFAULT_CASE'
 )
-   
+
 flags('XQF', { comment='Flags indicating the features of a compiled XQuery expression.' },
   'XPATH: The expression is an XPath location string.',
   'HAS_PROLOG: The XQuery declares a prolog.',

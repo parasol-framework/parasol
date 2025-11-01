@@ -3,7 +3,7 @@
 module({ name='XQuery', src='xquery.cpp', copyright='Paul Manias © 2025', version=1.0, timestamp=20240611 }, function()
   c_include('<parasol/modules/xml.h>')
   cpp_include('<functional>', '<optional>', '<sstream>', '<parasol/strings.hpp>', '<string_view>', '<vector>')
-  
+
   restrict(function()
     loadFile('../xml/constants.fdl')
   end)
@@ -17,13 +17,13 @@ module({ name='XQuery', src='xquery.cpp', copyright='Paul Manias © 2025', versi
     { id=4, name='InspectFunctions' }
   })
 
-  class('XQuery', { 
-    src        = 'xquery_class.cpp', 
-    output     = 'xquery_class_def.cpp', 
-    references = { 'XQF', 'XPVT' }, 
+  class('XQuery', {
+    src        = 'xquery_class.cpp',
+    output     = 'xquery_class_def.cpp',
+    references = { 'XQF', 'XPVT' },
     comment    = 'Provides an interface for XQuery evaluation and execution.' }, [[
   ]])
-  
+
   c_insert([[
 namespace xq {
 

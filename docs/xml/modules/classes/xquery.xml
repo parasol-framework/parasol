@@ -174,23 +174,22 @@ an escape character in attribute strings.
 <p>Use InspectFunctions to retrieve metadata about user-defined or standard XQuery functions available in the compiled XQuery object.  The function name can include wildcards to match multiple functions.</p>
 <p>The ResultFlags parameter controls which pieces of information are included in the output XML document.  If no flags are specified, all available information is returned.</p>
 <p>The structure of the returned XML document is as follows, with each matching function returned in series:</p>
-<p>
-<code/><code/>
-<function>
-  <name>function-name</name>
-  <parameters>
-    <parameter>
-      <name>param1</name>
-      <type>type1</type>
-    </parameter>
+<pre>
+&lt;function&gt;
+  &lt;name&gt;function-name&lt;/name&gt;
+  &lt;parameters&gt;
+    &lt;parameter&gt;
+      &lt;name&gt;param1&lt;/name&gt;
+      &lt;type&gt;type1&lt;/type&gt;
+    &lt;/parameter&gt;
     ...
-  </parameters>
-  <returnType>type</returnType>
-  <userDefined>true|false</userDefined>
-  <signature>function-signature</signature>
-  <body>... serialized function body AST ...</body>
-</function>
-<p/><code/></p>
+  &lt;/parameters&gt;
+  &lt;returnType&gt;type&lt;/returnType&gt;
+  &lt;userDefined&gt;true|false&lt;/userDefined&gt;
+  &lt;signature&gt;function-signature&lt;/signature&gt;
+  &lt;ast&gt;... serialized function body AST ...&lt;/ast&gt;
+&lt;/function&gt;
+ </pre>
       </description>
       <result>
         <error code="Okay">Operation successful.</error>

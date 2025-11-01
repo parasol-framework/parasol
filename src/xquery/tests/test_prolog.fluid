@@ -139,8 +139,8 @@ end
 
 function testFunctionOverloadingByArity()
    local xq = obj.new('xquery', { statement = [[
-declare function local:adder($a, $b) { $a + $b }; 
-declare function local:adder($a, $b, $c) { $a + $b + $c }; 
+declare function local:adder($a, $b) { $a + $b };
+declare function local:adder($a, $b, $c) { $a + $b + $c };
 concat(local:adder(2, 3), ":", local:adder(1, 2, 3))
 ]] })
    assert(xq.acActivate() is ERR_Okay, 'Query execution failed: ' .. tostring(xq.errorMsg))

@@ -40,11 +40,23 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <h4>SSL Server Certificates</h4>
 <p>For SSL server sockets, custom certificates can be specified using the <a data-bs-toggle="tooltip" title="SSL certificate file to use if in server mode." href="#tf-SSLCertificate">SSLCertificate</a> field. Both PEM and PKCS#12 formats are supported across all platforms.</p>
 <p>Example with PKCS#12 certificate:</p>
-<p>
-<code></code><code> netsocket = obj.new('netsocket', { flags = 'SERVER|SSL', port = 8443, sslCertificate = 'config:ssl/server.p12', sslKeyPassword = 'password123' }) </code><code></code></p>
+<pre>
+netsocket = obj.new('netsocket', {
+   flags = 'SERVER|SSL',
+   port = 8443,
+   sslCertificate = 'config:ssl/server.p12',
+   sslKeyPassword = 'password123'
+})
+</pre>
 <p>Example with PEM certificate and separate private key:</p>
-<p>
-<code></code><code> netsocket = obj.new('netsocket', { flags = 'SERVER|SSL', port = 8443, sslCertificate = 'config:ssl/server.crt', sslPrivateKey = 'config:ssl/server.key' }) </code><code></code></p>
+<pre>
+netsocket = obj.new('netsocket', {
+   flags = 'SERVER|SSL',
+   port = 8443,
+   sslCertificate = 'config:ssl/server.crt',
+   sslPrivateKey = 'config:ssl/server.key'
+})
+</pre>
 <p>If no custom certificate is specified, the framework will automatically use a localhost self-signed certificate for development purposes.  For production use, always specify a proper certificate signed by a trusted CA.</p>
 <h3>Structure</h3><p>The NetSocket class consists of the following fields:</p><table class="table"><thead><th class="col-md-1"><div data-bs-toggle="tooltip" title="Read/Write access indicators are listed below">Access</div></th><th class="col-md-1">Name</th><th class="col-md-1">Type</th><th>Comment</th></thead><tbody><tr data-bs-toggle="collapse" data-bs-target="#fl-Address" style="scroll-margin:3em;" role="button"><td class="col-md-1" id="tf-Address"><i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Direct read access"></i>
                            

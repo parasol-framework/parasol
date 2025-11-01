@@ -397,20 +397,20 @@ no flags are specified, all available information is returned.
 The structure of the returned XML document is as follows, with each matching function returned in series:
 
 ```
-<function>
-  <name>function-name</name>
-  <parameters>
-    <parameter>
-      <name>param1</name>
-      <type>type1</type>
-    </parameter>
+&lt;function&gt;
+  &lt;name&gt;function-name&lt;/name&gt;
+  &lt;parameters&gt;
+    &lt;parameter&gt;
+      &lt;name&gt;param1&lt;/name&gt;
+      &lt;type&gt;type1&lt;/type&gt;
+    &lt;/parameter&gt;
     ...
-  </parameters>
-  <returnType>type</returnType>
-  <userDefined>true|false</userDefined>
-  <signature>function-signature</signature>
-  <body>... serialized function body AST ...</body>
-</function>
+  &lt;/parameters&gt;
+  &lt;returnType&gt;type&lt;/returnType&gt;
+  &lt;userDefined&gt;true|false&lt;/userDefined&gt;
+  &lt;signature&gt;function-signature&lt;/signature&gt;
+  &lt;ast&gt;... serialized function body AST ...&lt;/ast&gt;
+&lt;/function&gt;
  ```
 
 -INPUT-
@@ -436,7 +436,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
    }
 
    std::ostringstream stream;
-   
+
    auto flags = Args->ResultFlags;
    if (flags == XIF::NIL) flags = XIF::ALL;
 
@@ -505,7 +505,7 @@ static ERR XQUERY_InspectFunctions(extXQuery *Self, struct xq::InspectFunctions 
                for (auto fn = it->second->prolog->functions.begin(); fn != it->second->prolog->functions.end(); ++fn) {
                   auto fname = to_lexical_name(*Self->ParseResult.prolog, fn->second.qname);
                   if (pf::wildcmp(Args->Name, fname)) {
-                     process_function(fn->second);   
+                     process_function(fn->second);
                   }
                }
             }
@@ -583,7 +583,7 @@ the position of the node.
 
 Note that valid function execution can return `ERR:Search` if zero matches are found.
 
-The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use 
+The C++ prototype for Callback is `ERR Function(*XML, int TagID, CSTRING Attrib, APTR Meta)`.  For Fluid, use
 `function(XML, TagID, Attrib)`
 
 -INPUT-

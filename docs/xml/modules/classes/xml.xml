@@ -425,7 +425,7 @@ local err = xml.acDataFeed(nil, DATA_XML, '<first>First element</first>')
       <description>
 <p>The RemoveTag method is used to remove one or more tags from an XML structure.  Child tags will automatically be discarded as a consequence of using this method, in order to maintain a valid XML structure.</p>
 <p>This method is capable of deleting multiple tags if the <code>Total</code> parameter is set to a value greater than 1.  Each consecutive tag and its children following the targeted tag will be removed from the XML structure until the count is exhausted. This is useful for mass delete operations.</p>
-<p>This method is volatile and will destabilise any cached address pointers that have been acquired from the XML object.</p>
+<p>Note: Removing tags will destabilise all cached address pointers that have been acquired from the XML object.</p>
       </description>
       <result>
         <error code="Okay">The tag(s) were successfully removed.</error>
