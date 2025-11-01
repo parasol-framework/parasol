@@ -1,5 +1,8 @@
 -- Type conversion for idl-c
 
+glActiveRefs = { }
+glCustomTypes = { }
+
 -----------------------------------------------------------------------------------------------------------------------
 -- Conversion table for FDL types to their C/C++ and Field Definition equivalents.
 -- Use cType() to perform conversion and don't access glTypes directly.
@@ -50,89 +53,89 @@ glTypes = {
 function getFieldType(Def, Type, CustomName, Option)
    local result
 
-   if bit.band(Type, FD_CUSTOM) != 0 then
+   if Type & FD_CUSTOM != 0 then
       if nz(CustomName) then
          Def.type = CustomName
       else
          Def.type = 'APTR'
       end
-   elseif bit.band(Type, FD_ARRAY) != 0 then
+   elseif Type & FD_ARRAY != 0 then
       -- All arrays are pointers, with additional information indicating the type of values in the array.
 
-      if bit.band(Type, FD_CPP) != 0 then
-         if bit.band(Type, FD_BYTE) != 0 then
+      if Type & FD_CPP != 0 then
+         if Type & FD_BYTE != 0 then
             Def.type = 'pf::vector<int8_t>'
-         elseif bit.band(Type, FD_WORD) != 0 then
+         elseif Type & FD_WORD != 0 then
             Def.type = 'pf::vector<int16_t>'
-         elseif bit.band(Type, FD_INT) != 0 then
+         elseif Type & FD_INT != 0 then
             Def.type = 'pf::vector<int>'
-         elseif bit.band(Type, FD_FLOAT) != 0 then
+         elseif Type & FD_FLOAT != 0 then
             Def.type = 'pf::vector<float>'
-         elseif bit.band(Type, FD_DOUBLE) != 0 then
+         elseif Type & FD_DOUBLE != 0 then
             Def.type = 'pf::vector<double>'
-         elseif bit.band(Type, FD_STRING) != 0 then
+         elseif Type & FD_STRING != 0 then
             Def.type = 'pf::vector<std::string>'
-         elseif bit.band(Type, FD_POINTER) != 0 then
+         elseif Type & FD_POINTER != 0 then
             Def.type = 'pf::vector<APTR>'
-         elseif bit.band(Type, FD_STRUCT) != 0 then
+         elseif Type & FD_STRUCT != 0 then
             Def.type = 'pf::vector<STRUCT>'
          else
             Def.type = 'pf::vector<>'
          end
       else
-         if bit.band(Type, FD_BYTE) != 0 then
+         if Type & FD_BYTE != 0 then
             Def.type = 'int8_t []'
             Def.doc_type = 'INT8 []'
-         elseif bit.band(Type, FD_WORD) != 0 then
+         elseif Type & FD_WORD != 0 then
             Def.type = 'int16_t []'
             Def.doc_type = 'INT16 []'
-         elseif bit.band(Type, FD_INT) != 0 then
+         elseif Type & FD_INT != 0 then
             Def.type = 'int []'
             Def.doc_type = 'INT []'
-         elseif bit.band(Type, FD_FLOAT) != 0 then
+         elseif Type & FD_FLOAT != 0 then
             Def.type = 'float []'
             Def.doc_type = 'FLOAT []'
-         elseif bit.band(Type, FD_DOUBLE) != 0 then
+         elseif Type & FD_DOUBLE != 0 then
             Def.type = 'double []'
             Def.doc_type = 'DOUBLE []'
-         elseif bit.band(Type, FD_STRING) != 0 then
+         elseif Type & FD_STRING != 0 then
             Def.type = 'STRING []'
-         elseif bit.band(Type, FD_POINTER) != 0 then
+         elseif Type & FD_POINTER != 0 then
             Def.type = 'APTR []'
-         elseif bit.band(Type, FD_STRUCT) != 0 then
+         elseif Type & FD_STRUCT != 0 then
             Def.type = 'STRUCT []'
          else
             Def.type = 'ARRAY'
          end
       end
-   elseif bit.band(Type, FD_STRING) != 0 then
+   elseif Type & FD_STRING != 0 then
       Def.type = 'STRING'
-   elseif bit.band(Type, FD_FUNCTION) != 0 then
+   elseif Type & FD_FUNCTION != 0 then
       Def.type = 'FUNCTION'
-   elseif bit.band(Type, FD_POINTER) != 0 then
+   elseif Type & FD_POINTER != 0 then
       local ptr = 0
-      if bit.band(Type, FD_INT) != 0 then
+      if Type & FD_INT != 0 then
          result = 'INT'
          ptr = ptr + 1
-      elseif bit.band(Type, FD_INT64) != 0 then
+      elseif Type & FD_INT64 != 0 then
          result = 'INT64'
          ptr = ptr + 1
-      elseif bit.band(Type, FD_DOUBLE) != 0 then
+      elseif Type & FD_DOUBLE != 0 then
          result = 'DOUBLE'
          ptr = ptr + 1
-      elseif bit.band(Type, bit.bor(FD_OBJECT, nz(FD_INTEGRAL, FD_LOCAL))) != 0 then // FD_INTEGRAL is deprecated
+      elseif Type & (FD_OBJECT | nz(FD_INTEGRAL, FD_LOCAL)) != 0 then -- FD_INTEGRAL is deprecated
          Def.type = 'OBJECTPTR'
          return
-      elseif bit.band(Type, FD_STRING) != 0 then
+      elseif Type & FD_STRING != 0 then
          Def.type = 'STRING'
          return
-      elseif bit.band(Type, FD_RGB) != 0 then
+      elseif Type & FD_RGB != 0 then
          result = 'RGB'
          ptr = ptr + 1
-      elseif bit.band(Type, FD_FUNCTION) != 0 then
+      elseif Type & FD_FUNCTION != 0 then
          result = 'FUNCTION'
          ptr = ptr + 1
-      elseif bit.band(Type, FD_STRUCT) != 0 then
+      elseif Type & FD_STRUCT != 0 then
          if nz(Option) then -- We need a way to convert the Option number to a string address...
             result = 'APTR'
          else
@@ -148,22 +151,22 @@ function getFieldType(Def, Type, CustomName, Option)
       else
          Def.type = result
       end
-   elseif bit.band(Type, FD_RGB) != 0 then
+   elseif Type & FD_RGB != 0 then
       Def.type = 'RGB8'
-   elseif bit.band(Type, FD_INT) != 0 then
-      if bit.band(Type, FD_OBJECT) != 0 then
+   elseif Type & FD_INT != 0 then
+      if Type & FD_OBJECT != 0 then
          Def.type = 'OBJECTID'
       else
          Def.type = 'int'
          Def.doc_type = 'INT'
       end
-   elseif bit.band(Type, FD_INT64) != 0 then
+   elseif Type & FD_INT64 != 0 then
       Def.type = 'int64_t'
       Def.doc_type = 'INT64'
-   elseif bit.band(Type, FD_DOUBLE) != 0 then
+   elseif Type & FD_DOUBLE != 0 then
       Def.type = 'double'
       Def.doc_type = 'DOUBLE'
-   elseif bit.band(Type, FD_FLOAT) != 0 then
+   elseif Type & FD_FLOAT != 0 then
       Def.type = 'float'
       Def.doc_type = 'FLOAT'
    else
@@ -177,7 +180,7 @@ end
 
 function cType(Field, Origin)
    if (Field.type == nil) then
-      error("Field definition incorrect, missing 'type' value for '" .. nz(Origin,"NIL") .. "'")
+      error("Field definition incorrect, missing 'type' value for '" .. tostring(Origin) .. "'")
    end
 
    Field.defType = Field.type -- Save the original type name
@@ -561,7 +564,7 @@ function cType(Field, Origin)
    end
 
    if glTypes[Field.type] == nil then
-      error("No handling for field type '" .. Field.type .. "' from " .. Origin)
+      error("No handling for field type '" .. Field.type .. "' from " .. tostring(Origin))
    end
 
    Field.fullType = glTypes[Field.type]

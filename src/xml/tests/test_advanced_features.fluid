@@ -274,7 +274,7 @@ function testRemoveXPathAttributes()
    assert(err == ERR_Okay, "Attribute removal should succeed")
 
    -- Verify attribute was removed using a fresh lookup
-   local err, itemId = xml.mtFindTag('/root/item[@id="1"]')
+   local err, itemId = xml.mtSearch('/root/item[@id="1"]')
    assert(err == ERR_Okay, "Should be able to locate the first item after removal")
 
    local attrErr, value = xml.mtGetAttrib(itemId, 'type')

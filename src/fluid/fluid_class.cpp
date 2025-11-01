@@ -1009,7 +1009,7 @@ static ERR run_script(objScript *Self)
       }
       else {
          std::ostringstream ss;
-         ss << "Procedure '" << Self->Procedure << "' / #" << Self->ProcedureID << " does not exist in the script.";
+         ss << "Procedure '" << (Self->Procedure ? Self->Procedure : "NULL") << "' / #" << Self->ProcedureID << " does not exist in the script.";
          auto str = ss.str().c_str();
          Self->setErrorString(str);
          log.warning("%s", str);

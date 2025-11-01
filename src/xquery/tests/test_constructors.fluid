@@ -71,7 +71,7 @@ function testNonElementConstructors()
    local err, piContent = xml.mtEvaluate('string(processing-instruction target { "data" })')
    assert(piContent == 'data', 'Processing-instruction should preserve its content, got ' .. nz(piContent, 'NIL'))
 
-   local err = xml.mtFindTag('processing-instruction target { "bad?>data" }')
+   local err = xml.mtSearch('processing-instruction target { "bad?>data" }')
    assert(err != ERR_Okay, 'Processing-instruction content containing ?> should be rejected')
 end
 

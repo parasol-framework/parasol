@@ -54,16 +54,6 @@ local/
 src/android/
 src/fluid/libffi-3.3/
 src/fluid/luajit-2.1/doc/
-src/fluid/luajit-2.1/src/lj_bcdef.h
-src/fluid/luajit-2.1/src/lj_ffdef.h
-src/fluid/luajit-2.1/src/lj_folddef.h
-src/fluid/luajit-2.1/src/lj_libdef.h
-src/fluid/luajit-2.1/src/lj_recdef.h
-src/fluid/luajit-2.1/src/luajit
-src/fluid/luajit-2.1/src/host/buildvm
-src/fluid/luajit-2.1/src/host/buildvm_arch.h
-src/fluid/luajit-2.1/src/host/minilua
-src/fluid/luajit-2.1/src/jit/vmdef.lua
 release-git/
 src/display/simd/
 data/fonts/truetype/NotoColorEmoji.ttf
@@ -83,4 +73,4 @@ src/link/parasol.manifest
 src/link/resource.rc
 data/ssl/localhost.p12
 data/ssl/localhost.pem
-src/xquery/QT3_1_0/
+src/xquery/tests/QT3_1_0/

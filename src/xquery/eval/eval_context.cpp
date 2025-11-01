@@ -5,7 +5,7 @@
 // in which XPath expressions are evaluated.
 //
 // Key responsibilities:
-//   - Context stack push/pop operations for nested expression 
+//   - Context stack push/pop operations for nested expression
 //   - Variable binding and scope management for FLWOR expressions
 //
 // The context management system allows the evaluator to properly handle location paths with predicates,
@@ -560,7 +560,14 @@ ERR XPathEvaluator::process_step_matches(const std::vector<AxisMatch> &Matches, 
          continue;
       }
 
-      if (not candidate) continue;
+      if (not candidate) {
+         if (not IsLastStep) {
+            bool propagate_document_node = (Axis IS AxisType::DESCENDANT_OR_SELF) or
+               (Axis IS AxisType::ANCESTOR_OR_SELF) or (Axis IS AxisType::SELF);
+            if (propagate_document_node) NextContext.push_back({ nullptr, match.attribute });
+         }
+         continue;
+      }
 
       NextContext.push_back({ candidate, nullptr });
    }

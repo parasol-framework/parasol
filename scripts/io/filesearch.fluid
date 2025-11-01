@@ -113,7 +113,7 @@ file.search = function(Path, Options)
                if not lOptions.nameFilter.test(cmpName) then
                   match = false
                end
-            elseif lOptions.nameWild then
+            elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
                if string.find(cmpName, lOptions.nameFilter) == nil then
                   match = false
                end
@@ -200,7 +200,7 @@ file.search = function(Path, Options)
 
             if isRegexFilter then
                nameMatches = lOptions.nameFilter.test(cmpName)
-            elseif lOptions.nameWild then
+            elseif lOptions.namePattern or lOptions.nameWild then -- nameWild is obsolete
                nameMatches = (string.find(cmpName, lOptions.nameFilter) != nil)
             else
                nameMatches = (cmpName == lOptions.nameFilter)

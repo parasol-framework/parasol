@@ -36,16 +36,21 @@ function runTests()
       return
    end
 
-   if (body.init != nil) then
+   if body.init then
       local folder = file.splitPath(glFile)
-      body.init(folder)
+      local tests = body.init(folder)
+      -- The init() function can opt to return a customised set of test references at runtime;
+      -- useful if the test suite has dependencies on files for example.
+      if tests then
+         body.tests = tests
+      end
    end
 
-   glTestTotal = glTestTotal + #body.tests
+   glTestTotal += #body.tests
 
    local i = 0
    for _,func in ipairs(body.tests) do
-      i = i + 1
+      i += 1
       skip = false
       if (type(func) == "string") then
          print("-- Test " .. i .. ": " .. func .. " --")
@@ -74,7 +79,7 @@ function runTests()
          end
       else
          print('SKIPPED')
-         glTestTotal = glTestTotal - 1
+         glTestTotal -= 1
       end
    end
 

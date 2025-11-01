@@ -33,11 +33,23 @@ initially fill the internal write buffer, thereafter it will be called whenever 
 <header>SSL Server Certificates</header>
 <p>For SSL server sockets, custom certificates can be specified using the <fl>SSLCertificate</fl> field. Both PEM and PKCS#12 formats are supported across all platforms.</p>
 <p>Example with PKCS#12 certificate:</p>
-<p>
-<code/><code> netsocket = obj.new('netsocket', { flags = 'SERVER|SSL', port = 8443, sslCertificate = 'config:ssl/server.p12', sslKeyPassword = 'password123' }) </code><code/></p>
+<pre>
+netsocket = obj.new('netsocket', {
+   flags = 'SERVER|SSL',
+   port = 8443,
+   sslCertificate = 'config:ssl/server.p12',
+   sslKeyPassword = 'password123'
+})
+</pre>
 <p>Example with PEM certificate and separate private key:</p>
-<p>
-<code/><code> netsocket = obj.new('netsocket', { flags = 'SERVER|SSL', port = 8443, sslCertificate = 'config:ssl/server.crt', sslPrivateKey = 'config:ssl/server.key' }) </code><code/></p>
+<pre>
+netsocket = obj.new('netsocket', {
+   flags = 'SERVER|SSL',
+   port = 8443,
+   sslCertificate = 'config:ssl/server.crt',
+   sslPrivateKey = 'config:ssl/server.key'
+})
+</pre>
 <p>If no custom certificate is specified, the framework will automatically use a localhost self-signed certificate for development purposes.  For production use, always specify a proper certificate signed by a trusted CA.</p></description>
     <source>
       <file path="netsocket/">netsocket.cpp</file>
