@@ -370,7 +370,7 @@ static ERR XML_FindTag(extXML *Self, struct xml::FindTag *Args)
          if ((ff & XQF::XPATH) IS XQF::NIL) {
             FreeResource(xq);
             Self->ErrorMsg = "Expression is not a valid XPath";
-            return ERR::InvalidValue;
+            return log.warning(ERR::InvalidValue);
          }
 
          matching_tag_opt opt;
