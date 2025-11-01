@@ -10,7 +10,7 @@ function testDeeplyNestedPathTraversal()
       statement = '<catalog><category name="fiction"><series name="modern"><book author="Smith"><chapter num="1"><section><paragraph>Intro</paragraph></section></chapter><chapter num="2"><section><paragraph>Body</paragraph><paragraph>Middle</paragraph></section></chapter><chapter num="3"><section><paragraph>Conclusion</paragraph></section></chapter></book></series></category></catalog>'
    })
 
-   local err, tagId = xml.mtFindTag('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
+   local err, tagId = xml.mtSearch('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
    assert(err == ERR_Okay, 'last() combined with position() should locate the first paragraph of the last chapter: ' .. mSys.GetErrorMsg(err))
 
    local err, content = xml.mtEvaluate('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
@@ -25,7 +25,7 @@ function testSequentialPredicateEvaluation()
       statement = '<data><entry type="record" priority="1"/><entry type="record" priority="2"/><entry type="log" priority="3"/><entry type="record" priority="4"/><entry type="record" priority="5"/></data>'
    })
 
-   local err, tagId = xml.mtFindTag('/data/entry[@type="record"][position()=last()]')
+   local err, tagId = xml.mtSearch('/data/entry[@type="record"][position()=last()]')
    assert(err == ERR_Okay, 'Sequential predicates should allow position()=last() evaluation: ' .. mSys.GetErrorMsg(err))
 
    local errAttr, priority = xml.mtGetAttrib(tagId, 'priority')
@@ -40,13 +40,13 @@ function testRelativeCurrentNodeTraversal()
       statement = '<root><section id="alpha"><item id="x"/><group><item id="y"/></group></section><section id="beta"><group><item id="z"/><item id="target"/></group></section></root>'
    })
 
-   local err, sectionId = xml.mtFindTag('/root/section[./group/item[@id="target"]]')
+   local err, sectionId = xml.mtSearch('/root/section[./group/item[@id="target"]]')
    assert(err == ERR_Okay, 'Predicate using ./group should evaluate relative to the current node: ' .. mSys.GetErrorMsg(err))
 
    local errAttr, sectionName = xml.mtGetAttrib(sectionId, 'id')
    assert(errAttr == ERR_Okay and sectionName == 'beta', 'Expected the section containing the target item to be beta, got ' .. nz(sectionName, 'NIL'))
 
-   local errItem, itemId = xml.mtFindTag('/root/section[@id="beta"]//item[@id="target"]')
+   local errItem, itemId = xml.mtSearch('/root/section[@id="beta"]//item[@id="target"]')
    assert(errItem == ERR_Okay, '// should descend from the matched section to find the nested target item: ' .. mSys.GetErrorMsg(errItem))
 end
 
@@ -58,7 +58,7 @@ function testMissingPathError()
       statement = '<root><item id="1"/><item id="2"/></root>'
    })
 
-   local err, tagId = xml.mtFindTag('/root/item[@id="3"]')
+   local err, tagId = xml.mtSearch('/root/item[@id="3"]')
    assert(err != ERR_Okay, 'Non-existent predicate matches should produce an error result, got ' .. mSys.GetErrorMsg(err))
    assert(tagId == nil or tagId == 0, 'No tag identifier should be returned when the lookup fails, got ' .. tagId)
 end
@@ -74,7 +74,7 @@ function testDescendantAxisAttributeAccess()
    local err, category = xml.mtEvaluate('//branch[@name="west"]/../@category')
    assert(category == 'library', 'Using .. from a descendant selection should expose the ancestor attribute value, got ' .. nz(category, 'NIL'))
 
-   local err, tagId = xml.mtFindTag('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
+   local err, tagId = xml.mtSearch('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
    assert(err == ERR_Okay, 'Complex descendant traversal should locate the advanced book entry: ' .. mSys.GetErrorMsg(err))
 end
 
@@ -88,6 +88,9 @@ function testSimpleDeep()
    local err, root = xml.mtEvaluate('//root')
    assert(err == ERR_Okay, 'Evaluating //root failed: ' .. mSys.GetErrorMsg(err))
    assert(root == 'IntroAdvanced', 'Got root content of: ' .. tostring(root))
+
+   local err, root_id = xml.mtSearch('//root')
+   assert(err == ERR_Okay, 'Finding //root failed: ' .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -114,7 +117,7 @@ function testForExpressionNodeAggregation()
    })
 
    local collected = {}
-   local err, index = xml.mtFindTag('for $g in /root/group return $g/item', function(XML, TagID, Attrib)
+   local err, index = xml.mtSearch('for $g in /root/group return $g/item', function(XML, TagID, Attrib)
       local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'For expression callback should resolve item id: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(collected, idValue)
@@ -154,7 +157,7 @@ function testForExpressionMultipleBindings()
    })
 
    local matched = {}
-   local err = xml.mtFindTag('for $group in /root/group, $item in $group/item[@class=$group/@name] return $item', function(XML, TagID)
+   local err = xml.mtSearch('for $group in /root/group, $item in $group/item[@class=$group/@name] return $item', function(XML, TagID)
       local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'Multi-binding for expression callback should resolve item id: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(matched, idValue)
@@ -178,7 +181,7 @@ function testFlworForLetCombination()
    })
 
    local collected = {}
-   local err = xml.mtFindTag('for $book in /library/book let $genre := $book/@genre return $book[$genre = "fiction"]', function(XML, TagID)
+   local err = xml.mtSearch('for $book in /library/book let $genre := $book/@genre return $book[$genre = "fiction"]', function(XML, TagID)
       local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'FLWOR for-let callback should resolve book id: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(collected, idValue)
@@ -202,7 +205,7 @@ function testFlworLetForCombination()
    })
 
    local expensive = {}
-   local err = xml.mtFindTag('let $collection := /library/book for $book in $collection return $book[@price > 40]', function(XML, TagID)
+   local err = xml.mtSearch('let $collection := /library/book for $book in $collection return $book[@price > 40]', function(XML, TagID)
       local errAttr, idValue = xml.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'FLWOR let-for callback should resolve book id: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(expensive, idValue)
@@ -227,7 +230,7 @@ function testSequenceSetOperators()
    })
 
    local unionOrder = {}
-   local errUnion = xml.mtFindTag('(/root/item[@group="alpha"] union /root/item[@group="beta"])', function(XML, TagID)
+   local errUnion = xml.mtSearch('(/root/item[@group="alpha"] union /root/item[@group="beta"])', function(XML, TagID)
       local errAttr, value = xml.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'Union keyword should expose item identifiers: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(unionOrder, value)
@@ -248,7 +251,7 @@ function testSequenceSetOperators()
    })
 
    local intersectIds = {}
-   local errIntersect = xmlIntersect.mtFindTag('(/root/item[@group="team"] intersect /root/item[@priority="high"])', function(XML, TagID)
+   local errIntersect = xmlIntersect.mtSearch('(/root/item[@group="team"] intersect /root/item[@priority="high"])', function(XML, TagID)
       local errAttr, value = xmlIntersect.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'Intersect operator should expose item identifiers: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(intersectIds, value)
@@ -259,7 +262,7 @@ function testSequenceSetOperators()
       'Intersect operator should return ids one and four in document order, got ' .. table.concat(intersectIds, ','))
 
    local exceptIds = {}
-   local errExcept = xmlIntersect.mtFindTag('(/root/item[@priority="high"]) except /root/item[@exclude="yes"]', function(XML, TagID)
+   local errExcept = xmlIntersect.mtSearch('(/root/item[@priority="high"]) except /root/item[@exclude="yes"]', function(XML, TagID)
       local errAttr, value = xmlIntersect.mtGetAttrib(TagID, 'id')
       assert(errAttr == ERR_Okay, 'Except operator should expose item identifiers: ' .. mSys.GetErrorMsg(errAttr))
       table.insert(exceptIds, value)
@@ -285,17 +288,17 @@ function testSetOperatorKeywordNameTests()
    local err, unionId = xml.mtEvaluate('/root/union/@id')
    assert(unionId == 'u', 'Selecting /root/union should expose id attribute, got ' .. nz(unionId, 'NIL'))
 
-   local errUnionAxis, unionAxisTag = xml.mtFindTag('/root/child::union')
+   local errUnionAxis, unionAxisTag = xml.mtSearch('/root/child::union')
    assert(errUnionAxis == ERR_Okay, 'child::union axis form should resolve the union element: ' .. mSys.GetErrorMsg(errUnionAxis))
    assert(unionAxisTag != nil and unionAxisTag != 0, 'child::union should return a valid tag id, got ' .. nz(unionAxisTag, 'NIL'))
 
-   local errIntersect, intersectTag = xml.mtFindTag('/root/intersect')
+   local errIntersect, intersectTag = xml.mtSearch('/root/intersect')
    assert(errIntersect == ERR_Okay, 'Path lookup should resolve intersect element: ' .. mSys.GetErrorMsg(errIntersect))
    local errIntersectAttrib, intersectValue = xml.mtGetAttrib(intersectTag, 'value')
    assert(errIntersectAttrib == ERR_Okay and intersectValue == 'keep',
        'Intersect element attribute should be retrievable, got ' .. nz(intersectValue, 'NIL'))
 
-   local errExcept, exceptTag = xml.mtFindTag('/root/except')
+   local errExcept, exceptTag = xml.mtSearch('/root/except')
    assert(errExcept == ERR_Okay, 'Path lookup should resolve except element: ' .. mSys.GetErrorMsg(errExcept))
    local errExceptAttrib, exceptFlag = xml.mtGetAttrib(exceptTag, 'flag')
    assert(errExceptAttrib == ERR_Okay and exceptFlag == 'omit',
