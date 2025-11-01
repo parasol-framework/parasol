@@ -45,11 +45,12 @@ The refactoring follows a **pragmatic hybrid approach** that:
   - [ ] If pursued: Update parser to populate variant for hot types
   - [ ] If pursued: Modify evaluate_expression() to check variant before dispatch
   - [ ] If pursued: Benchmark and justify added complexity
-- [ ] Phase 5: Cleanup and Documentation
-  - [ ] Step 5.1: Remove Duplicate Switches
-  - [ ] Step 5.2: Document Handler Contracts
-  - [ ] Step 5.3: Add Contributor Notes
-  - [ ] Step 5.4: Update Optimisation Plan
+- [x] Phase 5: Cleanup and Documentation
+  - [x] Step 5.1: Remove Duplicate Switches
+  - [x] Step 5.2: Document Handler Contracts
+  - [x] Step 5.3: Add Contributor Notes
+  - [x] Step 5.4: Update Optimisation Plan
+  - [x] Step 5.5: Create Developer Presentation
 
 ---
 
@@ -73,6 +74,17 @@ The refactoring follows a **pragmatic hybrid approach** that:
 - Added a fast-path switch in `evaluate_expression()` for the hottest node kinds (binary/unary operators, function calls, variable references, literals, numbers) ahead of the dispatch map lookup.
 - Split `handle_binary_op()` into five focused helpers (`handle_binary_logical`, `handle_binary_comparison`, `handle_binary_arithmetic`, `handle_binary_sequence`, `handle_binary_set_ops`) and extended `BinaryOperationKind` to differentiate value vs. general comparisons.
 - Executed the XQuery-labelled CTest suite under the new instrumentation to confirm the hot-path cases are exercised and that the refactored handlers preserve semantics (20/20 passing under FastBuild).
+
+### Phase 5 Progress Update (2025-11-01)
+
+- Audited the evaluator sources for residual `node->type` switches; the remaining top-level dispatch in `evaluate_ast()` now
+  documents why it remains separate from the expression dispatcher.
+- Added contract documentation blocks for every `handle_*` routine in `eval_expression.cpp`, capturing behaviour,
+  preconditions, and specification references.
+- Authored `src/xquery/eval/README.md` to summarise the dispatch architecture and onboarding workflow for contributors.
+- Updated `docs/plans/XQUERY_OPTIMIZATION_PLAN.md` with the LR-3 completion status and performance commentary.
+- Produced `docs/plans/XQUERY_DISPATCH_ARCHITECTURE.md` to visualise the before/after call flows and outline the testing
+  strategy.
 
 ### Testing Notes / Gaps
 

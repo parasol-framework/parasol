@@ -1054,12 +1054,64 @@ std::optional<bool> XPathEvaluator::matches_sequence_type(const XPathVal &Value,
    return true;
 }
 
+//********************************************************************************************************************
+// Evaluates an EMPTY_SEQUENCE node and returns the computed value.
+//
+// The EMPTY_SEQUENCE node represents the literal empty sequence `()` defined by the XQuery grammar.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::EMPTY_SEQUENCE.
+//
+// **Behaviour**:
+// - Produces an empty node-set value that models the absence of items.
+// - Leaves `expression_unsupported` untouched because the node is always valid.
+//
+// **Returns**:
+// - On success: XPathVal containing an empty node-set.
+// - On failure: Empty XPathVal with `expression_unsupported` set (not expected for this node).
+//
+// **Examples**:
+// - `()` → empty sequence.
+//
+// **Related**:
+// - XQuery spec section 3.3.1.
+// - Called from: evaluate_expression().
+// - May recursively call: n/a.
+
 XPathVal XPathEvaluator::handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    (void)Node;
    (void)CurrentPrefix;
    return XPathVal(pf::vector<XMLTag *>{});
 }
+
+//********************************************************************************************************************
+// Evaluates a NUMBER node and returns the computed value.
+//
+// The NUMBER node represents an xs:double literal parsed from the query text.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::NUMBER.
+// - Node value must contain the lexical form of an xs:double.
+//
+// **Behaviour**:
+// - Parses the lexical representation to double precision using std::strtod.
+// - Returns NaN if the literal cannot be parsed completely.
+//
+// **Returns**:
+// - On success: XPathVal containing the parsed double value.
+// - On failure: XPathVal containing NaN while leaving `expression_unsupported` false.
+//
+// **Examples**:
+// - `42` → 42.0.
+// - `1.2e3` → 1200.0.
+//
+// **Related**:
+// - XQuery spec section 3.1.7.
+// - Called from: evaluate_expression().
+// - May recursively call: n/a.
 
 XPathVal XPathEvaluator::handle_number(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1071,11 +1123,64 @@ XPathVal XPathEvaluator::handle_number(const XPathNode *Node, uint32_t CurrentPr
    return XPathVal(std::numeric_limits<double>::quiet_NaN());
 }
 
+//********************************************************************************************************************
+// Evaluates a LITERAL/STRING node and returns the computed value.
+//
+// Literal nodes represent xs:string values written directly in the query using quotes.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::LITERAL or XQueryNodeType::STRING.
+//
+// **Behaviour**:
+// - Copies the stored lexical value into a result string.
+// - Preserves existing whitespace and escapes supplied by the parser.
+//
+// **Returns**:
+// - On success: XPathVal containing the literal string value.
+// - On failure: Empty XPathVal with `expression_unsupported` set (not expected for this node).
+//
+// **Examples**:
+// - `'books'` → "books".
+//
+// **Related**:
+// - XQuery spec section 3.1.1.
+// - Called from: evaluate_expression().
+// - May recursively call: n/a.
+
 XPathVal XPathEvaluator::handle_literal(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    (void)CurrentPrefix;
    return XPathVal(std::string(Node->get_value_view()));
 }
+
+//********************************************************************************************************************
+// Evaluates a CAST_EXPRESSION node and returns the computed value.
+//
+// Cast expressions translate a sequence to a requested atomic type using the rules from the XQuery type system.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::CAST_EXPRESSION.
+// - Node must own at least one child providing the operand expression.
+//
+// **Behaviour**:
+// - Parses the target type literal stored on the node.
+// - Validates operand cardinality and type compatibility against the schema registry.
+// - Delegates to xml::schema::TypeChecker for actual conversion logic.
+// - Records XPST/ XPTY errors via record_error() when requirements are not met.
+//
+// **Returns**:
+// - On success: XPathVal containing the converted atomic value (or empty sequence for zero-arity operands).
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `xs:integer("5") cast as xs:double` → 5.0.
+//
+// **Related**:
+// - XQuery spec section 3.12.1.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for the operand node.
 
 XPathVal XPathEvaluator::handle_cast_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1179,6 +1284,33 @@ XPathVal XPathEvaluator::handle_cast_expression(const XPathNode *Node, uint32_t 
    return coerced;
 }
 
+//********************************************************************************************************************
+// Evaluates a CONDITIONAL node and returns the computed value.
+//
+// Conditional nodes implement the XQuery `if (Cond) then A else B` expression form.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::CONDITIONAL.
+// - Node must provide exactly three children: condition, then-branch, else-branch.
+//
+// **Behaviour**:
+// - Evaluates the condition child and converts it to effective boolean value.
+// - Evaluates either the then or else branch based on the EBV result.
+// - Propagates `expression_unsupported` from child evaluations.
+//
+// **Returns**:
+// - On success: XPathVal produced by the selected branch.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `if ($flag) then "yes" else "no"` → "yes" or "no".
+//
+// **Related**:
+// - XQuery spec section 3.8.3.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for child nodes.
+
 XPathVal XPathEvaluator::handle_conditional(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 3) {
@@ -1201,6 +1333,33 @@ XPathVal XPathEvaluator::handle_conditional(const XPathNode *Node, uint32_t Curr
    auto *selected_node = condition_boolean ? then_node : else_node;
    return evaluate_expression(selected_node, CurrentPrefix);
 }
+
+//********************************************************************************************************************
+// Evaluates a TREAT_AS_EXPRESSION node and returns the computed value.
+//
+// Treat-as expressions assert that a sequence conforms to a requested type at runtime.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::TREAT_AS_EXPRESSION.
+// - Node must provide one child expression supplying the operand.
+//
+// **Behaviour**:
+// - Evaluates the operand expression.
+// - Applies sequence type validation via parse_sequence_type_literal() and schema descriptors.
+// - Raises dynamic errors when the operand violates the asserted type constraints.
+//
+// **Returns**:
+// - On success: XPathVal identical to the operand result.
+// - On failure: Empty XPathVal with `expression_unsupported` set after recording XPTY errors.
+//
+// **Examples**:
+// - `$value treat as element()?` ensures optional element result.
+//
+// **Related**:
+// - XQuery spec section 3.12.4.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for the operand.
 
 XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1408,6 +1567,33 @@ XPathVal XPathEvaluator::handle_treat_as_expression(const XPathNode *Node, uint3
    return operand_value;
 }
 
+//********************************************************************************************************************
+// Evaluates an INSTANCE_OF_EXPRESSION node and returns the computed value.
+//
+// Instance-of expressions test whether a value matches a supplied sequence type literal.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::INSTANCE_OF_EXPRESSION.
+// - Node must expose one child expression providing the value under test.
+//
+// **Behaviour**:
+// - Evaluates the operand expression.
+// - Interprets the sequence type literal using parse_sequence_type_literal().
+// - Performs cardinality and item type checks against the computed value.
+//
+// **Returns**:
+// - On success: XPathVal containing boolean true or false depending on the match.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$item instance of xs:string` → true if operand is a string.
+//
+// **Related**:
+// - XQuery spec section 3.12.5.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for the operand.
+
 XPathVal XPathEvaluator::handle_instance_of_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -1434,6 +1620,33 @@ XPathVal XPathEvaluator::handle_instance_of_expression(const XPathNode *Node, ui
    if (not match_result.has_value()) return XPathVal();
    return XPathVal(*match_result);
 }
+
+//********************************************************************************************************************
+// Evaluates a CASTABLE_EXPRESSION node and returns the computed value.
+//
+// Castable expressions check whether a value can be cast to a requested atomic type.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::CASTABLE_EXPRESSION.
+// - Node must provide one child expression representing the operand.
+//
+// **Behaviour**:
+// - Parses the target type literal stored on the node.
+// - Evaluates the operand and assesses casting viability without performing conversion.
+// - Applies XML Schema rules to determine compatibility.
+//
+// **Returns**:
+// - On success: XPathVal containing boolean true/false for castability.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$value castable as xs:integer` → true when the value can become an integer.
+//
+// **Related**:
+// - XQuery spec section 3.12.2.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for the operand.
 
 XPathVal XPathEvaluator::handle_castable_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1492,6 +1705,34 @@ XPathVal XPathEvaluator::handle_castable_expression(const XPathNode *Node, uint3
    bool castable_success = is_value_castable_to_type(operand_value, source_descriptor, target_descriptor, operand_lexical);
    return XPathVal(castable_success);
 }
+
+//********************************************************************************************************************
+// Evaluates a TYPESWITCH_EXPRESSION node and returns the computed value.
+//
+// Typeswitch expressions provide multi-branch type pattern matching akin to switch statements.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::TYPESWITCH_EXPRESSION.
+// - Node must contain at least two children: switch operand and one case/default clause.
+//
+// **Behaviour**:
+// - Evaluates the operand once and caches the resulting value.
+// - Iterates case clauses, checking sequence type matches and binding variables as required.
+// - Evaluates the first matching branch or the default when no case succeeds.
+// - Propagates `expression_unsupported` and errors from nested evaluations.
+//
+// **Returns**:
+// - On success: XPathVal produced by the selected branch.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `typeswitch ($n) case xs:string return string-length($n) default return 0`.
+//
+// **Related**:
+// - XQuery spec section 3.12.3.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for branch bodies.
 
 XPathVal XPathEvaluator::handle_typeswitch_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1589,6 +1830,31 @@ XPathVal XPathEvaluator::handle_typeswitch_expression(const XPathNode *Node, uin
    return default_value;
 }
 
+//********************************************************************************************************************
+// Evaluates a UNION node and returns the computed value.
+//
+// Union nodes represent set-combining operators (union/intersect/except) normalised by the parser.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::UNION.
+// - Node must have at least one child describing the operand sequence.
+//
+// **Behaviour**:
+// - Delegates to evaluate_union_value() which applies the correct set semantics.
+// - Propagates `expression_unsupported` when the delegated call fails.
+//
+// **Returns**:
+// - On success: XPathVal containing the combined node-set.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `($a | $b)`.
+//
+// **Related**:
+// - XQuery spec section 3.3.3.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() via evaluate_union_value().
 XPathVal XPathEvaluator::handle_union_node(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    std::vector<const XPathNode *> branches;
@@ -1599,6 +1865,33 @@ XPathVal XPathEvaluator::handle_union_node(const XPathNode *Node, uint32_t Curre
    }
    return evaluate_union_value(branches, CurrentPrefix);
 }
+
+//********************************************************************************************************************
+// Evaluates a LET_EXPRESSION node and returns the computed value.
+//
+// Let expressions bind variables to sequence values before evaluating a return clause.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::LET_EXPRESSION.
+// - Node children must alternate between binding clauses and the return expression.
+//
+// **Behaviour**:
+// - Iterates binding clauses, evaluating each initializer and installing the variable in scope.
+// - Restores previous variable state after evaluation using scoped bindings.
+// - Evaluates the final return expression in the extended context.
+//
+// **Returns**:
+// - On success: XPathVal returned by the final expression.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `let $x := 5 return $x + 1`.
+//
+// **Related**:
+// - XQuery spec section 3.8.4.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for bindings and return body.
 
 XPathVal XPathEvaluator::handle_let_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1650,6 +1943,33 @@ XPathVal XPathEvaluator::handle_let_expression(const XPathNode *Node, uint32_t C
    }
    return result_value;
 }
+
+//********************************************************************************************************************
+// Evaluates a FOR_EXPRESSION node and returns the computed value.
+//
+// For expressions iterate over input sequences, binding variables before computing the result.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::FOR_EXPRESSION.
+// - Node must provide binding clauses followed by a return expression.
+//
+// **Behaviour**:
+// - Processes each binding, evaluating the source sequence.
+// - Iterates through the sequence, updating position/size context and variable bindings.
+// - Accumulates results from evaluating the return clause for each tuple.
+//
+// **Returns**:
+// - On success: XPathVal representing the concatenated results of each iteration.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `for $x in /book return $x/title`.
+//
+// **Related**:
+// - XQuery spec section 3.8.4.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for bindings and return clause.
 
 XPathVal XPathEvaluator::handle_for_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1727,6 +2047,33 @@ XPathVal XPathEvaluator::handle_for_expression(const XPathNode *Node, uint32_t C
    return result;
 }
 
+//********************************************************************************************************************
+// Evaluates a QUANTIFIED_EXPRESSION node and returns the computed value.
+//
+// Quantified expressions implement the `some` and `every` constructs that test predicates across bindings.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::QUANTIFIED_EXPRESSION.
+// - Node must offer binding sequences and a predicate expression.
+//
+// **Behaviour**:
+// - Iterates binding combinations using evaluate_quantified_binding_recursive().
+// - Evaluates the predicate for each combination and applies the some/every semantics.
+// - Aborts early when the quantifier condition is satisfied.
+//
+// **Returns**:
+// - On success: XPathVal containing boolean true or false.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `some $x in $items satisfies $x gt 0`.
+//
+// **Related**:
+// - XQuery spec section 3.13.4.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for binding sources and predicate.
+
 XPathVal XPathEvaluator::handle_quantified_expression(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() < 2) {
@@ -1783,6 +2130,33 @@ XPathVal XPathEvaluator::handle_quantified_expression(const XPathNode *Node, uin
    if (expression_unsupported) return XPathVal();
    return XPathVal(quant_result);
 }
+
+//********************************************************************************************************************
+// Evaluates a FILTER node and returns the computed value.
+//
+// Filter nodes apply predicate expressions to the result of an input sequence.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::FILTER.
+// - Node must provide two children: the input sequence and the predicate expression.
+//
+// **Behaviour**:
+// - Evaluates the input sequence.
+// - Applies evaluate_predicate() to retain items whose predicate yields true.
+// - Propagates context position/size while iterating.
+//
+// **Returns**:
+// - On success: XPathVal representing the filtered sequence.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `/books/book[price lt 20]`.
+//
+// **Related**:
+// - XQuery spec section 3.3.1.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for input and predicate.
 
 XPathVal XPathEvaluator::handle_filter(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1876,6 +2250,33 @@ XPathVal XPathEvaluator::handle_filter(const XPathNode *Node, uint32_t CurrentPr
    return XPathVal(filtered_nodes, first_value, std::move(filtered_strings), std::move(filtered_attributes));
 }
 
+//********************************************************************************************************************
+// Evaluates a PATH node and returns the computed value.
+//
+// Path nodes represent general path expressions that may mix location steps and expression segments.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::PATH.
+// - Node must contain at least one child describing the base expression.
+//
+// **Behaviour**:
+// - Evaluates the first child to obtain the starting sequence.
+// - Iterates subsequent children, delegating to evaluate_path_expression_value() for navigation.
+// - Maintains context updates for each navigation step.
+//
+// **Returns**:
+// - On success: XPathVal representing the resulting node sequence.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `/bookstore/book/title`.
+//
+// **Related**:
+// - XQuery spec section 3.3.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for intermediate steps.
+
 XPathVal XPathEvaluator::handle_path(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (Node->child_count() IS 0) {
@@ -1930,6 +2331,33 @@ XPathVal XPathEvaluator::handle_path(const XPathNode *Node, uint32_t CurrentPref
    return evaluate_path_from_nodes(base_value.node_set, base_value.node_set_attributes, steps,
       attribute_step, attribute_test, CurrentPrefix);
 }
+
+//********************************************************************************************************************
+// Evaluates a BINARY_OP node and returns the computed value.
+//
+// Binary operator nodes cover logical, arithmetic, comparison, sequence, and set operations.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::BINARY_OP.
+// - Node must provide exactly two child operands plus metadata describing the operator kind.
+//
+// **Behaviour**:
+// - Dispatches to specialised helpers based on BinaryOperationKind.
+// - Ensures short-circuit semantics for logical operators via dedicated handlers.
+// - Propagates evaluation errors and maintains constructed node ownership.
+//
+// **Returns**:
+// - On success: XPathVal containing the combined result as defined by the operator semantics.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$a + $b`, `$left and $right`, `$seq1 union $seq2`.
+//
+// **Related**:
+// - XQuery spec sections 3.3.1, 3.4, 3.5, 3.6.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for operand nodes.
 
 XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -1989,6 +2417,29 @@ XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t Curren
    }
 }
 
+//********************************************************************************************************************
+// Evaluates logical binary operators (and/or) and returns the computed value.
+//
+// **Preconditions**:
+// - Node and operands must be non-null.
+// - OpKind must be BinaryOperationKind::AND or BinaryOperationKind::OR.
+//
+// **Behaviour**:
+// - Evaluates operands lazily to respect short-circuit semantics.
+// - Converts each operand to effective boolean value before combining results.
+//
+// **Returns**:
+// - On success: XPathVal containing boolean true/false.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$a and $b`, `$a or $b`.
+//
+// **Related**:
+// - XQuery spec section 3.5.1.
+// - Called from: handle_binary_op().
+// - May recursively call: evaluate_expression() for operand nodes.
+
 XPathVal XPathEvaluator::handle_binary_logical(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2014,6 +2465,30 @@ XPathVal XPathEvaluator::handle_binary_logical(const XPathNode *Node, const XPat
    return XPathVal(right_boolean);
 }
 
+//********************************************************************************************************************
+// Evaluates set-combining binary operators and returns the computed value.
+//
+// **Preconditions**:
+// - Node and operands must be non-null.
+// - OpKind must be BinaryOperationKind::UNION, ::INTERSECT, or ::EXCEPT.
+//
+// **Behaviour**:
+// - Evaluates both operands to obtain node sequences.
+// - Delegates to evaluate_union_value(), evaluate_intersect_value(), or evaluate_except_value().
+// - Preserves document order where mandated by the specification.
+//
+// **Returns**:
+// - On success: XPathVal with the resulting node-set.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$a union $b`, `$a intersect $b`, `$a except $b`.
+//
+// **Related**:
+// - XQuery spec section 3.3.1.
+// - Called from: handle_binary_op().
+// - May recursively call: evaluate_expression() for operands.
+
 XPathVal XPathEvaluator::handle_binary_set_ops(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2036,6 +2511,29 @@ XPathVal XPathEvaluator::handle_binary_set_ops(const XPathNode *Node, const XPat
          return XPathVal();
    }
 }
+
+//********************************************************************************************************************
+// Evaluates sequence-concatenation and range binary operators and returns the computed value.
+//
+// **Preconditions**:
+// - Node and operands must be non-null.
+// - OpKind must be BinaryOperationKind::COMMA or BinaryOperationKind::RANGE.
+//
+// **Behaviour**:
+// - Evaluates both operands, appending their contents in document order.
+// - Expands range expressions by generating numeric sequences where required.
+//
+// **Returns**:
+// - On success: XPathVal representing the concatenated or expanded sequence.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `(1, 2, 3)` via comma chaining, `1 to 5` via range expansion.
+//
+// **Related**:
+// - XQuery spec section 3.3.1.
+// - Called from: handle_binary_op().
+// - May recursively call: evaluate_expression() for operands.
 
 XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
@@ -2186,6 +2684,30 @@ XPathVal XPathEvaluator::handle_binary_sequence(const XPathNode *Node, const XPa
    return range_result;
 }
 
+//********************************************************************************************************************
+// Evaluates arithmetic binary operators and returns the computed value.
+//
+// **Preconditions**:
+// - Node and operands must be non-null.
+// - OpKind must represent one of the arithmetic or concatenation operations.
+//
+// **Behaviour**:
+// - Evaluates operands and normalises them to numeric or string types as required.
+// - Applies checked arithmetic helpers for overflow-sensitive calculations.
+// - Implements string concatenation for BinaryOperationKind::CONCAT.
+//
+// **Returns**:
+// - On success: XPathVal containing the numeric or string result.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$a + $b`, `$a div $b`, `$lhs || $rhs`.
+//
+// **Related**:
+// - XQuery spec section 3.4.
+// - Called from: handle_binary_op().
+// - May recursively call: evaluate_expression() for operands.
+
 XPathVal XPathEvaluator::handle_binary_arithmetic(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
 {
@@ -2224,6 +2746,30 @@ XPathVal XPathEvaluator::handle_binary_arithmetic(const XPathNode *Node, const X
          return XPathVal();
    }
 }
+
+//********************************************************************************************************************
+// Evaluates comparison binary operators and returns the computed value.
+//
+// **Preconditions**:
+// - Node and operands must be non-null.
+// - OpKind must correspond to a value or general comparison.
+//
+// **Behaviour**:
+// - Evaluates operands and applies general or value comparisons depending on OpKind.
+// - Delegates to compare_xpath_relational() and helper utilities for implementation.
+// - Handles mixed node/scalar comparisons and cardinality rules from the specification.
+//
+// **Returns**:
+// - On success: XPathVal containing boolean true/false.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$a = $b`, `$a lt $b`, `$a eq $b`.
+//
+// **Related**:
+// - XQuery spec section 3.5.
+// - Called from: handle_binary_op().
+// - May recursively call: evaluate_expression() for operands.
 
 XPathVal XPathEvaluator::handle_binary_comparison(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
    uint32_t CurrentPrefix, BinaryOperationKind OpKind)
@@ -2308,7 +2854,31 @@ XPathVal XPathEvaluator::handle_binary_comparison(const XPathNode *Node, const X
    }
 }
 
-
+//********************************************************************************************************************
+// Evaluates a UNARY_OP node and returns the computed value.
+//
+// Unary operators support numeric negation and logical not.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::UNARY_OP.
+// - Node must provide one operand child.
+//
+// **Behaviour**:
+// - Evaluates the operand before applying the requested unary operator.
+// - Uses numeric_promote() for numeric negation and boolean conversion for logical not.
+//
+// **Returns**:
+// - On success: XPathVal containing the transformed value.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `- $value`, `not($predicate)`.
+//
+// **Related**:
+// - XQuery spec section 3.4.1.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for the operand.
 
 XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -2334,12 +2904,65 @@ XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t Current
    return XPathVal();
 }
 
+//********************************************************************************************************************
+// Evaluates an EXPRESSION wrapper node and returns the computed value.
+//
+// Wrapper nodes encapsulate a single child expression introduced during parsing.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::EXPRESSION.
+// - Node must supply at least one child expression.
+//
+// **Behaviour**:
+// - Evaluates the first child expression directly.
+// - Propagates `expression_unsupported` when the child evaluation fails.
+//
+// **Returns**:
+// - On success: XPathVal produced by the child expression.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - Parenthesised sub-expressions such as `(1 + 2)`.
+//
+// **Related**:
+// - XQuery spec section 3.3.1.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for the child node.
+
 XPathVal XPathEvaluator::handle_expression_wrapper(const XPathNode *Node, uint32_t CurrentPrefix)
 {
    if (auto *child = Node->get_child_safe(0)) return evaluate_expression(child, CurrentPrefix);
    expression_unsupported = true;
    return XPathVal();
 }
+
+//********************************************************************************************************************
+// Evaluates a VARIABLE_REFERENCE node and returns the computed value.
+//
+// Variable reference nodes resolve variables declared in the static or dynamic context.
+//
+// **Preconditions**:
+// - Node must be non-null.
+// - Node type must match XQueryNodeType::VARIABLE_REFERENCE.
+// - Node value must contain the QName of the referenced variable.
+//
+// **Behaviour**:
+// - Resolves the variable via resolve_variable_value().
+// - Evaluates deferred initialisers when a variable has an inline expression.
+// - Records dynamic errors if the variable is not defined.
+//
+// **Returns**:
+// - On success: XPathVal bound to the variable.
+// - On failure: Empty XPathVal with `expression_unsupported` set.
+//
+// **Examples**:
+// - `$price` inside FLWOR expressions.
+//
+// **Related**:
+// - XQuery spec section 2.1.1.
+// - Called from: evaluate_expression().
+// - May recursively call: evaluate_expression() for deferred initialisers.
 
 XPathVal XPathEvaluator::handle_variable_reference(const XPathNode *Node, uint32_t CurrentPrefix)
 {
@@ -2483,5 +3106,3 @@ XPathVal XPathEvaluator::evaluate_expression(const XPathNode *ExprNode, uint32_t
    expression_unsupported = true;
    return XPathVal();
 }
-
-
