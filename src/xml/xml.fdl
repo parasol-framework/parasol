@@ -139,7 +139,7 @@ module({ name="XML", src="xml.cpp", copyright="Paul Manias © 2001-2025", versio
     { id=7,  name="MoveTags" },
     { id=8,  name="GetAttrib" },
     { id=9,  name="InsertXPath" },
-    { id=10, name="FindTag" },
+    { id=10, name="Search" },
     { id=11, name="Filter" },
     { id=12, name="Evaluate" },
     { id=13, name="ValidateDocument" },

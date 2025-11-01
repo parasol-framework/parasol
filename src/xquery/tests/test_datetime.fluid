@@ -14,7 +14,7 @@ function testDateTimeExtraction()
          .. '</root>'
    })
 
-   local errDateTime, nodeDateTime = xml.mtFindTag('/root/item[@id = "dt"'
+   local errDateTime, nodeDateTime = xml.mtSearch('/root/item[@id = "dt"'
       .. ' and year-from-dateTime(@value) = 2024'
       .. ' and month-from-dateTime(@value) = 3'
       .. ' and day-from-dateTime(@value) = 15'
@@ -25,7 +25,7 @@ function testDateTimeExtraction()
    assert(errDateTime == ERR_Okay and nodeDateTime != nil,
       'dateTime component helpers should expose calendar fields and timezone offsets')
 
-   local errDate, nodeDate = xml.mtFindTag('/root/item[@id = "date"'
+   local errDate, nodeDate = xml.mtSearch('/root/item[@id = "date"'
       .. ' and year-from-date(@value) = 2024'
       .. ' and month-from-date(@value) = 3'
       .. ' and day-from-date(@value) = 15'
@@ -33,7 +33,7 @@ function testDateTimeExtraction()
    assert(errDate == ERR_Okay and nodeDate != nil,
       'date component helpers should expose calendar fields and signed timezone offsets')
 
-   local errTime, nodeTime = xml.mtFindTag('/root/item[@id = "time"'
+   local errTime, nodeTime = xml.mtSearch('/root/item[@id = "time"'
       .. ' and hours-from-time(@value) = 14'
       .. ' and minutes-from-time(@value) = 45'
       .. ' and round(seconds-from-time(@value) * 100) = 3025'

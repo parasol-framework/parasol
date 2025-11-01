@@ -11,7 +11,7 @@ function testParentAxisNavigation()
    })
 
    -- Test parent navigation (currently supported)
-   local err, parentId = xml.mtFindTag('/root/section/item[@id="a"]/..')
+   local err, parentId = xml.mtSearch('/root/section/item[@id="a"]/..')
    if err == ERR_Okay then
       local err, sectionId = xml.mtGetAttrib(parentId, 'id')
       assert(err == ERR_Okay and sectionId == "1", "Parent navigation should return section with id=1")
@@ -27,26 +27,26 @@ function testXPathAxes()
    })
 
    -- Test following-sibling axis returns the next item in document order
-   local err, itemId = xml.mtFindTag('/root/section/item[@id="1"]/following-sibling::item')
+   local err, itemId = xml.mtSearch('/root/section/item[@id="1"]/following-sibling::item')
    assert(err == ERR_Okay, "following-sibling axis should locate the next sibling item: " .. mSys.GetErrorMsg(err))
    local err2, siblingId = xml.mtGetAttrib(itemId, 'id')
    assert(err2 == ERR_Okay and siblingId == '2', "following-sibling::item should return id=2")
 
    -- Test preceding-sibling axis returns the previous sibling
-   err, itemId = xml.mtFindTag('/root/section/item[@id="2"]/preceding-sibling::item')
+   err, itemId = xml.mtSearch('/root/section/item[@id="2"]/preceding-sibling::item')
    assert(err == ERR_Okay, "preceding-sibling axis should locate the previous sibling item: " .. mSys.GetErrorMsg(err))
    err2, siblingId = xml.mtGetAttrib(itemId, 'id')
    assert(err2 == ERR_Okay and siblingId == '1', "preceding-sibling::item should return id=1")
 
    -- Test ancestor axis resolves back to the document root
-   local errRoot, rootId = xml.mtFindTag('/root')
+   local errRoot, rootId = xml.mtSearch('/root')
    assert(errRoot == ERR_Okay, "Should be able to resolve /root for ancestor comparison")
-   err, itemId = xml.mtFindTag('/root/section/item/ancestor::root')
+   err, itemId = xml.mtSearch('/root/section/item/ancestor::root')
    assert(err == ERR_Okay, "ancestor axis should resolve to the document root: " .. mSys.GetErrorMsg(err))
    assert(itemId == rootId, "ancestor::root should return the root tag identifier")
 
    -- Test descendant axis traverses nested branches
-   err, itemId = xml.mtFindTag('/root/descendant::item[@id="3"]')
+   err, itemId = xml.mtSearch('/root/descendant::item[@id="3"]')
    assert(err == ERR_Okay, "descendant axis should locate nested descendants: " .. mSys.GetErrorMsg(err))
    err2, siblingId = xml.mtGetAttrib(itemId, 'id')
    assert(err2 == ERR_Okay and siblingId == '3', "descendant::item[@id=\"3\"] should return id=3")
@@ -67,7 +67,7 @@ function testAttributeAxisHandling()
    assert(attrValue == 'fiction', 'attribute::category should expose the same value as @category, got ' .. nz(attrValue, 'NIL'))
 
    local attributeNames = {}
-   local err = xml.mtFindTag('/root/item/attribute::*', function(XML, TagID, Attrib)
+   local err = xml.mtSearch('/root/item/attribute::*', function(XML, TagID, Attrib)
       table.insert(attributeNames, Attrib)
    end)
    assert(err == ERR_Okay, 'attribute::* should enumerate attribute nodes: ' .. mSys.GetErrorMsg(err))
@@ -81,7 +81,7 @@ function testAttributeAxisHandling()
    assert(foundCategory, 'attribute::* should include the category attribute name')
    assert(foundId, 'attribute::* should include the id attribute name')
 
-   local errAttr = xml.mtFindTag('/root/item/@*[starts-with(name(), "data")]')
+   local errAttr = xml.mtSearch('/root/item/@*[starts-with(name(), "data")]')
    assert(errAttr == ERR_Okay, '@* should support function predicates on attribute names: ' .. mSys.GetErrorMsg(errAttr))
 
    local err, attrValue = xml.mtEvaluate('/root/item/@*[starts-with(name(), "data")]')
@@ -99,13 +99,13 @@ function testAttributeAxisContinuation()
                   '</root>'
    })
 
-   local errItem, itemId = xml.mtFindTag('//@id/parent::*[@id="item-b"]')
+   local errItem, itemId = xml.mtSearch('//@id/parent::*[@id="item-b"]')
    assert(errItem == ERR_Okay, 'Parent axis should resolve owning element from attribute context: ' .. mSys.GetErrorMsg(errItem))
 
    local errAttrib, value = xml.mtGetAttrib(itemId, 'id')
    assert(errAttrib == ERR_Okay and value == 'item-b', 'Attribute parent navigation should locate id="item-b", got ' .. nz(value, 'NIL'))
 
-   local errSection, sectionId = xml.mtFindTag('//@code/ancestor::section[@id="section-2"]')
+   local errSection, sectionId = xml.mtSearch('//@code/ancestor::section[@id="section-2"]')
    assert(errSection == ERR_Okay, 'Ancestor axis should operate on attribute contexts: ' .. mSys.GetErrorMsg(errSection))
 
    local errSectionAttrib, sectionValue = xml.mtGetAttrib(sectionId, 'id')
@@ -120,7 +120,7 @@ function testUnionOperator()
       statement = '<root><section><item/></section><other><item/></other></root>'
    })
 
-   assert(xml.mtFindTag('/root/section/item | /root/other/item') == ERR_Okay)
+   assert(xml.mtSearch('/root/section/item | /root/other/item') == ERR_Okay)
 end
 
 -----------------------------------------------------------------------------------------------------------------------
@@ -131,17 +131,17 @@ function testTextNodeAxes()
       statement = '<root><a>First</a> Second <b>Third</b></root>'
    })
 
-   local err, textId = xml.mtFindTag('/root/a/following-sibling::text()')
+   local err, textId = xml.mtSearch('/root/a/following-sibling::text()')
    assert(err == ERR_Okay, 'Text nodes should appear on the following-sibling axis')
 
    local errTag, textTag = xml.mtGetTag(textId)
    assert(errTag == ERR_Okay and textTag.attribs[1].value == ' Second ',
       'Whitespace in text nodes should be preserved when navigating axes, got ' .. nz(textTag.attribs[1].value, 'NIL'))
 
-   err, textId = xml.mtFindTag('/root/descendant::text()')
+   err, textId = xml.mtSearch('/root/descendant::text()')
    assert(err == ERR_Okay, 'Descendant axis should include text nodes produced by element content')
 
-   err, textId = xml.mtFindTag('/root/b/preceding-sibling::text()')
+   err, textId = xml.mtSearch('/root/b/preceding-sibling::text()')
    assert(err == ERR_Okay, 'Text nodes should also be available via preceding-sibling axis')
 
    errTag, textTag = xml.mtGetTag(textId)
@@ -157,14 +157,14 @@ function testCommentNodeType()
       statement = '<root><!-- marker --><item>Value</item><!-- trailer --></root>', flags = XMF_INCLUDE_COMMENTS
    })
 
-   local err, commentId = xml.mtFindTag('/root/comment()')
+   local err, commentId = xml.mtSearch('/root/comment()')
    assert(err == ERR_Okay, 'comment() node test should locate the first comment, err=' .. mSys.GetErrorMsg(err))
 
    local errTag, commentTag = xml.mtGetTag(commentId)
    assert(errTag == ERR_Okay and commentTag.attribs[1].value == ' marker ',
        'comment() should expose the comment content, got ' .. nz(commentTag.attribs[1].value, 'NIL'))
 
-   err, commentId = xml.mtFindTag('/root/item/following-sibling::comment()')
+   err, commentId = xml.mtSearch('/root/item/following-sibling::comment()')
    assert(err == ERR_Okay, 'comment() on following-sibling axis should locate subsequent comments, err=' .. mSys.GetErrorMsg(err))
 
    errTag, commentTag = xml.mtGetTag(commentId)
@@ -180,13 +180,13 @@ function testProcessingInstructionNodeType()
       statement = '<root><?target data?><item/><?other pi?></root>'
    })
 
-   local err, piId = xml.mtFindTag('/root/processing-instruction()')
+   local err, piId = xml.mtSearch('/root/processing-instruction()')
    assert(err == ERR_Okay, 'processing-instruction() should locate the first PI node, err=' .. mSys.GetErrorMsg(err))
 
    local piErr, piTag = xml.mtGetTag(piId)
    assert(piErr == ERR_Okay and piTag.attribs[1].name == '?target', 'processing-instruction() should expose the PI target name')
 
-   err, piId = xml.mtFindTag('/root/processing-instruction("target")')
+   err, piId = xml.mtSearch('/root/processing-instruction("target")')
    assert(err == ERR_Okay, 'processing-instruction("target") should filter by target name, err=' .. mSys.GetErrorMsg(err))
 
    piErr, piTag = xml.mtGetTag(piId)
@@ -201,10 +201,10 @@ function testGenericNodeType()
       statement = '<root><child/><other/></root>'
    })
 
-   local err, nodeId = xml.mtFindTag('/root/node()')
+   local err, nodeId = xml.mtSearch('/root/node()')
    assert(err == ERR_Okay, 'node() node test should match any node type at the document root, err=' .. mSys.GetErrorMsg(err))
 
-   err, nodeId = xml.mtFindTag('/root/child/following-sibling::node()')
+   err, nodeId = xml.mtSearch('/root/child/following-sibling::node()')
    assert(err == ERR_Okay, 'following-sibling::node() should match subsequent sibling nodes, err=' .. mSys.GetErrorMsg(err))
 end
 
@@ -216,10 +216,10 @@ function testNamespaceAxis()
       statement = '<root xmlns:ns="http://example.com/ns"><ns:item/></root>'
    })
 
-   local err, nsId = xml.mtFindTag('/root/namespace::*')
+   local err, nsId = xml.mtSearch('/root/namespace::*')
    assert(err != ERR_Okay, 'namespace::* axis should remain unsupported, err=' .. mSys.GetErrorMsg(err))
 
-   err, nsId = xml.mtFindTag('/root/namespace::ns')
+   err, nsId = xml.mtSearch('/root/namespace::ns')
    assert(err != ERR_Okay, 'namespace::ns should remain unsupported, err=' .. mSys.GetErrorMsg(err))
 end
 
@@ -249,7 +249,7 @@ function testXPathForwardAxes()
 
    -- Test child axis (default axis)
    local childCount = 0
-   local err, id = xml.mtFindTag('/library/fiction/book', function(XML, TagID, Attrib)
+   local err, id = xml.mtSearch('/library/fiction/book', function(XML, TagID, Attrib)
       childCount = childCount + 1
    end)
    assert(err == ERR_Okay, "Child axis should work (default axis)")
@@ -257,7 +257,7 @@ function testXPathForwardAxes()
 
    -- Test explicit child axis
    childCount = 0
-   err, id = xml.mtFindTag('/library/child::fiction/child::book', function(XML, TagID, Attrib)
+   err, id = xml.mtSearch('/library/child::fiction/child::book', function(XML, TagID, Attrib)
       childCount = childCount + 1
    end)
    assert(err == ERR_Okay, "Explicit child axis should iterate children correctly: " .. mSys.GetErrorMsg(err))
@@ -265,22 +265,22 @@ function testXPathForwardAxes()
 
    -- Test descendant axis (all descendants)
    local descendantCount = 0
-   err, id = xml.mtFindTag('/library/descendant::book', function(XML, TagID, Attrib)
+   err, id = xml.mtSearch('/library/descendant::book', function(XML, TagID, Attrib)
       descendantCount = descendantCount + 1
    end)
    assert(err == ERR_Okay, "descendant::book should traverse the entire subtree: " .. mSys.GetErrorMsg(err))
    assert(descendantCount == 4, "Descendant axis should find all 4 books, found " .. descendantCount)
 
    -- Test following-sibling axis between top-level sections
-   local errTech, technicalId = xml.mtFindTag('/library/technical')
+   local errTech, technicalId = xml.mtSearch('/library/technical')
    assert(errTech == ERR_Okay, "Should resolve /library/technical for comparison")
 
-   err, id = xml.mtFindTag('/library/fiction/following-sibling::technical')
+   err, id = xml.mtSearch('/library/fiction/following-sibling::technical')
    assert(err == ERR_Okay, "following-sibling axis should locate the technical section: " .. mSys.GetErrorMsg(err))
    assert(id == technicalId, "following-sibling::technical should resolve to the technical section id")
 
    -- Test following axis to find nodes later in document order
-   err, id = xml.mtFindTag('/library/fiction/book[@id="2"]/following::guide')
+   err, id = xml.mtSearch('/library/fiction/book[@id="2"]/following::guide')
    assert(err == ERR_Okay, "following axis should locate guide nodes later in the document: " .. mSys.GetErrorMsg(err))
    local err2, guideType = xml.mtGetAttrib(id, 'type')
    assert(err2 == ERR_Okay and guideType == 'tutorial', "following::guide should return the tutorial guide element")
@@ -311,32 +311,32 @@ function testXPathReverseAxes()
    })
 
    -- Test parent axis (.. syntax already works)
-   local err, parentId = xml.mtFindTag('/root/section/chapter[@id="1.1"]/..')
+   local err, parentId = xml.mtSearch('/root/section/chapter[@id="1.1"]/..')
    assert(err == ERR_Okay, "Parent axis via .. should return the owning section: " .. mSys.GetErrorMsg(err))
    local err2, sectionId = xml.mtGetAttrib(parentId, 'id')
    assert(err2 == ERR_Okay and sectionId == '1', "Parent axis should land on the section with id=1")
 
    -- Test explicit parent axis
-   err, parentId = xml.mtFindTag('/root/section/chapter/parent::section')
+   err, parentId = xml.mtSearch('/root/section/chapter/parent::section')
    assert(err == ERR_Okay, "Explicit parent axis should resolve to the enclosing section: " .. mSys.GetErrorMsg(err))
    err2, sectionId = xml.mtGetAttrib(parentId, 'id')
    assert(err2 == ERR_Okay and (sectionId == '1' or sectionId == '2'), "parent::section should return a valid section node")
 
    -- Test ancestor axis
-   local errRoot, rootId = xml.mtFindTag('/root')
+   local errRoot, rootId = xml.mtSearch('/root')
    assert(errRoot == ERR_Okay, "Should resolve /root for ancestor comparison")
-   err, ancestorId = xml.mtFindTag('/root/section/chapter/paragraph/ancestor::root')
+   err, ancestorId = xml.mtSearch('/root/section/chapter/paragraph/ancestor::root')
    assert(err == ERR_Okay, "Ancestor axis should climb to the document root: " .. mSys.GetErrorMsg(err))
    assert(ancestorId == rootId, "ancestor::root should return the root tag identifier")
 
    -- Test preceding-sibling axis
-   err, siblingId = xml.mtFindTag('/root/section/chapter[2]/preceding-sibling::chapter')
+   err, siblingId = xml.mtSearch('/root/section/chapter[2]/preceding-sibling::chapter')
    assert(err == ERR_Okay, "preceding-sibling::chapter should locate the prior chapter: " .. mSys.GetErrorMsg(err))
    local err3, siblingChapter = xml.mtGetAttrib(siblingId, 'id')
    assert(err3 == ERR_Okay and siblingChapter == '1.1', "preceding-sibling::chapter should return chapter 1.1")
 
    -- Test preceding axis (reverse document order)
-   err, siblingId = xml.mtFindTag('/root/section/chapter[2]/paragraph/preceding::paragraph')
+   err, siblingId = xml.mtSearch('/root/section/chapter[2]/paragraph/preceding::paragraph')
    assert(err == ERR_Okay, "preceding::paragraph should return earlier paragraphs: " .. mSys.GetErrorMsg(err))
    local err4, precedingParagraph = xml.mtGetAttrib(siblingId, 'id')
    assert(err4 == ERR_Okay and precedingParagraph == '1.1.2', "preceding::paragraph should return the nearest preceding paragraph")
@@ -357,17 +357,17 @@ function testAncestorOrSelfAxis()
       ]]
    })
 
-   local err, nodeId = xml.mtFindTag('/root/section/section/item/ancestor-or-self::section[@id="inner"]')
+   local err, nodeId = xml.mtSearch('/root/section/section/item/ancestor-or-self::section[@id="inner"]')
    assert(err == ERR_Okay, 'ancestor-or-self::section should include the nearest ancestor: ' .. mSys.GetErrorMsg(err))
    local err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
    assert(err2 == ERR_Okay and attrValue == 'inner', 'ancestor-or-self::section should return the inner section node')
 
-   err, nodeId = xml.mtFindTag('/root/section/section/item/ancestor-or-self::section[@id="outer"]')
+   err, nodeId = xml.mtSearch('/root/section/section/item/ancestor-or-self::section[@id="outer"]')
    assert(err == ERR_Okay, 'ancestor-or-self::section should climb to the outer ancestor: ' .. mSys.GetErrorMsg(err))
    err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
    assert(err2 == ERR_Okay and attrValue == 'outer', 'ancestor-or-self::section should locate the outer section node')
 
-   err, nodeId = xml.mtFindTag('/root/section/section/ancestor-or-self::section[@id="inner"]')
+   err, nodeId = xml.mtSearch('/root/section/section/ancestor-or-self::section[@id="inner"]')
    assert(err == ERR_Okay, 'ancestor-or-self should include the context node itself: ' .. mSys.GetErrorMsg(err))
    err2, attrValue = xml.mtGetAttrib(nodeId, 'id')
    assert(err2 == ERR_Okay and attrValue == 'inner', 'ancestor-or-self::section should treat the current section as a match')
@@ -401,40 +401,40 @@ function testXPathAxisCombinations()
    })
 
    -- Test self axis
-   local err, bodyId = xml.mtFindTag('/document/body')
+   local err, bodyId = xml.mtSearch('/document/body')
    assert(err == ERR_Okay, "Should resolve /document/body for self-axis comparison")
 
-   local errSelf, selfId = xml.mtFindTag('/document/body/self::body')
+   local errSelf, selfId = xml.mtSearch('/document/body/self::body')
    assert(errSelf == ERR_Okay, "self::body should reference the current context node: " .. mSys.GetErrorMsg(errSelf))
    assert(selfId == bodyId, "self::body should return the same identifier as /document/body")
 
    -- Test attribute lookups via @ syntax in combination with descendant scans
-   local metaErr, metaId = xml.mtFindTag('/document/header/meta')
+   local metaErr, metaId = xml.mtSearch('/document/header/meta')
    assert(metaErr == ERR_Okay, "Meta element should be reachable for attribute verification")
    local attrErr, metaAttr = xml.mtGetAttrib(metaId, 'name')
    assert(attrErr == ERR_Okay and metaAttr == 'author', "Attribute extraction should work inside mixed axis queries")
 
-   local attrExistsErr, attrExistsId = xml.mtFindTag('/document/header/meta[@name]')
+   local attrExistsErr, attrExistsId = xml.mtSearch('/document/header/meta[@name]')
    assert(attrExistsErr == ERR_Okay, "[@name] predicate should be honoured during combined axis tests")
 
    -- Test complex axis combinations
    -- Find all paragraphs that are descendants of sections
    local paragraphCount = 0
-   err, id = xml.mtFindTag('/document/body/section//p', function(XML, TagID, Attrib)
+   err, id = xml.mtSearch('/document/body/section//p', function(XML, TagID, Attrib)
       paragraphCount = paragraphCount + 1
    end)
    assert(err == ERR_Okay, "Deep scanning should work for paragraph descendants")
    assert(paragraphCount == 3, "Should find 3 paragraphs in sections, found " .. paragraphCount)
 
    -- Combine following-sibling and descendant axes to locate the aside element
-   err, id = xml.mtFindTag('/document/body/section[@class="intro"]/following-sibling::section/descendant::aside')
+   err, id = xml.mtSearch('/document/body/section[@class="intro"]/following-sibling::section/descendant::aside')
    assert(err == ERR_Okay, "following-sibling::section/descendant::aside should locate the aside element: " .. mSys.GetErrorMsg(err))
 
    -- Verify ancestor axes in combination with descendant-or-self
-   local errAncestor = xml.mtFindTag('/document/body/section[@class="content"]/aside/ancestor::body')
+   local errAncestor = xml.mtSearch('/document/body/section[@class="content"]/aside/ancestor::body')
    assert(errAncestor == ERR_Okay, "ancestor::body should reach the body element from the aside")
 
-   err, id = xml.mtFindTag('/document/body/section[@class="content"]/descendant-or-self::section')
+   err, id = xml.mtSearch('/document/body/section[@class="content"]/descendant-or-self::section')
    assert(err == ERR_Okay, "descendant-or-self::section should include the current section node")
 end
 
@@ -445,7 +445,7 @@ function testSiblingFilteringForNumericPredicates()
       statement = '<root><b/><a id="first"/><a id="second"/></root>'
    })
 
-   local err, secondId = xml.mtFindTag('/root/a[2]')
+   local err, secondId = xml.mtSearch('/root/a[2]')
    assert(err == ERR_Okay, 'XPath [2] should select the second <a> node: ' .. mSys.GetErrorMsg(err))
 
    local err2, value = xml.mtGetAttrib(secondId, 'id')

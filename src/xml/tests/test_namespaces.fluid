@@ -37,10 +37,10 @@ function testDefaultNamespace()
    -- Test default namespace parsing
    assert(#xml.tags > 0, "XML should parse successfully")
 
-   local err, rootId = xml.mtFindTag('/root')
+   local err, rootId = xml.mtSearch('/root')
    assert(err == ERR_Okay, "Should find root tag")
 
-   local err2, childId = xml.mtFindTag('/root/child')
+   local err2, childId = xml.mtSearch('/root/child')
    assert(err2 == ERR_Okay, "Should find child tag")
 end
 
@@ -59,10 +59,10 @@ function testPrefixedNamespaces()
    -- Test prefixed namespace parsing
    assert(#xml.tags > 0, "XML should parse successfully")
 
-   local err, ns1Id = xml.mtFindTag('/root/ns1:child1')
+   local err, ns1Id = xml.mtSearch('/root/ns1:child1')
    assert(err == ERR_Okay, "Should find ns1:child1 tag")
 
-   local err2, ns2Id = xml.mtFindTag('/root/ns2:child2')
+   local err2, ns2Id = xml.mtSearch('/root/ns2:child2')
    assert(err2 == ERR_Okay, "Should find ns2:child2 tag")
 end
 
@@ -83,10 +83,10 @@ function testNestedScopes()
    -- Test nested namespace scope resolution
    assert(#xml.tags > 0, "XML should parse successfully")
 
-   local err, tag1Id = xml.mtFindTag('/root/level1/ns1:tag1')
+   local err, tag1Id = xml.mtSearch('/root/level1/ns1:tag1')
    assert(err == ERR_Okay, "Should find ns1:tag1 in nested scope")
 
-   local err2, tag2Id = xml.mtFindTag('/root/level1/ns2:tag2')
+   local err2, tag2Id = xml.mtSearch('/root/level1/ns2:tag2')
    assert(err2 == ERR_Okay, "Should find ns2:tag2 in nested scope")
 end
 
@@ -112,7 +112,7 @@ function testNamespaceXPath()
    assert(tonumber(count) == 2, "Should find 2 namespaced items")
 
    -- Should find non-namespaced item
-   local err2, itemId = xml.mtFindTag('/root/item[@id="3"]')
+   local err2, itemId = xml.mtSearch('/root/item[@id="3"]')
    assert(err2 == ERR_Okay, "Should find non-namespaced item")
 end
 
@@ -129,7 +129,7 @@ function testXPathNamespaceAliasResolution()
 
    assert(xml.tags, "XML should parse successfully")
 
-   local err, itemId = xml.mtFindTag('/root/alias:item')
+   local err, itemId = xml.mtSearch('/root/alias:item')
    assert(err == ERR_Okay, 'Alias prefix should resolve via namespace URI bindings: ' .. mSys.GetErrorMsg(err))
 
    local errAttrib, value = xml.mtGetAttrib(itemId, 'id')
@@ -191,7 +191,7 @@ function testPrefixResolution()
    -- Test prefix resolution method
    assert(xml.tags, "XML should parse successfully")
 
-   local err, childId = xml.mtFindTag('/root/test:child')
+   local err, childId = xml.mtSearch('/root/test:child')
    assert(err == ERR_Okay, "Should find prefixed child")
 
    local err2, nsHash = xml.mtResolvePrefix("test", childId)
@@ -219,7 +219,7 @@ function testNamespaceValidation()
    assert(xml.tags, "XML should parse successfully")
 
    -- Valid namespace should work
-   local err, validId = xml.mtFindTag('/root/valid:child')
+   local err, validId = xml.mtSearch('/root/valid:child')
    assert(err == ERR_Okay, "Valid namespace should be found")
 
    -- Invalid namespace should be handled appropriately
@@ -239,7 +239,7 @@ function testExistingNamespaceHandling()
    -- Namespaces should be preserved as part of tag/attribute names
    assert(xml.tags, "Namespace XML should parse")
 
-   local err, nsId = xml.mtFindTag('/root/ns:child')
+   local err, nsId = xml.mtSearch('/root/ns:child')
    assert(err == ERR_Okay, "Should find namespaced child")
 
    local err, value = xml.mtGetAttrib(nsId, 'ns:attr')
@@ -264,7 +264,7 @@ function testHierarchicalResolution()
    assert(xml.tags, "XML should parse successfully")
 
    -- Find the target tag
-   local err, targetId = xml.mtFindTag('/root/level1/level2/target')
+   local err, targetId = xml.mtSearch('/root/level1/level2/target')
    assert(err == ERR_Okay, "Should find target tag")
 
    -- Test ns1 resolution from target scope (should find level2 redefinition)
@@ -303,7 +303,7 @@ function testDefaultNamespaceHierarchy()
    assert(xml.tags, "XML should parse successfully")
 
    -- Find target in level2 scope
-   local err, targetId = xml.mtFindTag('/root/level1/level2/target')
+   local err, targetId = xml.mtSearch('/root/level1/level2/target')
    assert(err == ERR_Okay, "Should find target tag")
 
    -- Test default namespace resolution (empty prefix)
@@ -315,7 +315,7 @@ function testDefaultNamespaceHierarchy()
    assert(defaultURI == "http://default2.example.com", "Should resolve to level2 default: " .. tostring(defaultURI))
 
    -- Find target in level1 scope (inherits root default)
-   local err4, level1Id = xml.mtFindTag('/root/level1')
+   local err4, level1Id = xml.mtSearch('/root/level1')
    assert(err4 == ERR_Okay, "Should find level1 tag")
 
    local err5, level1DefaultHash = xml.mtResolvePrefix("", level1Id)
@@ -337,7 +337,7 @@ function testUndefinedPrefix()
 
    assert(xml.tags, "XML should parse successfully")
 
-   local err, childId = xml.mtFindTag('/root/child')
+   local err, childId = xml.mtSearch('/root/child')
    assert(err == ERR_Okay, "Should find child tag")
 
    -- Try to resolve undefined prefix
@@ -359,7 +359,7 @@ function testNamespaceScopingDuringParsing()
 
    -- Get the actual NamespaceID assigned to each element during parsing
    local function get_tag_namespace_id(xpath)
-      local err, tagId = xml.mtFindTag(xpath)
+      local err, tagId = xml.mtSearch(xpath)
       if err == ERR_Okay then
          local err2, tag = xml.mtGetTag(tagId)
          if err2 == ERR_Okay then
@@ -414,13 +414,13 @@ function testNamespaceScopingDuringResolution()
    assert(xml.tags, "XML should parse successfully")
 
    -- Test prefix resolution for each element using ResolvePrefix method
-   local err1, item1Id = xml.mtFindTag('/root/ns:item[@id="1"]')
+   local err1, item1Id = xml.mtSearch('/root/ns:item[@id="1"]')
    assert(err1 == ERR_Okay, "Should find first ns:item")
 
-   local err2, item2Id = xml.mtFindTag('/root/child/ns:item[@id="2"]')
+   local err2, item2Id = xml.mtSearch('/root/child/ns:item[@id="2"]')
    assert(err2 == ERR_Okay, "Should find second ns:item")
 
-   local err3, item3Id = xml.mtFindTag('/root/ns:item[@id="3"]')
+   local err3, item3Id = xml.mtSearch('/root/ns:item[@id="3"]')
    assert(err3 == ERR_Okay, "Should find third ns:item")
 
    -- Test prefix resolution from each context

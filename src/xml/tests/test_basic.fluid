@@ -19,7 +19,7 @@ end
 function testIndexing()
    local totalFunctions = 0
 
-   local err, index, taglist = glXML.mtFindTag("/book/function", function(XML, TagID, Attrib)
+   local err, index, taglist = glXML.mtSearch("/book/function", function(XML, TagID, Attrib)
       local err, func = glXML.mtGetTag(TagID)
 
       if #func.attribs > 0 then
@@ -39,7 +39,7 @@ end
 -- Test the GetAttrib() method
 
 function testGetAttrib()
-   local err, index = glXML.mtFindTag("/book/function/input/param")
+   local err, index = glXML.mtSearch("/book/function/input/param")
    assert(err == ERR_Okay, "Failed to find /book/function/input/param, error: " .. mSys.GetErrorMsg(err))
 
    local err, value = glXML.mtGetAttrib(index, 'type')
@@ -88,7 +88,7 @@ function testSort()
    assert(err == ERR_Okay, 'Attempt to sort failed: ' .. mSys.GetErrorMsg(err))
 
    local first, last
-   local err, index, taglist = glXML.mtFindTag("/book/function/name", function(XML, TagID, Attrib)
+   local err, index, taglist = glXML.mtSearch("/book/function/name", function(XML, TagID, Attrib)
       local err, func = glXML.mtGetTag(TagID)
       print(func.children[1].attribs[1].value)
       if (not first) then first = func.children[1].attribs[1].value end

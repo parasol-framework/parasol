@@ -10,7 +10,7 @@ function testDeeplyNestedPathTraversal()
       statement = '<catalog><category name="fiction"><series name="modern"><book author="Smith"><chapter num="1"><section><paragraph>Intro</paragraph></section></chapter><chapter num="2"><section><paragraph>Body</paragraph><paragraph>Middle</paragraph></section></chapter><chapter num="3"><section><paragraph>Conclusion</paragraph></section></chapter></book></series></category></catalog>'
    })
 
-   local err, tagId = xml.mtFindTag('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
+   local err, tagId = xml.mtSearch('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
    assert(err == ERR_Okay, 'last() combined with position() should locate the first paragraph of the last chapter: ' .. mSys.GetErrorMsg(err))
 
    local err, content = xml.mtEvaluate('/catalog/category[@name="fiction"]/series[@name="modern"]/book[@author="Smith"]/chapter[last()]/section/paragraph[position()=1]')
@@ -25,7 +25,7 @@ function testSequentialPredicateEvaluation()
       statement = '<data><entry type="record" priority="1"/><entry type="record" priority="2"/><entry type="log" priority="3"/><entry type="record" priority="4"/><entry type="record" priority="5"/></data>'
    })
 
-   local err, tagId = xml.mtFindTag('/data/entry[@type="record"][position()=last()]')
+   local err, tagId = xml.mtSearch('/data/entry[@type="record"][position()=last()]')
    assert(err == ERR_Okay, 'Sequential predicates should allow position()=last() evaluation: ' .. mSys.GetErrorMsg(err))
 
    local errAttr, priority = xml.mtGetAttrib(tagId, 'priority')
@@ -40,13 +40,13 @@ function testRelativeCurrentNodeTraversal()
       statement = '<root><section id="alpha"><item id="x"/><group><item id="y"/></group></section><section id="beta"><group><item id="z"/><item id="target"/></group></section></root>'
    })
 
-   local err, sectionId = xml.mtFindTag('/root/section[./group/item[@id="target"]]')
+   local err, sectionId = xml.mtSearch('/root/section[./group/item[@id="target"]]')
    assert(err == ERR_Okay, 'Predicate using ./group should evaluate relative to the current node: ' .. mSys.GetErrorMsg(err))
 
    local errAttr, sectionName = xml.mtGetAttrib(sectionId, 'id')
    assert(errAttr == ERR_Okay and sectionName == 'beta', 'Expected the section containing the target item to be beta, got ' .. nz(sectionName, 'NIL'))
 
-   local errItem, itemId = xml.mtFindTag('/root/section[@id="beta"]//item[@id="target"]')
+   local errItem, itemId = xml.mtSearch('/root/section[@id="beta"]//item[@id="target"]')
    assert(errItem == ERR_Okay, '// should descend from the matched section to find the nested target item: ' .. mSys.GetErrorMsg(errItem))
 end
 
@@ -58,7 +58,7 @@ function testMissingPathError()
       statement = '<root><item id="1"/><item id="2"/></root>'
    })
 
-   local err, tagId = xml.mtFindTag('/root/item[@id="3"]')
+   local err, tagId = xml.mtSearch('/root/item[@id="3"]')
    assert(err != ERR_Okay, 'Non-existent predicate matches should produce an error result, got ' .. mSys.GetErrorMsg(err))
    assert(tagId == nil or tagId == 0, 'No tag identifier should be returned when the lookup fails, got ' .. tagId)
 end
@@ -74,7 +74,7 @@ function testDescendantAxisAttributeAccess()
    local err, category = xml.mtEvaluate('//branch[@name="west"]/../@category')
    assert(category == 'library', 'Using .. from a descendant selection should expose the ancestor attribute value, got ' .. nz(category, 'NIL'))
 
-   local err, tagId = xml.mtFindTag('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
+   local err, tagId = xml.mtSearch('//branch[@name="west"]/shelf[@code="B"]/book[text()="Advanced"]')
    assert(err == ERR_Okay, 'Complex descendant traversal should locate the advanced book entry: ' .. mSys.GetErrorMsg(err))
 end
 
