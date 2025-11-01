@@ -654,13 +654,6 @@ struct Object { // Must be 64-bit aligned
       else return ERR::UnsupportedField;
    }
 
-   inline ERR get(FIELD FieldID, DMF &Value) {
-      uint32_t result;
-      auto error = get<uint32_t>(FieldID, result);
-      Value = DMF(result);
-      return error;
-   }
-
    template <class T> T get(FIELD FieldID)
    requires pcPointer<T> || std::integral<T> || std::floating_point<T> {
       T result(0);
