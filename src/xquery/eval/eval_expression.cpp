@@ -497,8 +497,7 @@ static void append_operation_chain_operand(const XPathNode *Node, BinaryOperatio
       const XPathNode *left_child = Node->get_child_safe(0);
       const XPathNode *right_child = Node->get_child_safe(1);
 
-      if (left_child and right_child)
-      {
+      if (left_child and right_child) {
          append_operation_chain_operand(left_child, TargetOp, Operands);
          append_operation_chain_operand(right_child, TargetOp, Operands);
          return;
