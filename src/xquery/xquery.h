@@ -466,60 +466,88 @@ struct XPathNode {
 // XPath Tokenization Infrastructure
 
 struct TokenBuffer {
-   TokenBuffer() : storage(), write_offset(0) {
-      storage.reserve(initial_reserve_bytes);
-   }
+   TokenBuffer()
+      : chunks(), total_size(0), base_chunk_capacity(initial_reserve_bytes), next_chunk_capacity(initial_reserve_bytes) {}
 
-   explicit TokenBuffer(size_t ReserveBytes) : storage(), write_offset(0) {
-      storage.reserve(ReserveBytes);
-   }
+   explicit TokenBuffer(size_t ReserveBytes)
+      : chunks(), total_size(0),
+        base_chunk_capacity(ReserveBytes > initial_reserve_bytes ? ReserveBytes : initial_reserve_bytes),
+        next_chunk_capacity(base_chunk_capacity) {}
 
    std::string_view write_copy(std::string_view Text) {
       if (Text.empty()) return std::string_view();
       ensure_capacity(Text.size());
-      size_t start = write_offset;
-      write_offset += Text.size();
-      storage.resize(write_offset);
-      std::memcpy(storage.data() + start, Text.data(), Text.size());
-      return std::string_view(storage.data() + start, Text.size());
+      Chunk &chunk = chunks.back();
+      char *start = chunk.data.get() + chunk.size;
+      std::memcpy(start, Text.data(), Text.size());
+      chunk.size += Text.size();
+      total_size += Text.size();
+      return std::string_view(start, Text.size());
    }
 
    void reset() {
-      write_offset = 0;
-      storage.clear();
+      chunks.clear();
+      total_size = 0;
+      next_chunk_capacity = base_chunk_capacity;
    }
 
-   void shrink_to_fit() {
-      storage.resize(write_offset);
-      storage.shrink_to_fit();
-   }
+   void shrink_to_fit() {}
 
    [[nodiscard]] size_t size() const {
-      return write_offset;
+      return total_size;
    }
 
    [[nodiscard]] size_t capacity() const {
-      return storage.capacity();
+      size_t result = 0;
+      for (const Chunk &chunk : chunks) {
+         result += chunk.capacity;
+      }
+      return result;
    }
 
    [[nodiscard]] bool empty() const {
-      return write_offset IS 0;
+      return total_size IS 0;
    }
 
    private:
+   struct Chunk {
+      std::unique_ptr<char[]> data;
+      size_t capacity;
+      size_t size;
+   };
+
    static constexpr size_t initial_reserve_bytes = 4096;
 
    void ensure_capacity(size_t AdditionalBytes) {
-      size_t required = write_offset + AdditionalBytes;
-      if (required <= storage.capacity()) return;
+      if (chunks.empty()) {
+         allocate_chunk(AdditionalBytes > base_chunk_capacity ? AdditionalBytes : base_chunk_capacity);
+         return;
+      }
 
-      size_t new_capacity = storage.capacity() > 0 ? storage.capacity() : initial_reserve_bytes;
-      while (new_capacity < required) new_capacity *= 2;
-      storage.reserve(new_capacity);
+      Chunk &chunk = chunks.back();
+      if ((chunk.capacity - chunk.size) >= AdditionalBytes) return;
+
+      size_t required = AdditionalBytes;
+      size_t new_capacity = next_chunk_capacity;
+      if (new_capacity < required) {
+         while (new_capacity < required) new_capacity *= 2;
+      }
+      allocate_chunk(new_capacity);
    }
 
-   std::vector<char> storage;
-   size_t write_offset;
+   void allocate_chunk(size_t Capacity) {
+      Chunk chunk;
+      chunk.data = std::make_unique<char[]>(Capacity);
+      chunk.capacity = Capacity;
+      chunk.size = 0;
+      chunks.push_back(std::move(chunk));
+      next_chunk_capacity = Capacity * 2;
+   }
+
+   std::vector<Chunk> chunks;
+   size_t total_size;
+   size_t base_chunk_capacity;
+   size_t next_chunk_capacity;
 };
 
 struct XPathToken {
