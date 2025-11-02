@@ -329,29 +329,38 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function benchmarkTokenLongArithmetic()
-   -- This also functions as a stress test of the AST and evaluator
-   local expr = '('
-   for i = 1, 200 do
-      if i > 1 then expr = expr .. ' + ' end
-      expr = expr .. tostring(i)
+   if not glTokenLongArithmeticCached then
+      glTokenLongArithmeticCached = true
+      -- This also functions as a stress test of the AST and evaluator
+      local expr = '('
+      for i = 1, 200 do
+         if i > 1 then expr = expr .. ' + ' end
+         expr = expr .. tostring(i)
+      end
+      expr = expr .. ')'
+      glXQuery.statement = expr
    end
-   expr = expr .. ')'
-   glXQuery.statement = expr
    local err = glXQuery.acActivate()
    assert(err == ERR_Okay, 'Token long arithmetic failed')
 end
 
 function benchmarkTokenNestedFunctions()
-   glXQuery.statement = 'upper-case(lower-case(translate("TheQuickBrownFoxJumpsOverTheLazyDog", "aeiou", "12345")))'
+   if not glTokenNestedFunctionsCached then
+      glTokenNestedFunctionsCached = true
+      glXQuery.statement = 'upper-case(lower-case(translate("TheQuickBrownFoxJumpsOverTheLazyDog", "aeiou", "12345")))'
+   end
    local err = glXQuery.acActivate(glXML)
    assert(err == ERR_Okay, 'Token nested functions failed')
 end
 
 function benchmarkTokenLongPath()
-   local parts = {}
-   for i = 1, 60 do table.insert(parts, 'catalog') end
-   local path = '/' .. table.concat(parts, '/')
-   glXQuery.statement = path
+   if not glTokenLongPathCached then
+      glTokenLongPathCached = true
+      local parts = {}
+      for i = 1, 60 do table.insert(parts, 'catalog') end
+      local path = '/' .. table.concat(parts, '/')
+      glXQuery.statement = path
+   end
    local err = glXQuery.mtEvaluate(glXML)
    assert(err == ERR_Okay, 'Token long path failed')
 end
