@@ -45,6 +45,9 @@ Handlers must:
 * Binary operator handling is split into logical, set, sequence, arithmetic, and comparison helpers for clarity and
   CPU-friendly branching.
 * Avoid heap allocations in hot paths; prefer arena-backed storage provided by the evaluator.
+* Operator nodes produced by the parser populate cached enum hints (`BinaryOperationKind`, `UnaryOperationKind`). The
+  handlers consult `get_cached_binary_kind()` / `get_cached_unary_kind()` first and increment fallback counters when the
+  hints are absent. Trace logging highlights unexpected cache misses so helper factories can be corrected quickly.
 
 ## Testing
 After modifying dispatch logic or handlers, run the module build and labelled tests:
