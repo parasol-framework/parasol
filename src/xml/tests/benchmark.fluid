@@ -306,8 +306,9 @@ end
 -----------------------------------------------------------------------------------------------------------------------
 
 function benchmarkTokenLongArithmetic()
+   -- This also functions as a stress test of the AST and evaluator
    local expr = '('
-   for i = 1, 50 do
+   for i = 1, 200 do
       if i > 1 then expr = expr .. ' + ' end
       expr = expr .. tostring(i)
    end
@@ -486,6 +487,7 @@ end
       for t, test in ipairs(group.tests) do
          benchmarkTest(test.name, test.test, test.iter)
       end
+      print('')
    end
 
    print('')

@@ -1,4 +1,6 @@
 
+#include <cassert>
+
 #include "eval_detail.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/schema/type_checker.h"
@@ -480,6 +482,30 @@ static BinaryOperationKind map_binary_operation(std::string_view Op)
 }
 
 static constexpr int64_t RANGE_ITEM_LIMIT = 100000;
+
+//********************************************************************************************************************
+// Recursively appends operands from a binary operation chain into the provided container.
+
+static void append_operation_chain_operand(const XPathNode *Node, BinaryOperationKind TargetOp,
+   std::vector<const XPathNode *> &Operands)
+{
+   if (not Node) return;
+
+   if ((Node->type IS XQueryNodeType::BINARY_OP) and
+       (map_binary_operation(Node->get_value_view()) IS TargetOp) and (Node->child_count() >= 2))
+   {
+      const XPathNode *left_child = Node->get_child_safe(0);
+      const XPathNode *right_child = Node->get_child_safe(1);
+
+      if (left_child and right_child) {
+         append_operation_chain_operand(left_child, TargetOp, Operands);
+         append_operation_chain_operand(right_child, TargetOp, Operands);
+         return;
+      }
+   }
+
+   Operands.push_back(Node);
+}
 
 //********************************************************************************************************************
 // Appends items from an iteration value to combined node-set containers, handling both node-sets and scalars.
@@ -2333,6 +2359,58 @@ XPathVal XPathEvaluator::handle_path(const XPathNode *Node, uint32_t CurrentPref
 }
 
 //********************************************************************************************************************
+// Determines whether the provided binary operation kind supports chain flattening.
+
+bool XPathEvaluator::is_arithmetic_chain_candidate(BinaryOperationKind OpKind) const
+{
+   return (OpKind IS BinaryOperationKind::ADD) or (OpKind IS BinaryOperationKind::MUL);
+}
+
+//********************************************************************************************************************
+// Collects the operand nodes participating in a flattened arithmetic chain.
+
+std::vector<const XPathNode *> XPathEvaluator::collect_operation_chain(const XPathNode *Node,
+   BinaryOperationKind OpKind) const
+{
+   std::vector<const XPathNode *> operands;
+   if (not Node) return operands;
+
+   operands.reserve(Node->child_count());
+   append_operation_chain_operand(Node, OpKind, operands);
+   return operands;
+}
+
+//********************************************************************************************************************
+// Iteratively evaluates a flattened arithmetic chain and combines the results.
+
+XPathVal XPathEvaluator::evaluate_arithmetic_chain(const std::vector<const XPathNode *> &Operands,
+   BinaryOperationKind OpKind, uint32_t CurrentPrefix)
+{
+   assert(not Operands.empty());
+   assert(is_arithmetic_chain_candidate(OpKind));
+
+   auto first_value = evaluate_expression(Operands[0], CurrentPrefix);
+   if (expression_unsupported) return XPathVal();
+
+   double accumulator = first_value.to_number();
+
+   for (size_t index = 1; index < Operands.size(); ++index) {
+      auto operand_value = evaluate_expression(Operands[index], CurrentPrefix);
+      if (expression_unsupported) return XPathVal();
+
+      double operand_number = operand_value.to_number();
+      if (OpKind IS BinaryOperationKind::ADD) accumulator += operand_number;
+      else if (OpKind IS BinaryOperationKind::MUL) accumulator *= operand_number;
+      else {
+         expression_unsupported = true;
+         return XPathVal();
+      }
+   }
+
+   return XPathVal(accumulator);
+}
+
+//********************************************************************************************************************
 // Evaluates a BINARY_OP node and returns the computed value.
 //
 // Binary operator nodes cover logical, arithmetic, comparison, sequence, and set operations.
@@ -2375,6 +2453,13 @@ XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t Curren
 
    auto operation = Node->get_value_view();
    auto op_kind = map_binary_operation(operation);
+
+   if (is_arithmetic_chain_candidate(op_kind)) {
+      auto operands = collect_operation_chain(Node, op_kind);
+      if (operands.size() >= 3) {
+         return evaluate_arithmetic_chain(operands, op_kind, CurrentPrefix);
+      }
+   }
 
    switch (op_kind) {
       case BinaryOperationKind::AND:
