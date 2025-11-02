@@ -104,31 +104,6 @@ TODO:
 
 *********************************************************************************************************************/
 
-#if defined(_MSC_VER) && defined(_DEBUG) // Requires PARASOL_VLOG to be enabled
-#include <crtdbg.h>
-
-int glHeapAllocations = 0;
-
-struct XQueryAllocationScope {
-   pf::Log &log;
-   _CrtMemState start{};
-   _CrtMemState finish{};
-   _CrtMemState diff{};
-
-   explicit XQueryAllocationScope(pf::Log &Log) : log(Log) {
-      _CrtMemCheckpoint(&start);
-   }
-
-   ~XQueryAllocationScope() {
-      _CrtMemCheckpoint(&finish);
-      if (_CrtMemDifference(&diff, &start, &finish)) {
-         glHeapAllocations = diff.lCounts[_NORMAL_BLOCK] + diff.lCounts[_CLIENT_BLOCK] + diff.lCounts[_CRT_BLOCK];
-      }
-   }
-};
-
-#endif
-
 //********************************************************************************************************************
 
 static std::string xml_escape(const std::string &str)
@@ -328,10 +303,6 @@ AllocMemory
 static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
 {
    pf::Log log;
-
-#if defined(_MSC_VER) && defined(_DEBUG)
-   XQueryAllocationScope allocation_scope(log);
-#endif
 
    if (not Args) return log.warning(ERR::NullArgs);
 
@@ -779,16 +750,6 @@ static ERR GET_Functions(extXQuery *Self, pf::vector<std::string> **Value)
    return ERR::Okay;
 }
 
-//********************************************************************************************************************
- 
-#if defined(_MSC_VER) && defined(_DEBUG)
-static ERR GET_HeapAllocations(extXQuery *Self, int &Value)
-{
-   Value = glHeapAllocations;
-   return ERR::Okay;
-}
-#endif
-
 /*********************************************************************************************************************
 
 -FIELD-
@@ -1013,9 +974,6 @@ static const FieldArray clFields[] = {
    { "Statement",    FDF_STRING|FDF_RW,        GET_Statement, SET_Statement },
    { "Functions",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Functions },
    { "Variables",    FDF_ARRAY|FDF_CPP|FDF_STRING|FDF_R, GET_Variables },
-#if defined(_MSC_VER) && defined(_DEBUG)
-   { "HeapAllocations", FDF_INT|FDF_R, GET_HeapAllocations },
-#endif
    END_FIELD
 };
 

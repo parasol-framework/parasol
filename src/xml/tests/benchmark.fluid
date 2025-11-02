@@ -62,7 +62,7 @@ function benchmarkTest(testName, testFunc, iterations)
 
       -- Actual benchmark measurement
       local avgTime, totalTime, bestTime = measureTime(testFunc, iterations)
-      benchmarkResults[testName] = { avgTime = avgTime, totalTime = totalTime, bestTime = bestTime, iterations = iterations, heapAllocations = glXQuery.heapAllocations }
+      benchmarkResults[testName] = { avgTime = avgTime, totalTime = totalTime, bestTime = bestTime, iterations = iterations }
       fastestResults[testName] = bestTime
       passedTests = passedTests + 1
    end)
@@ -504,8 +504,7 @@ end
             avgTime = result.avgTime,
             totalTime = result.totalTime,
             bestTime = result.bestTime,
-            iterations = result.iterations,
-            heapAllocations = nz(result.heapAllocations, 0)
+            iterations = result.iterations
          })
       end
    end
@@ -515,8 +514,8 @@ end
    local grandTotalTime = 0
    local fastestGrandTotal = 0
    for i, result in ipairs(sortedResults) do
-      print(string.format('%2d. %-25s %dus/iter (%dms total, %dus fastest, %d iters, %d allocations)',
-         i, result.name, result.avgTime, result.totalTime/1000, result.bestTime, result.iterations, result.heapAllocations))
+      print(string.format('%2d. %-25s %dus/iter (%dms total, %dus fastest, %d iters)',
+         i, result.name, result.avgTime, result.totalTime/1000, result.bestTime, result.iterations))
       grandTotalTime = grandTotalTime + result.totalTime
       fastestGrandTotal = fastestGrandTotal + result.bestTime
    end
