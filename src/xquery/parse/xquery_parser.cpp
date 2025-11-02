@@ -1,9 +1,73 @@
 
 #include "../eval/eval_detail.h"
 #include <algorithm>
+#include <array>
+#include <optional>
 #include <parasol/strings.hpp>
 #include <utility>
 #include "../../xml/uri_utils.h"
+
+namespace {
+
+struct BinaryOperatorMapping {
+   std::string_view token;
+   BinaryOperationKind kind;
+};
+
+constexpr std::array<BinaryOperatorMapping, 24> BINARY_OPERATOR_MAPPINGS = {{
+   {"and", BinaryOperationKind::AND},
+   {"or", BinaryOperationKind::OR},
+   {"|", BinaryOperationKind::UNION},
+   {"intersect", BinaryOperationKind::INTERSECT},
+   {"except", BinaryOperationKind::EXCEPT},
+   {",", BinaryOperationKind::COMMA},
+   {"=", BinaryOperationKind::GENERAL_EQ},
+   {"!=", BinaryOperationKind::GENERAL_NE},
+   {"<", BinaryOperationKind::GENERAL_LT},
+   {"<=", BinaryOperationKind::GENERAL_LE},
+   {">", BinaryOperationKind::GENERAL_GT},
+   {">=", BinaryOperationKind::GENERAL_GE},
+   {"eq", BinaryOperationKind::VALUE_EQ},
+   {"ne", BinaryOperationKind::VALUE_NE},
+   {"lt", BinaryOperationKind::VALUE_LT},
+   {"le", BinaryOperationKind::VALUE_LE},
+   {"gt", BinaryOperationKind::VALUE_GT},
+   {"ge", BinaryOperationKind::VALUE_GE},
+   {"+", BinaryOperationKind::ADD},
+   {"-", BinaryOperationKind::SUB},
+   {"*", BinaryOperationKind::MUL},
+   {"div", BinaryOperationKind::DIV},
+   {"mod", BinaryOperationKind::MOD},
+   {"to", BinaryOperationKind::RANGE}
+}};
+
+[[nodiscard]] constexpr std::optional<BinaryOperationKind> lookup_binary_operator_kind(std::string_view Text)
+{
+   for (const auto &entry : BINARY_OPERATOR_MAPPINGS) {
+      if (entry.token IS Text) return entry.kind;
+   }
+   return std::nullopt;
+}
+
+struct UnaryOperatorMapping {
+   std::string_view token;
+   UnaryOperationKind kind;
+};
+
+constexpr std::array<UnaryOperatorMapping, 2> UNARY_OPERATOR_MAPPINGS = {{
+   {"-", UnaryOperationKind::NEGATE},
+   {"not", UnaryOperationKind::LOGICAL_NOT}
+}};
+
+[[nodiscard]] constexpr std::optional<UnaryOperationKind> lookup_unary_operator_kind(std::string_view Text)
+{
+   for (const auto &entry : UNARY_OPERATOR_MAPPINGS) {
+      if (entry.token IS Text) return entry.kind;
+   }
+   return std::nullopt;
+}
+
+} // namespace
 
 // Helper to compute feature flags from the parsed prolog and AST
 
@@ -1070,6 +1134,9 @@ std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNo
    auto binary_op = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, std::string(Op.value));
    binary_op->add_child(std::move(Left));
    binary_op->add_child(std::move(Right));
+   if (auto cached_kind = lookup_binary_operator_kind(binary_op->get_value_view()); cached_kind.has_value()) {
+      binary_op->set_cached_binary_kind(*cached_kind);
+   }
    return binary_op;
 }
 
@@ -1080,6 +1147,9 @@ std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, st
 {
    auto unary_op = std::make_unique<XPathNode>(XQueryNodeType::UNARY_OP, std::string(Op.value));
    unary_op->add_child(std::move(Operand));
+   if (auto cached_kind = lookup_unary_operator_kind(unary_op->get_value_view()); cached_kind.has_value()) {
+      unary_op->set_cached_unary_kind(*cached_kind);
+   }
    return unary_op;
 }
 

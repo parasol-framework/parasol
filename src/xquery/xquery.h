@@ -42,6 +42,12 @@ enum class BinaryOperationKind {
    UNKNOWN
 };
 
+enum class UnaryOperationKind {
+   NEGATE,
+   LOGICAL_NOT,
+   UNKNOWN
+};
+
 enum class XPathTokenType {
    // Path operators
    SLASH,             // /
@@ -370,6 +376,9 @@ struct XPathNode {
    std::optional<XPathOrderSpecOptions> order_spec_options;
    std::optional<XPathGroupKeyInfo> group_key_info;
    std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
+   // Cached operator metadata populated by the parser to avoid repeated string comparisons.
+   std::optional<BinaryOperationKind> cached_binary_kind;
+   std::optional<UnaryOperationKind> cached_unary_kind;
 
    XPathNode(XQueryNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
@@ -392,6 +401,16 @@ struct XPathNode {
    [[nodiscard]] inline bool has_typeswitch_case_info() const { return typeswitch_case_info.has_value(); }
 
    [[nodiscard]] inline const XPathTypeswitchCaseInfo * get_typeswitch_case_info() const { return typeswitch_case_info ? &(*typeswitch_case_info) : nullptr; }
+
+   inline void set_cached_binary_kind(BinaryOperationKind Kind) { cached_binary_kind = Kind; }
+   inline void clear_cached_binary_kind() { cached_binary_kind.reset(); }
+   [[nodiscard]] inline bool has_cached_binary_kind() const { return cached_binary_kind.has_value(); }
+   [[nodiscard]] inline std::optional<BinaryOperationKind> get_cached_binary_kind() const { return cached_binary_kind; }
+
+   inline void set_cached_unary_kind(UnaryOperationKind Kind) { cached_unary_kind = Kind; }
+   inline void clear_cached_unary_kind() { cached_unary_kind.reset(); }
+   [[nodiscard]] inline bool has_cached_unary_kind() const { return cached_unary_kind.has_value(); }
+   [[nodiscard]] inline std::optional<UnaryOperationKind> get_cached_unary_kind() const { return cached_unary_kind; }
 
    void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
       attribute_value_has_expressions = false;
@@ -1177,10 +1196,14 @@ class XPathEvaluator : public XPathErrorReporter {
 
    ankerl::unordered_dense::map<std::string, std::string> text_cache;
    std::array<uint64_t, 64> node_dispatch_counters{};
+   uint64_t binary_operator_cache_fallbacks = 0;
+   uint64_t unary_operator_cache_fallbacks = 0;
 
    void reset_dispatch_metrics();
    [[nodiscard]] const std::array<uint64_t, 64> &dispatch_metrics() const;
    void record_dispatch_node(XQueryNodeType Type);
+   [[nodiscard]] inline uint64_t binary_operator_cache_misses() const { return binary_operator_cache_fallbacks; }
+   [[nodiscard]] inline uint64_t unary_operator_cache_misses() const { return unary_operator_cache_fallbacks; }
 
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    extXML * resolve_document_for_node(XMLTag *Node) const;
