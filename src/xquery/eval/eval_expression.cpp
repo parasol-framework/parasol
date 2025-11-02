@@ -481,6 +481,13 @@ static BinaryOperationKind map_binary_operation(std::string_view Op)
    return BinaryOperationKind::UNKNOWN;
 }
 
+static UnaryOperationKind map_unary_operation(std::string_view Op)
+{
+   if (Op IS "-") return UnaryOperationKind::NEGATE;
+   if (Op IS "not") return UnaryOperationKind::LOGICAL_NOT;
+   return UnaryOperationKind::UNKNOWN;
+}
+
 static constexpr int64_t RANGE_ITEM_LIMIT = 100000;
 
 //********************************************************************************************************************
@@ -2418,7 +2425,8 @@ XPathVal XPathEvaluator::evaluate_arithmetic_chain(const std::vector<const XPath
 // **Preconditions**:
 // - Node must be non-null.
 // - Node type must match XQueryNodeType::BINARY_OP.
-// - Node must provide exactly two child operands plus metadata describing the operator kind.
+// - Node must provide exactly two child operands.  Cached operator metadata is preferred but the evaluator
+//   falls back to string-based mapping when absent.
 //
 // **Behaviour**:
 // - Dispatches to specialised helpers based on BinaryOperationKind.
@@ -2452,7 +2460,19 @@ XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t Curren
    }
 
    auto operation = Node->get_value_view();
-   auto op_kind = map_binary_operation(operation);
+   BinaryOperationKind op_kind;
+
+   if (auto cached_kind = Node->get_cached_binary_kind(); cached_kind.has_value()) {
+      op_kind = *cached_kind;
+   }
+   else {
+      op_kind = map_binary_operation(operation);
+      binary_operator_cache_fallbacks++;
+      if (is_trace_enabled()) {
+         pf::Log log("XPath");
+         log.msg(VLF::TRACE, "Binary operator cache miss for '%s'", Node->value.c_str());
+      }
+   }
 
    if (is_arithmetic_chain_candidate(op_kind)) {
       auto operands = collect_operation_chain(Node, op_kind);
@@ -2951,6 +2971,7 @@ XPathVal XPathEvaluator::handle_binary_comparison(const XPathNode *Node, const X
 //
 // **Behaviour**:
 // - Evaluates the operand before applying the requested unary operator.
+// - Uses cached operator metadata when available before falling back to runtime string mapping.
 // - Uses numeric_promote() for numeric negation and boolean conversion for logical not.
 //
 // **Returns**:
@@ -2982,11 +3003,29 @@ XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t Current
    if (expression_unsupported) return XPathVal();
 
    auto operation = Node->get_value_view();
-   if (operation IS "-") return XPathVal(-operand.to_number());
-   if (operation IS "not") return XPathVal(not operand.to_boolean());
+   UnaryOperationKind op_kind;
 
-   expression_unsupported = true;
-   return XPathVal();
+   if (auto cached_kind = Node->get_cached_unary_kind(); cached_kind.has_value()) {
+      op_kind = *cached_kind;
+   }
+   else {
+      op_kind = map_unary_operation(operation);
+      unary_operator_cache_fallbacks++;
+      if (is_trace_enabled()) {
+         pf::Log log("XPath");
+         log.msg(VLF::TRACE, "Unary operator cache miss for '%s'", Node->value.c_str());
+      }
+   }
+
+   switch (op_kind) {
+      case UnaryOperationKind::NEGATE:
+         return XPathVal(-operand.to_number());
+      case UnaryOperationKind::LOGICAL_NOT:
+         return XPathVal(not operand.to_boolean());
+      default:
+         expression_unsupported = true;
+         return XPathVal();
+   }
 }
 
 //********************************************************************************************************************
@@ -3083,6 +3122,8 @@ XPathVal XPathEvaluator::handle_variable_reference(const XPathNode *Node, uint32
 void XPathEvaluator::reset_dispatch_metrics()
 {
    node_dispatch_counters.fill(0);
+   binary_operator_cache_fallbacks = 0;
+   unary_operator_cache_fallbacks = 0;
 }
 
 const std::array<uint64_t, 64> &XPathEvaluator::dispatch_metrics() const
