@@ -572,10 +572,6 @@ struct TokenBlock {
       return storage->write_copy(Text);
    }
 
-   [[nodiscard]] std::string duplicate_text(std::string_view Text) const {
-      return std::string(Text);
-   }
-
    void reset() {
       tokens.clear();
       if (storage) storage->reset();
