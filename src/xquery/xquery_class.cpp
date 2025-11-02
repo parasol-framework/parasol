@@ -150,8 +150,8 @@ static ERR build_query(extXQuery *Self)
    XPathTokeniser tokeniser;
    XPathParser parser;
 
-   auto tokens = tokeniser.tokenize(Self->Statement);
-   Self->ParseResult = parser.parse(tokens);
+   auto token_block = tokeniser.tokenize(Self->Statement);
+   Self->ParseResult = parser.parse(std::move(token_block));
 
    if ((Self->ParseResult.prolog) and (Self->ParseResult.prolog->is_library_module)) {
       // XQuery module detected - empty result is normal

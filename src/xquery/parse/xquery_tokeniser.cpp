@@ -172,14 +172,23 @@ bool XPathTokeniser::has_more() const
 // between the multiply operator and wildcard based on context. Tracks bracket and parenthesis depth to
 // inform operator disambiguation logic.
 
-std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
+TokenBlock XPathTokeniser::tokenize(std::string_view XPath)
+{
+   TokenBlock block;
+   return tokenize(XPath, std::move(block));
+}
+
+TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
 {
    input = XPath;
    position = 0;
    length = input.size();
    previous_token_type = XPathTokenType::UNKNOWN;
    prior_token_type = XPathTokenType::UNKNOWN;
-   std::vector<XPathToken> tokens;
+   block.ensure_storage();
+   if (block.storage) block.storage->reset();
+   auto &tokens = block.tokens;
+   tokens.clear();
    tokens.reserve(XPath.size() / 6);  // Empirical analysis shows typical 1:6 char-to-token ratio
    int bracket_depth = 0;
    int paren_depth = 0;
@@ -264,7 +273,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          continue;
       }
       else if (inside_direct_tag and (ch IS '\'' or ch IS '"')) {
-         XPathToken token = scan_attribute_value(ch, true);
+         XPathToken token = scan_attribute_value(ch, true, block);
          tokens.push_back(std::move(token));
          continue;
       }
@@ -443,7 +452,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          XPathToken token = scan_operator();
          if (token.type IS XPathTokenType::UNKNOWN) {
             if (current() IS '\'' or current() IS '"') {
-               token = scan_string(current());
+               token = scan_string(current(), block);
             }
             else if (is_digit(current()) or (current() IS '.' and is_digit(peek(1)))) {
                token = scan_number();
@@ -470,9 +479,9 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
       }
    }
 
-   tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(""), position, 0);
+   tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(), position, 0);
    previous_token_type = XPathTokenType::END_OF_INPUT;
-   return tokens;
+   return block;
 }
 
 //********************************************************************************************************************
@@ -596,7 +605,7 @@ XPathToken XPathTokeniser::scan_number()
 // backslashes, and wildcards. Uses optimised fast-path for strings without escapes, otherwise builds the
 // unescaped string content with proper escape processing.
 
-XPathToken XPathTokeniser::scan_string(char QuoteChar)
+XPathToken XPathTokeniser::scan_string(char QuoteChar, TokenBlock &Block)
 {
    size_t start = position;
    position++;
@@ -641,17 +650,19 @@ XPathToken XPathTokeniser::scan_string(char QuoteChar)
 
    if (position < length) position++;
 
-   return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
+   std::string_view stored_view = Block.write_copy(value);
+   return XPathToken(XPathTokenType::STRING, stored_view, start, position - start, TokenTextKind::ArenaOwned);
 }
 
 //********************************************************************************************************************
 // Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the
 // string into literal and expression parts so the parser can construct attribute value templates.
 
-XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemplates)
+XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemplates, TokenBlock &Block)
 {
    size_t start = position;
    position++;
+   (void)Block;
 
    std::vector<XPathAttributeValuePart> parts;
    parts.reserve(4);
@@ -679,10 +690,12 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
             }
 
             if (!current_literal.empty()) {
+               std::string_view literal_view = Block.write_copy(current_literal);
                XPathAttributeValuePart literal_part;
                literal_part.is_expression = false;
-               literal_part.text = std::move(current_literal);
-               parts.push_back(std::move(literal_part));
+               literal_part.text = literal_view;
+               literal_part.text_kind = TokenTextKind::ArenaOwned;
+               parts.push_back(literal_part);
                current_literal.clear();
             }
 
@@ -728,10 +741,12 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
          brace_depth--;
          if (brace_depth IS 0) {
             position++;
+            std::string_view expr_view = Block.write_copy(current_expression);
             XPathAttributeValuePart expr_part;
             expr_part.is_expression = true;
-            expr_part.text = current_expression;
-            parts.push_back(std::move(expr_part));
+            expr_part.text = expr_view;
+            expr_part.text_kind = TokenTextKind::ArenaOwned;
+            parts.push_back(expr_part);
             current_expression.clear();
             in_expression = false;
             continue;
@@ -754,10 +769,12 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
    }
 
    if (!current_literal.empty() or parts.empty()) {
+      std::string_view literal_view = Block.write_copy(current_literal);
       XPathAttributeValuePart literal_tail;
       literal_tail.is_expression = false;
-      literal_tail.text = std::move(current_literal);
-      parts.push_back(std::move(literal_tail));
+      literal_tail.text = literal_view;
+      literal_tail.text_kind = TokenTextKind::ArenaOwned;
+      parts.push_back(literal_tail);
       current_literal.clear();
    }
 

@@ -7,6 +7,7 @@
 #include <optional>
 #include <utility>
 #include <string_view>
+#include <cstring>
 #include <parasol/modules/xquery.h>
 #include <array>
 #include <unordered_set>
@@ -311,9 +312,17 @@ struct XQueryModuleImport {
 
 struct XPathNode;
 
+enum class TokenTextKind {
+   BorrowedInput,
+   ArenaOwned
+};
+
+struct TokenBuffer;
+
 struct XPathAttributeValuePart {
    bool is_expression = false;
-   std::string text;
+   std::string_view text;
+   TokenTextKind text_kind = TokenTextKind::BorrowedInput;
 };
 
 struct XPathConstructorAttribute {
@@ -323,6 +332,7 @@ struct XPathConstructorAttribute {
    bool is_namespace_declaration = false;
    std::vector<XPathAttributeValuePart> value_parts;
    std::vector<std::unique_ptr<XPathNode>> expression_parts;
+   std::shared_ptr<TokenBuffer> value_storage;
 
    void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr) {
       if (expression_parts.size() <= index) expression_parts.resize(index + 1);
@@ -331,6 +341,13 @@ struct XPathConstructorAttribute {
 
    [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const {
       return index < expression_parts.size() ? expression_parts[index].get() : nullptr;
+   }
+
+   [[nodiscard]] std::vector<std::string> duplicate_value_parts() const {
+      std::vector<std::string> copies;
+      copies.reserve(value_parts.size());
+      for (const auto &part : value_parts) copies.emplace_back(part.text);
+      return copies;
    }
 };
 
@@ -448,29 +465,120 @@ struct XPathNode {
 //********************************************************************************************************************
 // XPath Tokenization Infrastructure
 
-struct XPathToken {
-   XPathTokenType type;
-   std::string_view value;
-   size_t position;
-   size_t length;
+struct TokenBuffer {
+   TokenBuffer() : storage(), write_offset(0) {
+      storage.reserve(initial_reserve_bytes);
+   }
 
-   // For tokens that need string storage (e.g., processed strings with escapes)
-   std::string stored_value;
+   explicit TokenBuffer(size_t ReserveBytes) : storage(), write_offset(0) {
+      storage.reserve(ReserveBytes);
+   }
+
+   std::string_view write_copy(std::string_view Text) {
+      if (Text.empty()) return std::string_view();
+      ensure_capacity(Text.size());
+      size_t start = write_offset;
+      write_offset += Text.size();
+      storage.resize(write_offset);
+      std::memcpy(storage.data() + start, Text.data(), Text.size());
+      return std::string_view(storage.data() + start, Text.size());
+   }
+
+   void reset() {
+      write_offset = 0;
+      storage.clear();
+   }
+
+   void shrink_to_fit() {
+      storage.resize(write_offset);
+      storage.shrink_to_fit();
+   }
+
+   [[nodiscard]] size_t size() const {
+      return write_offset;
+   }
+
+   [[nodiscard]] size_t capacity() const {
+      return storage.capacity();
+   }
+
+   [[nodiscard]] bool empty() const {
+      return write_offset IS 0;
+   }
+
+   private:
+   static constexpr size_t initial_reserve_bytes = 4096;
+
+   void ensure_capacity(size_t AdditionalBytes) {
+      size_t required = write_offset + AdditionalBytes;
+      if (required <= storage.capacity()) return;
+
+      size_t new_capacity = storage.capacity() > 0 ? storage.capacity() : initial_reserve_bytes;
+      while (new_capacity < required) new_capacity *= 2;
+      storage.reserve(new_capacity);
+   }
+
+   std::vector<char> storage;
+   size_t write_offset;
+};
+
+struct XPathToken {
+   XPathTokenType type = XPathTokenType::UNKNOWN;
+   std::string_view text;
+   size_t position = 0;
+   size_t length = 0;
+   TokenTextKind text_kind = TokenTextKind::BorrowedInput;
    bool is_attribute_value = false;
    std::vector<XPathAttributeValuePart> attribute_value_parts;
 
-   // Constructor for string_view tokens (no copying)
-   XPathToken(XPathTokenType t, std::string_view v, size_t pos = 0, size_t len = 0)
-      : type(t), value(v), position(pos), length(len) {}
+   XPathToken() = default;
 
-   // Constructor for tokens requiring string storage
-   XPathToken(XPathTokenType t, std::string v, size_t pos = 0, size_t len = 0)
-      : type(t), position(pos), length(len), stored_value(std::move(v)) {
-      value = stored_value;
-   }
+   XPathToken(XPathTokenType Type, std::string_view Text, size_t Position = 0, size_t Length = 0, TokenTextKind Kind = TokenTextKind::BorrowedInput)
+      : type(Type), text(Text), position(Position), length(Length), text_kind(Kind) {}
 
    [[nodiscard]] bool has_attribute_template() const {
       return is_attribute_value and !attribute_value_parts.empty();
+   }
+};
+
+struct TokenBlock {
+   std::shared_ptr<TokenBuffer> storage;
+   std::vector<XPathToken> tokens;
+
+   TokenBlock() : storage(std::make_shared<TokenBuffer>()), tokens() {}
+
+   TokenBlock(std::shared_ptr<TokenBuffer> Storage, std::vector<XPathToken> Tokens)
+      : storage(Storage ? std::move(Storage) : std::make_shared<TokenBuffer>()), tokens(std::move(Tokens)) {}
+
+   TokenBlock(TokenBlock &&) = default;
+   TokenBlock &operator=(TokenBlock &&) = default;
+   TokenBlock(const TokenBlock &) = default;
+   TokenBlock &operator=(const TokenBlock &) = default;
+
+   [[nodiscard]] bool empty() const {
+      return tokens.empty();
+   }
+
+   [[nodiscard]] size_t size() const {
+      return tokens.size();
+   }
+
+   void ensure_storage() {
+      if (!storage) storage = std::make_shared<TokenBuffer>();
+   }
+
+   std::string_view write_copy(std::string_view Text) {
+      ensure_storage();
+      return storage->write_copy(Text);
+   }
+
+   [[nodiscard]] std::string duplicate_text(std::string_view Text) const {
+      return std::string(Text);
+   }
+
+   void reset() {
+      tokens.clear();
+      if (storage) storage->reset();
    }
 };
 
@@ -495,8 +603,8 @@ class XPathTokeniser {
 
    XPathToken scan_identifier();
    XPathToken scan_number();
-   XPathToken scan_string(char QuoteChar);
-   XPathToken scan_attribute_value(char QuoteChar, bool ProcessTemplates);
+   XPathToken scan_string(char QuoteChar, TokenBlock &Block);
+   XPathToken scan_attribute_value(char QuoteChar, bool ProcessTemplates, TokenBlock &Block);
    XPathToken scan_operator();
 
    [[nodiscard]] char peek(size_t offset = 0) const;
@@ -506,7 +614,8 @@ class XPathTokeniser {
    public:
    XPathTokeniser() : position(0), length(0), previous_token_type(XPathTokenType::UNKNOWN), prior_token_type(XPathTokenType::UNKNOWN) {}
 
-   std::vector<XPathToken> tokenize(std::string_view XPath);
+   TokenBlock tokenize(std::string_view XPath);
+   TokenBlock tokenize(std::string_view XPath, TokenBlock Block);
    bool has_more() const;
    [[nodiscard]] char current() const;
    void advance();
@@ -745,7 +854,7 @@ class XPathParser {
    public:
    XPathParser() : current_token(0) {}
 
-   CompiledXQuery parse(const std::vector<XPathToken> &TokenList);
+   CompiledXQuery parse(TokenBlock TokenList);
 
    // Error handling
 
@@ -756,6 +865,7 @@ class XPathParser {
    private:
    std::vector<std::string> errors;
    XQueryProlog *active_prolog = nullptr;
+   std::shared_ptr<TokenBuffer> token_storage;
 };
 
 //*********************************************************************************************************************
