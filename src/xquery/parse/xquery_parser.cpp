@@ -2869,8 +2869,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       else {
          XPathAttributeValuePart literal_part;
          literal_part.is_expression = false;
-         literal_part.text = attribute_token.text;
-         literal_part.text_kind = attribute_token.text_kind;
+         if (attribute_token.text_kind == TokenTextKind::BorrowedInput) {
+            std::string_view literal_text = attribute_token.text;
+            if (!token_storage) token_storage = std::make_shared<TokenBuffer>();
+            literal_text = token_storage->write_copy(literal_text);
+            literal_part.text = literal_text;
+            literal_part.text_kind = TokenTextKind::ArenaOwned;
+         } else {
+            literal_part.text = attribute_token.text;
+            literal_part.text_kind = attribute_token.text_kind;
+         }
          parts.push_back(std::move(literal_part));
       }
 
