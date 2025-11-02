@@ -1,4 +1,6 @@
 
+#include <cassert>
+
 #include "eval_detail.h"
 #include "../../xml/schema/schema_types.h"
 #include "../../xml/schema/type_checker.h"
@@ -2385,35 +2387,26 @@ std::vector<const XPathNode *> XPathEvaluator::collect_operation_chain(const XPa
 XPathVal XPathEvaluator::evaluate_arithmetic_chain(const std::vector<const XPathNode *> &Operands,
    BinaryOperationKind OpKind, uint32_t CurrentPrefix)
 {
-   if (Operands.empty()) {
-      expression_unsupported = true;
-      return XPathVal();
-   }
-
-   if (not is_arithmetic_chain_candidate(OpKind)) {
-      expression_unsupported = true;
-      return XPathVal();
-   }
+   assert(not Operands.empty());
+   assert(is_arithmetic_chain_candidate(OpKind));
 
    auto first_value = evaluate_expression(Operands[0], CurrentPrefix);
    if (expression_unsupported) return XPathVal();
 
    double accumulator = first_value.to_number();
 
-   for (size_t index = 1; index < Operands.size(); ++index)
-   {
+   for (size_t index = 1; index < Operands.size(); ++index) {
       auto operand_value = evaluate_expression(Operands[index], CurrentPrefix);
       if (expression_unsupported) return XPathVal();
 
       double operand_number = operand_value.to_number();
-      if (OpKind IS BinaryOperationKind::ADD) {
-         accumulator += operand_number;
-      } else if (OpKind IS BinaryOperationKind::MUL) {
-         accumulator *= operand_number;
-      } else {
+      if (OpKind IS BinaryOperationKind::ADD) accumulator += operand_number;
+      else if (OpKind IS BinaryOperationKind::MUL) accumulator *= operand_number;
+      else {
          expression_unsupported = true;
          return XPathVal();
       }
+   }
 
    return XPathVal(accumulator);
 }
