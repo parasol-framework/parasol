@@ -305,6 +305,7 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
    pf::Log log;
 
    if (not Args) return log.warning(ERR::NullArgs);
+   if (not Self->initialised()) return log.warning(ERR::NotInitialised);
 
    int len = 0, max_len = std::min<int>(std::ssize(Self->Statement), 40);
    while ((Self->Statement[len] != '\n') and (len < max_len)) len++;
