@@ -351,16 +351,10 @@ static ERR XQUERY_Evaluate(extXQuery *Self, struct xq::Evaluate *Args)
       return err;
    }
    else {
-      if (Self->ParseResult.expression->type IS XQueryNodeType::LOCATION_PATH) {
-         XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
-         auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
-         Self->ErrorMsg = Self->ParseResult.error_msg;
-         return err;
-      }
-      else {
-         Self->ErrorMsg = "An XML object is required.";
-         return log.warning(ERR::NullArgs);
-      }
+      XPathEvaluator eval(Self, nullptr, Self->ParseResult.expression.get(), &Self->ParseResult);
+      auto err = eval.evaluate_xpath_expression(*(Self->ParseResult.expression.get()), &Self->Result);
+      Self->ErrorMsg = Self->ParseResult.error_msg;
+      return err;
    }
 }
 
