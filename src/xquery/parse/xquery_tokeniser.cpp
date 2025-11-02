@@ -662,8 +662,6 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
 {
    size_t start = position;
    position++;
-   (void)Block;
-
    std::vector<XPathAttributeValuePart> parts;
    parts.reserve(4);
    std::string current_literal;
