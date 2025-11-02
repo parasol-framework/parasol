@@ -10,6 +10,7 @@
    require 'common'
 
    local glXML = nil
+   local glXQuery = obj.new('xquery', { })
    local benchmarkResults = {}
    local fastestResults = {}
    local totalTests = 0
@@ -61,7 +62,7 @@ function benchmarkTest(testName, testFunc, iterations)
 
       -- Actual benchmark measurement
       local avgTime, totalTime, bestTime = measureTime(testFunc, iterations)
-      benchmarkResults[testName] = { avgTime = avgTime, totalTime = totalTime, bestTime = bestTime, iterations = iterations }
+      benchmarkResults[testName] = { avgTime = avgTime, totalTime = totalTime, bestTime = bestTime, iterations = iterations, heapAllocations = glXQuery.heapAllocations }
       fastestResults[testName] = bestTime
       passedTests = passedTests + 1
    end)
@@ -379,83 +380,114 @@ end
    print('Total products: ' .. nz(product_count, '0'))
    print('')
 
-   print('=== 1. Basic Navigation Tests ===')
-   benchmarkTest('Basic Navigation', benchmarkBasicNavigation, 3000)
-   benchmarkTest('Attribute Matching', benchmarkAttributeMatching, 3000)
-   benchmarkTest('Wildcard Matching', benchmarkWildcardMatching, 1500)
+   local benchmarks = {
+      {
+         groupName = 'Basic Navigation',
+         tests = {
+            { name = 'Basic Navigation', test = benchmarkBasicNavigation, iter = 3000 },
+            { name = 'Attribute Matching', test = benchmarkAttributeMatching, iter = 3000 },
+            { name = 'Wildcard Matching', test = benchmarkWildcardMatching, iter = 1500 }
+         }
+      },
+      {
+         groupName = 'Deep Scanning',
+         tests = {
+            { name = 'Deep Scanning', test = benchmarkDeepScanning, iter = 300 },
+            { name = 'Large Deep Scan', test = benchmarkLargeDeepScan, iter = 150 },
+            { name = 'Attribute Scanning', test = benchmarkAttributeScanning, iter = 300 }
+         }
+      },
+      {
+         groupName = 'Predicate and Function',
+         tests = {
+            { name = 'Numeric Comparisons', test = benchmarkNumericComparisons, iter = 1500 },
+            { name = 'Function Predicates', test = benchmarkFunctionPredicates, iter = 600 },
+            { name = 'String Functions', test = benchmarkStringFunctions, iter = 900 },
+            { name = 'Position Functions', test = benchmarkPositionFunctions, iter = 900 }
+         }
+      },
+      {
+         groupName = 'Advanced XPath Features',
+         tests = {
+            { name = 'Axes Traversal', test = benchmarkAxesTraversal, iter = 600 },
+            { name = 'Union Operations', test = benchmarkUnionOperations, iter = 300 },
+            { name = 'Complex Predicates', test = benchmarkComplexPredicates, iter = 600 },
+            { name = 'Nested Functions', test = benchmarkNestedFunctions, iter = 600 }
+         }
+      },
+      {
+         groupName = 'Function Library',
+         tests = {
+            { name = 'String Manipulation', test = benchmarkStringManipulation, iter = 900 },
+            { name = 'Numeric Functions', test = benchmarkNumericFunctions, iter = 900 },
+            { name = 'Boolean Logic', test = benchmarkBooleanLogic, iter = 1200 },
+            { name = 'Complex Expressions', test = benchmarkComplexExpressions, iter = 600 }
+         }
+      },
+      {
+         groupName = 'Content Access',
+         tests = {
+            { name = 'Content Extraction', test = benchmarkContentExtraction, iter = 1500 },
+            { name = 'Text Node Access', test = benchmarkTextNodeAccess, iter = 900 },
+            { name = 'Mixed Content Traversal', test = benchmarkMixedContentTraversal, iter = 600 },
+            { name = 'Conditional Counting', test = benchmarkConditionalCounting, iter = 900 }
+         }
+      },
+      {
+         groupName = 'Performance Comparison',
+         tests = {
+            { name = 'Simple vs Complex Paths', test = benchmarkSimpleVsComplexPaths, iter = 1500 },
+            { name = 'Indexed vs Predicate Access', test = benchmarkIndexedVsPredicateAccess, iter = 1500 }
+         }
+      },
+      {
+         groupName = 'Parsing',
+         tests = {
+            { name = 'Parse XML File', test = benchmarkParsing, iter = 600 }
+         }
+      },
+      {
+         groupName = 'XQuery FLWOR Benchmarks',
+         tests = {
+            { name = 'FLWOR Simple For', test = benchmarkFlworSimpleFor, iter = 4000 },
+            { name = 'FLWOR Order By', test = benchmarkFlworOrderBy, iter = 2000 },
+            { name = 'FLWOR Group By', test = benchmarkFlworGroupBy, iter = 2000 }
+         }
+      },
+      {
+         groupName = 'Prolog / Function Lookup Benchmarks',
+         tests = {
+            { name = 'Prolog Many Functions', test = benchmarkPrologManyFunctions, iter = 1400 },
+            { name = 'Prolog Arity Lookup', test = benchmarkPrologArityLookup, iter = 1600 },
+            { name = 'Prolog QName Normalise', test = benchmarkPrologQNameNormalization, iter = 1600 }
+         }
+      },
+      {
+         groupName = 'Tokeniser / Parse Benchmarks',
+         tests = {
+            { name = 'Token Long Arithmetic', test = benchmarkTokenLongArithmetic, iter = 2000 },
+            { name = 'Token Nested Functions', test = benchmarkTokenNestedFunctions, iter = 6000 },
+            { name = 'Token Long Path', test = benchmarkTokenLongPath, iter = 2000 }
+         }
+      },
+      {
+         groupName = 'Axis Stress',
+         tests = {
+            { name = 'Axis Descendant Deep', test = benchmarkAxisDescendantDeep, iter = 2000 },
+            { name = 'Axis Following', test = benchmarkAxisFollowing, iter = 2000 },
+            { name = 'Axis Preceding', test = benchmarkAxisPreceding, iter = 2000 }
+         }
+      }
+   }
 
-   print('')
-   print('=== 2. Deep Scanning Tests ===')
-   benchmarkTest('Deep Scanning', benchmarkDeepScanning, 300)
-   benchmarkTest('Large Deep Scan', benchmarkLargeDeepScan, 150)
-   benchmarkTest('Attribute Scanning', benchmarkAttributeScanning, 300)
+   for i, group in ipairs(benchmarks) do
+      print('=== ' .. i .. '. ' .. group.groupName .. ' Tests ===')
+      print('')
+      for t, test in ipairs(group.tests) do
+         benchmarkTest(test.name, test.test, test.iter)
+      end
+   end
 
-   print('')
-   print('=== 3. Predicate and Function Tests ===')
-   benchmarkTest('Numeric Comparisons', benchmarkNumericComparisons, 1500)
-   benchmarkTest('Function Predicates', benchmarkFunctionPredicates, 600)
-   benchmarkTest('String Functions', benchmarkStringFunctions, 900)
-   benchmarkTest('Position Functions', benchmarkPositionFunctions, 900)
-
-   print('')
-   print('=== 4. Advanced XPath Features ===')
-   benchmarkTest('Axes Traversal', benchmarkAxesTraversal, 600)
-   benchmarkTest('Union Operations', benchmarkUnionOperations, 300)
-   benchmarkTest('Complex Predicates', benchmarkComplexPredicates, 600)
-   benchmarkTest('Nested Functions', benchmarkNestedFunctions, 600)
-
-   print('')
-   print('=== 5. Function Library Tests ===')
-   benchmarkTest('String Manipulation', benchmarkStringManipulation, 900)
-   benchmarkTest('Numeric Functions', benchmarkNumericFunctions, 900)
-   benchmarkTest('Boolean Logic', benchmarkBooleanLogic, 1200)
-   benchmarkTest('Complex Expressions', benchmarkComplexExpressions, 600)
-
-   print('')
-   print('=== 6. Content Access Tests ===')
-   benchmarkTest('Content Extraction', benchmarkContentExtraction, 1500)
-   benchmarkTest('Text Node Access', benchmarkTextNodeAccess, 900)
-   benchmarkTest('Mixed Content Traversal', benchmarkMixedContentTraversal, 600)
-   benchmarkTest('Conditional Counting', benchmarkConditionalCounting, 900)
-
-   print('')
-   print('=== 7. Performance Comparison Tests ===')
-   benchmarkTest('Simple vs Complex Paths', benchmarkSimpleVsComplexPaths, 1500)
-   benchmarkTest('Indexed vs Predicate Access', benchmarkIndexedVsPredicateAccess, 1500)
-
-   print('')
-   print('=== 8. Parsing Tests ===')
-   benchmarkTest('Parse XML File', benchmarkParsing, 600)
-
-   print('')
-   print('=== 9. XQuery FLWOR Benchmarks ===')
-
-   benchmarkTest('FLWOR Simple For', benchmarkFlworSimpleFor, 4000)
-   benchmarkTest('FLWOR Order By', benchmarkFlworOrderBy, 2000)
-   benchmarkTest('FLWOR Group By', benchmarkFlworGroupBy, 2000)
-
-   print('')
-   print('=== 10. Prolog / Function Lookup Benchmarks ===')
-
-   benchmarkTest('Prolog Many Functions', benchmarkPrologManyFunctions, 1400)
-   benchmarkTest('Prolog Arity Lookup', benchmarkPrologArityLookup, 1600)
-   benchmarkTest('Prolog QName Normalise', benchmarkPrologQNameNormalization, 1600)
-
-   print('')
-   print('=== 11. Tokeniser / Parse Benchmarks ===')
-
-   benchmarkTest('Token Long Arithmetic', benchmarkTokenLongArithmetic, 2000)
-   benchmarkTest('Token Nested Functions', benchmarkTokenNestedFunctions, 6000)
-   benchmarkTest('Token Long Path', benchmarkTokenLongPath, 2000)
-
-   print('')
-   print('=== 12. Axis Stress Tests ===')
-
-   benchmarkTest('Axis Descendant Deep', benchmarkAxisDescendantDeep, 2000)
-   benchmarkTest('Axis Following', benchmarkAxisFollowing, 2000)
-   benchmarkTest('Axis Preceding', benchmarkAxisPreceding, 2000)
-
-   -- Print summary
    print('')
    print('=== Benchmark Results Summary ===')
    print('Tests completed: ' .. passedTests .. '/' .. totalTests)
@@ -470,7 +502,8 @@ end
             avgTime = result.avgTime,
             totalTime = result.totalTime,
             bestTime = result.bestTime,
-            iterations = result.iterations
+            iterations = result.iterations,
+            heapAllocations = nz(result.heapAllocations, 0)
          })
       end
    end
@@ -480,8 +513,8 @@ end
    local grandTotalTime = 0
    local fastestGrandTotal = 0
    for i, result in ipairs(sortedResults) do
-      print(string.format('%2d. %-25s %dus/iter (%dms total, %dus fastest, %d iters)',
-         i, result.name, result.avgTime, result.totalTime/1000, result.bestTime, result.iterations))
+      print(string.format('%2d. %-25s %dus/iter (%dms total, %dus fastest, %d iters, %d allocations)',
+         i, result.name, result.avgTime, result.totalTime/1000, result.bestTime, result.iterations, result.heapAllocations))
       grandTotalTime = grandTotalTime + result.totalTime
       fastestGrandTotal = fastestGrandTotal + result.bestTime
    end
