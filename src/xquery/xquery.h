@@ -1243,6 +1243,10 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal handle_path(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_unary_op(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal handle_binary_op(const XPathNode *Node, uint32_t CurrentPrefix);
+   bool is_arithmetic_chain_candidate(BinaryOperationKind OpKind) const;
+   std::vector<const XPathNode *> collect_operation_chain(const XPathNode *Node, BinaryOperationKind OpKind) const;
+   XPathVal evaluate_arithmetic_chain(const std::vector<const XPathNode *> &Operands,
+      BinaryOperationKind OpKind, uint32_t CurrentPrefix);
    XPathVal handle_binary_logical(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
       uint32_t CurrentPrefix, BinaryOperationKind OpKind);
    XPathVal handle_binary_comparison(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,

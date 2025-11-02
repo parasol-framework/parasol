@@ -160,11 +160,11 @@ function evaluate_arithmetic_chain(operands, op_kind, prefix):
 ## Implementation Order
 
 1. [x] Create this plan document
-2. [ ] Add `is_arithmetic_chain_candidate()` helper
-3. [ ] Add `collect_operation_chain()` helper
-4. [ ] Add `evaluate_arithmetic_chain()` helper
-5. [ ] Modify `handle_binary_op()` to use chain detection
-6. [ ] Compile and verify no regressions with existing tests
+2. [x] Add `is_arithmetic_chain_candidate()` helper
+3. [x] Add `collect_operation_chain()` helper
+4. [x] Add `evaluate_arithmetic_chain()` helper
+5. [x] Modify `handle_binary_op()` to use chain detection
+6. [x] Compile and verify no regressions with existing tests
 7. [ ] Test with benchmark.fluid to verify fix
 8. [ ] Add unit tests for chain evaluation
 9. [ ] Performance testing and threshold tuning (optional)
