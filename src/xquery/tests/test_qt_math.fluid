@@ -157,7 +157,7 @@ return {
       if mSys.AnalysePath(math_folder) != ERR_Okay then
          -- Assume the XQuery test package isn't installed on this machine
          print('Math folder not found at: ' .. math_folder)
-         return
+         return { }
       end
 
       print('Searching for tests in: ' .. math_folder)
