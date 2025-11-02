@@ -2406,9 +2406,14 @@ XPathVal XPathEvaluator::evaluate_arithmetic_chain(const std::vector<const XPath
       if (expression_unsupported) return XPathVal();
 
       double operand_number = operand_value.to_number();
-      if (OpKind IS BinaryOperationKind::ADD) accumulator += operand_number;
-      else accumulator *= operand_number;
-   }
+      if (OpKind IS BinaryOperationKind::ADD) {
+         accumulator += operand_number;
+      } else if (OpKind IS BinaryOperationKind::MUL) {
+         accumulator *= operand_number;
+      } else {
+         expression_unsupported = true;
+         return XPathVal();
+      }
 
    return XPathVal(accumulator);
 }
