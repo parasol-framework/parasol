@@ -30,16 +30,17 @@ XQF CompiledXQuery::feature_flags() const
       if (p->is_library_module) flags |= XQF::LIBRARY_MODULE;
    }
 
-   // AST-derived flags
-   auto scan_ast = [&](auto &&self, const XPathNode *node) -> void {
-      if (not node) return;
-      if (node->type IS XQueryNodeType::WILDCARD) flags |= XQF::HAS_WILDCARD_TESTS;
-      for (const auto &child : node->children) self(self, child.get());
-   };
-
    if (expression) {
       // Mark simple XPath location paths
       if (expression->type IS XQueryNodeType::LOCATION_PATH) flags |= XQF::XPATH;
+
+      // AST-derived flags
+      auto scan_ast = [&](auto &&self, const XPathNode *node) -> void {
+         if (not node) return;
+         if (node->type IS XQueryNodeType::WILDCARD) flags |= XQF::HAS_WILDCARD_TESTS;
+         for (const auto &child : node->children) self(self, child.get());
+      };
+
       scan_ast(scan_ast, expression.get());
    }
 
