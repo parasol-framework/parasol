@@ -92,7 +92,7 @@ function testMultiplicationAfterReturn()
       local err = xq.acActivate()
    end)
 
-   assert(ex, 'Query did not fail as expected: ' .. tostring(ex.message))
+   assert(ex, 'Expected query to fail but it succeeded')
 
    -- Pure number sequence is valid without the 'return' keyword
    local xq = obj.new('xquery', { statement = '2 * 3 * 4' })
