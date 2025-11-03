@@ -24,13 +24,14 @@ namespace pf {
 class MemTracker {
 public:
    struct Stats {
-      size_t total_alloc;  // Total number of allocations
-      size_t total_free;   // Total number of frees
-      size_t total_size;   // Total bytes allocated
-      size_t avg_size;     // Average allocation size
+      size_t total_alloc;  // Total number of allocations made
+      size_t total_free;   // Total number of frees (might not necessarily match total_alloc)
+      size_t total_size;   // Total bytes allocated; not impacted by deallocations
+      size_t avg_size() { return total_alloc > 0 ? total_size / total_alloc : 0; }
    };
 
 private:
+   // Use atomics in case the tracked code is multi-threaded
    std::atomic<size_t> mTotalAlloc{0};
    std::atomic<size_t> mTotalFree{0};
    std::atomic<size_t> mTotalSize{0};
@@ -74,14 +75,13 @@ public:
 
    Stats getStats() const {
       auto alloc_count = mTotalAlloc.load(std::memory_order_relaxed);
-      auto free_count = mTotalFree.load(std::memory_order_relaxed);
+      auto free_count  = mTotalFree.load(std::memory_order_relaxed);
       auto total_bytes = mTotalSize.load(std::memory_order_relaxed);
 
       return Stats{
          alloc_count,
          free_count,
-         total_bytes,
-         alloc_count > 0 ? total_bytes / alloc_count : 0
+         total_bytes
       };
    }
 
@@ -103,6 +103,7 @@ public:
 };
 
 // Tracked malloc wrappers (use these when tracking malloc is enabled)
+
 inline void* tracked_malloc(size_t Size) {
    void* ptr = std::malloc(Size);
    if (MemTracker::glTrackingMalloc and MemTracker::glActiveTracker and ptr) {
@@ -124,22 +125,15 @@ inline void* tracked_realloc(void* Ptr, size_t Size) {
       void* new_ptr = std::realloc(Ptr, Size);
       bool freed_block = false;
       if (Ptr) {
-         if (not Size) {
-            freed_block = true;
-         } else if (new_ptr) {
+         if (not Size) freed_block = true;
+         else if (new_ptr) {
             std::uintptr_t new_value = std::uintptr_t(new_ptr);
             std::uintptr_t old_value = std::uintptr_t(Ptr);
-            if (new_value - old_value) {
-               freed_block = true;
-            }
+            if (new_value - old_value) freed_block = true;
          }
       }
-      if (freed_block) {
-         MemTracker::glActiveTracker->recordFree();
-      }
-      if (new_ptr and Size > 0) {
-         MemTracker::glActiveTracker->recordAlloc(Size);
-      }
+      if (freed_block) MemTracker::glActiveTracker->recordFree();
+      if (new_ptr and Size > 0) MemTracker::glActiveTracker->recordAlloc(Size);
       return new_ptr;
    }
    return std::realloc(Ptr, Size);
@@ -156,59 +150,42 @@ inline void tracked_free(void* Ptr) {
 
 // Global operator overrides for tracking new/delete
 
-inline void* operator new(size_t Size) {
-   void* ptr = std::malloc(Size);
+inline void * operator new(size_t Size) {
+   void * ptr = std::malloc(Size);
    while (not ptr) {
       std::new_handler handler = std::get_new_handler();
-      if (not handler) {
-         std::abort();
-      }
+      if (not handler) std::abort();
       handler();
       ptr = std::malloc(Size);
    }
 
-   if (pf::MemTracker::glActiveTracker) {
-      pf::MemTracker::glActiveTracker->recordAlloc(Size);
-   }
-
+   if (pf::MemTracker::glActiveTracker) pf::MemTracker::glActiveTracker->recordAlloc(Size);
    return ptr;
 }
 
-inline void* operator new[](size_t Size) {
-   void* ptr = std::malloc(Size);
+inline void * operator new[](size_t Size) {
+   void * ptr = std::malloc(Size);
    while (not ptr) {
       std::new_handler handler = std::get_new_handler();
-      if (not handler) {
-         std::abort();
-      }
+      if (not handler) std::abort();
       handler();
       ptr = std::malloc(Size);
    }
 
-   if (pf::MemTracker::glActiveTracker) {
-      pf::MemTracker::glActiveTracker->recordAlloc(Size);
-   }
+   if (pf::MemTracker::glActiveTracker) pf::MemTracker::glActiveTracker->recordAlloc(Size);
 
    return ptr;
 }
 
-inline void operator delete(void* Ptr) noexcept {
+inline void operator delete(void *Ptr) noexcept {
    if (not Ptr) return;
-
-   if (pf::MemTracker::glActiveTracker) {
-      pf::MemTracker::glActiveTracker->recordFree();
-   }
-
+   if (pf::MemTracker::glActiveTracker) pf::MemTracker::glActiveTracker->recordFree();
    std::free(Ptr);
 }
 
-inline void operator delete[](void* Ptr) noexcept {
+inline void operator delete[](void *Ptr) noexcept {
    if (not Ptr) return;
-
-   if (pf::MemTracker::glActiveTracker) {
-      pf::MemTracker::glActiveTracker->recordFree();
-   }
-
+   if (pf::MemTracker::glActiveTracker) pf::MemTracker::glActiveTracker->recordFree();
    std::free(Ptr);
 }
 

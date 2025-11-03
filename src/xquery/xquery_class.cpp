@@ -256,7 +256,8 @@ static ERR XQUERY_Activate(extXQuery *Self)
    auto mt = pf::MemTracker();
    auto cleanup = pf::Defer([&]() { 
       auto stats = mt.getStats();
-      log.msg("Memory allocated: %" PRId64 " bytes total, %" PRId64 " bytes currently allocated, average block size: %" PRId64 " bytes", stats.total_alloc, stats.total_size, stats.avg_size);
+      log.msg("Blocks allocated: %" PRId64 ", Total Size: %" PRId64 ", Avg Size: %" PRId64 " bytes", 
+         stats.total_alloc, stats.total_size, stats.avg_size());
       Self->MemUsage = stats.total_size;
    });
 #endif
