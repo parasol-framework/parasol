@@ -412,8 +412,10 @@ endif ()
 if (MSVC)
    # Turn off ugly warnings
    add_compile_definitions ("_CRT_SECURE_NO_WARNINGS")
+
    # Use NODEFAULTLIB to override sub-projects linking to incorrect standard libraries.
    # https://learn.microsoft.com/en-us/previous-versions/visualstudio/visual-studio-6.0/aa267384(v=vs.60)?redirectedfrom=MSDN
+
    if (PARASOL_VLOG)
       set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
       add_link_options ("/NODEFAULTLIB:libc.lib" "/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libc.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrt.lib")
@@ -421,6 +423,7 @@ if (MSVC)
       set (CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
       add_link_options ("/NODEFAULTLIB:libcmt.lib" "/NODEFAULTLIB:libcmtd.lib" "/NODEFAULTLIB:msvcrtd.lib")
    endif ()
+
    # add_link_options ("/VERBOSE:LIB")
    if (ENABLE_ANALYSIS)
       # Note that this option is not compatible with /ZI (edit-and-continue).  To rectify complaints about the asan DLL, you may also need a line like this one added to each entry in launch.vs.json:
@@ -433,7 +436,7 @@ if (MSVC)
    if (CMAKE_BUILD_TYPE STREQUAL "Release")
       add_compile_definitions ("_HAS_EXCEPTIONS=0")
       string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-      string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+      string(REPLACE "/EHsc" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
       set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHs-c- /GR")
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c- /GR")
    endif ()
