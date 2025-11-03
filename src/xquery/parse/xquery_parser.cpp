@@ -118,13 +118,16 @@ XQF CompiledXQuery::feature_flags() const
 //   - (optional) module cache and other metadata
 // Errors can be inspected via the error list.
 
-CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
+CompiledXQuery XPathParser::parse(TokenBlock TokenList)
 {
    CompiledXQuery result;
    result.prolog = std::make_shared<XQueryProlog>();
    active_prolog = result.prolog.get();
 
-   tokens = TokenList;
+   token_storage = std::move(TokenList.storage);
+   if (!token_storage) token_storage = std::make_shared<TokenBuffer>();
+
+   tokens = std::move(TokenList.tokens);
    for (auto &token : tokens) {
       switch (token.type) {
          case XPathTokenType::FUNCTION:
@@ -150,7 +153,7 @@ CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
          const auto &next = tokens[lookahead];
          std::string_view keyword = keyword_from_token_type(next.type);
          if (keyword IS "namespace") is_module_decl = true;
-         else if ((next.type IS XPathTokenType::IDENTIFIER) and (next.value IS "namespace")) is_module_decl = true;
+         else if ((next.type IS XPathTokenType::IDENTIFIER) and (next.text IS "namespace")) is_module_decl = true;
       }
 
       if (is_module_decl) {
@@ -182,7 +185,7 @@ CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
 
       if (not is_at_end()) {
          XPathToken token = peek();
-         std::string token_text(token.value);
+         std::string token_text(token.text);
          if (token_text.empty()) token_text = "<unexpected>";
          report_error("XQST0039: Library module must not contain a query body (unexpected token '" + token_text + "')");
       }
@@ -201,7 +204,7 @@ CompiledXQuery XPathParser::parse(const std::vector<XPathToken> &TokenList)
 
    if (not is_at_end()) {
       XPathToken token = peek();
-      std::string token_text(token.value);
+      std::string token_text(token.text);
       if (token_text.empty()) token_text = "<unexpected>";
       report_error("XPST0003: Unexpected token '" + token_text + "' in XPath expression");
       result.expression.reset();
@@ -351,7 +354,7 @@ bool XPathParser::check_literal_keyword(std::string_view Keyword) const
 {
    const auto &token = peek();
 
-   if (token.type IS XPathTokenType::IDENTIFIER) return token.value IS Keyword;
+   if (token.type IS XPathTokenType::IDENTIFIER) return token.text IS Keyword;
 
    std::string_view token_keyword = keyword_from_token_type(token.type);
    if (not token_keyword.empty()) return Keyword IS token_keyword;
@@ -369,7 +372,7 @@ std::optional<std::string> XPathParser::parse_string_literal_value()
       return std::nullopt;
    }
 
-   std::string value(peek().value);
+   std::string value(peek().text);
    advance();
    return value;
 }
@@ -383,7 +386,7 @@ std::optional<std::string> XPathParser::parse_ncname()
       return std::nullopt;
    }
 
-   std::string name(peek().value);
+   std::string name(peek().text);
    advance();
    return name;
 }
@@ -397,7 +400,7 @@ std::optional<std::string> XPathParser::parse_qname_string()
       return std::nullopt;
    }
 
-   std::string name(peek().value);
+   std::string name(peek().text);
    advance();
 
    if (match(XPathTokenType::COLON)) {
@@ -407,7 +410,7 @@ std::optional<std::string> XPathParser::parse_qname_string()
       }
 
       name.append(":");
-      name.append(peek().value);
+      name.append(peek().text);
       advance();
    }
 
@@ -450,7 +453,7 @@ std::optional<std::string> XPathParser::collect_sequence_type(bool StopAtReturnK
       }
 
       if (add_space) collected.push_back(' ');
-      collected.append(std::string(token.value));
+      collected.append(std::string(token.text));
       advance();
       previous_type = token.type;
    }
@@ -949,7 +952,7 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
    };
 
    if (is_identifier_token(peek())) {
-      std::string candidate(peek().value);
+      std::string candidate(peek().text);
       bool treat_as_property = is_property_name(candidate);
       if (not treat_as_property) {
          if ((current_token + 1 < tokens.size()) and (tokens[current_token + 1].type IS XPathTokenType::COLON)) {
@@ -982,7 +985,7 @@ bool XPathParser::parse_decimal_format_decl(XQueryProlog &prolog)
    while (true) {
       if (not is_identifier_token(peek())) break;
 
-      std::string property(peek().value);
+      std::string property(peek().text);
       if (not is_property_name(property)) break;
       advance();
 
@@ -1102,7 +1105,7 @@ bool XPathParser::check_identifier_keyword(std::string_view Keyword) const
    std::string_view token_keyword = keyword_from_token_type(token.type);
    if (not token_keyword.empty()) return token_keyword IS Keyword;
 
-   return (token.type IS XPathTokenType::IDENTIFIER) and (token.value IS Keyword);
+   return (token.type IS XPathTokenType::IDENTIFIER) and (token.text IS Keyword);
 }
 
 //********************************************************************************************************************
@@ -1116,7 +1119,7 @@ bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenT
       return true;
    }
 
-   if (check(XPathTokenType::IDENTIFIER) and (peek().value IS Keyword)) {
+   if (check(XPathTokenType::IDENTIFIER) and (peek().text IS Keyword)) {
       OutToken = peek();
       OutToken.type = KeywordType;
       advance();
@@ -1131,7 +1134,7 @@ bool XPathParser::match_identifier_keyword(std::string_view Keyword, XPathTokenT
 
 std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNode> Left, const XPathToken &Op, std::unique_ptr<XPathNode> Right)
 {
-   auto binary_op = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, std::string(Op.value));
+   auto binary_op = std::make_unique<XPathNode>(XQueryNodeType::BINARY_OP, std::string(Op.text));
    binary_op->add_child(std::move(Left));
    binary_op->add_child(std::move(Right));
    if (auto cached_kind = lookup_binary_operator_kind(binary_op->get_value_view()); cached_kind.has_value()) {
@@ -1145,7 +1148,7 @@ std::unique_ptr<XPathNode> XPathParser::create_binary_op(std::unique_ptr<XPathNo
 
 std::unique_ptr<XPathNode> XPathParser::create_unary_op(const XPathToken &Op, std::unique_ptr<XPathNode> Operand)
 {
-   auto unary_op = std::make_unique<XPathNode>(XQueryNodeType::UNARY_OP, std::string(Op.value));
+   auto unary_op = std::make_unique<XPathNode>(XQueryNodeType::UNARY_OP, std::string(Op.text));
    unary_op->add_child(std::move(Operand));
    if (auto cached_kind = lookup_unary_operator_kind(unary_op->get_value_view()); cached_kind.has_value()) {
       unary_op->set_cached_unary_kind(*cached_kind);
@@ -1233,7 +1236,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_step()
    if (is_identifier_token(peek())) {
       // Look ahead for axis separator
       if (current_token + 1 < tokens.size() and tokens[current_token + 1].type IS XPathTokenType::AXIS_SEPARATOR) {
-         std::string axis_name(peek().value);
+         std::string axis_name(peek().text);
          advance(); // consume axis name
          advance(); // consume "::"
          auto axis = std::make_unique<XPathNode>(XQueryNodeType::AXIS_SPECIFIER, axis_name);
@@ -1273,7 +1276,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
       return std::make_unique<XPathNode>(XQueryNodeType::WILDCARD, "*");
    }
    else if (is_identifier_token(peek())) {
-      std::string name(peek().value);
+      std::string name(peek().text);
 
       bool is_node_type = false;
       if ((name IS "node") or (name IS "text") or (name IS "comment") or (name IS "processing-instruction")) {
@@ -1295,7 +1298,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
 
             if (not check(XPathTokenType::RPAREN)) {
                if (check(XPathTokenType::STRING) or is_identifier_token(peek())) {
-                  target = peek().value;
+                  target = peek().text;
                   advance();
                }
                else report_error("XPST0003: Expected literal target in processing-instruction()");
@@ -1322,7 +1325,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
       if (check(XPathTokenType::COLON)) {
          if (current_token + 1 < tokens.size() and is_identifier_token(tokens[current_token + 1])) {
             advance(); // consume ':'
-            name = std::format("{}:{}", name, peek().value);
+            name = std::format("{}:{}", name, peek().text);
             advance();
          }
       }
@@ -1345,7 +1348,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
 
    if (check(XPathTokenType::NUMBER)) {
       // Index predicate [1], [2], etc.
-      std::string index(peek().value);
+      std::string index(peek().text);
       advance();
       predicate->add_child(std::make_unique<XPathNode>(XQueryNodeType::NUMBER, index));
    }
@@ -1369,12 +1372,12 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
       std::unique_ptr<XPathNode> attribute_expression;
 
       if (is_identifier_token(peek()) or check(XPathTokenType::WILDCARD)) {
-         std::string attr_name(peek().value);
+         std::string attr_name(peek().text);
          advance();
 
          if (match(XPathTokenType::COLON)) {
             if (is_identifier_token(peek()) or check(XPathTokenType::WILDCARD)) {
-               attr_name = std::format("{}:{}", attr_name, peek().value);
+               attr_name = std::format("{}:{}", attr_name, peek().text);
                advance();
             }
             else report_error("XPST0003: Expected identifier or wildcard after ':' in attribute name");
@@ -1428,13 +1431,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_predicate()
 std::unique_ptr<XPathNode> XPathParser::parse_predicate_value()
 {
    if (check(XPathTokenType::STRING)) {
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
       return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
 
    if (is_identifier_token(peek()) or check(XPathTokenType::NUMBER)) {
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
 
       while (check(XPathTokenType::MULTIPLY) or check(XPathTokenType::WILDCARD)) {
@@ -1938,7 +1941,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_order_spec()
          return nullptr;
       }
 
-      std::string collation_value(peek().value);
+      std::string collation_value(peek().text);
       advance();
       options.collation_uri = std::move(collation_value);
    }
@@ -2626,13 +2629,13 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
    }
 
    if (check(XPathTokenType::STRING)) {
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
       return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
 
    if (check(XPathTokenType::NUMBER)) {
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
       return std::make_unique<XPathNode>(XQueryNodeType::NUMBER, value);
    }
@@ -2651,7 +2654,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_primary_expr()
       if (qname) return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, *qname);
 
       current_token = saved_index;
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
       return std::make_unique<XPathNode>(XQueryNodeType::LITERAL, value);
    }
@@ -2714,7 +2717,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_argument() {
 std::unique_ptr<XPathNode> XPathParser::parse_number()
 {
    if (check(XPathTokenType::NUMBER)) {
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
       return std::make_unique<XPathNode>(XQueryNodeType::NUMBER, value);
    }
@@ -2724,7 +2727,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_number()
 std::unique_ptr<XPathNode> XPathParser::parse_literal()
 {
    if (check(XPathTokenType::STRING)) {
-      std::string value(peek().value);
+      std::string value(peek().text);
       advance();
       return std::make_unique<XPathNode>(XQueryNodeType::STRING, value);
    }
@@ -2748,7 +2751,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_variable_reference()
 bool XPathParser::is_constructor_keyword(const XPathToken &Token) const
 {
    if (Token.type IS XPathTokenType::IDENTIFIER) {
-      std::string_view keyword = Token.value;
+      std::string_view keyword = Token.text;
       if (keyword IS "element") return true;
       if (keyword IS "attribute") return true;
       if (keyword IS "text") return true;
@@ -2779,7 +2782,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
       return std::nullopt;
    }
 
-   name.LocalName = std::string(peek().value);
+   name.LocalName = std::string(peek().text);
    advance();
 
    if (match(XPathTokenType::COLON)) {
@@ -2788,7 +2791,7 @@ std::optional<XPathParser::ConstructorName> XPathParser::parse_constructor_qname
          report_error("XPST0003: Expected local name after ':' in constructor");
          return std::nullopt;
       }
-      name.LocalName = std::string(peek().value);
+      name.LocalName = std::string(peek().text);
       advance();
    }
 
@@ -2853,6 +2856,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
             XPathAttributeValuePart part;
             part.is_expression = token_part.is_expression;
             part.text = token_part.text;
+            part.text_kind = token_part.text_kind;
             if (part.is_expression) {
                auto expr = parse_embedded_expr(part.text);
                if (not expr) return nullptr;
@@ -2865,7 +2869,16 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
       else {
          XPathAttributeValuePart literal_part;
          literal_part.is_expression = false;
-         literal_part.text = std::string(attribute_token.value);
+         if (attribute_token.text_kind == TokenTextKind::BorrowedInput) {
+            std::string_view literal_text = attribute_token.text;
+            if (!token_storage) token_storage = std::make_shared<TokenBuffer>();
+            literal_text = token_storage->write_copy(literal_text);
+            literal_part.text = literal_text;
+            literal_part.text_kind = TokenTextKind::ArenaOwned;
+         } else {
+            literal_part.text = attribute_token.text;
+            literal_part.text_kind = attribute_token.text_kind;
+         }
          parts.push_back(std::move(literal_part));
       }
 
@@ -2873,6 +2886,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
          attribute.namespace_uri = parts.front().text;
       }
 
+      attribute.value_storage = token_storage;
       attribute.value_parts = std::move(parts);
       attributes.push_back(std::move(attribute));
    }
@@ -2930,7 +2944,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_direct_constructor()
          return nullptr;
       }
 
-      text_buffer += std::string(token.value);
+      text_buffer += std::string(token.text);
       advance();
    }
 
@@ -2979,10 +2993,10 @@ std::unique_ptr<XPathNode> XPathParser::parse_enclosed_expr()
 std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Source)
 {
    XPathTokeniser embedded_tokeniser;
-   auto token_list = embedded_tokeniser.tokenize(Source);
+   auto token_block = embedded_tokeniser.tokenize(Source);
 
    XPathParser embedded_parser;
-   auto embedded_result = embedded_parser.parse(token_list);
+   auto embedded_result = embedded_parser.parse(std::move(token_block));
    auto expr = std::move(embedded_result.expression);
 
    if (not expr or embedded_parser.has_errors()) {
@@ -3006,7 +3020,7 @@ std::unique_ptr<XPathNode> XPathParser::parse_embedded_expr(std::string_view Sou
 
 std::unique_ptr<XPathNode> XPathParser::parse_computed_constructor()
 {
-   std::string keyword(peek().value);
+   std::string keyword(peek().text);
    advance();
 
    if (keyword IS "element") return parse_computed_element_constructor();
@@ -3136,11 +3150,11 @@ std::unique_ptr<XPathNode> XPathParser::parse_computed_pi_constructor()
       node->set_name_expression(std::move(target_expr));
    }
    else if (check(XPathTokenType::STRING)) {
-      info.name = std::string(peek().value);
+      info.name = std::string(peek().text);
       advance();
    }
    else if (is_identifier_token(peek())) {
-      info.name = std::string(peek().value);
+      info.name = std::string(peek().text);
       advance();
       if (check(XPathTokenType::COLON)) {
          report_error("XPST0003: Processing-instruction target must be an NCName");

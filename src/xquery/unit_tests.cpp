@@ -156,7 +156,8 @@ static void test_tokeniser_prolog_keywords()
 
    XPathTokeniser tokeniser;
 
-   auto function_tokens = tokeniser.tokenize("declare function local:square($x) { $x * $x }");
+   auto function_block = tokeniser.tokenize("declare function local:square($x) { $x * $x }");
+   const auto &function_tokens = function_block.tokens;
    test_assert(function_tokens.size() >= 6, "Function declaration token count",
       "Tokeniser should emit tokens for sample prolog function");
 
@@ -185,7 +186,8 @@ static void test_tokeniser_prolog_keywords()
          "Colon between prefix and local name should be tokenised as COLON");
    }
 
-   auto variable_tokens = tokeniser.tokenize("declare variable $value := 1");
+   auto variable_block = tokeniser.tokenize("declare variable $value := 1");
+   const auto &variable_tokens = variable_block.tokens;
    test_assert(variable_tokens.size() >= 5, "Variable declaration token count",
       "Tokeniser should emit tokens for sample variable declaration");
 
@@ -214,7 +216,8 @@ static void test_tokeniser_prolog_keywords()
          "':=' should be tokenised as ASSIGN for prolog variables");
    }
 
-   auto namespace_tokens = tokeniser.tokenize("declare namespace ex = \"http://example.org\"");
+   auto namespace_block = tokeniser.tokenize("declare namespace ex = \"http://example.org\"");
+   const auto &namespace_tokens = namespace_block.tokens;
    test_assert(namespace_tokens.size() >= 4, "Namespace declaration token count",
       "Tokeniser should emit tokens for namespace declaration");
 
@@ -236,7 +239,8 @@ static void test_tokeniser_prolog_keywords()
          namespace_message.c_str());
    }
 
-   auto external_tokens = tokeniser.tokenize("declare variable $flag external");
+   auto external_block = tokeniser.tokenize("declare variable $flag external");
+   const auto &external_tokens = external_block.tokens;
    test_assert(external_tokens.size() >= 5, "External variable token count",
       "Tokeniser should emit tokens for external variable declaration");
 
@@ -258,10 +262,10 @@ static void test_parser_operator_cache_population()
    std::cout << "\n--- Verifying Parser Operator Cache Population ---\n" << std::endl;
 
    XPathTokeniser tokeniser;
-   auto tokens = tokeniser.tokenize("1 + 2 * 3 and not(-$flag)");
+   auto token_block = tokeniser.tokenize("1 + 2 * 3 and not(-$flag)");
 
    XPathParser parser;
-   auto compiled = parser.parse(tokens);
+   auto compiled = parser.parse(std::move(token_block));
 
    bool has_expression = compiled.expression not_eq nullptr;
    test_assert(has_expression, "Parser expression availability", "Parser should return an expression tree");
