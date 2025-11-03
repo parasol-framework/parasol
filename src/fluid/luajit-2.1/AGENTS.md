@@ -116,6 +116,108 @@ one function call.
 - Check that `fs->freereg` is correctly adjusted after each operation completes
 - Verify that base register reuse logic considers all stack-top scenarios
 
+### Implementing Binary Logical Operators with Short-Circuiting
+
+When implementing binary logical operators (like `or`, `and`, or custom variants like `or?`),
+follow a two-phase pattern: setup in `bcemit_binop_left()` and completion in `bcemit_binop()`.
+
+**The Pattern:**
+1. **In `bcemit_binop_left()`**: Set up jumps in `e->t` for truthy LHS (to skip RHS) or
+   `NO_JMP` for falsey LHS (to evaluate RHS). For truthy constants, you must allocate a
+   register before loading them:
+   ```c
+   if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE) {
+     bcreg_reserve(fs, 1);  // CRITICAL: Allocate register first
+     expr_toreg_nobranch(fs, e, fs->freereg-1);
+     pc = bcemit_jmp(fs);  // Jump to skip RHS
+   }
+   ```
+   **Never use `NO_REG` as a register number** - it causes runtime crashes in `lj_BC_MOV`.
+
+2. **In `bcemit_binop()`**: Check if `e1->t != NO_JMP` to determine if LHS is truthy:
+   ```c
+   if (e1->t != NO_JMP) {
+     // LHS is truthy - patch jumps to skip RHS, return LHS
+     jmp_patch(fs, e1->t, fs->pc);
+     e1->t = NO_JMP;
+     // Ensure LHS is in a register (already done in bcemit_binop_left() for constants)
+   } else {
+     // LHS is falsey - evaluate RHS
+   }
+   ```
+
+**Critical Gotcha:**
+- After `expr_toreg_nobranch()` with a proper register, the expression becomes `VNONRELOC`
+- Check `e1->k == VNONRELOC` before trying to load it again in `bcemit_binop()`
+- If the constant was already loaded in `bcemit_binop_left()`, it's already in a register
+
+### Implementing Operators with Extended Falsey Semantics
+
+When implementing operators with custom falsey semantics (e.g., treating `0` and `""` as falsey
+in addition to `nil` and `false`):
+
+1. **Handle compile-time constants separately** in `bcemit_binop()`:
+   ```c
+   if (e1->k == VKNIL || e1->k == VKFALSE) {
+     // Definitely falsey - evaluate RHS
+   } else if (e1->k == VKNUM && expr_numiszero(e1)) {
+     // Zero is falsey - evaluate RHS
+   } else if (e1->k == VKSTR && e1->u.sval && e1->u.sval->len == 0) {
+     // Empty string is falsey - evaluate RHS
+   }
+   ```
+
+2. **For runtime values**, emit a chain of comparison instructions:
+   ```c
+   // Check for nil
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&nilv)));
+   check_nil = bcemit_jmp(fs);
+   // Check for false
+   bcemit_INS(fs, BCINS_AD(BC_ISEQP, reg, const_pri(&falsev)));
+   check_false = bcemit_jmp(fs);
+   // Check for zero
+   bcemit_INS(fs, BCINS_AD(BC_ISEQN, reg, const_num(fs, &zerov)));
+   check_zero = bcemit_jmp(fs);
+   // Check for empty string
+   bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
+   check_empty = bcemit_jmp(fs);
+
+   // All falsey checks jump to RHS evaluation
+   jmp_patch(fs, check_nil, fs->pc);
+   jmp_patch(fs, check_false, fs->pc);
+   // ... etc
+   ```
+
+3. **Use `lj_parse_keepstr()` for string constants** to ensure they're anchored and not GC'd:
+   ```c
+   emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
+   ```
+
+### Multi-Character Token Recognition
+
+When adding operators that extend reserved words (like `or?` from `or`):
+
+1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro:
+   ```c
+   __(or_question, or?)
+   ```
+
+2. **Handle recognition in the lexer** (`lj_lex.c`) after identifying a reserved word:
+   ```c
+   if (s->reserved > 0) {
+     LexToken tok = TK_OFS + s->reserved;
+     if (tok == TK_or && ls->c == '?') {  // Check next character
+       lex_next(ls);  // Consume the '?'
+       return TK_or_question;
+     }
+     return tok;
+   }
+   ```
+   **Important**: Check the next character (`ls->c`) **after** recognizing the reserved word,
+   not in the character switch statement.
+
+3. **Map the token to an operator** in `token2binop()` in `lj_parse.c`
+
 ## Miscellaneous Gotchas
 - Check that any new compile-time constants or flags (e.g. `#define`s) do
   not collide with upstream naming; we will eventually rebase to newer

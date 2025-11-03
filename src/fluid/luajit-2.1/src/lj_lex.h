@@ -16,6 +16,7 @@
   _(and) _(break) _(continue) _(do) _(else) _(elseif) _(end) _(false) \
   _(for) _(function) _(goto) _(if) _(in) _(is) _(local) _(nil) _(not) _(or) \
   _(repeat) _(return) _(then) _(true) _(until) _(while) \
+  __(or_question, or?) \
   __(concat, ..) __(dots, ...) __(eq, ==) __(ge, >=) __(le, <=) __(ne, ~=) \
   __(shl, <<) __(shr, >>) \
   __(label, ::) __(number, <number>) __(name, <name>) __(string, <string>) \

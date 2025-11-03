@@ -1,0 +1,81 @@
+-- Flute tests for the or? operator (extended falsey: nil, false, 0, "")
+
+function testNil()
+   local v = nil or? "A"
+   if v != "A" then error("Failed nil case: expected 'A', got '" .. nz(v, 'NIL') .. "'") end
+end
+
+function testFalse()
+   local v = false or? "A"
+   if v != "A" then error("Failed false case: expected 'A', got '" .. tostring(v) .. "'") end
+end
+
+function testZero()
+   local v = 0 or? "A"
+   if v != "A" then error("Failed zero case: expected 'A', got '" .. tostring(v) .. "'") end
+end
+
+function testEmptyString()
+   local v = "" or? "A"
+   if v != "A" then error("Failed empty string case: expected 'A', got '" .. tostring(v) .. "'") end
+end
+
+function testTruthyString()
+   local v = "X" or? "A"
+   if v != "X" then error("Failed truthy string case: expected 'X', got '" .. tostring(v) .. "'") end
+end
+
+function testTruthyNumber()
+   local v = 5 or? "A"
+   if v != 5 then error("Failed truthy number case: expected 5, got '" .. tostring(v) .. "'") end
+end
+
+-- Ensure RHS is not evaluated when LHS is truthy
+function testShortCircuitTruth()
+   local function rhs()
+      error("RHS should not be evaluated when LHS is truthy")
+   end
+   local v = "X" or? rhs()
+   if v != "X" then error("Failed short-circuit truth: expected 'X', got '" .. tostring(v) .. "'") end
+end
+
+-- Ensure RHS is evaluated exactly once when LHS is extended-falsey
+function testRHSOnce()
+   local count = 0
+   local function rhs()
+      count += 1
+      return "Y"
+   end
+   local v = 0 or? rhs()
+   if v != "Y" then error("Failed RHS once value: expected 'Y', got '" .. tostring(v) .. "'") end
+   if count != 1 then error("Failed RHS once count: expected 1, got " .. tostring(count)) end
+end
+
+-- Chaining behaviour
+function testChaining()
+   local v1 = "" or? 0 or? "A"
+   if v1 != "A" then error("Failed chaining case 1: expected 'A', got '" .. tostring(v1) .. "'") end
+
+   local v2 = "X" or? "" or? "A"
+   if v2 != "X" then error("Failed chaining case 2: expected 'X', got '" .. tostring(v2) .. "'") end
+end
+
+-- Interaction with logical or: ensure semantics differ (0 and "" are treated as truthy by Lua or)
+function testDifferenceFromLuaOr()
+   local a = 0 or "B"      -- Lua or: 0 is truthy
+   local b = 0 or? "B"     -- or?: 0 is falsey
+   if a != 0 then error("Sanity: Lua 'or' should keep 0; got '" .. tostring(a) .. "'") end
+   if b != "B" then error("or? should replace 0 with RHS; got '" .. tostring(b) .. "'") end
+
+   local c = "" or "C"     -- Lua or: empty string is truthy
+   local d = "" or? "C"    -- or?: empty string is falsey
+   if c != "" then error("Sanity: Lua 'or' should keep empty string; got '" .. tostring(c) .. "'") end
+   if d != "C" then error("or? should replace empty string with RHS; got '" .. tostring(d) .. "'") end
+end
+
+-----------------------------------------------------------------------------------------------------------------------
+
+   return {
+      tests = { 'testNil', 'testFalse', 'testZero', 'testEmptyString', 'testTruthyString', 'testTruthyNumber',
+                 'testShortCircuitTruth', 'testRHSOnce', 'testChaining', 'testDifferenceFromLuaOr' }
+   }
