@@ -436,38 +436,42 @@ TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
          // determine if we entered an expression context. For other operand types, we check the
          // immediate previous token. If we're at the start of input (tokens is empty), we also
          // treat it as an expression context to handle top-level arithmetic.
+
+         auto is_expr_context_introducer = [](XPathTokenType Type) -> bool {
+            return (Type IS XPathTokenType::RETURN) or
+                   (Type IS XPathTokenType::ASSIGN) or
+                   (Type IS XPathTokenType::COMMA) or
+                   (Type IS XPathTokenType::THEN) or
+                   (Type IS XPathTokenType::ELSE) or
+                   (Type IS XPathTokenType::EQUALS) or
+                   (Type IS XPathTokenType::NOT_EQUALS) or
+                   (Type IS XPathTokenType::LESS_THAN) or
+                   (Type IS XPathTokenType::LESS_EQUAL) or
+                   (Type IS XPathTokenType::GREATER_THAN) or
+                   (Type IS XPathTokenType::GREATER_EQUAL) or
+                   (Type IS XPathTokenType::EQ) or
+                   (Type IS XPathTokenType::NE) or
+                   (Type IS XPathTokenType::LT) or
+                   (Type IS XPathTokenType::LE) or
+                   (Type IS XPathTokenType::GT) or
+                   (Type IS XPathTokenType::GE) or
+                   (Type IS XPathTokenType::PLUS) or
+                   (Type IS XPathTokenType::MINUS) or
+                   (Type IS XPathTokenType::MULTIPLY) or
+                   (Type IS XPathTokenType::DIVIDE) or
+                   (Type IS XPathTokenType::MODULO);
+         };
+
          bool in_expression_context = tokens.empty();  // Start-of-input is expression context
          if (not tokens.empty()) {
             auto prev_type = tokens.back().type;
 
-            // For numbers and strings, look at what came before them to find expression context
             if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
                if (tokens.size() >= 2) {
                   auto before_operand_type = tokens[tokens.size() - 2].type;
-                  in_expression_context = (before_operand_type IS XPathTokenType::RETURN) or
-                                          (before_operand_type IS XPathTokenType::ASSIGN) or
-                                          (before_operand_type IS XPathTokenType::COMMA) or
-                                          (before_operand_type IS XPathTokenType::THEN) or
-                                          (before_operand_type IS XPathTokenType::ELSE) or
-                                          (before_operand_type IS XPathTokenType::EQUALS) or
-                                          (before_operand_type IS XPathTokenType::NOT_EQUALS) or
-                                          (before_operand_type IS XPathTokenType::LESS_THAN) or
-                                          (before_operand_type IS XPathTokenType::LESS_EQUAL) or
-                                          (before_operand_type IS XPathTokenType::GREATER_THAN) or
-                                          (before_operand_type IS XPathTokenType::GREATER_EQUAL) or
-                                          (before_operand_type IS XPathTokenType::EQ) or
-                                          (before_operand_type IS XPathTokenType::NE) or
-                                          (before_operand_type IS XPathTokenType::LT) or
-                                          (before_operand_type IS XPathTokenType::LE) or
-                                          (before_operand_type IS XPathTokenType::GT) or
-                                          (before_operand_type IS XPathTokenType::GE) or
-                                          (before_operand_type IS XPathTokenType::PLUS) or
-                                          (before_operand_type IS XPathTokenType::MINUS) or
-                                          (before_operand_type IS XPathTokenType::MULTIPLY) or
-                                          (before_operand_type IS XPathTokenType::DIVIDE) or
-                                          (before_operand_type IS XPathTokenType::MODULO);
+                  in_expression_context = is_expr_context_introducer(before_operand_type);
                }
-               else if (tokens.size() IS 1) {
+               else {
                   // If we have exactly one token (a NUMBER or STRING at start of input),
                   // treat it as expression context to allow "2 * 3" at the top level
                   in_expression_context = true;
@@ -475,28 +479,7 @@ TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
             }
             else {
                // For other operand types (identifiers, closing parens/brackets), check immediate prev
-               in_expression_context = (prev_type IS XPathTokenType::RETURN) or
-                                        (prev_type IS XPathTokenType::ASSIGN) or
-                                        (prev_type IS XPathTokenType::COMMA) or
-                                        (prev_type IS XPathTokenType::THEN) or
-                                        (prev_type IS XPathTokenType::ELSE) or
-                                        (prev_type IS XPathTokenType::EQUALS) or
-                                        (prev_type IS XPathTokenType::NOT_EQUALS) or
-                                        (prev_type IS XPathTokenType::LESS_THAN) or
-                                        (prev_type IS XPathTokenType::LESS_EQUAL) or
-                                        (prev_type IS XPathTokenType::GREATER_THAN) or
-                                        (prev_type IS XPathTokenType::GREATER_EQUAL) or
-                                        (prev_type IS XPathTokenType::EQ) or
-                                        (prev_type IS XPathTokenType::NE) or
-                                        (prev_type IS XPathTokenType::LT) or
-                                        (prev_type IS XPathTokenType::LE) or
-                                        (prev_type IS XPathTokenType::GT) or
-                                        (prev_type IS XPathTokenType::GE) or
-                                        (prev_type IS XPathTokenType::PLUS) or
-                                        (prev_type IS XPathTokenType::MINUS) or
-                                        (prev_type IS XPathTokenType::MULTIPLY) or
-                                        (prev_type IS XPathTokenType::DIVIDE) or
-                                        (prev_type IS XPathTokenType::MODULO);
+               in_expression_context = is_expr_context_introducer(prev_type);
             }
          }
 
