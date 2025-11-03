@@ -437,6 +437,8 @@ TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
          // immediate previous token. If we're at the start of input (tokens is empty), we also
          // treat it as an expression context to handle top-level arithmetic.
 
+         // TODO: Could be optimised by building a boolean table.
+
          auto is_expr_context_introducer = [](XPathTokenType Type) -> bool {
             return (Type IS XPathTokenType::RETURN) or
                    (Type IS XPathTokenType::ASSIGN) or
