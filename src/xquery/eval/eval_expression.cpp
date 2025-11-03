@@ -2470,7 +2470,7 @@ XPathVal XPathEvaluator::handle_binary_op(const XPathNode *Node, uint32_t Curren
       binary_operator_cache_fallbacks++;
       if (is_trace_enabled()) {
          pf::Log log("XPath");
-         log.msg(VLF::TRACE, "Binary operator cache miss for '%s'", Node->value.c_str());
+         log.msg(VLF::TRACE, "Binary operator cache miss for '%.*s'", (int)operation.size(), operation.data());
       }
    }
 
