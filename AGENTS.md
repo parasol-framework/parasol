@@ -11,7 +11,6 @@ Parasol uses CMake as its primary build system. The framework can be built as ei
 **Configure build:**
 - Release: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
 - Debug: `cmake -S . -B build/agents-debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DPARASOL_VLOG=TRUE`
-- Fast Build: `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=FastBuild -DCMAKE_INSTALL_PREFIX=build/agents-install -DRUN_ANYWHERE=TRUE -DPARASOL_STATIC=ON -DBUILD_DEFS=ON`
 - Modular build: Use `-DPARASOL_STATIC=OFF` in the configuration.
 
 **Build and install:**
@@ -40,7 +39,7 @@ Key build options (use with `-D` flag):
 
 When working in ephemeral cloud environments:
 
-- If using GCC or MinGW, prefer to use the FastBuild configuration `-DCMAKE_BUILD_TYPE=FastBuild` (note FastBuild is not available for MSVC).
+- Prefer to use the Debug configuration `-DCMAKE_BUILD_TYPE=Debug` for fast compiling speed.
 - Prefer the pre-created build tree at `build/agents` and install tree at `build/agents-install` to avoid the expense of repeated configuration.  If the directory exists you can immediately run `cmake --build build/agents --config [BuildType] --parallel`.
 - If you must reconfigure, clean only the affected cache entries with `cmake -S . -B build/agents -DCMAKE_BUILD_TYPE=[BuildType] ...` rather than deleting the entire build tree.
 - If `parasol` is not already installed in `build/agents-install` then performing the build and install process is essential if intending to run `parasol` for Fluid scripts and Flute tests.
