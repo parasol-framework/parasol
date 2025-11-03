@@ -425,6 +425,81 @@ TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
          size_t operand_index = next_operand_index();
          bool inside_structural_context = (bracket_depth > 0) or (paren_depth > 0);
 
+         // Detect if we're in an expression context where numeric/string literals should enable
+         // multiplication. This is necessary because expressions like "return 2 * 3" are valid
+         // arithmetic but occur outside parentheses/brackets. Expression contexts include positions
+         // after keywords like RETURN, ASSIGN (:=), comparison operators, and arithmetic operators.
+         // This heuristic complements the structural context check and resolves the ambiguity
+         // between wildcard (*) and multiply (*) for top-level arithmetic expressions.
+         //
+         // When the previous token is a NUMBER or STRING, we look at the token before that to
+         // determine if we entered an expression context. For other operand types, we check the
+         // immediate previous token. If we're at the start of input (tokens is empty), we also
+         // treat it as an expression context to handle top-level arithmetic.
+         bool in_expression_context = tokens.empty();  // Start-of-input is expression context
+         if (not tokens.empty()) {
+            auto prev_type = tokens.back().type;
+
+            // For numbers and strings, look at what came before them to find expression context
+            if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
+               if (tokens.size() >= 2) {
+                  auto before_operand_type = tokens[tokens.size() - 2].type;
+                  in_expression_context = (before_operand_type IS XPathTokenType::RETURN) or
+                                          (before_operand_type IS XPathTokenType::ASSIGN) or
+                                          (before_operand_type IS XPathTokenType::COMMA) or
+                                          (before_operand_type IS XPathTokenType::THEN) or
+                                          (before_operand_type IS XPathTokenType::ELSE) or
+                                          (before_operand_type IS XPathTokenType::EQUALS) or
+                                          (before_operand_type IS XPathTokenType::NOT_EQUALS) or
+                                          (before_operand_type IS XPathTokenType::LESS_THAN) or
+                                          (before_operand_type IS XPathTokenType::LESS_EQUAL) or
+                                          (before_operand_type IS XPathTokenType::GREATER_THAN) or
+                                          (before_operand_type IS XPathTokenType::GREATER_EQUAL) or
+                                          (before_operand_type IS XPathTokenType::EQ) or
+                                          (before_operand_type IS XPathTokenType::NE) or
+                                          (before_operand_type IS XPathTokenType::LT) or
+                                          (before_operand_type IS XPathTokenType::LE) or
+                                          (before_operand_type IS XPathTokenType::GT) or
+                                          (before_operand_type IS XPathTokenType::GE) or
+                                          (before_operand_type IS XPathTokenType::PLUS) or
+                                          (before_operand_type IS XPathTokenType::MINUS) or
+                                          (before_operand_type IS XPathTokenType::MULTIPLY) or
+                                          (before_operand_type IS XPathTokenType::DIVIDE) or
+                                          (before_operand_type IS XPathTokenType::MODULO);
+               }
+               else if (tokens.size() IS 1) {
+                  // If we have exactly one token (a NUMBER or STRING at start of input),
+                  // treat it as expression context to allow "2 * 3" at the top level
+                  in_expression_context = true;
+               }
+            }
+            else {
+               // For other operand types (identifiers, closing parens/brackets), check immediate prev
+               in_expression_context = (prev_type IS XPathTokenType::RETURN) or
+                                        (prev_type IS XPathTokenType::ASSIGN) or
+                                        (prev_type IS XPathTokenType::COMMA) or
+                                        (prev_type IS XPathTokenType::THEN) or
+                                        (prev_type IS XPathTokenType::ELSE) or
+                                        (prev_type IS XPathTokenType::EQUALS) or
+                                        (prev_type IS XPathTokenType::NOT_EQUALS) or
+                                        (prev_type IS XPathTokenType::LESS_THAN) or
+                                        (prev_type IS XPathTokenType::LESS_EQUAL) or
+                                        (prev_type IS XPathTokenType::GREATER_THAN) or
+                                        (prev_type IS XPathTokenType::GREATER_EQUAL) or
+                                        (prev_type IS XPathTokenType::EQ) or
+                                        (prev_type IS XPathTokenType::NE) or
+                                        (prev_type IS XPathTokenType::LT) or
+                                        (prev_type IS XPathTokenType::LE) or
+                                        (prev_type IS XPathTokenType::GT) or
+                                        (prev_type IS XPathTokenType::GE) or
+                                        (prev_type IS XPathTokenType::PLUS) or
+                                        (prev_type IS XPathTokenType::MINUS) or
+                                        (prev_type IS XPathTokenType::MULTIPLY) or
+                                        (prev_type IS XPathTokenType::DIVIDE) or
+                                        (prev_type IS XPathTokenType::MODULO);
+            }
+         }
+
          bool prev_allows_binary = false;
          if (not tokens.empty()) {
             auto prev_type = tokens.back().type;
@@ -436,7 +511,11 @@ TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
                prev_allows_binary = true;
             }
             else if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
-               if (inside_structural_context) prev_allows_binary = true;
+               // Allow multiplication after numeric/string literals when either:
+               // 1. Inside structural delimiters (parentheses/brackets), or
+               // 2. In an expression context (after keywords/operators that introduce expressions)
+               // This enables "return 2 * 3" while still preserving wildcard semantics in "/root/*"
+               if (inside_structural_context or in_expression_context) prev_allows_binary = true;
             }
          }
 
