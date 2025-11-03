@@ -10,6 +10,7 @@
    require 'common'
 
    local glXML = nil
+   local glXQuery = obj.new('xquery', { })
    local benchmarkResults = {}
    local fastestResults = {}
    local totalTests = 0
@@ -30,77 +31,83 @@ function performWarmup(func, warmupIterations)
 end
 
 function measureTime(func, iterations)
-   local bestTime = math.huge
-   local totalMicroseconds = 0
+   local best_time = math.huge
+   local total_ms = 0
+   local mem_usage = 0
 
    for i = 1, iterations do
-      local startTime = mSys.PreciseTime()
+      local start_time = mSys.PreciseTime()
       func()
-      local endTime = mSys.PreciseTime()
-      local iterTime = endTime - startTime
-      totalMicroseconds = totalMicroseconds + iterTime
-      if iterTime < bestTime then
-         bestTime = iterTime
+      
+      mem_usage += glXQuery.memoryUsage
+
+      local end_time = mSys.PreciseTime()
+      local iterTime = end_time - start_time
+      total_ms += iterTime
+      if iterTime < best_time then
+         best_time = iterTime
       end
    end
 
-   local avgMicroseconds = totalMicroseconds / iterations
+   local avgMicroseconds = total_ms / iterations
    -- Convert to milliseconds for display
-   return avgMicroseconds, totalMicroseconds, bestTime
+   return avgMicroseconds, total_ms, best_time, mem_usage
 end
 
-function benchmarkTest(testName, testFunc, iterations)
-   iterations = iterations or 300  -- Tripled from 100 to 300
+function benchmarkTest(TestName, Function, Iterations)
+   Iterations = Iterations or 300
 
-   print(string.format('  Running: %-30s (%d iterations)', testName, iterations))
+   print(string.format('  Running: %-30s (%d iterations)', TestName, Iterations))
 
-   local success, errorMsg = pcall(function()
+   local success, msg = pcall(function()
       -- Perform warmup to eliminate cold-start effects
-      local warmupIterations = math.max(10, iterations / 10)
-      performWarmup(testFunc, warmupIterations)
+      local warmupIterations = math.min(10, Iterations / 10)
+      performWarmup(Function, warmupIterations)
 
       -- Actual benchmark measurement
-      local avgTime, totalTime, bestTime = measureTime(testFunc, iterations)
-      benchmarkResults[testName] = { avgTime = avgTime, totalTime = totalTime, bestTime = bestTime, iterations = iterations }
-      fastestResults[testName] = bestTime
-      passedTests = passedTests + 1
+      local avg_time, total_time, best_time, mem_usage = measureTime(Function, Iterations)
+      benchmarkResults[TestName] = { avg_time = avg_time, total_time = total_time, best_time = best_time, iterations = Iterations, mem_usage = mem_usage }
+      fastestResults[TestName] = best_time
+      passedTests += 1
    end)
 
    if not success then
-      print('    ERROR: ' .. errorMsg)
-      benchmarkResults[testName] = -1
-      fastestResults[testName] = -1
+      print('    ERROR: ' .. msg)
+      benchmarkResults[TestName] = -1
+      fastestResults[TestName] = -1
    else
-      local result = benchmarkResults[testName]
+      local result = benchmarkResults[TestName]
    end
 
-   totalTests = totalTests + 1
+   totalTests += 1
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Basic XPath Navigation Benchmarks
 
 function benchmarkBasicNavigation()
-   local err, id = glXML.mtSearch('/catalog/categories/category[1]/products/product[1]')
-   assert(err == ERR_Okay, "Basic navigation failed")
+   glXQuery.statement = '/catalog/categories/category[1]/products/product[1]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Basic navigation failed")
 end
 
 function benchmarkAttributeMatching()
-   local err, id = glXML.mtSearch('/catalog/categories/category[@name="electronics"]')
-   assert(err == ERR_Okay, "Attribute matching failed")
+   glXQuery.statement = '/catalog/categories/category[@name="electronics"]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Attribute matching failed")
 end
 
 function benchmarkDeepScanning()
+   glXQuery.statement = '//product[@price>500]'
    local count = 0
-   local err, id = glXML.mtSearch('//product[@price>500]', function(XML, TagID, Attrib)
+   local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Deep scanning failed")
 end
 
 function benchmarkWildcardMatching()
+   glXQuery.statement = '/catalog/categories/*'
    local count = 0
-   local err, id = glXML.mtSearch('/catalog/categories/*', function(XML, TagID, Attrib)
+   local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Wildcard matching failed")
@@ -110,73 +117,77 @@ end
 -- Complex Predicate Benchmarks
 
 function benchmarkNumericComparisons()
-   local err, id = glXML.mtSearch('//product[@price>=100 and @price<=1000]')
-   assert(err == ERR_Okay, "Numeric comparisons failed")
+   glXQuery.statement = '//product[@price>=100 and @price<=1000]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Numeric comparisons failed")
 end
 
 function benchmarkFunctionPredicates()
-   local err, id = glXML.mtSearch('/catalog/categories/category[count(products/product)>10]')
-   assert(err == ERR_Okay, "Function predicates failed")
+   glXQuery.statement = '/catalog/categories/category[count(products/product)>10]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Function predicates failed")
 end
 
 function benchmarkStringFunctions()
-   local err, id = glXML.mtSearch('//product[contains(@name,"Pro")]')
-   assert(err == ERR_Okay, "String function failed")
+   glXQuery.statement = '//product[contains(@name,"Pro")]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "String function failed")
 end
 
 function benchmarkPositionFunctions()
-   local err, id = glXML.mtSearch('//category/products/product[position()=last()]')
-   assert(err == ERR_Okay, "Position function failed")
+   glXQuery.statement = '//category/products/product[position()=last()]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Position function failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Advanced XPath Features Benchmarks
 
 function benchmarkAxesTraversal()
-   local err, id = glXML.mtSearch('//product[@id="prod-1"]/ancestor::category[@name]')
-   assert(err == ERR_Okay, "Axes traversal failed")
+   glXQuery.statement = '//product[@id="prod-1"]/ancestor::category[@name]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Axes traversal failed")
 end
 
 function benchmarkUnionOperations()
+   glXQuery.statement = '//category[@name="electronics"] | //category[@name="clothing"]'
    local count = 0
-   local err, id = glXML.mtSearch('//category[@name="electronics"] | //category[@name="clothing"]', function(XML, TagID, Attrib)
+   local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Union operations failed")
 end
 
 function benchmarkComplexPredicates()
-   local err, id = glXML.mtSearch('//product[@price>100 and @instock="true" and contains(@name,"Ultra")]')
-   assert(err == ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
+   glXQuery.statement = '//product[@price>100 and @instock="true" and contains(@name,"Ultra")]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Complex predicates failed, got " .. mSys.GetErrorMsg(err))
 end
 
 function benchmarkNestedFunctions()
-   local err, id = glXML.mtSearch('//category[string-length(@name)>5 and count(products/product)>=3]')
-   assert(err == ERR_Okay, "Nested functions failed")
+   glXQuery.statement = '//category[string-length(@name)>5 and count(products/product)>=3]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Nested functions failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Large Document Scanning Benchmarks
 
 function benchmarkLargeDeepScan()
+   glXQuery.statement = '//product'
    local count = 0
-   local err, id = glXML.mtSearch('//product', function(XML, TagID, Attrib)
+   local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Large deep scan failed")
 end
 
 function benchmarkAttributeScanning()
+   glXQuery.statement = '//@price'
    local count = 0
-   local err, id = glXML.mtSearch('//@price', function(XML, TagID, Attrib)
+   local err = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Attribute scanning failed")
 end
 
 function benchmarkConditionalCounting()
-   local err, num = glXML.mtEvaluate('count(//product)')
-   local totalProducts = tonumber(num)
+   glXQuery.statement = 'count(//product)'
+   local err = glXQuery.mtEvaluate(glXML)
+   local totalProducts = tonumber(glXQuery.resultString)
    assert(totalProducts > 0, "Conditional counting failed")
 end
 
@@ -184,41 +195,44 @@ end
 -- XPath Function Library Benchmarks
 
 function benchmarkStringManipulation()
-   local err, id = glXML.mtSearch('//product[starts-with(@name,"Ultra") and substring(@name,1,5)="Ultra"]')
-   assert(err == ERR_Okay, "String manipulation failed")
+   glXQuery.statement = '//product[starts-with(@name,"Ultra") and substring(@name,1,5)="Ultra"]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "String manipulation failed")
 end
 
 function benchmarkNumericFunctions()
-   local err, id = glXML.mtSearch('//product[floor(@price div 100) = 12]')
-   assert(err == ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
+   glXQuery.statement = '//product[floor(@price div 100) = 12]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Numeric functions failed, got " .. mSys.GetErrorMsg(err))
 end
 
 function benchmarkBooleanLogic()
-   local err, id = glXML.mtSearch('//product[@instock="true" and not(@discontinued="true")]')
-   assert(err == ERR_Okay, "Boolean logic failed")
+   glXQuery.statement = '//product[@instock="true" and not(@discontinued="true")]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Boolean logic failed")
 end
 
 function benchmarkComplexExpressions()
-   local err, id = glXML.mtSearch('//product[@price * 0.5 > 70 and position() mod 2 = 0]')
-   assert(err == ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
+   glXQuery.statement = '//product[@price * 0.5 > 70 and position() mod 2 = 0]'
+   assert(glXQuery.mtSearch(glXML) == ERR_Okay, "Complex expressions failed, got " .. mSys.GetErrorMsg(err))
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 -- Content and Structure Benchmarks
 
 function benchmarkContentExtraction()
-   local content = glXML.mtEvaluate('string(//product[@id="prod-1"])')
+   glXQuery.statement = 'string(//product[@id="prod-1"])'
+   local content = glXQuery.mtEvaluate(glXML)
    assert(content, "Content extraction failed")
 end
 
 function benchmarkTextNodeAccess()
-   local err, id = glXML.mtSearch('//product/description[text()="High-performance device"]')
+   glXQuery.statement = '//product/description[text()="High-performance device"]'
+   local err, id = glXQuery.mtSearch(glXML)
    assert(err == ERR_Okay, "Text node access failed")
 end
 
 function benchmarkMixedContentTraversal()
+   glXQuery.statement = '//category[products/product and @name]'
    local count = 0
-   local err, id = glXML.mtSearch('//category[products/product and @name]', function(XML, TagID, Attrib)
+   local err, id = glXQuery.mtSearch(glXML, function(XML, TagID, Attrib)
       count = count + 1
    end)
    assert(err == ERR_Okay, "Mixed content traversal failed")
@@ -229,38 +243,45 @@ end
 
 function benchmarkSimpleVsComplexPaths()
    -- Simple path
-   local err1, id1 = glXML.mtSearch('/catalog/categories/category[1]')
+   glXQuery.statement = '/catalog/categories/category[1]'
+   local err1, id1 = glXQuery.mtSearch(glXML)
    assert(err1 == ERR_Okay, "Simple path failed")
 
    -- Complex equivalent path
-   local err2, id2 = glXML.mtSearch('/catalog/descendant::categories/child::category[position()=1]')
+   glXQuery.statement = '/catalog/descendant::categories/child::category[position()=1]'
+   local err2, id2 = glXQuery.mtSearch(glXML)
    assert(err2 == ERR_Okay, "Complex path failed")
 end
 
 function benchmarkIndexedVsPredicateAccess()
    -- Indexed access
-   local err1, id1 = glXML.mtSearch('//product[5]')
+   glXQuery.statement = '//product[5]'
+   local err1 = glXQuery.mtSearch(glXML)
    assert(err1 == ERR_Okay, "Indexed access failed")
 
    -- Predicate equivalent
-   local err2, id2 = glXML.mtSearch('//product[position()=5]')
+   glXQuery.statement = '//product[position()=5]'
+   local err2 = glXQuery.mtSearch(glXML)
    assert(err2 == ERR_Okay, "Predicate access failed")
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 function benchmarkFlworSimpleFor()
-   local err, val = glXML.mtEvaluate([[for $p in //product return $p/@id]])
+   glXQuery.statement = [[for $p in //product return $p/@id]]
+   local err = glXQuery.mtEvaluate(glXML)
    assert(err == ERR_Okay, 'FLWOR simple for failed')
 end
 
 function benchmarkFlworOrderBy()
-   local err, val = glXML.mtEvaluate([[for $p in //product order by number($p/@price) return $p]])
+   glXQuery.statement = [[for $p in //product order by number($p/@price) return $p]]
+   local err = glXQuery.mtEvaluate(glXML)
    assert(err == ERR_Okay, 'FLWOR order by failed')
 end
 
 function benchmarkFlworGroupBy()
-   local err, val = glXML.mtEvaluate([[for $p in //category/products/product group by $c := ../@name return $c]])
+   glXQuery.statement = [[for $p in //category/products/product group by $c := ../@name return $c]]
+   local err = glXQuery.mtEvaluate(glXML)
    assert(err == ERR_Okay, 'FLWOR group by failed')
 end
 
@@ -279,7 +300,8 @@ function benchmarkPrologManyFunctions()
       declare function local:f8() { 8 };
       declare function local:f9() { 9 };
    ]]
-   local err, val = glXML.mtEvaluate(prolog .. 'local:f7()')
+   glXQuery.statement = prolog .. 'local:f7()'
+   local err = glXQuery.acActivate()
    assert(err == ERR_Okay, 'Prolog many functions failed')
 end
 
@@ -289,7 +311,8 @@ function benchmarkPrologArityLookup()
       declare function local:sum($a as xs:integer, $b as xs:integer) as xs:integer { $a + $b };
       declare function local:sum($a as xs:integer, $b as xs:integer, $c as xs:integer) as xs:integer { $a + $b + $c };
    ]]
-   local err, val = glXML.mtEvaluate(prolog .. 'local:sum(1,2,3)')
+   glXQuery.statement = prolog .. 'local:sum(1,2,3)'
+   local err = glXQuery.acActivate()
    assert(err == ERR_Okay, 'Prolog arity lookup failed')
 end
 
@@ -298,51 +321,67 @@ function benchmarkPrologQNameNormalization()
       declare default function namespace "http://example.com/test";
       declare function local:noop() { () };
    ]]
-   local err, val = glXML.mtEvaluate(prolog .. 'local:noop()')
+   glXQuery.statement = prolog .. 'local:noop()'
+   local err = glXQuery.acActivate()
    assert(err == ERR_Okay, 'Prolog QName normalization failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 function benchmarkTokenLongArithmetic()
-   local expr = '('
-   for i = 1, 50 do
-      if i > 1 then expr = expr .. ' + ' end
-      expr = expr .. tostring(i)
+   if not glTokenLongArithmeticCached then
+      glTokenLongArithmeticCached = true
+      -- This also functions as a stress test of the AST and evaluator
+      local expr = '('
+      for i = 1, 200 do
+         if i > 1 then expr = expr .. ' + ' end
+         expr = expr .. tostring(i)
+      end
+      expr = expr .. ')'
+      glXQuery.statement = expr
    end
-   expr = expr .. ')'
-   local err, val = glXML.mtEvaluate(expr)
+   local err = glXQuery.acActivate()
    assert(err == ERR_Okay, 'Token long arithmetic failed')
 end
 
 function benchmarkTokenNestedFunctions()
-   local expr = 'upper-case(lower-case(translate("TheQuickBrownFoxJumpsOverTheLazyDog", "aeiou", "12345")))'
-   local err, val = glXML.mtEvaluate(expr)
+   if not glTokenNestedFunctionsCached then
+      glTokenNestedFunctionsCached = true
+      glXQuery.statement = 'upper-case(lower-case(translate("TheQuickBrownFoxJumpsOverTheLazyDog", "aeiou", "12345")))'
+   end
+   local err = glXQuery.acActivate(glXML)
    assert(err == ERR_Okay, 'Token nested functions failed')
 end
 
 function benchmarkTokenLongPath()
-   local parts = {}
-   for i = 1, 60 do table.insert(parts, 'catalog') end
-   local path = '/' .. table.concat(parts, '/')
-   local err, val = glXML.mtEvaluate(path)
+   if not glTokenLongPathCached then
+      glTokenLongPathCached = true
+      local parts = {}
+      for i = 1, 60 do table.insert(parts, 'catalog') end
+      local path = '/' .. table.concat(parts, '/')
+      glXQuery.statement = path
+   end
+   local err = glXQuery.mtEvaluate(glXML)
    assert(err == ERR_Okay, 'Token long path failed')
 end
 
 -----------------------------------------------------------------------------------------------------------------------
 
 function benchmarkAxisDescendantDeep()
-   local err, id = glXML.mtSearch('descendant-or-self::node()')
+   glXQuery.statement = 'descendant-or-self::node()'
+   local err = glXQuery.mtSearch(glXML)
    assert(err == ERR_Okay, 'Axis descendant-or-self failed')
 end
 
 function benchmarkAxisFollowing()
-   local err, id = glXML.mtSearch('/catalog/categories/category[1]/following::node()')
+   glXQuery.statement = '/catalog/categories/category[1]/following::node()'
+   local err = glXQuery.mtSearch(glXML)
    assert(err == ERR_Okay, 'Axis following failed')
 end
 
 function benchmarkAxisPreceding()
-   local err, id = glXML.mtSearch('/catalog/categories/category[last()]/preceding::node()')
+   glXQuery.statement = '/catalog/categories/category[last()]/preceding::node()'
+   local err = glXQuery.mtSearch(glXML)
    assert(err == ERR_Okay, 'Axis preceding failed')
 end
 
@@ -379,83 +418,115 @@ end
    print('Total products: ' .. nz(product_count, '0'))
    print('')
 
-   print('=== 1. Basic Navigation Tests ===')
-   benchmarkTest('Basic Navigation', benchmarkBasicNavigation, 3000)
-   benchmarkTest('Attribute Matching', benchmarkAttributeMatching, 3000)
-   benchmarkTest('Wildcard Matching', benchmarkWildcardMatching, 1500)
+   local benchmarks = {
+      {
+         groupName = 'Basic Navigation',
+         tests = {
+            { name = 'Basic Navigation', test = benchmarkBasicNavigation, iter = 3000 },
+            { name = 'Attribute Matching', test = benchmarkAttributeMatching, iter = 3000 },
+            { name = 'Wildcard Matching', test = benchmarkWildcardMatching, iter = 1500 }
+         }
+      },
+      {
+         groupName = 'Deep Scanning',
+         tests = {
+            { name = 'Deep Scanning', test = benchmarkDeepScanning, iter = 300 },
+            { name = 'Large Deep Scan', test = benchmarkLargeDeepScan, iter = 150 },
+            { name = 'Attribute Scanning', test = benchmarkAttributeScanning, iter = 300 }
+         }
+      },
+      {
+         groupName = 'Predicate and Function',
+         tests = {
+            { name = 'Numeric Comparisons', test = benchmarkNumericComparisons, iter = 1500 },
+            { name = 'Function Predicates', test = benchmarkFunctionPredicates, iter = 600 },
+            { name = 'String Functions', test = benchmarkStringFunctions, iter = 900 },
+            { name = 'Position Functions', test = benchmarkPositionFunctions, iter = 900 }
+         }
+      },
+      {
+         groupName = 'Advanced XPath Features',
+         tests = {
+            { name = 'Axes Traversal', test = benchmarkAxesTraversal, iter = 600 },
+            { name = 'Union Operations', test = benchmarkUnionOperations, iter = 300 },
+            { name = 'Complex Predicates', test = benchmarkComplexPredicates, iter = 600 },
+            { name = 'Nested Functions', test = benchmarkNestedFunctions, iter = 600 }
+         }
+      },
+      {
+         groupName = 'Function Library',
+         tests = {
+            { name = 'String Manipulation', test = benchmarkStringManipulation, iter = 900 },
+            { name = 'Numeric Functions', test = benchmarkNumericFunctions, iter = 900 },
+            { name = 'Boolean Logic', test = benchmarkBooleanLogic, iter = 1200 },
+            { name = 'Complex Expressions', test = benchmarkComplexExpressions, iter = 600 }
+         }
+      },
+      {
+         groupName = 'Content Access',
+         tests = {
+            { name = 'Content Extraction', test = benchmarkContentExtraction, iter = 1500 },
+            { name = 'Text Node Access', test = benchmarkTextNodeAccess, iter = 900 },
+            { name = 'Mixed Content Traversal', test = benchmarkMixedContentTraversal, iter = 600 },
+            { name = 'Conditional Counting', test = benchmarkConditionalCounting, iter = 900 }
+         }
+      },
+      {
+         groupName = 'Performance Comparison',
+         tests = {
+            { name = 'Simple vs Complex Paths', test = benchmarkSimpleVsComplexPaths, iter = 1500 },
+            { name = 'Indexed vs Predicate Access', test = benchmarkIndexedVsPredicateAccess, iter = 1500 }
+         }
+      },
+      {
+         groupName = 'Parsing',
+         tests = {
+            { name = 'Parse XML File', test = benchmarkParsing, iter = 600 }
+         }
+      },
+      {
+         groupName = 'XQuery FLWOR Benchmarks',
+         tests = {
+            { name = 'FLWOR Simple For', test = benchmarkFlworSimpleFor, iter = 4000 },
+            { name = 'FLWOR Order By', test = benchmarkFlworOrderBy, iter = 2000 },
+            { name = 'FLWOR Group By', test = benchmarkFlworGroupBy, iter = 2000 }
+         }
+      },
+      {
+         groupName = 'Prolog / Function Lookup Benchmarks',
+         tests = {
+            { name = 'Prolog Many Functions', test = benchmarkPrologManyFunctions, iter = 1400 },
+            { name = 'Prolog Arity Lookup', test = benchmarkPrologArityLookup, iter = 1600 },
+            { name = 'Prolog QName Normalise', test = benchmarkPrologQNameNormalization, iter = 1600 }
+         }
+      },
+      {
+         groupName = 'Tokeniser / Parse Benchmarks',
+         tests = {
+            { name = 'Token Long Arithmetic', test = benchmarkTokenLongArithmetic, iter = 2000 },
+            { name = 'Token Nested Functions', test = benchmarkTokenNestedFunctions, iter = 6000 },
+            { name = 'Token Long Path', test = benchmarkTokenLongPath, iter = 2000 }
+         }
+      },
+      {
+         groupName = 'Axis Stress',
+         tests = {
+            { name = 'Axis Descendant Deep', test = benchmarkAxisDescendantDeep, iter = 2000 },
+            { name = 'Axis Following', test = benchmarkAxisFollowing, iter = 2000 },
+            { name = 'Axis Preceding', test = benchmarkAxisPreceding, iter = 2000 }
+         }
+      }
+   }
 
-   print('')
-   print('=== 2. Deep Scanning Tests ===')
-   benchmarkTest('Deep Scanning', benchmarkDeepScanning, 300)
-   benchmarkTest('Large Deep Scan', benchmarkLargeDeepScan, 150)
-   benchmarkTest('Attribute Scanning', benchmarkAttributeScanning, 300)
+   for i, group in ipairs(benchmarks) do
+      print('=== ' .. i .. '. ' .. group.groupName .. ' Tests ===')
+      print('')
+      for t, test in ipairs(group.tests) do
+         benchmarkTest(test.name, test.test, test.iter)
+      end
+      print('')
+   end
 
-   print('')
-   print('=== 3. Predicate and Function Tests ===')
-   benchmarkTest('Numeric Comparisons', benchmarkNumericComparisons, 1500)
-   benchmarkTest('Function Predicates', benchmarkFunctionPredicates, 600)
-   benchmarkTest('String Functions', benchmarkStringFunctions, 900)
-   benchmarkTest('Position Functions', benchmarkPositionFunctions, 900)
-
-   print('')
-   print('=== 4. Advanced XPath Features ===')
-   benchmarkTest('Axes Traversal', benchmarkAxesTraversal, 600)
-   benchmarkTest('Union Operations', benchmarkUnionOperations, 300)
-   benchmarkTest('Complex Predicates', benchmarkComplexPredicates, 600)
-   benchmarkTest('Nested Functions', benchmarkNestedFunctions, 600)
-
-   print('')
-   print('=== 5. Function Library Tests ===')
-   benchmarkTest('String Manipulation', benchmarkStringManipulation, 900)
-   benchmarkTest('Numeric Functions', benchmarkNumericFunctions, 900)
-   benchmarkTest('Boolean Logic', benchmarkBooleanLogic, 1200)
-   benchmarkTest('Complex Expressions', benchmarkComplexExpressions, 600)
-
-   print('')
-   print('=== 6. Content Access Tests ===')
-   benchmarkTest('Content Extraction', benchmarkContentExtraction, 1500)
-   benchmarkTest('Text Node Access', benchmarkTextNodeAccess, 900)
-   benchmarkTest('Mixed Content Traversal', benchmarkMixedContentTraversal, 600)
-   benchmarkTest('Conditional Counting', benchmarkConditionalCounting, 900)
-
-   print('')
-   print('=== 7. Performance Comparison Tests ===')
-   benchmarkTest('Simple vs Complex Paths', benchmarkSimpleVsComplexPaths, 1500)
-   benchmarkTest('Indexed vs Predicate Access', benchmarkIndexedVsPredicateAccess, 1500)
-
-   print('')
-   print('=== 8. Parsing Tests ===')
-   benchmarkTest('Parse XML File', benchmarkParsing, 600)
-
-   print('')
-   print('=== 9. XQuery FLWOR Benchmarks ===')
-
-   benchmarkTest('FLWOR Simple For', benchmarkFlworSimpleFor, 4000)
-   benchmarkTest('FLWOR Order By', benchmarkFlworOrderBy, 2000)
-   benchmarkTest('FLWOR Group By', benchmarkFlworGroupBy, 2000)
-
-   print('')
-   print('=== 10. Prolog / Function Lookup Benchmarks ===')
-
-   benchmarkTest('Prolog Many Functions', benchmarkPrologManyFunctions, 1400)
-   benchmarkTest('Prolog Arity Lookup', benchmarkPrologArityLookup, 1600)
-   benchmarkTest('Prolog QName Normalise', benchmarkPrologQNameNormalization, 1600)
-
-   print('')
-   print('=== 11. Tokeniser / Parse Benchmarks ===')
-
-   benchmarkTest('Token Long Arithmetic', benchmarkTokenLongArithmetic, 2000)
-   benchmarkTest('Token Nested Functions', benchmarkTokenNestedFunctions, 6000)
-   benchmarkTest('Token Long Path', benchmarkTokenLongPath, 2000)
-
-   print('')
-   print('=== 12. Axis Stress Tests ===')
-
-   benchmarkTest('Axis Descendant Deep', benchmarkAxisDescendantDeep, 2000)
-   benchmarkTest('Axis Following', benchmarkAxisFollowing, 2000)
-   benchmarkTest('Axis Preceding', benchmarkAxisPreceding, 2000)
-
-   -- Print summary
    print('')
    print('=== Benchmark Results Summary ===')
    print('Tests completed: ' .. passedTests .. '/' .. totalTests)
@@ -467,10 +538,11 @@ end
       if result != -1 then
          table.insert(sortedResults, {
             name = testName,
-            avgTime = result.avgTime,
-            totalTime = result.totalTime,
-            bestTime = result.bestTime,
-            iterations = result.iterations
+            avg_time = result.avg_time,
+            total_time = result.total_time,
+            best_time = result.best_time,
+            iterations = result.iterations,
+            mem_usage = result.mem_usage
          })
       end
    end
@@ -480,10 +552,10 @@ end
    local grandTotalTime = 0
    local fastestGrandTotal = 0
    for i, result in ipairs(sortedResults) do
-      print(string.format('%2d. %-25s %dus/iter (%dms total, %dus fastest, %d iters)',
-         i, result.name, result.avgTime, result.totalTime/1000, result.bestTime, result.iterations))
-      grandTotalTime = grandTotalTime + result.totalTime
-      fastestGrandTotal = fastestGrandTotal + result.bestTime
+      print(string.format('%2d. %-25s %dus/iter (%dms total, %dus fastest, %d iters, %dKB)',
+         i, result.name, result.avg_time, result.total_time/1000, result.best_time, result.iterations, result.mem_usage/1024/1024))
+      grandTotalTime = grandTotalTime + result.total_time
+      fastestGrandTotal = fastestGrandTotal + result.best_time
    end
 
    print('')

@@ -6,6 +6,8 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <string_view>
+#include <cstring>
 #include <parasol/modules/xquery.h>
 #include <array>
 #include <unordered_set>
@@ -20,20 +22,30 @@ enum class BinaryOperationKind {
    INTERSECT,
    EXCEPT,
    COMMA,
-   EQ,
-   NE,
-   EQ_WORD,
-   NE_WORD,
-   LT,
-   LE,
-   GT,
-   GE,
+   GENERAL_EQ,
+   GENERAL_NE,
+   GENERAL_LT,
+   GENERAL_LE,
+   GENERAL_GT,
+   GENERAL_GE,
+   VALUE_EQ,
+   VALUE_NE,
+   VALUE_LT,
+   VALUE_LE,
+   VALUE_GT,
+   VALUE_GE,
    ADD,
    SUB,
    MUL,
    DIV,
    MOD,
    RANGE,
+   UNKNOWN
+};
+
+enum class UnaryOperationKind {
+   NEGATE,
+   LOGICAL_NOT,
    UNKNOWN
 };
 
@@ -300,9 +312,17 @@ struct XQueryModuleImport {
 
 struct XPathNode;
 
+enum class TokenTextKind {
+   BorrowedInput,
+   ArenaOwned
+};
+
+struct TokenBuffer;
+
 struct XPathAttributeValuePart {
    bool is_expression = false;
-   std::string text;
+   std::string_view text;
+   TokenTextKind text_kind = TokenTextKind::BorrowedInput;
 };
 
 struct XPathConstructorAttribute {
@@ -312,6 +332,7 @@ struct XPathConstructorAttribute {
    bool is_namespace_declaration = false;
    std::vector<XPathAttributeValuePart> value_parts;
    std::vector<std::unique_ptr<XPathNode>> expression_parts;
+   std::shared_ptr<TokenBuffer> value_storage;
 
    void set_expression_for_part(size_t index, std::unique_ptr<XPathNode> expr) {
       if (expression_parts.size() <= index) expression_parts.resize(index + 1);
@@ -320,6 +341,13 @@ struct XPathConstructorAttribute {
 
    [[nodiscard]] XPathNode * get_expression_for_part(size_t index) const {
       return index < expression_parts.size() ? expression_parts[index].get() : nullptr;
+   }
+
+   [[nodiscard]] std::vector<std::string> duplicate_value_parts() const {
+      std::vector<std::string> copies;
+      copies.reserve(value_parts.size());
+      for (const auto &part : value_parts) copies.emplace_back(part.text);
+      return copies;
    }
 };
 
@@ -365,14 +393,19 @@ struct XPathNode {
    std::optional<XPathOrderSpecOptions> order_spec_options;
    std::optional<XPathGroupKeyInfo> group_key_info;
    std::optional<XPathTypeswitchCaseInfo> typeswitch_case_info;
+   // Cached operator metadata populated by the parser to avoid repeated string comparisons.
+   std::optional<BinaryOperationKind> cached_binary_kind;
+   std::optional<UnaryOperationKind> cached_unary_kind;
 
    XPathNode(XQueryNodeType t, std::string v = "") : type(t), value(std::move(v)) {}
 
    inline void add_child(std::unique_ptr<XPathNode> child) { children.push_back(std::move(child)); }
-   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
+   [[nodiscard]] inline XPathNode * get_child(size_t index) const { return get_child_safe(index); }
+   [[nodiscard]] inline XPathNode * get_child_safe(size_t index) const { return index < children.size() ? children[index].get() : nullptr; }
    [[nodiscard]] inline size_t child_count() const { return children.size(); }
    inline void set_constructor_info(XPathConstructorInfo info) { constructor_info = std::move(info); }
    [[nodiscard]] inline bool has_constructor_info() const { return constructor_info.has_value(); }
+   [[nodiscard]] inline const XPathConstructorInfo * get_constructor_info() const { return constructor_info ? &(*constructor_info) : nullptr; }
    inline void set_name_expression(std::unique_ptr<XPathNode> expr) { name_expression = std::move(expr); }
    [[nodiscard]] inline XPathNode * get_name_expression() const { return name_expression.get(); }
    [[nodiscard]] inline bool has_name_expression() const { return name_expression != nullptr; }
@@ -386,6 +419,16 @@ struct XPathNode {
 
    [[nodiscard]] inline const XPathTypeswitchCaseInfo * get_typeswitch_case_info() const { return typeswitch_case_info ? &(*typeswitch_case_info) : nullptr; }
 
+   inline void set_cached_binary_kind(BinaryOperationKind Kind) { cached_binary_kind = Kind; }
+   inline void clear_cached_binary_kind() { cached_binary_kind.reset(); }
+   [[nodiscard]] inline bool has_cached_binary_kind() const { return cached_binary_kind.has_value(); }
+   [[nodiscard]] inline std::optional<BinaryOperationKind> get_cached_binary_kind() const { return cached_binary_kind; }
+
+   inline void set_cached_unary_kind(UnaryOperationKind Kind) { cached_unary_kind = Kind; }
+   inline void clear_cached_unary_kind() { cached_unary_kind.reset(); }
+   [[nodiscard]] inline bool has_cached_unary_kind() const { return cached_unary_kind.has_value(); }
+   [[nodiscard]] inline std::optional<UnaryOperationKind> get_cached_unary_kind() const { return cached_unary_kind; }
+
    void set_attribute_value_parts(std::vector<XPathAttributeValuePart> parts) {
       attribute_value_has_expressions = false;
       for (const auto &part : parts) {
@@ -396,6 +439,9 @@ struct XPathNode {
       }
       attribute_value_parts = std::move(parts);
    }
+
+   [[nodiscard]] inline bool has_attribute_value_parts() const { return not attribute_value_parts.empty(); }
+   [[nodiscard]] inline std::string_view get_value_view() const { return value; }
 
 
    inline void set_order_spec_options(XPathOrderSpecOptions Options) {
@@ -409,34 +455,154 @@ struct XPathNode {
    [[nodiscard]] inline const XPathOrderSpecOptions * get_order_spec_options() const {
       return order_spec_options ? &(*order_spec_options) : nullptr;
    }
+
+   [[nodiscard]] inline bool child_is_type(size_t index, XQueryNodeType Type) const {
+      const XPathNode *child = get_child_safe(index);
+      return child and (child->type IS Type);
+   }
 };
 
 //********************************************************************************************************************
 // XPath Tokenization Infrastructure
 
-struct XPathToken {
-   XPathTokenType type;
-   std::string_view value;
-   size_t position;
-   size_t length;
+struct TokenBuffer {
+   TokenBuffer()
+      : chunks(), total_size(0), base_chunk_capacity(initial_reserve_bytes), next_chunk_capacity(initial_reserve_bytes) {}
 
-   // For tokens that need string storage (e.g., processed strings with escapes)
-   std::string stored_value;
+   explicit TokenBuffer(size_t ReserveBytes)
+      : chunks(), total_size(0),
+        base_chunk_capacity(ReserveBytes > initial_reserve_bytes ? ReserveBytes : initial_reserve_bytes),
+        next_chunk_capacity(base_chunk_capacity) {}
+
+   std::string_view write_copy(std::string_view Text) {
+      if (Text.empty()) return std::string_view();
+      ensure_capacity(Text.size());
+      Chunk &chunk = chunks.back();
+      char *start = chunk.data.get() + chunk.size;
+      std::memcpy(start, Text.data(), Text.size());
+      chunk.size += Text.size();
+      total_size += Text.size();
+      return std::string_view(start, Text.size());
+   }
+
+   void reset() {
+      chunks.clear();
+      total_size = 0;
+      next_chunk_capacity = base_chunk_capacity;
+   }
+
+   void shrink_to_fit() {}
+
+   [[nodiscard]] size_t size() const {
+      return total_size;
+   }
+
+   [[nodiscard]] size_t capacity() const {
+      size_t result = 0;
+      for (const Chunk &chunk : chunks) {
+         result += chunk.capacity;
+      }
+      return result;
+   }
+
+   [[nodiscard]] bool empty() const {
+      return total_size IS 0;
+   }
+
+   private:
+   struct Chunk {
+      std::unique_ptr<char[]> data;
+      size_t capacity;
+      size_t size;
+   };
+
+   static constexpr size_t initial_reserve_bytes = 4096;
+
+   void ensure_capacity(size_t AdditionalBytes) {
+      if (chunks.empty()) {
+         allocate_chunk(AdditionalBytes > base_chunk_capacity ? AdditionalBytes : base_chunk_capacity);
+         return;
+      }
+
+      Chunk &chunk = chunks.back();
+      if ((chunk.capacity - chunk.size) >= AdditionalBytes) return;
+
+      size_t required = AdditionalBytes;
+      size_t new_capacity = next_chunk_capacity;
+      if (new_capacity < required) {
+         while (new_capacity < required) new_capacity *= 2;
+      }
+      allocate_chunk(new_capacity);
+   }
+
+   void allocate_chunk(size_t Capacity) {
+      Chunk chunk;
+      chunk.data = std::make_unique<char[]>(Capacity);
+      chunk.capacity = Capacity;
+      chunk.size = 0;
+      chunks.push_back(std::move(chunk));
+      next_chunk_capacity = Capacity * 2;
+   }
+
+   std::vector<Chunk> chunks;
+   size_t total_size;
+   size_t base_chunk_capacity;
+   size_t next_chunk_capacity;
+};
+
+struct XPathToken {
+   XPathTokenType type = XPathTokenType::UNKNOWN;
+   std::string_view text;
+   size_t position = 0;
+   size_t length = 0;
+   TokenTextKind text_kind = TokenTextKind::BorrowedInput;
    bool is_attribute_value = false;
    std::vector<XPathAttributeValuePart> attribute_value_parts;
 
-   // Constructor for string_view tokens (no copying)
-   XPathToken(XPathTokenType t, std::string_view v, size_t pos = 0, size_t len = 0)
-      : type(t), value(v), position(pos), length(len) {}
+   XPathToken() = default;
 
-   // Constructor for tokens requiring string storage
-   XPathToken(XPathTokenType t, std::string v, size_t pos = 0, size_t len = 0)
-      : type(t), position(pos), length(len), stored_value(std::move(v)) {
-      value = stored_value;
-   }
+   XPathToken(XPathTokenType Type, std::string_view Text, size_t Position = 0, size_t Length = 0, TokenTextKind Kind = TokenTextKind::BorrowedInput)
+      : type(Type), text(Text), position(Position), length(Length), text_kind(Kind) {}
 
    [[nodiscard]] bool has_attribute_template() const {
       return is_attribute_value and !attribute_value_parts.empty();
+   }
+};
+
+struct TokenBlock {
+   std::shared_ptr<TokenBuffer> storage;
+   std::vector<XPathToken> tokens;
+
+   TokenBlock() : storage(std::make_shared<TokenBuffer>()), tokens() {}
+
+   TokenBlock(std::shared_ptr<TokenBuffer> Storage, std::vector<XPathToken> Tokens)
+      : storage(Storage ? std::move(Storage) : std::make_shared<TokenBuffer>()), tokens(std::move(Tokens)) {}
+
+   TokenBlock(TokenBlock &&) = default;
+   TokenBlock &operator=(TokenBlock &&) = default;
+   TokenBlock(const TokenBlock &) = default;
+   TokenBlock &operator=(const TokenBlock &) = default;
+
+   [[nodiscard]] bool empty() const {
+      return tokens.empty();
+   }
+
+   [[nodiscard]] size_t size() const {
+      return tokens.size();
+   }
+
+   void ensure_storage() {
+      if (!storage) storage = std::make_shared<TokenBuffer>();
+   }
+
+   std::string_view write_copy(std::string_view Text) {
+      ensure_storage();
+      return storage->write_copy(Text);
+   }
+
+   void reset() {
+      tokens.clear();
+      if (storage) storage->reset();
    }
 };
 
@@ -461,8 +627,8 @@ class XPathTokeniser {
 
    XPathToken scan_identifier();
    XPathToken scan_number();
-   XPathToken scan_string(char QuoteChar);
-   XPathToken scan_attribute_value(char QuoteChar, bool ProcessTemplates);
+   XPathToken scan_string(char QuoteChar, TokenBlock &Block);
+   XPathToken scan_attribute_value(char QuoteChar, bool ProcessTemplates, TokenBlock &Block);
    XPathToken scan_operator();
 
    [[nodiscard]] char peek(size_t offset = 0) const;
@@ -472,7 +638,8 @@ class XPathTokeniser {
    public:
    XPathTokeniser() : position(0), length(0), previous_token_type(XPathTokenType::UNKNOWN), prior_token_type(XPathTokenType::UNKNOWN) {}
 
-   std::vector<XPathToken> tokenize(std::string_view XPath);
+   TokenBlock tokenize(std::string_view XPath);
+   TokenBlock tokenize(std::string_view XPath, TokenBlock Block);
    bool has_more() const;
    [[nodiscard]] char current() const;
    void advance();
@@ -711,7 +878,7 @@ class XPathParser {
    public:
    XPathParser() : current_token(0) {}
 
-   CompiledXQuery parse(const std::vector<XPathToken> &TokenList);
+   CompiledXQuery parse(TokenBlock TokenList);
 
    // Error handling
 
@@ -722,6 +889,7 @@ class XPathParser {
    private:
    std::vector<std::string> errors;
    XQueryProlog *active_prolog = nullptr;
+   std::shared_ptr<TokenBuffer> token_storage;
 };
 
 //*********************************************************************************************************************
@@ -738,6 +906,7 @@ public:
    pf::vector<std::string> ListFunctions; // List of function names.
    std::string ResultString; // Cached string representation of the result.
    std::string Path; // Base path for resolving relative URIs.
+   size_t MemUsage; // Total bytes allocated during the most recent evaluation or compilation.
    extXML *XML; // During query execution, the context XML document.
    bool StaleBuild = true; // If true, the compiled query needs to be rebuilt.
 
@@ -1107,6 +1276,8 @@ struct XPathContext {
    XPathContext() = default;
 };
 
+struct SequenceTypeInfo;
+
 class XPathEvaluator : public XPathErrorReporter {
    public:
 
@@ -1150,11 +1321,23 @@ class XPathEvaluator : public XPathErrorReporter {
 
    using PredicateHandler = PredicateResult (XPathEvaluator::*)(const XPathNode *, uint32_t);
 
+   // Handler for a specific XQuery node type evaluation
+   using NodeEvaluationHandler = XPathVal (XPathEvaluator::*)(const XPathNode *, uint32_t);
+
    std::vector<XPathContext> context_stack;
 
    // Cache for any form of unparsed text resource, e.g. loaded via the unparsed-text() function in XQuery.
 
    ankerl::unordered_dense::map<std::string, std::string> text_cache;
+   std::array<uint64_t, 64> node_dispatch_counters{};
+   uint64_t binary_operator_cache_fallbacks = 0;
+   uint64_t unary_operator_cache_fallbacks = 0;
+
+   void reset_dispatch_metrics();
+   [[nodiscard]] const std::array<uint64_t, 64> &dispatch_metrics() const;
+   void record_dispatch_node(XQueryNodeType Type);
+   [[nodiscard]] inline uint64_t binary_operator_cache_misses() const { return binary_operator_cache_fallbacks; }
+   [[nodiscard]] inline uint64_t unary_operator_cache_misses() const { return unary_operator_cache_fallbacks; }
 
    std::vector<AxisMatch> dispatch_axis(AxisType Axis, XMLTag *ContextNode, const XMLAttrib *ContextAttribute = nullptr);
    extXML * resolve_document_for_node(XMLTag *Node) const;
@@ -1199,6 +1382,44 @@ class XPathEvaluator : public XPathErrorReporter {
    XPathVal evaluate_comment_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_pi_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
    XPathVal evaluate_document_constructor(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   // Expression node type handlers
+   XPathVal handle_empty_sequence(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_number(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_literal(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_cast_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_treat_as_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_instance_of_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_castable_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_typeswitch_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_union_node(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_conditional(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_let_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_for_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_quantified_expression(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_filter(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_path(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_unary_op(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_binary_op(const XPathNode *Node, uint32_t CurrentPrefix);
+   bool is_arithmetic_chain_candidate(BinaryOperationKind OpKind) const;
+   std::vector<const XPathNode *> collect_operation_chain(const XPathNode *Node, BinaryOperationKind OpKind) const;
+   XPathVal evaluate_arithmetic_chain(const std::vector<const XPathNode *> &Operands,
+      BinaryOperationKind OpKind, uint32_t CurrentPrefix);
+   XPathVal handle_binary_logical(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_comparison(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_arithmetic(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_sequence(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_binary_set_ops(const XPathNode *Node, const XPathNode *Left, const XPathNode *Right,
+      uint32_t CurrentPrefix, BinaryOperationKind OpKind);
+   XPathVal handle_expression_wrapper(const XPathNode *Node, uint32_t CurrentPrefix);
+   XPathVal handle_variable_reference(const XPathNode *Node, uint32_t CurrentPrefix);
+
+   std::optional<bool> matches_sequence_type(const XPathVal &Value, const SequenceTypeInfo &SequenceInfo,
+      const XPathNode *ContextNode);
 
    void expand_axis_candidates(const AxisMatch &ContextEntry, AxisType Axis,
       const XPathNode *NodeTest, uint32_t CurrentPrefix, std::vector<AxisMatch> &FilteredMatches);

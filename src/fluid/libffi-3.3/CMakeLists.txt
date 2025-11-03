@@ -68,6 +68,11 @@ message(STATUS "Building for TARGET_PLATFORM: ${TARGET_PLATFORM}")
 add_library (libffi STATIC)
 set_property (TARGET libffi PROPERTY POSITION_INDEPENDENT_CODE 1)
 
+if (MSVC)
+   # Disable MSVC run-time stack probes for this target because libffi's alloca-heavy trampolines trigger benign _RTC_CheckStackVars2 frames.
+   set_property (TARGET libffi PROPERTY MSVC_RUNTIME_CHECKS OFF)
+endif ()
+
 target_sources (libffi PRIVATE
    src/closures.c src/java_raw_api.c src/prep_cif.c src/raw_api.c src/types.c
    ${SOURCES_LIST})

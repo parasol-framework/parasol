@@ -240,8 +240,8 @@ CompiledXQuery * XQueryModuleCache::fetch_or_load(std::string_view URI, const XQ
       XPathTokeniser tokeniser;
       XPathParser parser;
 
-      auto tokens = tokeniser.tokenize(content->c_str());
-      compiled = parser.parse(tokens);
+      auto token_block = tokeniser.tokenize(content->c_str());
+      compiled = parser.parse(std::move(token_block));
 
       if ((compiled.prolog) and (compiled.prolog->is_library_module)) {
          if (not compiled.expression) compiled.expression = std::make_unique<XPathNode>(XQueryNodeType::EMPTY_SEQUENCE);

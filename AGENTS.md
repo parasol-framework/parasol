@@ -167,7 +167,6 @@ The build system heavily uses code generation:
 - Windows builds support both MSVC and MinGW toolchains
 
 **Windows-Specific Notes:**
-- Use forward slashes `/` in CMake paths and absolute file paths
 - In Bash commands, quote paths with spaces: `"path with spaces"`
 - For Flute tests, use relative paths for executables to avoid path separator issues
 

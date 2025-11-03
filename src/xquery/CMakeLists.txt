@@ -89,6 +89,7 @@ flute_test (${MOD}_sequences "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_sequences.f
 flute_test (${MOD}_string_uri "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_string_uri.fluid")
 flute_test (${MOD}_duration "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_duration.fluid")
 flute_test (${MOD}_datetime "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_datetime.fluid")
+flute_test (${MOD}_edge_cases "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_edge_cases.fluid")
 flute_test (${MOD}_qname "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_qname.fluid")
 flute_test (${MOD}_documents "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_documents.fluid")
 flute_test (${MOD}_accessor "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_accessor.fluid")
