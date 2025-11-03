@@ -3013,7 +3013,7 @@ XPathVal XPathEvaluator::handle_unary_op(const XPathNode *Node, uint32_t Current
       unary_operator_cache_fallbacks++;
       if (is_trace_enabled()) {
          pf::Log log("XPath");
-         log.msg(VLF::TRACE, "Unary operator cache miss for '%s'", Node->value.c_str());
+         log.msg(VLF::TRACE, "Unary operator cache miss for '%.*s'", (int)operation.size(), operation.data());
       }
    }
 
