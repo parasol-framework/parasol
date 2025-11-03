@@ -47,9 +47,11 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
          if (attribute_context) break;
 
          if (not ContextNode) {
-            for (auto &tag : xml->Tags) {
-               if (not tag.isTag()) continue;
-               matches.push_back({ &tag, nullptr });
+            if (xml) {
+               for (auto &tag : xml->Tags) {
+                  if (not tag.isTag()) continue;
+                  matches.push_back({ &tag, nullptr });
+               }
             }
          }
          else {
@@ -64,12 +66,14 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
          if (attribute_context) break;
 
          if (not ContextNode) {
-            for (auto &tag : xml->Tags) {
-               if (not tag.isTag()) continue;
-               matches.push_back({ &tag, nullptr });
-               auto &desc_buffer = arena.acquire_node_vector();
-               axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
-               append_nodes(desc_buffer);
+            if (xml) {
+               for (auto &tag : xml->Tags) {
+                  if (not tag.isTag()) continue;
+                  matches.push_back({ &tag, nullptr });
+                  auto &desc_buffer = arena.acquire_node_vector();
+                  axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
+                  append_nodes(desc_buffer);
+               }
             }
          }
          else {
@@ -88,12 +92,14 @@ std::vector<XPathEvaluator::AxisMatch> XPathEvaluator::dispatch_axis(AxisType Ax
 
          if (not ContextNode) {
             matches.push_back({ nullptr, nullptr });
-            for (auto &tag : xml->Tags) {
-               if (not tag.isTag()) continue;
-               matches.push_back({ &tag, nullptr });
-               auto &desc_buffer = arena.acquire_node_vector();
-               axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
-               append_nodes(desc_buffer);
+            if (xml) {
+               for (auto &tag : xml->Tags) {
+                  if (not tag.isTag()) continue;
+                  matches.push_back({ &tag, nullptr });
+                  auto &desc_buffer = arena.acquire_node_vector();
+                  axis_evaluator.evaluate_axis(AxisType::DESCENDANT, &tag, desc_buffer);
+                  append_nodes(desc_buffer);
+               }
             }
          }
          else {

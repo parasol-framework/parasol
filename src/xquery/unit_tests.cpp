@@ -156,7 +156,8 @@ static void test_tokeniser_prolog_keywords()
 
    XPathTokeniser tokeniser;
 
-   auto function_tokens = tokeniser.tokenize("declare function local:square($x) { $x * $x }");
+   auto function_block = tokeniser.tokenize("declare function local:square($x) { $x * $x }");
+   const auto &function_tokens = function_block.tokens;
    test_assert(function_tokens.size() >= 6, "Function declaration token count",
       "Tokeniser should emit tokens for sample prolog function");
 
@@ -185,7 +186,8 @@ static void test_tokeniser_prolog_keywords()
          "Colon between prefix and local name should be tokenised as COLON");
    }
 
-   auto variable_tokens = tokeniser.tokenize("declare variable $value := 1");
+   auto variable_block = tokeniser.tokenize("declare variable $value := 1");
+   const auto &variable_tokens = variable_block.tokens;
    test_assert(variable_tokens.size() >= 5, "Variable declaration token count",
       "Tokeniser should emit tokens for sample variable declaration");
 
@@ -214,7 +216,8 @@ static void test_tokeniser_prolog_keywords()
          "':=' should be tokenised as ASSIGN for prolog variables");
    }
 
-   auto namespace_tokens = tokeniser.tokenize("declare namespace ex = \"http://example.org\"");
+   auto namespace_block = tokeniser.tokenize("declare namespace ex = \"http://example.org\"");
+   const auto &namespace_tokens = namespace_block.tokens;
    test_assert(namespace_tokens.size() >= 4, "Namespace declaration token count",
       "Tokeniser should emit tokens for namespace declaration");
 
@@ -236,7 +239,8 @@ static void test_tokeniser_prolog_keywords()
          namespace_message.c_str());
    }
 
-   auto external_tokens = tokeniser.tokenize("declare variable $flag external");
+   auto external_block = tokeniser.tokenize("declare variable $flag external");
+   const auto &external_tokens = external_block.tokens;
    test_assert(external_tokens.size() >= 5, "External variable token count",
       "Tokeniser should emit tokens for external variable declaration");
 
@@ -248,6 +252,66 @@ static void test_tokeniser_prolog_keywords()
       test_assert(external_keyword, "Prolog keyword: external",
          external_message.c_str());
    }
+}
+
+//********************************************************************************************************************
+// Ensures the parser populates cached operator metadata for recognised unary and binary nodes.
+
+static void test_parser_operator_cache_population()
+{
+   std::cout << "\n--- Verifying Parser Operator Cache Population ---\n" << std::endl;
+
+   XPathTokeniser tokeniser;
+   auto token_block = tokeniser.tokenize("1 + 2 * 3 and not(-$flag)");
+
+   XPathParser parser;
+   auto compiled = parser.parse(std::move(token_block));
+
+   bool has_expression = compiled.expression not_eq nullptr;
+   test_assert(has_expression, "Parser expression availability", "Parser should return an expression tree");
+   if (not has_expression) return;
+
+   struct CacheFlags {
+      bool plus_cached = false;
+      bool multiply_cached = false;
+      bool logical_and_cached = false;
+      bool unary_not_cached = false;
+      bool unary_negate_cached = false;
+   } flags;
+
+   auto inspect = [&](auto &&self, const XPathNode *node) -> void {
+      if (not node) return;
+
+      if ((node->type IS XQueryNodeType::EXPRESSION) and (node->child_count() > 0)) {
+         if (auto *child = node->get_child_safe(0)) self(self, child);
+         return;
+      }
+
+      if (node->type IS XQueryNodeType::BINARY_OP) {
+         auto op_text = node->get_value_view();
+         if (op_text IS "+") flags.plus_cached = node->has_cached_binary_kind();
+         else if (op_text IS "*") flags.multiply_cached = node->has_cached_binary_kind();
+         else if (op_text IS "and") flags.logical_and_cached = node->has_cached_binary_kind();
+      }
+      else if (node->type IS XQueryNodeType::UNARY_OP) {
+         auto op_text = node->get_value_view();
+         if (op_text IS "not") flags.unary_not_cached = node->has_cached_unary_kind();
+         else if (op_text IS "-") flags.unary_negate_cached = node->has_cached_unary_kind();
+      }
+
+      size_t child_total = node->child_count();
+      for (size_t index = 0; index < child_total; index++) {
+         if (auto *child = node->get_child_safe(index)) self(self, child);
+      }
+   };
+
+   inspect(inspect, compiled.expression.get());
+
+   test_assert(flags.plus_cached, "Binary operator '+' cache", "Parser should cache addition operator kind");
+   test_assert(flags.multiply_cached, "Binary operator '*' cache", "Parser should cache multiplication operator kind");
+   test_assert(flags.logical_and_cached, "Binary operator 'and' cache", "Parser should cache logical and operator kind");
+   test_assert(flags.unary_not_cached, "Unary operator 'not' cache", "Parser should cache logical not operator kind");
+   test_assert(flags.unary_negate_cached, "Unary operator '-' cache", "Parser should cache negation operator kind");
 }
 
 static void test_prolog_in_xpath() {
@@ -327,6 +391,7 @@ static ERR run_unit_tests(APTR Meta)
    fail_count = 0;
 
    test_tokeniser_prolog_keywords();
+   test_parser_operator_cache_population();
    test_prolog_api();
    test_prolog_in_xpath();
 

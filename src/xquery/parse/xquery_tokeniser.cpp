@@ -172,14 +172,23 @@ bool XPathTokeniser::has_more() const
 // between the multiply operator and wildcard based on context. Tracks bracket and parenthesis depth to
 // inform operator disambiguation logic.
 
-std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
+TokenBlock XPathTokeniser::tokenize(std::string_view XPath)
+{
+   TokenBlock block;
+   return tokenize(XPath, std::move(block));
+}
+
+TokenBlock XPathTokeniser::tokenize(std::string_view XPath, TokenBlock block)
 {
    input = XPath;
    position = 0;
    length = input.size();
    previous_token_type = XPathTokenType::UNKNOWN;
    prior_token_type = XPathTokenType::UNKNOWN;
-   std::vector<XPathToken> tokens;
+   block.ensure_storage();
+   if (block.storage) block.storage->reset();
+   auto &tokens = block.tokens;
+   tokens.clear();
    tokens.reserve(XPath.size() / 6);  // Empirical analysis shows typical 1:6 char-to-token ratio
    int bracket_depth = 0;
    int paren_depth = 0;
@@ -264,7 +273,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          continue;
       }
       else if (inside_direct_tag and (ch IS '\'' or ch IS '"')) {
-         XPathToken token = scan_attribute_value(ch, true);
+         XPathToken token = scan_attribute_value(ch, true, block);
          tokens.push_back(std::move(token));
          continue;
       }
@@ -416,6 +425,66 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          size_t operand_index = next_operand_index();
          bool inside_structural_context = (bracket_depth > 0) or (paren_depth > 0);
 
+         // Detect if we're in an expression context where numeric/string literals should enable
+         // multiplication. This is necessary because expressions like "return 2 * 3" are valid
+         // arithmetic but occur outside parentheses/brackets. Expression contexts include positions
+         // after keywords like RETURN, ASSIGN (:=), comparison operators, and arithmetic operators.
+         // This heuristic complements the structural context check and resolves the ambiguity
+         // between wildcard (*) and multiply (*) for top-level arithmetic expressions.
+         //
+         // When the previous token is a NUMBER or STRING, we look at the token before that to
+         // determine if we entered an expression context. For other operand types, we check the
+         // immediate previous token. If we're at the start of input (tokens is empty), we also
+         // treat it as an expression context to handle top-level arithmetic.
+
+         // TODO: Could be optimised by building a boolean table.
+
+         auto is_expr_context_introducer = [](XPathTokenType Type) -> bool {
+            return (Type IS XPathTokenType::RETURN) or
+                   (Type IS XPathTokenType::ASSIGN) or
+                   (Type IS XPathTokenType::COMMA) or
+                   (Type IS XPathTokenType::THEN) or
+                   (Type IS XPathTokenType::ELSE) or
+                   (Type IS XPathTokenType::EQUALS) or
+                   (Type IS XPathTokenType::NOT_EQUALS) or
+                   (Type IS XPathTokenType::LESS_THAN) or
+                   (Type IS XPathTokenType::LESS_EQUAL) or
+                   (Type IS XPathTokenType::GREATER_THAN) or
+                   (Type IS XPathTokenType::GREATER_EQUAL) or
+                   (Type IS XPathTokenType::EQ) or
+                   (Type IS XPathTokenType::NE) or
+                   (Type IS XPathTokenType::LT) or
+                   (Type IS XPathTokenType::LE) or
+                   (Type IS XPathTokenType::GT) or
+                   (Type IS XPathTokenType::GE) or
+                   (Type IS XPathTokenType::PLUS) or
+                   (Type IS XPathTokenType::MINUS) or
+                   (Type IS XPathTokenType::MULTIPLY) or
+                   (Type IS XPathTokenType::DIVIDE) or
+                   (Type IS XPathTokenType::MODULO);
+         };
+
+         bool in_expression_context = tokens.empty();  // Start-of-input is expression context
+         if (not tokens.empty()) {
+            auto prev_type = tokens.back().type;
+
+            if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
+               if (tokens.size() >= 2) {
+                  auto before_operand_type = tokens[tokens.size() - 2].type;
+                  in_expression_context = is_expr_context_introducer(before_operand_type);
+               }
+               else {
+                  // If we have exactly one token (a NUMBER or STRING at start of input),
+                  // treat it as expression context to allow "2 * 3" at the top level
+                  in_expression_context = true;
+               }
+            }
+            else {
+               // For other operand types (identifiers, closing parens/brackets), check immediate prev
+               in_expression_context = is_expr_context_introducer(prev_type);
+            }
+         }
+
          bool prev_allows_binary = false;
          if (not tokens.empty()) {
             auto prev_type = tokens.back().type;
@@ -427,7 +496,11 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
                prev_allows_binary = true;
             }
             else if ((prev_type IS XPathTokenType::NUMBER) or (prev_type IS XPathTokenType::STRING)) {
-               if (inside_structural_context) prev_allows_binary = true;
+               // Allow multiplication after numeric/string literals when either:
+               // 1. Inside structural delimiters (parentheses/brackets), or
+               // 2. In an expression context (after keywords/operators that introduce expressions)
+               // This enables "return 2 * 3" while still preserving wildcard semantics in "/root/*"
+               if (inside_structural_context or in_expression_context) prev_allows_binary = true;
             }
          }
 
@@ -443,7 +516,7 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
          XPathToken token = scan_operator();
          if (token.type IS XPathTokenType::UNKNOWN) {
             if (current() IS '\'' or current() IS '"') {
-               token = scan_string(current());
+               token = scan_string(current(), block);
             }
             else if (is_digit(current()) or (current() IS '.' and is_digit(peek(1)))) {
                token = scan_number();
@@ -470,9 +543,9 @@ std::vector<XPathToken> XPathTokeniser::tokenize(std::string_view XPath)
       }
    }
 
-   tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(""), position, 0);
+   tokens.emplace_back(XPathTokenType::END_OF_INPUT, std::string_view(), position, 0);
    previous_token_type = XPathTokenType::END_OF_INPUT;
-   return tokens;
+   return block;
 }
 
 //********************************************************************************************************************
@@ -596,7 +669,7 @@ XPathToken XPathTokeniser::scan_number()
 // backslashes, and wildcards. Uses optimised fast-path for strings without escapes, otherwise builds the
 // unescaped string content with proper escape processing.
 
-XPathToken XPathTokeniser::scan_string(char QuoteChar)
+XPathToken XPathTokeniser::scan_string(char QuoteChar, TokenBlock &Block)
 {
    size_t start = position;
    position++;
@@ -641,18 +714,18 @@ XPathToken XPathTokeniser::scan_string(char QuoteChar)
 
    if (position < length) position++;
 
-   return XPathToken(XPathTokenType::STRING, std::move(value), start, position - start);
+   std::string_view stored_view = Block.write_copy(value);
+   return XPathToken(XPathTokenType::STRING, stored_view, start, position - start, TokenTextKind::ArenaOwned);
 }
 
 //********************************************************************************************************************
 // Scans an attribute value inside a direct constructor.  When template processing is enabled the function splits the
 // string into literal and expression parts so the parser can construct attribute value templates.
 
-XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemplates)
+XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemplates, TokenBlock &Block)
 {
    size_t start = position;
    position++;
-
    std::vector<XPathAttributeValuePart> parts;
    parts.reserve(4);
    std::string current_literal;
@@ -679,10 +752,12 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
             }
 
             if (!current_literal.empty()) {
+               std::string_view literal_view = Block.write_copy(current_literal);
                XPathAttributeValuePart literal_part;
                literal_part.is_expression = false;
-               literal_part.text = std::move(current_literal);
-               parts.push_back(std::move(literal_part));
+               literal_part.text = literal_view;
+               literal_part.text_kind = TokenTextKind::ArenaOwned;
+               parts.push_back(literal_part);
                current_literal.clear();
             }
 
@@ -728,10 +803,12 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
          brace_depth--;
          if (brace_depth IS 0) {
             position++;
+            std::string_view expr_view = Block.write_copy(current_expression);
             XPathAttributeValuePart expr_part;
             expr_part.is_expression = true;
-            expr_part.text = current_expression;
-            parts.push_back(std::move(expr_part));
+            expr_part.text = expr_view;
+            expr_part.text_kind = TokenTextKind::ArenaOwned;
+            parts.push_back(expr_part);
             current_expression.clear();
             in_expression = false;
             continue;
@@ -754,10 +831,12 @@ XPathToken XPathTokeniser::scan_attribute_value(char QuoteChar, bool ProcessTemp
    }
 
    if (!current_literal.empty() or parts.empty()) {
+      std::string_view literal_view = Block.write_copy(current_literal);
       XPathAttributeValuePart literal_tail;
       literal_tail.is_expression = false;
-      literal_tail.text = std::move(current_literal);
-      parts.push_back(std::move(literal_tail));
+      literal_tail.text = literal_view;
+      literal_tail.text_kind = TokenTextKind::ArenaOwned;
+      parts.push_back(literal_tail);
       current_literal.clear();
    }
 

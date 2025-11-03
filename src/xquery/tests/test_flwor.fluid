@@ -43,19 +43,20 @@ end
 -- Invalid LET syntax should report descriptive parser errors
 
 function testLetSyntaxErrors()
-   local xml = obj.new("xml", { statement = '<root><value/></root>' })
-
-   local err = xml.mtEvaluate('let $a return $a')
-   assert(err == ERR_Syntax, 'Missing assignment should be a syntax error, got ' .. mSys.GetErrorMsg(err))
-   local message = nz(xml.errorMsg, '')
+   local xq = obj.new('xquery')
+   xq.statement = 'let $a return $a'
+   local err = xq.init()
+   assert(err == ERR_Syntax, 'Missing assignment should be a syntax error, got ' .. mSys.getErrorMsg(err))
+   local message = nz(xq.errorMsg, '')
    assert(string.find(message, "Expected ':=' in let binding", 1, true),
       'Error message should reference missing :=, got ' .. message)
 
-   local err2 = xml.mtSearch('let $a := return 5')
-   assert(err2 == ERR_Syntax, 'Missing expression should be a syntax error, got ' .. mSys.GetErrorMsg(err2))
-   local message2 = nz(xml.errorMsg, '')
-   assert(string.find(message2, "Expected expression after ':=' in let binding", 1, true),
-      'Error message should reference missing binding expression, got ' .. message2)
+   xq.statement = 'let $a := return 5'
+   local err = xq.init()
+   assert(err == ERR_Syntax, 'Missing expression should be a syntax error, got ' .. mSys.GetErrorMsg(err))
+   local message = nz(xq.errorMsg, '')
+   assert(string.find(message, "Expected expression after ':=' in let binding", 1, true),
+      'Error message should reference missing binding expression, got ' .. message)
 end
 
 ----------------------------------------------------------------------------------------------------------------------
