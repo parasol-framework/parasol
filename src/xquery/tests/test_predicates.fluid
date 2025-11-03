@@ -772,23 +772,6 @@ end
 
 -----------------------------------------------------------------------------------------------------------------------
 
-function testXPathMultiplicationIllegal()
-   local xml = obj.new("xml", {
-      statement = '<root><item price="3" tax="4"/><value>ignored</value></root>'
-   })
-
-   local err = xml.mtEvaluate('3 * 4')
-   assert(err != ERR_Okay, "Illegal XPath expression shouldn't work")
-
-   err = xml.mtEvaluate('3 * 4 = 12')
-   assert(err != ERR_Okay, "Illegal XPath expression shouldn't work")
-
-   err = xml.mtEvaluate('3 * //exchangeRate = 6')
-   assert(err != ERR_Okay, "Illegal XPath expression shouldn't work")
-end
-
------------------------------------------------------------------------------------------------------------------------
-
 function testXPathMultiplicationOutsidePredicates()
    local xml = obj.new("xml", {
       statement = '<root><item price="3" tax="4"><value>2</value></item><rates><exchangeRate>2</exchangeRate></rates></root>'
@@ -845,7 +828,7 @@ return {
       'testXPathStringFunctions', 'testXPathAdditionalStringFunctions',
       'testXPathNumberFunctions', 'testXPathExtendedNumberFunctions',
       'testEscapeCharacters', 'testEdgeCases', 'testPerformanceScenarios',
-      'testFunctionLibrary', 'testXPathOperators', 'testXPathMultiplicationIllegal',
+      'testFunctionLibrary', 'testXPathOperators',
       'testXPathExpressions', 'testXPathArithmetic', 'testXPathMultiplicationOutsidePredicates',
       'testXPathBooleanFunctions', 'testXPathIdFunction', 'testXPathNameFunctions',
       'testXPathFullEvaluation'

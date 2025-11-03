@@ -1273,6 +1273,17 @@ std::unique_ptr<XPathNode> XPathParser::parse_node_test()
 {
    if (check(XPathTokenType::WILDCARD)) {
       advance();
+
+      // Check for QName wildcard pattern like *:item
+      if (check(XPathTokenType::COLON)) {
+         if (current_token + 1 < tokens.size() and is_identifier_token(tokens[current_token + 1])) {
+            advance(); // consume ':'
+            std::string name = std::format("*:{}", peek().text);
+            advance();
+            return std::make_unique<XPathNode>(XQueryNodeType::NAME_TEST, name);
+         }
+      }
+
       return std::make_unique<XPathNode>(XQueryNodeType::WILDCARD, "*");
    }
    else if (is_identifier_token(peek())) {
