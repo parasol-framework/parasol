@@ -25,14 +25,15 @@ The XQuery module provides comprehensive XPath 2.0 and XQuery language support f
 
 ```
 src/xquery/
-├── xquery.fdl                  # Interface definition (XQuery class, enums)
+├── xquery.fdl                  # Interface definition (XQuery class, method registration)
+├── constants.fdl               # XQuery-specific enumerations and flags (XQueryNodeType, XQF, XIF)
 ├── xquery.cpp                  # Module initialisation and core functions
 ├── xquery.h                    # Module header with AST, parser, and prolog structures
 ├── xquery_def.c                # Generated C definitions
 ├── xquery_class.cpp           # XQuery class implementation
 ├── xquery_class_def.cpp       # Auto-generated XQuery class definitions
 ├── unit_tests.cpp             # C++ unit tests for internal components
-├── CMakeLists.txt             # Build configuration with 23 registered tests
+├── CMakeLists.txt             # Build configuration with 25 registered tests
 ├── AGENTS.md                  # AI agent guide for this module
 ├── W3C Error Codes.md         # W3C XPath/XQuery error code documentation
 ├── QT3_1_0/                   # W3C XQuery Test Suite (optional, extracted from zip)
@@ -42,14 +43,15 @@ src/xquery/
 │   ├── xquery_functions.cpp/h      # Function registry and dispatch
 │   └── xquery_prolog.cpp          # XQuery prolog management and module loading
 ├── parse/                     # Expression parsing and tokenisation
-│   ├── xquery_parser.cpp           # XPath/XQuery expression parser (3,071 lines)
-│   └── xquery_tokeniser.cpp        # Lexical analysis and tokenisation (843 lines)
+│   ├── xquery_parser.cpp           # XPath/XQuery expression parser
+│   └── xquery_tokeniser.cpp        # Lexical analysis and tokenisation
 ├── eval/                      # Expression evaluation engine
+│   ├── AGENTS.md                  # Evaluator architecture guide for developers
 │   ├── eval.cpp                   # Main evaluation entry points
 │   ├── eval_common.cpp            # Common evaluation utilities
 │   ├── eval_context.cpp           # Context and variable management
 │   ├── eval_detail.h              # Internal evaluation details
-│   ├── eval_expression.cpp        # Expression evaluation
+│   ├── eval_expression.cpp        # Expression evaluation with dispatch table
 │   ├── eval_flwor.cpp             # FLWOR expression support
 │   ├── eval_navigation.cpp        # Node navigation
 │   ├── eval_predicates.cpp        # Predicate evaluation
@@ -78,14 +80,15 @@ src/xquery/
     ├── test_datetime.fluid            # DateTime function tests
     ├── test_documents.fluid           # Document function tests
     ├── test_duration.fluid            # Duration type tests
+    ├── test_edge_cases.fluid          # Edge case and regression tests
     ├── test_flwor.fluid               # FLWOR expression tests
-    ├── test_flwor_clauses.fluid       # Individual FLWOR clause tests
     ├── test_func_ext.fluid            # Extended function library tests
     ├── test_module_loading.fluid      # XQuery module import/loading tests
     ├── test_numbers.fluid             # Numeric function tests
     ├── test_predicates.fluid          # Predicate evaluation tests
     ├── test_prolog.fluid              # XQuery prolog tests
     ├── test_qname.fluid               # QName operation tests
+    ├── test_qt_math.fluid             # W3C QT3 math function compliance tests
     ├── test_reserved_words.fluid      # Reserved word handling tests
     ├── test_sequence_cardinality.fluid # Sequence cardinality regression tests
     ├── test_sequences.fluid           # Sequence operation tests
@@ -124,12 +127,16 @@ The module provides an `XQuery` class for direct XQuery evaluation without requi
 **Key Methods:**
 - `Evaluate(Expression, Result)` - Compile and evaluate XQuery expression, returning typed result
 - `Search(Expression, Callback)` - Compile and evaluate XQuery expression with node iteration callback
+- `RegisterFunction(FunctionName, Callback)` - Register custom XQuery functions callable from expressions
+- `InspectFunctions(Name, ResultFlags, Result)` - Retrieve metadata about compiled XQuery functions
 
 This class is particularly useful for:
 - Standalone XQuery processing
 - Expression evaluation without XML context
 - Direct access to XQuery prolog and module system
 - Testing and validation of XQuery expressions
+- Extending XQuery with custom function implementations
+- Runtime introspection of function definitions
 
 ## Core Structures and Types
 
@@ -166,9 +173,44 @@ Describes the type of nodes in the XQuery Abstract Syntax Tree.
 Key node types include:
 - `LOCATION_PATH`, `STEP`, `NODE_TEST`, `PREDICATE`, `ROOT`
 - `BINARY_OP`, `UNARY_OP`, `CONDITIONAL`
-- `FLWOR_EXPRESSION`, `WHERE_CLAUSE`, `ORDER_CLAUSE`
+- `FLWOR_EXPRESSION`, `WHERE_CLAUSE`, `ORDER_CLAUSE`, `GROUP_CLAUSE`, `COUNT_CLAUSE`
 - `FUNCTION_CALL`, `LITERAL`, `VARIABLE_REFERENCE`
+- `QUANTIFIED_EXPRESSION` - For `some`/`every` expressions
 - Constructor types: `DIRECT_ELEMENT_CONSTRUCTOR`, `COMPUTED_ELEMENT_CONSTRUCTOR`, etc.
+- Type expressions: `INSTANCE_OF_EXPRESSION`, `TREAT_AS_EXPRESSION`, `CASTABLE_EXPRESSION`, `TYPESWITCH_EXPRESSION`
+
+### XQF Flags (XQuery Feature Flags)
+
+Flags indicating the features of a compiled XQuery expression.
+
+**Include:** `<parasol/modules/xquery.h>`
+
+- `XQF::XPATH` - The expression is an XPath location string
+- `XQF::HAS_PROLOG` - The XQuery declares a prolog
+- `XQF::LIBRARY_MODULE` - Prolog declares a module namespace (library module)
+- `XQF::MODULE_IMPORTS` - One or more module imports are declared
+- `XQF::DEFAULT_FUNCTION_NS` - Default function namespace declared
+- `XQF::DEFAULT_ELEMENT_NS` - Default element namespace declared
+- `XQF::BASE_URI_DECLARED` - Static base URI declared
+- `XQF::DEFAULT_COLLATION_DECLARED` - Default collation declared
+- `XQF::BOUNDARY_PRESERVE` - Boundary-space preserve mode
+- `XQF::CONSTRUCTION_PRESERVE` - Construction preserve mode
+- `XQF::ORDERING_UNORDERED` - Ordering mode is unordered
+- `XQF::HAS_WILDCARD_TESTS` - Wildcard name tests present
+
+### XIF Flags (Inspect Functions Result Flags)
+
+Result flags for the `InspectFunctions()` method controlling which metadata is returned.
+
+**Include:** `<parasol/modules/xquery.h>`
+
+- `XIF::AST` - Include the compiled function body in the inspection result
+- `XIF::NAME` - Include function name in the inspection result
+- `XIF::PARAMETERS` - Include function parameters in the inspection result
+- `XIF::RETURN_TYPE` - Include function return type in the inspection result
+- `XIF::USER_DEFINED` - Include user-defined status in the inspection result
+- `XIF::SIGNATURE` - Include function signature in the inspection result
+- `XIF::ALL` - Include all available information (default if no flags specified)
 
 ## XPath 2.0 Language Support
 
@@ -643,6 +685,13 @@ xp::Compile(xml, "//bk:book/bk:title", &query);
 - Consider using `xp::Query()` with callbacks for large result sets
 - Cache compiled expressions for frequently used queries
 
+**Recent Performance Improvements:**
+- Centralised dispatch table for expression evaluation with fast-path switch for hot node types
+- Flattened arithmetic chains for improved evaluation performance
+- Cached operator metadata to reduce runtime lookups
+- Tokeniser improvements for faster lexical analysis
+- Improved wildcard handling in path expressions
+
 ### Function Performance
 
 - String functions pre-calculate buffer sizes
@@ -662,8 +711,7 @@ XQuery tests are located in the XQuery module's test directory and exercise XQue
 - `test_axes.fluid` - All 13 XQuery axes
 - `test_advanced.fluid` - Complex XQuery queries
 - `test_advanced_paths.fluid` - Advanced path expressions
-- `test_flwor.fluid` - FLWOR expressions
-- `test_flwor_clauses.fluid` - Individual FLWOR clauses
+- `test_flwor.fluid` - FLWOR expressions (for, let, where, order, group, count clauses)
 - `test_func_ext.fluid` - Extended function library
 - `test_sequences.fluid` - Sequence operations
 - `test_string_uri.fluid` - String and URI functions
@@ -679,6 +727,8 @@ XQuery tests are located in the XQuery module's test directory and exercise XQue
 - `test_module_loading.fluid` - XQuery module import/loading tests
 - `test_type_expr.fluid` - Type expressions (cast, castable, treat-as, instance-of, typeswitch, to-range)
 - `test_sequence_cardinality.fluid` - Sequence cardinality regression tests
+- `test_edge_cases.fluid` - Edge case handling and regression tests
+- `test_qt_math.fluid` - W3C QT3 math function compliance tests
 
 **Test Modules (`src/xquery/tests/modules/`):**
 The `modules/` subdirectory contains XQuery library modules used for testing module loading functionality:
@@ -694,7 +744,7 @@ The `modules/` subdirectory contains XQuery library modules used for testing mod
 
 **Individual Test:**
 ```bash
-cd src/xquery/tests && ../../../install/agents/parasol.exe ../../../tools/flute.fluid file=E:/parasol/src/xquery/tests/test_core.fluid --gfx-driver=headless --log-warning
+cd src/xquery/tests && ../../../build/agents-install/parasol.exe ../../../tools/flute.fluid file=E:/parasol-claude/src/xquery/tests/test_core.fluid --gfx-driver=headless --log-warning
 ```
 
 **All XQuery Tests via CMake:**
@@ -816,7 +866,7 @@ local query = 'for $book in //book ' ..
               'order by $book/@price ' ..
               'return $book/title'
 
-local err, matches = xml.mtFindTag(query, function(XML, TagID, Attrib)
+local err, matches = xml.mtSearch(query, function(XML, TagID)
    local err, tag = XML.mtGetTag(TagID)
    print('Title: ' .. tag.content)
 end)
@@ -839,6 +889,52 @@ xp::Evaluate(xml, query, &result);
 // Process results...
 FreeResource(result);
 FreeResource(query);
+```
+
+### Custom Function Registration
+
+The `RegisterFunction()` method allows extending XQuery with custom function implementations:
+
+```cpp
+// C++ example - Register a custom function
+static ERR custom_double(objXQuery *Query, std::string_view FunctionName,
+                        const std::vector<XPathValue> &Input,
+                        XPathValue &Result, APTR Meta) {
+   if (Input.empty()) return ERR::Args;
+
+   Result.Type = XPVT::Number;
+   Result.NumberValue = Input[0].NumberValue * 2.0;
+   return ERR::Okay;
+}
+
+if (auto xquery = objXQuery::create()) {
+   FUNCTION callback = C_FUNCTION(custom_double);
+   xquery->registerFunction("custom-double", &callback);
+
+   // Use the custom function in XQuery
+   XPathValue *result;
+   xquery->evaluate("custom-double(21)", &result);
+   // result->NumberValue will be 42.0
+   FreeResource(result);
+}
+```
+
+```fluid
+-- Fluid example - Register and use custom function
+local xquery = obj.new('xquery')
+
+xquery.mtRegisterFunction('custom-sum', function(query, name, input, result)
+   local sum = 0
+   for _, val in ipairs(input) do
+      sum = sum + val.number
+   end
+   result.type = 'number'
+   result.number = sum
+   return ERR_Okay
+end)
+
+local err, result = xquery.mtEvaluate('custom-sum(1, 2, 3, 4, 5)')
+print('Sum:', result.number) -- Prints: Sum: 15
 ```
 
 ## Error Handling
@@ -892,7 +988,7 @@ The XQuery module has a tight integration with the XML module:
 
 ### Custom Function Registration
 
-The XQuery function library is extensible through the `XPathFunctionLibrary` class, allowing custom function registration for specialised processing needs.
+The XQuery function library is extensible through the `RegisterFunction()` method, allowing custom function registration for specialised processing needs. Custom functions can be implemented in C++ or Fluid and are callable from XQuery expressions just like built-in functions.
 
 ### Expression Caching
 
@@ -901,6 +997,14 @@ Compiled expressions are expensive to create but cheap to reuse. Consider cachin
 ### Streaming Evaluation
 
 Use the `xp::Query()` function with callbacks for streaming evaluation of large result sets, avoiding memory overhead of materialising all results.
+
+### Evaluator Architecture
+
+For developers modifying or extending the XQuery evaluator, see `src/xquery/eval/AGENTS.md` for detailed documentation on:
+- Expression evaluation dispatch mechanism
+- Handler method conventions
+- Performance considerations for hot paths
+- Testing procedures for evaluator changes
 
 ## Related Documentation
 
@@ -911,3 +1015,4 @@ Use the `xp::Query()` function with callbacks for streaming evaluation of large 
 
 This guide provides the essential information needed for AI agents to work effectively with the Parasol XQuery module, covering architecture, language support, function library, and integration patterns.
 
+Last Updated: 2025-11-03
