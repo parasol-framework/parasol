@@ -191,3 +191,4 @@ flute_test(fluid_compound "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_compound.fluid
 flute_test(fluid_bitshift "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bitshift.fluid")
 flute_test(fluid_bitwise "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_bitwise.fluid")
 flute_test(fluid_orq "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_orq.fluid")
+flute_test(fluid_presence "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_presence.fluid")

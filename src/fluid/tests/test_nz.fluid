@@ -1,27 +1,31 @@
 -- Flute tests for the nz() function
 
 function testNil()
-   if nz(nil, "Passed") != "Passed" then
-      error("Failed nil test.")
+   assert(nz(nil, "Passed") is "Passed", "Failed nil test.")
+
+   if "Passed" then
+      -- Expected behaviour
+   else
+      error("Failed 'if' nil test.")
    end
 end
 
 function testEmptyString()
-   if nz("", "Passed") != "Passed" then
-      error("Failed empty string test.")
+   assert(nz("", "Passed") is "Passed", "Failed empty string test.")
+
+   if "" then
+      -- Expected behaviour
+   else
+      error("Failed 'if' empty string test.")
    end
 end
 
 function testZero()
-   if nz(0, "Passed") != "Passed" then
-      error("Failed numerical test.")
-   end
+   assert(nz(0, "Passed") is "Passed", "Failed numerical test.")
 end
 
 function testString()
-   if nz("Passed", "Failed") != "Passed" then
-      error("Failed postive string test.")
-   end
+   assert(nz("Passed", "Failed") is "Passed", "Failed postive string test.")
 end
 
 function testTableWithContent()
