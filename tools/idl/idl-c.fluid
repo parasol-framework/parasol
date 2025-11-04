@@ -290,14 +290,14 @@ function outputClassHeader(class, Private, Custom)
          end
       end
 
-      if (Private != nil) then
+      if Private?? then
          output()
          output('#ifdef PRV_' .. class.name:upper())
          output(Private)
          output('#endif')
       end
 
-      if (Custom != nil) then
+      if Custom?? then
          output('   public:')
          output(Custom)
       end
@@ -538,7 +538,7 @@ function idlFunction(Name, Category, Comment, Status, Description, Def)
    func.description = Description
    func.category    = Category
 
-   if (Def is nil) then Def = { } end
+   if not Def then Def = { } end
 
    if Def.result?? then
       func.result = Def.result
@@ -914,7 +914,7 @@ end
    glOutputProto = arg('output-proto')
    glPrototypes  = arg('prototypes')
 
-   if (glSource is nil) then
+   if not glSource then
       print("This command is used to compile self-documenting source files.  Provide a reference to a")
       print("source '.fdl' file in the src parameter.  The resulting data will be saved to the file")
       print("referenced in the output parameter.")
