@@ -28,8 +28,8 @@ set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 
 # Common LuaJIT compile definitions
 set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
-# Non-MSVC builds disable FFI and need additional flags
-set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT")
+# Non-MSVC builds disable FFI and need additional flags (as a CMake list for proper expansion)
+set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI" "-DLUAJIT_ENABLE_LUA52COMPAT")
 
 # We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
