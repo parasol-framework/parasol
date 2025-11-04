@@ -1095,6 +1095,16 @@ static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
    }
 
    /* Runtime value - emit checks */
+   /* Follow or? pattern: use BC_ISEQP/BC_ISEQN/BC_ISEQS, patch jumps to false branch */
+   /*
+    * Bytecode semantics: BC_ISEQP/BC_ISEQN/BC_ISEQS skip the next instruction when values ARE equal.
+    * Pattern: BC_ISEQP reg, VKNIL + JMP means:
+    *   - If reg == nil: skip JMP, continue to next check
+    *   - If reg != nil: execute JMP, jump to target (patched to false branch)
+    * By chaining multiple checks and patching all JMPs to the same false branch:
+    *   - Falsey values: matching check skips its JMP, execution continues (reaches truthy branch)
+    *   - Truthy values: all checks fail, first JMP executes, jumps to false branch
+    */
    BCReg reg = expr_toanyreg(fs, e);
    ExpDesc nilv, falsev, zerov, emptyv;
    BCPos jmp_false_branch;
@@ -1122,12 +1132,12 @@ static void bcemit_presence_check(FuncState *fs, ExpDesc *e)
    bcemit_INS(fs, BCINS_AD(BC_ISEQS, reg, const_str(fs, &emptyv)));
    check_empty = bcemit_jmp(fs);
 
-   /* Free the old expression register */
-   expr_free(fs, e);
-
-   /* Reserve a new register for the result */
+   /* Reserve a register for the result */
    BCReg dest = fs->freereg;
    bcreg_reserve(fs, 1);
+
+   /* Free the old expression register after reserving new one */
+   expr_free(fs, e);
 
    /* If all checks pass (value is truthy), load true */
    bcemit_AD(fs, BC_KPRI, dest, VKTRUE);

@@ -204,6 +204,99 @@ function testFunctionCalls()
    assert((nz(nil, "")?) is false, "Failed function call test with falsey result")
 end
 
+-- Tests to verify bytecode semantics claimed in PR comment
+-- PR comment claims: BC_ISEQP/BC_ISEQN/BC_ISEQS skip next instruction when comparison succeeds
+-- These tests verify the actual runtime behavior
+
+-- Test: Verify truthy string returns true (proves jumps don't fire incorrectly)
+function testBytecodeSemanticsTruthyString()
+   local s = "test"
+   local result = s?
+   assert(result is true, "Truthy string must return true - if false, BC_ISEQS may be skipping when equal (wrong)")
+end
+
+-- Test: Verify truthy number returns true
+function testBytecodeSemanticsTruthyNumber()
+   local n = 42
+   local result = n?
+   assert(result is true, "Truthy number must return true - if false, BC_ISEQN may be skipping when equal (wrong)")
+end
+
+-- Test: Verify falsey string returns false (proves jumps fire correctly)
+function testBytecodeSemanticsFalseyString()
+   local s = ""
+   local result = s?
+   assert(result is false, "Falsey string must return false - if true, BC_ISEQS may not be jumping when equal")
+end
+
+-- Test: Verify falsey number returns false
+function testBytecodeSemanticsFalseyNumber()
+   local n = 0
+   local result = n?
+   assert(result is false, "Falsey number must return false - if true, BC_ISEQN may not be jumping when equal")
+end
+
+-- Test: Verify type mismatch doesn't cause false positives (string vs number comparison)
+function testBytecodeSemanticsTypeMismatchStringToNumber()
+   local s = "hello"
+   -- Comparing string to number (zero check) should not trigger false jump
+   local result = s?
+   assert(result is true, "String compared to number (zero check) should not trigger false - type mismatch handling")
+end
+
+-- Test: Verify type mismatch doesn't cause false positives (number vs string comparison)
+function testBytecodeSemanticsTypeMismatchNumberToString()
+   local n = 42
+   -- Comparing number to string (empty check) should not trigger false jump
+   local result = n?
+   assert(result is true, "Number compared to string (empty check) should not trigger false - type mismatch handling")
+end
+
+-- Test: Verify nil returns false correctly
+function testBytecodeSemanticsNil()
+   local v = nil
+   local result = v?
+   assert(result is false, "Nil must return false - verifies BC_ISEQP behavior")
+end
+
+-- Test: Verify false returns false correctly
+function testBytecodeSemanticsFalse()
+   local v = false
+   local result = v?
+   assert(result is false, "False must return false - verifies BC_ISEQP behavior")
+end
+
+-- Test: Comprehensive runtime truthy values
+function testBytecodeSemanticsAllTruthyValues()
+   local test_cases = {
+      {val = "hello", name = "non-empty string"},
+      {val = 1, name = "positive number"},
+      {val = -1, name = "negative number"},
+      {val = 0.5, name = "fractional number"},
+      {val = true, name = "boolean true"},
+      {val = {}, name = "empty table"},
+      {val = {x=1}, name = "non-empty table"}
+   }
+   for _, tc in ipairs(test_cases) do
+      local result = (tc.val)?
+      assert(result is true, "Truthy value '" .. tc.name .. "' must return true, got: " .. tostring(result))
+   end
+end
+
+-- Test: Comprehensive runtime falsey values
+function testBytecodeSemanticsAllFalseyValues()
+   local test_cases = {
+      {val = nil, name = "nil"},
+      {val = false, name = "false"},
+      {val = 0, name = "zero"},
+      {val = "", name = "empty string"}
+   }
+   for _, tc in ipairs(test_cases) do
+      local result = (tc.val)?
+      assert(result is false, "Falsey value '" .. tc.name .. "' must return false, got: " .. tostring(result))
+   end
+end
+
 -----------------------------------------------------------------------------------------------------------------------
 
 return {
@@ -212,6 +305,11 @@ return {
       'testTruthyString', 'testTruthyNumber', 'testTrue', 'testInConditional',
       'testInExpression', 'testChaining', 'testParentheses',
       'testTableAccess', 'testRuntime', 'testConstants', 'testAgainstNz',
-      'testReturnsBool', 'testChainedAccess', 'testNegativeNumbers', 'testFunctionCalls'
+      'testReturnsBool', 'testChainedAccess', 'testNegativeNumbers', 'testFunctionCalls',
+      'testBytecodeSemanticsTruthyString', 'testBytecodeSemanticsTruthyNumber',
+      'testBytecodeSemanticsFalseyString', 'testBytecodeSemanticsFalseyNumber',
+      'testBytecodeSemanticsTypeMismatchStringToNumber', 'testBytecodeSemanticsTypeMismatchNumberToString',
+      'testBytecodeSemanticsNil', 'testBytecodeSemanticsFalse',
+      'testBytecodeSemanticsAllTruthyValues', 'testBytecodeSemanticsAllFalseyValues'
    }
 }
