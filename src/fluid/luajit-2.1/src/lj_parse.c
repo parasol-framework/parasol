@@ -908,7 +908,7 @@ static void bcemit_binop_left(FuncState *fs, BinOpr op, ExpDesc *e)
   } else if (op == OPR_OR) {
     bcemit_branch_f(fs, e);
   } else if (op == OPR_OR_QUESTION) {
-    /* For or?, handle extended falsey checks - only set up jumps for compile-time constants */
+    /* For ?, handle extended falsey checks - only set up jumps for compile-time constants */
     BCPos pc;
     expr_discharge(fs, e);
     /* Extended falsey: nil, false, 0, "" */

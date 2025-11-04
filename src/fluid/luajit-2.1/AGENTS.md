@@ -55,6 +55,46 @@ before diving into changes.
   - The helper `expr_discharge()` is frequently used to normalise expressions
     before storage; inspect current usage before inventing new patterns.
 
+### Register Management for Unary/Postfix Operators
+When implementing operators that transform a value in-place (like unary `-`, `not`, or
+custom postfix operators):
+
+1. **Modifying the Same Register (In-Place):**
+   ```c
+   BCReg reg = expr_toanyreg(fs, e);
+   // Emit bytecode that modifies reg in-place
+   bcemit_AD(fs, BC_UNM, reg, reg);  // Example: negate the value
+   // Expression still points to same register
+   ```
+   **Issue:** If the original variable is referenced again later in the same expression,
+   it will get the modified value, not the original. Example: `x? and x` would see
+   boolean for both uses of `x`.
+
+2. **Allocating a New Register (Recommended for Value-Transforming Operators):**
+   ```c
+   BCReg src_reg = expr_toanyreg(fs, e);
+   expr_free(fs, e);              // CRITICAL: Free source register first
+   BCReg dest_reg = fs->freereg;
+   bcreg_reserve(fs, 1);          // Allocate new register for result
+   // Emit bytecode that reads src_reg, writes to dest_reg
+   bcemit_AD(fs, BC_KPRI, dest_reg, VKTRUE);  // Example
+   expr_init(e, VNONRELOC, dest_reg);
+   ```
+   **Benefits:** Original value remains accessible; no multi-value return issues.
+
+3. **Using VRELOCABLE (For Simple Transformations):**
+   ```c
+   expr_toanyreg(fs, e);
+   expr_free(fs, e);                            // Free old register
+   e->u.s.info = bcemit_AD(fs, op, 0, e->u.s.info);  // Emit instruction
+   e->k = VRELOCABLE;                           // Mark as relocatable
+   ```
+   This pattern (from `bcemit_unop()`) defers register allocation until later.
+
+**Common Pitfall:** Forgetting `expr_free()` before allocating a new register causes
+the function to return multiple values (the original value AND the transformed value),
+which manifests as extra arguments in function calls or assignment contexts.
+
 ### CALL Instructions and Base Registers
 - After a `BC_CALL` instruction executes, the result(s) are placed starting at
   the base register, **overwriting the function** that was there.
@@ -118,7 +158,7 @@ one function call.
 
 ### Implementing Binary Logical Operators with Short-Circuiting
 
-When implementing binary logical operators (like `or`, `and`, or custom variants like `or?`),
+When implementing binary logical operators (like `or`, `and`, or custom variants like `?`),
 follow a two-phase pattern: setup in `bcemit_binop_left()` and completion in `bcemit_binop()`.
 
 **The Pattern:**
@@ -256,30 +296,68 @@ in addition to `nil` and `false`):
    emptyv.u.sval = lj_parse_keepstr(fs->ls, "", 0);
    ```
 
-### Multi-Character Token Recognition
+### Single-Character Token Recognition
 
-When adding operators that extend reserved words (like `or?` from `or`):
+When adding single-character operators (like `?`):
 
 1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro:
    ```c
-   __(or_question, or?)
+   __(or_question, ?)
    ```
 
-2. **Handle recognition in the lexer** (`lj_lex.c`) after identifying a reserved word:
+2. **Handle recognition in the lexer** (`lj_lex.c`) in the switch statement:
    ```c
-   if (s->reserved > 0) {
-     LexToken tok = TK_OFS + s->reserved;
-     if (tok == TK_or && ls->c == '?') {  // Check next character
-       lex_next(ls);  // Consume the '?'
-       return TK_or_question;
-     }
-     return tok;
-   }
+   case '?':
+     lex_next(ls);
+     return TK_or_question;
    ```
+
+### Multi-Character Token Recognition
+
+When adding operators that extend reserved words:
+
+1. **Add the token** to `TKDEF` in `lj_lex.h` using the `T2` macro.
+
+2. **Handle recognition in the lexer** (`lj_lex.c`) after identifying a reserved word by checking the next character.
    **Important**: Check the next character (`ls->c`) **after** recognizing the reserved word,
    not in the character switch statement.
 
 3. **Map the token to an operator** in `token2binop()` in `lj_parse.c`
+
+## Debugging Parser Issues
+
+When adding new operators or modifying expression parsing, use these strategies:
+
+### Printf Debugging for Token Flow
+Add temporary printf statements to trace token values through parsing:
+```c
+// In expr_primary() suffix loop or similar:
+printf("[DEBUG] tok=%d ('%c' if printable)\n", ls->tok,
+       (ls->tok >= 32 && ls->tok < 127) ? ls->tok : '?');
+```
+Remember to remove these before committing. Token values < 256 are ASCII characters;
+values >= 256 are token type constants from `lj_lex.h`.
+
+### Diagnosing Multi-Value Return Issues
+If an operator returns multiple values instead of one:
+- **Symptom**: Expressions like `(x + y)?` produce two values in varargs contexts
+- **Common cause**: Allocating a new register without calling `expr_free()` first
+- **Fix pattern**:
+  ```c
+  BCReg src_reg = expr_toanyreg(fs, e);
+  expr_free(fs, e);           // Free the source register
+  BCReg dest_reg = fs->freereg;
+  bcreg_reserve(fs, 1);       // Allocate result register
+  ```
+- **Test with**: Create a function that counts return values using `{...}` and `#`
+
+### Incremental Testing Strategy
+When implementing new operators:
+1. Start with compile-time constants (`5?`, `nil?`) - test constant folding path
+2. Test simple variables (`x?`) - test basic runtime path
+3. Test field access (`t.field?`) - test suffix loop integration
+4. Test parenthesized expressions (`(x + y)?`) - test complex expressions
+5. Test in various contexts (assignments, function arguments, conditionals)
 
 ## Miscellaneous Gotchas
 - Check that any new compile-time constants or flags (e.g. `#define`s) do
@@ -290,4 +368,4 @@ When adding operators that extend reserved words (like `or?` from `or`):
 - Keep an eye on Fluid tests after modifying LuaJIT semantics—failures often
   surface as subtle script regressions rather than outright crashes.
 
-_Last updated: 2025-10-29_
+_Last updated: 2025-11-04_
