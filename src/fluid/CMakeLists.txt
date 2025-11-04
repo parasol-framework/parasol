@@ -8,6 +8,29 @@ idl_gen ("${MOD}.fdl" NAME ${MOD}_defs OUTPUT "${INCLUDE_OUTPUT}/modules/${MOD}.
 
 set (LUAJIT_SRC "${CMAKE_CURRENT_SOURCE_DIR}/luajit-2.1/src")
 
+# Common LuaJIT build configuration used by both MSVC and non-MSVC builds
+
+# Define build directory for generated files (avoids polluting source tree)
+set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
+file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
+
+# Generated header files (same for all platforms)
+set (LUAJIT_GENERATED_HEADERS
+   "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_libdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_recdef.h"
+   "${LUAJIT_BUILD_DIR}/lj_folddef.h"
+)
+
+# VM definition Lua file (same for all platforms)
+set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
+
+# Common LuaJIT compile definitions
+set (LUAJIT_COMMON_DEFS "LUAJIT_ENABLE_LUA52COMPAT")
+# Non-MSVC builds disable FFI and need additional flags
+set (LUAJIT_NON_MSVC_DEFS "-DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT")
+
 # We build FFI as a release build in all situations because ASAN doesn't like Debug builds of FFI.
 # Activate BUILD_ALWAYS if you're working on the library code.
 
@@ -35,20 +58,7 @@ if (MSVC)
    # Code generation creates headers and lj_vm.obj via custom batch script
    # Library compilation is handled by CMake for proper incremental builds
 
-   # Define build directory for generated files (avoids polluting source tree)
-   set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
-   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
-
-   set (LUAJIT_GENERATED_HEADERS
-      "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_libdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_recdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_folddef.h"
-   )
-
    set (LUAJIT_VM_OBJ "${LUAJIT_BUILD_DIR}/lj_vm.obj")
-   set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 
    # Expand glob patterns for dependencies (only source headers, not generated ones)
    file(GLOB LUAJIT_DEP_LJ_C "${LUAJIT_SRC}/lj_*.c")
@@ -93,7 +103,7 @@ if (MSVC)
       ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${LUAJIT_SRC}"
       ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${LUAJIT_SRC}"
    )
-   target_compile_definitions(luajit_lib PRIVATE LUAJIT_ENABLE_LUA52COMPAT _CRT_SECURE_NO_DEPRECATE)
+   target_compile_definitions(luajit_lib PRIVATE ${LUAJIT_COMMON_DEFS} _CRT_SECURE_NO_DEPRECATE)
 
    target_include_directories(luajit_lib PRIVATE
       "${LUAJIT_SRC}"
@@ -113,21 +123,8 @@ else ()
    # Code generation creates headers and lj_vm.S via host tools
    # Library compilation is handled by CMake for proper incremental builds
 
-   # Define build directory for generated files (avoids polluting source tree)
-   set (LUAJIT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/luajit-generated")
-   file(MAKE_DIRECTORY "${LUAJIT_BUILD_DIR}")
-
-   set (LUAJIT_GENERATED_HEADERS
-      "${LUAJIT_BUILD_DIR}/lj_bcdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_ffdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_libdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_recdef.h"
-      "${LUAJIT_BUILD_DIR}/lj_folddef.h"
-   )
-
    set (LUAJIT_VM_S "${LUAJIT_BUILD_DIR}/lj_vm.S")
    set (LUAJIT_VM_O "${LUAJIT_BUILD_DIR}/lj_vm.o")
-   set (LUAJIT_VMDEF_LUA "${LUAJIT_BUILD_DIR}/jit/vmdef.lua")
 
    # Host tool sources
    set (LUAJIT_HOST_DIR "${LUAJIT_SRC}/host")
@@ -260,7 +257,7 @@ else ()
    add_custom_command(
       OUTPUT ${BUILDVM_TARGET}
       COMMAND ${CMAKE_C_COMPILER} -std=c99 -O2 -Wall
-         -DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT
+         ${LUAJIT_NON_MSVC_DEFS}
          -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
          -o ${BUILDVM_TARGET} ${BUILDVM_SOURCES} ${BUILDVM_LIBS}
       DEPENDS ${BUILDVM_SOURCES} ${BUILDVM_ARCH_H}
@@ -314,7 +311,7 @@ else ()
       OUTPUT ${LUAJIT_VM_O}
       COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
          -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
-         -DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT
+         ${LUAJIT_NON_MSVC_DEFS}
          -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
          -c ${LUAJIT_VM_S} -o ${LUAJIT_VM_O}
       DEPENDS ${LUAJIT_VM_S}
@@ -328,7 +325,7 @@ else ()
       OUTPUT ${LUAJIT_AMALG_O}
       COMMAND ${CMAKE_C_COMPILER} -fPIC -O2 -fomit-frame-pointer -Wall
          -funwind-tables -DLUAJIT_UNWIND_EXTERNAL
-         -DLUAJIT_DISABLE_FFI -DLUAJIT_ENABLE_LUA52COMPAT
+         ${LUAJIT_NON_MSVC_DEFS}
          -DLUA_ROOT=\"${CMAKE_INSTALL_PREFIX}\"
          -I${LUAJIT_SRC} -I${LUAJIT_BUILD_DIR}
          -c "${LUAJIT_SRC}/ljamalg.c" -o ${LUAJIT_AMALG_O}
