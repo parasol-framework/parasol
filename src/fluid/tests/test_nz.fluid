@@ -25,7 +25,7 @@ function testZero()
 end
 
 function testString()
-   assert(nz("Passed", "Failed") is "Passed", "Failed postive string test.")
+   assert(nz("Passed", "Failed") is "Passed", "Failed positive string test.")
 end
 
 function testTableWithContent()
